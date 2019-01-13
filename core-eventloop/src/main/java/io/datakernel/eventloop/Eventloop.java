@@ -29,6 +29,7 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,9 +108,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	private final CurrentTimeProvider timeProvider;
 
-	private long timeAfterSelectorSelect;
-	private long timeAfterBusinessLogic;
-
 	/**
 	 * The NIO selector which selects a set of keys whose corresponding channels are ready for I/O operations.
 	 */
@@ -156,6 +154,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// JMX
 
+	@Nullable
 	private EventloopInspector inspector;
 
 	private boolean monitoring = false;
@@ -184,7 +183,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return this;
 	}
 
-	public Eventloop withInspector(@Nullable EventloopInspector inspector) {
+	public Eventloop withInspector(EventloopInspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
@@ -330,7 +329,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		assert selector != null;
 		breakEventloop = false;
 
-		timeAfterBusinessLogic = timeAfterSelectorSelect = 0;
+		long timeAfterSelectorSelect = 0;
+		long timeAfterBusinessLogic = 0;
 		while (true) {
 			if (!isAlive()) {
 				logger.info("{} is complete, exiting...", this);
@@ -865,7 +865,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable runnable of this task
 	 */
 	@Override
-	public void execute(Runnable runnable) {
+	public void execute(@NotNull Runnable runnable) {
 		concurrentTasks.offer(runnable);
 		if (selector != null) {
 			selector.wakeup();

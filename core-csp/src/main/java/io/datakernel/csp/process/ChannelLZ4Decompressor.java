@@ -36,6 +36,7 @@ import net.jpountz.lz4.LZ4FastDecompressor;
 import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static io.datakernel.csp.process.ChannelLZ4Compressor.*;
@@ -54,6 +55,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 
 	private final Header header = new Header();
 
+	@Nullable
 	private Inspector inspector;
 
 	public interface Inspector extends BaseInspector<Inspector> {

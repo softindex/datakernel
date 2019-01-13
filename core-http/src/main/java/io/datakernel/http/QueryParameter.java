@@ -18,6 +18,8 @@ package io.datakernel.http;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 public final class QueryParameter {
 	private final String key;
 	private final String value;
@@ -40,11 +42,9 @@ public final class QueryParameter {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		QueryParameter queryParameter = (QueryParameter) o;
-
-		if (key != null ? !key.equals(queryParameter.key) : queryParameter.key != null) return false;
-		return value != null ? value.equals(queryParameter.value) : queryParameter.value == null;
+		return Objects.equals(key, queryParameter.key) &&
+				Objects.equals(value, queryParameter.value);
 	}
 
 	@Override

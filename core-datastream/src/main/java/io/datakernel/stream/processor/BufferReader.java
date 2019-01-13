@@ -16,6 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.Charset;
@@ -125,7 +127,7 @@ public final class BufferReader extends Reader {
 	 * @throws IOException if an I/O error occurs
 	 */
 	@Override
-	public int read(char[] cbuf, int off, int len) throws IOException {
+	public int read(@NotNull char[] cbuf, int off, int len) throws IOException {
 		if (pos > limit)
 			return -1;
 

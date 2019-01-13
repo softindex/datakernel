@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,7 @@ public final class DnsCache {
 	private final AtomicBoolean cleaningUpNow = new AtomicBoolean(false);
 	private final PriorityQueue<CachedDnsQueryResult> expirations = new PriorityQueue<>();
 
+	@NotNull
 	CurrentTimeProvider now;
 
 	/**
@@ -61,9 +63,9 @@ public final class DnsCache {
 	 *
 	 * @param eventloop eventloop
 	 */
-	private DnsCache(Eventloop eventloop) {
+	private DnsCache(@NotNull Eventloop eventloop) {
 		this.eventloop = eventloop;
-		now = eventloop;
+		this.now = eventloop;
 	}
 
 	public static DnsCache create(Eventloop eventloop) {
@@ -218,22 +220,26 @@ public final class DnsCache {
 	}
 
 	public String[] getSuccessfullyResolvedDomainNames() {
-		return cache.entrySet().stream()
+		return cache.entrySet()
+				.stream()
 				.filter(entry -> {
 					assert entry.getValue().response != null;
 					return entry.getValue().response.isSuccessful();
 				})
 				.map(Entry::getKey)
+				.map(DnsQuery::getDomainName)
 				.toArray(String[]::new);
 	}
 
 	public String[] getDomainNamesOfFailedRequests() {
-		return cache.entrySet().stream()
+		return cache.entrySet()
+				.stream()
 				.filter(entry -> {
 					assert entry.getValue().response != null;
 					return !entry.getValue().response.isSuccessful();
 				})
 				.map(Entry::getKey)
+				.map(DnsQuery::getDomainName)
 				.toArray(String[]::new);
 	}
 

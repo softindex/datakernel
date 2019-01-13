@@ -18,28 +18,29 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 
 public final class HttpHeader extends Token {
+	@NotNull
 	protected final byte[] bytes;
 	protected final int offset;
 	protected final int length;
 
-	HttpHeader(byte[] bytes, int offset, int length,
-			byte[] lowerCaseBytes, int lowerCaseHashCode) {
+	HttpHeader(@NotNull byte[] bytes, int offset, int length, @Nullable byte[] lowerCaseBytes, int lowerCaseHashCode) {
+		super(lowerCaseBytes, lowerCaseHashCode);
 		this.bytes = bytes;
 		this.offset = offset;
 		this.length = length;
-		this.lowerCaseBytes = lowerCaseBytes;
-		this.lowerCaseHashCode = lowerCaseHashCode;
 	}
 
 	public int size() {
 		return length;
 	}
 
-	public void writeTo(ByteBuf buf) {
+	public void writeTo(@NotNull ByteBuf buf) {
 		buf.put(bytes, offset, length);
 	}
 
@@ -69,6 +70,7 @@ public final class HttpHeader extends Token {
 	}
 
 	@Override
+	@NotNull
 	public String toString() {
 		return decodeAscii(bytes, offset, length);
 	}

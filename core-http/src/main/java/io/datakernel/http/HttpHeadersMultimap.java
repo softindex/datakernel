@@ -1,14 +1,19 @@
 package io.datakernel.http;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 final class HttpHeadersMultimap<K, V> {
 	Object[] kvPairs = new Object[8];
 	int size;
 
+	@Contract(pure = true)
 	public int size() {
 		return size;
 	}
 
-	public void add(K key, V value) {
+	public void add(@NotNull K key, @NotNull V value) {
 		if (size++ > kvPairs.length / 4) {
 			resize();
 		}
@@ -34,8 +39,10 @@ final class HttpHeadersMultimap<K, V> {
 		}
 	}
 
+	@Nullable
+	@Contract(pure = true)
 	@SuppressWarnings("unchecked")
-	public V get(K key) {
+	public V get(@NotNull K key) {
 		for (int i = key.hashCode() & (kvPairs.length - 2); ; i = (i + 2) & (kvPairs.length - 2)) {
 			K k = (K) kvPairs[i];
 			if (k == null) {

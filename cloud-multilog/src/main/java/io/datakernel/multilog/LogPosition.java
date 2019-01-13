@@ -16,6 +16,7 @@
 
 package io.datakernel.multilog;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class LogPosition implements Comparable<LogPosition> {
@@ -78,7 +79,7 @@ public final class LogPosition implements Comparable<LogPosition> {
 	}
 
 	@Override
-	public int compareTo(LogPosition o) {
+	public int compareTo(@NotNull LogPosition o) {
 		int result = 0;
 		if (this.logFile != null && o.logFile != null) {
 			result = this.logFile.compareTo(o.logFile);

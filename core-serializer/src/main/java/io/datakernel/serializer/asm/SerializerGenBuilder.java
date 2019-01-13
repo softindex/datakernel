@@ -30,6 +30,7 @@ public interface SerializerGenBuilder {
 			this.serializer = checkNotNull(serializer);
 		}
 
+		@SuppressWarnings("RedundantIfStatement")
 		@Override
 		public boolean equals(Object o) {
 			if (this == o) return true;

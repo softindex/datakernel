@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -105,8 +106,9 @@ public class MiddlewareServlet implements AsyncServlet {
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest request) {
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		Promise<HttpResponse> processed = tryServeAsync(request);
 		if (processed == null) {
 			return Promise.ofException(HttpException.notFound404());

@@ -42,9 +42,9 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 	*   using BE notation
 	* */
 
-	private final int network[];
-	private final int mask[];
-	private final int end[];
+	private final int[] network;
+	private final int[] mask;
+	private final int[] end;
 
 	private boolean acceptAll;
 

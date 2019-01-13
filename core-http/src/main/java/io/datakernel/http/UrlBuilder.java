@@ -32,8 +32,8 @@ public class UrlBuilder {
 	@Nullable
 	private final String scheme;
 
-	private List<String> path = new LinkedList<>();
-	private Map<String, String> query = new LinkedHashMap<>();
+	private final List<String> path = new LinkedList<>();
+	private final Map<String, String> query = new LinkedHashMap<>();
 
 	@Nullable
 	private String userInfo;
@@ -105,7 +105,7 @@ public class UrlBuilder {
 
 	public static String mapToQuery(Map<String, ?> query) {
 		StringBuilder sb = new StringBuilder();
-		query.forEach((k, v) -> sb.append(urlencode(k)).append('=').append(urlencode(v.toString())).append('&'));
+		query.forEach((k, v) -> sb.append(urlEncode(k)).append('=').append(urlEncode(v.toString())).append('&'));
 		sb.setLength(sb.length() - 1); // drop last '&'
 		return sb.toString();
 	}
@@ -135,7 +135,7 @@ public class UrlBuilder {
 		return this;
 	}
 
-	private static String urlencode(String str) {
+	private static String urlEncode(String str) {
 		try {
 			return URLEncoder.encode(str, UTF_8.name());
 		} catch (UnsupportedEncodingException e) {
@@ -165,12 +165,12 @@ public class UrlBuilder {
 			sb.append('/');
 		}
 		if (!path.isEmpty()) {
-			path.forEach(p -> sb.append(urlencode(p)).append('/'));
+			path.forEach(p -> sb.append(urlEncode(p)).append('/'));
 			sb.setLength(sb.length() - 1); // drop last '/'
 		}
 		if (!query.isEmpty()) {
 			sb.append('?');
-			query.forEach((k, v) -> sb.append(urlencode(k)).append('=').append(urlencode(v)).append('&'));
+			query.forEach((k, v) -> sb.append(urlEncode(k)).append('=').append(urlEncode(v)).append('&'));
 			sb.setLength(sb.length() - 1); // drop last '&'
 		}
 		if (fragment != null) {

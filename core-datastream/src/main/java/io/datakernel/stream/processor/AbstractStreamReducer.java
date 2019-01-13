@@ -29,7 +29,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 /**
  * Perform aggregative functions on the elements from input streams. Searches key of item
  * with key function, selects elements with some key, reductions it and streams result sorted by key.
- * Elements from stream to input must be sorted by keys. It is {@link AbstractStreamTransformer_N_1}
+ * Elements from stream to input must be sorted by keys. It is Stream Transformer
  * because it represents few consumers and one supplier.
  *
  * @param <K> type of key of element

@@ -19,6 +19,7 @@ import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;
@@ -307,9 +308,10 @@ public class JmxHttpModule extends AbstractModule {
 			this.injector = injector;
 		}
 
+		@NotNull
 		@SuppressWarnings("unchecked")
 		@Override
-		public Promise<HttpResponse> serve(HttpRequest request) {
+		public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 			String keyParam = request.getQueryParameterOrNull("key");
 
 			if ("/favicon.ico".equals(request.getPath())) { // if somehow it got to this servlet

@@ -23,7 +23,7 @@ import java.util.function.Predicate;
 
 /**
  * Provides you to filter data for sending. It checks predicate's verity for inputting data and if
- * predicate is true sends data to the destination. It is a {@link AbstractStreamTransformer}
+ * predicate is true sends data to the destination. It is a {@link StreamTransformer}
  * which receives specified type and streams result set to the destination .
  *
  * @param <T>

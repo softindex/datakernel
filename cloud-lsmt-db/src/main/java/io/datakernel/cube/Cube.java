@@ -49,6 +49,7 @@ import io.datakernel.stream.processor.StreamReducer;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.processor.StreamSplitter;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -676,7 +677,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		@Override
-		public int compareTo(AggregationContainerWithScore o) {
+		public int compareTo(@NotNull AggregationContainerWithScore o) {
 			int result;
 			result = -Integer.compare(aggregationContainer.measures.size(), o.aggregationContainer.measures.size());
 			if (result != 0) return result;

@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.cache.CacheNoEvictionPolicy;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
@@ -59,8 +60,9 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public final Promise<HttpResponse> serve(HttpRequest request) {
+	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		assert eventloop.inEventloopThread();
 		return request.getMethod() == HttpMethod.GET ?
 				resourceLoader.getResource(path)

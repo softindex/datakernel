@@ -38,13 +38,10 @@ public class CubeClassLoaderCache implements CubeClassLoaderCacheMBean {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-
 			Key that = (Key) o;
-
-			if (!attributes.equals(that.attributes)) return false;
-			if (!measures.equals(that.measures)) return false;
-			if (!filterDimensions.equals(that.filterDimensions)) return false;
-			return true;
+			return attributes.equals(that.attributes) &&
+					measures.equals(that.measures) &&
+					filterDimensions.equals(that.filterDimensions);
 		}
 
 		@Override
@@ -63,6 +60,7 @@ public class CubeClassLoaderCache implements CubeClassLoaderCacheMBean {
 
 	private final DefiningClassLoader rootClassLoader;
 	private final LinkedHashMap<Key, DefiningClassLoader> cache = new LinkedHashMap<Key, DefiningClassLoader>(16, 0.75f, false) {
+		@Override
 		protected boolean removeEldestEntry(Map.Entry<Key, DefiningClassLoader> eldest) {
 			return size() > targetCacheKeys;
 		}

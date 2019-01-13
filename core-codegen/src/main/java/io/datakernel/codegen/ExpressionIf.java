@@ -62,6 +62,7 @@ final class ExpressionIf implements Expression {
 		return left.type(ctx);
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

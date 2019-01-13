@@ -17,7 +17,6 @@
 package io.datakernel.net;
 
 import io.datakernel.util.MemSize;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -38,15 +37,10 @@ public final class SocketSettings {
 	private final byte reuseAddress;
 	private final byte tcpNoDelay;
 
-	@Nullable
 	private final int sendBufferSize;
-	@Nullable
 	private final int receiveBufferSize;
-	@Nullable
 	private final int implReadTimeout;
-	@Nullable
 	private final int implWriteTimeout;
-	@Nullable
 	private final int implReadBufferSize;
 
 	// region builders

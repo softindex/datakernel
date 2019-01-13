@@ -29,6 +29,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,8 +89,9 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		return queryResultCodec;
 	}
 
+	@NotNull
 	@Override
-	public Promise<HttpResponse> doServe(HttpRequest httpRequest) {
+	public Promise<HttpResponse> doServe(@NotNull HttpRequest httpRequest) {
 		logger.info("Received request: {}", httpRequest);
 		try {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();

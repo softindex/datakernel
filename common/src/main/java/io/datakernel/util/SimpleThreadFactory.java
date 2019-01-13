@@ -16,6 +16,8 @@
 
 package io.datakernel.util;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -94,7 +96,7 @@ public final class SimpleThreadFactory implements ThreadFactory, Initializable<S
 	}
 
 	@Override
-	public Thread newThread(Runnable runnable) {
+	public Thread newThread(@NotNull Runnable runnable) {
 		Thread thread = name == null ?
 				new Thread(threadGroup, runnable) :
 				new Thread(threadGroup, runnable, name.replace(NAME_PATTERN, "" + count.incrementAndGet()));

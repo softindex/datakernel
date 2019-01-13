@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
 
@@ -24,8 +25,13 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 
 public abstract class CaseInsensitiveTokenMap<T extends Token> {
 	public static abstract class Token {
-		protected byte[] lowerCaseBytes;
-		protected int lowerCaseHashCode;
+		protected final byte[] lowerCaseBytes;
+		protected final int lowerCaseHashCode;
+
+		protected Token(@Nullable byte[] lowerCaseBytes, int lowerCaseHashCode) {
+			this.lowerCaseBytes = lowerCaseBytes;
+			this.lowerCaseHashCode = lowerCaseHashCode;
+		}
 	}
 
 	protected final T[] TOKENS;

@@ -133,14 +133,10 @@ public final class AggregationQuery {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		AggregationQuery query = (AggregationQuery) o;
-
-		if (!keys.equals(query.keys)) return false;
-		if (!measures.equals(query.measures)) return false;
-		if (!predicate.equals(query.predicate)) return false;
-
-		return true;
+		return keys.equals(query.keys) &&
+				measures.equals(query.measures) &&
+				predicate.equals(query.predicate);
 	}
 
 	@Override

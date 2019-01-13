@@ -49,6 +49,7 @@ final class ExpressionArraySet implements Expression {
 		return Type.VOID_TYPE;
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

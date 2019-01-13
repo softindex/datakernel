@@ -27,6 +27,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpServer.Inspector;
 import io.datakernel.util.ThreadLocalCharArray;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -65,6 +66,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpRequest request;
 	private final AsyncHttpServer server;
+	@Nullable
 	private final Inspector inspector;
 	private final AsyncServlet servlet;
 	private final char[] charBuffer;
@@ -112,6 +114,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 *
 	 * @param line received line of header.
 	 */
+	@SuppressWarnings("PointlessArithmeticExpression")
 	@Override
 	protected void onStartLine(byte[] line, int limit) throws ParseException {
 		switchPool(server.poolReadWrite);

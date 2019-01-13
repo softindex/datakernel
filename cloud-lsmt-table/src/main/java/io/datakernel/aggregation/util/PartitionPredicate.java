@@ -16,7 +16,11 @@
 
 package io.datakernel.aggregation.util;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 @FunctionalInterface
 public interface PartitionPredicate<T> {
-	boolean isSamePartition(T item1, T item2);
+	@Contract(pure = true)
+	boolean isSamePartition(@NotNull T item1, @NotNull T item2);
 }

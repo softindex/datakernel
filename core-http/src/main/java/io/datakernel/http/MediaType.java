@@ -17,6 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 
@@ -25,16 +27,16 @@ import static io.datakernel.util.Utils.arraysEquals;
 
 // All media type values, subtype values, and parameter names as defined are case-insensitive RFC2045 section 2
 public final class MediaType extends Token {
+	@NotNull
 	final byte[] bytes;
 	final int offset;
 	final int length;
 
-	MediaType(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
+	MediaType(@NotNull byte[] bytes, int offset, int length, @Nullable byte[] lowerCaseBytes, int lowerCaseHashCode) {
+		super(lowerCaseBytes, lowerCaseHashCode);
 		this.bytes = bytes;
 		this.offset = offset;
 		this.length = length;
-		this.lowerCaseBytes = lowerCaseBytes;
-		this.lowerCaseHashCode = lowerCaseHashCode;
 	}
 
 	public static MediaType of(String mime) {
@@ -65,7 +67,7 @@ public final class MediaType extends Token {
 
 	@Override
 	public int hashCode() {
-		int result = bytes != null ? Arrays.hashCode(bytes) : 0;
+		int result = Arrays.hashCode(bytes);
 		result = 31 * result + offset;
 		result = 31 * result + length;
 		return result;

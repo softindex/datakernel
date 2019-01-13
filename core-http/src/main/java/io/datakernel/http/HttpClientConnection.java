@@ -26,6 +26,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.Inspector;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
@@ -82,6 +83,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private SettablePromise<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
+	@Nullable
 	private final Inspector inspector;
 
 	final InetSocketAddress remoteAddress;

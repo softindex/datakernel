@@ -29,6 +29,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
@@ -36,7 +37,9 @@ import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.http.HttpHeaders.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
+@SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
 
@@ -44,11 +47,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
 			int code = ((HttpException) e).getCode();
-			response = HttpResponse.ofCode(code).withBodyString(e.getLocalizedMessage());
+			response = HttpResponse.ofCode(code).withBody(e.getLocalizedMessage().getBytes(UTF_8));
 		} else if (e instanceof ParseException) {
-			response = HttpResponse.ofCode(400).withBodyString(e.getLocalizedMessage());
+			response = HttpResponse.ofCode(400).withBody(e.getLocalizedMessage().getBytes(UTF_8));
 		} else if (e instanceof ConstantException) {
-			response = HttpResponse.ofCode(500).withBodyString(e.getLocalizedMessage());
+			response = HttpResponse.ofCode(500).withBody(e.getLocalizedMessage().getBytes(UTF_8));
 		} else {
 			response = HttpResponse.ofCode(500);
 		}
@@ -58,8 +61,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				.withHeader(AGE, "0");
 	};
 
+	@NotNull
 	private final AsyncServlet servlet;
 	private final char[] charBuffer = new char[1024];
+	@NotNull
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
 	int maxKeepAliveRequests = -1;
@@ -74,6 +79,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Nullable
 	private ScheduledRunnable expiredConnectionsCheck;
 
+	@Nullable
 	Inspector inspector;
 
 	public interface Inspector extends BaseInspector<Inspector> {
@@ -149,16 +155,16 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// region builders
-	private AsyncHttpServer(Eventloop eventloop, AsyncServlet servlet) {
+	private AsyncHttpServer(@NotNull Eventloop eventloop, @NotNull AsyncServlet servlet) {
 		super(eventloop);
 		this.servlet = servlet;
 	}
 
-	public static AsyncHttpServer create(Eventloop eventloop, AsyncServlet servlet) {
+	public static AsyncHttpServer create(@NotNull Eventloop eventloop, @NotNull AsyncServlet servlet) {
 		return new AsyncHttpServer(eventloop, servlet);
 	}
 
-	public AsyncHttpServer withKeepAliveTimeout(Duration keepAliveTime) {
+	public AsyncHttpServer withKeepAliveTimeout(@NotNull Duration keepAliveTime) {
 		this.keepAliveTimeoutMillis = (int) keepAliveTime.toMillis();
 		return this;
 	}
@@ -172,12 +178,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return withKeepAliveTimeout(Duration.ZERO);
 	}
 
-	public AsyncHttpServer withReadWriteTimeout(Duration readTimeout) {
+	public AsyncHttpServer withReadWriteTimeout(@NotNull Duration readTimeout) {
 		this.readWriteTimeoutMillis = (int) readTimeout.toMillis();
 		return this;
 	}
 
-	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {
+	public AsyncHttpServer withHttpErrorFormatter(@NotNull HttpExceptionFormatter httpExceptionFormatter) {
 		this.errorFormatter = httpExceptionFormatter;
 		return this;
 	}

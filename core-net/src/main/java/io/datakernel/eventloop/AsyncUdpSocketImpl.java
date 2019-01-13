@@ -57,6 +57,9 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private int ops = 0;
 
 	// region JMX
+	@Nullable
+	private Inspector inspector;
+
 	public interface Inspector extends BaseInspector<Inspector> {
 		void onReceive(UdpPacket packet);
 
@@ -120,9 +123,6 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			return sendErrors;
 		}
 	}
-
-	@Nullable
-	private Inspector inspector;
 	// endregion
 
 	// region creators
@@ -135,7 +135,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		return new AsyncUdpSocketImpl(eventloop, channel);
 	}
 
-	public AsyncUdpSocketImpl withInspector(@Nullable Inspector inspector) {
+	public AsyncUdpSocketImpl withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}

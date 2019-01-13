@@ -26,6 +26,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -61,6 +62,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(getClass());
 
+	@NotNull
 	protected final Eventloop eventloop;
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(DEFAULT_BACKLOG);
@@ -90,14 +92,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	// jmx
 	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 	AbstractServer<?> acceptServer = this;
+	@Nullable
 	private AsyncTcpSocketImpl.Inspector socketInspector;
+	@Nullable
 	private AsyncTcpSocketImpl.Inspector socketSslInspector;
 	private final EventStats accepts = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats acceptsSsl = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats filteredAccepts = EventStats.create(SMOOTHING_WINDOW);
 
 	// region creators & builder methods
-	protected AbstractServer(Eventloop eventloop) {
+	protected AbstractServer(@NotNull Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 
@@ -343,6 +347,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return socketSettings;
 	}
 
+	@NotNull
 	@Override
 	public final Eventloop getEventloop() {
 		return eventloop;

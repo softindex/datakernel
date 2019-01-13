@@ -16,7 +16,10 @@
 
 package io.datakernel.http;
 
+import org.jetbrains.annotations.NotNull;
+
 @FunctionalInterface
 public interface HttpExceptionFormatter {
-	HttpResponse formatException(Throwable e);
+	@NotNull
+	HttpResponse formatException(@NotNull Throwable e);
 }

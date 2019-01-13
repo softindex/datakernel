@@ -179,13 +179,8 @@ public final class CubeQuery {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-
 			Ordering that = (Ordering) o;
-
-			if (desc != that.desc) return false;
-			if (!field.equals(that.field)) return false;
-
-			return true;
+			return desc == that.desc && field.equals(that.field);
 		}
 
 		@Override

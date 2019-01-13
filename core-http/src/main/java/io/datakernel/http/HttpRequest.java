@@ -24,6 +24,7 @@ import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,10 +44,12 @@ import static io.datakernel.http.HttpMethod.*;
  * {@code HttpRequest} class provides methods which can be used intuitively for
  * creating and configuring an HTTP request.
  */
+@SuppressWarnings("WeakerAccess")
 public final class HttpRequest extends HttpMessage implements Initializable<HttpRequest> {
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
+	@NotNull
 	private final HttpMethod method;
 	private UrlParser url;
 	private InetAddress remoteAddress;
@@ -54,101 +57,118 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private Map<String, String> queryParameters;
 
 	// region creators
-	HttpRequest(HttpMethod method, UrlParser url) {
+	HttpRequest(@NotNull HttpMethod method, @Nullable UrlParser url) {
 		this.method = method;
 		this.url = url;
 	}
 
-	public static HttpRequest of(HttpMethod method, String url) {
-		assert method != null;
+	@NotNull
+	public static HttpRequest of(@NotNull HttpMethod method, @NotNull String url) {
 		HttpRequest request = new HttpRequest(method, null);
 		request.setUrl(url);
 		return request;
 	}
 
-	public static HttpRequest get(String url) {
+	@NotNull
+	public static HttpRequest get(@NotNull String url) {
 		return HttpRequest.of(GET, url);
 	}
 
-	public static HttpRequest post(String url) {
+	@NotNull
+	public static HttpRequest post(@NotNull String url) {
 		return HttpRequest.of(POST, url);
 	}
 
-	public static HttpRequest put(String url) {
+	@NotNull
+	public static HttpRequest put(@NotNull String url) {
 		return HttpRequest.of(PUT, url);
 	}
 
-	public HttpRequest withHeader(HttpHeader header, String value) {
+	@NotNull
+	public HttpRequest withHeader(@NotNull HttpHeader header, @NotNull String value) {
 		addHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest withHeader(HttpHeader header, byte[] value) {
+	@NotNull
+	public HttpRequest withHeader(@NotNull HttpHeader header, @NotNull byte[] value) {
 		addHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest withHeader(HttpHeader header, HttpHeaderValue value) {
+	@NotNull
+	public HttpRequest withHeader(@NotNull HttpHeader header, @NotNull HttpHeaderValue value) {
 		addHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest withBody(byte[] array) {
+	@NotNull
+	public HttpRequest withBody(@NotNull byte[] array) {
 		setBody(array);
 		return this;
 	}
 
-	public HttpRequest withBody(ByteBuf body) {
+	@NotNull
+	public HttpRequest withBody(@NotNull ByteBuf body) {
 		setBody(body);
 		return this;
 	}
 
-	public HttpRequest withBodyStream(ChannelSupplier<ByteBuf> stream) {
+	@NotNull
+	public HttpRequest withBodyStream(@NotNull ChannelSupplier<ByteBuf> stream) {
 		setBodyStream(stream);
 		return this;
 	}
 
 	@Override
-	public void addCookies(List<HttpCookie> cookies) {
+	public void addCookies(@NotNull List<HttpCookie> cookies) {
 		assert !isRecycled();
 		headers.add(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
 	}
 
-	public HttpRequest withCookies(List<HttpCookie> cookies) {
+	@NotNull
+	public HttpRequest withCookies(@NotNull List<HttpCookie> cookies) {
 		addCookies(cookies);
 		return this;
 	}
 
-	public HttpRequest withCookies(HttpCookie... cookie) {
+	@NotNull
+	public HttpRequest withCookies(@NotNull HttpCookie... cookie) {
 		addCookies(cookie);
 		return this;
 	}
 
-	public HttpRequest withCookie(HttpCookie cookie) {
+	@NotNull
+	public HttpRequest withCookie(@NotNull HttpCookie cookie) {
 		addCookie(cookie);
 		return this;
 	}
 
+	@NotNull
 	public HttpRequest withBodyGzipCompression() {
 		setBodyGzipCompression();
 		return this;
 	}
 	// endregion
 
+	@NotNull
+	@Contract(pure = true)
 	public HttpMethod getMethod() {
 		assert !isRecycled();
 		return method;
 	}
 
+	@Contract(pure = true)
 	public InetAddress getRemoteAddress() {
 		assert !isRecycled();
 		return remoteAddress;
 	}
 
-	void setRemoteAddress(InetAddress inetAddress) {
+	void setRemoteAddress(@NotNull InetAddress inetAddress) {
 		this.remoteAddress = inetAddress;
 	}
 
+	@NotNull
 	public String getFullUrl() {
 		if (!url.isRelativePath()) {
 			return url.toString();
@@ -165,7 +185,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url;
 	}
 
-	void setUrl(String url) {
+	void setUrl(@NotNull String url) {
 		assert !isRecycled();
 		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
@@ -179,18 +199,22 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.getHostAndPort();
 	}
 
+	@NotNull
 	public String getPath() {
 		assert !isRecycled();
 		return url.getPath();
 	}
 
+	@NotNull
 	public String getPathAndQuery() {
 		assert !isRecycled();
 		return url.getPathAndQuery();
 	}
 
+	@Nullable
 	private Map<String, String> parsedCookies;
 
+	@NotNull
 	public Map<String, String> getCookies() throws ParseException {
 		if (parsedCookies != null) return parsedCookies;
 		Map<String, String> cookies = new LinkedHashMap<>();
@@ -200,25 +224,29 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this.parsedCookies = cookies;
 	}
 
-	public String getCookie(String cookie) throws ParseException {
+	@NotNull
+	public String getCookie(@NotNull String cookie) throws ParseException {
 		String httpCookie = getCookies().get(cookie);
 		if (httpCookie != null) return httpCookie;
 		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
 	}
 
 	@Nullable
-	public String getCookieOrNull(String cookie) throws ParseException {
+	public String getCookieOrNull(@NotNull String cookie) throws ParseException {
 		return getCookies().get(cookie);
 	}
 
+	@NotNull
 	public String getQuery() {
 		return url.getQuery();
 	}
 
+	@NotNull
 	public String getFragment() {
 		return url.getFragment();
 	}
 
+	@NotNull
 	public Map<String, String> getQueryParameters() {
 		assert !isRecycled();
 		if (queryParameters != null) return queryParameters;
@@ -227,52 +255,57 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	@NotNull
-	public String getQueryParameter(String key) throws ParseException {
+	public String getQueryParameter(@NotNull String key) throws ParseException {
 		assert !isRecycled();
 		String result = url.getQueryParameter(key);
 		if (result != null) return result;
 		throw new ParseException(HttpRequest.class, "Query parameter '" + key + "' is required");
 	}
 
-	public String getQueryParameter(String key, String defaultValue) {
+	public String getQueryParameter(@NotNull String key, @Nullable String defaultValue) {
 		assert !isRecycled();
 		String result = url.getQueryParameter(key);
 		return result != null ? result : defaultValue;
 	}
 
 	@Nullable
-	public String getQueryParameterOrNull(String key) {
+	public String getQueryParameterOrNull(@NotNull String key) {
 		assert !isRecycled();
 		return url.getQueryParameter(key);
 	}
 
-	public List<String> getQueryParameters(String key) {
+	@NotNull
+	public List<String> getQueryParameters(@NotNull String key) {
 		assert !isRecycled();
 		return url.getQueryParameters(key);
 	}
 
+	@NotNull
 	public Iterable<QueryParameter> getQueryParametersIterable() {
 		assert !isRecycled();
 		return url.getQueryParametersIterable();
 	}
 
 	@NotNull
-	public <T> T parseQueryParameter(String key, ParserFunction<String, T> parser) throws ParseException {
+	public <T> T parseQueryParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser) throws ParseException {
 		return parser.parse(getQueryParameter(key));
 	}
 
-	public <T> T parseQueryParameter(String key, ParserFunction<String, T> parser, T defaultValue) throws ParseException {
+	public <T> T parseQueryParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser, @Nullable T defaultValue) throws ParseException {
 		return parser.parseOrDefault(getQueryParameterOrNull(key), defaultValue);
 	}
 
+	@NotNull
 	public Promise<Map<String, String>> getPostParameters() {
 		return getPostParameters(DEFAULT_LOAD_LIMIT_BYTES);
 	}
 
-	public Promise<Map<String, String>> getPostParameters(MemSize memSize) {
+	@NotNull
+	public Promise<Map<String, String>> getPostParameters(@NotNull MemSize memSize) {
 		return getPostParameters(memSize.toInt());
 	}
 
+	@NotNull
 	public Promise<Map<String, String>> getPostParameters(int maxSize) {
 		assert !isRecycled();
 		ContentType contentType;
@@ -296,13 +329,14 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 				});
 	}
 
+	@NotNull
 	public Map<String, String> getPathParameters() {
 		assert !isRecycled();
 		return pathParameters != null ? pathParameters : Collections.emptyMap();
 	}
 
 	@NotNull
-	public String getPathParameter(String key) throws ParseException {
+	public String getPathParameter(@NotNull String key) throws ParseException {
 		assert !isRecycled();
 		String result = pathParameters != null ? pathParameters.get(key) : null;
 		if (result != null) return result;
@@ -310,17 +344,17 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	@Nullable
-	public String getPathParameterOrNull(String key) {
+	public String getPathParameterOrNull(@NotNull String key) {
 		assert !isRecycled();
 		return pathParameters != null ? pathParameters.get(key) : null;
 	}
 
 	@NotNull
-	public <T> T parsePathParameter(String key, ParserFunction<String, T> parser) throws ParseException {
+	public <T> T parsePathParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser) throws ParseException {
 		return parser.parse(getPathParameter(key));
 	}
 
-	public <T> T parsePathParameter(String key, ParserFunction<String, T> parser, T defaultValue) throws ParseException {
+	public <T> T parsePathParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser, @Nullable T defaultValue) throws ParseException {
 		return parser.parseOrDefault(getPathParameterOrNull(key), defaultValue);
 	}
 
@@ -332,6 +366,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		url.pos = (short) pos;
 	}
 
+	@NotNull
 	public String getRelativePath() {
 		assert !isRecycled();
 		String partialPath = url.getPartialPath();
@@ -347,7 +382,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		pathParameters.remove(key);
 	}
 
-	void putPathParameter(String key, String value) {
+	void putPathParameter(String key, @NotNull String value) {
 		if (pathParameters == null) {
 			pathParameters = new HashMap<>();
 		}
@@ -363,7 +398,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	@Override
-	protected void writeTo(ByteBuf buf) {
+	protected void writeTo(@NotNull ByteBuf buf) {
 		method.write(buf);
 		buf.put(SP);
 		url.writePathAndQuery(buf);
@@ -371,7 +406,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		writeHeaders(buf);
 	}
 
-	@Nullable
 	@Override
 	public String toString() {
 		return getFullUrl();

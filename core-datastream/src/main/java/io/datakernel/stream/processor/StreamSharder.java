@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * It is {@link AbstractStreamTransformer_1_N} which divides input stream  into groups with some key
+ * It is Stream Transformer which divides input stream  into groups with some key
  * function, and sends obtained streams to consumers.
  *
  * @param <T> type of input items

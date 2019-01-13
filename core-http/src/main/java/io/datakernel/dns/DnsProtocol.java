@@ -283,12 +283,8 @@ public final class DnsProtocol {
 		 */
 		@Nullable
 		public static QueryClass fromCode(short code) {
-			switch (code) {
-				case 0x0001:
-					return INTERNET;
-				default:
-					return null;
-			}
+			if (code == 0x0001) return INTERNET;
+			return null;
 		}
 	}
 

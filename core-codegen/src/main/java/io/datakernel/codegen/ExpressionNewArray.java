@@ -53,6 +53,7 @@ final class ExpressionNewArray implements Expression {
 		}
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

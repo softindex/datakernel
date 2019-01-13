@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -69,8 +70,9 @@ public final class StaticServlet implements AsyncServlet {
 				.withHeader(CONTENT_TYPE, ofContentType(getContentType(path)));
 	}
 
+	@NotNull
 	@Override
-	public final Promise<HttpResponse> serve(HttpRequest request) {
+	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		assert eventloop.inEventloopThread();
 
 		String path = request.getRelativePath();

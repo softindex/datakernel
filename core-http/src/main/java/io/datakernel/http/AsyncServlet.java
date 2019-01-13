@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -26,5 +27,6 @@ import io.datakernel.exception.UncheckedException;
  */
 @FunctionalInterface
 public interface AsyncServlet {
-	Promise<HttpResponse> serve(HttpRequest request) throws UncheckedException;
+	@NotNull
+	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
 }

@@ -16,6 +16,8 @@
 
 package io.datakernel.aggregation;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -103,7 +105,7 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public int compareTo(PrimaryKey o) {
+	public int compareTo(@NotNull PrimaryKey o) {
 		assert values.length == o.values.length;
 
 		for (int i = 0; i < values.length; i++) {

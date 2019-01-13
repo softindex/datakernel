@@ -19,6 +19,8 @@ package io.datakernel.dns;
 import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * Represents a response from DNS server.
  */
@@ -69,12 +71,10 @@ public final class DnsResponse {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		DnsResponse that = (DnsResponse) o;
-
-		return transaction.equals(that.transaction)
-				&& (record != null ? record.equals(that.record) : that.record == null)
-				&& errorCode == that.errorCode;
+		return transaction.equals(that.transaction) &&
+				Objects.equals(record, that.record) &&
+				errorCode == that.errorCode;
 	}
 
 	@Override

@@ -22,7 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Iterator;
 
 /**
- * Represents {@link AbstractStreamTransformer}, which created with iterator with {@link AbstractStreamSupplier}
+ * Represents {@link StreamSupplier}, which created with iterator with {@link AbstractStreamSupplier}
  * which will stream to this
  *
  * @param <T> type of received data

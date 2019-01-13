@@ -28,6 +28,7 @@ import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
@@ -47,12 +48,16 @@ import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
+@SuppressWarnings({"WeakerAccess", "unused"})
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final Duration DEFAULT_KEEP_ALIVE_MILLIS = Duration.ofSeconds(30);
 
+	@NotNull
 	private final Eventloop eventloop;
+	@NotNull
 	private AsyncDnsClient asyncDnsClient;
+	@NotNull
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 
 	final HashMap<InetSocketAddress, AddressLinkedList> addresses = new HashMap<>();
@@ -74,8 +79,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private SSLContext sslContext;
 	private ExecutorService sslExecutor;
 
+	@Nullable
 	private AsyncTcpSocketImpl.Inspector socketInspector;
-	private AsyncTcpSocketImpl.Inspector socketInspectorForSSL;
+	@Nullable
+	private AsyncTcpSocketImpl.Inspector socketSslInspector;
+	@Nullable
 	Inspector inspector;
 
 	public interface Inspector extends BaseInspector<Inspector> {
@@ -94,6 +102,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		void onHttpError(HttpClientConnection connection, boolean keepAliveConnection, Throwable e);
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
@@ -203,33 +212,33 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private int inetAddressIdx = 0;
 
 	// region builders
-	private AsyncHttpClient(Eventloop eventloop, AsyncDnsClient asyncDnsClient) {
+	private AsyncHttpClient(@NotNull Eventloop eventloop, @NotNull AsyncDnsClient asyncDnsClient) {
 		this.eventloop = eventloop;
 		this.asyncDnsClient = asyncDnsClient;
 	}
 
-	public static AsyncHttpClient create(Eventloop eventloop) {
+	public static AsyncHttpClient create(@NotNull Eventloop eventloop) {
 		AsyncDnsClient defaultDnsClient = RemoteAsyncDnsClient.create(eventloop);
 		return new AsyncHttpClient(eventloop, defaultDnsClient);
 	}
 
-	public AsyncHttpClient withSocketSettings(SocketSettings socketSettings) {
+	public AsyncHttpClient withSocketSettings(@NotNull SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
 		return this;
 	}
 
-	public AsyncHttpClient withDnsClient(AsyncDnsClient asyncDnsClient) {
+	public AsyncHttpClient withDnsClient(@NotNull AsyncDnsClient asyncDnsClient) {
 		this.asyncDnsClient = asyncDnsClient;
 		return this;
 	}
 
-	public AsyncHttpClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
+	public AsyncHttpClient withSslEnabled(@NotNull SSLContext sslContext, @NotNull ExecutorService sslExecutor) {
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 		return this;
 	}
 
-	public AsyncHttpClient withKeepAliveTimeout(Duration keepAliveTime) {
+	public AsyncHttpClient withKeepAliveTimeout(@NotNull Duration keepAliveTime) {
 		this.keepAliveTimeoutMillis = (int) keepAliveTime.toMillis();
 		return this;
 	}
@@ -244,18 +253,28 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withReadWriteTimeout(Duration readTimeout) {
+	public AsyncHttpClient withReadWriteTimeout(@NotNull Duration readTimeout) {
 		this.readWriteTimeoutMillis = (int) readTimeout.toMillis();
 		return this;
 	}
 
-	public AsyncHttpClient withConnectTimeout(Duration connectTimeout) {
+	public AsyncHttpClient withConnectTimeout(@NotNull Duration connectTimeout) {
 		this.connectTimeoutMillis = (int) connectTimeout.toMillis();
 		return this;
 	}
 
 	public AsyncHttpClient withInspector(Inspector inspector) {
 		this.inspector = inspector;
+		return this;
+	}
+
+	public AsyncHttpClient withSocketInspector(AsyncTcpSocketImpl.Inspector socketInspector) {
+		this.socketInspector = socketInspector;
+		return this;
+	}
+
+	public AsyncHttpClient withSocketSslInspector(AsyncTcpSocketImpl.Inspector socketSslInspector) {
+		this.socketSslInspector = socketSslInspector;
 		return this;
 	}
 	// endregion
@@ -350,7 +369,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					if (e == null) {
 						boolean https = request.isHttps();
 						asyncTcpSocketImpl
-								.withInspector(https ? socketInspector : socketInspectorForSSL);
+								.withInspector(https ? socketInspector : socketSslInspector);
 
 						if (https && sslContext == null) {
 							throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
@@ -381,6 +400,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				});
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -468,7 +488,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@JmxAttribute
 	@Nullable
 	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
-		return BaseInspector.lookup(socketInspectorForSSL, AsyncTcpSocketImpl.JmxInspector.class);
+		return BaseInspector.lookup(socketSslInspector, AsyncTcpSocketImpl.JmxInspector.class);
 	}
 
 	@JmxAttribute(name = "")

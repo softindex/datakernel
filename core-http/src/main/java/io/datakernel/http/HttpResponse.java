@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
@@ -31,7 +32,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.putPositiveInt;
 import static io.datakernel.http.HttpHeaders.LOCATION;
 import static io.datakernel.http.HttpHeaders.SET_COOKIE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
@@ -58,82 +58,88 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		this.code = code;
 	}
 
+	@NotNull
 	public static HttpResponse ofCode(int code) {
 		assert code >= 100 && code < 600;
 		return new HttpResponse(code);
 	}
 
+	@NotNull
 	public static HttpResponse ok200() {
 		return new HttpResponse(200);
 	}
 	// endregion
 
-	public static HttpResponse redirect302(String url) {
+	@NotNull
+	public static HttpResponse redirect302(@NotNull String url) {
 		HttpResponse response = HttpResponse.ofCode(302);
 		response.addHeader(LOCATION, url);
 		return response;
 	}
 
 	// common builder methods
-	public HttpResponse withHeader(HttpHeader header, String value) {
+	@NotNull
+	public HttpResponse withHeader(@NotNull HttpHeader header, @NotNull String value) {
 		addHeader(header, value);
 		return this;
 	}
 
-	public HttpResponse withHeader(HttpHeader header, byte[] bytes) {
+	@NotNull
+	public HttpResponse withHeader(@NotNull HttpHeader header, @NotNull byte[] bytes) {
 		addHeader(header, bytes);
 		return this;
 	}
 
-	public HttpResponse withHeader(HttpHeader header, HttpHeaderValue value) {
+	@NotNull
+	public HttpResponse withHeader(@NotNull HttpHeader header, @NotNull HttpHeaderValue value) {
 		addHeader(header, value);
 		return this;
 	}
 
 	@Override
-	public void addCookies(List<HttpCookie> cookies) {
+	public void addCookies(@NotNull List<HttpCookie> cookies) {
 		assert !isRecycled();
 		headers.add(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookies));
 	}
 
-	public HttpResponse withCookies(List<HttpCookie> cookies) {
+	@NotNull
+	public HttpResponse withCookies(@NotNull List<HttpCookie> cookies) {
 		addCookies(cookies);
 		return this;
 	}
 
-	public HttpResponse withCookies(HttpCookie... cookies) {
+	@NotNull
+	public HttpResponse withCookies(@NotNull HttpCookie... cookies) {
 		addCookies(cookies);
 		return this;
 	}
 
-	public HttpResponse withCookie(HttpCookie cookie) {
+	@NotNull
+	public HttpResponse withCookie(@NotNull HttpCookie cookie) {
 		addCookie(cookie);
 		return this;
 	}
 
+	@NotNull
 	public HttpResponse withBodyGzipCompression() {
 		setBodyGzipCompression();
 		return this;
 	}
 
-	public HttpResponse withBody(ByteBuf body) {
+	@NotNull
+	public HttpResponse withBody(@NotNull ByteBuf body) {
 		setBody(body);
 		return this;
 	}
 
-	public HttpResponse withBody(byte[] array) {
+	@NotNull
+	public HttpResponse withBody(@NotNull byte[] array) {
 		setBody(array);
 		return this;
 	}
 
-	public HttpResponse withBodyString(@Nullable String body) {
-		if (body != null) {
-			setBody(body.getBytes(UTF_8));
-		}
-		return this;
-	}
-
-	public HttpResponse withBodyStream(ChannelSupplier<ByteBuf> stream) {
+	@NotNull
+	public HttpResponse withBodyStream(@NotNull ChannelSupplier<ByteBuf> stream) {
 		setBodyStream(stream);
 		return this;
 	}
@@ -147,8 +153,10 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return code;
 	}
 
+	@Nullable
 	private Map<String, HttpCookie> parsedCookies;
 
+	@NotNull
 	public Map<String, HttpCookie> getCookies() throws ParseException {
 		if (parsedCookies != null) return parsedCookies;
 		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
@@ -158,18 +166,19 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return this.parsedCookies = cookies;
 	}
 
-	public HttpCookie getCookie(String cookie) throws ParseException {
+	@NotNull
+	public HttpCookie getCookie(@NotNull String cookie) throws ParseException {
 		HttpCookie httpCookie = getCookies().get(cookie);
 		if (httpCookie != null) return httpCookie;
 		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
 	}
 
 	@Nullable
-	public HttpCookie getCookieOrNull(String cookie) throws ParseException {
+	public HttpCookie getCookieOrNull(@NotNull String cookie) throws ParseException {
 		return getCookies().get(cookie);
 	}
 
-	private static void writeCodeMessageEx(ByteBuf buf, int code) {
+	private static void writeCodeMessageEx(@NotNull ByteBuf buf, int code) {
 		buf.put(HTTP11_BYTES);
 		putPositiveInt(buf, code);
 		if (code >= 400) {
@@ -179,7 +188,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		}
 	}
 
-	private static void writeCodeMessage(ByteBuf buf, int code) {
+	private static void writeCodeMessage(@NotNull ByteBuf buf, int code) {
 		byte[] result;
 		switch (code) {
 			case 200:
@@ -219,7 +228,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	@Override
-	protected void writeTo(ByteBuf buf) {
+	protected void writeTo(@NotNull ByteBuf buf) {
 		writeCodeMessage(buf, code);
 		writeHeaders(buf);
 	}

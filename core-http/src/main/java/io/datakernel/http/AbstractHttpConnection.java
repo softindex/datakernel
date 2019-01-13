@@ -35,6 +35,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.*;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
+import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
@@ -47,7 +48,7 @@ import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 import static java.lang.Math.max;
 
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "PointlessBitwiseExpression"})
 public abstract class AbstractHttpConnection {
 	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Read timeout");
 	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Write timeout");
@@ -81,15 +82,14 @@ public abstract class AbstractHttpConnection {
 	protected static final byte BODY_RECEIVED = 1 << 3;
 	protected static final byte BODY_SENT = 1 << 4;
 	protected static final byte CLOSED = (byte) (1 << 7);
+
+	@MagicConstant(flags = {KEEP_ALIVE, GZIPPED, CHUNKED, BODY_RECEIVED, BODY_SENT, CLOSED})
 	protected byte flags = 0;
 
 	private final ByteBufConsumer onHeaderBuf = this::onHeaderBuf;
 
-	@Nullable
 	protected ConnectionsLinkedList pool;
-	@Nullable
 	protected AbstractHttpConnection prev;
-	@Nullable
 	protected AbstractHttpConnection next;
 	protected long poolTimestamp;
 

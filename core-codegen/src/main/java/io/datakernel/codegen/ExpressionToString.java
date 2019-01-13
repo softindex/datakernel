@@ -134,6 +134,7 @@ public final class ExpressionToString implements Expression {
 		return type(ctx);
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

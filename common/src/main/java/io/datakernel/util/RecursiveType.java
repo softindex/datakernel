@@ -65,8 +65,7 @@ public final class RecursiveType {
 			return of((Class<?>) parameterizedType.getRawType(),
 					Arrays.stream(parameterizedType.getActualTypeArguments())
 							.map(RecursiveType::of)
-							.collect(toList())
-							.toArray(new RecursiveType[0]));
+							.toArray(RecursiveType[]::new));
 		} else if (type instanceof WildcardType) {
 			Type[] upperBounds = ((WildcardType) type).getUpperBounds();
 			Preconditions.check(upperBounds.length == 1, type);
@@ -137,6 +136,7 @@ public final class RecursiveType {
 		return getArrayType(parameterized, arrayDimension);
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

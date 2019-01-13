@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * It is {@link AbstractStreamTransformer} which unions all input streams and streams it
+ * It is Stream Transformer which unions all input streams and streams it
  * combination to the destination.
  *
  * @param <T> type of output data

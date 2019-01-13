@@ -99,10 +99,16 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 		return this;
 	}
 
-	public RemoteAsyncDnsClient withInspector(@Nullable Inspector inspector) {
+	public RemoteAsyncDnsClient withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
+
+	public RemoteAsyncDnsClient setSocketInspector(AsyncUdpSocketImpl.Inspector socketInspector) {
+		this.socketInspector = socketInspector;
+		return this;
+	}
+
 	// endregion
 
 	@Override

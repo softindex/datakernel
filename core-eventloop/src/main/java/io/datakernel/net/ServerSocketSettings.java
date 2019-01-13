@@ -17,7 +17,6 @@
 package io.datakernel.net;
 
 import io.datakernel.util.MemSize;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.channels.ServerSocketChannel;
@@ -37,7 +36,6 @@ public final class ServerSocketSettings {
 	private static final byte FALSE = 0;
 
 	private final int backlog;
-	@Nullable
 	private final int receiveBufferSize;
 	private final byte reuseAddress;
 

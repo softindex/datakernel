@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.CollectionUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -369,7 +370,6 @@ public final class ChannelSuppliers {
 	}
 
 	public static final class ChannelSupplierOfValue<T> extends AbstractChannelSupplier<T> {
-		@Nullable
 		private T item;
 
 		public T getValue() {
@@ -382,7 +382,7 @@ public final class ChannelSuppliers {
 			return item;
 		}
 
-		public ChannelSupplierOfValue(T item) {
+		public ChannelSupplierOfValue(@NotNull T item) {
 			this.item = item;
 		}
 

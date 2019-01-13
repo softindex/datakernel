@@ -17,14 +17,16 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.NotNull;
 
 @FunctionalInterface
 public interface WithMiddleware extends AsyncServlet {
 
 	MiddlewareServlet getMiddlewareServlet();
 
+	@NotNull
 	@Override
-	default Promise<HttpResponse> serve(HttpRequest request) {
+	default Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		return getMiddlewareServlet().serve(request);
 	}
 }

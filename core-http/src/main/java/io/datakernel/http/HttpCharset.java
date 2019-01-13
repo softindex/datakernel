@@ -18,6 +18,8 @@ package io.datakernel.http;
 
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -46,17 +48,17 @@ public final class HttpCharset extends Token {
 	public static final HttpCharset US_ASCII = charsets.register("us-ascii").addCharset(StandardCharsets.US_ASCII);
 	public static final HttpCharset LATIN_1 = charsets.register("iso-8859-1").addCharset(StandardCharsets.ISO_8859_1);
 
+	@NotNull
 	private final byte[] bytes;
 	private final int offset;
 	private final int length;
 	private Charset javaCharset;
 
-	private HttpCharset(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
+	private HttpCharset(@NotNull byte[] bytes, int offset, int length, @Nullable byte[] lowerCaseBytes, int lowerCaseHashCode) {
+		super(lowerCaseBytes, lowerCaseHashCode);
 		this.bytes = bytes;
 		this.offset = offset;
 		this.length = length;
-		this.lowerCaseBytes = lowerCaseBytes;
-		this.lowerCaseHashCode = lowerCaseHashCode;
 	}
 
 	static HttpCharset of(Charset charset) {

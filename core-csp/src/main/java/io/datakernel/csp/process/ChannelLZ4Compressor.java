@@ -28,6 +28,7 @@ import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
@@ -58,6 +59,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 	private ChannelSupplier<ByteBuf> input;
 	private ChannelConsumer<ByteBuf> output;
 
+	@Nullable
 	private Inspector inspector;
 
 	public interface Inspector extends BaseInspector<Inspector> {

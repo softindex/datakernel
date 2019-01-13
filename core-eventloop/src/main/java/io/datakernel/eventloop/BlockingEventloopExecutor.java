@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -82,7 +83,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public void execute(Runnable runnable) {
+	public void execute(@NotNull Runnable runnable) {
 		try {
 			post(() -> {
 				try {

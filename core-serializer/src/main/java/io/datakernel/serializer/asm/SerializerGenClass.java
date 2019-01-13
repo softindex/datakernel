@@ -243,6 +243,7 @@ public class SerializerGenClass implements SerializerGen {
 		return getterName;
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (generics == null)

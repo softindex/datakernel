@@ -71,6 +71,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private ScheduledRunnable scheduledReadTimeout;
 	private ScheduledRunnable scheduledWriteTimeout;
 
+	@Nullable
 	private Inspector inspector;
 
 	public interface Inspector extends BaseInspector<Inspector> {
@@ -223,7 +224,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return result;
 	}
 
-	public AsyncTcpSocketImpl withInspector(@Nullable Inspector inspector) {
+	public AsyncTcpSocketImpl withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
