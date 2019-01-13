@@ -1,11 +1,11 @@
 package io.datakernel.stream.stats;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.JmxStatsWithReset;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.ReflectionUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 

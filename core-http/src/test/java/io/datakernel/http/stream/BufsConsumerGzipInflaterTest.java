@@ -16,13 +16,13 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.TestUtils.AssertingConsumer;
 import io.datakernel.stream.processor.DatakernelRunner;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -26,6 +25,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

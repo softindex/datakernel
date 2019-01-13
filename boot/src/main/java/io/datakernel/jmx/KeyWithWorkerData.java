@@ -1,8 +1,8 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.worker.WorkerPool;
+import org.jetbrains.annotations.Nullable;
 
 public final class KeyWithWorkerData {
 	private final Key<?> key;

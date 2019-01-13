@@ -1,8 +1,8 @@
 package io.datakernel.ot;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.ot.TransformResult.ConflictResolution;
 import io.datakernel.ot.exceptions.OTTransformException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 

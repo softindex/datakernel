@@ -16,12 +16,12 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
+import org.jetbrains.annotations.Nullable;
 
 public interface IRpcClient {
 	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException(IRpcClient.class, "RPC request has timed out");

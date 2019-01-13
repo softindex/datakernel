@@ -1,8 +1,8 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.inspector.BaseInspector;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.Nullable;
 
 public interface EventloopInspector extends BaseInspector<EventloopInspector> {
 	void onUpdateBusinessLogicTime(boolean taskOrKerPresent, boolean externalTaskPresent, long businessLogicTime);

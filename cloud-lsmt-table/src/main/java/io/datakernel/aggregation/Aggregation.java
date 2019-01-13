@@ -20,7 +20,6 @@ import io.datakernel.aggregation.QueryPlan.Sequence;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -35,6 +34,7 @@ import io.datakernel.stream.processor.StreamMap.MapperProjection;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

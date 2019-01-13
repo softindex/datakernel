@@ -16,7 +16,7 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.newLocal;

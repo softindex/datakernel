@@ -16,7 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.util.Arrays;

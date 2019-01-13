@@ -16,11 +16,11 @@
 
 package io.datakernel.etl;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCollector;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.stream.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Iterator;

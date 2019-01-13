@@ -16,7 +16,6 @@
 
 package io.global.ot.demo.state;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
@@ -26,6 +25,7 @@ import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTStateManager;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 

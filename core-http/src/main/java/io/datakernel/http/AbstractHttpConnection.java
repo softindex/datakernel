@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.Promise;
@@ -36,6 +35,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.*;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
 

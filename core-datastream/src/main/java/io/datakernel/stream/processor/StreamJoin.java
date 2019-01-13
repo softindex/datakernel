@@ -16,9 +16,9 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;

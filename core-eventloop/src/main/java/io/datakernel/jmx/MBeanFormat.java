@@ -16,8 +16,8 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.StringFormatUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

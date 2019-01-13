@@ -16,8 +16,8 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.dns.DnsProtocol.RecordType;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.dns.DnsProtocol.RecordType.A;
 import static io.datakernel.dns.DnsProtocol.RecordType.AAAA;

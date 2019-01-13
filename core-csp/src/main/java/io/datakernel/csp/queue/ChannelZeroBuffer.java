@@ -16,9 +16,9 @@
 
 package io.datakernel.csp.queue;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 

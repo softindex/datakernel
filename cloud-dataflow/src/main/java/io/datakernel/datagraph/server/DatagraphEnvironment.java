@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;

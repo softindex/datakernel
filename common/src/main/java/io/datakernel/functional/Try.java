@@ -16,8 +16,8 @@
 
 package io.datakernel.functional;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;

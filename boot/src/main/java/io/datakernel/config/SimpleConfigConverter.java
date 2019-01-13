@@ -16,7 +16,7 @@
 
 package io.datakernel.config;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 

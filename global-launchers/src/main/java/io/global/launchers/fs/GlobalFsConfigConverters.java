@@ -16,10 +16,10 @@
 
 package io.global.launchers.fs;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverter;
 import io.global.fs.api.CheckpointPosStrategy;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;

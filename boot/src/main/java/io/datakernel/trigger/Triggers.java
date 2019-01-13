@@ -16,12 +16,12 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.*;

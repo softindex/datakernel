@@ -1,8 +1,8 @@
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promises.ReduceTimeouter;
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.Nullable;
 
 public interface CollectListener<T, A, R> {
 	interface CollectCanceller {

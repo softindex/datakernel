@@ -16,11 +16,11 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.inspector.ForwardingInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.HashMap;

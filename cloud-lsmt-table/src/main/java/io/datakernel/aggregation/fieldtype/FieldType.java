@@ -16,10 +16,10 @@
 
 package io.datakernel.aggregation.fieldtype;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.Expression;
 import io.datakernel.serializer.asm.SerializerGen;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 

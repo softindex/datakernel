@@ -17,7 +17,6 @@
 package io.datakernel.service;
 
 import com.google.inject.Key;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -25,6 +24,7 @@ import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.RecursiveType;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

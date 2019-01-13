@@ -16,7 +16,7 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

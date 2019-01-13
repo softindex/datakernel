@@ -16,12 +16,12 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 

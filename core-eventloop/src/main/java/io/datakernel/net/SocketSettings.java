@@ -16,8 +16,8 @@
 
 package io.datakernel.net;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;

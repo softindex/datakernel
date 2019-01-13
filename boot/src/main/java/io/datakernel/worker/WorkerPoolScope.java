@@ -19,7 +19,7 @@ package io.datakernel.worker;
 import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 

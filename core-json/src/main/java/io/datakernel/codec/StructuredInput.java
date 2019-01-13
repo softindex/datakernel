@@ -1,7 +1,7 @@
 package io.datakernel.codec;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.EnumSet;

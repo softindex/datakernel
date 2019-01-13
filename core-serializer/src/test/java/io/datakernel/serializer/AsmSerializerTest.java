@@ -16,10 +16,10 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
 import java.net.Inet4Address;

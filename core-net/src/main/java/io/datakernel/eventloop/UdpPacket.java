@@ -16,8 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 

@@ -16,10 +16,10 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AbstractCancellable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 

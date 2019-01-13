@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.UncheckedException;
@@ -30,6 +29,7 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

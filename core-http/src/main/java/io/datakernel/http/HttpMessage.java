@@ -16,8 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.NotNull;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -31,6 +29,8 @@ import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 import io.datakernel.util.Recyclable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 

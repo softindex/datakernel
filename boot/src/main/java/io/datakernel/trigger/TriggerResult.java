@@ -16,9 +16,9 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.MBeanFormat;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.function.Predicate;

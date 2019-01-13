@@ -16,11 +16,11 @@
 
 package io.global.db;
 
-import io.datakernel.annotation.Nullable;
 import io.global.common.CTRAESCipher;
 import io.global.common.CryptoUtils;
 import io.global.common.Hash;
 import io.global.common.SimKey;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Objects;

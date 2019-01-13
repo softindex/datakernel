@@ -16,8 +16,8 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Represents a response from DNS server.

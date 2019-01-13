@@ -1,8 +1,8 @@
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.queue.ChannelBuffer;
+import org.jetbrains.annotations.Nullable;
 
 public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;

@@ -16,8 +16,8 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.utils.Primitives;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 

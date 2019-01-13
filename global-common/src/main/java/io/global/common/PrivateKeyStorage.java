@@ -16,9 +16,9 @@
 
 package io.global.common;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.global.common.api.DiscoveryService;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.HashMap;

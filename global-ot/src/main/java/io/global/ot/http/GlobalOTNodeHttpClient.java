@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -36,6 +35,7 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;

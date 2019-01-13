@@ -1,6 +1,6 @@
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.RejectedExecutionException;

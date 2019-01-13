@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public final class CompleteNullPromise<T> extends CompletePromise<T> {
 	public static final CompleteNullPromise<?> INSTANCE = new CompleteNullPromise<>();

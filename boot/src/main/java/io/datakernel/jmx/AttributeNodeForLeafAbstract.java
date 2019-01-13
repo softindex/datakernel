@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;

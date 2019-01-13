@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.asm.Annotations;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -30,6 +29,7 @@ import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 import io.datakernel.util.Preconditions;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;

@@ -16,8 +16,8 @@
 
 package io.datakernel.util;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.StacklessException;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.Arrays;

@@ -16,8 +16,8 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 

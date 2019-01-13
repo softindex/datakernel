@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public abstract class AbstractCancellable implements Cancellable {
 	@Nullable

@@ -16,7 +16,7 @@
 
 package io.datakernel.config;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public abstract class ComplexConfigConverter<T> implements ConfigConverter<T> {
 	private final T defaultValue;

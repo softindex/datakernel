@@ -1,8 +1,8 @@
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;

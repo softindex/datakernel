@@ -1,9 +1,9 @@
 package io.datakernel.util.guice;
 
 import com.google.inject.Inject;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 

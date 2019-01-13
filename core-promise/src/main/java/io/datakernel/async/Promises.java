@@ -16,11 +16,11 @@
 
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CollectListener.CollectCanceller;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.util.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
 import java.time.Duration;

@@ -16,7 +16,6 @@
 
 package io.global.db;
 
-import io.datakernel.annotation.NotNull;
 import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
@@ -36,6 +35,7 @@ import io.global.db.LocalGlobalDbNode.Namespace.Repo;
 import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
 import io.global.db.api.TableID;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

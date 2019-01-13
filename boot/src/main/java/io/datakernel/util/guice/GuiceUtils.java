@@ -19,10 +19,10 @@ package io.datakernel.util.guice;
 import com.google.inject.*;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.DefaultBindingScopingVisitor;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.RecursiveType;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolScope;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

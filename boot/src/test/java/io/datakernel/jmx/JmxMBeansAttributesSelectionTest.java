@@ -16,8 +16,8 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;

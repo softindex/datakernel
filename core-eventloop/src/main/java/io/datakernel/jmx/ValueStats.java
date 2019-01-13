@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.text.DecimalFormat;
 import java.time.Duration;

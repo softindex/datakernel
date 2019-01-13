@@ -16,7 +16,7 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public final class LogPosition implements Comparable<LogPosition> {
 	@Nullable

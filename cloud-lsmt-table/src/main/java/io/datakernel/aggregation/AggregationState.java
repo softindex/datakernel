@@ -20,8 +20,8 @@ import io.datakernel.aggregation.AggregationPredicates.RangeScan;
 import io.datakernel.aggregation.RangeTree.Segment;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.ot.OTState;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -16,7 +16,6 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
@@ -26,6 +25,7 @@ import io.global.common.SignedData;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;

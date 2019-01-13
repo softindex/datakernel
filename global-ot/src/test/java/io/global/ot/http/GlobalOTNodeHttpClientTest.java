@@ -16,8 +16,6 @@
 
 package io.global.ot.http;
 
-import io.datakernel.annotation.NotNull;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
@@ -27,6 +25,8 @@ import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

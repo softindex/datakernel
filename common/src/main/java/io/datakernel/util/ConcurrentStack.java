@@ -16,7 +16,7 @@
 
 package io.datakernel.util;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;

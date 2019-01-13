@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 final class ConnectionsLinkedList {
 	private int size;

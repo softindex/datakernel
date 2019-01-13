@@ -16,10 +16,10 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.Recyclable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.stream.Collector;

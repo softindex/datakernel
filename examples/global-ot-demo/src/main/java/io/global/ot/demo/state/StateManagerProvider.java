@@ -16,7 +16,6 @@
 
 package io.global.ot.demo.state;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequest;
@@ -25,6 +24,7 @@ import io.datakernel.ot.OTStateManager;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;

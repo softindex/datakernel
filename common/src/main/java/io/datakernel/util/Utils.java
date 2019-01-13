@@ -16,8 +16,8 @@
 
 package io.datakernel.util;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

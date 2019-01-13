@@ -17,7 +17,6 @@
 package io.global.ot.server;
 
 import ch.qos.logback.classic.Level;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -40,6 +39,7 @@ import io.global.ot.api.GlobalOTNode.CommitEntry;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.stub.CommitStorageStub;
 import io.global.ot.util.FailingGlobalOTNode;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;

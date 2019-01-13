@@ -16,10 +16,10 @@
 
 package io.global.ot.demo.state;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.ot.OTState;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 

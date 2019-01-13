@@ -16,11 +16,11 @@
 
 package io.global.fs.api;
 
-import io.datakernel.annotation.Nullable;
 import io.global.common.CryptoUtils;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.Arrays;

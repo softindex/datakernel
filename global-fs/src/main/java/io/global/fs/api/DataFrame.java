@@ -16,11 +16,11 @@
 
 package io.global.fs.api;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.Recyclable;
 import io.datakernel.util.Sliceable;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Preconditions.checkState;
 

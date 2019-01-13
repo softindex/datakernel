@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.binary;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredDecoder;
@@ -24,6 +23,7 @@ import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ParserFunction;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;

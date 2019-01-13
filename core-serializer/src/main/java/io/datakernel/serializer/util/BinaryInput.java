@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.util;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 

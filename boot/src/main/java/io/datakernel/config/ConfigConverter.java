@@ -16,9 +16,9 @@
 
 package io.datakernel.config;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ParserFunction;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 import java.util.function.Predicate;

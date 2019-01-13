@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt.local;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -46,6 +45,7 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -254,7 +254,6 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 				.whenComplete(consolidationStats.recordStats());
 	}
 
-
 	static class CrdtReducingData<K extends Comparable<K>, S> {
 		final K key;
 		@Nullable
@@ -288,7 +287,6 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		public CrdtReducer(BinaryOperator<CrdtData<K, S>> combiner) {
 			this.combiner = combiner;
 		}
-
 
 		@Override
 		public CrdtAccumulator<K, S> onFirstItem(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtReducingData<K, S> firstValue) {

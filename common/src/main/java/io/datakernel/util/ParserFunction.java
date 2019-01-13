@@ -1,8 +1,8 @@
 package io.datakernel.util;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 

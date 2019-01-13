@@ -16,7 +16,6 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -39,6 +38,7 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

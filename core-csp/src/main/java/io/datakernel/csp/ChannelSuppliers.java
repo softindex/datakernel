@@ -16,12 +16,12 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.CollectionUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.Iterator;

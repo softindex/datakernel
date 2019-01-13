@@ -17,10 +17,10 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.util.ReflectionUtils;
 import io.datakernel.worker.WorkerPool;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

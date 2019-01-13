@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
@@ -44,6 +43,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;

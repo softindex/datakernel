@@ -16,9 +16,9 @@
 
 package io.datakernel.util;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.*;
+import org.jetbrains.annotations.Nullable;
 
 import javax.management.MXBean;
 import java.lang.annotation.Annotation;

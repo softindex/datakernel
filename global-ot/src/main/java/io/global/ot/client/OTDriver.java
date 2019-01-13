@@ -16,7 +16,6 @@
 
 package io.global.ot.client;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
@@ -31,6 +30,7 @@ import io.global.common.SignedData;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;

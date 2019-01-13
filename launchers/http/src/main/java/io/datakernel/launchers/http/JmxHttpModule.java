@@ -2,7 +2,6 @@ package io.datakernel.launchers.http;
 
 import com.google.inject.*;
 import com.google.inject.name.Names;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.config.Config;
@@ -20,6 +19,7 @@ import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;

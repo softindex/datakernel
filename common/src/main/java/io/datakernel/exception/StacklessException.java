@@ -16,7 +16,7 @@
 
 package io.datakernel.exception;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * This exception (as well as its subtypes) is used in asynchronous contexts

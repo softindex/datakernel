@@ -16,11 +16,11 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ReflectionUtils;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

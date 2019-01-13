@@ -16,7 +16,6 @@
 
 package io.global.ot.server;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
@@ -25,6 +24,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ToDoException;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RawCommit;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;

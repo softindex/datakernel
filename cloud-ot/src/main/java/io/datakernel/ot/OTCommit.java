@@ -16,7 +16,7 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.List;

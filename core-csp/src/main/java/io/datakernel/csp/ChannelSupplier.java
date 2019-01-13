@@ -16,13 +16,13 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;

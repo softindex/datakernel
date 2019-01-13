@@ -16,8 +16,8 @@
 
 package io.global.common;
 
-import io.datakernel.annotation.Nullable;
 import io.global.common.api.EncryptedData;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.asn1.x9.X9ECParameters;
 import org.spongycastle.crypto.*;
 import org.spongycastle.crypto.agreement.ECDHBasicAgreement;

@@ -16,8 +16,8 @@
 
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Preconditions.checkState;
 

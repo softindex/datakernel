@@ -1,6 +1,6 @@
 package io.datakernel.inspector;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public interface BaseInspector<I extends BaseInspector<I>> {
 	@Nullable

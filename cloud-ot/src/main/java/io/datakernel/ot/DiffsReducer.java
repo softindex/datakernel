@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.CollectionUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;

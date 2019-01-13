@@ -16,10 +16,10 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplierWithResult;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Manages persistence of logs.

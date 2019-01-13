@@ -16,9 +16,9 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.http.HttpUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 

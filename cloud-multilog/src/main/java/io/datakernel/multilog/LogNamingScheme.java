@@ -1,6 +1,6 @@
 package io.datakernel.multilog;
 
-import io.datakernel.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
 import java.time.ZoneOffset;

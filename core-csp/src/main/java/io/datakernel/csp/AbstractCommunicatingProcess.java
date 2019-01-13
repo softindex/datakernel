@@ -16,10 +16,10 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.exception.ConstantException;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 

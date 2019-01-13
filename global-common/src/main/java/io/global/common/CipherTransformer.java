@@ -16,11 +16,11 @@
 
 package io.global.common;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.ChannelTransformer;
+import org.jetbrains.annotations.Nullable;
 
 public final class CipherTransformer implements ChannelTransformer<ByteBuf, ByteBuf> {
 	private final CTRAESCipher cipher;

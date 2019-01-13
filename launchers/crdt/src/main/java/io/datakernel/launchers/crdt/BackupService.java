@@ -18,7 +18,6 @@ package io.datakernel.launchers.crdt;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.CrdtClient.CrdtStreamSupplierWithToken;
 import io.datakernel.crdt.local.FsCrdtClient;
@@ -27,6 +26,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
