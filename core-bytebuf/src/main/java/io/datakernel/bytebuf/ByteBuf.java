@@ -19,18 +19,22 @@ package io.datakernel.bytebuf;
 import io.datakernel.util.Recyclable;
 import io.datakernel.util.Sliceable;
 import io.datakernel.util.Utils;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import static java.lang.Math.min;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
+@SuppressWarnings({"WeakerAccess", "DefaultAnnotationParam", "unused"})
 public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	static final class ByteBufSlice extends ByteBuf {
-		private ByteBuf root;
+		@NotNull
+		private final ByteBuf root;
 
-		private ByteBufSlice(ByteBuf buf, int readPosition, int writePosition) {
+		private ByteBufSlice(@NotNull ByteBuf buf, int readPosition, int writePosition) {
 			super(buf.array, readPosition, writePosition);
 			this.root = buf;
 		}
@@ -46,21 +50,25 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		}
 
 		@Override
+		@NotNull
 		public ByteBuf slice(int offset, int length) {
 			return root.slice(offset, length);
 		}
 
 		@Override
-		boolean isRecycled() {
+		@Contract(pure = true)
+		protected boolean isRecycled() {
 			return root.isRecycled();
 		}
 
 		@Override
-		public boolean isRecycleNeeded() {
+		@Contract(pure = true)
+		protected boolean isRecycleNeeded() {
 			return root.isRecycleNeeded();
 		}
 	}
 
+	@NotNull
 	protected final byte[] array;
 
 	private int readPosition;
@@ -68,12 +76,13 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	int refs;
 
+	@Nullable
 	ByteBuf next;
 
 	private static final ByteBuf EMPTY = wrap(new byte[0], 0, 0);
 
 	// creators
-	private ByteBuf(byte[] array, int readPosition, int writePosition) {
+	private ByteBuf(@NotNull byte[] array, int readPosition, int writePosition) {
 		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length
 				: "Wrong ByteBuf boundaries - readPos: " + readPosition + ", writePos: " + writePosition + ", array.length: " + array.length;
 		this.array = array;
@@ -81,34 +90,47 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		this.writePosition = writePosition;
 	}
 
+	@Contract(pure = true)
 	public static ByteBuf empty() {
 		assert EMPTY.readPosition == 0;
 		assert EMPTY.writePosition == 0;
 		return EMPTY;
 	}
 
-	public static ByteBuf wrapForWriting(byte[] bytes) {
+	@NotNull
+	@Contract("_ -> new")
+	public static ByteBuf wrapForWriting(@NotNull byte[] bytes) {
 		return wrap(bytes, 0, 0);
 	}
 
-	public static ByteBuf wrapForReading(byte[] bytes) {
+	@NotNull
+	@Contract("_ -> new")
+	public static ByteBuf wrapForReading(@NotNull byte[] bytes) {
 		return wrap(bytes, 0, bytes.length);
 	}
 
-	public static ByteBuf wrap(byte[] bytes, int readPosition, int writePosition) {
+	@NotNull
+	@Contract("_, _, _ -> new")
+	public static ByteBuf wrap(@NotNull byte[] bytes, int readPosition, int writePosition) {
 		return new ByteBuf(bytes, readPosition, writePosition);
 	}
 
 	// slicing
+	@NotNull
+	@Contract("-> new")
 	@Override
 	public ByteBuf slice() {
 		return slice(readPosition, readRemaining());
 	}
 
+	@NotNull
+	@Contract("_ -> new")
 	public ByteBuf slice(int length) {
 		return slice(readPosition, length);
 	}
 
+	@NotNull
+	@Contract("_, _ -> new")
 	public ByteBuf slice(int offset, int length) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (!isRecycleNeeded()) {
@@ -138,7 +160,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		recycle();
 	}
 
-	boolean isRecycled() {
+	@Contract(pure = true)
+	protected boolean isRecycled() {
 		return refs == -1;
 	}
 
@@ -154,7 +177,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		readPosition = 0;
 	}
 
-	public boolean isRecycleNeeded() {
+	@Contract(pure = true)
+	protected boolean isRecycleNeeded() {
 		return refs > 0;
 	}
 
@@ -185,20 +209,25 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	// getters & setters
 
+	@NotNull
+	@Contract(pure = true)
 	public byte[] array() {
 		return array;
 	}
 
+	@Contract(pure = true)
 	public int readPosition() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return readPosition;
 	}
 
+	@Contract(pure = true)
 	public int writePosition() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return writePosition;
 	}
 
+	@Contract(pure = true)
 	public int limit() {
 		return array.length;
 	}
@@ -229,21 +258,25 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		writePosition += delta;
 	}
 
+	@Contract(pure = true)
 	public int writeRemaining() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return array.length - writePosition;
 	}
 
+	@Contract(pure = true)
 	public int readRemaining() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return writePosition - readPosition;
 	}
 
+	@Contract(pure = true)
 	public boolean canWrite() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return writePosition != array.length;
 	}
 
+	@Contract(pure = true)
 	public boolean canRead() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return readPosition != writePosition;
@@ -255,23 +288,26 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		return array[readPosition++];
 	}
 
+	@Contract(pure = true)
 	public byte at(int index) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return array[index];
 	}
 
+	@Contract(pure = true)
 	public byte peek() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return array[readPosition];
 	}
 
+	@Contract(pure = true)
 	public byte peek(int offset) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert (readPosition + offset) < writePosition;
 		return array[readPosition + offset];
 	}
 
-	public int drainTo(byte[] array, int offset, int length) {
+	public int drainTo(@NotNull byte[] array, int offset, int length) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert length >= 0 && (offset + length) <= array.length;
 		assert readPosition + length <= writePosition;
@@ -280,7 +316,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		return length;
 	}
 
-	public int drainTo(ByteBuf buf, int length) {
+	public int drainTo(@NotNull ByteBuf buf, int length) {
 		assert !buf.isRecycled();
 		assert buf.writePosition + length <= buf.array.length;
 		drainTo(buf.array, buf.writePosition, length);
@@ -298,16 +334,16 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		writePosition++;
 	}
 
-	public void put(ByteBuf buf) {
+	public void put(@NotNull ByteBuf buf) {
 		put(buf.array, buf.readPosition, buf.writePosition - buf.readPosition);
 		buf.readPosition = buf.writePosition;
 	}
 
-	public void put(byte[] bytes) {
+	public void put(@NotNull byte[] bytes) {
 		put(bytes, 0, bytes.length);
 	}
 
-	public void put(byte[] bytes, int offset, int length) {
+	public void put(@NotNull byte[] bytes, int offset, int length) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert writePosition + length <= array.length;
 		assert offset + length <= bytes.length;
@@ -323,11 +359,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		return -1;
 	}
 
-	public int find(byte[] bytes) {
+	public int find(@NotNull byte[] bytes) {
 		return find(bytes, 0, bytes.length);
 	}
 
-	public int find(byte[] bytes, int off, int len) {
+	public int find(@NotNull byte[] bytes, int off, int len) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		L:
 		for (int pos = readPosition; pos <= writePosition - len; pos++) {
@@ -341,47 +377,56 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		return -1;
 	}
 
-	public boolean isContentEqual(byte[] array, int offset, int length) {
+	@Contract(pure = true)
+	public boolean isContentEqual(@NotNull byte[] array, int offset, int length) {
 		return Utils.arraysEquals(this.array, readPosition, readRemaining(), array, offset, length);
 	}
 
-	public boolean isContentEqual(ByteBuf other) {
+	@Contract(pure = true)
+	public boolean isContentEqual(@NotNull ByteBuf other) {
 		return isContentEqual(other.array, other.readPosition, other.readRemaining());
 	}
 
+	@Contract(pure = true)
 	public boolean isContentEqual(byte[] array) {
 		return isContentEqual(array, 0, array.length);
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	public byte[] getArray() {
 		byte[] bytes = new byte[readRemaining()];
 		System.arraycopy(array, readPosition, bytes, 0, bytes.length);
 		return bytes;
 	}
 
+	@Contract(pure = false)
+	@NotNull
 	public byte[] asArray() {
 		byte[] bytes = getArray();
 		recycle();
 		return bytes;
 	}
 
-	public String getString(Charset charset) {
+	@Contract(pure = true)
+	public String getString(@NotNull Charset charset) {
 		return new String(array, readPosition, readRemaining(), charset);
 	}
 
-	public String asString(Charset charset) {
+	@Contract(pure = false)
+	public String asString(@NotNull Charset charset) {
 		String string = getString(charset);
 		recycle();
 		return string;
 	}
 
 	// region serialization input
-	public int read(byte[] b) {
+	public int read(@NotNull byte[] b) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return read(b, 0, b.length);
 	}
 
-	public int read(byte[] b, int off, int len) {
+	public int read(@NotNull byte[] b, int off, int len) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return drainTo(b, off, len);
 	}
@@ -491,28 +536,15 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		}
 		throw new IllegalArgumentException();
 	}
-
-	public String readString() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		int length = readVarInt();
-		if (length == 0)
-			return "";
-		if (length > readRemaining())
-			throw new IllegalArgumentException();
-		readPosition += length;
-
-		return new String(array, readPosition - length, length, UTF_8);
-	}
-
 	// endregion
 
 	// region serialization output
-	public void write(byte[] b) {
+	public void write(@NotNull byte[] b) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		write(b, 0, b.length);
 	}
 
-	public void write(byte[] b, int off, int len) {
+	public void write(@NotNull byte[] b, int off, int len) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		System.arraycopy(b, off, array, writePosition, len);
 		writePosition = writePosition + len;
@@ -639,15 +671,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		}
 	}
 
-	public void writeString(String s) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		byte[] bytes = s.getBytes(UTF_8);
-		writeVarInt(bytes.length);
-		write(bytes);
-	}
 	// endregion
 
 	@Override
+	@Contract(pure = true)
 	public String toString() {
 		char[] chars = new char[min(readRemaining(), 256)];
 		for (int i = 0; i < chars.length; i++) {

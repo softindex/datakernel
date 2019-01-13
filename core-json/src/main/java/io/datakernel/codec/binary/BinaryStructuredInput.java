@@ -9,6 +9,8 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Type;
 import java.util.*;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public final class BinaryStructuredInput implements StructuredInput {
 	private final ByteBuf buf;
 
@@ -102,7 +104,14 @@ public final class BinaryStructuredInput implements StructuredInput {
 	@Override
 	public String readString() throws ParseException {
 		try {
-			return buf.readString();
+			int length = buf.readVarInt();
+			if (length == 0)
+				return "";
+			if (length > buf.readRemaining())
+				throw new IllegalArgumentException();
+			String result = new String(buf.array(), buf.readPosition(), length, UTF_8);
+			buf.moveReadPosition(length);
+			return result;
 		} catch (Exception e) {
 			throw new ParseException(e);
 		}

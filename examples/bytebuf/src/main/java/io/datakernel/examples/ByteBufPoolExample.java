@@ -37,19 +37,19 @@ public class ByteBufPoolExample {
 		System.out.println("Length of array of allocated ByteBuf: " + byteBuf.writeRemaining());
 
 		// Pool has 0 ByteBufs right now
-		System.out.println("Number of ByteBufs in pool before recycling: " + ByteBufPool.getPoolItems());
+		System.out.println("Number of ByteBufs in pool before recycling: " + ByteBufPool.getStats().getPoolItems());
 
 		// Recycling ByteBuf to put it back to pool
 		byteBuf.recycle();
 
 		// Now pool consists of 1 ByteBuf that is the one we just recycled
-		System.out.println("Number of ByteBufs in pool after recycling: " + ByteBufPool.getPoolItems());
+		System.out.println("Number of ByteBufs in pool after recycling: " + ByteBufPool.getStats().getPoolItems());
 
 		// Trying to allocate another ByteBuf
 		ByteBuf anotherByteBuf = ByteBufPool.allocate(123);
 
 		// Pool is now empty as the only ByteBuf in pool has just been taken from the pool
-		System.out.println("Number of ByteBufs in pool: " + ByteBufPool.getPoolItems());
+		System.out.println("Number of ByteBufs in pool: " + ByteBufPool.getStats().getPoolItems());
 		System.out.println();
 	}
 

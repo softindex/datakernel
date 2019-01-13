@@ -22,6 +22,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncServlet;
@@ -41,7 +42,6 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 
 import static com.google.inject.Stage.DEVELOPMENT;
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
@@ -104,7 +104,7 @@ public final class HttpWorkerServerTest {
 			serviceGraph.stopFuture().get();
 		}
 
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(ByteBufPool.getStats().getPoolItemsString(), ByteBufPool.getStats().getCreatedItems(), ByteBufPool.getStats().getPoolItems());
 	}
 
 	private static void readAndAssert(InputStream is, String expected) throws IOException {

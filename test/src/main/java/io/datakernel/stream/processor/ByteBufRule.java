@@ -54,7 +54,7 @@ public final class ByteBufRule implements TestRule {
 		return new LambdaStatement(() -> {
 			ByteBufPool.clear();
 			base.evaluate();
-			assertEquals(ByteBufPool.getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+			assertEquals(ByteBufPool.getStats().getPoolItemsString(), ByteBufPool.getStats().getCreatedItems(), ByteBufPool.getStats().getPoolItems());
 		});
 	}
 

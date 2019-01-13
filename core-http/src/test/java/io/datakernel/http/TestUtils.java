@@ -27,7 +27,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -110,23 +110,25 @@ public class TestUtils {
 				queue.add(value);
 			} else {
 				ByteBuf actualBuf = queue.takeRemaining();
-				if (expectedByteArray != null) {
-					byte[] actualByteArray = actualBuf.asArray();
-					assertArrayEquals(expectedByteArray, actualByteArray);
-				}
-				if (expectedString != null) {
-					String actualString = asAscii(actualBuf);
-					assertEquals(expectedString, actualString);
-				}
-				if (expectedBuf != null) {
-					assertArrayEquals(expectedBuf.getArray(), actualBuf.getArray());
+
+				try {
+					if (expectedByteArray != null) {
+						byte[] actualByteArray = actualBuf.getArray();
+						assertArrayEquals(expectedByteArray, actualByteArray);
+					}
+					if (expectedString != null) {
+						String actualString = decodeAscii(actualBuf.array(), actualBuf.readPosition(), actualBuf.readRemaining());
+						assertEquals(expectedString, actualString);
+					}
+					if (expectedBuf != null) {
+						assertArrayEquals(expectedBuf.getArray(), actualBuf.getArray());
+						expectedBuf.recycle();
+						expectedBuf = null;
+					}
+				} finally {
 					actualBuf.recycle();
-					expectedBuf.recycle();
-					expectedBuf = null;
 				}
-				if (actualBuf.isRecycleNeeded()) {
-					actualBuf.recycle();
-				}
+
 				executed = true;
 			}
 			return Promise.complete();

@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.*;
 
 public class ByteBufTest {
@@ -48,7 +47,7 @@ public class ByteBufTest {
 
 	@After
 	public void checkByteBufPool() {
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(ByteBufPool.getStats().getPoolItemsString(), ByteBufPool.getStats().getCreatedItems(), ByteBufPool.getStats().getPoolItems());
 	}
 
 	@Test

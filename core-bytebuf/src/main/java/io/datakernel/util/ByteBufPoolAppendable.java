@@ -14,7 +14,7 @@ public final class ByteBufPoolAppendable implements Appendable {
 		this(INITIAL_BUF_SIZE);
 	}
 
-	ByteBufPoolAppendable(MemSize size) {
+	public ByteBufPoolAppendable(MemSize size) {
 		this.container = ByteBufPool.allocate(size);
 	}
 

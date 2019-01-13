@@ -96,7 +96,7 @@ public final class BufsConsumerIntegrationTest {
 		toBeSplitted.put(data);
 		expected.put(data);
 		consumer.setExpectedBuf(expected);
-		while (toBeSplitted.isRecycleNeeded() && toBeSplitted.readRemaining() != 0) {
+		while (toBeSplitted.readRemaining() != 0) {
 			int part = Math.min(ThreadLocalRandom.current().nextInt(100) + 100, toBeSplitted.readRemaining());
 			ByteBuf slice = toBeSplitted.slice(part);
 			toBeSplitted.moveReadPosition(part);

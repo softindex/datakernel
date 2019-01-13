@@ -9,6 +9,8 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public final class BinaryStructuredOutput implements StructuredOutput {
 	private ByteBuf buf = ByteBufPool.allocate(256);
 
@@ -74,7 +76,9 @@ public final class BinaryStructuredOutput implements StructuredOutput {
 	@Override
 	public void writeString(String value) {
 		buf = ByteBufPool.ensureWriteRemaining(buf, 5 + value.length() * 5);
-		buf.writeString(value);
+		byte[] bytes = value.getBytes(UTF_8);
+		buf.writeVarInt(bytes.length);
+		buf.write(bytes);
 	}
 
 	@Override
