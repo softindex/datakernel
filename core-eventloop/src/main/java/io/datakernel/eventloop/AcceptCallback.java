@@ -16,9 +16,11 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.nio.channels.SocketChannel;
 
 @FunctionalInterface
 public interface AcceptCallback {
-	void onAccept(SocketChannel socketChannel);
+	void onAccept(@NotNull SocketChannel socketChannel);
 }

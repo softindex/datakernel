@@ -17,6 +17,7 @@
 package io.datakernel.net;
 
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.channels.DatagramChannel;
@@ -38,8 +39,7 @@ public final class DatagramSocketSettings {
 	private final byte broadcast;
 
 	// region builders
-	private DatagramSocketSettings(int receiveBufferSize, int sendBufferSize, byte reuseAddress,
-			byte broadcast) {
+	private DatagramSocketSettings(int receiveBufferSize, int sendBufferSize, byte reuseAddress, byte broadcast) {
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 		this.sendBufferSize = sendBufferSize;
@@ -50,11 +50,11 @@ public final class DatagramSocketSettings {
 		return new DatagramSocketSettings(0, 0, DEF_BOOL, DEF_BOOL);
 	}
 
-	public DatagramSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
+	public DatagramSocketSettings withReceiveBufferSize(@NotNull MemSize receiveBufferSize) {
 		return new DatagramSocketSettings(receiveBufferSize.toInt(), sendBufferSize, reuseAddress, broadcast);
 	}
 
-	public DatagramSocketSettings withSendBufferSize(MemSize sendBufferSize) {
+	public DatagramSocketSettings withSendBufferSize(@NotNull MemSize sendBufferSize) {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize.toInt(), reuseAddress, broadcast);
 	}
 
@@ -67,7 +67,7 @@ public final class DatagramSocketSettings {
 	}
 	// endregion
 
-	public void applySettings(DatagramChannel channel) throws IOException {
+	public void applySettings(@NotNull DatagramChannel channel) throws IOException {
 		if (receiveBufferSize != 0) {
 			channel.setOption(SO_RCVBUF, receiveBufferSize);
 		}
@@ -86,6 +86,7 @@ public final class DatagramSocketSettings {
 		return receiveBufferSize != 0;
 	}
 
+	@NotNull
 	public MemSize getReceiveBufferSize() {
 		return MemSize.of(getReceiveBufferSizeBytes());
 	}
@@ -108,6 +109,7 @@ public final class DatagramSocketSettings {
 		return sendBufferSize != 0;
 	}
 
+	@NotNull
 	public MemSize getSendBufferSize() {
 		return MemSize.of(getSendBufferSizeBytes());
 	}

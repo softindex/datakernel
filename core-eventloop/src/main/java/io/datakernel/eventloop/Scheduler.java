@@ -17,38 +17,46 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.time.CurrentTimeProvider;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.Instant;
 
+@SuppressWarnings("unused")
 public interface Scheduler extends CurrentTimeProvider {
+	@NotNull
+	ScheduledRunnable schedule(long timestamp, @NotNull Runnable runnable);
 
-	ScheduledRunnable schedule(long timestamp, Runnable runnable);
-
-	default ScheduledRunnable schedule(Instant instant, Runnable runnable) {
+	@NotNull
+	default ScheduledRunnable schedule(@NotNull Instant instant, @NotNull Runnable runnable) {
 		return schedule(instant.toEpochMilli(), runnable);
 	}
 
-	default ScheduledRunnable delay(long delayMillis, Runnable runnable) {
+	@NotNull
+	default ScheduledRunnable delay(long delayMillis, @NotNull Runnable runnable) {
 		return schedule(currentTimeMillis() + delayMillis, runnable);
 	}
 
-	default ScheduledRunnable delay(Duration delay, Runnable runnable) {
+	@NotNull
+	default ScheduledRunnable delay(@NotNull Duration delay, @NotNull Runnable runnable) {
 		return delay(delay.toMillis(), runnable);
 	}
 
-	ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable);
+	@NotNull
+	ScheduledRunnable scheduleBackground(long timestamp, @NotNull Runnable runnable);
 
-	default ScheduledRunnable scheduleBackground(Instant instant, Runnable runnable) {
+	@NotNull
+	default ScheduledRunnable scheduleBackground(@NotNull Instant instant, @NotNull Runnable runnable) {
 		return scheduleBackground(instant.toEpochMilli(), runnable);
 	}
 
-	default ScheduledRunnable delayBackground(long delayMillis, Runnable runnable) {
+	@NotNull
+	default ScheduledRunnable delayBackground(long delayMillis, @NotNull Runnable runnable) {
 		return scheduleBackground(currentTimeMillis() + delayMillis, runnable);
 	}
 
-	default ScheduledRunnable delayBackground(Duration delay, Runnable runnable) {
+	@NotNull
+	default ScheduledRunnable delayBackground(@NotNull Duration delay, @NotNull Runnable runnable) {
 		return delayBackground(delay.toMillis(), runnable);
 	}
-
 }

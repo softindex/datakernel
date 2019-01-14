@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -24,14 +26,17 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+@SuppressWarnings("unused")
 public interface EventloopExecutor extends Executor {
-	CompletableFuture<Void> submit(Runnable computation);
+	@NotNull
+	CompletableFuture<Void> submit(@NotNull Runnable computation);
 
-	<T> CompletableFuture<T> submit(Callable<T> computation);
+	@NotNull <T> CompletableFuture<T> submit(@NotNull Callable<T> computation);
 
-	default <T> CompletableFuture<T> submit(Supplier<CompletionStage<T>> computation) {
+	@NotNull
+	default <T> CompletableFuture<T> submit(@NotNull Supplier<CompletionStage<T>> computation) {
 		return submit(cb -> computation.get().whenComplete(cb));
 	}
 
-	<T> CompletableFuture<T> submit(Consumer<BiConsumer<T, Throwable>> callbackConsumer);
+	@NotNull <T> CompletableFuture<T> submit(@NotNull Consumer<BiConsumer<T, Throwable>> callbackConsumer);
 }

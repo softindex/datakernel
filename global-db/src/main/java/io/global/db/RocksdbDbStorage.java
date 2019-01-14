@@ -3,6 +3,7 @@ package io.global.db;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.global.common.SignedData;
 import io.global.db.api.DbStorage;
@@ -10,8 +11,6 @@ import io.global.db.util.Utils;
 import org.rocksdb.*;
 
 import java.util.concurrent.ExecutorService;
-
-import static io.datakernel.exception.UncheckedException.unchecked;
 
 public class RocksdbDbStorage implements DbStorage {
 	private final ExecutorService executor;
@@ -39,18 +38,36 @@ public class RocksdbDbStorage implements DbStorage {
 
 	private void doPut(SignedData<DbItem> signedDbItem) {
 		byte[] key = signedDbItem.getValue().getKey();
-		byte[] value = unchecked(() -> db.get(key));
+		byte[] value;
+		try {
+			value = db.get(key);
+		} catch (RocksDBException e) {
+			throw new UncheckedException(e);
+		}
 		if (value != null) {
-			SignedData<DbItem> old = unchecked(() -> Utils.unpackValue(key, value));
+			SignedData<DbItem> old;
+			try {
+				old = Utils.unpackValue(key, value);
+			} catch (ParseException e) {
+				throw new UncheckedException(e);
+			}
 			if (old.getValue().getTimestamp() > signedDbItem.getValue().getTimestamp()) {
 				return;
 			}
 		}
-		unchecked(() -> db.put(writeOptions, key, Utils.packValue(signedDbItem)));
+		try {
+			db.put(writeOptions, key, Utils.packValue(signedDbItem));
+		} catch (RocksDBException e) {
+			throw new UncheckedException(e);
+		}
 	}
 
 	private SignedData<DbItem> doGet(byte[] key) {
-		return unchecked(() -> Utils.unpackValue(key, db.get(key)));
+		try {
+			return Utils.unpackValue(key, db.get(key));
+		} catch (RocksDBException | ParseException e) {
+			throw new UncheckedException(e);
+		}
 	}
 
 	@Override
@@ -100,8 +117,17 @@ public class RocksdbDbStorage implements DbStorage {
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<byte[]>>> remove() {
-		return Promise.of(ChannelConsumer.<SignedData<byte[]>>of(key -> Promise.ofRunnable(executor, () -> unchecked(() -> db.delete(key.getValue()))))
-				.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
+		return Promise.of(
+				ChannelConsumer.of(
+						(SignedData<byte[]> key) -> Promise.ofRunnable(executor,
+								() -> {
+									try {
+										db.delete(key.getValue());
+									} catch (RocksDBException e) {
+										throw new UncheckedException(e);
+									}
+								}))
+						.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
 	}
 
 	@Override
@@ -116,6 +142,13 @@ public class RocksdbDbStorage implements DbStorage {
 
 	@Override
 	public Promise<Void> remove(SignedData<byte[]> key) {
-		return Promise.ofRunnable(executor, () -> unchecked(() -> db.delete(key.getValue())));
+		return Promise.ofRunnable(executor,
+				() -> {
+					try {
+						db.delete(key.getValue());
+					} catch (RocksDBException e) {
+						throw new UncheckedException(e);
+					}
+				});
 	}
 }

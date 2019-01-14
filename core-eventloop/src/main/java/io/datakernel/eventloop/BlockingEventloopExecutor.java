@@ -96,8 +96,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}
 	}
 
+	@NotNull
 	@Override
-	public CompletableFuture<Void> submit(Runnable computation) {
+	public CompletableFuture<Void> submit(@NotNull Runnable computation) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
 		post(() -> {
 			try {
@@ -111,8 +112,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		return future;
 	}
 
+	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(Callable<T> computation) {
+	public <T> CompletableFuture<T> submit(@NotNull Callable<T> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			T result;
@@ -132,8 +134,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		return future;
 	}
 
+	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
+	public <T> CompletableFuture<T> submit(@NotNull Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
 			try {

@@ -17,6 +17,7 @@
 package io.datakernel.net;
 
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.channels.ServerSocketChannel;
@@ -54,7 +55,7 @@ public final class ServerSocketSettings {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
 	}
 
-	public ServerSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
+	public ServerSocketSettings withReceiveBufferSize(@NotNull MemSize receiveBufferSize) {
 		return new ServerSocketSettings(backlog, receiveBufferSize.toInt(), reuseAddress);
 	}
 
@@ -63,7 +64,7 @@ public final class ServerSocketSettings {
 	}
 	// endregion
 
-	public void applySettings(ServerSocketChannel channel) throws IOException {
+	public void applySettings(@NotNull ServerSocketChannel channel) throws IOException {
 		if (receiveBufferSize != 0) {
 			channel.setOption(SO_RCVBUF, receiveBufferSize);
 		}
@@ -80,6 +81,7 @@ public final class ServerSocketSettings {
 		return receiveBufferSize != 0;
 	}
 
+	@NotNull
 	public MemSize getReceiveBufferSize() {
 		return MemSize.of(getReceiveBufferSizeBytes());
 	}

@@ -22,6 +22,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,6 +97,12 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	private ThrottlingController() {
 	}
 
+	@NotNull
+	public static ThrottlingController create(@NotNull Eventloop eventloop) {
+		return create().withEventloop(eventloop);
+	}
+
+	@NotNull
 	public static ThrottlingController create() {
 		return new ThrottlingController()
 				.withTargetTime(TARGET_TIME)
@@ -106,32 +113,48 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 				.withInitialThrottling(INITIAL_THROTTLING);
 	}
 
-	public ThrottlingController withTargetTime(Duration targetTime) {
+	@NotNull
+	private ThrottlingController withEventloop(@NotNull Eventloop eventloop) {
+		setEventloop(eventloop);
+		return this;
+	}
+
+	public void setEventloop(@NotNull Eventloop eventloop) {
+		this.eventloop = eventloop;
+	}
+
+	@NotNull
+	public ThrottlingController withTargetTime(@NotNull Duration targetTime) {
 		setTargetTime(targetTime);
 		return this;
 	}
 
-	public ThrottlingController withGcTime(Duration gcTime) {
+	@NotNull
+	public ThrottlingController withGcTime(@NotNull Duration gcTime) {
 		setGcTime(gcTime);
 		return this;
 	}
 
-	public ThrottlingController withSmoothingWindow(Duration smoothingWindow) {
+	@NotNull
+	public ThrottlingController withSmoothingWindow(@NotNull Duration smoothingWindow) {
 		setSmoothingWindow(smoothingWindow);
 		return this;
 	}
 
+	@NotNull
 	public ThrottlingController withThrottlingDecrease(double throttlingDecrease) {
 		setThrottlingDecrease(throttlingDecrease);
 		return this;
 	}
 
+	@NotNull
 	public ThrottlingController withInitialKeysPerSecond(double initialKeysPerSecond) {
 		checkArgument(initialKeysPerSecond > 0, "Initial keys per second should not be zero or less");
 		this.smoothedTimePerKeyMillis = 1000.0 / initialKeysPerSecond;
 		return this;
 	}
 
+	@NotNull
 	public ThrottlingController withInitialThrottling(double initialThrottling) {
 		checkArgument(initialThrottling >= 0, "Initial throttling should not be zero or less");
 		this.smoothedThrottling = initialThrottling;
@@ -223,11 +246,11 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	}
 
 	@Override
-	public void onUpdateSelectedKeyDuration(Stopwatch sw) {
+	public void onUpdateSelectedKeyDuration(@NotNull Stopwatch sw) {
 	}
 
 	@Override
-	public void onUpdateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	public void onUpdateLocalTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw) {
 	}
 
 	@Override
@@ -235,11 +258,11 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	}
 
 	@Override
-	public void onUpdateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	public void onUpdateConcurrentTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw) {
 	}
 
 	@Override
-	public void onUpdateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw, boolean background) {
+	public void onUpdateScheduledTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw, boolean background) {
 	}
 
 	@Override
@@ -247,7 +270,7 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	}
 
 	@Override
-	public void onFatalError(Throwable e, Object causedObject) {
+	public void onFatalError(@NotNull Throwable e, Object causedObject) {
 	}
 
 	@Override
@@ -275,7 +298,7 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	}
 
 	@JmxAttribute
-	public void setTargetTime(Duration targetTime) {
+	public void setTargetTime(@NotNull Duration targetTime) {
 		checkArgument(targetTime.toMillis() > 0, "Target time should not be zero or less");
 		this.targetTimeMillis = (int) targetTime.toMillis();
 	}
@@ -286,7 +309,7 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	}
 
 	@JmxAttribute
-	public void setGcTime(Duration gcTime) {
+	public void setGcTime(@NotNull Duration gcTime) {
 		checkArgument(gcTime.toMillis() > 0, "GC time should not be zero or less");
 		this.gcTimeMillis = (int) gcTime.toMillis();
 	}
@@ -308,7 +331,7 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	}
 
 	@JmxAttribute
-	public void setSmoothingWindow(Duration smoothingWindow) {
+	public void setSmoothingWindow(@NotNull Duration smoothingWindow) {
 		checkArgument(smoothingWindow.toMillis() > 0, "Smoothing window should not be zero or less");
 		this.smoothingWindow = (int) smoothingWindow.toMillis();
 	}

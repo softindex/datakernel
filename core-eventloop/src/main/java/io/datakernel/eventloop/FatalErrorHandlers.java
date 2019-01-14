@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOError;
 import java.util.List;
 import java.util.zip.ZipError;
@@ -63,7 +65,7 @@ public final class FatalErrorHandlers {
 		};
 	}
 
-	public static void propagate(Throwable e) {
+	public static void propagate(@NotNull Throwable e) {
 		if (e instanceof Error) {
 			throw (Error) e;
 		} else if (e instanceof RuntimeException) {

@@ -26,6 +26,8 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -52,7 +54,6 @@ import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofLong;
-import static io.datakernel.exception.UncheckedException.unchecked;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
@@ -156,31 +157,37 @@ public final class GlobalFsDemoApp extends Launcher {
 															.withBody(ByteBuf.wrapForReading(replaced.getBytes(UTF_8)));
 												}))
 								.with("/:owner", MiddlewareServlet.create()
-										.with(GET, "/", request ->
-												unchecked(() -> {
-													PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-													if (!keys.containsKey(pubKey)) {
-														return Promise.ofException(HttpException.ofCode(404, "No private key stored for given public key"));
-													}
-													return resourseLoader.getResource("key-view.html")
-															.thenApply(buf -> {
-																String template = buf.asString(UTF_8);
-																String replaced = template.replaceAll("\\{key}", pubKey.asString());
-																return HttpResponse.ok200()
-																		.withBody(ByteBuf.wrapForReading(replaced.getBytes(UTF_8)));
-															});
-												}))
-										.with("/gateway", MiddlewareServlet.create()
-												.withFallback(request ->
-														unchecked(() -> {
-															PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-															if (!keys.containsKey(pubKey)) {
-																return Promise.ofException(HttpException.ofCode(404, "No private key stored for given public key"));
-															}
-															return servlets
-																	.computeIfAbsent(pubKey, $ -> RemoteFsServlet.create(driver.gatewayFor(pubKey)))
-																	.serve(request);
-														}))))
+										.with(GET, "/", request -> {
+											try {
+												PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+												if (!keys.containsKey(pubKey)) {
+													return Promise.ofException(HttpException.ofCode(404, "No private key stored for given public key"));
+												}
+												return resourseLoader.getResource("key-view.html")
+														.thenApply(buf -> {
+															String template = buf.asString(UTF_8);
+															String replaced = template.replaceAll("\\{key}", pubKey.asString());
+															return HttpResponse.ok200()
+																	.withBody(ByteBuf.wrapForReading(replaced.getBytes(UTF_8)));
+														});
+											} catch (ParseException e) {
+												throw new UncheckedException(e);
+											}
+										}))
+								.with("/gateway", MiddlewareServlet.create()
+										.withFallback(request -> {
+											try {
+												PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+												if (!keys.containsKey(pubKey)) {
+													return Promise.ofException(HttpException.ofCode(404, "No private key stored for given public key"));
+												}
+												return servlets
+														.computeIfAbsent(pubKey, $ -> RemoteFsServlet.create(driver.gatewayFor(pubKey)))
+														.serve(request);
+											} catch (ParseException e) {
+												throw new UncheckedException(e);
+											}
+										}))
 								.withFallback(StaticServlet.create(eventloop, resourseLoader));
 					}
 				});

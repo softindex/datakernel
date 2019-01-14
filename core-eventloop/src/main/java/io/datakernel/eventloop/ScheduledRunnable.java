@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.NotNull;
+
 public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 	private final long timestamp;
 	private Runnable runnable;
@@ -23,33 +25,15 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 	private boolean complete;
 
 	// region builders
-	private ScheduledRunnable(long timestamp, Runnable runnable) {
+	private ScheduledRunnable(long timestamp, @NotNull Runnable runnable) {
 		this.timestamp = timestamp;
 		this.runnable = runnable;
 	}
 
-	public static ScheduledRunnable create(long timestamp, Runnable runnable) {
+	public static ScheduledRunnable create(long timestamp, @NotNull Runnable runnable) {
 		return new ScheduledRunnable(timestamp, runnable);
 	}
 	// endregion
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		ScheduledRunnable that = (ScheduledRunnable) o;
-		return timestamp == that.timestamp;
-	}
-
-	@Override
-	public int hashCode() {
-		return (int) (timestamp ^ (timestamp >>> 32));
-	}
-
-	@Override
-	public int compareTo(ScheduledRunnable o) {
-		return Long.compare(timestamp, o.timestamp);
-	}
 
 	@SuppressWarnings("AssignmentToNull") // runnable has been cancelled
 	public void cancel() {
@@ -77,6 +61,24 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 
 	public boolean isComplete() {
 		return complete;
+	}
+
+	@Override
+	public int compareTo(ScheduledRunnable o) {
+		return Long.compare(timestamp, o.timestamp);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		ScheduledRunnable that = (ScheduledRunnable) o;
+		return timestamp == that.timestamp;
+	}
+
+	@Override
+	public int hashCode() {
+		return (int) (timestamp ^ (timestamp >>> 32));
 	}
 
 	@Override

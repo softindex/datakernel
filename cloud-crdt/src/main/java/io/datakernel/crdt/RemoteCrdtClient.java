@@ -38,6 +38,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -199,13 +200,13 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 		return Promise.ofCallback(cb ->
 				eventloop.connect(address, new ConnectCallback() {
 					@Override
-					public void onConnect(SocketChannel channel) {
+					public void onConnect(@NotNull SocketChannel channel) {
 						AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, socketSettings);
 						cb.set(MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
 					}
 
 					@Override
-					public void onException(Throwable e) {
+					public void onException(@NotNull Throwable e) {
 						cb.setException(e);
 					}
 				}));

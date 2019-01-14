@@ -29,6 +29,7 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -212,12 +213,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		Eventloop eventloop = getCurrentEventloop();
 		eventloop.connect(address, timeout, new ConnectCallback() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
+			public void onConnect(@NotNull SocketChannel socketChannel) {
 				result.set(wrapChannel(eventloop, socketChannel, socketSettings));
 			}
 
 			@Override
-			public void onException(Throwable e) {
+			public void onException(@NotNull Throwable e) {
 				result.setException(e);
 			}
 		});

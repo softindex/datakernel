@@ -16,7 +16,10 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 @FunctionalInterface
 public interface FatalErrorHandler {
-	void handle(Throwable e, Object context);
+	void handle(@NotNull Throwable e, @Nullable Object context);
 }

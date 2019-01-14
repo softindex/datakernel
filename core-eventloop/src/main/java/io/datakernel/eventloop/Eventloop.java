@@ -78,6 +78,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public static final ConstantException NOT_CONNECTED = new ConstantException(Eventloop.class, "Not connected");
 	public static final Duration DEFAULT_IDLE_INTERVAL = Duration.ofSeconds(1);
 
+	@NotNull
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
 	/**
@@ -106,6 +107,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private final AtomicInteger externalTasksCount = new AtomicInteger(0);
 
+	@NotNull
 	private final CurrentTimeProvider timeProvider;
 
 	/**
@@ -126,6 +128,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * The desired name of the thread.
 	 */
+	@Nullable
 	private String threadName;
 	private int threadPriority;
 
@@ -160,7 +163,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private boolean monitoring = false;
 
 	// region builders
-	private Eventloop(CurrentTimeProvider timeProvider) {
+	private Eventloop(@NotNull CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		refreshTimestamp();
 	}
@@ -173,36 +176,44 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return new Eventloop(currentTimeProvider);
 	}
 
+	@NotNull
 	public Eventloop withThreadName(String threadName) {
 		this.threadName = threadName;
 		return this;
 	}
 
+	@SuppressWarnings("UnusedReturnValue")
+	@NotNull
 	public Eventloop withThreadPriority(int threadPriority) {
 		this.threadPriority = threadPriority;
 		return this;
 	}
 
+	@NotNull
 	public Eventloop withInspector(EventloopInspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
 
+	@NotNull
 	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
 		this.fatalErrorHandler = fatalErrorHandler;
 		return this;
 	}
 
+	@NotNull
 	public Eventloop withSelectorProvider(SelectorProvider selectorProvider) {
 		this.selectorProvider = selectorProvider;
 		return this;
 	}
 
+	@NotNull
 	public Eventloop withIdleInterval(Duration idleInterval) {
 		this.idleInterval = idleInterval;
 		return this;
 	}
 
+	@NotNull
 	public Eventloop withCurrentThread() {
 		CURRENT_EVENTLOOP.set(this);
 		return this;
@@ -210,6 +221,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// endregion
 
+	@SuppressWarnings("WeakerAccess")
 	@Nullable
 	public Selector getSelector() {
 		return selector;
@@ -222,6 +234,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			"3) refactor application so it starts async operations within eventloop.run(), \n" +
 			"   i.e. by implementing EventloopService::start() {your code block} and using ServiceGraphModule";
 
+	@NotNull
 	public static Eventloop getCurrentEventloop() {
 		Eventloop eventloop = CURRENT_EVENTLOOP.get();
 		if (eventloop != null) {
@@ -256,13 +269,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
-	Selector ensureSelector() {
+	@Nullable Selector ensureSelector() {
 		if (selector == null) {
 			openSelector();
 		}
 		return selector;
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public void closeChannel(@Nullable SelectableChannel channel, @Nullable SelectionKey key) {
 		checkArgument(channel != null || key == null, "Either channel or key should be not null");
 		if (channel == null || !channel.isOpen()) return;
@@ -411,7 +425,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param selectedKeys set that contains all selected keys, returned from NIO Selector.select()
 	 */
-	private int processSelectedKeys(Set<SelectionKey> selectedKeys) {
+	private int processSelectedKeys(@NotNull Set<SelectionKey> selectedKeys) {
 		long startTimestamp = timestamp;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
@@ -714,6 +728,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @return server channel
 	 * @throws IOException If some I/O error occurs
 	 */
+	@NotNull
 	public ServerSocketChannel listen(InetSocketAddress address, ServerSocketSettings serverSocketSettings, AcceptCallback acceptCallback) throws IOException {
 		assert inEventloopThread();
 		ServerSocketChannel serverSocketChannel = null;
@@ -739,6 +754,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @return DatagramSocket of this connection
 	 * @throws IOException if an I/O error occurs on opening DatagramChannel
 	 */
+	@NotNull
 	public static DatagramChannel createDatagramChannel(DatagramSocketSettings datagramSocketSettings,
 			@Nullable InetSocketAddress bindAddress,
 			@Nullable InetSocketAddress connectAddress) throws IOException {
@@ -770,11 +786,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param address socketChannel's address
 	 */
-	public void connect(SocketAddress address, ConnectCallback cb) {
+	public void connect(SocketAddress address, @NotNull ConnectCallback cb) {
 		connect(address, 0, cb);
 	}
 
-	public void connect(SocketAddress address, @Nullable Duration timeout, ConnectCallback cb) {
+	public void connect(SocketAddress address, @Nullable Duration timeout, @NotNull ConnectCallback cb) {
 		connect(address, timeout == null ? 0L : timeout.toMillis(), cb);
 	}
 
@@ -785,7 +801,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param address socketChannel's address
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
-	public void connect(SocketAddress address, long timeout, ConnectCallback cb) {
+	public void connect(SocketAddress address, long timeout, @NotNull ConnectCallback cb) {
 		assert inEventloopThread();
 		SocketChannel channel;
 		try {
@@ -811,13 +827,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 						});
 
 						@Override
-						public void onConnect(SocketChannel socketChannel) {
+						public void onConnect(@NotNull SocketChannel socketChannel) {
 							scheduledTimeout.cancel();
 							cb.onConnect(socketChannel);
 						}
 
 						@Override
-						public void onException(Throwable e) {
+						public void onException(@NotNull Throwable e) {
 							scheduledTimeout.cancel();
 							cb.onException(e);
 						}
@@ -843,7 +859,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param runnable runnable of this task
 	 */
-	public void post(Runnable runnable) {
+	public void post(@NotNull Runnable runnable) {
 		assert inEventloopThread();
 		localTasks.addFirst(runnable);
 	}
@@ -853,7 +869,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param runnable runnable of this task
 	 */
-	public void postLater(Runnable runnable) {
+	public void postLater(@NotNull Runnable runnable) {
 		assert inEventloopThread();
 		localTasks.addLast(runnable);
 	}
@@ -879,8 +895,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable  runnable of this task
 	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
+	@NotNull
 	@Override
-	public ScheduledRunnable schedule(long timestamp, Runnable runnable) {
+	public ScheduledRunnable schedule(long timestamp, @NotNull Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, false);
 	}
@@ -894,12 +911,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable  runnable of this task
 	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
+	@NotNull
 	@Override
-	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
+	public ScheduledRunnable scheduleBackground(long timestamp, @NotNull Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, true);
 	}
 
+	@NotNull
 	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {
 		ScheduledRunnable scheduledTask = ScheduledRunnable.create(timestamp, runnable);
 		PriorityQueue<ScheduledRunnable> taskQueue = background ? backgroundTasks : scheduledTasks;
@@ -940,6 +959,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return timestamp;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return this;
@@ -952,8 +972,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param computation to be executed
 	 * @return {@code CompletableFuture} that completes when runnable completes
 	 */
+	@NotNull
 	@Override
-	public CompletableFuture<Void> submit(Runnable computation) {
+	public CompletableFuture<Void> submit(@NotNull Runnable computation) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
 		execute(() -> {
 			try {
@@ -970,8 +991,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code Callable}
 	 */
+	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(Callable<T> computation) {
+	public <T> CompletableFuture<T> submit(@NotNull Callable<T> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			T result;
@@ -991,8 +1013,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
+	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
+	public <T> CompletableFuture<T> submit(@NotNull Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			try {
@@ -1014,7 +1037,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
-	public static void setGlobalFatalErrorHandler(FatalErrorHandler handler) {
+	public static void setGlobalFatalErrorHandler(@NotNull FatalErrorHandler handler) {
 		globalFatalErrorHandler = checkNotNull(handler);
 	}
 
@@ -1039,13 +1062,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return monitoring;
 	}
 
-	private void recordIoError(Exception e, Object context) {
+	private void recordIoError(@NotNull Exception e, @Nullable Object context) {
 		logger.warn("IO Error in {}: {}", context, e.toString());
 	}
 
-	public void recordFatalError(Throwable e, Object context) {
-		if (e instanceof RethrowedError) {
-			FatalErrorHandlers.propagate(e.getCause());
+	public void recordFatalError(@NotNull Throwable e, @Nullable Object context) {
+		while (e instanceof UncheckedException) {
+			e = e.getCause();
 		}
 		logger.error("Fatal Error in " + context, e);
 		if (fatalErrorHandler != null) {
@@ -1057,28 +1080,20 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (inEventloopThread()) {
 				inspector.onFatalError(e, context);
 			} else {
-				execute(() -> inspector.onFatalError(e, context));
+				Throwable finalE = e;
+				execute(() -> inspector.onFatalError(finalE, context));
 			}
 		}
 	}
 
-	private void handleFatalError(FatalErrorHandler handler, Throwable e, Object context) {
+	private void handleFatalError(@NotNull FatalErrorHandler handler, @NotNull Throwable e, @Nullable Object context) {
 		if (inEventloopThread()) {
 			handler.handle(e, context);
 		} else {
 			try {
 				handler.handle(e, context);
-			} catch (Throwable handlerError) {
-				execute(() -> {
-					throw new RethrowedError(handlerError);
-				});
+			} catch (Throwable ignored) {
 			}
-		}
-	}
-
-	private static class RethrowedError extends Error {
-		public RethrowedError(Throwable cause) {
-			super(cause);
 		}
 	}
 

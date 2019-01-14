@@ -17,6 +17,7 @@
 package io.datakernel.net;
 
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -59,11 +60,11 @@ public final class SocketSettings {
 		return new SocketSettings(0, 0, DEF_BOOL, DEF_BOOL, DEF_BOOL, 0, 0, 0);
 	}
 
-	public SocketSettings withSendBufferSize(MemSize sendBufferSize) {
+	public SocketSettings withSendBufferSize(@NotNull MemSize sendBufferSize) {
 		return new SocketSettings(sendBufferSize.toInt(), receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadBufferSize);
 	}
 
-	public SocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
+	public SocketSettings withReceiveBufferSize(@NotNull MemSize receiveBufferSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize.toInt(), keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadBufferSize);
 	}
 
@@ -79,21 +80,21 @@ public final class SocketSettings {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE, implReadTimeout, implWriteTimeout, implReadBufferSize);
 	}
 
-	public SocketSettings withImplReadTimeout(Duration implReadTimeout) {
+	public SocketSettings withImplReadTimeout(@NotNull Duration implReadTimeout) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, (int) implReadTimeout.toMillis(), implWriteTimeout, implReadBufferSize);
 	}
 
-	public SocketSettings withImplWriteTimeout(Duration implWriteTimeout) {
+	public SocketSettings withImplWriteTimeout(@NotNull Duration implWriteTimeout) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, (int) implWriteTimeout.toMillis(), implReadBufferSize);
 	}
 
-	public SocketSettings withImplReadBufferSize(MemSize implReadBufferSize) {
+	public SocketSettings withImplReadBufferSize(@NotNull MemSize implReadBufferSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadBufferSize.toInt());
 	}
 
 	// endregion
 
-	public void applySettings(SocketChannel channel) throws IOException {
+	public void applySettings(@NotNull SocketChannel channel) throws IOException {
 		if (sendBufferSize != 0) {
 			channel.setOption(SO_SNDBUF, sendBufferSize);
 		}
@@ -115,6 +116,7 @@ public final class SocketSettings {
 		return sendBufferSize != 0;
 	}
 
+	@NotNull
 	public MemSize getSendBufferSize() {
 		return MemSize.of(getSendBufferSizeBytes());
 	}
@@ -128,6 +130,7 @@ public final class SocketSettings {
 		return receiveBufferSize != 0;
 	}
 
+	@NotNull
 	public MemSize getReceiveBufferSize() {
 		return MemSize.of(getReceiveBufferSizeBytes());
 	}
@@ -168,6 +171,7 @@ public final class SocketSettings {
 		return implReadTimeout != 0;
 	}
 
+	@NotNull
 	public Duration getImplReadTimeout() {
 		return Duration.ofMillis(getImplReadTimeoutMillis());
 	}
@@ -181,6 +185,7 @@ public final class SocketSettings {
 		return implWriteTimeout != 0;
 	}
 
+	@NotNull
 	public Duration getImplWriteTimeout() {
 		return Duration.ofMillis(getImplWriteTimeoutMillis());
 	}
@@ -194,6 +199,7 @@ public final class SocketSettings {
 		return implReadBufferSize != 0;
 	}
 
+	@NotNull
 	public MemSize getImplReadBufferSize() {
 		return MemSize.of(getImplReadBufferSizeBytes());
 	}

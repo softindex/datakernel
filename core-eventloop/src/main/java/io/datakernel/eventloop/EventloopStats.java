@@ -20,6 +20,7 @@ import io.datakernel.inspector.ForwardingInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -32,9 +33,8 @@ import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
 @SuppressWarnings("unused")
 public final class EventloopStats extends ForwardingInspector<EventloopInspector> implements EventloopInspector {
-
 	@Nullable
-	final EventloopInspector next;
+	private final EventloopInspector next;
 	private final EventStats loops;
 	private final ValueStats selectorSelectTimeout;
 	private final ValueStats selectorSelectTime;
@@ -47,7 +47,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	private final EventStats idleLoopsWaitingExternalTask;
 	private final EventStats selectOverdues;
 
-	EventloopStats(@Nullable EventloopInspector next) {
+	private EventloopStats(@Nullable EventloopInspector next) {
 		super(next);
 		this.next = next;
 		loops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -62,6 +62,14 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 		idleLoops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 		idleLoopsWaitingExternalTask = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 		selectOverdues = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+	}
+
+	public static EventloopStats create() {
+		return new EventloopStats(null);
+	}
+
+	public static EventloopStats create(EventloopInspector next) {
+		return new EventloopStats(next);
 	}
 
 	// region updating
@@ -101,10 +109,8 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	}
 
 	@Override
-	public void onUpdateSelectedKeyDuration(Stopwatch sw) {
-		if (sw != null) {
-			keys.oneKeyTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
-		}
+	public void onUpdateSelectedKeyDuration(@NotNull Stopwatch sw) {
+		keys.oneKeyTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
 		if (next != null) {
 			next.onUpdateSelectedKeyDuration(sw);
 		}
@@ -136,7 +142,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	}
 
 	@Override
-	public void onUpdateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	public void onUpdateLocalTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw) {
 		updateTaskDuration(tasks.local.oneTaskTime, tasks.local.longestTask, runnable, sw);
 		if (next != null) {
 			next.onUpdateLocalTaskDuration(runnable, sw);
@@ -153,7 +159,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	}
 
 	@Override
-	public void onUpdateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	public void onUpdateConcurrentTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw) {
 		updateTaskDuration(tasks.concurrent.oneTaskTime, tasks.concurrent.longestTask, runnable, sw);
 		if (next != null) {
 			next.onUpdateConcurrentTaskDuration(runnable, sw);
@@ -170,7 +176,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	}
 
 	@Override
-	public void onUpdateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw, boolean background) {
+	public void onUpdateScheduledTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw, boolean background) {
 		if (background) {
 			updateTaskDuration(tasks.background.getOneTaskTime(), tasks.background.getLongestTask(), runnable, sw);
 		} else {
@@ -196,7 +202,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	}
 
 	@Override
-	public void onFatalError(Throwable e, Object causedObject) {
+	public void onFatalError(@NotNull Throwable e, Object causedObject) {
 		fatalErrors.recordException(e, causedObject);
 
 		Class<? extends Throwable> type = e.getClass();
@@ -289,7 +295,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 		private final ScheduledTaskStats scheduled;
 		private final ScheduledTaskStats background;
 
-		public Tasks() {
+		Tasks() {
 			local = new TaskStats();
 			concurrent = new TaskStats();
 			scheduled = new ScheduledTaskStats();
@@ -317,13 +323,14 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 		}
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static class TaskStats {
 		private final ValueStats tasksPerLoop;
 		private final ValueStats loopTime;
 		private final ValueStats oneTaskTime;
 		private final DurationRunnable longestTask;
 
-		public TaskStats() {
+		TaskStats() {
 			this.tasksPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
 			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");
@@ -359,7 +366,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 	public static final class ScheduledTaskStats extends TaskStats {
 		private final ValueStats overdues;
 
-		public ScheduledTaskStats() {
+		ScheduledTaskStats() {
 			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withRate().withUnit("milliseconds");
 		}
 

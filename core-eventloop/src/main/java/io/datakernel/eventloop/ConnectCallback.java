@@ -16,10 +16,12 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.nio.channels.SocketChannel;
 
 public interface ConnectCallback {
-	void onConnect(SocketChannel socketChannel);
+	void onConnect(@NotNull SocketChannel socketChannel);
 
-	void onException(Throwable e);
+	void onException(@NotNull Throwable e);
 }

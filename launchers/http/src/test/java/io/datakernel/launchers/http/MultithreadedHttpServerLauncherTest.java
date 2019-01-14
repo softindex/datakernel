@@ -10,9 +10,14 @@ import org.junit.Test;
 
 import java.util.Collection;
 
+import static io.datakernel.stream.processor.ByteBufRule.initByteBufPool;
 import static java.util.Collections.singletonList;
 
 public class MultithreadedHttpServerLauncherTest {
+	static {
+		initByteBufPool();
+	}
+
 	@Test
 	public void testsInjector() {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
