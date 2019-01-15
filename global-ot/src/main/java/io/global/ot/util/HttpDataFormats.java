@@ -37,7 +37,7 @@ import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.datakernel.http.HttpUtils.urlEncode;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 
@@ -54,7 +54,7 @@ public class HttpDataFormats {
 	private static <T> StructuredCodec<T> ofBinaryCodec(StructuredCodec<T> binaryCodec) {
 		return BYTES_CODEC.transform(
 				bytes -> decode(binaryCodec, bytes),
-				item -> encode(binaryCodec, item).asArray());
+				item -> encodeAsArray(binaryCodec, item));
 	}
 
 	public static final StructuredCodec<SignedData<RawPullRequest>> SIGNED_PULL_REQUEST_CODEC = REGISTRY.get(new TypeT<SignedData<RawPullRequest>>() {});

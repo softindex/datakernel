@@ -35,13 +35,11 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 
-import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.launchers.GlobalConfigConverters.*;
-import static io.global.ot.demo.util.Utils.LIST_DIFFS_CODEC;
+import static io.global.ot.demo.util.Utils.OPERATION_CODEC;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -105,9 +103,7 @@ public class Bootstrap implements EventloopService {
 		publicKey = privateKey.computePubKey();
 		simKey = config.get(ofSimKey(), "credentials.simKey");
 		repositoryId = RepoID.of(publicKey, config.get("repository.name"));
-		myRepositoryId = new MyRepositoryId<>(repositoryId, privateKey,
-				list -> encode(LIST_DIFFS_CODEC, list).asArray(),
-				bytes -> decode(LIST_DIFFS_CODEC, bytes));
+		myRepositoryId = new MyRepositoryId<>(repositoryId, privateKey, OPERATION_CODEC);
 		otDriver = new OTDriver(intermediateServer, emptyList(), repositoryId);
 		otDriver.changeCurrentSimKey(simKey);
 	}

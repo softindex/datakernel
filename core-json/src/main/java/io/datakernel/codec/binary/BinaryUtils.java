@@ -50,6 +50,10 @@ public final class BinaryUtils {
 		return out.getBuf();
 	}
 
+	public static <T> byte[] encodeAsArray(StructuredEncoder<T> encoder, T item) {
+		return encode(encoder, item).asArray();
+	}
+
 	public static <T> void encodeInto(StructuredEncoder<T> encoder, T item, ByteBuf dest) {
 		ByteBuf encoded = encode(encoder, item);
 		dest.write(encoded.array(), encoded.readPosition(), encoded.readRemaining());

@@ -16,25 +16,22 @@
 
 package io.global.ot.client;
 
-import io.datakernel.util.ParserFunction;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
 import io.global.common.PrivKey;
 import io.global.ot.api.RepoID;
 
 import java.util.List;
-import java.util.function.Function;
 
 public class MyRepositoryId<D> {
 	private final RepoID repositoryId;
 	private final PrivKey privKey;
-	private final Function<List<D>, byte[]> diffsSerializer;
-	private final ParserFunction<byte[], List<D>> diffsDeserializer;
+	private final StructuredCodec<List<D>> diffsCodec;
 
-	public MyRepositoryId(RepoID repositoryId, PrivKey privKey,
-			Function<List<D>, byte[]> diffsSerializer, ParserFunction<byte[], List<D>> diffsDeserializer) {
+	public MyRepositoryId(RepoID repositoryId, PrivKey privKey, StructuredCodec<D> diffCodec) {
 		this.repositoryId = repositoryId;
 		this.privKey = privKey;
-		this.diffsSerializer = diffsSerializer;
-		this.diffsDeserializer = diffsDeserializer;
+		this.diffsCodec = StructuredCodecs.ofList(diffCodec);
 	}
 
 	public RepoID getRepositoryId() {
@@ -45,11 +42,7 @@ public class MyRepositoryId<D> {
 		return privKey;
 	}
 
-	public Function<List<D>, byte[]> getDiffsSerializer() {
-		return diffsSerializer;
-	}
-
-	public ParserFunction<byte[], List<D>> getDiffsDeserializer() {
-		return diffsDeserializer;
+	public StructuredCodec<List<D>> getDiffsCodec() {
+		return diffsCodec;
 	}
 }

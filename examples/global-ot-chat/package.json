@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "scripts": {
+    "build": "gulp build",
+    "rebundle": "gulp rebundle",
+    "gateway": "gulp run:gateway",
+    "client": "gulp run:client"
+  },
+  "dependencies": {
+    "babel": "~5.8.3",
+    "babel-preset-react": "^6.1.18",
+    "babelify": "^7.2.0",
+    "browserify": "^12.0.1",
+    "del": "^2.2.0",
+    "gulp": "^3.9.0",
+    "gulp-rename": "^1.4.0",
+    "gulp-rsync": "^0.0.5",
+    "gulp-shell": "^0.5.1",
+    "gulp-sync": "^0.1.4",
+    "jquery": "^3.3.1"
+  }
+}

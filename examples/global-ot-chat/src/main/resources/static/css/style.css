@@ -1,0 +1,17 @@
+#chat {
+    overflow-y: scroll;
+    height: 600px;
+    width: 1000px;
+    resize: none;
+    font-family: sans-serif; 
+    font-size: 12px;  
+}
+
+#input {
+    width: 1000px;
+}
+
+#container{
+    text-align: center;
+}
+

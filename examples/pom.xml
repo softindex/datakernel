@@ -26,6 +26,7 @@
 		<module>eventloop</module>
 		<module>getting-started</module>
 		<module>global-ot-demo</module>
+		<module>global-ot-chat</module>
 		<module>global-fs-demo</module>
 		<module>global-db-demo</module>
 		<module>global-fs-cli</module>

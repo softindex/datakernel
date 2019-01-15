@@ -33,11 +33,10 @@ import io.global.ot.api.*;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 
-import java.io.IOException;
 import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
@@ -70,21 +69,19 @@ public final class OTDriver {
 			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
 		long timestamp = now.currentTimeMillis();
 		EncryptedData encryptedDiffs = encryptAES(
-				encode(COMMIT_DIFFS_CODEC,
+				encodeAsArray(COMMIT_DIFFS_CODEC,
 						parentDiffs.values()
 								.stream()
-								.map(value -> myRepositoryId.getDiffsSerializer().apply((List<D>) value))
-								.collect(toList()))
-						.asArray(),
+								.map(value -> encodeAsArray(myRepositoryId.getDiffsCodec(), (List<D>) value))
+								.collect(toList())),
 				currentSimKey.getAesKey());
-		byte[] rawCommitBytes = encode(COMMIT_CODEC,
+		byte[] rawCommitBytes = encodeAsArray(COMMIT_CODEC,
 				RawCommit.of(
 						parentDiffs.keySet(),
 						encryptedDiffs,
 						Hash.sha1(currentSimKey.getAesKey().getKey()),
 						level,
-						now.currentTimeMillis()))
-				.asArray();
+						now.currentTimeMillis()));
 		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
 		return OTCommit.of(commitId, parentDiffs, level)
 				.withTimestamp(timestamp)
@@ -177,10 +174,7 @@ public final class OTDriver {
 
 	public Promise<Set<CommitId>> getHeads(Set<RepoID> repositoryIds) {
 		return Promises.toList(repositoryIds.stream().map(this::getHeads))
-				.thenApply(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()))
-				.thenCompose(result -> !result.isEmpty() ?
-						Promise.of(result) :
-						Promise.ofException(new IOException("No heads found")));
+				.thenApply(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()));
 	}
 
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
@@ -201,7 +195,7 @@ public final class OTDriver {
 								Map<CommitId, List<? extends D>> parents = new HashMap<>();
 								Iterator<byte[]> it = list.iterator();
 								for (CommitId parent : rawCommit.getParents()) {
-									parents.put(parent, myRepositoryId.getDiffsDeserializer().parse(it.next()));
+									parents.put(parent, decode(myRepositoryId.getDiffsCodec(), it.next()));
 								}
 
 								return OTCommit.of(revisionId, parents, rawCommit.getLevel())
@@ -239,7 +233,7 @@ public final class OTDriver {
 							.thenApply(simKey -> decryptAES(rawSnapshot.encryptedDiffs, simKey.getAesKey()))
 							.thenApply(diffs -> {
 								try {
-									return myRepositoryId.getDiffsDeserializer().parse(diffs);
+									return decode(myRepositoryId.getDiffsCodec(), diffs);
 								} catch (ParseException e) {
 									throw new UncheckedException(e);
 								}
@@ -256,7 +250,7 @@ public final class OTDriver {
 						RawSnapshot.of(
 								myRepositoryId.getRepositoryId(),
 								revisionId,
-								encryptAES(myRepositoryId.getDiffsSerializer().apply(diffs), currentSimKey.getAesKey()),
+								encryptAES(encodeAsArray(myRepositoryId.getDiffsCodec(), diffs), currentSimKey.getAesKey()),
 								Hash.sha1(currentSimKey.getBytes())),
 						myRepositoryId.getPrivKey()));
 	}

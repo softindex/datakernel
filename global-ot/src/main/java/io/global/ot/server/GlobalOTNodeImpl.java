@@ -206,7 +206,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.thenApply(supplier -> supplier.map(
 								entry -> new CommitEntry(entry.commitId, entry.commit, thisHeads.get(entry.commitId))))
 				)
-				.whenComplete(toLogger(logger, "download", repositoryId, required, existing, this));
+				.whenComplete(toLogger(logger, TRACE, "download", repositoryId, required, existing, this));
 	}
 
 	private Promise<RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,

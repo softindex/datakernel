@@ -21,8 +21,7 @@ import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.exception.ParseException;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 
-import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.codec.binary.BinaryUtils.*;
 
 public final class SignedData<T> {
 	private final T value;
@@ -44,7 +43,7 @@ public final class SignedData<T> {
 	}
 
 	public static <T> SignedData<T> sign(StructuredEncoder<T> encoder, T value, PrivKey privKey) {
-		byte[] bytes = encode(encoder, value).asArray();
+		byte[] bytes = encodeAsArray(encoder, value);
 		return sign(value, bytes, privKey);
 	}
 

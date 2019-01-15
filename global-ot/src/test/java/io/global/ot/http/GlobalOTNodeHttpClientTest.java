@@ -16,17 +16,20 @@
 
 package io.global.ot.http;
 
+import ch.qos.logback.classic.Level;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -52,7 +55,7 @@ public class GlobalOTNodeHttpClientTest {
 		initByteBufPool();
 	}
 
-	private final LinkedList<Object> params = new LinkedList<>();
+	private static final LinkedList<Object> params = new LinkedList<>();
 	private final RawServerServlet servlet = getServlet();
 	private final GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost/");
 	private final KeyPair keys = KeyPair.generate();
@@ -73,6 +76,11 @@ public class GlobalOTNodeHttpClientTest {
 			createCommitEntry(set(1), 1, false),
 			createCommitEntry(set(3), 2, true)
 	);
+
+	@BeforeClass
+	public static void disableLogs() {
+		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+	}
 
 	@Test
 	public void list() {
@@ -319,7 +327,7 @@ public class GlobalOTNodeHttpClientTest {
 		});
 	}
 
-	private <T> void doTest(Promise<T> promise, Object... parameters) {
+	private static <T> void doTest(Promise<T> promise, Object... parameters) {
 		T result = await(promise);
 		assertEquals(params.remove(), result);
 		for (Object param : parameters) {
