@@ -9,8 +9,10 @@ in typed values)
 POJOs created with [Codegen](https://github.com/softindex/datakernel/tree/master/core-codegen) module)
 
 A common usage for a serializer is to pass some serialized class instances through the network to 
-remote machines for further processing. This approach is used in RPC, Dataflow and LSMT-Database modules. Serialization 
-process can be configured via annotations.
+remote machines for further processing. This approach is used in [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc), 
+[Dataflow](https://github.com/softindex/datakernel/tree/master/cloud-dataflow) and 
+[LSMT-Database](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-db) modules. 
+Serialization process can be configured via annotations:.
 
 ### You can explore Serializer examples [here](https://github.com/softindex/datakernel/tree/master/examples/serializer)
 

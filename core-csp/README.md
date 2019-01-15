@@ -7,11 +7,11 @@ from a channel by `ChannelConsumer`.
 When `ChannelConsumer` receives some data, it returns a `Promise` so that new object isn't 
 passed until the previous one is consumed. 
 
-`ChannelSuplier` gets data and then streams it to the next consumer. Both operations also return a Promise, as suppliers 
-work only with one object at a time.
-
 CSP utilizes Promise module which enables optimisation while communicating in tough conditions (for example, slow 
 Internet connection).
+
+`ChannelSuplier` gets data and then streams it to the next consumer. Both operations also return a Promise, as suppliers 
+work only with one object at a time.
 
 The main advantages of CSP are:
 * Supports file I/O using channels.
@@ -23,7 +23,7 @@ A core concept of CSP is queue and its modifications: `ChannelBuffer` and `Chann
 between Consumers and Suppliers and allow to create chains of these pipes if needed. Basically, these buffers pass objects 
 which were consumed by Consumer to Supplier as soon as the queue gets a free space. This process is controlled by Promises.
 
-`ChannelBuffer` can have a fixed sized of elements waiting in the queue, whereas `ChannelZeroBuffer` has a zero-sized queue, 
+`ChannelBuffer` can have a fixed size of elements waiting in the queue, whereas `ChannelZeroBuffer` has a zero-sized queue, 
 so that an element simply passes from Consumer to Supplier one by one.
 
 `ChannelConsumer` and `ChannelSupplier` have `ChannelFileReader` and `ChannelFileWriter` wrappers optimized 

@@ -1,6 +1,6 @@
 ## CRDT
 
-CRDT module was designed to create collaborative editing applications with CRDT (conflicat-free replicated data type) 
+CRDT module was designed to create collaborative editing applications with CRDT (conflict-free replicated data type) 
 approach. Well suitable for simple solutions (for example, a scalable eventually consistent key-value storage 
 with CRDT conflict resolutions).
 
@@ -8,12 +8,12 @@ This module includes implementations of CRDT Client and Server:
 * `CrdtClient` - an interface for various CRDT Client implementations.
 * `CrdtClusterClient` - an implementation of `CrdtClient`.
 * `RemoteCrdtClient` - an implementation of `CrdtClient`.
+* `RuntimeCrdtClient` - an implementation of `CrdtClient`.
 * `FsCrdtClient` - a CRDT client for working with Cloud-FS.
 * `RocksDBCrdtClient` - a CRDT client for working with RocksDB.
-* `RuntimeCrdtClient` - an implementation of `CrdtClient`.
 * `CrdtServer` - a CRDT server which processes uploads, downloads and removes of data.
 
-And also some useful builtin primitives needed for convenient CRDT applications development:
+There are also some useful builtin primitives needed for convenient CRDT applications development:
 
 * `GCounterInt` - an increment-only counter of int type.
 * `GCounterLong` - an increment-only counter of long type.

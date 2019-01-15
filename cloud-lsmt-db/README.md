@@ -7,5 +7,5 @@ asynchronous and distributed, with full support of transaction semantics. Dimens
 while measures represent values.
 
 `Cube` class represents an OLAP cube. It provides methods for loading and querying data along with functionality for 
-managing aggregations, such as:
+managing aggregations.
  

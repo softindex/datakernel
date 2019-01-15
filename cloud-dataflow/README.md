@@ -8,5 +8,5 @@ JSON commands to corresponding worker servers to be executed.
 * User can define custom predicates, mapping functions, reducers to be executed on datasets.
 * Nodes in a data graph have inputs and outputs which are identified by a unique StreamId. This allows inter-partition 
 data computation.
-* Since nodes are stateless by itself, computation is similar to passing data items through a pipeline, applying certain 
+* Since nodes are stateless by themselves, computation is similar to passing data items through a pipeline, applying certain 
 operations during the process.

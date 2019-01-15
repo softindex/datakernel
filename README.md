@@ -15,15 +15,15 @@ ad targeting, and also web crawlers that perform content indexing on a large sca
 ## Core components 
 
 ### [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)
-ByteBuf is a memory-efficient byte buffer, somewhat similar to Java's  `ByteBuffer` class. It is useful for fast 
-low-level I/O operations like working with files or transferring data over the internet. Apart from ByteBuf itself, the 
+ByteBuf is a memory-efficient byte buffer, which is somewhat similar to Java's  `ByteBuffer` class. It is useful for fast 
+low-level I/O operations like working with files or transferring data over the Internet. Apart from ByteBuf itself, the 
 module contains handy utility classes.
 
 [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
 
 ### [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop)
 
-Eventloop provides efficient non-blocking network and file I/O, for building Node.js-like client/server applications 
+Eventloop provides efficient non-blocking network and file I/O for building Node.js-like client/server applications 
 with high performance requirements. It resembles Event Loop in Node.js. Although Eventloop runs in a single thread, 
 multiple Eventloops can run at the same time providing efficient CPU usage.
 
@@ -45,7 +45,7 @@ channels similarly to the Go language.
 
 ### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
 
-Promise module is similar to JavaScript Promise and is alternative to Java's CompletionStage and allows to organize 
+Promise module is similar to JavaScript Promise and is alternative to Java's `CompletionStage` and allows to organize 
 asynchronous code in convenient way. 
 
 [Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise)
@@ -54,7 +54,7 @@ asynchronous code in convenient way.
 
 Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the 
 complexity of direct bytecode manipulation, so you can use it to create custom classes on the fly by providing a class 
-description. It is useful for situations when you have to adjust class behavior in the runtime, based on some external
+description. It is particularly useful in the situations when you have to adjust class behavior in the runtime, based on some external
 factors.
 
 [Codegen examples](https://github.com/softindex/datakernel/tree/master/examples/codegen)
@@ -101,7 +101,7 @@ efficient asynchronous binary RPC streaming protocol.
 
 ### [FS](https://github.com/softindex/datakernel/tree/master/cloud-fs)
 
-Basis for building efficient, scalable remote file servers with implementation of caching and fast asynchronous file I/O 
+Basis for building efficient, scalable remote file storage with implementation of caching and fast asynchronous file I/O 
 based on Java NIO. Utilizes CSP for fast and reliable file transfer.
 
 [FS examples](https://github.com/softindex/datakernel/tree/master/examples/remotefs)  
@@ -212,8 +212,8 @@ Using this module you can build a server application that will be compatible wit
 [UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)
 
 ## Getting started
-There are three guides which demonstrate some basic yet extremely important features of DataKernel to get the overall 
-understanding of the framework:
+There are three guides which demonstrate some basic yet extremely important features of DataKernel to get started with 
+the framework:
 1. ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) - this guide shows 
  how to create a simple “Hello World” application using Eventloop, which is the core component of DataKernel framework.
 2. ["Hello World!" HTTP Server](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld) - create a 
