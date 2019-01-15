@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -478,6 +479,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return keys;
 	}
 
+	private void executeTask(@Async.Execute Runnable task) {
+		task.run();
+	}
+
 	/**
 	 * Executes local tasks which were added from current thread
 	 */
@@ -500,7 +505,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			try {
-				runnable.run();
+				executeTask(runnable);
 				tick++;
 				if (sw != null && inspector != null) inspector.onUpdateLocalTaskDuration(runnable, sw);
 			} catch (Throwable e) {
@@ -539,7 +544,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			try {
-				runnable.run();
+				executeTask(runnable);
 				if (sw != null && inspector != null) inspector.onUpdateConcurrentTaskDuration(runnable, sw);
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
@@ -598,7 +603,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			try {
-				runnable.run();
+				executeTask(runnable);
 				tick++;
 				peeked.complete();
 				if (sw != null && inspector != null) inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
@@ -857,7 +862,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param runnable runnable of this task
 	 */
-	public void post(@NotNull Runnable runnable) {
+	public void post(@NotNull @Async.Schedule Runnable runnable) {
 		assert inEventloopThread();
 		localTasks.addFirst(runnable);
 	}
@@ -867,7 +872,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param runnable runnable of this task
 	 */
-	public void postLater(@NotNull Runnable runnable) {
+	public void postLater(@NotNull @Async.Schedule Runnable runnable) {
 		assert inEventloopThread();
 		localTasks.addLast(runnable);
 	}
@@ -879,7 +884,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable runnable of this task
 	 */
 	@Override
-	public void execute(@NotNull Runnable runnable) {
+	public void execute(@NotNull @Async.Schedule Runnable runnable) {
 		concurrentTasks.offer(runnable);
 		if (selector != null) {
 			selector.wakeup();
@@ -895,7 +900,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	@NotNull
 	@Override
-	public ScheduledRunnable schedule(long timestamp, @NotNull Runnable runnable) {
+	public ScheduledRunnable schedule(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, false);
 	}
@@ -911,7 +916,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	@NotNull
 	@Override
-	public ScheduledRunnable scheduleBackground(long timestamp, @NotNull Runnable runnable) {
+	public ScheduledRunnable scheduleBackground(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, true);
 	}

@@ -50,9 +50,9 @@ public final class TestSimpleCrdt {
 		remoteStorage.put("only_remote", 4);
 
 		server = CrdtServer.create(getCurrentEventloop(), remoteStorage, UTF8_SERIALIZER, INT_SERIALIZER);
-		server.withListenAddress(new InetSocketAddress(8080)).listen();
+		server.withListenAddress(new InetSocketAddress(5555)).listen();
 
-		client = RemoteCrdtClient.create(getCurrentEventloop(), new InetSocketAddress(8080), UTF8_SERIALIZER, INT_SERIALIZER);
+		client = RemoteCrdtClient.create(getCurrentEventloop(), new InetSocketAddress(5555), UTF8_SERIALIZER, INT_SERIALIZER);
 	}
 
 	@Test

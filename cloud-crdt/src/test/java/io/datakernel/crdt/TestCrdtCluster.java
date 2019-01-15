@@ -50,7 +50,7 @@ public final class TestCrdtCluster {
 		Map<String, RuntimeCrdtClient<String, Integer>> remoteStorages = new LinkedHashMap<>();
 		for (int i = 0; i < 10; i++) {
 			RuntimeCrdtClient<String, Integer> storage = RuntimeCrdtClient.create(eventloop, Math::max);
-			InetSocketAddress address = new InetSocketAddress(8080 + i);
+			InetSocketAddress address = new InetSocketAddress(5555 + i);
 			CrdtServer<String, Integer> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SERIALIZER);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
@@ -94,7 +94,7 @@ public final class TestCrdtCluster {
 			storage.put("test_2", new HashSet<>(singleton(i / 2)));
 			storage.put("test_3", new HashSet<>(singleton(123)));
 
-			InetSocketAddress address = new InetSocketAddress(8080 + i);
+			InetSocketAddress address = new InetSocketAddress(5555 + i);
 			CrdtServer<String, Set<Integer>> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SET_SERIALIZER);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
