@@ -104,8 +104,7 @@ public class Bootstrap implements EventloopService {
 		simKey = config.get(ofSimKey(), "credentials.simKey");
 		repositoryId = RepoID.of(publicKey, config.get("repository.name"));
 		myRepositoryId = new MyRepositoryId<>(repositoryId, privateKey, OPERATION_CODEC);
-		otDriver = new OTDriver(intermediateServer, emptyList(), repositoryId);
-		otDriver.changeCurrentSimKey(simKey);
+		otDriver = new OTDriver(intermediateServer, simKey);
 	}
 
 	private Promise<Void> initializeDiscoveryService() {

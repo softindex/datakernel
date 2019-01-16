@@ -3,18 +3,25 @@
 
 <head>
   <link rel="stylesheet" href="css/style.css"/>
-  <script src="js/bundle.js"></script>
   <title>OT Chat Demo</title>
 </head>
 
 <body>
-<div id='container'>
-  <textarea id='chat' readonly></textarea>
-  <input id='input' type='text'>
-  <br>
-  <button id='delete'>Delete</button>
+<div class='container'>
+  <div class='chat'>
+    <textarea id='chat' readonly></textarea>
+    <input id='input' type='text'>
+    <button id='delete'>Delete</button>
+  </div>
+  <div class='graph'>
+    <div id="graphviz" style="text-align: center;"></div>
+    <input id='node' type='text' value="http://127.0.0.1:9000/ot/">
+    <button id='changeNode'>Change node url</button>
+  </div>
+  <span class=""></span>
 </div>
 
+<script src="js/bundle.js"></script>
 </body>
 
 </html>

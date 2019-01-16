@@ -17,6 +17,7 @@ import static java.util.Arrays.asList;
 public class ChatClientLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "client.properties";
+	public static final String CREDENTIALS_FILE = "credentials.properties";
 
 	@Inject
 	AsyncHttpServer server;
@@ -27,9 +28,11 @@ public class ChatClientLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.ofProperties(PROPERTIES_FILE)
+								.combine(Config.ofProperties(CREDENTIALS_FILE))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new ChatClientModule()
+				new ChatClientModule(),
+				new ChatGraphModule()
 		);
 	}
 

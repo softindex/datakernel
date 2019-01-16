@@ -8,7 +8,7 @@ import io.global.ot.chat.operations.ChatOperation;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static java.lang.Boolean.parseBoolean;
 
-public class ChatGatewayLauncher extends GatewayLauncher {
+public final class ChatGatewayLauncher extends GatewayLauncher {
 
 	@Override
 	protected StructuredCodec<Operation> getOperationCodec() {

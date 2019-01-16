@@ -82,12 +82,10 @@ public class GatewayModule extends AbstractModule {
 		RepoID repoID = config.get(ofRepoID(), "credentials.repositoryId");
 		PrivKey privKey = config.get(ofPrivKey(), "credentials.privateKey");
 		MyRepositoryId<Operation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, operationCodec);
-		OTDriver driver = new OTDriver(node, emptyList(), repoID);
-		driver.changeCurrentSimKey(config.get(ofSimKey(), "credentials.simKey"));
+		OTDriver driver = new OTDriver(node, config.get(ofSimKey(), "credentials.simKey"));
 		initializeRepo(eventloop, driver, myRepositoryId);
 		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
-
 
 	@Provides
 	@Singleton

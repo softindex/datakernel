@@ -3,12 +3,10 @@ package io.global.ot.chat.client;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.StaticServlet;
+import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.global.ot.chat.common.Gateway;
@@ -16,12 +14,13 @@ import io.global.ot.chat.http.GatewayHttpClient;
 import io.global.ot.chat.operations.ChatOperation;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.ot.chat.operations.ChatOperation.OPERATION_CODEC;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-public class ChatClientModule extends AbstractModule {
+public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
@@ -39,9 +38,10 @@ public class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	MiddlewareServlet provideMiddlewareServlet(ClientServlet apiServlet, StaticServlet staticServlet) {
+	MiddlewareServlet provideMiddlewareServlet(ClientServlet apiServlet, StaticServlet staticServlet, @Named("Graph") AsyncServlet graphServlet) {
 		return MiddlewareServlet.create()
 				.with("/api", apiServlet)
+				.with(GET, "/graph", graphServlet)
 				.withFallback(staticServlet);
 	}
 

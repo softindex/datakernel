@@ -1,5 +1,7 @@
 package io.datakernel.codec;
 
+import java.util.List;
+
 public interface StructuredEncoder<T> {
 	void encode(StructuredOutput out, T item);
 
@@ -13,6 +15,10 @@ public interface StructuredEncoder<T> {
 
 	static <T> StructuredEncoder<T> ofTuple(StructuredEncoder<T> encoder) {
 		return (out, item) -> out.writeTuple(encoder, item);
+	}
+
+	static <T> StructuredEncoder<List<T>> ofList(StructuredEncoder<T> encoder) {
+		return (out, list) -> out.writeList(encoder, list);
 	}
 
 }

@@ -60,8 +60,13 @@ public final class OTDriver {
 	@Nullable
 	private SimKey currentSimKey;
 
-	public OTDriver(GlobalOTNode service, List<RepoID> originRepositoryIds, RepoID myRepositoryId) {
+	public OTDriver(GlobalOTNode service, SimKey currentSimKey) {
 		this.service = service;
+		changeCurrentSimKey(currentSimKey);
+	}
+
+	public OTDriver(GlobalOTNode service) {
+		this(service, null);
 	}
 
 	@SuppressWarnings("unchecked")

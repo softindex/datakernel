@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
@@ -32,8 +33,9 @@ public class SimpleServlet implements AsyncServlet {
 		this.responseMessage = responseMessage;
 	}
 
+	@NotNull
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest httpRequest) {
+	public Promise<HttpResponse> serve(@NotNull HttpRequest httpRequest) {
 		byte[] message = encodeAscii("Worker #" + workerId + ". Message: " + responseMessage + "\n");
 		return Promise.of(HttpResponse.ok200().withBody(message));
 	}

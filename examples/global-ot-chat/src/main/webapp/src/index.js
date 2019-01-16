@@ -1,19 +1,29 @@
 var $ = require("jquery");
+var d3 = require("d3-graphviz");
+
 var lastUpdate = [];
+var nodeUrl = '';
 
 $(document).ready(function () {
+    nodeUrl = $('#node').val();
     $('#delete').click(deleteMessage);
     $('#input').keydown(function (e) {
         if (e.keyCode == 13) {
             consumeInput();
         }
     })
+    $('#changeNode').click(function () {
+        d3.graphviz("#graphviz")
+                .zoom(false)
+                .renderDot('digraph empty{}');
+        nodeUrl = $('#node').val();
+    });
     var chat = $('#chat');
     chat.click(function (e) {
         var content = chat.val();
         var caretPos = chat[0].selectionStart;
-        var lineBreak1 = content.lastIndexOf('\n', caretPos -1 );
-        if (lineBreak1 == -1){
+        var lineBreak1 = content.lastIndexOf('\n', caretPos - 1);
+        if (lineBreak1 == -1) {
             lineBreak1 = 0;
         }
         var lineBreak2 = content.indexOf('\n', caretPos);
@@ -50,12 +60,30 @@ function update() {
             alert('Failed to update: ' + xhr.responseText);
         }
     });
+
+    if (nodeUrl === '') {
+        return;
+    }
+
+    $.ajax({
+        type: "get",
+        dataType: 'text',
+        url: '/graph/' + '?node=' + encodeURIComponent(nodeUrl),
+        success: function (data) {
+            d3.graphviz("#graphviz")
+                .zoom(false)
+                .renderDot(data);
+        },
+        error: function (xhr, error) {
+            console.log('Failed to get graph from node [' + nodeUrl + '] ' + xhr.responseText);
+        }
+    })
 }
 
 function send(message) {
     $.ajax({
         type: "post",
-        url: '/api/send/',
+        url: '/api/send',
         data: message,
         dataType: 'text',
         success: function (data) {
@@ -119,7 +147,6 @@ function deleteMessage() {
     var input = $('#chat');
     var chat = input[0];
     var line = chat.value.substr(0, chat.selectionEnd).split("\n").length;
-    console.log(line);
 
     var toDelete = lastUpdate[line - 1];
     sendDelete(toDelete[0], toDelete[1]);
