@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,7 @@
 
 package io.global.fs.local;
 
-import io.datakernel.remotefs.FsClient;
 import io.global.common.KeyPair;
-import io.global.common.PrivKey;
 import io.global.common.PrivateKeyStorage;
 import io.global.common.PubKey;
 import io.global.common.api.DiscoveryService;
@@ -49,12 +47,8 @@ public final class GlobalFsDriver {
 		return new GlobalFsDriver(node, pks, checkpointPosStrategy);
 	}
 
-	public FsClient gatewayFor(PubKey pubKey) {
-		PrivKey privKey = privateKeyStorage.getManagedKey(pubKey);
-		if (privKey == null) {
-			throw new IllegalArgumentException("No private key stored for " + pubKey);
-		}
-		return new GlobalFsGateway(this, node, pubKey, privKey, checkpointPosStrategy);
+	public GlobalFsGateway gatewayFor(PubKey pubKey) {
+		return new GlobalFsGateway(this, node, pubKey, privateKeyStorage.getManagedKey(pubKey), checkpointPosStrategy);
 	}
 
 	public PrivateKeyStorage getPrivateKeyStorage() {

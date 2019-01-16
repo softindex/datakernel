@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
-import io.datakernel.loader.cache.CacheNoEvictionPolicy;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
@@ -35,6 +35,9 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 	private int responseCode = 200;
 	private ContentType contentType;
 
+	@Nullable
+	private ByteBuf cached = null;
+
 	private SingleResourceStaticServlet(Eventloop eventloop, StaticLoader resourceLoader, String path, ContentType contentType) {
 		this.eventloop = eventloop;
 		this.resourceLoader = resourceLoader;
@@ -43,11 +46,15 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 	}
 
 	public static SingleResourceStaticServlet create(Eventloop eventloop, StaticLoader resourceLoader, String path) {
-		return new SingleResourceStaticServlet(eventloop, resourceLoader.cached(CacheNoEvictionPolicy.create()), path, StaticServlet.getContentType(path));
+		return new SingleResourceStaticServlet(eventloop, resourceLoader, path, StaticServlet.getContentType(path));
+	}
+
+	public static SingleResourceStaticServlet create(Eventloop eventloop, ByteBuf data, ContentType contentType) {
+		return new SingleResourceStaticServlet(eventloop, $ -> Promise.of(data), "", contentType);
 	}
 
 	public static SingleResourceStaticServlet create(Eventloop eventloop, byte[] data, ContentType contentType) {
-		return new SingleResourceStaticServlet(eventloop, $ -> Promise.of(ByteBuf.wrapForReading(data)), "", contentType);
+		return create(eventloop, ByteBuf.wrapForReading(data), contentType);
 	}
 
 	public SingleResourceStaticServlet withResponseCode(int responseCode) {
@@ -64,11 +71,24 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		assert eventloop.inEventloopThread();
-		return request.getMethod() == HttpMethod.GET ?
-				resourceLoader.getResource(path)
-						.thenApply(buf -> HttpResponse.ofCode(responseCode)
-								.withBody(buf)
-								.withHeader(CONTENT_TYPE, ofContentType(contentType))) :
-				Promise.ofException(METHOD_NOT_ALLOWED);
+		if (request.getMethod() != HttpMethod.GET) {
+			return Promise.ofException(METHOD_NOT_ALLOWED);
+		}
+		if (cached != null) {
+			return Promise.of(getCached());
+		}
+		return resourceLoader.getResource(path)
+				.thenApply(buf -> {
+					cached = buf;
+					return getCached();
+				});
+	}
+
+	@NotNull
+	private HttpResponse getCached() {
+		assert cached != null;
+		return HttpResponse.ofCode(responseCode)
+				.withBody(cached.slice())
+				.withHeader(CONTENT_TYPE, ofContentType(contentType));
 	}
 }

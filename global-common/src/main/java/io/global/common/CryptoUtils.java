@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.global.common;
 
+import io.datakernel.exception.ParseException;
 import io.global.common.api.EncryptedData;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.asn1.x9.X9ECParameters;
@@ -135,43 +136,38 @@ public final class CryptoUtils {
 		return newBytes;
 	}
 
-	public static byte[] encryptECIES(byte[] message, ECPublicKeyParameters ecPublicKeyParameters) {
-		EphemeralKeyPairGenerator ephKeyGen = new EphemeralKeyPairGenerator(
-				KEY_PAIR_GENERATOR,
-				keyParameter ->
-						((ECPublicKeyParameters) keyParameter).getQ().getEncoded(true));
-
-		IESEngine i1 = new IESEngine(
+	private static IESEngine createIESEngine() {
+		return new IESEngine(
 				new ECDHBasicAgreement(),
 				new KDF2BytesGenerator(new SHA1Digest()),
 				new HMac(new SHA1Digest()));
+	}
 
+	private static CipherParameters createIESParameters() {
 		byte[] d = {1, 2, 3, 4, 5, 6, 7, 8};
 		byte[] e = {8, 7, 6, 5, 4, 3, 2, 1};
-		CipherParameters p = new IESParameters(d, e, 64);
+		return new IESParameters(d, e, 64);
+	}
 
-		i1.init(ecPublicKeyParameters, p, ephKeyGen);
+	public static byte[] encryptECIES(byte[] message, ECPublicKeyParameters ecPublicKeyParameters) {
+		EphemeralKeyPairGenerator ephKeyGen = new EphemeralKeyPairGenerator(
+				KEY_PAIR_GENERATOR,
+				keyParameter -> ((ECPublicKeyParameters) keyParameter).getQ().getEncoded(true));
+
+		IESEngine engine = createIESEngine();
+		engine.init(ecPublicKeyParameters, createIESParameters(), ephKeyGen);
 
 		try {
-			return i1.processBlock(message, 0, message.length);
+			return engine.processBlock(message, 0, message.length);
 		} catch (InvalidCipherTextException e1) {
 			throw new IllegalArgumentException(e1);
 		}
 	}
 
 	public static byte[] decryptECIES(byte[] encryptedMessage, ECPrivateKeyParameters ecPrivateKeyParameters) throws CryptoException {
-		IESEngine i2 = new IESEngine(
-				new ECDHBasicAgreement(),
-				new KDF2BytesGenerator(new SHA1Digest()),
-				new HMac(new SHA1Digest()));
-
-		byte[] d = {1, 2, 3, 4, 5, 6, 7, 8};
-		byte[] e = {8, 7, 6, 5, 4, 3, 2, 1};
-		CipherParameters p = new IESParameters(d, e, 64);
-
-		i2.init(ecPrivateKeyParameters, p, new ECIESPublicKeyParser(CURVE));
-
-		return i2.processBlock(encryptedMessage, 0, encryptedMessage.length);
+		IESEngine engine = createIESEngine();
+		engine.init(ecPrivateKeyParameters, createIESParameters(), new ECIESPublicKeyParser(CURVE));
+		return engine.processBlock(encryptedMessage, 0, encryptedMessage.length);
 	}
 
 	public static boolean verify(byte[] data, Signature signature, ECPublicKeyParameters ecPublicKeyParameters) {
@@ -213,5 +209,38 @@ public final class CryptoUtils {
 
 	public static ECPublicKeyParameters computePubKey(ECPrivateKeyParameters privKey) {
 		return new ECPublicKeyParameters(FIXED_POINT_COMB_MULTIPLIER.multiply(CURVE.getG(), privKey.getD()), CURVE);
+	}
+
+	public static String toHexString(byte[] bytes) {
+		StringBuilder sb = new StringBuilder(bytes.length * 2);
+		for (byte b : bytes) {
+			int x = b & 0xFF;
+			if (x < 16) {
+				sb.append('0');
+			}
+			sb.append(Integer.toHexString(x));
+		}
+		return sb.toString();
+	}
+
+	public static byte[] fromHexString(String hexString) throws ParseException {
+		int len = hexString.length();
+
+		if (len % 2 != 0) {
+			throw new ParseException(CryptoUtils.class, "Hex string should have even length");
+		}
+
+		byte[] data = new byte[len / 2];
+		for (int i = 0; i < len; i += 2) {
+			int digit1 = Character.digit(hexString.charAt(i), 16);
+			int digit2 = Character.digit(hexString.charAt(i + 1), 16);
+
+			if (digit1 == -1 || digit2 == -1) {
+				throw new ParseException("Hex string contains illegal characters: " + hexString);
+			}
+
+			data[i / 2] = (byte) ((digit1 << 4) + digit2);
+		}
+		return data;
 	}
 }

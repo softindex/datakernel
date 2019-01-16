@@ -563,8 +563,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		Promise<List<SignedData<GlobalFsCheckpoint>>> list(String glob) {
 			return checkpointStorage.listMetaCheckpoints(glob)
 					.thenCompose(list -> Promises.collectSequence(toList(),
-							list.stream()
-									.map(filename -> () -> checkpointStorage.loadMetaCheckpoint(filename))));
+							list.stream().map(filename -> () -> checkpointStorage.loadMetaCheckpoint(filename))));
 		}
 
 		Promise<SignedData<GlobalFsCheckpoint>> getMetadata(String fileName) {

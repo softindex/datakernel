@@ -54,6 +54,8 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsGateway.class);
 
 	public static final ConstantException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new ConstantException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size");
+	public static final ConstantException UPK_UPLOAD = new ConstantException(GlobalFsGateway.class, "Trying to upload to public key without knowing it's private key");
+	public static final ConstantException UPK_DELETE = new ConstantException(GlobalFsGateway.class, "Trying to delete file at public key without knowing it's private key");
 
 	private static final StructuredCodec<GlobalFsCheckpoint> METADATA_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
 
@@ -61,11 +63,13 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 
 	private final GlobalFsNode node;
 	private final PubKey space;
-	private final PrivKey privKey;
+
+	@Nullable
+	private PrivKey privKey;
 
 	private final CheckpointPosStrategy checkpointPosStrategy;
 
-	GlobalFsGateway(GlobalFsDriver driver, GlobalFsNode node, PubKey space, PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
+	GlobalFsGateway(GlobalFsDriver driver, GlobalFsNode node, PubKey space, @Nullable PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
 		this.driver = driver;
 		this.node = node;
 		this.space = space;
@@ -90,8 +94,21 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 						}));
 	}
 
+	public void setPrivKey(PrivKey privKey) {
+		if (this.privKey != null) {
+			throw new IllegalStateException("Gateway already knows it's private key");
+		}
+		if (!privKey.computePubKey().equals(space)) {
+			throw new IllegalStateException("Trying to set gateway's private key that does not correspond to the public key");
+		}
+		this.privKey = privKey;
+	}
+
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+		if (privKey == null) {
+			return Promise.ofException(UPK_UPLOAD);
+		}
 		// cut off the part of the file that is already there
 		return node.getMetadata(space, filename)
 				.thenComposeEx((signedCheckpoint, e) -> {
@@ -148,10 +165,16 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 				.thenApply(res -> res.stream()
 						.map(signedMeta -> {
 							GlobalFsCheckpoint value = signedMeta.getValue();
-							return new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), 0);
+							return new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), value.getSimKeyHash() == null ? 0 : 1);
 						})
 						.collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+	}
+
+	public Promise<List<GlobalFsCheckpoint>> extentedList(String glob) {
+		return node.list(space, glob)
+				.thenApply(res -> res.stream().map(SignedData::getValue).collect(toList()))
+				.whenComplete(toLogger(logger, TRACE, "extendedList", glob, this));
 	}
 
 	@Override
@@ -181,6 +204,9 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 
 	@Override
 	public Promise<Void> delete(String filename) {
+		if (privKey == null) {
+			return Promise.ofException(UPK_DELETE);
+		}
 		return node.delete(space, SignedData.sign(METADATA_CODEC, GlobalFsCheckpoint.createTombstone(filename), privKey))
 				.whenComplete(toLogger(logger, TRACE, "delete", filename, this));
 	}

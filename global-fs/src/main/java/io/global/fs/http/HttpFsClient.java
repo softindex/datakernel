@@ -69,8 +69,10 @@ public class HttpFsClient implements FsClient {
 									.withAcknowledgement(ack -> ack.both(responsePromise)));
 							return buffer.getSupplier();
 						})))
-				.thenCompose(response -> response.getCode() != 200 && response.getCode() != 201 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
 				.whenException(channelPromise::trySetException)
 				.whenComplete(responsePromise::trySet);
 
@@ -87,8 +89,10 @@ public class HttpFsClient implements FsClient {
 								.appendPath(filename)
 								.appendQuery("range", offset + (length == -1 ? "" : ("-" + (offset + length))))
 								.build()))
-				.thenCompose(response -> response.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
@@ -101,9 +105,9 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response1 -> response1.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
-				.thenCompose(response -> response.getBody().thenCompose(body -> {
+				.thenCompose(response -> response.getCode() == 200 ? Promise.of(response) : Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(HttpMessage::getBody)
+				.thenCompose(body -> {
 					try {
 						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
 					} catch (ParseException e) {
@@ -111,7 +115,7 @@ public class HttpFsClient implements FsClient {
 					} finally {
 						body.recycle();
 					}
-				}));
+				});
 	}
 
 	@Override
@@ -123,8 +127,10 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(MOVE)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(response -> response.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
 				.toVoid();
 	}
 
@@ -137,8 +143,10 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(COPY)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(response -> response.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
 				.toVoid();
 	}
 
@@ -151,8 +159,9 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(DELETE)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response -> response.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.thenCompose(response -> response.getCode() == 200 ?
+						Promise.of(response) :
+						Promise.ofException(HttpException.ofCode(response.getCode())))
 				.toVoid();
 	}
 

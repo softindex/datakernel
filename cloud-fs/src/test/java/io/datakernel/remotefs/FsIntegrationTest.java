@@ -151,7 +151,7 @@ public final class FsIntegrationTest {
 				.whenComplete(($, e) -> server.close()));
 
 		assertThat(exception, instanceOf(RemoteFsException.class));
-		assertTrue(Pattern.compile("File .*? goes outside of the storage directory").matcher(exception.getMessage()).find());
+		assertTrue(Pattern.compile("Path .*? goes outside of the storage directory").matcher(exception.getMessage()).find());
 	}
 
 	@Test

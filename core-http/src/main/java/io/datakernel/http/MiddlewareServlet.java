@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +24,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
+
 public class MiddlewareServlet implements AsyncServlet {
 	private static final String ROOT = "/";
 
 	protected final Map<String, MiddlewareServlet> routes = new HashMap<>();
+	protected final Map<HttpMethod, AsyncServlet> fallbackServlets = new HashMap<>();
 	protected AsyncServlet fallbackServlet;
 
 	protected final Map<HttpMethod, AsyncServlet> rootServlets = new HashMap<>();
@@ -53,34 +56,36 @@ public class MiddlewareServlet implements AsyncServlet {
 			throw new IllegalArgumentException("Invalid path " + path);
 		if (path.isEmpty() || path.equals(ROOT)) {
 			apply(method, servlet);
+			return this;
+		}
+		Slice sliced = sliceOneMServlet(path);
+		if (sliced.urlPart.endsWith("*")) {
+			assert "".equals(sliced.remainingPath) : "Tail-parameter can only be the last path part";
+			sliced.container.with(method, sliced.remainingPath, create().withFallback(method, servlet));
 		} else {
-			int slash = path.indexOf('/', 1);
-			String remainingPath;
-			String urlPart;
-			if (slash == -1) {
-				remainingPath = "";
-				urlPart = path.substring(1);
-			} else {
-				remainingPath = path.substring(slash);
-				urlPart = path.substring(1, slash);
-			}
-			MiddlewareServlet container = ensureMServlet(urlPart);
-			if (urlPart.endsWith("*")) {
-				assert "".equals(remainingPath) : "Tail-parameter can only be the last path part";
-				container.with(method, remainingPath, create().withFallback(servlet));
-			} else {
-				container.with(method, remainingPath, servlet);
-			}
+			sliced.container.with(method, sliced.remainingPath, servlet);
 		}
 		return this;
 	}
 
 	public MiddlewareServlet withFallback(AsyncServlet servlet) {
-		if (servlet == null)
-			throw new NullPointerException();
-		if (this.fallbackServlet != null)
+		checkNotNull(servlet);
+		if (this.fallbackServlet != null) {
 			throw new IllegalStateException("Fallback servlet is already set");
+		}
 		this.fallbackServlet = servlet;
+		return this;
+	}
+
+	public MiddlewareServlet withFallback(@Nullable HttpMethod method, AsyncServlet servlet) {
+		checkNotNull(servlet);
+		if (method == null) {
+			return withFallback(servlet);
+		}
+		if (fallbackServlets.containsKey(method)) {
+			throw new IllegalStateException("Fallback servlet is already set for method " + method);
+		}
+		fallbackServlets.put(method, servlet);
 		return this;
 	}
 
@@ -89,21 +94,53 @@ public class MiddlewareServlet implements AsyncServlet {
 			throw new IllegalArgumentException("Invalid path " + path);
 		if (path.isEmpty() || path.equals(ROOT)) {
 			withFallback(servlet);
-		} else {
-			int slash = path.indexOf('/', 1);
-			String remainingPath;
-			String urlPart;
-			if (slash == -1) {
-				remainingPath = "";
-				urlPart = path.substring(1);
-			} else {
-				remainingPath = path.substring(slash);
-				urlPart = path.substring(1, slash);
-			}
-			MiddlewareServlet container = ensureMServlet(urlPart);
-			container.withFallback(remainingPath, servlet);
+			return this;
 		}
+		Slice sliced = sliceOneMServlet(path);
+		sliced.container.withFallback(sliced.remainingPath, servlet);
 		return this;
+	}
+
+	public MiddlewareServlet withFallback(HttpMethod method, String path, AsyncServlet servlet) {
+		if (method == null) {
+			return withFallback(path, servlet);
+		}
+		if (!path.isEmpty() && !path.startsWith(ROOT))
+			throw new IllegalArgumentException("Invalid path " + path);
+		if (path.isEmpty() || path.equals(ROOT)) {
+			withFallback(method, servlet);
+			return this;
+		}
+		Slice sliced = sliceOneMServlet(path);
+		sliced.container.withFallback(method, sliced.remainingPath, servlet);
+		return this;
+	}
+
+	private Slice sliceOneMServlet(String path) {
+		int slash = path.indexOf('/', 1);
+		String remainingPath;
+		String urlPart;
+		if (slash == -1) {
+			remainingPath = "";
+			urlPart = path.substring(1);
+		} else {
+			remainingPath = path.substring(slash);
+			urlPart = path.substring(1, slash);
+		}
+		MiddlewareServlet container = ensureMServlet(urlPart);
+		return new Slice(remainingPath, container, urlPart);
+	}
+
+	class Slice {
+		final String remainingPath;
+		final MiddlewareServlet container;
+		final String urlPart;
+
+		Slice(String remainingPath, MiddlewareServlet container, String urlPart) {
+			this.remainingPath = remainingPath;
+			this.container = container;
+			this.urlPart = urlPart;
+		}
 	}
 
 	@NotNull
@@ -126,10 +163,9 @@ public class MiddlewareServlet implements AsyncServlet {
 			AsyncServlet servlet = getRootServletOrWildcard(method);
 			if (servlet != null) {
 				return servlet.serve(request);
-			} else if (fallbackServlet == null) {
-				if (!rootServlets.isEmpty()) {
-					return null;
-				}
+			}
+			if (fallbackServlet == null && !fallbackServlets.containsKey(method) && !rootServlets.isEmpty()) {
+				return null;
 			}
 		}
 
@@ -160,9 +196,12 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
-		if (result == null && fallbackServlet != null) {
-			request.setPos(introPosition);
-			result = fallbackServlet.serve(request);
+		if (result == null) {
+			AsyncServlet f = fallbackServlets.getOrDefault(method, fallbackServlet);
+			if (f != null) {
+				request.setPos(introPosition);
+				result = f.serve(request);
+			}
 		}
 		return result;
 	}
@@ -227,10 +266,21 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
+		for (Entry<HttpMethod, AsyncServlet> entry : mServlet2.fallbackServlets.entrySet()) {
+			HttpMethod key = entry.getKey();
+			AsyncServlet s1 = mServlet1.fallbackServlets.get(key);
+			AsyncServlet s2 = entry.getValue();
+			if (s1 == null) {
+				mServlet1.fallbackServlets.put(key, s2);
+			} else if (s1 != s2) {
+				throw new IllegalArgumentException("Can't map. Servlet for this method already exists");
+			}
+		}
+
 		if (mServlet1.rootServlet == null) {
 			mServlet1.rootServlet = mServlet2.rootServlet;
 		} else if (mServlet2.rootServlet != null && mServlet1.rootServlet != mServlet2.rootServlet) {
-			throw new IllegalArgumentException("Can't map. Servlet for this method already exists");
+			throw new IllegalArgumentException("Can't map. Fallback for this method already exists");
 		}
 
 		if (mServlet1.fallbackServlet == null) {

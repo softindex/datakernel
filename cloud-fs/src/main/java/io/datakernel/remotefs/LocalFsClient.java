@@ -417,7 +417,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private Path resolve(String filePath) throws IOException {
 		Path path = storageDir.resolve(File.separatorChar == '\\' ? filePath.replace('/', '\\') : filePath).normalize();
 		if (!path.startsWith(storageDir)) {
-			throw new IOException("File " + filePath + " goes outside of the storage directory");
+			throw new IOException("Path " + filePath + " goes outside of the storage directory");
 		}
 		return path;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,8 +102,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request ->
-				{
+				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
 					try {
 						return discoveryService.getSharedKeys(PubKey.fromString(request.getPathParameter("receiver")))
 								.thenApply(signedSharedKeys ->

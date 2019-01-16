@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
 	private static final byte[] CODE_200_BYTES = encodeAscii("HTTP/1.1 200 OK");
 	private static final byte[] CODE_201_BYTES = encodeAscii("HTTP/1.1 201 Created");
+	private static final byte[] CODE_206_BYTES = encodeAscii("HTTP/1.1 206 Partial Content");
 	private static final byte[] CODE_302_BYTES = encodeAscii("HTTP/1.1 302 Found");
 	private static final byte[] CODE_400_BYTES = encodeAscii("HTTP/1.1 400 Bad Request");
 	private static final byte[] CODE_403_BYTES = encodeAscii("HTTP/1.1 403 Forbidden");
@@ -67,6 +68,14 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	@NotNull
 	public static HttpResponse ok200() {
 		return new HttpResponse(200);
+	}
+
+	public static HttpResponse ok201() {
+		return new HttpResponse(201);
+	}
+
+	public static HttpResponse ok206() {
+		return new HttpResponse(206);
 	}
 	// endregion
 
@@ -144,10 +153,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return this;
 	}
 
-	public static HttpResponse ok201() {
-		return new HttpResponse(201);
-	}
-
 	public int getCode() {
 		assert !isRecycled();
 		return code;
@@ -196,6 +201,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				break;
 			case 201:
 				result = CODE_201_BYTES;
+				break;
+			case 206:
+				result = CODE_206_BYTES;
 				break;
 			case 302:
 				result = CODE_302_BYTES;

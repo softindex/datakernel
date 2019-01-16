@@ -28,8 +28,8 @@ import io.global.ot.api.CommitId;
 import java.util.UUID;
 import java.util.function.Function;
 
+import static io.global.common.CryptoUtils.toHexString;
 import static java.util.Collections.singletonList;
-import static javax.xml.bind.DatatypeConverter.printHexBinary;
 
 public final class Utils {
 
@@ -59,7 +59,7 @@ public final class Utils {
 	}
 
 	public static Function<CommitId, String> getCommitIdToString() {
-		return commitId -> printHexBinary(commitId.toBytes()).substring(0, 7).toLowerCase();
+		return commitId -> toHexString(commitId.toBytes()).substring(0, 7);
 	}
 
 	public static Function<ChatOperation, String> getChatOperationToString() {
