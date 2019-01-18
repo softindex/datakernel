@@ -1,19 +1,41 @@
 ## ByteBuf
 
-ByteBuf module provides memory-efficient, recyclable byte buffers.
+ByteBuf module provides memory-efficient, recyclable byte buffers. The main components of the module are:
 
-* Represents a wrapper over a byte buffer with separate read and write indices.
-* Has a pooling support for better memory efficiency.
-* `ByteBufQueue` class provides effective management of multiple ByteBufs.
-* Utility classes manage resizing of underlying byte buffer, `String` conversions, etc.
+### ByteBuf 
+An extremely light-weight and efficient implementation compared to the Java NIO ByteBuffer. There are no *direct buffers* 
+which simplifies and improves `ByteBuf` performance. 
 
-`ByteBuf` is a wrapper over byte arrays which has teo positions: `readPosition` and `writePosition`. When you write data 
-to your ByteBuf, its `writePosition` increases by amount of bytes written. Similarly, when you read data from your ByteBuf,
+ByteBuf is similar to a FIFO byte queue and has two positions: `readPosition` and `writePosition`. When you write data to your 
+ByteBuf, its `writePosition` increases by amount of bytes written. Similarly, when you read data from your ByteBuf,
 its `readPosition` increases by amount of bytes read. You can read bytes from ByteBuf only when `writePosition` is greater 
 then `readPosition`. Also, you can write bytes to ByteBuf until `writePosition` doesn't exceed the length of the wrapped 
-array.
+array. In this way, there is no need for `ByteBuffer.flip()` operations. 
 
-You can wrap your array into `ByteBuf` in the following ways:
+ByteBuf supports concurrent processes: while some data is written to the `ByteBuf` by one process, another one can 
+read it. ByteBuf also has `slice()` operation and inner ref counts.
+
+### ByteBufPool
+Allows to reuse ByteBufs, and as a result reduces Java Garbage Collector load. To make utilizing of ByteBufPool more 
+convenient, there are debugging and monitoring tools for allocated ByteBufs, including their stack traces.
+
+To return ByteBuf to the ByteBufPool, use `ByteBuf.recycle()`. This recycle is recommended but not required - if you 
+forget to do so, you will only give Garbage Collector a little more work to do. 
+
+### ByteBufQueue
+`ByteBufQueue` class provides effective management of multiple ByteBufs. It creates an optimized queue of several 
+ByteBufs with FIFO rules. You can simply manage your queue with the following methods:
+* *takeRemaining()* - creates and returns a new ByteBuf which contains all remaining bytes from the ByteBufQueue.
+* *takeExactSize()* - creates and returns a new ByteBuf which contains an exact amount of bytes if ByteBufQueue first 
+ByteBuf has enough bytes. Otherwise returns a ByteBuf of exact size which contains all bytes from the ByteBufQueue.
+* *takeAtLeast(int size)* - creates and returns ByteBufSlice that contains all bytes from queue's first ByteBuf
+if latter contains more bytes than `size`. Otherwise creates a new ByteBuf of the `size`.
+* *takeAtMost(int size)* - creates and returns ByteBufSlice that contains needed amount of bytes from queue's first ByteBuf
+if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes from first ByteBuf in queue.
+
+The module also contains utility classes to manage resizing of underlying byte buffer, `String` conversions, etc.
+
+You can wrap your byte array into `ByteBuf` in the following ways:
 
 * *ByteBuf.empty()* - returns an empty ByteBuf with length, readPosition and writePosition all equal 0.
 * *ByteBuf.wrapForWriting(byte[] bytes)* - wraps provided byte array into `ByteBuf` with `writePosition` equal to 0.
@@ -37,18 +59,11 @@ The core methods of `ByteBuf` are:
 * *readPosition() / readPosition(int pos)* - gets/sets index of the `ByteBuf` from which bytes can be read.
 * *writePosition() / writePosition(int pos)* - gets/sets index of the `ByteBuf` from which bytes can be written.
 * *limit()* - returns length of the `ByteBuf`.
-* *writeRemaining()* - returns amount of writable bytes.
-* *readRemaining()* - returns amount of readable bytes.
-* *peek() / peek(int offset)* - returns the first readable byte in the `ByteBuf` / the first readable byte considering offset.
-* *drainTo(ByteBuf buf, int length) / drainTo(byte[] array, int offset, int length)* - drains `ByteBuf` to another `ByteBuf` 
-or byte array, returns the number of elements to be drained.
+* *drainTo(ByteBuf buf, int length)* - drains `ByteBuf` to another `ByteBuf`, returns the number of elements to be drained.
 * *set(int index, byte b)* - sets byte `b` at the particular index of `ByteBuf`.
-* *put(byte b) / put(ByteBuf buf) / put(byte[] bytes) / put(byte[] bytes, int offset, int length)* - puts given data in 
-the `ByteBuf`.
-* *find(byte b)* - searches for a particular byte between `readPosition` and `writePosition` indexes of the ByteBuf. If 
-successful, returns index of the first match, otherwise returns -1.
+* *put(byte b)* - puts given data in the `ByteBuf`.
 * *getArray()* - returns a byte array created from the `ByteBuf` from `readPosition` to `writePosition`.
-* *asArray()* - returns a byte array created from the `ByteBuf` from `readPosition` to `writePosition` and recycles the 
+* *asArray()* - returns a byte array created from the `ByteBuf` from `readPosition` to `writePosition` and **recycles** the 
 `ByteBuf`.
 * *readByte() / readBoolean() / readChar() / readDouble() / readFloat() / readInt() / readLong() / readShort() / 
 readString()* - allows to read primitives and Strings from the `ByteBuf`. Returns the value of appropriate data type from 
