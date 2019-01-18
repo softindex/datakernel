@@ -92,7 +92,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		}
 	}
 
-	/** The byte array into which bytes are stored. */
+	/** Stores bytes of this {@link ByteBuf}. */
 	@NotNull
 	protected final byte[] array;
 
@@ -102,12 +102,12 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	private int writePosition;
 
 	/**
-	 * This value shows whether this {@link ByteBuf} needs to be recycled.
+	 * Shows whether this {@link ByteBuf} needs to be recycled.
 	 * When you use {@link #slice()} this value increases by 1.
 	 * When you use {@link #recycle()} this value decreases by 1.
 	 * <p>
 	 * This {@link ByteBuf} will be returned to the {@link ByteBufPool}
-	 * only when {@link #refs} is equal 0.
+	 * only when this value equals 0.
 	 */
 	int refs;
 
@@ -115,7 +115,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	ByteBuf next;
 
 	/**
-	 * {@link #EMPTY} is an empty ByteBuf with {@link #readPosition} and
+	 * Represents an empty ByteBuf with {@link #readPosition} and
 	 * {@link #writePosition} set at value 0
 	 */
 	private static final ByteBuf EMPTY = wrap(new byte[0], 0, 0);
@@ -356,7 +356,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	// getters & setters
 
 	/**
-	 * Getter which returns byte array {@link #array}.
+	 * Returns byte array {@link #array}.
 	 *
 	 * @return {@link #array}.
 	 */
@@ -367,8 +367,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Getter which returns {@link #readPosition} if this
-	 * {@link ByteBuf} is not recycled.
+	 * Returns {@link #readPosition} if this {@link ByteBuf} is not recycled.
 	 *
 	 * @return {@link #readPosition}.
 	 */
@@ -379,8 +378,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Getter which returns {@link #writePosition} if this
-	 * {@link ByteBuf} is not recycled.
+	 * Returns {@link #writePosition} if this {@link ByteBuf} is not recycled.
 	 *
 	 * @return {@link #writePosition}.
 	 */
@@ -391,7 +389,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Getter which returns length of the {@link #array} of this {@link ByteBuf}.
+	 * Returns length of the {@link #array} of this {@link ByteBuf}.
 	 *
 	 * @return length of this {@link ByteBuf}.
 	 */
@@ -401,7 +399,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Setter which sets {@link #readPosition} if this {@link ByteBuf} is not recycled.
+	 * Sets {@link #readPosition} if this {@link ByteBuf} is not recycled.
 	 *
 	 * @param pos the value which will be assigned to the {@link #readPosition}.
 	 *               Must be smaller or equal to {@link #writePosition}.
@@ -413,7 +411,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Setter which sets {@link #writePosition} if this {@link ByteBuf} is not recycled
+	 * Sets {@link #writePosition} if this {@link ByteBuf} is not recycled.
 	 *
 	 * @param pos the value which will be assigned to the {@link #writePosition}.
 	 *               Must be bigger or equal to {@link #readPosition}
@@ -426,8 +424,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Setter which sets new value of {@link #readPosition} by moving it by the given delta
-	 * if this {@link ByteBuf} is not recycled
+	 * Sets new value of {@link #readPosition} by moving it by the given delta
+	 * if this {@link ByteBuf} is not recycled.
 	 *
 	 * @param delta the value by which current {@link #readPosition} will be moved.
 	 *              New {@link #readPosition} must be bigger or equal to 0
@@ -441,8 +439,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Setter which sets new value of {@link #writePosition} by moving it by the given delta
-	 * if this {@link ByteBuf} is not recycled
+	 * Sets new value of {@link #writePosition} by moving it by the given delta
+	 * if this {@link ByteBuf} is not recycled.
 	 *
 	 * @param delta the value by which current {@link #writePosition} will be moved.
 	 *              New {@link #writePosition} must be bigger or equal to {@link #readPosition}
@@ -468,7 +466,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Getter which returns the amount of bytes which are available for reading
+	 * Returns the amount of bytes which are available for reading
 	 * if this {@link ByteBuf} is not recycled.
 	 *
 	 * @return amount of bytes available for reading
@@ -493,7 +491,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	/**
-	 * Checks if there are bytes available for reading.
+	 * Checks if there are bytes available for reading
+	 * if this {@link ByteBuf} is not recycled.
 	 *
 	 * @return {@code true} if {@link #readPosition} doesn't equal
 	 * {@link #writePosition}, otherwise {@code false}.
@@ -600,7 +599,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	/**
 	 * Sets given {@code byte} at particular position of the
-	 * {@link #array}.
+	 * {@link #array} if this {@link ByteBuf} is not recycled.
 	 *
 	 * @param index the index of the {@link #array} where
 	 *                 the given {@code byte} will be set.

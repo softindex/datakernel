@@ -34,6 +34,15 @@ import static java.util.Arrays.stream;
 import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toList;
 
+ /**
+  * Represents a pool of ByteBufs with 33 slabs. Each of these slabs
+  * is a {@code ByteBufConcurrentStack} which stores ByteBufs of a
+  * particular capacity which is a power of two.
+  *
+  * When you need a new ByteBuf, it is either created (if a ByteBuf of
+  * such capacity hasn't been used yet) or popped from the appropriate
+  * slabs' stack.
+  */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public final class ByteBufPool {
 	private static final int NUMBER_OF_SLABS = 33;
@@ -50,6 +59,13 @@ public final class ByteBufPool {
 
 	private static final ByteBufPoolStats stats = new ByteBufPoolStats();
 
+	 /**
+	  * Stores information about ByteBufs for stats.
+	  *
+	  * It is a helper class which contains <i>size</i>,
+	  * <i>timestamp</i> and <i>stackTrace</i> which represent
+	  * information about the ByteBufs.
+	  */
 	public static final class Entry {
 		final int size;
 		final long timestamp;
@@ -141,7 +157,7 @@ public final class ByteBufPool {
 	}
 
 	/**
-	 * Allocates byte buffer in same way as {@link #allocate(int)} does, but sets its positions such that
+	 * Allocates byte buffer in same way as {@link #allocate(int)} does, but sets its positions so that
 	 * write-remaining is equal to requested size.
 	 * <p>
 	 * For example for size 21 byte buffer of size 32 is allocated                  (|______|)<br>
@@ -169,6 +185,11 @@ public final class ByteBufPool {
 		return allocateExact(size.toInt());
 	}
 
+	/**
+	 * Returns provided ByteBuf to the ByteBufPool to the appropriate slab.
+	 *
+	 * @param buf the ByteBuf to be recycled.
+	 */
 	public static void recycle(@NotNull ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
 		ByteBufConcurrentStack stack = slabs[slab];
@@ -180,6 +201,21 @@ public final class ByteBufPool {
 		return ensureWriteRemaining(buf, 0, newWriteRemaining);
 	}
 
+	 /**
+	  * Checks if current ByteBuf can accommodate the needed
+	  * amount of writable bytes.
+	  *
+	  * Returns this ByteBuf, if it contains enough writable bytes.
+	  *
+	  * Otherwise creates a new ByteBuf which contains data from the
+	  * original ByteBuf and fits the parameters. Then recycles the
+	  * original ByteBuf.
+	  *
+	  * @param buf the ByteBuf to check.
+	  * @param minSize the minimal size of the ByteBuf.
+	  * @param newWriteRemaining amount of needed writable bytes.
+	  * @return a ByteBuf which fits the parameters.
+	  */
 	@NotNull
 	public static ByteBuf ensureWriteRemaining(@NotNull ByteBuf buf, int minSize, int newWriteRemaining) {
 		if (newWriteRemaining == 0) return buf;
@@ -192,6 +228,21 @@ public final class ByteBufPool {
 		return buf;
 	}
 
+	 /**
+	  * Appends one ByteBuf to another ByteBuf. If target ByteBuf
+	  * can't accommodate the ByteBuf to be appended, a new ByteBuf
+	  * is created which contains both target and source ByteBufs data.
+	  * The source ByteBuf is recycled after append.
+	  *
+	  * If target ByteBuf has no readable bytes, it is being recycled
+	  * and the source ByteBuf is returned.
+	  *
+	  * Both ByteBufs must be not recycled before the operation.
+	  *
+	  * @param to the target ByteBuf to which another ByteBuf will be appended.
+	  * @param from the source ByteBuf to be appended.
+	  * @return ByteBuf which contains the result of the appending.
+	  */
 	@NotNull
 	public static ByteBuf append(@NotNull ByteBuf to, @NotNull ByteBuf from) {
 		assert !to.isRecycled() && !from.isRecycled();
@@ -205,6 +256,22 @@ public final class ByteBufPool {
 		return to;
 	}
 
+	 /**
+	  * Appends byte array to ByteBuf. If ByteBuf can't accommodate the
+	  * byte array, a new ByteBuf is created which contains all data from
+	  * the original ByteBuf and has enough capacity to accommodate the
+	  * byte array.
+	  *
+	  * ByteBuf must be not recycled before the operation.
+	  *
+	  * @param to the target ByteBuf to which byte array will be appended.
+	  * @param from the source byte array to be appended.
+	  * @param offset the value of offset for the byte array.
+	  * @param length amount of the bytes to be appended to the ByteBuf.
+	  *               The sum of the length and offset parameters can't
+	  *               be greater than the whole length of the byte array.
+	  * @return ByteBuf which contains the result of the appending.
+	  */
 	@NotNull
 	public static ByteBuf append(@NotNull ByteBuf to, @NotNull byte[] from, int offset, int length) {
 		assert !to.isRecycled();
@@ -218,6 +285,9 @@ public final class ByteBufPool {
 		return append(to, from, 0, from.length);
 	}
 
+	 /**
+	  * Clears all of the slabs and stats.
+	  */
 	public static void clear() {
 		for (int i = 0; i < ByteBufPool.NUMBER_OF_SLABS; i++) {
 			slabs[i].clear();
@@ -254,6 +324,21 @@ public final class ByteBufPool {
 		void clearRegistry();
 	}
 
+	 /**
+	  * Manages stats for this {@link ByteBufPool}. You can get the
+	  * amount of created and reused ByteBufs and amount of ByteBufs
+	  * stored in each of the slabs.
+	  *
+	  * Also, you can get a String which contains information about
+	  * amount of created and stored in pool ByteBufs.
+	  *
+	  * For memory control, you can get the size of your ByteBufPool in
+	  * Byte or KB as well as get information about the slabs themselves
+	  * (size, amount of ByteBufs created, reused, stored in pool, and
+	  * total size in KB) and unrecycled ByteBufs.
+	  *
+	  * Finally, it allows to clear this ByteBufPool and its registry.
+	  */
 	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
 		@Override
 		public int getCreatedItems() {

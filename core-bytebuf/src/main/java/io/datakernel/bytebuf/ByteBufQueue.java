@@ -29,6 +29,14 @@ import java.util.stream.Collector;
 import static io.datakernel.util.CollectionUtils.emptyIterator;
 import static java.lang.System.arraycopy;
 
+/**
+ * Represents a circular FIFO queue of ByteBufs optimized
+ * for efficient work with multiple ByteBufs.
+ *
+ * There are <i>first</i> and <i>last</i> indexes which
+ * represent which ByteBuf of the queue is currently
+ * the first and the last to be taken.
+ */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class ByteBufQueue implements Recyclable {
 	private static final int DEFAULT_CAPACITY = 8;
@@ -39,6 +47,9 @@ public final class ByteBufQueue implements Recyclable {
 	private int first = 0;
 	private int last = 0;
 
+	/**
+	 * Returns a ByteBufQueue whose capacity is 8.
+	 */
 	public ByteBufQueue() {
 		this(DEFAULT_CAPACITY);
 	}
@@ -92,6 +103,21 @@ public final class ByteBufQueue implements Recyclable {
 		bufs = newBufs;
 	}
 
+	/**
+	 * Adds provided ByteBuf to this ByteBufQueue.
+	 * If this ByteBuf hasn't readable bytes, it won't
+	 * be added to the queue and will be recycled.
+	 *
+	 * The added ByteBuf is set at the current <i>last</i>
+	 * position of the queue. Then <i>last</i> index is
+	 * increased by 1 or set to the value 0 if it has run
+	 * a full circle of the queue.
+	 *
+	 * If <i>last</i> and <i>first</i> indexes become the same,
+	 * this ByteBufQueue size will be doubled.
+	 *
+	 * @param buf the ByteBuf to be added to the queue
+	 */
 	public void add(@NotNull ByteBuf buf) {
 		if (!buf.canRead()) {
 			buf.recycle();
@@ -111,6 +137,13 @@ public final class ByteBufQueue implements Recyclable {
 		}
 	}
 
+	/**
+	 * Returns the first ByteBuf of the queue if the queue is not empty.
+	 * Then <i>first</i> index is increased by 1 or set to the value 0
+	 * if it has run a full circle of the queue.
+	 *
+	 * @return the first ByteBuf of this ByteBufQueue
+	 */
 	@NotNull
 	public ByteBuf take() {
 		assert hasRemaining();
@@ -119,6 +152,15 @@ public final class ByteBufQueue implements Recyclable {
 		return buf;
 	}
 
+	/**
+	 * Returns the first ByteBuf of the queue if the queue is not empty
+	 * otherwise returns <code>null</code>.
+	 *
+	 * @see #take()
+	 *
+	 * @return the first ByteBuf of this ByteBufQueue. If the queue is
+	 * empty, returns null.
+	 */
 	@Nullable
 	public ByteBuf poll() {
 		if (hasRemaining()) {
@@ -128,9 +170,14 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Creates and returns ByteBufSlice that contains {@code size} bytes from queue's first ByteBuf
-	 * if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes
-	 * from first ByteBuf in queue.
+	 * Creates and returns a ByteBufSlice which contains {@code size}
+	 * bytes from queue's first ByteBuf if the latter contains too
+	 * many bytes.
+	 *
+	 * Otherwise creates and returns a ByteBuf which contains all
+	 * bytes from the first ByteBuf in the queue. Then <i>first</i>
+	 * index is increased by 1 or set to the value 0 if it has run
+	 * a full circle of the queue.
 	 *
 	 * @param size number of bytes to returning
 	 * @return ByteBuf with result bytes
@@ -148,6 +195,18 @@ public final class ByteBufQueue implements Recyclable {
 		return result;
 	}
 
+	/**
+	 * Creates and returns a ByteBuf which contains at least {@code size}
+	 * bytes from queue's first ByteBuf if the latter contains enough bytes.
+	 * Then <i>first</i> index is increased by 1 or set to the value 0 if it
+	 * has run a full circle of the queue.
+	 *
+	 * Otherwise a new ByteBuf is allocated from the {@link ByteBufPool} with
+	 * {@code size} bytes which contains all data from the queue's first ByteBuf.
+	 *
+	 * @param size the minimum size of returned ByteBuf
+	 * @return a ByteBuf which contains at least {@code size} bytes
+	 */
 	@NotNull
 	public ByteBuf takeAtLeast(int size) {
 		assert hasRemainingBytes(size);
@@ -179,11 +238,16 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns ByteBuf that contains {@code exactSize} of bytes if queue has enough bytes.
-	 * Otherwise returns ByteBuf that contains all bytes from queue
+	 * Creates and returns a ByteBuf which contains all bytes from the
+	 * queue's first ByteBuf if the latter contains {@code exactSize} of bytes.
+	 * Then <i>first</i> index is increased by 1 or set to the value 0 if it
+	 * has run a full circle of the queue.
 	 *
-	 * @param exactSize amount of bytes to return
-	 * @return ByteBuf with {@code exactSize} or less bytes
+	 * Otherwise creates and returns a ByteBuf of {@code exectSize} which
+	 * contains all bytes from queue's first ByteBuf.
+	 *
+	 * @param exactSize the size of returned ByteBuf
+	 * @return ByteBuf with {@code exactSize} bytes
 	 */
 	@NotNull
 	public ByteBuf takeExactSize(int exactSize) {
@@ -223,6 +287,21 @@ public final class ByteBufQueue implements Recyclable {
 		return result;
 	}
 
+	/**
+	 * Consumes the first ByteBuf of the queue to the provided consumer
+	 * if the ByteBuf has at least {@code size} bytes available for reading.
+	 * If after consuming ByteBuf has no readable bytes left, it is recycled
+	 * and <i>first</i> index is increased by 1 or set to the value 0 if it
+	 * has run a full circle of the queue.
+	 *
+	 * If the first ByteBuf of the queue doesn't have enough bytes available
+	 * for reading, a new ByteBuf with {@code size} bytes is created, it contains
+	 * all data from the queue's first ByteBuf. This new ByteBuf is consumed and
+	 * then recycled.
+	 *
+	 * @param size the size of the ByteBuf to be consumed
+	 * @param consumer a consumer for the ByteBuf
+	 */
 	public void consume(int size, @NotNull ByteBufConsumer consumer) {
 		assert hasRemainingBytes(size);
 		ByteBuf buf = bufs[first];
@@ -243,7 +322,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Creates and returns ByteBuf with all remaining bytes from queue
+	 * Creates and returns a ByteBuf with all remaining bytes of the queue.
 	 *
 	 * @return ByteBuf with all remaining bytes
 	 */
@@ -253,7 +332,9 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the first ByteBuf from this queue
+	 * Returns the first ByteBuf of this queue if the queue is not empty.
+	 * Otherwise returns null.
+	 * @return the first ByteBuf of the queue or null
 	 */
 	@Nullable
 	@Contract(pure = true)
@@ -262,9 +343,11 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the ByteBuf with the given index,  relatively than head of queue
+	 * Returns the ByteBuf of the given index relatively to the <i>first</i>
+	 * index (head) of the queue.
 	 *
-	 * @param n index of ByteBuf relatively than head of queue
+	 * @param n index of the ByteBuf to return relatively to the head of the queue
+	 * @return a ByteBuf of the given index
 	 */
 	@NotNull
 	@Contract(pure = true)
@@ -277,7 +360,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the number of ByteBufs in this queue
+	 * Returns the number of ByteBufs in this queue.
 	 */
 	@Contract(pure = true)
 	public int remainingBufs() {
@@ -285,7 +368,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the number of bytes in this queue
+	 * Returns the number of bytes in this queue.
 	 */
 	@Contract(pure = true)
 	public int remainingBytes() {
@@ -297,9 +380,9 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Tells whether or not this queue is empty.
+	 * Checks if this queue is empty.
 	 *
-	 * @return true if, and only if, there is at least one element is remaining in this queue
+	 * @return true only if there is at least one element remains in this queue
 	 */
 	@Contract(pure = true)
 	public boolean isEmpty() {
@@ -312,10 +395,10 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Tells whether or not this queue has remaining bytes.
+	 * Checks if this queue has at least {@code remaining} bytes.
 	 *
-	 * @param remaining number of bytes for checking
-	 * @return true if, and only if, there are remaining bytes.
+	 * @param remaining number of bytes to be checked
+	 * @return true if the queue contains at least {@code remaining} bytes.
 	 */
 	@Contract(pure = true)
 	public boolean hasRemainingBytes(int remaining) {
@@ -331,7 +414,9 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the first byte from this queue and removes it.
+	 * Returns the first byte of the first ByteBuf of this queue
+	 * and increases <i>readPosition</i> of the ByteBuf. If there are no
+	 * readable bytes left after the operation, this ByteBuf will be recycled.
 	 */
 	public byte getByte() {
 		assert hasRemaining();
@@ -345,7 +430,8 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the first byte from this queue without its removing.
+	 * Returns the first byte from this queue without any recycling,
+	 * @see #getByte().
 	 */
 	@Contract(pure = true)
 	public byte peekByte() {
@@ -355,7 +441,8 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Returns the byte from this queue with the given index
+	 * Returns the byte from this queue of the given index
+	 * (not necessarily from the first ByteBuf).
 	 *
 	 * @param index the index at which the bytes will be returned
 	 */
@@ -371,9 +458,9 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Removes {@code maxSize} bytes from this queue
+	 * Removes {@code maxSize} bytes from this queue.
 	 *
-	 * @param maxSize number of bytes for removing
+	 * @param maxSize number of bytes to be removed
 	 * @return number of removed bytes
 	 */
 	public int skip(int maxSize) {
@@ -412,10 +499,12 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Adds {@code maxSize} bytes from this queue to dest if queue contains more than {@code maxSize} bytes.
-	 * Otherwise adds all bytes from queue to dest. In both cases advances queue's position to number of drained bytes.
+	 * Adds {@code maxSize} bytes from this queue to dest if queue
+	 * contains more than {@code maxSize} bytes. Otherwise adds all
+	 * bytes from queue to dest. In both cases advances queue's
+	 * position to number of drained bytes.
 	 *
-	 * @param dest       array to draining
+	 * @param dest       array to drain to
 	 * @param destOffset start position for adding to dest
 	 * @param maxSize    number of bytes for adding
 	 * @return number of drained bytes.
@@ -582,7 +671,8 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	/**
-	 * Recycles all ByteBufs from this queue.
+	 * Recycles all ByteBufs of this queue and sets
+	 * <i>first</i> and <i>last</i> indexes to 0.
 	 */
 	@Override
 	public void recycle() {
