@@ -384,7 +384,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 										sslContext, sslExecutor) :
 								asyncTcpSocketImpl;
 
-						HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket, this);
+						HttpClientConnection connection = new HttpClientConnection(eventloop, this, asyncTcpSocket, address);
 
 						if (inspector != null) inspector.onConnect(request, connection);
 

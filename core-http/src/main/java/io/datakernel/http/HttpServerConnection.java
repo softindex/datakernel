@@ -27,6 +27,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpServer.Inspector;
 import io.datakernel.util.ThreadLocalCharArray;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
@@ -81,7 +82,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param remoteAddress an address of remote
 	 * @param server        server, which uses this connection
 	 * @param servlet       servlet for handling requests
-	 * @param charBuffer
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
 			AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
@@ -100,13 +100,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	public void onClosedWithError(Throwable e) {
-		if (e != null) {
-			if (inspector != null) {
-				inspector.onHttpError(remoteAddress, e);
-			}
-			writeException(e);
-		}
+	public void onClosedWithError(@NotNull Throwable e) {
+		if (inspector != null) inspector.onHttpError(remoteAddress, e);
 	}
 
 	/**

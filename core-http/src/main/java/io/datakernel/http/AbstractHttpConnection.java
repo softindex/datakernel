@@ -36,6 +36,7 @@ import io.datakernel.http.stream.*;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import org.intellij.lang.annotations.MagicConstant;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
@@ -137,7 +138,7 @@ public abstract class AbstractHttpConnection {
 
 	protected abstract void onClosed();
 
-	protected abstract void onClosedWithError(Throwable e);
+	protected abstract void onClosedWithError(@NotNull Throwable e);
 
 	protected final boolean isClosed() {
 		return flags < 0;
@@ -151,7 +152,7 @@ public abstract class AbstractHttpConnection {
 		readQueue.recycle();
 	}
 
-	protected final void closeWithError(Throwable e) {
+	protected final void closeWithError(@NotNull Throwable e) {
 		if (isClosed()) return;
 		flags |= CLOSED;
 		onClosedWithError(e);
