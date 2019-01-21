@@ -23,6 +23,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.ot.exceptions.OTTransformException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,16 +85,19 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return this;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return checkout().toVoid();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		invalidateInternalState();
@@ -148,6 +152,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return doFetch(singleton(head));
 	}
 
+	@NotNull
 	private Promise<K> doFetch() {
 		if (!pendingCommits.isEmpty()) return Promise.of(null);
 		return repository.getHeads()
@@ -242,6 +247,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return commit.get();
 	}
 
+	@NotNull
 	Promise<K> doCommit() {
 		if (workingDiffs.isEmpty()) {
 			return Promise.of(null);

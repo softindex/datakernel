@@ -324,6 +324,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 			return ensureMasterNodes.get();
 		}
 
+		@NotNull
 		Promise<List<GlobalDbNode>> doEnsureNodes() {
 			if (updateNodesTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
 				return Promise.of(getMasterNodes());

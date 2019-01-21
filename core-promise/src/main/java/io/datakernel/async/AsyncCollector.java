@@ -17,53 +17,55 @@
 package io.datakernel.async;
 
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Preconditions.checkState;
 
+@SuppressWarnings("UnusedReturnValue")
 public final class AsyncCollector<R> implements Cancellable {
 	@FunctionalInterface
 	public interface Accumulator<R, T> {
 		void accumulate(R result, T value) throws UncheckedException;
 	}
 
-	@Nullable
 	private final SettablePromise<R> resultPromise = new SettablePromise<>();
-	private boolean running;
+	private boolean started;
 
+	@Nullable
 	private R result;
 
 	private int activePromises;
 
-	public AsyncCollector(R initialResult) {
+	public AsyncCollector(@Nullable R initialResult) {
 		this.result = initialResult;
 	}
 
-	public static <R> AsyncCollector<R> create(R initialResult) {
+	public static <R> AsyncCollector<R> create(@Nullable R initialResult) {
 		return new AsyncCollector<>(initialResult);
 	}
 
-	public <T> AsyncCollector<R> withPromise(Promise<T> promise, Accumulator<R, T> accumulator) {
+	public <T> AsyncCollector<R> withPromise(@NotNull Promise<T> promise, @NotNull Accumulator<R, T> accumulator) {
 		addPromise(promise, accumulator);
 		return this;
 	}
 
 	public AsyncCollector<R> run() {
-		checkState(!running);
-		this.running = true;
-		if (activePromises == 0) {
+		checkState(!started);
+		this.started = true;
+		if (activePromises == 0 && !resultPromise.isComplete()) {
 			resultPromise.set(result);
 			result = null;
 		}
 		return this;
 	}
 
-	public AsyncCollector<R> run(Promise<Void> runtimePromise) {
+	public AsyncCollector<R> run(@NotNull Promise<Void> runtimePromise) {
 		withPromise(runtimePromise, (result, v) -> {});
 		return run();
 	}
 
-	public <T> Promise<T> addPromise(Promise<T> promise, Accumulator<R, T> accumulator) {
+	public <T> Promise<T> addPromise(@NotNull Promise<T> promise, @NotNull Accumulator<R, T> accumulator) {
 		checkState(!resultPromise.isComplete());
 		activePromises++;
 		return promise.whenComplete((v, e) -> {
@@ -77,7 +79,7 @@ public final class AsyncCollector<R> implements Cancellable {
 					result = null;
 					return;
 				}
-				if (activePromises == 0 && running) {
+				if (activePromises == 0 && started) {
 					resultPromise.set(result);
 				}
 			} else {
@@ -87,12 +89,13 @@ public final class AsyncCollector<R> implements Cancellable {
 		});
 	}
 
-	public <V> SettablePromise<V> newPromise(Accumulator<R, V> accumulator) {
+	public <V> SettablePromise<V> newPromise(@NotNull Accumulator<R, V> accumulator) {
 		SettablePromise<V> resultPromise = new SettablePromise<>();
 		addPromise(resultPromise, accumulator);
 		return resultPromise;
 	}
 
+	@NotNull
 	public MaterializedPromise<R> get() {
 		return resultPromise;
 	}
@@ -102,9 +105,10 @@ public final class AsyncCollector<R> implements Cancellable {
 	}
 
 	@Override
-	public void close(Throwable e) {
-		checkState(!running);
-		resultPromise.trySetException(e);
-		result = null;
+	public void close(@NotNull Throwable e) {
+		if (!resultPromise.isComplete()) {
+			result = null;
+			resultPromise.trySetException(e);
+		}
 	}
 }

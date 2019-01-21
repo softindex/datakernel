@@ -16,32 +16,12 @@
 
 package io.datakernel.async;
 
-import io.datakernel.functional.Try;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public abstract class NextPromise<T, R> extends AbstractPromise<R> implements BiConsumer<T, Throwable> {
-	@Override
-	public Try<R> asTry() {
-		return null;
-	}
-
-	@Override
-	public boolean setTo(BiConsumer<? super R, Throwable> consumer) {
-		return false;
-	}
-
-	@Override
-	public boolean setResultTo(Consumer<? super R> consumer) {
-		return false;
-	}
-
-	@Override
-	public boolean setExceptionTo(Consumer<Throwable> consumer) {
-		return false;
-	}
-
+	@NotNull
 	@Override
 	public Promise<R> async() {
 		return this;

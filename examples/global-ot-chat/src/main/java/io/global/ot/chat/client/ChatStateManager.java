@@ -11,6 +11,7 @@ import io.global.ot.chat.common.Gateway;
 import io.global.ot.chat.operations.ChatOTState;
 import io.global.ot.chat.operations.ChatOTState.ChatEntry;
 import io.global.ot.chat.operations.ChatOperation;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,24 +67,26 @@ public final class ChatStateManager implements EventloopService {
 				.thenApplyEx(($, e) -> localState.getChatEntries());
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	private Promise<Void> updateState() {
 		return ensureCurrentCommitId()
 				.thenCompose($ -> gateway.pull(currentCommitId))
 				.thenCompose(this::updateState);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		localState.init();
 		return tryCheckout();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();
@@ -93,7 +96,6 @@ public final class ChatStateManager implements EventloopService {
 		return push(singletonList(operation));
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	private Promise<Void> push(List<ChatOperation> operations) {
 		return ensureCurrentCommitId()
 				.thenCompose($ -> gateway.push(currentCommitId, operations))

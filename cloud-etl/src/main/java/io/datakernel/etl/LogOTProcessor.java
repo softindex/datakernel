@@ -35,6 +35,7 @@ import io.datakernel.stream.processor.StreamUnion;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,16 +89,19 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		return new LogOTProcessor<>(eventloop, multilog, logStreamConsumer, log, partitions, state);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();
@@ -109,6 +113,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		return processLog.get();
 	}
 
+	@NotNull
 	private Promise<LogDiff<D>> doProcessLog() {
 		if (!enabled) return Promise.of(LogDiff.of(emptyMap(), emptyList()));
 		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());

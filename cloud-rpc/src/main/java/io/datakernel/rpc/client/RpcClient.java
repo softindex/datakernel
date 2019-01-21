@@ -43,6 +43,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -270,11 +271,13 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return socketSettings;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
@@ -312,6 +315,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return promise;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		if (!running) return Promise.complete();

@@ -37,6 +37,7 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,6 +133,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	}
 	// endregion
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -288,11 +290,13 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 		return Promise.complete();  // Promises.all(aliveClients.values().stream().map(CrdtClient::ping));
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

@@ -24,6 +24,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -403,6 +404,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.whenComplete(toLogger(logger, thisMethod(), commit.getId(), snapshot));
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

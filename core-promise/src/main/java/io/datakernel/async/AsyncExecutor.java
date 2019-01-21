@@ -1,19 +1,23 @@
 package io.datakernel.async;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.RejectedExecutionException;
 
 public interface AsyncExecutor {
-	<T> Promise<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException;
+	@NotNull <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) throws RejectedExecutionException;
 
-	default Promise<Void> run(Runnable runnable) throws RejectedExecutionException {
+	@NotNull
+	default Promise<Void> run(@NotNull Runnable runnable) throws RejectedExecutionException {
 		return execute(() -> {
 			runnable.run();
 			return Promise.complete();
 		});
 	}
 
-	default <T> Promise<T> call(Callable<T> callable) throws RejectedExecutionException {
+	@NotNull
+	default <T> Promise<T> call(@NotNull Callable<T> callable) throws RejectedExecutionException {
 		return execute(() -> {
 			T result;
 			try {

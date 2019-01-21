@@ -73,7 +73,7 @@ public final class ChannelSuppliers {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				current.close(e);
 				while (iterator.hasNext()) {
 					iterator.next().close(e);
@@ -242,7 +242,7 @@ public final class ChannelSuppliers {
 					}
 
 					@Override
-					protected void onClosed(Throwable e) {
+					protected void onClosed(@NotNull Throwable e) {
 						deepRecycle(deque);
 						actual.close(e);
 						if (pending != null) {
@@ -314,7 +314,7 @@ public final class ChannelSuppliers {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				tryRecycle(prefetched);
 				prefetched = null;
 				actual.close(e);
@@ -404,7 +404,7 @@ public final class ChannelSuppliers {
 		}
 
 		@Override
-		protected void onClosed(Throwable e) {
+		protected void onClosed(@NotNull Throwable e) {
 			deepRecycle(iterator);
 		}
 	}

@@ -17,28 +17,20 @@
 package io.datakernel.multilog;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+
+import java.util.Objects;
 
 public final class LogPosition implements Comparable<LogPosition> {
-	@Nullable
+	@NotNull
 	private final LogFile logFile;
 	private final long position;
 
-	private LogPosition(@Nullable LogFile logFile, long position) {
+	private LogPosition(@NotNull LogFile logFile, long position) {
 		this.logFile = logFile;
 		this.position = position;
 	}
 
-	private LogPosition() {
-		this.logFile = null;
-		this.position = 0L;
-	}
-
-	public static LogPosition create() {
-		return new LogPosition();
-	}
-
-	public static LogPosition create(LogFile logFile, long position) {
+	public static LogPosition create(@NotNull LogFile logFile, long position) {
 		return new LogPosition(logFile, position);
 	}
 
@@ -46,7 +38,7 @@ public final class LogPosition implements Comparable<LogPosition> {
 		return position == 0L;
 	}
 
-	@Nullable
+	@NotNull
 	public LogFile getLogFile() {
 		return logFile;
 	}
@@ -55,20 +47,20 @@ public final class LogPosition implements Comparable<LogPosition> {
 		return position;
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		LogPosition that = (LogPosition) o;
-
 		if (position != that.position) return false;
-		return logFile != null ? logFile.equals(that.logFile) : that.logFile == null;
+		if (!Objects.equals(logFile, that.logFile)) return false;
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = logFile != null ? logFile.hashCode() : 0;
+		int result = logFile.hashCode();
 		result = 31 * result + (int) (position ^ (position >>> 32));
 		return result;
 	}
@@ -81,9 +73,7 @@ public final class LogPosition implements Comparable<LogPosition> {
 	@Override
 	public int compareTo(@NotNull LogPosition o) {
 		int result = 0;
-		if (this.logFile != null && o.logFile != null) {
-			result = this.logFile.compareTo(o.logFile);
-		}
+		result = this.logFile.compareTo(o.logFile);
 		if (result != 0)
 			return result;
 		return Long.compare(this.position, o.position);

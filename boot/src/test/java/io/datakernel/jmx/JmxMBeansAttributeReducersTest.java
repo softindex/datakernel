@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -54,6 +55,7 @@ public class JmxMBeansAttributeReducersTest {
 			return attr;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return EVENTLOOP;
@@ -97,6 +99,7 @@ public class JmxMBeansAttributeReducersTest {
 			return pojo;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return EVENTLOOP;

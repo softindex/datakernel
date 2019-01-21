@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +98,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected abstract Promise<Void> onEndOfStream();
 
 	@Override
-	public final void close(Throwable e) {
+	public final void close(@NotNull Throwable e) {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.setException(e);
 		if (!(e instanceof ExpectedException)) {

@@ -19,6 +19,7 @@ package io.datakernel.examples;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.ExpressionToString;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -82,7 +83,7 @@ public class DynamicClassCreationExample {
 		int hash();
 
 		@Override
-		int compareTo(Person o);
+		int compareTo(@NotNull Person o);
 
 		@Override
 		String toString();

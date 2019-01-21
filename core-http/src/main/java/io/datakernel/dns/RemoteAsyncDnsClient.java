@@ -32,6 +32,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.DatagramSocketSettings;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +112,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 
 	// endregion
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

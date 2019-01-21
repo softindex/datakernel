@@ -13,6 +13,7 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +103,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 				.whenComplete(toLogger(logger, thisMethod(), commit, snapshot));
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

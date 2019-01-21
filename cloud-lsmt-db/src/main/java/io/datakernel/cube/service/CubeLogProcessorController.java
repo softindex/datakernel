@@ -17,6 +17,7 @@ import io.datakernel.jmx.*;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -163,6 +164,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 				.collect(toSet());
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

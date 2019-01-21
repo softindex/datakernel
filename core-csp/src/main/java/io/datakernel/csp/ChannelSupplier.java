@@ -22,6 +22,7 @@ import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
@@ -50,6 +51,7 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  * data should be querried.
  */
 public interface ChannelSupplier<T> extends Cancellable {
+	@NotNull
 	Promise<T> get();
 
 	static <T> ChannelSupplier<T> ofConsumer(Consumer<ChannelConsumer<T>> consumer, ChannelQueue<T> queue) {
@@ -133,7 +135,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
 				materializedPromise.whenResult(supplier -> supplier.close(e));
 			}
@@ -151,7 +153,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				if (supplier != null) {
 					supplier.close(e);
 				}
@@ -310,7 +312,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				endOfStream.trySetException(e);
 			}
 		};

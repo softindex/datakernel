@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.AbstractChannelConsumer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
@@ -135,7 +136,7 @@ public class TestUtils {
 		}
 
 		@Override
-		protected void onClosed(Throwable e) {
+		protected void onClosed(@NotNull Throwable e) {
 			executed = true;
 			queue.recycle();
 			if (expectedBuf != null) {

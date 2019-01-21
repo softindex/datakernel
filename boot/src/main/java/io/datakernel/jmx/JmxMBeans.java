@@ -558,9 +558,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private Runnable createRefreshTask(Eventloop eventloop,
-			@Nullable List<JmxRefreshable> previousList,
-			int previousRefreshes) {
+	private Runnable createRefreshTask(Eventloop eventloop, @Nullable List<JmxRefreshable> previousList, int previousRefreshes) {
 		return () -> {
 			long currentTime = eventloop.currentTimeMillis();
 

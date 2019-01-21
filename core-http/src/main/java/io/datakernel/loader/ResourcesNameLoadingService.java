@@ -3,6 +3,7 @@ package io.datakernel.loader;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +13,8 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public class ResourcesNameLoadingService implements EventloopService {
 	private final Eventloop eventloop;
@@ -39,17 +42,19 @@ public class ResourcesNameLoadingService implements EventloopService {
 		return new ResourcesNameLoadingService(eventloop, executorService, classLoader, "");
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.ofCallable(executorService,
 				() -> {
 					Set<String> fileNames = new HashSet<>();
-					InputStream in = loader.getResourceAsStream(resourcePath);
+					InputStream in = checkNotNull(loader.getResourceAsStream(resourcePath));
 					try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
 						String line;
 						while ((line = reader.readLine()) != null) {
@@ -64,6 +69,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 				.toVoid();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

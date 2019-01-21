@@ -149,20 +149,20 @@ public class PromisesEx {
 				});
 	}
 
-	public static <T> Promise<Boolean> tollerantCollectBoolean(Collection<T> items, Function<T, Promise<Boolean>> fn) {
-		return tollerantCollectBoolean(items.stream(), fn);
+	public static <T> Promise<Boolean> tolerantCollectBoolean(Collection<T> items, Function<T, Promise<Boolean>> fn) {
+		return tolerantCollectBoolean(items.stream(), fn);
 	}
 
-	public static <T> Promise<Boolean> tollerantCollectBoolean(Stream<T> items, Function<T, Promise<Boolean>> fn) {
+	public static <T> Promise<Boolean> tolerantCollectBoolean(Stream<T> items, Function<T, Promise<Boolean>> fn) {
 		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry())))
 				.thenCompose(Promise::ofTry);
 	}
 
-	public static <T> Promise<Void> tollerantCollectVoid(Collection<T> items, Function<T, Promise<Void>> fn) {
-		return tollerantCollectVoid(items.stream(), fn);
+	public static <T> Promise<Void> tolerantCollectVoid(Collection<T> items, Function<T, Promise<Void>> fn) {
+		return tolerantCollectVoid(items.stream(), fn);
 	}
 
-	public static <T> Promise<Void> tollerantCollectVoid(Stream<T> items, Function<T, Promise<Void>> fn) {
+	public static <T> Promise<Void> tolerantCollectVoid(Stream<T> items, Function<T, Promise<Void>> fn) {
 		return Promises.collectSequence(Try.voidReducer(), items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry())))
 				.thenCompose(Promise::ofTry);
 	}

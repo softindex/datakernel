@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class ComplexConfigConverter<T> implements ConfigConverter<T> {
@@ -25,8 +26,8 @@ public abstract class ComplexConfigConverter<T> implements ConfigConverter<T> {
 		this.defaultValue = defaultValue;
 	}
 
+	@NotNull
 	@Override
-	@Nullable
 	public final T get(Config config) {
 		return provide(config, defaultValue);
 	}

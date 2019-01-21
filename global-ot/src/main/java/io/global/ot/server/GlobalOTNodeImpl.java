@@ -34,6 +34,7 @@ import io.global.common.api.DiscoveryService;
 import io.global.common.api.NodeFactory;
 import io.global.ot.api.*;
 import io.global.ot.server.GlobalOTNodeImpl.PubKeyEntry.RepositoryEntry;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,16 +119,19 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		return ensureMasterNodes(repositoryId.getOwner());
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();
@@ -551,7 +555,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	}
 
 	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
-		return PromisesEx.tollerantCollectVoid(pubKeys.values().stream().flatMap(entry -> entry.repositories.values().stream()), fn);
+		return PromisesEx.tolerantCollectVoid(pubKeys.values().stream().flatMap(entry -> entry.repositories.values().stream()), fn);
 	}
 
 	public Promise<Void> fetch() {
@@ -560,7 +564,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	}
 
 	public Promise<Void> update() {
-		return PromisesEx.tollerantCollectVoid(pubKeys.values(), PubKeyEntry::updateRepositories)
+		return PromisesEx.tolerantCollectVoid(pubKeys.values(), PubKeyEntry::updateRepositories)
 				.thenComposeEx(($, e) -> forEachRepository(RepositoryEntry::update));
 	}
 
@@ -642,6 +646,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			return updateRepositories.get();
 		}
 
+		@NotNull
 		private Promise<List<GlobalOTNode>> doEnsureMasterNodes() {
 			if (updateNodesTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
 				return Promise.of(getMasterNodes());
@@ -673,6 +678,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					});
 		}
 
+		@NotNull
 		private Promise<Void> doUpdateRepositories() {
 			logger.trace("Updating repositories");
 			if (updateRepositoriesTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
@@ -752,6 +758,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				return pushPullRequests.get();
 			}
 
+			@NotNull
 			private Promise<Void> doUpdate() {
 				if (updateTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
 					return Promise.complete();
@@ -760,6 +767,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.whenResult($ -> updateTimestamp = now.currentTimeMillis());
 			}
 
+			@NotNull
 			private Promise<Void> doUpdateHeads() {
 				logger.trace("Updating heads");
 				if (updateHeadsTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
@@ -777,6 +785,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.whenResult($ -> updateHeadsTimestamp = now.currentTimeMillis());
 			}
 
+			@NotNull
 			private Promise<Void> doUpdateSnapshots() {
 				logger.trace("Updating snapshots");
 				if (updateSnapshotsTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
@@ -795,6 +804,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.whenResult($ -> updateSnapshotsTimestamp = now.currentTimeMillis());
 			}
 
+			@NotNull
 			private Promise<Void> doUpdatePullRequests() {
 				logger.trace("Updating pull requests");
 				if (updatePullRequestsTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
@@ -808,6 +818,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.whenResult($ -> updatePullRequestsTimestamp = now.currentTimeMillis());
 			}
 
+			@NotNull
 			private Promise<Void> doFilterHeads() {
 				logger.trace("Filtering heads");
 				return commitStorage.getHeads(repositoryId)
@@ -817,9 +828,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {
 				return ensureMasterNodes()
-						.thenCompose(masters -> PromisesEx.tollerantCollectVoid(masters, action));
+						.thenCompose(masters -> PromisesEx.tolerantCollectVoid(masters, action));
 			}
 
+			@NotNull
 			private Promise<Void> doFetch() {
 				return forEachMaster(master -> {
 					logger.trace("{} fetching from {}", repositoryId, master);
@@ -829,6 +841,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				});
 			}
 
+			@NotNull
 			private Promise<Void> doPush() {
 				return forEachMaster(master -> {
 					logger.trace("{} pushing to {}", repositoryId, master);
@@ -838,6 +851,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				});
 			}
 
+			@NotNull
 			private Promise<Void> doPushSnapshots() {
 				return forEachMaster(master -> {
 					logger.trace("{} pushing snapshots to {}", repositoryId, master);
@@ -847,18 +861,19 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 									.thenApply(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds)))
 							.thenCompose(snapshotsIds -> Promises.toList(snapshotsIds.stream()
 									.map(snapshot -> commitStorage.loadSnapshot(repositoryId, snapshot))))
-							.thenCompose(snapshots -> PromisesEx.tollerantCollectVoid(snapshots,
+							.thenCompose(snapshots -> PromisesEx.tolerantCollectVoid(snapshots,
 									snapshot -> master.saveSnapshot(repositoryId, snapshot.get())));
 				});
 			}
 
+			@NotNull
 			private Promise<Void> doPushPullRequests() {
 				return forEachMaster(master -> {
 					logger.trace("{} pushing pull requests to {}", repositoryId, master);
 					return master.getPullRequests(repositoryId)
 							.thenCompose(remotePullRequests -> commitStorage.getPullRequests(repositoryId)
 									.thenApply(localPullRequests -> difference(localPullRequests, remotePullRequests)))
-							.thenCompose(pullRequests -> PromisesEx.tollerantCollectVoid(pullRequests, master::sendPullRequest));
+							.thenCompose(pullRequests -> PromisesEx.tolerantCollectVoid(pullRequests, master::sendPullRequest));
 				});
 			}
 		}

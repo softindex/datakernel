@@ -391,6 +391,7 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 		infoRoundsExceededTargetTime = 0;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

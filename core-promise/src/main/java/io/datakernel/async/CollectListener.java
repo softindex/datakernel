@@ -2,27 +2,28 @@ package io.datakernel.async;
 
 import io.datakernel.async.Promises.ReduceTimeouter;
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public interface CollectListener<T, A, R> {
 	interface CollectCanceller {
 		void finish();
 
-		void finishExceptionally(Throwable e);
+		void finishExceptionally(@NotNull Throwable e);
 	}
 
-	void onStart(CollectCanceller canceller, A accumulator);
+	void onStart(@NotNull CollectCanceller canceller, @Nullable A accumulator);
 
 	default void onResult(@Nullable T promiseResult, int index) {
 	}
 
-	default void onException(Throwable e, int index) {
+	default void onException(@NotNull Throwable e, int index) {
 	}
 
-	default void onCollectResult(R result) {
+	default void onCollectResult(@Nullable R result) {
 	}
 
-	default void onCollectException(Throwable e) {
+	default void onCollectException(@NotNull Throwable e) {
 	}
 
 	static <T, A, R> CollectListener<T, A, R> timeout(long timeout) {
@@ -37,12 +38,12 @@ public interface CollectListener<T, A, R> {
 			int counter = results;
 
 			@Override
-			public void onStart(CollectCanceller canceller, A accumulator) {
+			public void onStart(@NotNull CollectCanceller canceller, @Nullable A accumulator) {
 				this.canceller = canceller;
 			}
 
 			@Override
-			public void onResult(T promiseResult, int index) {
+			public void onResult(@Nullable T promiseResult, int index) {
 				if (--counter == 0) {
 					canceller.finish();
 				}

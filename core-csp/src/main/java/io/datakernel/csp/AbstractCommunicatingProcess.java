@@ -19,6 +19,7 @@ package io.datakernel.csp;
 import io.datakernel.async.*;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.exception.ConstantException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
@@ -59,11 +60,13 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		}
 	}
 
+	@NotNull
 	@Override
 	public MaterializedPromise<Void> getProcessResult() {
 		return processResult;
 	}
 
+	@NotNull
 	@Override
 	public final MaterializedPromise<Void> startProcess() {
 		if (!processStarted) {
@@ -77,7 +80,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	protected abstract void doProcess();
 
 	@Override
-	public final void close(Throwable e) {
+	public final void close(@NotNull Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		doClose(e);
@@ -105,7 +108,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				supplier.close(e);
 				AbstractCommunicatingProcess.this.close(e);
 			}
@@ -120,7 +123,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				consumer.close(e);
 				AbstractCommunicatingProcess.this.close(e);
 			}
@@ -140,7 +143,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			}
 
 			@Override
-			public void close(Throwable e) {
+			public void close(@NotNull Throwable e) {
 				supplier.close(e);
 				AbstractCommunicatingProcess.this.close(e);
 			}

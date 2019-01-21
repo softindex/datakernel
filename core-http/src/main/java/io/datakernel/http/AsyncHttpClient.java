@@ -406,6 +406,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
@@ -422,6 +423,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");

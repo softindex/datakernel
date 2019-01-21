@@ -1,19 +1,23 @@
 package io.datakernel.async;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.RejectedExecutionException;
 
 public final class AsyncSuppliers {
-	private AsyncSuppliers() {
-	}
+	private AsyncSuppliers() {}
 
-	public static <T> AsyncSupplier<T> reuse(AsyncSupplier<? extends T> actual) {
+	@Contract(pure = true)
+	@NotNull
+	public static <T> AsyncSupplier<T> reuse(@NotNull AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			@Nullable
 			Promise<T> runningPromise;
 
+			@NotNull
 			@SuppressWarnings("unchecked")
 			@Override
 			public Promise<T> get() {
@@ -26,12 +30,15 @@ public final class AsyncSuppliers {
 		};
 	}
 
-	public static <T> AsyncSupplier<T> resubscribe(AsyncSupplier<? extends T> actual) {
+	@Contract(pure = true)
+	@NotNull
+	public static <T> AsyncSupplier<T> resubscribe(@NotNull AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			SettablePromise<T> runningPromise;
 			@Nullable
 			SettablePromise<T> subscribePromise;
 
+			@NotNull
 			@Override
 			public Promise<T> get() {
 				if (runningPromise == null) {
@@ -54,11 +61,15 @@ public final class AsyncSuppliers {
 		};
 	}
 
-	public static <T> AsyncSupplier<T> buffered(AsyncSupplier<? extends T> actual) {
+	@Contract(pure = true)
+	@NotNull
+	public static <T> AsyncSupplier<T> buffered(@NotNull AsyncSupplier<? extends T> actual) {
 		return buffered(1, Integer.MAX_VALUE, actual);
 	}
 
-	public static <T> AsyncSupplier<T> buffered(int maxParallelCalls, int maxBufferedCalls, AsyncSupplier<? extends T> actual) {
+	@Contract(pure = true)
+	@NotNull
+	public static <T> AsyncSupplier<T> buffered(int maxParallelCalls, int maxBufferedCalls, @NotNull AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			private int pendingCalls;
 			private final ArrayDeque<SettablePromise<T>> deque = new ArrayDeque<>();
@@ -76,6 +87,7 @@ public final class AsyncSuppliers {
 				}
 			}
 
+			@NotNull
 			@SuppressWarnings("unchecked")
 			@Override
 			public Promise<T> get() {
@@ -96,12 +108,16 @@ public final class AsyncSuppliers {
 		};
 	}
 
-	public static <T> AsyncSupplier<T> prefetch(int count, AsyncSupplier<? extends T> actual) {
+	@Contract(pure = true)
+	@NotNull
+	public static <T> AsyncSupplier<T> prefetch(int count, @NotNull AsyncSupplier<? extends T> actual) {
 		return prefetch(count, actual, actual);
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	@SuppressWarnings("unchecked")
-	public static <T> AsyncSupplier<T> prefetch(int count, AsyncSupplier<? extends T> actual, AsyncSupplier<? extends T> prefetchCallable) {
+	public static <T> AsyncSupplier<T> prefetch(int count, @NotNull AsyncSupplier<? extends T> actual, @NotNull AsyncSupplier<? extends T> prefetchCallable) {
 		return count == 0 ?
 				(AsyncSupplier<T>) actual :
 				new AsyncSupplier<T>() {
@@ -120,6 +136,7 @@ public final class AsyncSuppliers {
 						}
 					}
 
+					@NotNull
 					@SuppressWarnings("unchecked")
 					@Override
 					public Promise<T> get() {

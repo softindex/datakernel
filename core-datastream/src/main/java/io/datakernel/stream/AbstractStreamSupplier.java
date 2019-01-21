@@ -22,6 +22,7 @@ import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.util.Recyclable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -211,7 +212,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public final void close(Throwable e) {
+	public final void close(@NotNull Throwable e) {
 		if (endOfStream.isComplete()) return;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {

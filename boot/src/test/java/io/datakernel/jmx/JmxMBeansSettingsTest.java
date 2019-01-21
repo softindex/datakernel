@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -64,6 +65,7 @@ public class JmxMBeansSettingsTest {
 			return stats;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return EVENTLOOP;
@@ -114,6 +116,7 @@ public class JmxMBeansSettingsTest {
 			return stats;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return EVENTLOOP;

@@ -17,7 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -84,7 +84,7 @@ public class JmxMBeansAttributesSelectionTest {
 			return stats;
 		}
 
-		@Nullable
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return null;
@@ -99,7 +99,7 @@ public class JmxMBeansAttributesSelectionTest {
 			return stats;
 		}
 
-		@Nullable
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return null;
@@ -114,7 +114,7 @@ public class JmxMBeansAttributesSelectionTest {
 			return stats;
 		}
 
-		@Nullable
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return null;

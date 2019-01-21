@@ -25,6 +25,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +41,7 @@ public class ChannelFileExample {
 	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 
+	@NotNull
 	private static Promise<Void> writeToFile() {
 		try {
 			return ChannelSupplier.of(
@@ -51,6 +53,7 @@ public class ChannelFileExample {
 		}
 	}
 
+	@NotNull
 	private static Promise<Void> readFile() {
 		try {
 			return ChannelFileReader.readFile(executorService, PATH)

@@ -25,6 +25,7 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -46,7 +47,7 @@ public final class NetworkDemoClient {
 
 		eventloop.connect(new InetSocketAddress("localhost", PORT), new ConnectCallback() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
+			public void onConnect(@NotNull SocketChannel socketChannel) {
 				AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, null);
 
 				StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
@@ -63,7 +64,7 @@ public final class NetworkDemoClient {
 			}
 
 			@Override
-			public void onException(Throwable e) {
+			public void onException(@NotNull Throwable e) {
 				System.out.printf("Could not connect to server, make sure it is started: %s\n", e);
 			}
 		});

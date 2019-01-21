@@ -18,6 +18,7 @@ package io.datakernel.async;
 
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -46,41 +47,22 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@Override
 	abstract public T getResult();
 
+	@NotNull
 	@Override
 	public final Throwable getException() {
 		throw new UnsupportedOperationException();
 	}
 
+	@NotNull
 	@Override
-	public final Try<T> asTry() {
-		return Try.of(getResult());
-	}
-
-	@Override
-	public final boolean setTo(BiConsumer<? super T, Throwable> consumer) {
-		consumer.accept(getResult(), null);
-		return true;
-	}
-
-	@Override
-	public final boolean setResultTo(Consumer<? super T> consumer) {
-		consumer.accept(getResult());
-		return true;
-	}
-
-	@Override
-	public final boolean setExceptionTo(Consumer<Throwable> consumer) {
-		return false;
-	}
-
-	@Override
-	public final <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise) {
+	public final <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
 		promise.accept(getResult(), null);
 		return promise;
 	}
 
+	@NotNull
 	@Override
-	public final <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+	public final <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn) {
 		try {
 			return Promise.of(fn.apply(getResult()));
 		} catch (UncheckedException u) {
@@ -88,8 +70,9 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public final <U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+	public final <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		try {
 			return Promise.of(fn.apply(getResult(), null));
 		} catch (UncheckedException u) {
@@ -97,8 +80,9 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public final <U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn) {
+	public final <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn) {
 		try {
 			return fn.apply(getResult());
 		} catch (UncheckedException u) {
@@ -106,8 +90,9 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public final <U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public final <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
 		try {
 			return fn.apply(getResult(), null);
 		} catch (UncheckedException u) {
@@ -115,45 +100,52 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public final Promise<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	public final Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
 		action.accept(getResult(), null);
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public final Promise<T> whenResult(Consumer<? super T> action) {
+	public final Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		action.accept(getResult());
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public final Promise<T> whenException(Consumer<Throwable> action) {
+	public final Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		return this;
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+	public final <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
 		if (other instanceof CompletePromise) {
 			return Promise.of(fn.apply(getResult(), ((CompletePromise<U>) other).getResult()));
 		}
 		return other.thenApply(otherResult -> fn.apply(getResult(), otherResult));
 	}
 
+	@NotNull
 	@Override
-	public final Promise<Void> both(Promise<?> other) {
+	public final Promise<Void> both(@NotNull Promise<?> other) {
 		if (other instanceof CompletePromise) {
 			return Promise.complete();
 		}
 		return other.toVoid();
 	}
 
+	@NotNull
 	@Override
-	public final Promise<T> either(Promise<? extends T> other) {
+	public final Promise<T> either(@NotNull Promise<? extends T> other) {
 		return this;
 	}
 
+	@NotNull
 	@Override
 	public final MaterializedPromise<T> async() {
 		SettablePromise<T> result = new SettablePromise<>();
@@ -161,16 +153,19 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		return result;
 	}
 
+	@NotNull
 	@Override
 	public final Promise<Try<T>> toTry() {
 		return Promise.of(Try.of(getResult()));
 	}
 
+	@NotNull
 	@Override
 	public final Promise<Void> toVoid() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public final CompletableFuture<T> toCompletableFuture() {
 		CompletableFuture<T> future = new CompletableFuture<>();

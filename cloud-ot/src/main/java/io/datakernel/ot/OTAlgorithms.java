@@ -8,6 +8,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.exceptions.OTException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return new OTAlgorithms<>(eventloop, otSystem, source);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

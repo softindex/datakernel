@@ -224,6 +224,7 @@ public class GlobalOTNodeHttpClientTest {
 							);
 							private int index = -1;
 
+							@NotNull
 							@Override
 							public Promise<CommitEntry> get() {
 								index++;
@@ -233,7 +234,7 @@ public class GlobalOTNodeHttpClientTest {
 							}
 
 							@Override
-							public void close(Throwable e) {
+							public void close(@NotNull Throwable e) {
 							}
 						}
 				);
@@ -244,6 +245,7 @@ public class GlobalOTNodeHttpClientTest {
 				return Promise.of(new ChannelConsumer<CommitEntry>() {
 					List<CommitId> commitIds = new ArrayList<>();
 
+					@NotNull
 					@Override
 					public Promise<Void> accept(@Nullable CommitEntry value) {
 						if (value != null) {
@@ -255,7 +257,7 @@ public class GlobalOTNodeHttpClientTest {
 					}
 
 					@Override
-					public void close(Throwable e) {
+					public void close(@NotNull Throwable e) {
 					}
 				});
 			}

@@ -19,6 +19,7 @@ package io.datakernel.stream;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.ChannelSupplier;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -72,7 +73,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -111,7 +112,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -144,7 +145,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}

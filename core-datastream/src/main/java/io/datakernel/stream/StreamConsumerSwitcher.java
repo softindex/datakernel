@@ -20,6 +20,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -165,7 +166,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			StreamConsumerSwitcher.this.close(e);
 		}
 

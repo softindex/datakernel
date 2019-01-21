@@ -22,6 +22,7 @@ import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +41,7 @@ public class AsyncFileExample {
 	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 
+	@NotNull
 	private static Promise<Void> writeToFile() {
 		try {
 			AsyncFile asyncFile = AsyncFile.open(executorService, PATH, new OpenOption[]{WRITE, CREATE_NEW, APPEND});
@@ -51,6 +53,7 @@ public class AsyncFileExample {
 		}
 	}
 
+	@NotNull
 	private static Promise<ByteBuf> readFromFile() {
 		try {
 			return AsyncFile.open(executorService, PATH, new OpenOption[]{READ})

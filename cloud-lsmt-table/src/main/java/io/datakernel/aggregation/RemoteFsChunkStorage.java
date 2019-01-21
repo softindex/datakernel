@@ -35,6 +35,7 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ReflectionUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -284,16 +285,19 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 				.whenComplete(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return client.ping();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

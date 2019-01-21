@@ -16,16 +16,15 @@
 
 package io.datakernel.async;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class AbstractCancellable implements Cancellable {
 	@Nullable
 	private Cancellable cancellable;
 
-	@Nullable
 	private Throwable exception;
 
-	@Nullable
 	public Throwable getException() {
 		return exception;
 	}
@@ -34,11 +33,11 @@ public abstract class AbstractCancellable implements Cancellable {
 		this.cancellable = cancellable;
 	}
 
-	protected void onClosed(Throwable e) {
+	protected void onClosed(@NotNull Throwable e) {
 	}
 
 	@Override
-	public final void close(Throwable e) {
+	public final void close(@NotNull Throwable e) {
 		if (isClosed()) return;
 		exception = e;
 		onClosed(e);

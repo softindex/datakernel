@@ -18,6 +18,7 @@ package io.datakernel.config;
 
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ParserFunction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -28,6 +29,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 public interface ConfigConverter<T> {
 	T get(Config config, @Nullable T defaultValue);
 
+	@NotNull
 	T get(Config config);
 
 	/**
@@ -42,7 +44,6 @@ public interface ConfigConverter<T> {
 		ConfigConverter<T> thisConverter = this;
 		return new ConfigConverter<V>() {
 			@Override
-			@Nullable
 			public V get(Config config, @Nullable V defaultValue) {
 				T value = thisConverter.get(config, defaultValue == null ? null : from.apply(defaultValue));
 				try {
@@ -52,8 +53,8 @@ public interface ConfigConverter<T> {
 				}
 			}
 
+			@NotNull
 			@Override
-			@Nullable
 			public V get(Config config) {
 				try {
 					return to.parse(thisConverter.get(config));
@@ -74,6 +75,7 @@ public interface ConfigConverter<T> {
 				return value;
 			}
 
+			@NotNull
 			@Override
 			public T get(Config config) {
 				T t = thisConverter.get(config);

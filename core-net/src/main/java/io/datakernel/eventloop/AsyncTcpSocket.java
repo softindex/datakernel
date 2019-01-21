@@ -20,6 +20,7 @@ import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.net.SocketSettings;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.channels.SocketChannel;
@@ -49,6 +50,7 @@ public interface AsyncTcpSocket extends Cancellable {
 	 *
 	 * @return promise of ByteBuf that represents data recieved from network
 	 */
+	@NotNull
 	Promise<ByteBuf> read();
 
 	/**
@@ -60,6 +62,7 @@ public interface AsyncTcpSocket extends Cancellable {
 	 * @param buf data to be sent to network
 	 * @return promise that represents succesful write operation
 	 */
+	@NotNull
 	Promise<Void> write(@Nullable ByteBuf buf);
 
 	static AsyncTcpSocket ofSocketChannel(SocketChannel socketChannel) {

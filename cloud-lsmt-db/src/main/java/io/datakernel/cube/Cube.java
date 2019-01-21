@@ -1302,6 +1302,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return aggregationStats;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

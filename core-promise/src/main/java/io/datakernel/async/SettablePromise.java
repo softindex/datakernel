@@ -19,6 +19,7 @@ package io.datakernel.async;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -44,7 +45,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@Nullable
 	private Throwable exception = PROMISE_NOT_SET;
 
-	public static <T> SettablePromise<T> ofPromise(Promise<T> promise) {
+	@NotNull
+	public static <T> SettablePromise<T> ofPromise(@NotNull Promise<T> promise) {
 		SettablePromise<T> result = new SettablePromise<>();
 		promise.whenComplete(result::set);
 		return result;
@@ -90,8 +92,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 *
 	 * @param e exception
 	 */
-	public void setException(Throwable e) {
-		assert e != null;
+	public void setException(@NotNull Throwable e) {
 		assert !isComplete();
 		result = null;
 		exception = e;
@@ -126,8 +127,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	/**
 	 * The same as {@link SettablePromise#trySet(Object, Throwable)} )} but for exception only.
 	 */
-	public void trySetException(Throwable e) {
-		assert e != null;
+	public void trySetException(@NotNull Throwable e) {
 		if (isComplete()) {
 			return;
 		}
@@ -138,7 +138,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		getCurrentEventloop().post(() -> set(result));
 	}
 
-	public void postException(Throwable e) {
+	public void postException(@NotNull Throwable e) {
 		getCurrentEventloop().post(() -> setException(e));
 	}
 
@@ -150,8 +150,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		getCurrentEventloop().post(() -> trySet(result));
 	}
 
-	public void tryPostException(Throwable e) {
-		assert e != null;
+	public void tryPostException(@NotNull Throwable e) {
 		getCurrentEventloop().post(() -> trySetException(e));
 	}
 
@@ -160,7 +159,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	@Override
-	protected void subscribe(BiConsumer<? super T, Throwable> next) {
+	protected void subscribe(@NotNull BiConsumer<? super T, Throwable> next) {
 		assert !isComplete();
 		super.subscribe(next);
 	}
@@ -174,55 +173,19 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		throw new IllegalStateException();
 	}
 
+	@NotNull
 	@Override
 	public Throwable getException() {
 		if (isException()) {
+			assert exception != null;
 			return exception;
 		}
 		throw new IllegalStateException();
 	}
 
-	@Nullable
+	@NotNull
 	@Override
-	public Try<T> asTry() {
-		return isComplete() ? Try.of(result, exception) : null;
-	}
-
-	@Override
-	public boolean setTo(BiConsumer<? super T, Throwable> consumer) {
-		if (isComplete()) {
-			consumer.accept(result, exception);
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean setResultTo(Consumer<? super T> consumer) {
-		if (isResult()) {
-			consumer.accept(result);
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean setExceptionTo(Consumer<Throwable> consumer) {
-		if (isException()) {
-			consumer.accept(exception);
-			return true;
-		}
-		return false;
-	}
-
-	@SuppressWarnings("unchecked")
-	public <U> Promise<U> mold() {
-		assert isException() : "Trying to mold a successful SettablePromise!";
-		return (Promise<U>) this;
-	}
-
-	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise) {
+	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
 		if (isComplete()) {
 			promise.accept(result, exception);
 			return promise;
@@ -230,9 +193,10 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.then(promise);
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+	public <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn) {
 		if (isComplete()) {
 			try {
 				return isResult() ? Promise.of(fn.apply(result)) : (Promise<U>) this;
@@ -243,8 +207,9 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.thenApply(fn);
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+	public <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		if (isComplete()) {
 			try {
 				return Promise.of(fn.apply(result, exception));
@@ -255,9 +220,10 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.thenApplyEx(fn);
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn) {
 		if (isComplete()) {
 			try {
 				return isResult() ? fn.apply(result) : (Promise<U>) this;
@@ -268,8 +234,9 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.thenCompose(fn);
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
 		if (isComplete()) {
 			try {
 				return fn.apply(result, exception);
@@ -280,8 +247,9 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.thenComposeEx(fn);
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	public Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
 		if (isComplete()) {
 			action.accept(result, exception);
 			return this;
@@ -289,8 +257,9 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.whenComplete(action);
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenResult(Consumer<? super T> action) {
+	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		if (isComplete()) {
 			if (isResult()) action.accept(result);
 			return this;
@@ -298,8 +267,9 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.whenResult(action);
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenException(Consumer<Throwable> action) {
+	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		if (isComplete()) {
 			if (isException()) action.accept(exception);
 			return this;
@@ -307,18 +277,20 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.whenException(action);
 	}
 
+	@NotNull
 	@Override
 	public MaterializedPromise<T> async() {
 		if (isComplete()) {
-			SettablePromise<T> result = new SettablePromise<>();
-			getCurrentEventloop().post(isResult() ?
-					() -> result.set(this.result) :
-					() -> result.setException(exception));
-			return result;
+			SettablePromise<T> promise = new SettablePromise<>();
+			getCurrentEventloop().post(exception == null ?
+					() -> promise.set(result) :
+					() -> promise.setException(exception));
+			return promise;
 		}
 		return this;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Try<T>> toTry() {
 		if (isComplete()) {
@@ -327,6 +299,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.toTry();
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<Void> toVoid() {
@@ -336,30 +309,34 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.toVoid();
 	}
 
+	@NotNull
 	@Override
-	public <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
 		if (isComplete()) {
 			return Promise.of(result, exception).combine(other, fn);
 		}
 		return super.combine(other, fn);
 	}
 
+	@NotNull
 	@Override
-	public Promise<Void> both(Promise<?> other) {
+	public Promise<Void> both(@NotNull Promise<?> other) {
 		if (isComplete()) {
 			return Promise.of(result, exception).both(other);
 		}
 		return super.both(other);
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> either(Promise<? extends T> other) {
+	public Promise<T> either(@NotNull Promise<? extends T> other) {
 		if (isComplete()) {
 			return Promise.of(result, exception).either(other);
 		}
 		return super.either(other);
 	}
 
+	@NotNull
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
 		if (isComplete()) {

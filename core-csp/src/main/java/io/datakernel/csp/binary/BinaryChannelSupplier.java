@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 
@@ -89,7 +90,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			}
 
 			@Override
-			public void close(Throwable e) {
+			public void close(@NotNull Throwable e) {
 				bufs.recycle();
 				input.close(e);
 			}
@@ -110,7 +111,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			}
 
 			@Override
-			public void close(Throwable e) {
+			public void close(@NotNull Throwable e) {
 				cancellable.close(e);
 			}
 		};

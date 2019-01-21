@@ -31,6 +31,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +119,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	// endregion
 
 	// region getters
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -451,6 +453,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("There are more dead partitions than replication count(" +
 								deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", tries);
 					}
+					//noinspection ConstantConditions
 					return Promise.of(new ArrayList<>(tries.stream()
 							.filter(Try::isSuccess)
 							.map(Try::getOrNull)
@@ -465,11 +468,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		return checkAllPartitions();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

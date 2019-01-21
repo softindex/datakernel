@@ -30,6 +30,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -93,11 +94,13 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.thenCompose(list -> Promise.of(MemSize.of(list.stream().mapToLong(FileMetadata::getSize).sum())));
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		checkState(cacheSizeLimit != null, "Cannot start cached client without specifying cache size limit");
@@ -255,6 +258,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 				mainClient.deleteBulk(glob));
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return ensureSpace();
@@ -275,6 +279,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 		return ensureSpace.get();
 	}
 
+	@NotNull
 	private Promise<Void> doEnsureSpace() {
 		if (totalCacheSize + downloadingNowSize <= cacheSizeLimit.toLong()) {
 			return Promise.complete();

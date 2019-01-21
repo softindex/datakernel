@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
 import java.util.List;
@@ -29,17 +30,19 @@ public class AsyncExecutors {
 
 	public static AsyncExecutor direct() {
 		return new AsyncExecutor() {
+			@NotNull
 			@Override
-			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
 				return supplier.get();
 			}
 		};
 	}
 
-	public static AsyncExecutor ofEventloop(Eventloop eventloop) {
+	public static AsyncExecutor ofEventloop(@NotNull Eventloop eventloop) {
 		return new AsyncExecutor() {
+			@NotNull
 			@Override
-			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
 				Eventloop currentEventloop = Eventloop.getCurrentEventloop();
 				if (eventloop == currentEventloop) {
 					return supplier.get();
@@ -57,12 +60,13 @@ public class AsyncExecutors {
 		};
 	}
 
-	public static AsyncExecutor roundRobin(List<AsyncExecutor> executors) {
+	public static AsyncExecutor roundRobin(@NotNull List<AsyncExecutor> executors) {
 		return new AsyncExecutor() {
 			int index;
 
+			@NotNull
 			@Override
-			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
 				AsyncExecutor executor = executors.get(index);
 				index = (index + 1) % executors.size();
 				return executor.execute(supplier);
@@ -97,8 +101,9 @@ public class AsyncExecutors {
 				}
 			}
 
+			@NotNull
 			@Override
-			public <T> Promise<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException {
+			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) throws RejectedExecutionException {
 				if (pendingCalls < maxParallelCalls) {
 					pendingCalls++;
 					return supplier.get().whenComplete(($, e) -> {
@@ -117,18 +122,19 @@ public class AsyncExecutors {
 		};
 	}
 
-	public static AsyncExecutor retry(RetryPolicy retryPolicy) {
+	public static AsyncExecutor retry(@NotNull RetryPolicy retryPolicy) {
 		return new AsyncExecutor() {
+			@NotNull
 			@Override
-			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
 				return Promise.ofCallback(settablePromise ->
 						retryImpl(supplier, retryPolicy, 0, 0, settablePromise));
 			}
 		};
 	}
 
-	private static <T> void retryImpl(AsyncSupplier<? extends T> supplier, RetryPolicy retryPolicy,
-			int retryCount, long _retryTimestamp, SettablePromise<T> cb) {
+	private static <T> void retryImpl(@NotNull AsyncSupplier<? extends T> supplier, @NotNull RetryPolicy retryPolicy,
+			int retryCount, long _retryTimestamp, @NotNull SettablePromise<T> cb) {
 		supplier.get().async().whenComplete((value, e) -> {
 			if (e == null) {
 				cb.set(value);
@@ -153,8 +159,9 @@ public class AsyncExecutors {
 			private final int maxCalls = maxRecursiveCalls + 1;
 			private int counter = 0;
 
+			@NotNull
 			@Override
-			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
 				Promise<T> promise = supplier.get();
 				if (promise.isComplete() && counter++ % maxCalls == 0) {
 					counter = 0;

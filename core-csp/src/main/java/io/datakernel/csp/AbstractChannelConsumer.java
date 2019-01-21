@@ -19,6 +19,7 @@ package io.datakernel.csp;
 import io.datakernel.async.AbstractCancellable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
@@ -36,6 +37,7 @@ public abstract class AbstractChannelConsumer<T> extends AbstractCancellable imp
 
 	protected abstract Promise<Void> doAccept(@Nullable T value);
 
+	@NotNull
 	@Override
 	public Promise<Void> accept(@Nullable T value) {
 		if (isClosed()) {

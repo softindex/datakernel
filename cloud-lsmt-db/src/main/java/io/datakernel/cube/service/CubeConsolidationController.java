@@ -12,6 +12,7 @@ import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.ot.OTStateManager;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -185,6 +186,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		consolidate();
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

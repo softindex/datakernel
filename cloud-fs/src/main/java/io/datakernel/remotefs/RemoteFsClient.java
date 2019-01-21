@@ -30,6 +30,7 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +88,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 	// endregion
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -242,11 +244,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 				.whenComplete(connectPromise.recordStats());
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

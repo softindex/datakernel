@@ -25,6 +25,7 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 
@@ -130,7 +131,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	@Override
-	public void close(Throwable e) {
+	public void close(@NotNull Throwable e) {
 		if (isClosed()) return;
 		closedException = e;
 		socket.close(e);

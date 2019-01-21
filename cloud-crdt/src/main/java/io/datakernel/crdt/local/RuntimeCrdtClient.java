@@ -31,6 +31,7 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -76,6 +77,7 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return new RuntimeCrdtClient<>(eventloop, combiner);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -131,11 +133,13 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

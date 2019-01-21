@@ -29,6 +29,7 @@ import io.datakernel.util.MemSize;
 import io.datakernel.util.SimpleThreadFactory;
 import io.datakernel.util.StringFormatUtils;
 import io.datakernel.util.Utils;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -173,6 +174,7 @@ public final class ConfigConverters {
 				return config.getValue(defaultValue);
 			}
 
+			@NotNull
 			@Override
 			public String get(Config config) {
 				return get(config, "");
@@ -537,6 +539,7 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<FatalErrorHandler> ofFatalErrorHandler() {
 		return new ConfigConverter<FatalErrorHandler>() {
+			@NotNull
 			@Override
 			public FatalErrorHandler get(Config config) {
 				switch (config.getValue()) {
@@ -573,6 +576,7 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<Schedule> ofEventloopTaskSchedule() {
 		return new ConfigConverter<Schedule>() {
+			@NotNull
 			@Override
 			public Schedule get(Config config) {
 				switch (config.get("type")) {
@@ -601,6 +605,7 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<RetryPolicy> ofRetryPolicy() {
 		return new ConfigConverter<RetryPolicy>() {
+			@NotNull
 			@Override
 			public RetryPolicy get(Config config) {
 				if (!config.hasValue() || config.getValue().equals("no")) {
@@ -689,6 +694,7 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<ExecutorService> ofExecutor() {
 		return new ConfigConverter<ExecutorService>() {
+			@NotNull
 			@Override
 			public ExecutorService get(Config config) {
 				return getExecutor(config);

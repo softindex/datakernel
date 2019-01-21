@@ -175,7 +175,7 @@ public class RpcBenchmark extends Launcher {
 
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms");
 		}
-		double avgTime = time / benchmarkRounds;
+		double avgTime = (double) time / benchmarkRounds;
 		long requestsPerSecond = (long) (maxRequests / avgTime * 1000);
 		System.out.println("Time: " + time + "ms; Average time: " + avgTime + "ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);

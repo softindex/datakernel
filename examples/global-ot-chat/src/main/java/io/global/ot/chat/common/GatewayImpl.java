@@ -8,6 +8,7 @@ import io.datakernel.ot.OTRepository;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.Tuple2;
 import io.global.ot.api.CommitId;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -49,6 +50,7 @@ public class GatewayImpl<D> implements Gateway<D> {
 				.whenResult($ -> mergeHeads());
 	}
 
+	@NotNull
 	public Promise<Void> mergeHeads() {
 		return mergeHeads.get();
 	}

@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.file.AsyncFile;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +72,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	// endregion
 
 	@Override
-	protected void onClosed(Throwable e) {
+	protected void onClosed(@NotNull Throwable e) {
 		closeFile();
 	}
 

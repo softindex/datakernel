@@ -23,6 +23,7 @@ import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
@@ -50,8 +51,10 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  */
 
 public interface ChannelConsumer<T> extends Cancellable {
+	@NotNull
 	Promise<Void> accept(@Nullable T value);
 
+	@NotNull
 	default Promise<Void> accept(@Nullable T item1, @Nullable T item2) {
 		return accept(item1)
 				.thenComposeEx(($, e) -> {
@@ -64,6 +67,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 				});
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	default Promise<Void> accept(T item1, T item2, T... items) {
 		return accept(item1)
@@ -87,23 +91,24 @@ public interface ChannelConsumer<T> extends Cancellable {
 				.thenCompose($ -> acceptAll(asIterator(items)));
 	}
 
-	default Promise<Void> acceptAll(Iterator<? extends T> it) {
+	@NotNull
+	default Promise<Void> acceptAll(@NotNull Iterator<? extends T> it) {
 		return ChannelConsumers.acceptAll(this, it);
 	}
 
-	default Promise<Void> acceptAll(Iterable<T> iterable) {
+	default Promise<Void> acceptAll(@NotNull Iterable<T> iterable) {
 		return acceptAll(iterable.iterator());
 	}
 
-	static <T> ChannelConsumer<T> ofConsumer(Consumer<T> consumer) {
+	static <T> ChannelConsumer<T> ofConsumer(@NotNull Consumer<T> consumer) {
 		return of(AsyncConsumer.of(consumer));
 	}
 
-	static <T> ChannelConsumer<T> of(AsyncConsumer<T> consumer) {
+	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer) {
 		return of(consumer, e -> {});
 	}
 
-	static <T> ChannelConsumer<T> of(AsyncConsumer<T> consumer, Cancellable cancellable) {
+	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable Cancellable cancellable) {
 		return new AbstractChannelConsumer<T>(cancellable) {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
@@ -161,7 +166,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
 				materializedPromise.whenResult(supplier -> supplier.close(e));
 			}
@@ -179,7 +184,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				if (consumer != null) {
 					consumer.close(e);
 				}
@@ -299,7 +304,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClosed(Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				acknowledgement.trySetException(e);
 			}
 		};

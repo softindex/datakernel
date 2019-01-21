@@ -19,6 +19,7 @@ package io.global.launchers.fs;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverter;
 import io.global.fs.api.CheckpointPosStrategy;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.config.Config.THIS;
@@ -33,6 +34,7 @@ public final class GlobalFsConfigConverters {
 	public static ConfigConverter<CheckpointPosStrategy> ofCheckpointPositionStrategy() {
 		return new ConfigConverter<CheckpointPosStrategy>() {
 
+			@NotNull
 			@Override
 			public CheckpointPosStrategy get(Config config) {
 				return of(config.get(ofMemSizeAsLong(), THIS));

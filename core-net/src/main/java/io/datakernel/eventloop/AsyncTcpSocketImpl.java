@@ -280,6 +280,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
+	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
 		if (channel == null) return Promise.ofException(CLOSE_EXCEPTION);
@@ -360,6 +361,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	// write cycle
+	@NotNull
 	@Override
 	public Promise<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
@@ -457,7 +459,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	@Override
-	public void close(@Nullable Throwable e) {
+	public void close(@NotNull Throwable e) {
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
 		doClose();

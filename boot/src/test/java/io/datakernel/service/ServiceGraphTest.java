@@ -23,6 +23,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import org.hamcrest.core.IsSame;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -70,6 +71,7 @@ public class ServiceGraphTest {
 		@Named("FailService")
 		EventloopService failService(Eventloop eventloop) {
 			return new EventloopServiceEmpty(eventloop) {
+				@NotNull
 				@Override
 				public Promise<Void> start() {
 					return Promise.ofException(INTERRUPTED);
@@ -97,16 +99,19 @@ public class ServiceGraphTest {
 
 		EventloopServiceEmpty(Eventloop eventloop) {this.eventloop = eventloop;}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return eventloop;
 		}
 
+		@NotNull
 		@Override
 		public Promise<Void> start() {
 			return Promise.complete();
 		}
 
+		@NotNull
 		@Override
 		public Promise<Void> stop() {
 			return Promise.complete();

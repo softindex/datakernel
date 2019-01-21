@@ -17,18 +17,22 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 public interface EventloopService {
+	@NotNull
 	Eventloop getEventloop();
 
 	/**
 	 * Starts this component asynchronously.
 	 * Callback completes immediately if the component is already running.
 	 */
+	@NotNull
 	Promise<Void> start();
 
+	@NotNull
 	default CompletableFuture<Void> startFuture() {
 		return getEventloop().submit(cb -> start().whenComplete(cb));
 	}
@@ -37,8 +41,10 @@ public interface EventloopService {
 	 * Stops this component asynchronously.
 	 * Callback completes immediately if the component is not running / already stopped.
 	 */
+	@NotNull
 	Promise<Void> stop();
 
+	@NotNull
 	default CompletableFuture<Void> stopFuture() {
 		return getEventloop().submit(cb -> stop().whenComplete(cb));
 	}

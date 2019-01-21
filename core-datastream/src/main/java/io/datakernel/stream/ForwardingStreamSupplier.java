@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedPromise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
@@ -53,7 +54,7 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void close(Throwable e) {
+	public void close(@NotNull Throwable e) {
 		supplier.close(e);
 	}
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import java.util.Properties;
@@ -61,6 +62,7 @@ public class ConfigsModuleTest {
 		properties2.put("innerClass.field3", "true");
 
 		ConfigConverter<TestClass> configConverter = new ConfigConverter<TestClass>() {
+			@NotNull
 			@Override
 			public TestClass get(Config config) {
 				return get(config, null);

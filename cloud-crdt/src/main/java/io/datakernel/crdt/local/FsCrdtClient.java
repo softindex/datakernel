@@ -45,6 +45,7 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,6 +149,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 	}
 	// endregion
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -206,11 +208,13 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		return client.ping();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

@@ -34,6 +34,7 @@ import io.datakernel.stream.processor.StreamMap.MapperProjection;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -619,6 +620,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return stats;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

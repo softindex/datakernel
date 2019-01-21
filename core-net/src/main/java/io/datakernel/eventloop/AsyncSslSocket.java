@@ -21,6 +21,7 @@ import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.net.CloseWithoutNotifyException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
@@ -97,6 +98,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		});
 	}
 
+	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
 		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
@@ -112,6 +114,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		return read;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> write(@Nullable ByteBuf buf) {
 		if (!isOpen()) {
@@ -353,7 +356,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	@Override
-	public void close(Throwable e) {
+	public void close(@NotNull Throwable e) {
 		if (!isOpen()) return;
 		if (!engine.isOutboundDone()) {
 			engine.closeOutbound();

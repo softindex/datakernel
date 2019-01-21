@@ -124,6 +124,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 	public ChannelInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
+			//noinspection ConstantConditions
 			if (this.input != null && this.output != null) startProcess();
 			return getProcessResult();
 		};

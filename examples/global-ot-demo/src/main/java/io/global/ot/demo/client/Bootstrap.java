@@ -34,6 +34,7 @@ import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.http.GlobalOTNodeHttpClient;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.util.CollectionUtils.set;
@@ -82,17 +83,20 @@ public class Bootstrap implements EventloopService {
 		return simKey;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return initializeDiscoveryService()
 				.thenCompose($ -> initializeRootCommit());
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

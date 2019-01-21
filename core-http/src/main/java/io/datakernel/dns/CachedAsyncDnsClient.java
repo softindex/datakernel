@@ -22,6 +22,7 @@ import io.datakernel.async.SettablePromise;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -179,6 +180,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		client.close();
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

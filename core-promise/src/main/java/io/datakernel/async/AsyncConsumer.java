@@ -16,6 +16,9 @@
 
 package io.datakernel.async;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -31,6 +34,7 @@ public interface AsyncConsumer<T> {
 	 * @param value value to be consumed
 	 * @return {@link Promise} of {@link Void} that represents succesful consumption of data
 	 */
+	@NotNull
 	Promise<Void> accept(T value);
 
 	/**
@@ -39,35 +43,47 @@ public interface AsyncConsumer<T> {
 	 * @param consumer - Java's {@link Consumer} of Promises
 	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface
 	 */
-
-	static <T> AsyncConsumer<T> of(Consumer<? super T> consumer) {
+	@NotNull
+	static <T> AsyncConsumer<T> of(@NotNull Consumer<? super T> consumer) {
 		return value -> {
 			consumer.accept(value);
 			return Promise.complete();
 		};
 	}
 
-	default <R> R transformWith(Function<AsyncConsumer<T>, R> fn) {
+	@Contract(pure = true)
+	@NotNull
+	default <R> R transformWith(@NotNull Function<AsyncConsumer<T>, R> fn) {
 		return fn.apply(this);
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	default AsyncConsumer<T> async() {
 		return value -> accept(value).async();
 	}
 
-	default AsyncConsumer<T> withExecutor(AsyncExecutor asyncExecutor) {
+	@Contract(pure = true)
+	@NotNull
+	default AsyncConsumer<T> withExecutor(@NotNull AsyncExecutor asyncExecutor) {
 		return value -> asyncExecutor.execute(() -> accept(value));
 	}
 
-	default <V> AsyncConsumer<V> map(Function<? super V, ? extends T> fn) {
+	@Contract(pure = true)
+	@NotNull
+	default <V> AsyncConsumer<V> map(@NotNull Function<? super V, ? extends T> fn) {
 		return value -> accept(fn.apply(value));
 	}
 
-	default <V> AsyncConsumer<V> mapAsync(Function<? super V, ? extends Promise<T>> fn) {
+	@Contract(pure = true)
+	@NotNull
+	default <V> AsyncConsumer<V> mapAsync(@NotNull Function<? super V, ? extends Promise<T>> fn) {
 		return value -> fn.apply(value).thenCompose(this::accept);
 	}
 
-	default AsyncConsumer<T> whenException(Consumer<Throwable> action) {
+	@Contract(pure = true)
+	@NotNull
+	default AsyncConsumer<T> whenException(@NotNull Consumer<Throwable> action) {
 		return value -> accept(value).whenException(action);
 	}
 }

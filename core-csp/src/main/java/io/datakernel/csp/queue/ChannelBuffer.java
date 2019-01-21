@@ -18,6 +18,7 @@ package io.datakernel.csp.queue;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
@@ -192,7 +193,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	}
 
 	@Override
-	public void close(Throwable e) {
+	public void close(@NotNull Throwable e) {
 		if (exception != null) return;
 		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {

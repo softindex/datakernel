@@ -24,6 +24,7 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -82,11 +83,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		scheduledRunnable = eventloop.delay(period, this::doReload);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		if (reloadPeriod == 0) return Promise.complete();
@@ -101,6 +104,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 				.toVoid();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		if (scheduledRunnable != null) scheduledRunnable.cancel();

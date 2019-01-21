@@ -7,6 +7,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
+import org.jetbrains.annotations.NotNull;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -78,6 +79,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 				.thenCompose($ -> createId());
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

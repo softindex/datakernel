@@ -19,6 +19,7 @@ package io.datakernel.multilog;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplierWithResult;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -31,9 +32,9 @@ public interface Multilog<T> {
 	 * @param logPartition log partition name
 	 * @return StreamConsumer, which will write records, streamed from wired supplier.
 	 */
-	Promise<StreamConsumer<T>> write(String logPartition);
+	Promise<StreamConsumer<T>> write(@NotNull String logPartition);
 
-	default StreamConsumer<T> writer(String logPartition) {
+	default StreamConsumer<T> writer(@NotNull String logPartition) {
 		return StreamConsumer.ofPromise(write(logPartition));
 	}
 
@@ -45,12 +46,12 @@ public interface Multilog<T> {
 	 * @param startPosition position
 	 * @return StreamSupplier, which will stream read items to its wired consumer.
 	 */
-	Promise<StreamSupplierWithResult<T, LogPosition>> read(String logPartition,
-			LogFile startLogFile, long startPosition,
+	Promise<StreamSupplierWithResult<T, LogPosition>> read(@NotNull String logPartition,
+			@NotNull LogFile startLogFile, long startPosition,
 			@Nullable LogFile endLogFile);
 
-	default StreamSupplierWithResult<T, LogPosition> reader(String logPartition,
-			LogFile startLogFile, long startPosition,
+	default StreamSupplierWithResult<T, LogPosition> reader(@NotNull String logPartition,
+			@NotNull LogFile startLogFile, long startPosition,
 			@Nullable LogFile endLogFile) {
 		return StreamSupplierWithResult.ofPromise(
 				read(logPartition, startLogFile, startPosition, endLogFile));

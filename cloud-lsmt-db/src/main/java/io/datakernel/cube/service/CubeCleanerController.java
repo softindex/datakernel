@@ -15,6 +15,7 @@ import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
 import io.datakernel.util.CollectionUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -255,6 +256,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		cleanup();
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

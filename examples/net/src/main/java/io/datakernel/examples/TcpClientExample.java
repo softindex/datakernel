@@ -24,6 +24,7 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -60,7 +61,7 @@ public class TcpClientExample {
 		System.out.println("Connecting to server at localhost (port 9922)...");
 		eventloop.connect(new InetSocketAddress("localhost", 9922), new ConnectCallback() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
+			public void onConnect(@NotNull SocketChannel socketChannel) {
 				System.out.println("Connected to server, enter some text and send it by pressing 'Enter'.");
 				socket = AsyncTcpSocket.ofSocketChannel(socketChannel);
 
@@ -72,7 +73,7 @@ public class TcpClientExample {
 			}
 
 			@Override
-			public void onException(Throwable e) {
+			public void onException(@NotNull Throwable e) {
 				System.out.printf("Could not connect to server, make sure it is started: %s\n", e);
 			}
 		});

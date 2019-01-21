@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.exception.CloseException;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * This interface describes methods that are used to handle exceptional behaviour or to handle closing.
@@ -39,7 +40,7 @@ public interface Cancellable {
 	 *
 	 * @param e exception that is used to close process with
 	 */
-	void close(Throwable e);
+	void close(@NotNull Throwable e);
 
 	/**
 	 * This method should be called in case user wants to cancel some process

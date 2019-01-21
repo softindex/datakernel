@@ -39,11 +39,11 @@ public final class LogDiffCodec<D> implements StructuredCodec<LogDiff<D>> {
 
 	public final static class LogPositionCodec implements StructuredCodec<LogPosition> {
 		@Override
-		public void encode(StructuredOutput out, LogPosition value) {
+		public void encode(StructuredOutput out, LogPosition logPosition) {
 			out.writeTuple(() -> {
-				out.writeString(value.getLogFile().getName());
-				out.writeInt(value.getLogFile().getRemainder());
-				out.writeLong(value.getPosition());
+				out.writeString(logPosition.getLogFile().getName());
+				out.writeInt(logPosition.getLogFile().getRemainder());
+				out.writeLong(logPosition.getPosition());
 			});
 		}
 

@@ -38,6 +38,7 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +100,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	}
 
 	@Override
-	public Promise<StreamConsumer<T>> write(String logPartition) {
+	public Promise<StreamConsumer<T>> write(@NotNull String logPartition) {
 		validateLogPartition(logPartition);
 
 		return Promise.of(StreamConsumer.<T>ofSupplier(
@@ -116,9 +117,9 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	}
 
 	@Override
-	public Promise<StreamSupplierWithResult<T, LogPosition>> read(String logPartition,
-			LogFile startLogFile, long startOffset,
-			LogFile endLogFile) {
+	public Promise<StreamSupplierWithResult<T, LogPosition>> read(@NotNull String logPartition,
+			@NotNull LogFile startLogFile, long startOffset,
+			@Nullable LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
 		return client.list("**")
@@ -138,7 +139,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 				.thenApply(logFilesToRead -> readLogFiles(logPartition, startPosition, logFilesToRead));
 	}
 
-	private StreamSupplierWithResult<T, LogPosition> readLogFiles(String logPartition, LogPosition startPosition, List<LogFile> logFiles) {
+	private StreamSupplierWithResult<T, LogPosition> readLogFiles(@NotNull String logPartition, @NotNull LogPosition startPosition, @NotNull List<LogFile> logFiles) {
 		SettablePromise<LogPosition> positionPromise = new SettablePromise<>();
 
 		Iterator<StreamSupplier<T>> logFileStreams = new Iterator<StreamSupplier<T>>() {
@@ -222,17 +223,18 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 				positionPromise);
 	}
 
-	private static void validateLogPartition(String logPartition) {
+	private static void validateLogPartition(@NotNull String logPartition) {
 		Preconditions.checkArgument(!logPartition.contains("-"), "Using dash (-) in log partition name is not allowed");
 	}
 
-	private boolean isFileInRange(LogFile logFile, LogPosition startPosition, @Nullable LogFile endFile) {
-		if (startPosition.getLogFile() != null && logFile.compareTo(startPosition.getLogFile()) < 0)
+	private boolean isFileInRange(@NotNull LogFile logFile, @NotNull LogPosition startPosition, @Nullable LogFile endFile) {
+		if (logFile.compareTo(startPosition.getLogFile()) < 0)
 			return false;
 
 		return endFile == null || logFile.compareTo(endFile) <= 0;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.Utils;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import javax.management.*;
@@ -82,6 +83,7 @@ public class JmxMBeansAttributesBulkGettersTest {
 			return 100L;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return eventloop;

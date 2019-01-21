@@ -17,7 +17,9 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 
 public interface EventloopJmxMBean {
+	@NotNull
 	Eventloop getEventloop();
 }

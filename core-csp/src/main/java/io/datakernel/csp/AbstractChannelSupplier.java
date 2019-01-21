@@ -19,6 +19,7 @@ package io.datakernel.csp;
 import io.datakernel.async.AbstractCancellable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class AbstractChannelSupplier<T> extends AbstractCancellable implements ChannelSupplier<T> {
@@ -34,6 +35,7 @@ public abstract class AbstractChannelSupplier<T> extends AbstractCancellable imp
 
 	protected abstract Promise<T> doGet();
 
+	@NotNull
 	@Override
 	public final Promise<T> get() {
 		if (isClosed()) //noinspection ConstantConditions - ifClosed() <=> getException() != null

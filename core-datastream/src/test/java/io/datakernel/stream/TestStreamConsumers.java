@@ -4,6 +4,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.TestStreamConsumers.Decorator.Context;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Random;
 import java.util.function.Consumer;
@@ -58,7 +59,7 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public void close(Throwable e) {
+			public void close(@NotNull Throwable e) {
 				super.close(e);
 				acknowledgement.trySetException(e);
 			}

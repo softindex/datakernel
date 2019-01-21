@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -92,6 +93,7 @@ public class JmxMBeansAttributeExceptionsTest {
 			return null;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -108,6 +110,7 @@ public class JmxMBeansAttributeExceptionsTest {
 			return null;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -125,6 +128,7 @@ public class JmxMBeansAttributeExceptionsTest {
 			return null;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();

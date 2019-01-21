@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.JmxStatsStub;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -352,6 +353,7 @@ public class JmxMBeansAttributesTest {
 			return list;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -370,6 +372,7 @@ public class JmxMBeansAttributesTest {
 			return value;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -388,6 +391,7 @@ public class JmxMBeansAttributesTest {
 			return jmxStatsStub;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -406,6 +410,7 @@ public class JmxMBeansAttributesTest {
 			return nameToNumber;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -608,6 +613,7 @@ public class JmxMBeansAttributesTest {
 			return pojo;
 		}
 
+		@NotNull
 		@Override
 		public Eventloop getEventloop() {
 			return eventloop;

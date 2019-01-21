@@ -3,6 +3,7 @@ package io.datakernel.loader;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,11 +30,13 @@ public class FileNamesLoadingService implements EventloopService {
 		return new FileNamesLoadingService(eventloop, executorService, path);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.ofCallable(executorService,
@@ -53,6 +56,7 @@ public class FileNamesLoadingService implements EventloopService {
 				.toVoid();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

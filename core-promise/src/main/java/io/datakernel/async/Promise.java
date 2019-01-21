@@ -19,6 +19,8 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.NoSuchElementException;
@@ -35,6 +37,7 @@ public interface Promise<T> {
 	/**
 	 * Creates successfully completed {@code Promise}
 	 */
+	@NotNull
 	@SuppressWarnings("unchecked")
 	static CompleteNullPromise<Void> complete() {
 		return (CompleteNullPromise<Void>) CompleteNullPromise.INSTANCE;
@@ -45,6 +48,7 @@ public interface Promise<T> {
 	 *
 	 * @param value result of Promise
 	 */
+	@NotNull
 	static <T> CompletePromise<T> of(@Nullable T value) {
 		return value == null ? CompleteNullPromise.instance() : new CompleteResultPromise<>(value);
 	}
@@ -54,11 +58,13 @@ public interface Promise<T> {
 	 *
 	 * @param e Throwable
 	 */
-	static <T> CompleteExceptionallyPromise<T> ofException(Throwable e) {
+	@NotNull
+	static <T> CompleteExceptionallyPromise<T> ofException(@NotNull Throwable e) {
 		return new CompleteExceptionallyPromise<>(e);
 	}
 
-	static <T> Promise<T> ofCallback(Consumer<SettablePromise<T>> callbackConsumer) {
+	@NotNull
+	static <T> Promise<T> ofCallback(@NotNull Consumer<SettablePromise<T>> callbackConsumer) {
 		SettablePromise<T> cb = new SettablePromise<>();
 		try {
 			callbackConsumer.accept(cb);
@@ -68,13 +74,15 @@ public interface Promise<T> {
 		return cb;
 	}
 
+	@NotNull
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	static <T> Promise<T> ofOptional(Optional<T> optional) {
+	static <T> Promise<T> ofOptional(@NotNull Optional<T> optional) {
 		return ofOptional(optional, NoSuchElementException::new);
 	}
 
+	@NotNull
 	@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "OptionalIsPresent"})
-	static <T> Promise<T> ofOptional(Optional<T> optional, Supplier<? extends Throwable> errorSupplier) {
+	static <T> Promise<T> ofOptional(@NotNull Optional<T> optional, @NotNull Supplier<? extends Throwable> errorSupplier) {
 		if (optional.isPresent()) return Promise.of(optional.get());
 		return Promise.ofException(errorSupplier.get());
 	}
@@ -86,12 +94,14 @@ public interface Promise<T> {
 	 * @param value value to wrap when exception is null
 	 * @param e     possibly-null exception, determines type of promise completion
 	 */
+	@NotNull
 	static <T> Promise<T> of(@Nullable T value, @Nullable Throwable e) {
 		assert !(value != null && e != null);
 		return e == null ? of(value) : ofException(e);
 	}
 
-	static <T> Promise<T> ofTry(Try<T> t) {
+	@NotNull
+	static <T> Promise<T> ofTry(@NotNull Try<T> t) {
 		return t.isSuccess() ? of(t.getResult()) : ofException(t.getException());
 	}
 
@@ -100,7 +110,8 @@ public interface Promise<T> {
 	 *
 	 * @return result of the given future wrapped in a {@code Promise}
 	 */
-	static <T> Promise<T> ofFuture(CompletableFuture<? extends T> future) {
+	@NotNull
+	static <T> Promise<T> ofFuture(@NotNull CompletableFuture<? extends T> future) {
 		return ofCompletionStage(future);
 	}
 
@@ -110,7 +121,8 @@ public interface Promise<T> {
 	 * @param completionStage completion stage itself
 	 * @return result of the given completionStage wrapped in a {@code Promise}
 	 */
-	static <T> Promise<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {
+	@NotNull
+	static <T> Promise<T> ofCompletionStage(@NotNull CompletionStage<? extends T> completionStage) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettablePromise<T> promise = new SettablePromise<>();
@@ -128,7 +140,8 @@ public interface Promise<T> {
 	 * @param future   the future itself
 	 * @return result of the future wrapped in a {@code Promise}
 	 */
-	static <T> Promise<T> ofFuture(Executor executor, Future<? extends T> future) {
+	@NotNull
+	static <T> Promise<T> ofFuture(@NotNull Executor executor, @NotNull Future<? extends T> future) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettablePromise<T> promise = new SettablePromise<>();
@@ -162,7 +175,8 @@ public interface Promise<T> {
 	 * @param callable the task itself
 	 * @return {@code Promise} for the given task
 	 */
-	static <T> Promise<T> ofCallable(Executor executor, Callable<? extends T> callable) {
+	@NotNull
+	static <T> Promise<T> ofCallable(@NotNull Executor executor, @NotNull Callable<? extends T> callable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettablePromise<T> promise = new SettablePromise<>();
@@ -193,7 +207,8 @@ public interface Promise<T> {
 	/**
 	 * Same as {@link #ofCallable(Executor, Callable)}, but without a result (returned promise is only a marker of completion).
 	 */
-	static Promise<Void> ofRunnable(Executor executor, Runnable runnable) {
+	@NotNull
+	static Promise<Void> ofRunnable(@NotNull Executor executor, @NotNull Runnable runnable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettablePromise<Void> promise = new SettablePromise<>();
@@ -217,36 +232,36 @@ public interface Promise<T> {
 		return promise;
 	}
 
+	@Contract(pure = true)
 	default boolean isComplete() {
 		return isResult() || isException();
 	}
 
+	@Contract(pure = true)
 	boolean isResult();
 
+	@Contract(pure = true)
 	boolean isException();
-
-	@Nullable
-	Try<T> asTry();
-
-	boolean setTo(BiConsumer<? super T, Throwable> consumer);
-
-	boolean setResultTo(Consumer<? super T> consumer);
-
-	boolean setExceptionTo(Consumer<Throwable> consumer);
 
 	/**
 	 * Ensures that promise completes asynchronously:
 	 * If this promise is already complete, its completion will be posted to next eventloop tick.
 	 * Otherwise, do nothing.
 	 */
+	@Contract(pure = true)
+	@NotNull
 	Promise<T> async();
 
+	@Contract(pure = true)
+	@NotNull
 	default MaterializedPromise<T> post() {
 		SettablePromise<T> result = new SettablePromise<>();
 		whenComplete(result::post);
 		return result;
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	default MaterializedPromise<T> materialize() {
 		assert !isComplete() : "Trying to materialize a completed promise";
 		SettablePromise<T> cb = new SettablePromise<>();
@@ -261,7 +276,7 @@ public interface Promise<T> {
 	 * @param <U>     type of result
 	 * @return subscribed {@code Promise}
 	 */
-	<U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise);
+	@NotNull <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise);
 
 	/**
 	 * Applies fn to the result of this {@code Promise}
@@ -269,7 +284,8 @@ public interface Promise<T> {
 	 * @param fn function to apply
 	 * @return {@code Promise} that will apply given function
 	 */
-	<U> Promise<U> thenApply(Function<? super T, ? extends U> fn);
+	@Contract(pure = true)
+	@NotNull <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn);
 
 	/**
 	 * Applies fn to the result or exception of this {@code Promise}
@@ -277,7 +293,8 @@ public interface Promise<T> {
 	 * @param fn function to apply
 	 * @return {@code Promise} that will apply given function
 	 */
-	<U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn);
+	@Contract(pure = true)
+	@NotNull <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
 	 * Applies function to the result of this promise if it completes successfully.
@@ -285,7 +302,8 @@ public interface Promise<T> {
 	 *
 	 * @param fn to be applied
 	 */
-	<U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn);
+	@Contract(pure = true)
+	@NotNull <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn);
 
 	/**
 	 * Applies function to the result of this promise.
@@ -294,7 +312,8 @@ public interface Promise<T> {
 	 * @param fn to be applied
 	 * @return this promise
 	 */
-	<U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
+	@Contract(pure = true)
+	@NotNull <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
 
 	/**
 	 * Subscribes given action to be executed after this promise completes
@@ -302,7 +321,8 @@ public interface Promise<T> {
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
-	Promise<T> whenComplete(BiConsumer<? super T, Throwable> action);
+	@NotNull
+	Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action);
 
 	/**
 	 * Subscribes given action to be executed after this promise completes successfully
@@ -310,7 +330,8 @@ public interface Promise<T> {
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
-	Promise<T> whenResult(Consumer<? super T> action);
+	@NotNull
+	Promise<T> whenResult(@NotNull Consumer<? super T> action);
 
 	/**
 	 * Subscribes given action to be executed after this promise completes exceptionally
@@ -318,7 +339,8 @@ public interface Promise<T> {
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
-	Promise<T> whenException(Consumer<Throwable> action);
+	@NotNull
+	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
 	/**
 	 * Combines two {@code Promise} in one using fn.
@@ -327,14 +349,17 @@ public interface Promise<T> {
 	 * @param fn    function to combine results of both promises into one
 	 * @return {@code Promise} that completes when fn was applied on the result of both promises
 	 */
-	<U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn);
+	@Contract(pure = true)
+	@NotNull <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn);
 
 	/**
 	 * Combines two {@code Promise} in one and completes when both have been completed.
 	 *
 	 * @param other {@code Promise} to combine
 	 */
-	Promise<Void> both(Promise<?> other);
+	@Contract(pure = true)
+	@NotNull
+	Promise<Void> both(@NotNull Promise<?> other);
 
 	/**
 	 * Combines two {@code Promise} in one.
@@ -342,22 +367,30 @@ public interface Promise<T> {
 	 * @param other {@code Promise} to combine
 	 * @return result of the first completed {@code Promise}
 	 */
-	Promise<T> either(Promise<? extends T> other);
+	@Contract(pure = true)
+	@NotNull
+	Promise<T> either(@NotNull Promise<? extends T> other);
 
 	/**
 	 * Returns promise that always completes successfully with result or exception wrapped in Try
 	 *
 	 * @see Try
 	 */
+	@Contract(pure = true)
+	@NotNull
 	Promise<Try<T>> toTry();
 
 	/**
 	 * Waits for result and discard it.
 	 */
+	@Contract(pure = true)
+	@NotNull
 	Promise<Void> toVoid();
 
 	/**
 	 * Wraps {@code Promise} into {@code CompletableFuture}
 	 */
+	@Contract(pure = true)
+	@NotNull
 	CompletableFuture<T> toCompletableFuture();
 }

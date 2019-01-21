@@ -93,6 +93,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 	}
 	//endregion
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -171,11 +172,13 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 						.thenCompose(simpleHandler(PONG)));
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

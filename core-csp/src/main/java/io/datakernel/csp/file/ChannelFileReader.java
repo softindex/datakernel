@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +116,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	}
 
 	@Override
-	protected void onClosed(Throwable e) {
+	protected void onClosed(@NotNull Throwable e) {
 		closeFile();
 	}
 

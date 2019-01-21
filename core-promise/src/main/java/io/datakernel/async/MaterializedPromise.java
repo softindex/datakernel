@@ -16,11 +16,19 @@
 
 package io.datakernel.async;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 public interface MaterializedPromise<T> extends Promise<T> {
+	@Contract(pure = true)
 	T getResult();
 
+	@Contract(pure = true)
+	@NotNull
 	Throwable getException();
 
+	@Contract(pure = true)
+	@NotNull
 	@Override
 	default MaterializedPromise<T> materialize() {
 		return this;

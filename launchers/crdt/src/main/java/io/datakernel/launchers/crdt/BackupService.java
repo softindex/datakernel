@@ -26,6 +26,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
@@ -48,6 +49,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		this.eventloop = localFiles.getEventloop();
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -77,11 +79,13 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		return backupPromise != null;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return restore().thenCompose($ -> localFiles.consolidate());
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return backup();

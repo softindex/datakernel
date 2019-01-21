@@ -17,6 +17,9 @@
 package io.datakernel.async;
 
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.function.BiConsumer;
@@ -37,66 +40,71 @@ public interface AsyncSupplier<T> {
 	 *
 	 * @return {@link Promise} of data item
 	 */
+	@NotNull
 	Promise<T> get();
 
-	static <T> AsyncSupplier<T> of(Supplier<? extends Promise<T>> supplier) {
+	@SuppressWarnings("NullableProblems")
+	@NotNull
+	static <T> AsyncSupplier<T> of(@NotNull Supplier<? extends Promise<T>> supplier) {
 		return supplier::get;
 	}
 
 	@SuppressWarnings("unchecked")
-	static <T> AsyncSupplier<T> cast(AsyncSupplier<? extends T> supplier) {
+	static <T> AsyncSupplier<T> cast(@NotNull AsyncSupplier<? extends T> supplier) {
 		return (AsyncSupplier<T>) supplier;
 	}
 
-	static <T> AsyncSupplier<T> ofValue(T value) {
+	static <T> AsyncSupplier<T> ofValue(@Nullable T value) {
 		return () -> Promise.of(value);
 	}
 
-	static <T> AsyncSupplier<T> ofSupplier(Supplier<? extends T> supplier) {
+	static <T> AsyncSupplier<T> ofSupplier(@NotNull Supplier<? extends T> supplier) {
 		return () -> Promise.of(supplier.get());
 	}
 
-	static <T> AsyncSupplier<T> ofIterator(Iterator<? extends T> iterator) {
+	static <T> AsyncSupplier<T> ofIterator(@NotNull Iterator<? extends T> iterator) {
 		return () -> Promise.of(iterator.hasNext() ? iterator.next() : null);
 	}
 
-	static <T> AsyncSupplier<T> ofStream(Stream<? extends T> stream) {
+	static <T> AsyncSupplier<T> ofStream(@NotNull Stream<? extends T> stream) {
 		return ofIterator(stream.iterator());
 	}
 
-	static <T> AsyncSupplier<T> ofIterable(Iterable<? extends T> iterable) {
+	static <T> AsyncSupplier<T> ofIterable(@NotNull Iterable<? extends T> iterable) {
 		return ofIterator(iterable.iterator());
 	}
 
-	static <T> AsyncSupplier<T> ofPromise(Promise<T> promise) {
+	static <T> AsyncSupplier<T> ofPromise(@NotNull Promise<T> promise) {
 		return () -> promise;
 	}
 
-	static <T> AsyncSupplier<T> ofPromiseIterator(Iterator<? extends Promise<T>> iterator) {
+	static <T> AsyncSupplier<T> ofPromiseIterator(@NotNull Iterator<? extends Promise<T>> iterator) {
 		return () -> iterator.hasNext() ? iterator.next() : Promise.of(null);
 	}
 
-	static <T> AsyncSupplier<T> ofPromiseIterable(Iterable<? extends Promise<T>> iterable) {
+	static <T> AsyncSupplier<T> ofPromiseIterable(@NotNull Iterable<? extends Promise<T>> iterable) {
 		return ofPromiseIterator(iterable.iterator());
 	}
 
-	static <T> AsyncSupplier<T> ofPromiseStream(Stream<? extends Promise<T>> stream) {
+	static <T> AsyncSupplier<T> ofPromiseStream(@NotNull Stream<? extends Promise<T>> stream) {
 		return ofPromiseIterator(stream.iterator());
 	}
 
-	static <T> AsyncSupplier<T> ofAsyncSupplierIterator(Iterator<? extends AsyncSupplier<T>> iterator) {
+	static <T> AsyncSupplier<T> ofAsyncSupplierIterator(@NotNull Iterator<? extends AsyncSupplier<T>> iterator) {
 		return () -> iterator.hasNext() ? iterator.next().get() : Promise.of(null);
 	}
 
-	static <T> AsyncSupplier<T> ofAsyncSupplierIterable(Iterable<? extends AsyncSupplier<T>> iterable) {
+	static <T> AsyncSupplier<T> ofAsyncSupplierIterable(@NotNull Iterable<? extends AsyncSupplier<T>> iterable) {
 		return ofAsyncSupplierIterator(iterable.iterator());
 	}
 
-	static <T> AsyncSupplier<T> ofAsyncSupplierStream(Stream<? extends AsyncSupplier<T>> stream) {
+	static <T> AsyncSupplier<T> ofAsyncSupplierStream(@NotNull Stream<? extends AsyncSupplier<T>> stream) {
 		return ofAsyncSupplierIterator(stream.iterator());
 	}
 
-	default <R> R transformWith(Function<AsyncSupplier<T>, R> fn) {
+	@Contract(pure = true)
+	@NotNull
+	default <R> R transformWith(@NotNull Function<AsyncSupplier<T>, R> fn) {
 		return fn.apply(this);
 	}
 
@@ -106,27 +114,37 @@ public interface AsyncSupplier<T> {
 	 * @return {@link AsyncSupplier} of promises that will be completed asynchronously
 	 * @see Promise#async()
 	 */
+	@Contract(pure = true)
+	@NotNull
 	default AsyncSupplier<T> async() {
 		return () -> get().async();
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	default AsyncSupplier<Void> toVoid() {
 		return () -> get().toVoid();
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	default AsyncSupplier<Try<T>> toTry() {
 		return () -> get().toTry();
 	}
 
-	default AsyncSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {
+	@Contract(pure = true)
+	@NotNull
+	default AsyncSupplier<T> withExecutor(@NotNull AsyncExecutor asyncExecutor) {
 		return () -> asyncExecutor.execute(this);
 	}
 
-	default Promise<Void> forEachRemaining(Consumer<T> consumer) {
+	@NotNull
+	default Promise<Void> forEachRemaining(@NotNull Consumer<T> consumer) {
 		return forEachRemainingAsync(AsyncConsumer.of(consumer));
 	}
 
-	default Promise<Void> forEachRemainingAsync(AsyncConsumer<T> consumer) {
+	@NotNull
+	default Promise<Void> forEachRemainingAsync(@NotNull AsyncConsumer<T> consumer) {
 		return Promise.ofCallback(cb -> forEachRemainingImpl(this, consumer, cb));
 	}
 
@@ -136,7 +154,9 @@ public interface AsyncSupplier<T> {
 	 * @param fn function to be applied to result of promise
 	 * @return {@link AsyncSupplier} of promises after transformation
 	 */
-	default <V> AsyncSupplier<V> map(Function<? super T, ? extends V> fn) {
+	@Contract(pure = true)
+	@NotNull
+	default <V> AsyncSupplier<V> map(@NotNull Function<? super T, ? extends V> fn) {
 		return () -> get().thenApply(fn);
 	}
 
@@ -144,22 +164,28 @@ public interface AsyncSupplier<T> {
 	 * Applies function to the result of supplied promise.
 	 *
 	 * @param fn  - function to be applied to result of promise
-	 * @param <V>
-	 * @return
 	 */
-	default <V> AsyncSupplier<V> mapAsync(Function<? super T, ? extends Promise<V>> fn) {
-		return () -> get().thenCompose(fn::apply);
+	@Contract(pure = true)
+	@NotNull
+	default <V> AsyncSupplier<V> mapAsync(@NotNull Function<? super T, ? extends Promise<V>> fn) {
+		return () -> get().thenCompose(fn);
 	}
 
-	default AsyncSupplier<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	@Contract(pure = true)
+	@NotNull
+	default AsyncSupplier<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
 		return () -> get().whenComplete(action);
 	}
 
-	default AsyncSupplier<T> whenResult(Consumer<? super T> action) {
+	@Contract(pure = true)
+	@NotNull
+	default AsyncSupplier<T> whenResult(@NotNull Consumer<? super T> action) {
 		return () -> get().whenResult(action);
 	}
 
-	default AsyncSupplier<T> whenException(Consumer<Throwable> action) {
+	@Contract(pure = true)
+	@NotNull
+	default AsyncSupplier<T> whenException(@NotNull Consumer<Throwable> action) {
 		return () -> get().whenException(action);
 	}
 

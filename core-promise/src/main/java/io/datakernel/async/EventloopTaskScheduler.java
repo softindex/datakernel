@@ -24,12 +24,14 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.util.Initializable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 
+@SuppressWarnings("UnusedReturnValue")
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class);
 
@@ -160,6 +162,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		return this;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -219,12 +222,14 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 				.toVoid();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		scheduleTask();
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		if (scheduledTask != null) {

@@ -2,6 +2,7 @@ package io.datakernel.async;
 
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -18,6 +19,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	private static final BiConsumer<Object, Throwable> COMPLETED_EXCEPTIONALLY_PROMISE =
 			(value, e) -> { throw new UnsupportedOperationException();};
 
+	@Nullable
 	protected BiConsumer<? super T, Throwable> next;
 
 	@Override
@@ -72,19 +74,20 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
-	protected void tryCompleteExceptionally(Throwable e) {
+	protected void tryCompleteExceptionally(@NotNull Throwable e) {
 		if (!isComplete()) {
 			completeExceptionally(e);
 		}
 	}
 
+	@NotNull
 	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise) {
+	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
 		subscribe(promise);
 		return promise;
 	}
 
-	protected void subscribe(BiConsumer<? super T, Throwable> consumer) {
+	protected void subscribe(@NotNull BiConsumer<? super T, Throwable> consumer) {
 		if (next == null) {
 			next = consumer;
 		} else {
@@ -97,11 +100,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+	public <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn) {
 		return then(new NextPromise<T, U>() {
 			@Override
-			public void accept(T result, Throwable e) {
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					U newResult;
 					try {
@@ -118,11 +122,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+	public <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		return then(new NextPromise<T, U>() {
 			@Override
-			public void accept(T result, Throwable e) {
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					U newResult;
 					try {
@@ -146,11 +151,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn) {
 		return then(new NextPromise<T, U>() {
 			@Override
-			public void accept(T result, Throwable e) {
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					Promise<U> promise;
 					try {
@@ -167,11 +173,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
 		return then(new NextPromise<T, U>() {
 			@Override
-			public void accept(T result, Throwable e) {
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					Promise<U> promise;
 					try {
@@ -195,14 +202,16 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	public Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
 		subscribe(action);
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenResult(Consumer<? super T> action) {
+	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		return whenComplete((result, e) -> {
 			if (e == null) {
 				action.accept(result);
@@ -210,8 +219,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenException(Consumer<Throwable> action) {
+	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		return whenComplete((result, e) -> {
 			if (e != null) {
 				action.accept(e);
@@ -234,7 +244,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 
 		@Override
-		public void accept(T result, Throwable e) {
+		public void accept(T result, @Nullable Throwable e) {
 			if (e == null) {
 				if (otherResult != NO_RESULT) {
 					onBothResults(result, otherResult);
@@ -262,18 +272,19 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			}
 		}
 
-		void onAnyException(Throwable e) {
+		void onAnyException(@NotNull Throwable e) {
 			tryCompleteExceptionally(e);
 		}
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
 		if (other instanceof CompletePromise) {
 			return thenApply(result -> fn.apply(result, ((CompletePromise<U>) other).getResult()));
 		}
-		PromiseCombine<T, V, U> resultPromise = new PromiseCombine<>(fn);
+		@NotNull PromiseCombine<T, V, U> resultPromise = new PromiseCombine<>(fn);
 		other.whenComplete((result, e) -> {
 			if (e == null) {
 				resultPromise.onOtherComplete(result);
@@ -288,7 +299,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		int counter = 2;
 
 		@Override
-		public void accept(T result, Throwable e) {
+		public void accept(T result, @Nullable Throwable e) {
 			if (e == null) {
 				if (--counter == 0) {
 					complete(null);
@@ -299,8 +310,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public Promise<Void> both(Promise<?> other) {
+	public Promise<Void> both(@NotNull Promise<?> other) {
 		if (other instanceof CompletePromise) return toVoid();
 		PromiseBoth<T> resultPromise = new PromiseBoth<>();
 		other.whenComplete((result, e) -> {
@@ -319,7 +331,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		int errors;
 
 		@Override
-		public void accept(T result, Throwable e) {
+		public void accept(T result, @Nullable Throwable e) {
 			if (e == null) {
 				tryComplete(result);
 			} else {
@@ -330,8 +342,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> either(Promise<? extends T> other) {
+	public Promise<T> either(@NotNull Promise<? extends T> other) {
 		if (other instanceof CompletePromise) {
 			@SuppressWarnings("unchecked") CompletePromise<T> otherCompletePromise = (CompletePromise<T>) other;
 			if (otherCompletePromise.isException()) return this;
@@ -350,11 +363,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return then(resultPromise);
 	}
 
+	@NotNull
 	@Override
 	public Promise<Try<T>> toTry() {
 		return then(new NextPromise<T, Try<T>>() {
 			@Override
-			public void accept(T result, Throwable e) {
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					complete(Try.of(result));
 				} else {
@@ -364,11 +378,13 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> toVoid() {
 		return thenApply($ -> null);
 	}
 
+	@NotNull
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
 		CompletableFuture<T> future = new CompletableFuture<>();

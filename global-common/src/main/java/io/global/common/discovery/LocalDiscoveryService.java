@@ -28,6 +28,7 @@ import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.SharedKeyStorage;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,16 +104,19 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 				.whenComplete(toLogger(logger, TRACE, "getSharedKeys", receiver, this));
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();

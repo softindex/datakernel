@@ -18,6 +18,7 @@ package io.datakernel.async;
 
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -28,9 +29,10 @@ import java.util.function.Function;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class CompleteExceptionallyPromise<T> implements MaterializedPromise<T> {
+	@NotNull
 	private final Throwable exception;
 
-	public CompleteExceptionallyPromise(Throwable e) {
+	public CompleteExceptionallyPromise(@NotNull Throwable e) {
 		this.exception = e;
 	}
 
@@ -54,52 +56,29 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		throw new UnsupportedOperationException();
 	}
 
+	@NotNull
 	@Override
 	public Throwable getException() {
 		return exception;
 	}
 
+	@NotNull
 	@Override
-	public Try<T> asTry() {
-		return Try.ofException(exception);
-	}
-
-	@Override
-	public boolean setTo(BiConsumer<? super T, Throwable> consumer) {
-		consumer.accept(null, exception);
-		return true;
-	}
-
-	@Override
-	public boolean setResultTo(Consumer<? super T> consumer) {
-		return false;
-	}
-
-	@Override
-	public boolean setExceptionTo(Consumer<Throwable> consumer) {
-		consumer.accept(exception);
-		return true;
-	}
-
-	@SuppressWarnings("unchecked")
-	public <U> CompleteExceptionallyPromise<U> mold() {
-		return (CompleteExceptionallyPromise<U>) this;
-	}
-
-	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise) {
+	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
 		promise.accept(null, exception);
 		return promise;
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+	public <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn) {
 		return (CompleteExceptionallyPromise<U>) this;
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+	public <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		try {
 			return Promise.of(fn.apply(null, exception));
 		} catch (UncheckedException u) {
@@ -107,14 +86,16 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		}
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn) {
 		return (CompleteExceptionallyPromise<U>) this;
 	}
 
+	@NotNull
 	@Override
-	public <U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
 		try {
 			return fn.apply(null, exception);
 		} catch (UncheckedException u) {
@@ -122,41 +103,48 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		}
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	public Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
 		action.accept(null, exception);
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenResult(Consumer<? super T> action) {
+	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		return this;
 	}
 
+	@NotNull
 	@Override
-	public Promise<T> whenException(Consumer<Throwable> action) {
+	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		action.accept(exception);
 		return this;
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
 		return (CompleteExceptionallyPromise<V>) this;
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<Void> both(Promise<?> other) {
+	public Promise<Void> both(@NotNull Promise<?> other) {
 		return (CompleteExceptionallyPromise<Void>) this;
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<T> either(Promise<? extends T> other) {
+	public Promise<T> either(@NotNull Promise<? extends T> other) {
 		return (Promise<T>) other;
 	}
 
+	@NotNull
 	@Override
 	public MaterializedPromise<T> async() {
 		SettablePromise<T> result = new SettablePromise<>();
@@ -164,17 +152,20 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		return result;
 	}
 
+	@NotNull
 	@Override
 	public Promise<Try<T>> toTry() {
 		return Promise.of(Try.ofException(exception));
 	}
 
+	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<Void> toVoid() {
 		return (CompleteExceptionallyPromise<Void>) this;
 	}
 
+	@NotNull
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
 		CompletableFuture<T> future = new CompletableFuture<>();

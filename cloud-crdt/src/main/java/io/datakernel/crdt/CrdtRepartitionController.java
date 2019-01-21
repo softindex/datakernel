@@ -21,6 +21,7 @@ import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.stream.processor.StreamMapSplitter;
+import org.jetbrains.annotations.NotNull;
 
 public final class CrdtRepartitionController<I extends Comparable<I>, K extends Comparable<K>, S> implements EventloopJmxMBeanEx {
 	private final I localPartitionId;
@@ -37,6 +38,7 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 		return new CrdtRepartitionController<>(localPartitionId, cluster.getClients().get(localPartitionId), cluster);
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return cluster.getEventloop();

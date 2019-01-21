@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
 import java.util.EnumSet;
@@ -58,7 +59,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -193,7 +194,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -218,7 +219,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void close(Throwable e) {
+		public void close(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
