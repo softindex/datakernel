@@ -38,21 +38,53 @@ import static java.util.stream.Collectors.toList;
   * Represents a pool of ByteBufs with 33 slabs. Each of these slabs
   * is a {@code ByteBufConcurrentStack} which stores ByteBufs of a
   * particular capacity which is a power of two.
-  *
+  * <p>
   * When you need a new ByteBuf, it is either created (if a ByteBuf of
-  * such capacity hasn't been used yet) or popped from the appropriate
-  * slabs' stack.
+  * such capacity hasn't been used and recycled yet) or popped from the
+  * appropriate slabs' stack.
   */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public final class ByteBufPool {
 	private static final int NUMBER_OF_SLABS = 33;
+
+	 /**
+	  * Defines the minimal size of ByteBufs in this ByteBufPool.
+	  * A constant value, by default set at 0.
+	  */
 	private static final int MIN_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "minSize", 0);
+
+	 /**
+	  * Defines the maximum size of ByteBufs in this ByteBufPool.
+	  * A constant value, by default set at 0.
+	  */
 	private static final int MAX_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 0);
 	private static final boolean MIN_MAX_CHECKS = MIN_SIZE != 0 || MAX_SIZE != 0;
 
+	 /**
+	  * Allows to get trace stack about {@code ByteBufs} of this {@code ByteBufPool}
+	  * while debugging if set at value {@code true} (note that this is resource intensive).
+	  * By default set at value {@code false}. If changed, significantly
+	  * influences the performance and workflow of {@link #allocate(int)} operation.
+	  */
 	private static final boolean REGISTRY = ApplicationSettings.getBoolean(ByteBufPool.class, "registry", false);
+
+	 /**
+	  * Allows to get statistics about this ByteBufPool while debugging
+	  * if set at value {@code true} (note that this is resource intensive).
+	  * By default set at value {@code false}. If changed, significantly
+	  * influences the performance and workflow of {@link #allocate(int)} operation.
+	  */
 	private static final boolean STATS = ApplicationSettings.getBoolean(ByteBufPool.class, "stats", false);
 
+	 /**
+	  * {@code ByteBufConcurrentStack} allows to work with slabs and their ByteBufs.
+	  * Basically, it is a singly linked list with basic stack operations:
+	  * {@code push, pop, peek, clear, isEmpty, size}.
+	  * <p>
+	  * The implementation of {@code ByteBufConcurrentStack} is highly efficient
+	  * due to utilizing {@link java.util.concurrent.atomic.AtomicReference}.
+	  * Moreover, such approach allows to work with slabs concurrently safely.
+	  */
 	static final ByteBufConcurrentStack[] slabs;
 	static final AtomicInteger[] created;
 	static final AtomicInteger[] reused;
@@ -61,7 +93,7 @@ public final class ByteBufPool {
 
 	 /**
 	  * Stores information about ByteBufs for stats.
-	  *
+	  * <p>
 	  * It is a helper class which contains <i>size</i>,
 	  * <i>timestamp</i> and <i>stackTrace</i> which represent
 	  * information about the ByteBufs.
@@ -111,9 +143,15 @@ public final class ByteBufPool {
 
 	/**
 	 * Allocates byte buffer from the pool with size of
-	 * <code>ceil(log<sub>2</sub>(size))<sup>2</sup></code> (rounds up to nearest power of 2) bytes.
+	 * <code>ceil(log<sub>2</sub>(size))<sup>2</sup></code>
+	 * (rounds up to the nearest power of 2) bytes.
+	 * <p>
+	 * Note that resource intensive {@link #register(ByteBuf)} will be executed
+	 * only if {@code #REGISTRY} is set {@code true}. Also, such parameters as
+	 * {@code STATS}, {@code MIN_MAX_CHECKS}, {@code MIN_SIZE}, {@code MAX_SIZE}
+	 * significantly influence the workflow of the {@code allocate} operation.
 	 *
-	 * @param size returned byte buffer size is guaranteed to be bigger or equal to requested size.
+	 * @param size returned byte buffer size is guaranteed to be bigger or equal to requested size
 	 * @return byte buffer from this pool
 	 */
 	@NotNull
@@ -157,12 +195,13 @@ public final class ByteBufPool {
 	}
 
 	/**
-	 * Allocates byte buffer in same way as {@link #allocate(int)} does, but sets its positions so that
-	 * write-remaining is equal to requested size.
+	 * Allocates byte buffer in the same way as {@link #allocate(int)} does, but
+	 * sets its positions so that write-remaining is equal to requested size.
 	 * <p>
-	 * For example for size 21 byte buffer of size 32 is allocated                  (|______|)<br>
+	 * For example, if you need a {@code ByteBuf} of size 21,
+	 * a {@code ByteBuf} of size 32 is allocated. (|______|)<br>
 	 * But its read/write positions are set to 11 so that only last 21 are writable (|__####|)
-	 *
+	 * <p>
 	 * @param size requested size
 	 * @return byte buffer from this pool with appropriate positions set
 	 */
@@ -188,7 +227,7 @@ public final class ByteBufPool {
 	/**
 	 * Returns provided ByteBuf to the ByteBufPool to the appropriate slab.
 	 *
-	 * @param buf the ByteBuf to be recycled.
+	 * @param buf the ByteBuf to be recycled
 	 */
 	public static void recycle(@NotNull ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
@@ -204,17 +243,17 @@ public final class ByteBufPool {
 	 /**
 	  * Checks if current ByteBuf can accommodate the needed
 	  * amount of writable bytes.
-	  *
+	  * <p>
 	  * Returns this ByteBuf, if it contains enough writable bytes.
-	  *
+	  * <p>
 	  * Otherwise creates a new ByteBuf which contains data from the
 	  * original ByteBuf and fits the parameters. Then recycles the
 	  * original ByteBuf.
 	  *
-	  * @param buf the ByteBuf to check.
-	  * @param minSize the minimal size of the ByteBuf.
-	  * @param newWriteRemaining amount of needed writable bytes.
-	  * @return a ByteBuf which fits the parameters.
+	  * @param buf the ByteBuf to check
+	  * @param minSize the minimal size of the ByteBuf
+	  * @param newWriteRemaining amount of needed writable bytes
+	  * @return a ByteBuf which fits the parameters
 	  */
 	@NotNull
 	public static ByteBuf ensureWriteRemaining(@NotNull ByteBuf buf, int minSize, int newWriteRemaining) {
@@ -233,15 +272,15 @@ public final class ByteBufPool {
 	  * can't accommodate the ByteBuf to be appended, a new ByteBuf
 	  * is created which contains both target and source ByteBufs data.
 	  * The source ByteBuf is recycled after append.
-	  *
+	  * <p>
 	  * If target ByteBuf has no readable bytes, it is being recycled
 	  * and the source ByteBuf is returned.
-	  *
+	  * <p>
 	  * Both ByteBufs must be not recycled before the operation.
 	  *
-	  * @param to the target ByteBuf to which another ByteBuf will be appended.
-	  * @param from the source ByteBuf to be appended.
-	  * @return ByteBuf which contains the result of the appending.
+	  * @param to the target ByteBuf to which another ByteBuf will be appended
+	  * @param from the source ByteBuf to be appended
+	  * @return ByteBuf which contains the result of the appending
 	  */
 	@NotNull
 	public static ByteBuf append(@NotNull ByteBuf to, @NotNull ByteBuf from) {
@@ -261,16 +300,16 @@ public final class ByteBufPool {
 	  * byte array, a new ByteBuf is created which contains all data from
 	  * the original ByteBuf and has enough capacity to accommodate the
 	  * byte array.
-	  *
+	  * <p>
 	  * ByteBuf must be not recycled before the operation.
 	  *
-	  * @param to the target ByteBuf to which byte array will be appended.
-	  * @param from the source byte array to be appended.
-	  * @param offset the value of offset for the byte array.
-	  * @param length amount of the bytes to be appended to the ByteBuf.
+	  * @param to the target ByteBuf to which byte array will be appended
+	  * @param from the source byte array to be appended
+	  * @param offset the value of offset for the byte array
+	  * @param length amount of the bytes to be appended to the ByteBuf
 	  *               The sum of the length and offset parameters can't
-	  *               be greater than the whole length of the byte array.
-	  * @return ByteBuf which contains the result of the appending.
+	  *               be greater than the whole length of the byte array
+	  * @return ByteBuf which contains the result of the appending
 	  */
 	@NotNull
 	public static ByteBuf append(@NotNull ByteBuf to, @NotNull byte[] from, int offset, int length) {
@@ -328,15 +367,15 @@ public final class ByteBufPool {
 	  * Manages stats for this {@link ByteBufPool}. You can get the
 	  * amount of created and reused ByteBufs and amount of ByteBufs
 	  * stored in each of the slabs.
-	  *
+	  * <p>
 	  * Also, you can get a String which contains information about
 	  * amount of created and stored in pool ByteBufs.
-	  *
+	  * <p>
 	  * For memory control, you can get the size of your ByteBufPool in
 	  * Byte or KB as well as get information about the slabs themselves
 	  * (size, amount of ByteBufs created, reused, stored in pool, and
 	  * total size in KB) and unrecycled ByteBufs.
-	  *
+	  * <p>
 	  * Finally, it allows to clear this ByteBufPool and its registry.
 	  */
 	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {

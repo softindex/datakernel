@@ -7,7 +7,7 @@ An extremely light-weight and efficient implementation compared to the Java NIO 
 which simplifies and improves `ByteBuf` performance. 
 
 ByteBuf is similar to a FIFO byte queue and has two positions: `readPosition` and `writePosition`. When you write data to your 
-ByteBuf, its `writePosition` increases by amount of bytes written. Similarly, when you read data from your ByteBuf,
+ByteBuf, its `writePosition` increases by the amount of bytes written. Similarly, when you read data from your ByteBuf,
 its `readPosition` increases by amount of bytes read. You can read bytes from ByteBuf only when `writePosition` is greater 
 then `readPosition`. Also, you can write bytes to ByteBuf until `writePosition` doesn't exceed the length of the wrapped 
 array. In this way, there is no need for `ByteBuffer.flip()` operations. 

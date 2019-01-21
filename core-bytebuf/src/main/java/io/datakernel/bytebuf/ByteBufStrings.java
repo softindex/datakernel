@@ -19,6 +19,9 @@ package io.datakernel.bytebuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ThreadLocalCharArray;
 
+/**
+ * Allows to wrap and unwrap Strings to {@link ByteBuf}.
+ */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public final class ByteBufStrings {
 	public static final ParseException READ_PAST_LIMIT = new ParseException(ByteBufStrings.class, "Malformed utf-8 input: Read past end");
