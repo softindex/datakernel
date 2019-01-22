@@ -7,17 +7,17 @@ as XML, Java EE, etc.
 
 Due to the usage of modern asynchronous I/O, DataKernel is extremely fast, which is proven by benchmarks.
 
-The essential components of DataKernel form the basis of our ad-serving infrastructure at [AdKernel](http://adkernel.com), 
-running in production environments and processing billions of requests. Specifically, DataKernel is the foundation for 
-systems that provide real-time analytics for ad publishers and advertisers, user data processing tools that we use for 
-ad targeting, and also web crawlers that perform content indexing on a large scale.
+The essential components of DataKernel form the basis of high-load applications running in production environments and 
+processing billions of requests. Specifically, DataKernel is the foundation for systems that provide real-time analytics, 
+user data processing tools and also web crawlers that perform content indexing on a large scale.
 
 ## Core components 
 
 ### [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)
-ByteBuf is a memory-efficient byte buffer, which is somewhat similar to Java's  `ByteBuffer` class. It is useful for fast 
-low-level I/O operations like working with files or transferring data over the Internet. Apart from ByteBuf itself, the 
-module contains handy utility classes.
+ByteBuf is a more lightweight and efficient version of Java's `ByteBuffer` class with support of simultaneous input and 
+output. Module's `ByteBufQueue` allows you to work with multiple `ByteBuf`s in a convenient way. `ByteBufPool` 
+significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. It provides you with 
+stats on pool's memory consumption and efficiency. 
 
 [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
 
