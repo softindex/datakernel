@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,8 @@ import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 /**
  * An implementation of {@link FsClient} which operates on a map of other clients as a cluster.
@@ -453,12 +454,15 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("There are more dead partitions than replication count(" +
 								deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", tries);
 					}
-					//noinspection ConstantConditions
-					return Promise.of(new ArrayList<>(tries.stream()
-							.filter(Try::isSuccess)
+					Map<String, FileMetadata> map = new HashMap<>();
+					tries.stream()
 							.map(Try::getOrNull)
+							.filter(Objects::nonNull)
 							.flatMap(List::stream)
-							.collect(toSet())));
+							.forEach(meta ->
+									map.compute(meta.getFilename(), ($, existing) ->
+											FileMetadata.getMoreCompleteFile(existing, meta)));
+					return Promise.of(new ArrayList<>(map.values()));
 				})
 				.whenComplete(listPromise.recordStats());
 	}
