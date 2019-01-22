@@ -116,11 +116,11 @@ resolution utilizing a special algorithm for operational transformations.
 Enables binding OT repositories to MySQL (or any other) database. You can even store `OTRepository` commits in-memory or 
 as files on a disk.
 
-### [LSMT Table](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-table)
+### [LSMT Aggregation](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-aggregation)
 
 Log-structured merge-tree table which stores aggregate functions and designed for OLAP workload.
 
-### [LSMT Database](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-db)
+### [LSMT OLAP Cube](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-cube)
 
 Multidimensional OLAP (Online Analytical Processing) database with predefined set of dimensions, measures, and 
 log-structured merge-tree tables containing pre-aggregated data. LSMT database efficiently executes multi-dimensional 

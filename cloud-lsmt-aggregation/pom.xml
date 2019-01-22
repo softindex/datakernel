@@ -10,34 +10,37 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-lsmt-db</artifactId>
+	<artifactId>datakernel-aggregation</artifactId>
 
-	<name>DataKernel: LSMT Database</name>
+	<name>DataKernel: LSMT Aggregation</name>
 	<description>
-		Multidimensional OLAP database with predefined set of dimensions, measures,
-		and log-structured merge-tree tables containing pre-aggregated data.
+		Log-structured merge-tree table with fields representing aggregate functions, designed for OLAP workload.
 	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-lsmt-table</artifactId>
+			<artifactId>datakernel-datastream</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-etl</artifactId>
+			<artifactId>datakernel-codegen</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
+			<artifactId>datakernel-fs</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-common</artifactId>
+			<artifactId>datakernel-ot</artifactId>
 			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.jpountz.lz4</groupId>
+			<artifactId>lz4</artifactId>
 		</dependency>
 
 		<dependency>
@@ -47,20 +50,19 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-ot-mysql</artifactId>
-			<version>3.0.0-SNAPSHOT</version>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>5.1.36</version>
 			<optional>true</optional>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
 	<profiles>
 		<profile>
-			<id>excludeCubeIntegrationTest</id>
+			<id>excludeSqlTest</id>
 			<activation>
 				<property>
-					<name>!excludeCubeIntegrationTest</name>
+					<name>!excludeSqlTest</name>
 				</property>
 			</activation>
 			<build>
@@ -68,13 +70,10 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-surefire-plugin</artifactId>
-						<version>2.21.0</version>
+						<version>2.19.1</version>
 						<configuration>
 							<excludes>
-								<exclude>**/ReportingTest.java</exclude>
-								<exclude>**/CubeIntegrationTest.java</exclude>
-								<exclude>**/CubeMeasureRemovalTest.java</exclude>
-								<exclude>**/CubePartitioningTest.java</exclude>
+								<exclude>**/IdGeneratorSqlTest.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>
@@ -82,5 +81,4 @@
 			</build>
 		</profile>
 	</profiles>
-
 </project>

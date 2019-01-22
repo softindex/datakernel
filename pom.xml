@@ -37,8 +37,8 @@
 		<module>cloud-crdt</module>
 		<module>cloud-ot</module>
 		<module>cloud-ot-mysql</module>
-		<module>cloud-lsmt-table</module>
-		<module>cloud-lsmt-db</module>
+		<module>cloud-lsmt-aggregation</module>
+		<module>cloud-lsmt-cube</module>
 		<module>cloud-etl</module>
 		<module>cloud-dataflow</module>
 		<module>global-launchers</module>
