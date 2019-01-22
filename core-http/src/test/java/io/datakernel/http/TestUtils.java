@@ -118,7 +118,7 @@ public class TestUtils {
 						assertArrayEquals(expectedByteArray, actualByteArray);
 					}
 					if (expectedString != null) {
-						String actualString = decodeAscii(actualBuf.array(), actualBuf.readPosition(), actualBuf.readRemaining());
+						String actualString = decodeAscii(actualBuf.array(), actualBuf.head(), actualBuf.readRemaining());
 						assertEquals(expectedString, actualString);
 					}
 					if (expectedBuf != null) {

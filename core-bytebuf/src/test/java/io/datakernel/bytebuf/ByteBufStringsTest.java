@@ -104,7 +104,7 @@ public class ByteBufStringsTest {
 	// region helpers
 	private void encodeLongTest(ByteBuf buf, long value) throws ParseException {
 		buf.rewind();
-		buf.moveWritePosition(encodeLong(buf.array, buf.readPosition(), value));
+		buf.moveTail(encodeLong(buf.array, buf.head(), value));
 		String stringRepr = decodeUtf8(buf);
 		assertEquals(String.valueOf(value), stringRepr);
 	}

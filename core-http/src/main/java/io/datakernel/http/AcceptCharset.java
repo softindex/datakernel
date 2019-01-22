@@ -115,8 +115,8 @@ public final class AcceptCharset {
 	}
 
 	static void render(List<AcceptCharset> charsets, ByteBuf buf) {
-		int pos = render(charsets, buf.array(), buf.writePosition());
-		buf.writePosition(pos);
+		int pos = render(charsets, buf.array(), buf.tail());
+		buf.tail(pos);
 	}
 
 	static int render(List<AcceptCharset> charsets, byte[] bytes, int pos) {

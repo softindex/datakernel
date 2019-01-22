@@ -130,14 +130,14 @@ public final class DnsProtocol {
 	public static DnsResponse readDnsResponse(ByteBuf payload) throws ParseException {
 		try {
 			short transactionId = payload.readShort();
-			payload.moveReadPosition(1); // skip first flags byte
+			payload.moveHead(1); // skip first flags byte
 
 			//                                                                    last 4 flag bits are error code
 			ResponseErrorCode errorCode = ResponseErrorCode.fromBits(payload.readByte() & 0b00001111);
 
 			short questionCount = payload.readShort();
 			short answerCount = payload.readShort();
-			payload.moveReadPosition(4); // skip authority and additional counts (2 bytes each)
+			payload.moveHead(4); // skip authority and additional counts (2 bytes each)
 
 			if (questionCount != 1) {
 				// malformed response, we are always sending only one question
@@ -148,8 +148,8 @@ public final class DnsProtocol {
 			StringBuilder sb = new StringBuilder();
 			byte componentSize = payload.readByte();
 			while (componentSize != 0) {
-				sb.append(new String(payload.array(), payload.readPosition(), componentSize, US_ASCII));
-				payload.moveReadPosition(componentSize);
+				sb.append(new String(payload.array(), payload.head(), componentSize, US_ASCII));
+				payload.moveHead(componentSize);
 				componentSize = payload.readByte();
 				if (componentSize != 0) {
 					sb.append('.');
@@ -187,20 +187,20 @@ public final class DnsProtocol {
 //			for (int i = 0; i < questionCount - 1; i++) {
 //				// skip domain name (bytes until zero-terminator)
 //				while ((componentSize = payload.readByte()) != 0) {
-//					payload.moveReadPosition(componentSize);
+//					payload.moveHead(componentSize);
 //				}
-//				payload.moveReadPosition(4); // skip query record type and class (2 bytes each)
+//				payload.moveHead(4); // skip query record type and class (2 bytes each)
 //			}
 
 			List<InetAddress> ips = new ArrayList<>();
 			int minTtl = Integer.MAX_VALUE;
 			for (int i = 0; i < answerCount; i++) {
-				payload.moveReadPosition(2); // skip answer name (2 bytes)
+				payload.moveHead(2); // skip answer name (2 bytes)
 				RecordType currentRecordType = RecordType.fromCode(payload.readShort());
-				payload.moveReadPosition(2); // skip answer class (2 bytes)
+				payload.moveHead(2); // skip answer class (2 bytes)
 				if (currentRecordType != recordType) { // this is some other record
-					payload.moveReadPosition(4); // skip ttl
-					payload.moveReadPosition(payload.readShort()); // and skip data
+					payload.moveHead(4); // skip ttl
+					payload.moveHead(payload.readShort()); // and skip data
 					continue;
 				}
 				minTtl = Math.min(payload.readInt(), minTtl);

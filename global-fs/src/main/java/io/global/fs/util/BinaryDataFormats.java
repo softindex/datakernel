@@ -55,7 +55,7 @@ public final class BinaryDataFormats {
 		}
 		if (size <= 0 || size > buf.readRemaining()) throw new ParseException("Invalid chunk size");
 		ByteBuf slice = buf.slice(size);
-		buf.moveReadPosition(size);
+		buf.moveHead(size);
 		return slice;
 	}
 }

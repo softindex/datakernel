@@ -87,7 +87,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 							buffer.recycle();
 							return null;
 						}
-						buffer.moveWritePosition(bytes);
+						buffer.moveTail(bytes);
 						return buffer;
 					}));
 			info("Uploading data from standard input as " + name + " ...");

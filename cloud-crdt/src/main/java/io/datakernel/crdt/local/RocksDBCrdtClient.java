@@ -121,7 +121,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	private void doPut(K key, S state) {
 		ByteBuf buf = ByteBufPool.allocate(bufferSize);
-		buf.writePosition(keySerializer.encode(buf.array(), buf.writePosition(), key));
+		buf.tail(keySerializer.encode(buf.array(), buf.tail(), key));
 		byte[] keyBytes = buf.getArray();
 		byte[] possibleState;
 		try {
@@ -133,12 +133,12 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 		// custom merge operators in RocksJava are yet to come
 		if (possibleState != null) {
 			ByteBuf stateBuf = ByteBuf.wrap(possibleState, 8, possibleState.length); // 8 is to skip the timestamp
-			state = combiner.apply(state, stateSerializer.decode(stateBuf.array(), stateBuf.readPosition()));
+			state = combiner.apply(state, stateSerializer.decode(stateBuf.array(), stateBuf.head()));
 		}
 
 		buf.rewind();
 		buf.writeLong(currentTimeProvider.currentTimeMillis()); // new timestamp
-		buf.writePosition(stateSerializer.encode(buf.array(), buf.writePosition(), state));
+		buf.tail(stateSerializer.encode(buf.array(), buf.tail(), state));
 		try {
 			db.put(writeOptions, keyBytes, buf.asArray());
 		} catch (RocksDBException e) {
@@ -148,7 +148,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	private void doRemove(K key) {
 		ByteBuf buf = ByteBufPool.allocate(bufferSize);
-		buf.writePosition(keySerializer.encode(buf.array(), buf.writePosition(), key));
+		buf.tail(keySerializer.encode(buf.array(), buf.tail(), key));
 		try {
 			db.delete(writeOptions, buf.asArray());
 		} catch (RocksDBException e) {
@@ -223,7 +223,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	public Promise<S> get(K key) {
 		return Promise.ofCallable(executor, () -> {
 			ByteBuf buf = ByteBufPool.allocate(bufferSize);
-			keySerializer.encode(buf.array(), buf.readPosition(), key);
+			keySerializer.encode(buf.array(), buf.head(), key);
 			byte[] state = db.get(buf.asArray());
 			if (state == null) {
 				return null;

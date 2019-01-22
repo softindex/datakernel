@@ -251,7 +251,7 @@ public final class HttpStreamTest {
 		for (int i = 0; i < array.length; i += bufSize) {
 			int min = min(bufSize, buf.readRemaining());
 			list.add(buf.slice(min));
-			buf.moveReadPosition(min);
+			buf.moveHead(min);
 		}
 		buf.recycle();
 		return list;

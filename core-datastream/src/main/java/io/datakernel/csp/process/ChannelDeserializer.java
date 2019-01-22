@@ -67,7 +67,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 			int firstBufRemaining = firstBuf.readRemaining();
 			if (firstBufRemaining >= 3) {
 				byte[] array = firstBuf.array();
-				int pos = firstBuf.readPosition();
+				int pos = firstBuf.head();
 				byte b = array[pos];
 				if (b >= 0) {
 					dataSize = b;
@@ -94,7 +94,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 					T item = valueSerializer.decode(array, pos + headerSize);
 					send(item);
 					if (firstBufRemaining != size) {
-						firstBuf.moveReadPosition(size);
+						firstBuf.moveHead(size);
 					} else {
 						queue.take().recycle();
 					}
@@ -133,7 +133,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 				break;
 
 			queue.consume(size, buf -> {
-				T item = valueSerializer.decode(buf.array(), buf.readPosition() + headerSize);
+				T item = valueSerializer.decode(buf.array(), buf.head() + headerSize);
 				send(item);
 			});
 		}

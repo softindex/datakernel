@@ -59,7 +59,7 @@ abstract class ByteBufsToFrames extends AbstractChannelTransformer<ByteBufsToFra
 		}
 
 		ByteBuf until = item.slice(bytesUntilCheckpoint);
-		item.moveReadPosition(bytesUntilCheckpoint);
+		item.moveHead(bytesUntilCheckpoint);
 		return postByteBuf(until)
 				.thenCompose($ -> postCheckpoint())
 				.thenCompose($ -> onItem(item));

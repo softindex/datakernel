@@ -85,7 +85,7 @@ public class HttpUtilsTest {
 	// region helpers
 	private void encodePositiveIntTest(ByteBuf buf, int value) throws ParseException {
 		buf.rewind();
-		buf.moveWritePosition(encodePositiveInt(buf.array(), buf.readPosition(), value));
+		buf.moveTail(encodePositiveInt(buf.array(), buf.head(), value));
 		String stringRepr = decodeUtf8(buf);
 		assertEquals(String.valueOf(value), stringRepr);
 	}

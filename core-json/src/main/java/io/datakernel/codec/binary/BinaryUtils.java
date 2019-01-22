@@ -56,7 +56,7 @@ public final class BinaryUtils {
 
 	public static <T> void encodeInto(StructuredEncoder<T> encoder, T item, ByteBuf dest) {
 		ByteBuf encoded = encode(encoder, item);
-		dest.write(encoded.array(), encoded.readPosition(), encoded.readRemaining());
+		dest.write(encoded.array(), encoded.head(), encoded.readRemaining());
 	}
 
 	public static <T> ByteBuf encodeWithSizePrefix(StructuredEncoder<T> encoder, T item) {
@@ -64,7 +64,7 @@ public final class BinaryUtils {
 		encoder.encode(out, item);
 		ByteBuf buf = ByteBufPool.allocate(out.getBuf().readRemaining() + 5);
 		buf.writeVarInt(out.getBuf().readRemaining());
-		buf.write(out.getBuf().array(), out.getBuf().readPosition(), out.getBuf().readRemaining());
+		buf.write(out.getBuf().array(), out.getBuf().head(), out.getBuf().readRemaining());
 		out.getBuf().recycle();
 		return buf;
 	}

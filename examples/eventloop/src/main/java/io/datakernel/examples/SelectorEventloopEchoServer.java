@@ -103,7 +103,7 @@ public class SelectorEventloopEchoServer {
 								buf = ByteBufPool.append(ByteBufStrings.wrapUtf8("Server: "), buf);
 								buf = ByteBufPool.append(buf, CRLF);
 								int written = socketChannel.write(buf.toReadByteBuffer());
-								buf.moveReadPosition(written);
+								buf.moveHead(written);
 								if (buf.canRead()) {
 									return;
 								}

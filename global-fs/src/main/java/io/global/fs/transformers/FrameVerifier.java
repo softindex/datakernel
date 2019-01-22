@@ -50,10 +50,10 @@ public final class FrameVerifier extends FramesToByteBufs {
 			return Promise.complete();
 		}
 		if (oldPos < offset) {
-			byteBuf.moveReadPosition((int) (offset - oldPos));
+			byteBuf.moveHead((int) (offset - oldPos));
 		}
 		if (position > endOffset) {
-			byteBuf.moveWritePosition((int) (endOffset - position));
+			byteBuf.moveTail((int) (endOffset - position));
 		}
 		return send(byteBuf);
 	}

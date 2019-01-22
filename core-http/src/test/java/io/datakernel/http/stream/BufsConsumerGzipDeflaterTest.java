@@ -94,7 +94,7 @@ public final class BufsConsumerGzipDeflaterTest {
 		int bufSize = 100;
 		for (int i = 0; i < data.length; i += bufSize) {
 			list.add(buf2.slice(bufSize));
-			buf2.moveReadPosition(bufSize);
+			buf2.moveHead(bufSize);
 		}
 		buf2.recycle();
 

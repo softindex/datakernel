@@ -240,16 +240,16 @@ public final class HttpUrlTest {
 		ByteBuf buf = ByteBufPool.allocate(64);
 		url.writePathAndQuery(buf);
 
-		assertEquals(0, buf.readPosition());
-		assertEquals(36, buf.writePosition());
+		assertEquals(0, buf.head());
+		assertEquals(36, buf.tail());
 		assertEquals("/path1/path2/path3/?key1=value1&key2", ByteBufStrings.asAscii(buf));
 
 		url = UrlParser.of("http://example.com:1234?key1=value1&key2#sec:2.2");
 		buf = ByteBufPool.allocate(64);
 		url.writePathAndQuery(buf);
 
-		assertEquals(0, buf.readPosition());
-		assertEquals(18, buf.writePosition());
+		assertEquals(0, buf.head());
+		assertEquals(18, buf.tail());
 		assertEquals("/?key1=value1&key2", ByteBufStrings.asAscii(buf));
 	}
 

@@ -95,17 +95,17 @@ public abstract class HttpHeaderValue {
 	}
 
 	public static int toPositiveInt(@NotNull ByteBuf buf) throws ParseException {
-		return trimAndDecodePositiveInt(buf.array(), buf.readPosition(), buf.readRemaining());
+		return trimAndDecodePositiveInt(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	@NotNull
 	public static ContentType toContentType(@NotNull ByteBuf buf) throws ParseException {
-		return ContentType.parse(buf.array(), buf.readPosition(), buf.readRemaining());
+		return ContentType.parse(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	@NotNull
 	public static Instant toInstant(@NotNull ByteBuf buf) throws ParseException {
-		return Instant.ofEpochSecond(HttpDate.parse(buf.array(), buf.readPosition()));
+		return Instant.ofEpochSecond(HttpDate.parse(buf.array(), buf.head()));
 	}
 
 	@NotNull
@@ -122,19 +122,19 @@ public abstract class HttpHeaderValue {
 	}
 
 	public static void toAcceptContentTypes(@NotNull ByteBuf buf, @NotNull List<AcceptMediaType> into) throws ParseException {
-		AcceptMediaType.parse(buf.array(), buf.readPosition(), buf.readRemaining(), into);
+		AcceptMediaType.parse(buf.array(), buf.head(), buf.readRemaining(), into);
 	}
 
 	public static void toAcceptCharsets(@NotNull ByteBuf buf, @NotNull List<AcceptCharset> into) throws ParseException {
-		AcceptCharset.parse(buf.array(), buf.readPosition(), buf.readRemaining(), into);
+		AcceptCharset.parse(buf.array(), buf.head(), buf.readRemaining(), into);
 	}
 
 	static void toSimpleCookies(@NotNull ByteBuf buf, @NotNull List<HttpCookie> into) throws ParseException {
-		HttpCookie.parseSimple(buf.array(), buf.readPosition(), buf.writePosition(), into);
+		HttpCookie.parseSimple(buf.array(), buf.head(), buf.tail(), into);
 	}
 
 	static void toFullCookies(@NotNull ByteBuf buf, @NotNull List<HttpCookie> into) throws ParseException {
-		HttpCookie.parseFull(buf.array(), buf.readPosition(), buf.writePosition(), into);
+		HttpCookie.parseFull(buf.array(), buf.head(), buf.tail(), into);
 	}
 
 	static final class HttpHeaderValueOfContentType extends HttpHeaderValue {

@@ -97,7 +97,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 		}
 		chunkArray[hexLen] = CR;
 		chunkArray[hexLen + 1] = LF;
-		chunkBuf.writePosition(hexLen + 2);
+		chunkBuf.tail(hexLen + 2);
 		chunkBuf.put(buf);
 		buf.recycle();
 		chunkBuf.writeByte(CR);

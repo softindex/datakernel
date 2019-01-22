@@ -156,7 +156,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		while (bufs.hasRemaining()) {
 			ByteBuf src = bufs.peekBuf();
 			assert src != null;
-			inflater.setInput(src.array(), src.readPosition(), src.readRemaining());
+			inflater.setInput(src.array(), src.head(), src.readRemaining());
 			try {
 				inflate(queue);
 			} catch (DataFormatException e) {
@@ -205,8 +205,8 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 			ByteBuf buf = ByteBufPool.allocate(max(src.readRemaining(), DEFAULT_BUF_SIZE));
 			int beforeInflation = inflater.getTotalIn();
 			int len = inflater.inflate(buf.array(), 0, buf.writeRemaining());
-			buf.moveWritePosition(len);
-			src.moveReadPosition(inflater.getTotalIn() - beforeInflation);
+			buf.moveTail(len);
+			src.moveHead(inflater.getTotalIn() - beforeInflation);
 			if (len == 0) {
 				if (!src.canRead()) {
 					bufs.take().recycle();
@@ -214,7 +214,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				buf.recycle();
 				return;
 			}
-			crc32.update(buf.array(), buf.readPosition(), buf.readRemaining());
+			crc32.update(buf.array(), buf.head(), buf.readRemaining());
 			queue.add(buf);
 		}
 	}

@@ -71,7 +71,7 @@ abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteB
 			ByteBuf buf = frame.getBuf();
 			int size = buf.readRemaining();
 			position += size;
-			digest.update(buf.array(), buf.readPosition(), size);
+			digest.update(buf.array(), buf.head(), size);
 			return receiveByteBuf(buf);
 		}
 		SignedData<GlobalFsCheckpoint> signedCheckpoint = frame.getCheckpoint();

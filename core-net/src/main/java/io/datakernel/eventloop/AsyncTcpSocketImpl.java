@@ -355,7 +355,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			readBuf = buf;
 		} else {
 			readBuf = ByteBufPool.ensureWriteRemaining(readBuf, buf.readRemaining());
-			readBuf.put(buf.array(), buf.readPosition(), buf.readRemaining());
+			readBuf.put(buf.array(), buf.head(), buf.readRemaining());
 			buf.recycle();
 		}
 	}
@@ -378,7 +378,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} else {
 			if (buf != null) {
 				writeBuf = ByteBufPool.ensureWriteRemaining(this.writeBuf, buf.readRemaining());
-				writeBuf.put(buf.array(), buf.readPosition(), buf.readRemaining());
+				writeBuf.put(buf.array(), buf.head(), buf.readRemaining());
 				buf.recycle();
 			}
 		}
@@ -432,7 +432,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				throw e;
 			}
 
-			if (inspector != null) inspector.onWrite(buf, buffer.position() - buf.readPosition());
+			if (inspector != null) inspector.onWrite(buf, buffer.position() - buf.head());
 
 			buf.ofReadByteBuffer(buffer);
 

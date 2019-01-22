@@ -72,28 +72,28 @@ public class ByteBufTest {
 	@Test
 	public void testEditing() {
 		ByteBuf buf = createEmptyByteBufOfSize(256);
-		assertEquals(0, buf.readPosition());
+		assertEquals(0, buf.head());
 
 		buf.put((byte) 'H');
-		assertEquals(1, buf.writePosition());
+		assertEquals(1, buf.tail());
 		assertEquals('H', buf.at(0));
 
 		buf.put(new byte[]{'e', 'l', 'l', 'o'});
 		buf.put(new byte[]{';', ' ', ',', ' ', '.', ' ', '!', ' '}, 2, 2);
-		assertEquals(7, buf.writePosition());
+		assertEquals(7, buf.tail());
 
 		ByteBuf worldBuf = ByteBuf.wrapForReading(new byte[]{'W', 'o', 'r', 'l', 'd', '!'});
 		buf.put(worldBuf);
 
-		assertEquals(worldBuf.limit(), worldBuf.readPosition());
+		assertEquals(worldBuf.limit(), worldBuf.head());
 		assertFalse(worldBuf.canWrite());
-		assertEquals(13, buf.writePosition());
+		assertEquals(13, buf.tail());
 
 		ByteBuf slice = buf.slice();
 		ByteBuf newBuf = createEmptyByteBufOfSize(slice.limit());
 		slice.drainTo(newBuf, 10);
-		assertEquals(10, slice.readPosition());
-		assertEquals(10, newBuf.writePosition());
+		assertEquals(10, slice.head());
+		assertEquals(10, newBuf.tail());
 
 		slice.drainTo(newBuf, 3);
 
@@ -103,8 +103,8 @@ public class ByteBufTest {
 	@Test
 	public void transformsToByteBufferInReadMode() {
 		ByteBuf buf = createEmptyByteBufOfSize(8);
-		buf.writePosition(5);
-		buf.readPosition(2);
+		buf.tail(5);
+		buf.head(2);
 
 		ByteBuffer buffer = buf.toReadByteBuffer();
 
@@ -115,8 +115,8 @@ public class ByteBufTest {
 	@Test
 	public void transformsToByteBufferInWriteMode() {
 		ByteBuf buf = createEmptyByteBufOfSize(8);
-		buf.writePosition(5);
-		buf.readPosition(2);
+		buf.tail(5);
+		buf.head(2);
 
 		ByteBuffer buffer = buf.toWriteByteBuffer();
 
@@ -142,7 +142,7 @@ public class ByteBufTest {
 		}
 
 		buf = ByteBufPool.allocate(300);
-		buf.writePosition(BYTES.length);
+		buf.tail(BYTES.length);
 		byte[] bytes = new byte[BYTES.length];
 		buf.drainTo(bytes, 0, bytes.length);
 		assertArrayEquals(bytes, BYTES);
@@ -185,8 +185,8 @@ public class ByteBufTest {
 			ByteBuffer buffer = buf.toWriteByteBuffer();
 			buffer.put(("Test message " + i).getBytes());
 			buffer.flip();
-			buf.writePosition(buffer.limit());
-			buf.readPosition(buffer.position());
+			buf.tail(buffer.limit());
+			buf.head(buffer.position());
 			consumer.consume(buf.slice());
 			buf.recycle();
 		}
@@ -221,12 +221,12 @@ public class ByteBufTest {
 	public void testSkipAndAdvance() {
 		ByteBuf buf = createEmptyByteBufOfSize(5);
 		buf.put(new byte[]{'a', 'b', 'c'});
-		buf.moveReadPosition(2);
+		buf.moveHead(2);
 		assertEquals('c', buf.get());
 		buf.array[3] = 'd';
 		buf.array[4] = 'e';
 		assertFalse(buf.canRead());
-		buf.moveWritePosition(2);
+		buf.moveTail(2);
 		assertTrue(buf.canRead());
 		byte[] bytes = new byte[2];
 		buf.drainTo(bytes, 0, 2);

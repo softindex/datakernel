@@ -144,7 +144,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		input.get()
 				.whenResult(buf -> {
 					if (buf != null) {
-						ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
+						ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.head(), buf.readRemaining());
 						if (inspector != null) inspector.onBuf(buf, outputBuf);
 						buf.recycle();
 						output.accept(outputBuf)
@@ -215,7 +215,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.writePosition(HEADER_LENGTH + compressedLength);
+		outputBuf.tail(HEADER_LENGTH + compressedLength);
 
 		return outputBuf;
 	}
@@ -232,7 +232,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 5);
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 9);
 
-		outputBuf.writePosition(HEADER_LENGTH);
+		outputBuf.tail(HEADER_LENGTH);
 		return outputBuf;
 	}
 

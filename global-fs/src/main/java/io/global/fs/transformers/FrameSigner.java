@@ -68,7 +68,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	protected Promise<Void> postByteBuf(ByteBuf buf) {
 		int size = buf.readRemaining();
 		position += size;
-		digest.update(buf.array(), buf.readPosition(), size);
+		digest.update(buf.array(), buf.head(), size);
 		lastPostedCheckpoint = false;
 		return send(DataFrame.of(buf));
 	}

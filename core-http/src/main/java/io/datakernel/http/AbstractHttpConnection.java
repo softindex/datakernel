@@ -170,10 +170,10 @@ public abstract class AbstractHttpConnection {
 		int size = 1;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
 			ByteBuf buf = readQueue.peekBuf(i);
-			for (int p = buf.readPosition(); p < buf.writePosition(); p++) {
+			for (int p = buf.head(); p < buf.tail(); p++) {
 				if (buf.at(p) == LF) {
-					size += p - buf.readPosition();
-					if (i == 0 && buf.readPosition() == 0 && size >= 10) {
+					size += p - buf.head();
+					if (i == 0 && buf.head() == 0 && size >= 10) {
 						onStartLine(buf.array(), size);
 						readQueue.skip(size);
 					} else {
@@ -203,31 +203,31 @@ public abstract class AbstractHttpConnection {
 			for (int i = 0; i < readQueue.remainingBufs(); i++) {
 				ByteBuf buf = readQueue.peekBuf(i);
 				byte[] array = buf.array();
-				int readPosition = buf.readPosition();
-				int writePosition = buf.writePosition();
-				for (int p = readPosition; p < writePosition; p++) {
+				int head = buf.head();
+				int tail = buf.tail();
+				for (int p = head; p < tail; p++) {
 					if (array[p] == LF) {
 
 						// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-						if (isMultilineHeader(array, readPosition, writePosition, p)) {
+						if (isMultilineHeader(array, head, tail, p)) {
 							preprocessMultiline(array, p);
 							continue;
 						}
 
 						if (i == 0) {
-							int limit = (p - 1 >= readPosition && array[p - 1] == CR) ? p - 1 : p;
-							if (limit != readPosition) {
-								processHeaderLine(array, readPosition, limit);
-								readQueue.skip(p - readPosition + 1, onHeaderBuf);
-								readPosition = buf.readPosition();
+							int limit = (p - 1 >= head && array[p - 1] == CR) ? p - 1 : p;
+							if (limit != head) {
+								processHeaderLine(array, head, limit);
+								readQueue.skip(p - head + 1, onHeaderBuf);
+								head = buf.head();
 							} else {
 								onHeaderBuf(buf);
-								readQueue.skip(p - readPosition + 1);
+								readQueue.skip(p - head + 1);
 								break NEXT_HEADER;
 							}
 							size = 1;
 						} else {
-							size += p - readPosition;
+							size += p - head;
 							byte[] tmp = new byte[size];
 							readQueue.drainTo(tmp, 0, size, onHeaderBuf);
 							int limit = (tmp.length - 2 >= 0 && tmp[tmp.length - 2] == CR) ? tmp.length - 2 : tmp.length - 1;
@@ -251,13 +251,13 @@ public abstract class AbstractHttpConnection {
 		readBody();
 	}
 
-	private static boolean isMultilineHeader(byte[] array, int readPosition, int writePosition, int p) {
-		return p + 1 < writePosition && (array[p + 1] == SP || array[p + 1] == HT) &&
-				isDataBetweenStartAndLF(array, readPosition, p);
+	private static boolean isMultilineHeader(byte[] array, int offset, int limit, int p) {
+		return p + 1 < limit && (array[p + 1] == SP || array[p + 1] == HT) &&
+				isDataBetweenStartAndLF(array, offset, p);
 	}
 
-	private static boolean isDataBetweenStartAndLF(byte[] array, int readPosition, int p) {
-		return !(p == readPosition || (p - readPosition == 1 && array[p - 1] == CR));
+	private static boolean isDataBetweenStartAndLF(byte[] array, int offset, int p) {
+		return !(p == offset || (p - offset == 1 && array[p - 1] == CR));
 	}
 
 	private static void preprocessMultiline(byte[] array, int p) {

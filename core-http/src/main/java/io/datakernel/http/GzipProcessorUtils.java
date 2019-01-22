@@ -67,7 +67,7 @@ public final class GzipProcessorUtils {
 		processHeader(src);
 		ByteBuf dst = ByteBufPool.allocate(expectedSize);
 		Inflater decompressor = ensureDecompressor();
-		decompressor.setInput(src.array(), src.readPosition(), src.readRemaining());
+		decompressor.setInput(src.array(), src.head(), src.readRemaining());
 		try {
 			readDecompressedData(decompressor, src, dst, maxMessageSize);
 		} catch (DataFormatException ignored) {
@@ -88,7 +88,7 @@ public final class GzipProcessorUtils {
 		assert src.readRemaining() > 0;
 
 		Deflater compressor = ensureCompressor();
-		compressor.setInput(src.array(), src.readPosition(), src.readRemaining());
+		compressor.setInput(src.array(), src.head(), src.readRemaining());
 		compressor.finish();
 		int dataSize = src.readRemaining();
 		int crc = getCrc(src, dataSize);
@@ -107,12 +107,12 @@ public final class GzipProcessorUtils {
 	private static int readExpectedInputSize(ByteBuf buf) throws ParseException {
 		// trailer size - 8 bytes. 4 bytes for CRC32, 4 bytes for ISIZE
 		check(buf.readRemaining() >= 8, buf, CORRUPTED_GZIP_HEADER);
-		int w = buf.writePosition();
-		int r = buf.readPosition();
+		int w = buf.tail();
+		int r = buf.head();
 		// read decompressed data size, represented by little-endian int
-		buf.readPosition(w - 4);
+		buf.head(w - 4);
 		int bigEndianPosition = buf.readInt();
-		buf.readPosition(r);
+		buf.head(r);
 		return Integer.reverseBytes(bigEndianPosition);
 	}
 
@@ -125,7 +125,7 @@ public final class GzipProcessorUtils {
 
 		// skip optional fields
 		byte flag = buf.readByte();
-		buf.moveReadPosition(6);
+		buf.moveHead(6);
 		if ((flag & FEXTRA) > 0) {
 			skipExtra(buf);
 		}
@@ -136,19 +136,19 @@ public final class GzipProcessorUtils {
 			skipToTerminatorByte(buf);
 		}
 		if ((flag & FHCRC) > 0) {
-			buf.moveReadPosition(2);
+			buf.moveHead(2);
 		}
 	}
 
 	private static void readDecompressedData(Inflater decompressor, ByteBuf src, ByteBuf dst, int maxSize) throws DataFormatException, ParseException {
 		int totalUncompressedBytesCount = 0;
-		int count = decompressor.inflate(dst.array(), dst.writePosition(), dst.writeRemaining());
+		int count = decompressor.inflate(dst.array(), dst.tail(), dst.writeRemaining());
 		totalUncompressedBytesCount += count;
-		dst.moveWritePosition(count);
+		dst.moveTail(count);
 		check(totalUncompressedBytesCount < maxSize, dst, src, DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE);
 		check(decompressor.finished(), dst, src, ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 		int totalRead = decompressor.getTotalIn();
-		src.moveReadPosition(totalRead);
+		src.moveHead(totalRead);
 	}
 
 	private static int estimateMaxCompressedSize(int dataSize) {
@@ -158,8 +158,8 @@ public final class GzipProcessorUtils {
 	private static ByteBuf writeCompressedData(Deflater compressor, ByteBuf src, ByteBuf dst) {
 		int unprocessedDataSize = src.readRemaining();
 		while (!compressor.finished()) {
-			int count = compressor.deflate(dst.array(), dst.writePosition(), dst.writeRemaining());
-			dst.moveWritePosition(count);
+			int count = compressor.deflate(dst.array(), dst.tail(), dst.writeRemaining());
+			dst.moveTail(count);
 			if (compressor.finished()) {
 				break;
 			}
@@ -167,13 +167,13 @@ public final class GzipProcessorUtils {
 			int newTailRemaining = estimateMaxCompressedSize(unprocessedDataSize - processedDataSize);
 			dst = ByteBufPool.ensureWriteRemaining(dst, newTailRemaining);
 		}
-		src.moveReadPosition(compressor.getTotalIn());
+		src.moveHead(compressor.getTotalIn());
 		return dst;
 	}
 
 	private static int getCrc(ByteBuf buf, int dataSize) {
 		CRC32 crc32 = new CRC32();
-		crc32.update(buf.array(), buf.readPosition(), dataSize);
+		crc32.update(buf.array(), buf.head(), dataSize);
 		return (int) crc32.getValue();
 	}
 
@@ -182,7 +182,7 @@ public final class GzipProcessorUtils {
 		short subFieldDataSize = buf.readShort();
 		short reversedSubFieldDataSize = Short.reverseBytes(subFieldDataSize);
 		check(buf.readRemaining() >= reversedSubFieldDataSize, buf, CORRUPTED_GZIP_HEADER);
-		buf.moveReadPosition(reversedSubFieldDataSize);
+		buf.moveHead(reversedSubFieldDataSize);
 	}
 
 	private static void skipToTerminatorByte(ByteBuf buf) throws ParseException {

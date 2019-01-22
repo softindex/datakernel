@@ -200,7 +200,7 @@ public final class BufsConsumerGzipInflaterTest {
 		ByteBuf raw = toGzip(wrapAscii(largeText));
 		consumer.setExpectedString(largeText);
 		list.add(raw.slice(100));
-		raw.moveReadPosition(100);
+		raw.moveHead(100);
 		list.add(raw.slice());
 		raw.recycle();
 

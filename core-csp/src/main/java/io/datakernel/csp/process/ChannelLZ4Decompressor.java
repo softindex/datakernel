@@ -119,7 +119,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		}
 
 		try (ByteBuf headerBuf = bufs.takeExactSize(HEADER_LENGTH)) {
-			readHeader(header, headerBuf.array(), headerBuf.readPosition());
+			readHeader(header, headerBuf.array(), headerBuf.head());
 		} catch (ParseException e) {
 			close(e);
 			return;
@@ -148,7 +148,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		ByteBuf inputBuf = bufs.takeExactSize(header.compressedLen);
 		ByteBuf outputBuf;
 		try {
-			outputBuf = decompress(decompressor, checksum, header, inputBuf.array(), inputBuf.readPosition());
+			outputBuf = decompress(decompressor, checksum, header, inputBuf.array(), inputBuf.head());
 			if (inspector != null) inspector.onBlock(this, header, inputBuf, outputBuf);
 		} catch (ParseException e) {
 			close(e);
@@ -208,7 +208,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 	private static ByteBuf decompress(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 			byte[] bytes, int off) throws ParseException {
 		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
-		outputBuf.writePosition(header.originalLen);
+		outputBuf.tail(header.originalLen);
 		switch (header.compressionMethod) {
 			case COMPRESSION_METHOD_RAW:
 				System.arraycopy(bytes, off, outputBuf.array(), 0, header.originalLen);

@@ -75,7 +75,7 @@ public final class GlobalFsDownload implements Callable<Void> {
 			info("Downloading " + file + " to standard output ...");
 			writer = ChannelConsumer.of(buffer ->
 					Promise.ofRunnable(executor, () ->
-							System.out.write(buffer.array(), buffer.readPosition(), buffer.readRemaining())));
+							System.out.write(buffer.array(), buffer.head(), buffer.readRemaining())));
 		} else {
 			info("Downloading " + file + " as " + localFile + " ...");
 			writer = ChannelFileWriter.create(AsyncFile.open(executor, Paths.get(localFile), OPEN_OPTIONS));

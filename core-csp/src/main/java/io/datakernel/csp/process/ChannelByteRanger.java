@@ -57,10 +57,10 @@ public final class ChannelByteRanger extends AbstractChannelTransformer<ChannelB
 			return Promise.complete();
 		}
 		if (oldPos < offset) {
-			item.moveReadPosition((int) (offset - oldPos));
+			item.moveHead((int) (offset - oldPos));
 		}
 		if (position > endOffset) {
-			item.moveWritePosition((int) (endOffset - position));
+			item.moveTail((int) (endOffset - position));
 		}
 		return send(item);
 	}

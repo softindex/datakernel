@@ -123,8 +123,8 @@ final class HttpDate {
 	}
 
 	static void render(long epochSeconds, ByteBuf buf) {
-		int pos = render(epochSeconds, buf.array(), buf.writePosition());
-		buf.writePosition(pos);
+		int pos = render(epochSeconds, buf.array(), buf.tail());
+		buf.tail(pos);
 	}
 
 	static int render(long epochSeconds, byte[] bytes, int pos) {

@@ -86,7 +86,7 @@ public final class TestGzipProcessorUtils {
 		expectedException.expectMessage("Decompressed data size is not equal to input size from GZIP trailer");
 
 		ByteBuf raw = toGzip(wrapUtf8(text));
-		raw.moveWritePosition(-4);
+		raw.moveTail(-4);
 		raw.writeInt(Integer.reverseBytes(2));
 
 		fromGzip(raw, 11_000_000);
@@ -159,7 +159,7 @@ public final class TestGzipProcessorUtils {
 	private static ByteBuf encodeWithGzipOutputStream(ByteBuf raw) throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try (GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
-			gzip.write(raw.array(), raw.readPosition(), raw.readRemaining());
+			gzip.write(raw.array(), raw.head(), raw.readRemaining());
 			gzip.finish();
 			byte[] bytes = baos.toByteArray();
 			ByteBuf byteBuf = ByteBufPool.allocate(bytes.length);
@@ -171,11 +171,11 @@ public final class TestGzipProcessorUtils {
 	}
 
 	private static ByteBuf decodeWithGzipInputStream(ByteBuf src) throws IOException {
-		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(src.array(), src.readPosition(), src.readRemaining()))) {
+		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(src.array(), src.head(), src.readRemaining()))) {
 			int nRead;
 			ByteBuf data = ByteBufPool.allocate(256);
-			while ((nRead = gzip.read(data.array(), data.writePosition(), data.writeRemaining())) != -1) {
-				data.moveWritePosition(nRead);
+			while ((nRead = gzip.read(data.array(), data.tail(), data.writeRemaining())) != -1) {
+				data.moveTail(nRead);
 				data = ByteBufPool.ensureWriteRemaining(data, data.readRemaining());
 			}
 			src.recycle();

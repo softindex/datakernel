@@ -209,8 +209,8 @@ public final class ByteBufPool {
 	public static ByteBuf allocateExact(int size) {
 		ByteBuf buf = allocate(size);
 		int d = buf.writeRemaining() - size;
-		buf.writePosition(d);
-		buf.readPosition(d);
+		buf.tail(d);
+		buf.head(d);
 		return buf;
 	}
 

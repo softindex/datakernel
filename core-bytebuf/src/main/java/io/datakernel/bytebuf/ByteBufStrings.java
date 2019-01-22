@@ -55,8 +55,8 @@ public final class ByteBufStrings {
 	}
 
 	public static void putAscii(ByteBuf buf, String string) {
-		encodeAscii(buf.array(), buf.writePosition(), string);
-		buf.moveWritePosition(string.length());
+		encodeAscii(buf.array(), buf.tail(), string);
+		buf.moveTail(string.length());
 	}
 
 	public static ByteBuf wrapAscii(String string) {
@@ -65,7 +65,7 @@ public final class ByteBufStrings {
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
 		}
-		buf.moveWritePosition(string.length());
+		buf.moveTail(string.length());
 		return buf;
 	}
 
@@ -83,7 +83,7 @@ public final class ByteBufStrings {
 	}
 
 	public static String asAscii(ByteBuf buf) {
-		String str = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), ThreadLocalCharArray.ensure(buf.readRemaining()));
+		String str = decodeAscii(buf.array(), buf.head(), buf.readRemaining(), ThreadLocalCharArray.ensure(buf.readRemaining()));
 		buf.recycle();
 		return str;
 	}
@@ -106,7 +106,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void toLowerCaseAscii(ByteBuf buf) {
-		toLowerCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
+		toLowerCaseAscii(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	public static void toUpperCaseAscii(byte[] bytes, int pos, int len) {
@@ -123,7 +123,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void toUpperCaseAscii(ByteBuf buf) {
-		toUpperCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
+		toUpperCaseAscii(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	public static boolean equalsLowerCaseAscii(byte[] lowerCasePattern, byte[] array, int offset, int size) {
@@ -170,7 +170,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCode(ByteBuf buf) {
-		return hashCode(buf.array(), buf.readPosition(), buf.readRemaining());
+		return hashCode(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	public static int hashCodeLowerCaseAscii(byte[] array, int offset, int size) {
@@ -189,7 +189,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCodeLowerCaseAscii(ByteBuf buf) {
-		return hashCodeLowerCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
+		return hashCodeLowerCaseAscii(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	public static int hashCodeUpperCaseAscii(byte[] array, int offset, int size) {
@@ -208,7 +208,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCodeUpperCaseAscii(ByteBuf buf) {
-		return hashCodeUpperCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
+		return hashCodeUpperCaseAscii(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	// UTF-8
@@ -236,19 +236,19 @@ public final class ByteBufStrings {
 	}
 
 	public static void putUtf8(ByteBuf buf, String string) {
-		int size = encodeUtf8(buf.array(), buf.writePosition(), string);
-		buf.moveWritePosition(size);
+		int size = encodeUtf8(buf.array(), buf.tail(), string);
+		buf.moveTail(size);
 	}
 
 	public static void putUtf8(ByteBuf buf, char c) {
-		int size = encodeUtf8(buf.array(), buf.writePosition(), c);
-		buf.moveWritePosition(size);
+		int size = encodeUtf8(buf.array(), buf.tail(), c);
+		buf.moveTail(size);
 	}
 
 	public static ByteBuf wrapUtf8(String string) {
 		ByteBuf byteBuffer = ByteBufPool.allocate(string.length() * 3);
 		int size = encodeUtf8(byteBuffer.array(), 0, string);
-		byteBuffer.moveWritePosition(size);
+		byteBuffer.moveTail(size);
 		return byteBuffer;
 	}
 
@@ -295,11 +295,11 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeUtf8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
-		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), tmpBuffer);
+		return decodeUtf8(buf.array(), buf.head(), buf.readRemaining(), tmpBuffer);
 	}
 
 	public static String decodeUtf8(ByteBuf buf) throws ParseException {
-		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
+		return decodeUtf8(buf.array(), buf.head(), buf.readRemaining(), new char[buf.readRemaining()]);
 	}
 
 	public static String decodeUtf8(byte[] array) throws ParseException {
@@ -307,7 +307,7 @@ public final class ByteBufStrings {
 	}
 
 	public static String asUtf8(ByteBuf buf) throws ParseException {
-		String str = decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), ThreadLocalCharArray.ensure(buf.readRemaining()));
+		String str = decodeUtf8(buf.array(), buf.head(), buf.readRemaining(), ThreadLocalCharArray.ensure(buf.readRemaining()));
 		buf.recycle();
 		return str;
 	}
@@ -383,36 +383,36 @@ public final class ByteBufStrings {
 	}
 
 	public static void putInt(ByteBuf buf, int value) {
-		int digits = encodeInt(buf.array(), buf.writePosition(), value);
-		buf.moveWritePosition(digits);
+		int digits = encodeInt(buf.array(), buf.tail(), value);
+		buf.moveTail(digits);
 	}
 
 	public static void putPositiveInt(ByteBuf buf, int value) {
-		int digits = encodePositiveInt(buf.array(), buf.writePosition(), value);
-		buf.moveWritePosition(digits);
+		int digits = encodePositiveInt(buf.array(), buf.tail(), value);
+		buf.moveTail(digits);
 	}
 
 	public static void putLong(ByteBuf buf, long value) {
-		int digits = encodeLong(buf.array(), buf.writePosition(), value);
-		buf.moveWritePosition(digits);
+		int digits = encodeLong(buf.array(), buf.tail(), value);
+		buf.moveTail(digits);
 	}
 
 	public static void putPositiveLong(ByteBuf buf, long value) {
-		int digits = encodePositiveLong(buf.array(), buf.writePosition(), value);
-		buf.moveWritePosition(digits);
+		int digits = encodePositiveLong(buf.array(), buf.tail(), value);
+		buf.moveTail(digits);
 	}
 
 	public static ByteBuf wrapInt(int value) {
 		ByteBuf buf = ByteBufPool.allocate(11);
 		int digits = encodeInt(buf.array, 0, value);
-		buf.moveWritePosition(digits);
+		buf.moveTail(digits);
 		return buf;
 	}
 
 	public static ByteBuf wrapLong(long value) {
 		ByteBuf buf = ByteBufPool.allocate(20);
 		int digits = encodeLong(buf.array, 0, value);
-		buf.moveWritePosition(digits);
+		buf.moveTail(digits);
 		return buf;
 	}
 

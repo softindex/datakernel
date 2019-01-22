@@ -197,7 +197,7 @@ public final class ByteBufQueue implements Recyclable {
 			return buf;
 		}
 		ByteBuf result = buf.slice(size);
-		buf.moveReadPosition(size);
+		buf.moveHead(size);
 		return result;
 	}
 
@@ -224,7 +224,7 @@ public final class ByteBufQueue implements Recyclable {
 		}
 		ByteBuf result = ByteBufPool.allocate(size);
 		drainTo(result.array(), 0, size);
-		result.moveWritePosition(size);
+		result.moveTail(size);
 		return result;
 	}
 
@@ -239,7 +239,7 @@ public final class ByteBufQueue implements Recyclable {
 		}
 		ByteBuf result = ByteBufPool.allocate(size);
 		drainTo(result.array(), 0, size, recycled);
-		result.moveWritePosition(size);
+		result.moveTail(size);
 		return result;
 	}
 
@@ -265,12 +265,12 @@ public final class ByteBufQueue implements Recyclable {
 			return buf;
 		} else if (exactSize < buf.readRemaining()) {
 			ByteBuf result = buf.slice(exactSize);
-			buf.moveReadPosition(exactSize);
+			buf.moveHead(exactSize);
 			return result;
 		}
 		ByteBuf result = ByteBufPool.allocate(exactSize);
 		drainTo(result.array(), 0, exactSize);
-		result.moveWritePosition(exactSize);
+		result.moveTail(exactSize);
 		return result;
 	}
 
@@ -284,12 +284,12 @@ public final class ByteBufQueue implements Recyclable {
 			return buf;
 		} else if (exactSize < buf.readRemaining()) {
 			ByteBuf result = buf.slice(exactSize);
-			buf.moveReadPosition(exactSize);
+			buf.moveHead(exactSize);
 			return result;
 		}
 		ByteBuf result = ByteBufPool.allocate(exactSize);
 		drainTo(result.array(), 0, exactSize, recycledBufs);
-		result.moveWritePosition(exactSize);
+		result.moveTail(exactSize);
 		return result;
 	}
 
@@ -312,9 +312,9 @@ public final class ByteBufQueue implements Recyclable {
 		assert hasRemainingBytes(size);
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
-			int newPos = buf.readPosition() + size;
+			int newPos = buf.head() + size;
 			consumer.accept(buf);
-			buf.readPosition(newPos);
+			buf.head(newPos);
 			if (!buf.canRead()) {
 				first = next(first);
 				buf.recycle();
@@ -422,7 +422,7 @@ public final class ByteBufQueue implements Recyclable {
 
 	/**
 	 * Returns the first byte of the first ByteBuf of this queue
-	 * and increases {@code readPosition} of the ByteBuf. If there are no
+	 * and increases {@link ByteBuf#head()} of the ByteBuf. If there are no
 	 * readable bytes left after the operation, this ByteBuf will be recycled.
 	 */
 	public byte getByte() {
@@ -477,7 +477,7 @@ public final class ByteBufQueue implements Recyclable {
 			ByteBuf buf = bufs[first];
 			int remaining = buf.readRemaining();
 			if (s < remaining) {
-				buf.moveReadPosition(s);
+				buf.moveHead(s);
 				return maxSize;
 			} else {
 				buf.recycle();
@@ -494,7 +494,7 @@ public final class ByteBufQueue implements Recyclable {
 			ByteBuf buf = bufs[first];
 			int remaining = buf.readRemaining();
 			if (s < remaining) {
-				buf.moveReadPosition(s);
+				buf.moveHead(s);
 				return maxSize;
 			} else {
 				recycledBufs.accept(buf);
@@ -523,11 +523,11 @@ public final class ByteBufQueue implements Recyclable {
 			ByteBuf buf = bufs[first];
 			int remaining = buf.readRemaining();
 			if (s < remaining) {
-				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, s);
-				buf.moveReadPosition(s);
+				arraycopy(buf.array(), buf.head(), dest, destOffset, s);
+				buf.moveHead(s);
 				return maxSize;
 			} else {
-				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, remaining);
+				arraycopy(buf.array(), buf.head(), dest, destOffset, remaining);
 				buf.recycle();
 				first = next(first);
 				s -= remaining;
@@ -543,11 +543,11 @@ public final class ByteBufQueue implements Recyclable {
 			ByteBuf buf = bufs[first];
 			int remaining = buf.readRemaining();
 			if (s < remaining) {
-				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, s);
-				buf.moveReadPosition(s);
+				arraycopy(buf.array(), buf.head(), dest, destOffset, s);
+				buf.moveHead(s);
 				return maxSize;
 			} else {
-				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, remaining);
+				arraycopy(buf.array(), buf.head(), dest, destOffset, remaining);
 				recycledBufs.accept(buf);
 				buf.recycle();
 				first = next(first);
@@ -569,8 +569,8 @@ public final class ByteBufQueue implements Recyclable {
 	 * @return number of drained bytes
 	 */
 	public int drainTo(@NotNull ByteBuf dest, int maxSize) {
-		int actualSize = drainTo(dest.array(), dest.writePosition(), maxSize);
-		dest.moveWritePosition(actualSize);
+		int actualSize = drainTo(dest.array(), dest.tail(), maxSize);
+		dest.moveTail(actualSize);
 		return actualSize;
 	}
 

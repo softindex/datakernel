@@ -513,7 +513,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 										partialBuf = iterator.next().getBuf();
 									}
 
-									partialBuf.moveReadPosition(offset);
+									partialBuf.moveHead(offset);
 									ByteBuf finalBuf = partialBuf;
 
 									return from.download(space, filename, endCheckpoint.getPosition(), -1)

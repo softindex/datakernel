@@ -85,7 +85,7 @@ public final class CTRAESCipher {
 	public ByteBuf apply(ByteBuf byteBuf) {
 		// we assume that this we've 'consumed'
 		// the buffer and 'created' a new one in return
-		apply(byteBuf.array(), byteBuf.readPosition(), byteBuf.readRemaining());
+		apply(byteBuf.array(), byteBuf.head(), byteBuf.readRemaining());
 		return byteBuf;
 	}
 

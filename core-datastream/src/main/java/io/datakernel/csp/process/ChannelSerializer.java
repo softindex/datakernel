@@ -195,11 +195,11 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 				if (buf.writeRemaining() < headerSize + estimatedMessageSize + (estimatedMessageSize >>> 2)) {
 					onFullBuffer();
 				}
-				positionBegin = buf.writePosition();
+				positionBegin = buf.tail();
 				positionItem = positionBegin + headerSize;
-				buf.writePosition(positionItem);
+				buf.tail(positionItem);
 				try {
-					buf.writePosition(serializer.encode(buf.array(), buf.writePosition(), item));
+					buf.tail(serializer.encode(buf.array(), buf.tail(), item));
 				} catch (ArrayIndexOutOfBoundsException e) {
 					onUnderEstimate(positionBegin);
 					continue;
@@ -209,7 +209,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 				}
 				break;
 			}
-			int positionEnd = buf.writePosition();
+			int positionEnd = buf.tail();
 			int messageSize = positionEnd - positionItem;
 			if (messageSize > estimatedMessageSize) {
 				if (messageSize < maxMessageSize) {
@@ -254,19 +254,19 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		}
 
 		private void onUnderEstimate(int positionBegin) {
-			buf.writePosition(positionBegin);
+			buf.tail(positionBegin);
 			int writeRemaining = buf.writeRemaining();
 			flush();
 			buf = ByteBufPool.allocate(max(initialBufferSize, writeRemaining + (writeRemaining >>> 1) + 1));
 		}
 
 		private void onMessageOverflow(int positionBegin) {
-			buf.writePosition(positionBegin);
+			buf.tail(positionBegin);
 			handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 		}
 
 		private void onSerializationError(int positionBegin, Exception e) {
-			buf.writePosition(positionBegin);
+			buf.tail(positionBegin);
 			handleSerializationError(e);
 		}
 

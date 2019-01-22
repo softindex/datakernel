@@ -77,8 +77,8 @@ public final class AsyncHttpServerTest {
 		Random random = new Random();
 		while (buf.canRead()) {
 			int count = min(1 + random.nextInt(5), buf.readRemaining());
-			socket.getOutputStream().write(buf.array(), buf.readPosition(), count);
-			buf.moveReadPosition(count);
+			socket.getOutputStream().write(buf.array(), buf.head(), count);
+			buf.moveHead(count);
 		}
 	}
 
@@ -341,7 +341,7 @@ public final class AsyncHttpServerTest {
 
 		try (Socket socket = new Socket()) {
 			socket.connect(new InetSocketAddress("localhost", port));
-			socket.getOutputStream().write(buf.array(), buf.readPosition(), buf.readRemaining());
+			socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
 			buf.recycle();
 			Thread.sleep(100);
 		}

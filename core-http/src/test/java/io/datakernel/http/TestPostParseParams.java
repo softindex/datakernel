@@ -35,7 +35,7 @@ public final class TestPostParseParams {
 	public void testParameters() {
 		ByteBuf body = wrapAscii("hello=world&value=1234");
 
-		Map<String, String> params = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
+		Map<String, String> params = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining()));
 
 		assertEquals(2, params.size());
 		assertEquals("world", params.get("hello"));

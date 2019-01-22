@@ -111,7 +111,7 @@ public final class HttpTolerantApplicationTest {
 
 	private static void write(Socket socket, String string) throws IOException {
 		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(string));
-		socket.getOutputStream().write(buf.array(), buf.readPosition(), buf.readRemaining());
+		socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
 	}
 
 	private static void readAndAssert(InputStream is, String expected) {

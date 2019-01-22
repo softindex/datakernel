@@ -109,8 +109,8 @@ public final class BinaryStructuredInput implements StructuredInput {
 				return "";
 			if (length > buf.readRemaining())
 				throw new IllegalArgumentException();
-			String result = new String(buf.array(), buf.readPosition(), length, UTF_8);
-			buf.moveReadPosition(length);
+			String result = new String(buf.array(), buf.head(), length, UTF_8);
+			buf.moveHead(length);
 			return result;
 		} catch (Exception e) {
 			throw new ParseException(e);

@@ -322,7 +322,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return getBody(maxSize)
 				.thenApply(body -> {
 					try {
-						return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
+						return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining()));
 					} finally {
 						body.recycle();
 					}

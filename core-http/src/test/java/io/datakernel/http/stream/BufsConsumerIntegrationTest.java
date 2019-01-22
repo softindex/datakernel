@@ -99,7 +99,7 @@ public final class BufsConsumerIntegrationTest {
 		while (toBeSplitted.readRemaining() != 0) {
 			int part = Math.min(ThreadLocalRandom.current().nextInt(100) + 100, toBeSplitted.readRemaining());
 			ByteBuf slice = toBeSplitted.slice(part);
-			toBeSplitted.moveReadPosition(part);
+			toBeSplitted.moveHead(part);
 			list.add(slice);
 		}
 		toBeSplitted.recycle();
