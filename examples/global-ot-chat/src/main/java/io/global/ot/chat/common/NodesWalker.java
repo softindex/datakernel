@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package io.global.ot.chat.client;
+package io.global.ot.chat.common;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepository;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Function;
@@ -29,15 +30,16 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.stream.Collectors.joining;
 
-public class NodesWalker<K, D> {
-	private final OTGraph graph;
+public final class NodesWalker<K, D> {
+	private final OTGraph<K, D> graph;
 	private final OTRepository<K, D> repository;
 
+	@Nullable
 	private K revision;
 
 	private NodesWalker(OTRepository<K, D> repository, Function<K, String> idToString, Function<D, String> diffToString) {
 		this.repository = repository;
-		this.graph = new OTGraph(idToString, diffToString);
+		this.graph = new OTGraph<>(idToString, diffToString);
 	}
 
 	public static <K, D> NodesWalker<K, D> create(OTRepository<K, D> repository, Function<K, String> idToString, Function<D, String> diffToString) {
@@ -46,13 +48,20 @@ public class NodesWalker<K, D> {
 
 	public Promise<Void> walk() {
 		return repository.getHeads()
-				.thenCompose(heads -> {
-					revision = first(heads);
-					return walk(heads);
-				});
+				.thenCompose(this::walk);
+	}
+
+	public Promise<Void> walk(@Nullable K revision) {
+		return repository.getHeads()
+				.thenCompose(heads -> walk(heads, revision));
 	}
 
 	public Promise<Void> walk(Set<K> heads) {
+		return walk(heads, null);
+	}
+
+	public Promise<Void> walk(Set<K> heads, @Nullable K revision) {
+		this.revision = revision == null ? first(heads) : revision;
 		return Promises.toList(heads.stream().map(repository::loadCommit))
 				.thenCompose(commits -> {
 					SettablePromise<Void> cb = new SettablePromise<>();
@@ -80,11 +89,10 @@ public class NodesWalker<K, D> {
 	}
 
 	public String toGraphViz() {
-		return graph.toGraphViz();
+		return graph.toGraphViz(revision);
 	}
 
-	private final class OTGraph {
-		private final Set<K> visited = new HashSet<>();
+	private static final class OTGraph<K, D> {
 		private final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
 		private final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
 		private final Function<K, String> idToString;
@@ -96,14 +104,17 @@ public class NodesWalker<K, D> {
 		}
 
 		private void visit(OTCommit<K, D> commit) {
-			if (!visited.contains(commit.getId())) {
-				visited.add(commit.getId());
-				commit.getParents().forEach((key, value) -> graph.addEdge(key, commit.getId(), value));
+			Map<K, List<D>> parents = commit.getParents();
+			if (parents.keySet().isEmpty()) {
+				// rootCommit
+				parent2child.computeIfAbsent(commit.getId(), k -> new HashMap<>());
+				return;
 			}
+			parents.forEach((key, value) -> addEdge(key, commit.getId(), value));
 		}
 
 		private boolean hasBeenVisited(K id) {
-			return visited.contains(id);
+			return child2parent.keySet().contains(id);
 		}
 
 		private void addEdge(K parent, K child, List<D> diff) {
@@ -114,7 +125,7 @@ public class NodesWalker<K, D> {
 		private K getRoot() {
 			Set<K> roots = difference(parent2child.keySet(), child2parent.keySet());
 			return roots.isEmpty() ?
-					first(visited) :
+					first(parent2child.keySet()) :
 					first(roots);
 		}
 
@@ -122,7 +133,7 @@ public class NodesWalker<K, D> {
 			return difference(child2parent.keySet(), parent2child.keySet());
 		}
 
-		private String toGraphViz() {
+		private String toGraphViz(@Nullable K revision) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("digraph {\n");
 			for (K child : child2parent.keySet()) {
@@ -137,10 +148,10 @@ public class NodesWalker<K, D> {
 							.append(diffsToGraphViz(diffs))
 							.append("\"];\n");
 				}
-				addStyle(sb, child);
+				addStyle(sb, child, revision);
 			}
 
-			addStyle(sb, getRoot());
+			addStyle(sb, getRoot(), revision);
 
 			sb.append("\t{ rank=same; ")
 					.append(getTips().stream().map(this::nodeToGraphViz).collect(joining(" ")))
@@ -153,7 +164,7 @@ public class NodesWalker<K, D> {
 			return sb.toString();
 		}
 
-		private void addStyle(StringBuilder sb, K node) {
+		private void addStyle(StringBuilder sb, K node, @Nullable K revision) {
 			sb.append("\t")
 					.append(nodeToGraphViz(node))
 					.append(" [style=filled fillcolor=")

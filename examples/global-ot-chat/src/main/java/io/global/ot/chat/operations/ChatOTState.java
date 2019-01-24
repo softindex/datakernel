@@ -21,17 +21,23 @@ public class ChatOTState implements OTState<ChatOperation> {
 		op.apply(entries);
 	}
 
-	public static class ChatEntry {
+	public final static class ChatEntry {
 		private final long timestamp;
+		private final String author;
 		private final String content;
 
-		public ChatEntry(long timestamp, @NotNull String content) {
+		public ChatEntry(long timestamp, @NotNull String author, @NotNull String content) {
 			this.timestamp = timestamp;
+			this.author = author;
 			this.content = content;
 		}
 
 		public long getTimestamp() {
 			return timestamp;
+		}
+
+		public String getAuthor() {
+			return author;
 		}
 
 		public String getContent() {
@@ -46,6 +52,7 @@ public class ChatOTState implements OTState<ChatOperation> {
 			ChatEntry chatEntry = (ChatEntry) o;
 
 			if (timestamp != chatEntry.timestamp) return false;
+			if (!author.equals(chatEntry.author)) return false;
 			if (!content.equals(chatEntry.content)) return false;
 
 			return true;
@@ -54,6 +61,7 @@ public class ChatOTState implements OTState<ChatOperation> {
 		@Override
 		public int hashCode() {
 			int result = (int) (timestamp ^ (timestamp >>> 32));
+			result = 31 * result + author.hashCode();
 			result = 31 * result + content.hashCode();
 			return result;
 		}

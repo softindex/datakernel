@@ -264,6 +264,41 @@ public class OTStateManagerTest {
 		assertEquals(asList(add(5)), stateManager.getWorkingDiffs());
 	}
 
+	@Test
+	public void testParallelPullsAndPushes() {
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create(asList(1, 2, 4, 6));
+		TestOpState testOpState = new TestOpState();
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
+
+		initializeRepository(repository, stateManager);             // rev = 0;
+		assertEquals(0, testOpState.getValue());
+
+		stateManager.add(asList(add(1), set(1, 5), add(10)));       // rev = 1
+		assertEquals(15, testOpState.getValue());
+		stateManager.commitAndPush();
+
+		stateManager.add(asList(add(1), set(16, 20), add(10)));     // rev = 2
+		assertEquals(30, testOpState.getValue());
+		stateManager.commitAndPush();
+
+		repository.addGraph(builder -> builder.add(2, 3, add(3)));
+		stateManager.add(add(10));
+		assertEquals(40, testOpState.getValue());
+
+		// pull will do nothing, as push below changed revision while pool in process
+		stateManager.pull();
+
+		stateManager.commitAndPush();                               // rev = 4 (2 heads: [3,4])
+		eventloop.run();
+		assertEquals(40, testOpState.getValue());
+
+		await(algorithms.mergeHeadsAndPush());                        // rev = 6
+		await(stateManager.pull());
+
+		assertEquals(43, testOpState.getValue());
+	}
+
 	private class OTRepositoryDecorator<K, D> implements OTRepository<K, D> {
 		private final OTRepository<K, D> repository;
 

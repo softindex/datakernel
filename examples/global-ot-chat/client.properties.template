@@ -1,0 +1,7 @@
+http.listenAddresses=
+resources.path=
+node.address=
+push.interval
+pull.interval=
+merge.schedule.value=
+merge.schedule.type=

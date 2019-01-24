@@ -1,27 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <link rel="stylesheet" href="css/style.css"/>
-  <title>OT Chat Demo</title>
+  <meta charset="UTF-8">
+  <title>Welcome to OT Chat example</title>
 </head>
 
 <body>
-<div class='container'>
-  <div class='chat'>
-    <textarea id='chat' readonly></textarea>
-    <input id='input' type='text'>
-    <button id='delete'>Delete</button>
-  </div>
-  <div class='graph'>
-    <div id="graphviz" style="text-align: center;"></div>
-    <input id='node' type='text' value="http://127.0.0.1:9000/ot/">
-    <button id='changeNode'>Change node url</button>
-  </div>
-  <span class=""></span>
-</div>
+<p>Please, introduce yourself to proceed</p>
+<form>
+  <input id='username' type="text">
+  <input type="submit" value="OK">
+</form>
 
-<script src="js/bundle.js"></script>
+<script src="/js/bundle.js"></script>
 </body>
 
 </html>

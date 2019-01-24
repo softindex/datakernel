@@ -6,7 +6,7 @@ var fs = require('fs');
 var del = require('del');
 var rename = require('gulp-rename')
 
-var BUNDLE_PATH = './src/main/resources/static/js/bundle.js';
+var BUNDLE_PATH = 'src/main/resources/static/js/bundle.js';
 
 function createBundle() {
 	return browserify('./src/main/webapp/src')
@@ -20,5 +20,6 @@ function jsClean() {
 }
 
 module.exports = {
-	createBundle: createBundle
+	createBundle: createBundle,
+	jsClean: jsClean
 };
