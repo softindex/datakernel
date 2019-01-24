@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.util.FileUtils;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.fs.util.Globs;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -47,7 +47,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 
 	@Override
 	public Promise<List<String>> listMetaCheckpoints(String glob) {
-		Predicate<String> pred = Globs.getGlobStringPredicate(glob);
+		Predicate<String> pred = FileUtils.getGlobStringPredicate(glob);
 		return Promise.of(storage.entrySet()
 				.stream()
 				.filter(e -> pred.test(e.getKey()))

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -169,10 +169,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 							.map(master -> AsyncSupplier.cast(() -> master.upload(space, filename, offset))))
 							.thenApply(consumers -> {
 								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
-
-								ChannelSplitter<DataFrame> splitter = ChannelSplitter.<DataFrame>create()
-										.withInput(buffer.getSupplier())
-										.lenient();
+								ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
 
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput()

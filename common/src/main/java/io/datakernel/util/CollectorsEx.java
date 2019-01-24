@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,17 @@ package io.datakernel.util;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class CollectorsEx {
 
-	private CollectorsEx() {}
+	private CollectorsEx() {
+	}
 
 	public static final Collector<Object, Void, Void> TO_VOID = Collector.of(() -> null, (a, v) -> {}, (a1, a2) -> null, a -> null);
 
@@ -57,7 +61,10 @@ public class CollectorsEx {
 		return Collector.of(
 				ArrayList::new,
 				List::add,
-				(left, right) -> { left.addAll(right); return left; },
+				(left, right) -> {
+					left.addAll(right);
+					return left;
+				},
 				a -> a.toArray((T[]) Array.newInstance(type, a.size())));
 	}
 
@@ -116,4 +123,8 @@ public class CollectorsEx {
 		return (u, v) -> { throw new IllegalStateException("Duplicate key " + u); };
 	}
 
+
+	public static <K, V> Collector<Entry<K, V>, ?, Map<K, V>> toMap() {
+		return Collectors.toMap(Entry::getKey, Entry::getValue);
+	}
 }

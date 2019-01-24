@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
-import static io.datakernel.file.FileUtils.isWildcard;
+import static io.datakernel.util.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;

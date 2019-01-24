@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import io.datakernel.async.Promises;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelInput;
 import io.datakernel.csp.dsl.WithChannelOutputs;
+import io.datakernel.exception.Exceptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +49,10 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 
 	public static <T> ChannelSplitter<T> create(ChannelSupplier<T> input) {
 		return new ChannelSplitter<T>().withInput(input);
+	}
+
+	public boolean hasOutputs() {
+		return !outputs.isEmpty();
 	}
 
 	@Override
@@ -95,12 +100,11 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 					output.withAcknowledgement(ack ->
 							ack.thenComposeEx(($, e) -> {
 								outputs.remove(output);
+								lenientExceptions.add(e);
 								if (!outputs.isEmpty()) {
-									lenientExceptions.add(e);
 									return Promise.complete();
 								}
-								lenientExceptions.forEach(e::addSuppressed);
-								return Promise.ofException(e);
+								return Promise.ofException(Exceptions.concat("All outputs were closed with exceptions", lenientExceptions));
 							})));
 		}
 	}

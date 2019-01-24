@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.file.FileUtils.isWildcard;
+import static io.datakernel.util.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -188,13 +188,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return Promises.all(
-				changes.entrySet()
-						.stream()
-						.map(entry ->
-								move(entry.getKey(), entry.getValue())
-										.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
-										.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
+		return Promises.all(changes.entrySet().stream()
+				.map(entry ->
+						move(entry.getKey(), entry.getValue())
+								.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
+								.toTry()))
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
 				.whenComplete(movePromise.recordStats());
 	}
@@ -249,13 +247,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return Promises.all(
-				changes.entrySet()
-						.stream()
-						.map(entry ->
-								copy(entry.getKey(), entry.getValue())
-										.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
-										.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
+		return Promises.all(changes.entrySet().stream()
+				.map(entry ->
+						copy(entry.getKey(), entry.getValue())
+								.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
+								.toTry()))
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
 				.whenComplete(copyPromise.recordStats());
 	}
@@ -342,6 +338,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				});
 	}
 
+	@Override
+	public FsClient subfolder(String folder) {
+		if (folder.length() == 0) {
+			return this;
+		}
+		return new LocalFsClient(eventloop, executor, storageDir.resolve(folder));
+	}
+
 	@NotNull
 	@Override
 	public Eventloop getEventloop() {
@@ -358,11 +362,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();
-	}
-
-	@Override
-	public FsClient subfolder(String folder) {
-		return new LocalFsClient(eventloop, executor, storageDir.resolve(folder));
 	}
 
 	@Override
@@ -418,10 +417,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		Files.walkFileTree(storageDir, new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				if (matcher.matches(storageDir.relativize(file))) {
-					if (Files.isRegularFile(file)) {
-						walker.accept(getFileMeta(file), file);
-					}
+				if (matcher.matches(storageDir.relativize(file)) && Files.isRegularFile(file)) {
+					walker.accept(getFileMeta(file), file);
 				}
 				return CONTINUE;
 			}

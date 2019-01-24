@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package io.datakernel.async;
 import io.datakernel.async.CollectListener.CollectCanceller;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.util.*;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +31,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -43,7 +43,8 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public final class Promises {
-	private Promises() {}
+	private Promises() {
+	}
 
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
 
@@ -188,7 +189,7 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> any() {
-		return Promise.ofException(new NoSuchElementException());
+		return Promise.ofException(new StacklessException(Promises.class, "All promises completed exceptionally"));
 	}
 
 	/**
@@ -851,7 +852,7 @@ public final class Promises {
 			@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull SettablePromise<T> cb) {
 		if (!promises.hasNext()) {
-			cb.setException(new NoSuchElementException());
+			cb.setException(new StacklessException(Promises.class, "No promise result met the condidtion"));
 			return;
 		}
 		promises.next().whenComplete((result, e) -> {

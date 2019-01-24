@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,20 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ConstantException;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
-import static io.datakernel.file.FileUtils.escapeGlob;
+import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.util.FileUtils.escapeGlob;
 
 /**
  * This interface represents a simple filesystem client with upload, download, move, delete and list operations.
@@ -104,7 +108,9 @@ public interface FsClient {
 	 *
 	 * @param changes mapping from old file names to new file names
 	 */
-	Promise<Void> moveBulk(Map<String, String> changes);
+	default Promise<Void> moveBulk(Map<String, String> changes) {
+		return Promises.all(changes.entrySet().stream().map(entry -> move(entry.getKey(), entry.getValue()).toTry()));
+	}
 
 	/**
 	 * Shortcut for {@link #moveBulk} for a single file.
@@ -114,7 +120,11 @@ public interface FsClient {
 	 * @param newFilename new file name
 	 */
 	default Promise<Void> move(String filename, String newFilename) {
-		return moveBulk(Collections.singletonMap(filename, newFilename));
+		return download(filename)
+				.thenCompose(supplier ->
+						upload(filename)
+								.thenCompose(supplier::streamTo))
+				.thenCompose($ -> delete(filename));
 	}
 
 	/**
@@ -123,7 +133,9 @@ public interface FsClient {
 	 * @param changes mapping from old file names to copy file names
 	 * @implNote RemoteFS is considered as an immutable fs, so at first copy will try to create a hard link instead.
 	 */
-	Promise<Void> copyBulk(Map<String, String> changes);
+	default Promise<Void> copyBulk(Map<String, String> changes) {
+		return Promises.all(changes.entrySet().stream().map(entry -> copy(entry.getKey(), entry.getValue()).toTry()));
+	}
 
 	/**
 	 * Shortcut for {@link #copyBulk} for a single file.
@@ -133,7 +145,10 @@ public interface FsClient {
 	 * @param newFilename new file name
 	 */
 	default Promise<Void> copy(String filename, String newFilename) {
-		return copyBulk(Collections.singletonMap(filename, newFilename));
+		return download(filename)
+				.thenCompose(supplier ->
+						upload(filename)
+								.thenCompose(supplier::streamTo));
 	}
 
 	/**
@@ -181,13 +196,55 @@ public interface FsClient {
 		return deleteBulk(escapeGlob(filename));
 	}
 
-	/**
-	 * Creates a wrapper which will redirect all calls to it to a specific subfolder as if it was the root.
-	 *
-	 * @param folder folder to redirect calls to
-	 * @return FsClient wrapper
-	 */
+	static FsClient empty() {
+		return EmptyFsClient.INSTANCE;
+	}
+
+	default FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from, Function<String, Optional<String>> globInto) {
+		return new TransformFsClient(this, into, from, globInto);
+	}
+
+	default FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from) {
+		return new TransformFsClient(this, into, from, $ -> Optional.of("**"));
+	}
+
+	// similar to 'chroot'
+	default FsClient addingPrefix(String prefix) {
+		if (prefix.length() == 0) {
+			return this;
+		}
+		String escapedPrefix = escapeGlob(prefix);
+		return transform(
+				name -> Optional.of(prefix + name),
+				name -> Optional.ofNullable(name.startsWith(prefix) ? name.substring(prefix.length()) : null),
+				name -> Optional.of(escapedPrefix + name)
+		);
+	}
+
 	default FsClient subfolder(String folder) {
-		return new SubfolderFsClient(this, folder);
+		if (folder.length() == 0) {
+			return this;
+		}
+		return addingPrefix(folder.endsWith("/") ? folder : folder + '/');
+	}
+
+	default FsClient strippingPrefix(String prefix) {
+		if (prefix.length() == 0) {
+			return this;
+		}
+		String escapedPrefix = escapeGlob(prefix);
+		return transform(
+				name -> Optional.ofNullable(name.startsWith(prefix) ? name.substring(prefix.length()) : null),
+				name -> Optional.of(prefix + name),
+				name -> Optional.of(name.startsWith(escapedPrefix) ? name.substring(escapedPrefix.length()) : "**")
+		);
+	}
+
+	default FsClient filter(Predicate<String> predicate) {
+		return new FilterFsClient(this, predicate);
+	}
+
+	default FsClient mount(String mountpoint, FsClient client) {
+		return new MountingFsClient(this, map(mountpoint, client.strippingPrefix(mountpoint + '/')));
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -270,6 +270,15 @@ public interface ChannelSupplier<T> extends Cancellable {
 							}
 							return value;
 						});
+			}
+		};
+	}
+
+	default ChannelSupplier<T> lenient() {
+		return new AbstractChannelSupplier<T>(this) {
+			@Override
+			protected Promise<T> doGet() {
+				return ChannelSupplier.this.get().thenComposeEx((value, e) -> Promise.of(value));
 			}
 		};
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					DiscoveryServlet discoveryServlet(DiscoveryService discoveryService){
+					DiscoveryServlet discoveryServlet(DiscoveryService discoveryService) {
 						return DiscoveryServlet.create(discoveryService);
 					}
 

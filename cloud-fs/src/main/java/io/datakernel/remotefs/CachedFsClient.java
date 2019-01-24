@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,10 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.util.Preconditions.*;
 
@@ -231,14 +234,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return Promises.toList(cacheClient.list(glob), mainClient.list(glob))
-				.thenApply(lists -> lists.stream().flatMap(List::stream))
-				.thenApply(list -> {
-					Map<String, FileMetadata> mapOfMeta = new HashMap<>();
-					list.forEach(metaNew ->
-							mapOfMeta.compute(metaNew.getFilename(), (s, metaExisting) ->
-									FileMetadata.getMoreCompleteFile(metaExisting, metaNew)));
-					return new ArrayList<>(mapOfMeta.values());
-				});
+				.thenApply(lists -> FileMetadata.flatten(lists.stream()));
 	}
 
 	/**

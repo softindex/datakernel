@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.file;
+package io.datakernel.util;
 
+import java.nio.file.FileSystems;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 public final class FileUtils {
 
-	/** This pattern matches glob metacharacters. It can be used to test if glob matches a signle file, for escaping, and so on */
-	public static final Pattern GLOB_META = Pattern.compile("(?<!\\\\)[*?{}\\[\\]]");
-	//                                                       ^-------^^----------^ match any of chars *?{}[]
-	//                                                            negative lookbehind - ensure that next char is not preceeded by \
-
+	private static final Pattern ANY_GLOB_METACHARS = Pattern.compile("[*?{}\\[\\]\\\\]");
+	private static final Pattern UNESCAPED_GLOB_METACHARS = Pattern.compile("(?<!\\\\)(?:\\\\\\\\)*[*?{}\\[\\]]");
 
 	private FileUtils() {
 		throw new AssertionError("nope.");
@@ -37,7 +38,7 @@ public final class FileUtils {
 	 * @return escaped glob which matches only a file with that name
 	 */
 	public static String escapeGlob(String path) {
-		return GLOB_META.matcher(path).replaceAll("\\\\$1");
+		return ANY_GLOB_METACHARS.matcher(path).replaceAll("\\\\$0");
 	}
 
 	/**
@@ -47,6 +48,27 @@ public final class FileUtils {
 	 * @return <code>true</code> if given glob can match more than one file.
 	 */
 	public static boolean isWildcard(String glob) {
-		return GLOB_META.matcher(glob).find();
+		return UNESCAPED_GLOB_METACHARS.matcher(glob).find();
+	}
+
+	/**
+	 * Returns a {@link PathMatcher} for given glob
+	 *
+	 * @param glob a glob string
+	 * @return a path matcher for the glob string
+	 */
+	public static PathMatcher getGlobPathMatcher(String glob) {
+		return FileSystems.getDefault().getPathMatcher("glob:" + glob);
+	}
+
+	/**
+	 * Same as {@link #getGlobPathMatcher(String)} but returns a string predicate.
+	 *
+	 * @param glob a glob string
+	 * @return a predicate for the glob string
+	 */
+	public static Predicate<String> getGlobStringPredicate(String glob) {
+		PathMatcher matcher = getGlobPathMatcher(glob);
+		return str -> matcher.matches(Paths.get(str));
 	}
 }

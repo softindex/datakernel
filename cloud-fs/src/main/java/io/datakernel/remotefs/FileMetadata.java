@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,18 @@ package io.datakernel.remotefs;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * This is a POJO for holding name, size and timestamp of some file
  */
-public class FileMetadata {
+public final class FileMetadata {
 	private final String filename;
 	private final long size;
 	private final long timestamp;
@@ -85,5 +91,13 @@ public class FileMetadata {
 			return second;
 		}
 		return second.timestamp > first.timestamp ? second : first;
+	}
+
+	public static List<FileMetadata> flatten(Stream<List<FileMetadata>> streamOfLists) {
+		Map<String, FileMetadata> map = new HashMap<>();
+		streamOfLists
+				.flatMap(List::stream)
+				.forEach(meta -> map.compute(meta.getFilename(), ($, existing) -> getMoreCompleteFile(existing, meta)));
+		return new ArrayList<>(map.values());
 	}
 }

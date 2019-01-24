@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,8 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 public final class ChannelSuppliers {
-	private ChannelSuppliers() {}
+	private ChannelSuppliers() {
+	}
 
 	public static <T> ChannelSupplier<T> concat(ChannelSupplier<? extends T> supplier1, ChannelSupplier<? extends T> supplier2) {
 		return concat(CollectionUtils.asIterator(supplier1, supplier2));
@@ -396,7 +397,9 @@ public final class ChannelSuppliers {
 	public static final class ChannelSupplierOfIterator<T> extends AbstractChannelSupplier<T> {
 		private final Iterator<? extends T> iterator;
 
-		public ChannelSupplierOfIterator(Iterator<? extends T> iterator) {this.iterator = iterator;}
+		public ChannelSupplierOfIterator(Iterator<? extends T> iterator) {
+			this.iterator = iterator;
+		}
 
 		@Override
 		protected Promise<T> doGet() {
@@ -412,7 +415,9 @@ public final class ChannelSuppliers {
 	public static final class ChannelSupplierOfException<T> extends AbstractChannelSupplier<T> {
 		private final Throwable e;
 
-		public ChannelSupplierOfException(Throwable e) {this.e = e;}
+		public ChannelSupplierOfException(Throwable e) {
+			this.e = e;
+		}
 
 		@Override
 		protected Promise<T> doGet() {

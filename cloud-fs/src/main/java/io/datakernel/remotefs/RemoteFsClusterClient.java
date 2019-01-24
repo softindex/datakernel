@@ -448,21 +448,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						.map(entry -> entry.getValue().list(glob)
 								.thenComposeEx(wrapDeath(entry.getKey()))
 								.toTry()))
-				.<List<FileMetadata>>thenCompose(tries -> {
+				.thenCompose(tries -> {
 					// recheck if our list request marked any partitions as dead
 					if (deadClients.size() >= replicationCount) {
 						return ofFailure("There are more dead partitions than replication count(" +
 								deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", tries);
 					}
-					Map<String, FileMetadata> map = new HashMap<>();
-					tries.stream()
-							.map(Try::getOrNull)
-							.filter(Objects::nonNull)
-							.flatMap(List::stream)
-							.forEach(meta ->
-									map.compute(meta.getFilename(), ($, existing) ->
-											FileMetadata.getMoreCompleteFile(existing, meta)));
-					return Promise.of(new ArrayList<>(map.values()));
+					return Promise.of(FileMetadata.flatten(tries.stream().map(Try::getOrNull).filter(Objects::nonNull)));
 				})
 				.whenComplete(listPromise.recordStats());
 	}

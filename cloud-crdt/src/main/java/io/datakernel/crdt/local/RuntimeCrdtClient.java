@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,14 +116,15 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
-		return Promise.of(StreamConsumer.<K>of(key -> {
-			if (downloadCalls > 0) {
-				removedWhileDownloading.add(key);
-			} else {
-				storage.remove(key);
-			}
-			removedKeys.add(key);
-		})
+		return Promise.of(StreamConsumer.<K>of(
+				key -> {
+					if (downloadCalls > 0) {
+						removedWhileDownloading.add(key);
+					} else {
+						storage.remove(key);
+					}
+					removedKeys.add(key);
+				})
 				.transformWith(detailedStats ? removeStatsDetailed : removeStats)
 				.withLateBinding());
 	}
