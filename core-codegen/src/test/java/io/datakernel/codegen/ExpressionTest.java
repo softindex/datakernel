@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
@@ -165,7 +166,7 @@ public class ExpressionTest {
 		boolean equals(Object obj);
 
 		@Override
-		int compareTo(Test o);
+		int compareTo(@NotNull Test o);
 
 		@Override
 		String toString();

@@ -40,6 +40,7 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -356,7 +357,7 @@ public final class ReportingTest {
 				new LogItem(3, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 40, 3, 2, 1.0, 0, 1, 4, "site1.com"));
 
 		await(StreamSupplier.ofIterable(concat(logItemsForAdvertisersAggregations, logItemsForAffiliatesAggregation))
-				.streamTo(multilog.writer("partitionA")));
+				.streamTo(StreamConsumer.ofPromise(multilog.write("partitionA"))));
 
 		LogDiff<CubeDiff> logDiff = await(logOTProcessor.processLog());
 		await(aggregationChunkStorage

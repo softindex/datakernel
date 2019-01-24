@@ -27,7 +27,7 @@ public interface MaterializedPromise<T> extends Promise<T> {
 	@NotNull
 	Throwable getException();
 
-	@Contract(pure = true)
+	@Contract(pure = true, value = "-> this")
 	@NotNull
 	@Override
 	default MaterializedPromise<T> materialize() {

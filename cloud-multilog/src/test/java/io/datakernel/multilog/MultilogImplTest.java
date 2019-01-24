@@ -3,8 +3,10 @@ package io.datakernel.multilog;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.util.BinarySerializers;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,10 +38,11 @@ public class MultilogImplTest {
 		List<String> values = asList("test1", "test2", "test3");
 
 		await(StreamSupplier.ofIterable(values)
-				.streamTo(multilog.writer(testPartition)));
+				.streamTo(StreamConsumer.ofPromise(multilog.write(testPartition))));
 
 		StreamConsumerToList<String> listConsumer = StreamConsumerToList.create();
-		await(multilog.reader(testPartition, new LogFile("", 0), 0, null)
+		await(StreamSupplierWithResult.ofPromise(
+				multilog.read(testPartition, new LogFile("", 0), (long) 0, null))
 				.getSupplier()
 				.streamTo(listConsumer));
 

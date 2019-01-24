@@ -276,7 +276,8 @@ public interface Promise<T> {
 	 * @param <U>     type of result
 	 * @return subscribed {@code Promise}
 	 */
-	@NotNull <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise);
+	@Contract("_ -> param1")
+	@NotNull <U, P extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull P promise);
 
 	/**
 	 * Applies fn to the result of this {@code Promise}
@@ -322,6 +323,7 @@ public interface Promise<T> {
 	 * @return this {@code Promise}
 	 */
 	@NotNull
+	@Contract(" _ -> this")
 	Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action);
 
 	/**
@@ -330,6 +332,7 @@ public interface Promise<T> {
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
+	@Contract(" _ -> this")
 	@NotNull
 	Promise<T> whenResult(@NotNull Consumer<? super T> action);
 
@@ -339,6 +342,7 @@ public interface Promise<T> {
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
+	@Contract(" _ -> this")
 	@NotNull
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
@@ -350,7 +354,8 @@ public interface Promise<T> {
 	 * @return {@code Promise} that completes when fn was applied on the result of both promises
 	 */
 	@Contract(pure = true)
-	@NotNull <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn);
+	@NotNull <U, V>
+	Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn);
 
 	/**
 	 * Combines two {@code Promise} in one and completes when both have been completed.

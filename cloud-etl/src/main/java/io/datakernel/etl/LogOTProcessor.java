@@ -142,7 +142,8 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			logger.info("Starting reading '{}' from position {}", logName, logPosition);
 
 			LogPosition logPositionFrom = logPosition;
-			StreamSupplierWithResult<T, LogPosition> supplier = multilog.reader(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
+			StreamSupplierWithResult<T, LogPosition> supplier = StreamSupplierWithResult.ofPromise(
+					multilog.read(partition, logPosition.getLogFile(), logPosition.getPosition(), null));
 			supplier.getSupplier().streamTo(streamUnion.newInput());
 			logPositionsCollector.addPromise(supplier.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {

@@ -33,6 +33,7 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -154,7 +155,7 @@ public class CubeMeasureRemovalTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems1).streamTo(
-				multilog.writer("partitionA")));
+				StreamConsumer.ofPromise(multilog.write("partitionA"))));
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager1 = logCubeStateManager;
 		runProcessLogs(aggregationChunkStorage, finalLogCubeStateManager1, logOTProcessor);
@@ -196,7 +197,7 @@ public class CubeMeasureRemovalTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
-				multilog.writer("partitionA")));
+				StreamConsumer.ofPromise(multilog.write("partitionA"))));
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager = logCubeStateManager;
 		LogOTProcessor<LogItem, CubeDiff> finalLogOTProcessor = logOTProcessor;
@@ -286,7 +287,7 @@ public class CubeMeasureRemovalTest {
 			await(logCubeStateManager1.checkout());
 
 			await(StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
-					multilog.writer("partitionA")));
+					StreamConsumer.ofPromise(multilog.write("partitionA"))));
 
 			runProcessLogs(aggregationChunkStorage, logCubeStateManager1, logOTProcessor1);
 		}
@@ -347,7 +348,7 @@ public class CubeMeasureRemovalTest {
 			await(logCubeStateManager1.checkout());
 
 			await(StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
-					multilog.writer("partitionA")));
+					StreamConsumer.ofPromise(multilog.write("partitionA"))));
 
 			runProcessLogs(aggregationChunkStorage, logCubeStateManager1, logOTProcessor1);
 		}

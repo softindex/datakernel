@@ -34,10 +34,6 @@ public interface Multilog<T> {
 	 */
 	Promise<StreamConsumer<T>> write(@NotNull String logPartition);
 
-	default StreamConsumer<T> writer(@NotNull String logPartition) {
-		return StreamConsumer.ofPromise(write(logPartition));
-	}
-
 	/**
 	 * Creates a {@code StreamSupplier} that streams items, contained in a given partition and file, starting at the specified position.
 	 *
@@ -49,12 +45,5 @@ public interface Multilog<T> {
 	Promise<StreamSupplierWithResult<T, LogPosition>> read(@NotNull String logPartition,
 			@NotNull LogFile startLogFile, long startPosition,
 			@Nullable LogFile endLogFile);
-
-	default StreamSupplierWithResult<T, LogPosition> reader(@NotNull String logPartition,
-			@NotNull LogFile startLogFile, long startPosition,
-			@Nullable LogFile endLogFile) {
-		return StreamSupplierWithResult.ofPromise(
-				read(logPartition, startLogFile, startPosition, endLogFile));
-	}
 
 }

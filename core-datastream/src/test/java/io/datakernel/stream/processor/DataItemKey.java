@@ -16,6 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import org.jetbrains.annotations.NotNull;
+
 public class DataItemKey implements Comparable<DataItemKey> {
 	public int key1;
 	public int key2;
@@ -44,7 +46,7 @@ public class DataItemKey implements Comparable<DataItemKey> {
 	}
 
 	@Override
-	public int compareTo(DataItemKey o) {
+	public int compareTo(@NotNull DataItemKey o) {
 		int result = Integer.compare(key1, o.key1);
 		if (result != 0)
 			return result;

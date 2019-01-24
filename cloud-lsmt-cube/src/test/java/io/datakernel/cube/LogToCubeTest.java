@@ -35,6 +35,7 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
@@ -116,7 +117,7 @@ public final class LogToCubeTest {
 				new TestPubRequest(1002, 1, asList(new TestAdvRequest(30))),
 				new TestPubRequest(1002, 2, Arrays.asList()));
 
-		await(supplier.streamTo(multilog.writer("partitionA")));
+		await(supplier.streamTo(StreamConsumer.ofPromise(multilog.write("partitionA"))));
 		await(logCubeStateManager.checkout());
 		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
 

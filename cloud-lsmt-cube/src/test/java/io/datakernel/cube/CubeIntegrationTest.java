@@ -33,6 +33,7 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
@@ -131,7 +132,7 @@ public class CubeIntegrationTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems).streamTo(
-				multilog.writer("partitionA")));
+				StreamConsumer.ofPromise(multilog.write("partitionA"))));
 		;
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -147,7 +148,7 @@ public class CubeIntegrationTest {
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
-				multilog.writer("partitionA")));
+				StreamConsumer.ofPromise(multilog.write("partitionA"))));
 		;
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -155,7 +156,7 @@ public class CubeIntegrationTest {
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems3).streamTo(
-				multilog.writer("partitionA")));
+				StreamConsumer.ofPromise(multilog.write("partitionA"))));
 		;
 		Files.list(logsDir).forEach(System.out::println);
 
