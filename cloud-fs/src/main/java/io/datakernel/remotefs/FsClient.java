@@ -183,7 +183,9 @@ public interface FsClient {
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
 	 * @return marker promise that completes when deletion completes
 	 */
-	Promise<Void> deleteBulk(String glob);
+	default Promise<Void> deleteBulk(String glob) {
+		return list(glob).thenCompose(list -> Promises.all(list.stream().map(meta -> delete(meta.getFilename()).toTry())));
+	}
 
 	/**
 	 * Shortcut for {@link #deleteBulk(String)} for a single file.
@@ -192,9 +194,7 @@ public interface FsClient {
 	 * @param filename name of the file to be deleted
 	 * @return marker promise that completes when deletion completes
 	 */
-	default Promise<Void> delete(String filename) {
-		return deleteBulk(escapeGlob(filename));
-	}
+	Promise<Void> delete(String filename);
 
 	static FsClient empty() {
 		return EmptyFsClient.INSTANCE;

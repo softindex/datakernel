@@ -38,6 +38,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.processor.StreamDecorator;
 import io.datakernel.stream.processor.StreamReducerSimple;
 import io.datakernel.stream.processor.StreamReducers;
@@ -57,7 +58,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.time.temporal.ChronoUnit.MINUTES;
 import static java.util.stream.Collectors.toList;
 
 public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClient<K, S>,
@@ -70,7 +70,8 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 	private final CrdtDataSerializer<K, S> serializer;
 
 	private Function<String, String> namingStrategy = ext -> UUID.randomUUID().toString() + "." + ext;
-	private Duration consolidationMargin = Duration.of(30, MINUTES);
+	private Duration consolidationMargin = Duration.ofMinutes(30);
+	private Duration tokenOffset = Duration.ofSeconds(1);
 
 	private FsClient consolidationFolderClient;
 	private FsClient tombstoneFolderClient;
@@ -123,6 +124,11 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		return this;
 	}
 
+	public FsCrdtClient withTokenOffset(Duration tokenOffset) {
+		this.tokenOffset = tokenOffset;
+		return this;
+	}
+
 	public FsCrdtClient<K, S> withNamingStrategy(Function<String, String> namingStrategy) {
 		this.namingStrategy = namingStrategy;
 		return this;
@@ -138,13 +144,13 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withConsolidationClient(FsClient consolidationFolderClient) {
+	public FsCrdtClient<K, S> withConsolidationFolderClient(FsClient consolidationFolderClient) {
 		this.consolidationFolderClient = consolidationFolderClient;
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withRemoveClient(FsClient removeFolderClient) {
-		this.tombstoneFolderClient = removeFolderClient;
+	public FsCrdtClient<K, S> withTombstoneFolderClient(FsClient tombstoneFolderClient) {
+		this.tombstoneFolderClient = tombstoneFolderClient;
 		return this;
 	}
 	// endregion
@@ -166,31 +172,30 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 	}
 
 	@Override
-	public CrdtStreamSupplierWithToken<K, S> download(long token) {
-		return new CrdtStreamSupplierWithToken<>(
-				Promises.toTuple(FileLists::new, client.list("*"), tombstoneFolderClient.list("*"))
-						.thenApply(f -> {
-							StreamReducerSimple<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<K, S>> reducer =
-									StreamReducerSimple.create(crd -> crd.key, Comparator.naturalOrder(), new CrdtReducer<>(combiner));
+	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
+		return Promises.toTuple(FileLists::new, client.list("*"), tombstoneFolderClient.list("*"))
+				.thenApply(f -> {
+					StreamReducerSimple<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<K, S>> reducer =
+							StreamReducerSimple.create(crd -> crd.key, Comparator.naturalOrder(), new CrdtReducer<>(combiner));
 
-							Stream<FileMetadata> stream = f.files.stream();
-							(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
-									.forEach(meta -> ChannelSupplier.ofPromise(client.download(meta.getFilename()))
-											.transformWith(ChannelDeserializer.create(serializer))
-											.transformWith(StreamDecorator.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
-											.streamTo(reducer.newInput()));
+					Stream<FileMetadata> stream = f.files.stream();
+					(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
+							.forEach(meta -> ChannelSupplier.ofPromise(client.download(meta.getFilename()))
+									.transformWith(ChannelDeserializer.create(serializer))
+									.transformWith(StreamDecorator.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
+									.streamTo(reducer.newInput()));
 
-							stream = f.tombstones.stream();
-							(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
-									.forEach(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getFilename()))
-											.transformWith(ChannelDeserializer.create(serializer.getKeySerializer()))
-											.transformWith(StreamDecorator.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
-											.streamTo(reducer.newInput()));
+					stream = f.tombstones.stream();
+					(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
+							.forEach(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getFilename()))
+									.transformWith(ChannelDeserializer.create(serializer.getKeySerializer()))
+									.transformWith(StreamDecorator.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
+									.streamTo(reducer.newInput()));
 
-							return reducer.getOutput()
-									.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
-									.withLateBinding();
-						}), Promise.of(eventloop.currentTimeMillis()));
+					return StreamSupplierWithResult.of(reducer.getOutput()
+							.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
+							.withLateBinding(), Promise.of(eventloop.currentTimeMillis() - tokenOffset.toMillis()));
+				});
 	}
 
 	@Override
@@ -248,8 +253,8 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							.thenCompose(consumer ->
 									ChannelSupplier.of(ByteBuf.wrapForReading(dump.getBytes(UTF_8)))
 											.streamTo(consumer))
-							.thenCompose($ -> download().getStreamPromise())
-							.thenCompose(producer -> producer.transformWith(ChannelSerializer.create(serializer))
+							.thenCompose($ -> download())
+							.thenCompose(producer -> producer.getSupplier().transformWith(ChannelSerializer.create(serializer))
 									.streamTo(ChannelConsumer.ofPromise(client.upload(name))))
 							.thenCompose($ -> tombstoneFolderClient.deleteBulk("*"))
 							.thenCompose($ -> consolidationFolderClient.delete(metafile))

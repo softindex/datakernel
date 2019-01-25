@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package io.datakernel.launchers.crdt;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
-import io.datakernel.crdt.CrdtClient.CrdtStreamSupplierWithToken;
 import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.crdt.local.RuntimeCrdtClient;
 import io.datakernel.eventloop.Eventloop;
@@ -56,7 +55,9 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	}
 
 	public Promise<Void> restore() {
-		return localFiles.download().getStream().streamTo(StreamConsumer.ofPromise(inMemory.upload()));
+		return localFiles.download()
+				.thenCompose(supplierWithResult ->
+						supplierWithResult.getSupplier().streamTo(StreamConsumer.ofPromise(inMemory.upload())));
 	}
 
 	public Promise<Void> backup() {
@@ -64,15 +65,16 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 			return backupPromise;
 		}
 		Set<K> removedKeys = inMemory.getRemovedKeys();
-		CrdtStreamSupplierWithToken<K, S> download = inMemory.download(lastToken);
-		download.getTokenPromise().whenResult(token -> lastToken = token);
-		return backupPromise = download.getStream().streamTo(StreamConsumer.ofPromise(localFiles.upload()))
-				.thenCompose($ -> StreamSupplier.ofIterable(removedKeys).streamTo(StreamConsumer.ofPromise(localFiles.remove())))
-				.whenComplete(($, e) -> {
-					inMemory.clearRemovedKeys();
-					backupPromise = null;
-				})
-				.toVoid();
+		return backupPromise = inMemory.download(lastToken)
+				.thenCompose(supplierWithResult -> {
+					supplierWithResult.getResult().whenResult(token -> lastToken = token);
+					return supplierWithResult.getSupplier().streamTo(StreamConsumer.ofPromise(localFiles.upload()))
+							.thenCompose($ -> StreamSupplier.ofIterable(removedKeys).streamTo(StreamConsumer.ofPromise(localFiles.remove())))
+							.whenComplete(($, e) -> {
+								inMemory.clearRemovedKeys();
+								backupPromise = null;
+							});
+				});
 	}
 
 	public boolean backupInProgress() {

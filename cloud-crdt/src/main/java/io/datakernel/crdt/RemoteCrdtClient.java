@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -118,9 +119,9 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 	}
 
 	@Override
-	public CrdtStreamSupplierWithToken<K, S> download(long token) {
+	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
 		SettablePromise<Long> newToken = new SettablePromise<>();
-		return new CrdtStreamSupplierWithToken<>(connect()
+		return connect()
 				.thenCompose(messaging -> messaging.send(new Download(token))
 						.thenCompose($ -> messaging.receive())
 						.thenCompose(response -> {
@@ -137,13 +138,13 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 						})
 						.whenComplete(newToken::set)
 						.thenApply($ ->
-								messaging.receiveBinaryStream()
+								StreamSupplierWithResult.of(messaging.receiveBinaryStream()
 										.transformWith(ChannelDeserializer.create(serializer))
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
 												.thenCompose($2 -> messaging.sendEndOfStream())
 												.whenResult($2 -> messaging.close()))
-										.withLateBinding())), newToken);
+										.withLateBinding(), newToken)));
 	}
 
 	@Override

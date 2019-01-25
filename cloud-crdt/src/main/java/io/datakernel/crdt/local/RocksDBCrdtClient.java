@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,10 +36,12 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.rocksdb.*;
 
@@ -58,7 +60,8 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	private final FlushOptions flushOptions; // } are closed by GC when the client is destroyed
 	private final WriteOptions writeOptions; // }
 
-	private int bufferSize = 8096;
+	private MemSize bufferSize = MemSize.kilobytes(16);
+	private Duration tokenOffset = Duration.ofSeconds(1);
 
 	// region JMX
 	private boolean detailedStats;
@@ -97,6 +100,16 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	public static <K extends Comparable<K>, S> RocksDBCrdtClient<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
 			BinaryOperator<S> combiner, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new RocksDBCrdtClient<>(eventloop, executor, db, combiner, keySerializer, stateSerializer);
+	}
+
+	public RocksDBCrdtClient withBufferSize(MemSize bufferSize) {
+		this.bufferSize = bufferSize;
+		return this;
+	}
+
+	public RocksDBCrdtClient withTokenOffset(Duration tokenOffset) {
+		this.tokenOffset = tokenOffset;
+		return this;
 	}
 
 	public RocksDB getDb() {
@@ -165,34 +178,35 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	@Override
-	public CrdtStreamSupplierWithToken<K, S> download(long token) {
-		SettablePromise<Long> tokenPromise = new SettablePromise<>();
-		Promise<StreamSupplier<CrdtData<K, S>>> supplierPromise = Promise.ofCallable(executor,
+	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
+		return Promise.ofCallable(executor,
 				() -> {
 					RocksIterator iterator = db.newIterator();
 					iterator.seekToFirst();
 					return iterator;
 				})
-				.thenApply(iterator ->
-						StreamSupplier.ofChannelSupplier(ChannelSupplier.of(() ->
-								Promise.ofCallable(executor, () -> {
-									while (iterator.isValid()) {
-										byte[] keyBytes = iterator.key();
-										BinaryInput stateBuf = new BinaryInput(iterator.value());
-										iterator.next();
-										long ts = stateBuf.readLong();
-										if (ts > token) {
-											return new CrdtData<>(
-													keySerializer.decode(keyBytes, 0),
-													stateSerializer.decode(stateBuf)
-											);
-										}
+				.thenApply(iterator -> {
+					SettablePromise<Long> tokenPromise = new SettablePromise<>();
+					StreamSupplier<CrdtData<K, S>> supplier = StreamSupplier.ofChannelSupplier(ChannelSupplier.of(() ->
+							Promise.ofCallable(executor, () -> {
+								while (iterator.isValid()) {
+									byte[] keyBytes = iterator.key();
+									BinaryInput stateBuf = new BinaryInput(iterator.value());
+									iterator.next();
+									long ts = stateBuf.readLong();
+									if (ts > token) {
+										return new CrdtData<>(
+												keySerializer.decode(keyBytes, 0),
+												stateSerializer.decode(stateBuf)
+										);
 									}
-									return null;
-								})))
-								.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
-								.withEndOfStream(eos -> eos.whenResult($ -> tokenPromise.set(currentTimeProvider.currentTimeMillis()))));
-		return new CrdtStreamSupplierWithToken<>(supplierPromise, tokenPromise);
+								}
+								return null;
+							})))
+							.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
+							.withEndOfStream(eos -> eos.whenResult($ -> tokenPromise.set(currentTimeProvider.currentTimeMillis() - tokenOffset.toMillis())));
+					return StreamSupplierWithResult.of(supplier, tokenPromise);
+				});
 	}
 
 	@Override

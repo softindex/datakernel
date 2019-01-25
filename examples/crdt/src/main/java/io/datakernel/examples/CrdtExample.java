@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,8 @@ public final class CrdtExample {
 					return StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#3", "#4", "#5", "#6")), new CrdtData<>("second", second))
 							.streamTo(StreamConsumer.ofPromise(two.upload()));
 				})
-				.thenCompose($ -> cluster.download().getStream().toList())
+				.thenCompose($ -> cluster.download())
+				.thenCompose(supplierWithResult -> supplierWithResult.getSupplier().toList())
 				.whenComplete((list, e) -> {
 					executor.shutdown();
 					if (e != null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.processor.MultiSharder;
 import io.datakernel.stream.processor.ShardingStreamSplitter;
 import io.datakernel.stream.processor.StreamReducerSimple;
@@ -41,12 +42,12 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BinaryOperator;
 
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Utils.DEBUG;
 import static java.util.stream.Collectors.toList;
 
 public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<CrdtClusterClient<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
@@ -61,6 +62,8 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 
 	private final BinaryOperator<CrdtData<K, S>> combiner;
 	private final RendezvousHashSharder<I, K> shardingFunction;
+
+	private Duration tokenOffset = Duration.ofSeconds(1);
 
 	private List<I> orderedIds;
 
@@ -103,6 +106,11 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	public CrdtClusterClient<I, K, S> withReplicationCount(int replicationCount) {
 		this.replicationCount = replicationCount;
 		recompute();
+		return this;
+	}
+
+	public CrdtClusterClient withTokenOffset(Duration tokenOffset) {
+		this.tokenOffset = tokenOffset;
 		return this;
 	}
 	// endregion
@@ -218,20 +226,20 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 				});
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Override
-	public CrdtStreamSupplierWithToken<K, S> download(long token) {
+	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
 		SettablePromise<Long> newToken = new SettablePromise<>();
 		List<Promise<Long>> tokens = new ArrayList<>();
-		return new CrdtStreamSupplierWithToken<>(Promises.toList(
+		return Promises.toList(
 				aliveClients.entrySet().stream()
-						.map(entry -> {
-							CrdtStreamSupplierWithToken<K, S> download = entry.getValue().download(token);
-							tokens.add(download.getTokenPromise());
-							return download.getStreamPromise()
-									.whenException(err -> markDead(entry.getKey(), err))
-									.toTry();
-						}))
+						.map(entry ->
+								entry.getValue().download(token)
+										.thenApply(supplierWithResult -> {
+											tokens.add(supplierWithResult.getResult());
+											return supplierWithResult.getSupplier();
+										})
+										.whenException(err -> markDead(entry.getKey(), err))
+										.toTry()))
 				.thenCompose(tries -> {
 					List<StreamSupplier<CrdtData<K, S>>> successes = tries.stream()
 							.filter(Try::isSuccess)
@@ -243,22 +251,21 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 
 					//noinspection OptionalGetWithoutIsPresent checked for emptyness above
 					Promises.collect(toList(), tokens)
-							.thenApply(ts -> ts.stream().min(Comparator.naturalOrder()).get())
+							.thenApply(ts -> ts.stream().min(Comparator.naturalOrder()).get() - tokenOffset.toMillis())
 							.whenComplete(newToken::set);
 
 					StreamReducerSimple<K, CrdtData<K, S>, CrdtData<K, S>, CrdtData<K, S>> reducer =
 							StreamReducerSimple.create(CrdtData::getKey, Comparator.<K>naturalOrder(), new BinaryAccumulatorReducer<>(combiner));
 
-					return Promise.of(StreamSupplier.<CrdtData<K, S>>ofConsumer(consumer ->
+					return Promise.of(StreamSupplierWithResult.of(StreamSupplier.<CrdtData<K, S>>ofConsumer(consumer ->
 							reducer.getOutput()
 									.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 									.streamTo(consumer
 											.withAcknowledgement(ack -> ack.both(Promises.all(successes.stream()
-													.map(producer -> producer.streamTo(reducer.newInput())
-															.whenComplete(($1, e1) -> DEBUG("COMPLETED"))))
+													.map(producer -> producer.streamTo(reducer.newInput())))
 													.materialize()))))
-							.withLateBinding());
-				}), newToken);
+							.withLateBinding(), newToken));
+				});
 	}
 
 	@Override

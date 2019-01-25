@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,13 +82,15 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 								.whenResult($ -> messaging.close());
 					}
 					if (msg instanceof Download) {
-						CrdtClient.CrdtStreamSupplierWithToken<K, S> download = client.download(((Download) msg).getToken());
-						return download.getTokenPromise()
-								.thenCompose(token -> messaging.send(new DownloadToken(token)))
-								.thenCompose($ -> download.getStreamPromise())
-								.thenCompose(producer ->
-										producer.transformWith(ChannelSerializer.create(serializer))
-												.streamTo(messaging.sendBinaryStream()));
+						return client.download(((Download) msg).getToken())
+								.thenCompose(supplierWithResult ->
+										supplierWithResult.getResult()
+												.thenCompose(token -> messaging.send(new DownloadToken(token)))
+												.thenCompose($ ->
+														supplierWithResult
+																.getSupplier()
+																.transformWith(ChannelSerializer.create(serializer))
+																.streamTo(messaging.sendBinaryStream())));
 					}
 					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
 				})

@@ -17,7 +17,6 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -75,12 +74,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private final PromiseStats writeFinishPromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats readBeginPromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats readFinishPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats listPromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats movePromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats singleMovePromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats copyPromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats singleCopyPromise = PromiseStats.create(Duration.ofMinutes(5));
-	private final PromiseStats listPromise = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats deletePromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats singleDeletePromise = PromiseStats.create(Duration.ofMinutes(5));
 	//endregion
 
 	// region creators
@@ -187,13 +187,32 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
+	public Promise<List<FileMetadata>> list(String glob) {
+		return Promise.ofCallable(executor,
+				() -> {
+					List<FileMetadata> list = new ArrayList<>();
+					walkFiles(glob, (meta, $) -> list.add(meta));
+					return list;
+				})
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
+				.whenComplete(listPromise.recordStats());
+	}
+
+	@Override
 	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return Promises.all(changes.entrySet().stream()
-				.map(entry ->
-						move(entry.getKey(), entry.getValue())
-								.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
-								.toTry()))
-				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
+		return Promise.ofRunnable(executor,
+				() -> {
+					synchronized (this) {
+						changes.forEach((filename, newFilename) -> {
+							try {
+								doMove(filename, newFilename);
+							} catch (UncheckedException e) {
+								logger.warn("Failed to move file {} into {}: {}", filename, newFilename, e.getCause());
+							}
+						});
+					}
+				})
+				.whenComplete(toLogger(logger, TRACE, "moveBulk", changes, this))
 				.whenComplete(movePromise.recordStats());
 	}
 
@@ -202,57 +221,68 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return Promise.ofRunnable(executor,
 				() -> {
 					synchronized (this) {
-						try {
-							Path filePath = resolveFilePath(filename);
-							Path targetPath = resolveFilePath(targetName);
-
-							if (!Files.isDirectory(filePath)) {
-								long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
-								long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
-
-								// moving 'nothing' into 'nothing', this is a noop
-								if (fileSize == -1 && targetSize == -1) {
-									return;
-								}
-
-								// assuming it did move in a possible previous erroneous attempt
-								if (targetSize >= fileSize) {
-									if (fileSize != -1) { // if original still exists, delete it
-										Files.delete(filePath);
-									}
-									return;
-								}
-							} else if (Files.exists(targetPath)) {
-								throw new StacklessException(LocalFsClient.class, "Trying to move directory " + filename + " into existing file " + targetName);
-							}
-
-							// explicitly set timestamp to eventloop time source
-							Files.setLastModifiedTime(filePath, FileTime.fromMillis(eventloop.currentTimeMillis()));
-							// not using ensureDirectory so we have only one executor task
-							Files.createDirectories(targetPath.getParent());
-							try {
-								Files.move(filePath, targetPath, REPLACE_EXISTING, ATOMIC_MOVE);
-							} catch (AtomicMoveNotSupportedException e) {
-								logger.warn("Atomic move were not supported when moving {} into {}", filename, targetName, e);
-								Files.move(filePath, targetPath, REPLACE_EXISTING);
-							}
-						} catch (IOException | StacklessException e) {
-							throw new UncheckedException(e);
-						}
+						doMove(filename, targetName);
 					}
 				})
 				.whenComplete(toLogger(logger, TRACE, "move", filename, targetName, this))
 				.whenComplete(singleMovePromise.recordStats());
 	}
 
+	private void doMove(String filename, String newFilename) {
+		try {
+			Path filePath = resolveFilePath(filename);
+			Path targetPath = resolveFilePath(newFilename);
+
+			if (!Files.isDirectory(filePath)) {
+				long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
+				long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
+
+				// moving 'nothing' into 'nothing', this is a noop
+				if (fileSize == -1 && targetSize == -1) {
+					return;
+				}
+
+				// assuming it did move in a possible previous erroneous attempt
+				if (targetSize >= fileSize) {
+					if (fileSize != -1) { // if original still exists, delete it
+						Files.delete(filePath);
+					}
+					return;
+				}
+			} else if (Files.exists(targetPath)) {
+				throw new StacklessException(LocalFsClient.class, "Trying to move directory " + filename + " into existing file " + newFilename);
+			}
+
+			// explicitly set timestamp to eventloop time source
+			Files.setLastModifiedTime(filePath, FileTime.fromMillis(eventloop.currentTimeMillis()));
+			// not using ensureDirectory so we have only one executor task
+			Files.createDirectories(targetPath.getParent());
+			try {
+				Files.move(filePath, targetPath, REPLACE_EXISTING, ATOMIC_MOVE);
+			} catch (AtomicMoveNotSupportedException e) {
+				logger.warn("Atomic move were not supported when moving {} into {}", filename, newFilename, e);
+				Files.move(filePath, targetPath, REPLACE_EXISTING);
+			}
+		} catch (IOException | StacklessException e) {
+			throw new UncheckedException(e);
+		}
+	}
+
 	@Override
 	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return Promises.all(changes.entrySet().stream()
-				.map(entry ->
-						copy(entry.getKey(), entry.getValue())
-								.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
-								.toTry()))
-				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
+		return Promise.ofRunnable(executor,
+				() -> {
+					synchronized (this) {
+						changes.forEach((filename, copyName) -> {
+							try {
+								doCopy(filename, copyName);
+							} catch (UncheckedException e) {
+								logger.warn("Failed to copy file {} into {}: {}", filename, copyName, e.getCause());
+							}
+						});
+					}
+				})
+				.whenComplete(toLogger(logger, TRACE, "copyBulk", changes, this))
 				.whenComplete(copyPromise.recordStats());
 	}
 
@@ -261,36 +291,40 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return Promise.ofRunnable(executor,
 				() -> {
 					synchronized (this) {
-						try {
-							Path filePath = resolveFilePath(filename);
-							Path copyPath = resolveFilePath(copyName);
-
-							// copying 'nothing' into target equals deleting the target
-							if (!Files.isRegularFile(filePath)) {
-								Files.deleteIfExists(copyPath);
-								return;
-							}
-							// copying anything into existing file replaces that file with the thing that we copied
-							if (Files.isRegularFile(copyPath)) {
-								Files.deleteIfExists(copyPath);
-							}
-
-							// not using ensureDirectory so we have only one executor task
-							Files.createDirectories(copyPath.getParent());
-							try {
-								// try to create a hardlink
-								Files.createLink(copyPath, filePath);
-							} catch (UnsupportedOperationException | SecurityException e) {
-								// if couldnt, then just actually copy it
-								Files.copy(filePath, copyPath, REPLACE_EXISTING);
-							}
-						} catch (IOException e) {
-							throw new UncheckedException(e);
-						}
+						doCopy(filename, copyName);
 					}
 				})
 				.whenComplete(toLogger(logger, TRACE, "copy", filename, copyName, this))
 				.whenComplete(singleCopyPromise.recordStats());
+	}
+
+	private void doCopy(String filename, String copyName) {
+		try {
+			Path filePath = resolveFilePath(filename);
+			Path copyPath = resolveFilePath(copyName);
+
+			// copying 'nothing' into target equals deleting the target
+			if (!Files.isRegularFile(filePath)) {
+				Files.deleteIfExists(copyPath);
+				return;
+			}
+			// copying anything into existing file replaces that file with the thing that we copied
+			if (Files.isRegularFile(copyPath)) {
+				Files.deleteIfExists(copyPath);
+			}
+
+			// not using ensureDirectory so we have only one executor task
+			Files.createDirectories(copyPath.getParent());
+			try {
+				// try to create a hardlink
+				Files.createLink(copyPath, filePath);
+			} catch (UnsupportedOperationException | SecurityException e) {
+				// if couldnt, then just actually copy it
+				Files.copy(filePath, copyPath, REPLACE_EXISTING);
+			}
+		} catch (IOException e) {
+			throw new UncheckedException(e);
+		}
 	}
 
 	@Override
@@ -308,20 +342,24 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						}
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
+				.whenComplete(toLogger(logger, TRACE, "deleteBulk", glob, this))
 				.whenComplete(deletePromise.recordStats());
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
-		return Promise.ofCallable(executor,
+	public Promise<Void> delete(String filename) {
+		return Promise.ofRunnable(executor,
 				() -> {
-					List<FileMetadata> list = new ArrayList<>();
-					walkFiles(glob, (meta, $) -> list.add(meta));
-					return list;
+					synchronized (this) {
+						try {
+							Files.deleteIfExists(storageDir.resolve(filename));
+						} catch (IOException e) {
+							throw new UncheckedException(e);
+						}
+					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
-				.whenComplete(listPromise.recordStats());
+				.whenComplete(toLogger(logger, TRACE, "delete", filename, this))
+				.whenComplete(singleDeletePromise.recordStats());
 	}
 
 	@Override
@@ -456,6 +494,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@JmxAttribute
+	public PromiseStats getListPromise() {
+		return listPromise;
+	}
+
+	@JmxAttribute
 	public PromiseStats getMovePromise() {
 		return movePromise;
 	}
@@ -476,13 +519,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@JmxAttribute
-	public PromiseStats getListPromise() {
-		return listPromise;
+	public PromiseStats getDeletePromise() {
+		return deletePromise;
 	}
 
 	@JmxAttribute
-	public PromiseStats getDeletePromise() {
-		return deletePromise;
+	public PromiseStats getSingleDeletePromise() {
+		return singleDeletePromise;
 	}
 	//endregion
 }

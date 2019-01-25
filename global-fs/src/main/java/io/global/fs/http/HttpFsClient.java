@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.util.FileUtils.escapeGlob;
 import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.http.RemoteFsServlet.FILE_META_LIST;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -92,6 +93,28 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
+	public Promise<List<FileMetadata>> list(String glob) {
+		return client.request(
+				HttpRequest.get(
+						UrlBuilder.http()
+								.withAuthority(address)
+								.appendPathPart(LIST)
+								.appendQuery("glob", glob)
+								.build()))
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
+				.thenCompose(response -> response.getBody().thenCompose(body -> {
+					try {
+						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					} finally {
+						body.recycle();
+					}
+				}));
+	}
+
+	@Override
 	public Promise<Void> moveBulk(Map<String, String> changes) {
 		return client.request(
 				HttpRequest.get(
@@ -120,28 +143,6 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
-		return client.request(
-				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(LIST)
-								.appendQuery("glob", glob)
-								.build()))
-				.thenCompose(response1 -> response1.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
-				.thenCompose(response -> response.getBody().thenCompose(body -> {
-					try {
-						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}));
-	}
-
-	@Override
 	public Promise<Void> deleteBulk(String glob) {
 		return client.request(
 				HttpRequest.get(
@@ -153,5 +154,10 @@ public class HttpFsClient implements FsClient {
 				.thenCompose(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
+	}
+
+	@Override
+	public Promise<Void> delete(String filename) {
+		return deleteBulk(escapeGlob(filename));
 	}
 }

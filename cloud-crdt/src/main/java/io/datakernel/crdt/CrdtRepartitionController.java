@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,9 +44,8 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 		return cluster.getEventloop();
 	}
 
-	@SuppressWarnings("unchecked")
 	public Promise<Void> repartition() {
-		return Promises.toTuple(cluster.upload(), localClient.remove(), localClient.download().getStreamPromise())
+		return Promises.toTuple(cluster.upload(), localClient.remove(), localClient.download())
 				.thenCompose(tuple -> {
 					int index = cluster.getOrderedIds().indexOf(localPartitionId);
 					StreamMapSplitter<CrdtData<K, S>> forker = StreamMapSplitter.create((data, acceptors) -> {
@@ -61,7 +60,7 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 					});
 					forker.<CrdtData<K, S>>newOutput().streamTo(tuple.getValue1());
 					forker.<K>newOutput().streamTo(tuple.getValue2());
-					return tuple.getValue3().streamTo(forker.getInput());
+					return tuple.getValue3().getSupplier().streamTo(forker.getInput());
 				});
 	}
 }

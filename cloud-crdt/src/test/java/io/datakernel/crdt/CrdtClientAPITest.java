@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ public class CrdtClientAPITest {
 	@After
 	public void tearDown() {
 		if (client instanceof RocksDBCrdtClient) {
-//			((RocksDBCrdtClient) client).getDb().close();
+			//			((RocksDBCrdtClient) client).getDb().close();
 		}
 	}
 
@@ -132,7 +132,7 @@ public class CrdtClientAPITest {
 				new CrdtData<>("test_1", 345),
 				new CrdtData<>("test_2", -28)).streamTo(StreamConsumer.ofPromise(client.upload())));
 
-		List<CrdtData<String, Integer>> list = await(client.download().getStream().toList());
+		List<CrdtData<String, Integer>> list = await(await(client.download()).getSupplier().toList());
 		System.out.println(list);
 		assertEquals(expected, list);
 	}
@@ -153,8 +153,7 @@ public class CrdtClientAPITest {
 				new CrdtData<>("test_3", 2)).streamTo(StreamConsumer.ofPromise(client.upload())));
 		await(StreamSupplier.of("test_2").streamTo(StreamConsumer.ofPromise(client.remove())));
 
-		List<CrdtData<String, Integer>> list = await(client.download().getStreamPromise()
-				.thenCompose(StreamSupplier::toList));
+		List<CrdtData<String, Integer>> list = await(await(client.download()).getSupplier().toList());
 		System.out.println(list);
 		assertEquals(expected, list);
 	}

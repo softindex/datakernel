@@ -42,6 +42,7 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
+import static io.datakernel.util.FileUtils.escapeGlob;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyList;
@@ -431,6 +432,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					return ofFailure("Couldn't delete on any partition", tries);
 				})
 				.whenComplete(deletePromise.recordStats());
+	}
+
+	@Override
+	public Promise<Void> delete(String filename) {
+		return deleteBulk(escapeGlob(filename));
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,9 +86,11 @@ public final class TestSimpleCrdt {
 	public void testDownload() {
 		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Integer::max);
 
-		await(client.download().getStream()
-				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(($, err) -> server.close()));
+		await(client.download().thenCompose(supplierWithResult ->
+				supplierWithResult
+						.getSupplier()
+						.streamTo(StreamConsumer.of(localStorage::put))
+						.whenComplete(($, err) -> server.close())));
 
 		System.out.println("Data fetched from 'remote' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

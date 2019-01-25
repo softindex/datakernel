@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package io.datakernel.crdt;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierWithResult;
 
 /**
  * Interface for various CRDT client implementations.
@@ -42,14 +43,14 @@ public interface CrdtClient<K extends Comparable<K>, S> {
 	 *
 	 * @return stage of stream producer of key-state pairs
 	 */
-	CrdtStreamSupplierWithToken<K, S> download(long token);
+	Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token);
 
 	/**
 	 * Same as above, but downloads all possible key-state pairs.
 	 *
 	 * @return stage of stream producer of key-state pairs
 	 */
-	default CrdtStreamSupplierWithToken<K, S> download() {
+	default Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download() {
 		return download(0);
 	}
 

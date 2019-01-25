@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
+import static io.datakernel.util.FileUtils.escapeGlob;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -201,6 +202,11 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 		return simpleCommand(new Delete(glob), DeleteFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
 				.whenComplete(deletePromise.recordStats());
+	}
+
+	@Override
+	public Promise<Void> delete(String filename) {
+		return deleteBulk(escapeGlob(filename));
 	}
 
 	@Override

@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.util.FileUtils.escapeGlob;
 import static io.datakernel.util.Preconditions.*;
 
 /**
@@ -252,6 +253,12 @@ public class CachedFsClient implements FsClient, EventloopService {
 								.thenApply($ -> size))
 						.whenResult(size -> totalCacheSize -= size),
 				mainClient.deleteBulk(glob));
+	}
+
+	@Override
+	public Promise<Void> delete(String filename) {
+		// TODO eduard: maybe implement this from scratch too
+		return deleteBulk(escapeGlob(filename));
 	}
 
 	@NotNull

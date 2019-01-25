@@ -27,6 +27,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -51,6 +52,8 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 	private final Set<K> removedKeys = new HashSet<>();
 	private final Set<K> removedWhileDownloading = new HashSet<>();
 	private int downloadCalls = 0;
+
+	private Duration tokenOffset = Duration.ofSeconds(1);
 
 	// region JMX
 	private boolean detailedStats;
@@ -77,6 +80,11 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return new RuntimeCrdtClient<>(eventloop, combiner);
 	}
 
+	public RuntimeCrdtClient withTokenOffset(Duration tokenOffset) {
+		this.tokenOffset = tokenOffset;
+		return this;
+	}
+
 	@NotNull
 	@Override
 	public Eventloop getEventloop() {
@@ -97,10 +105,10 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	@Override
-	public CrdtStreamSupplierWithToken<K, S> download(long token) {
+	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
 		downloadCalls++;
 		Stream<Map.Entry<K, StateWithTimestamp<S>>> stream = storage.entrySet().stream();
-		StreamSupplier<CrdtData<K, S>> producer = StreamSupplier.ofStream(
+		StreamSupplier<CrdtData<K, S>> supplier = StreamSupplier.ofStream(
 				(token == 0 ? stream : stream.filter(entry -> entry.getValue().timestamp >= token))
 						.map(entry -> new CrdtData<>(entry.getKey(), entry.getValue().state)))
 				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
@@ -110,7 +118,7 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 					removedWhileDownloading.clear();
 				}))
 				.withLateBinding();
-		return new CrdtStreamSupplierWithToken<>(Promise.of(producer), Promise.of(eventloop.currentTimeMillis()));
+		return Promise.of(StreamSupplierWithResult.of(supplier, Promise.of(eventloop.currentTimeMillis() - tokenOffset.toMillis())));
 	}
 
 	@SuppressWarnings("deprecation") // StreamConsumer#of

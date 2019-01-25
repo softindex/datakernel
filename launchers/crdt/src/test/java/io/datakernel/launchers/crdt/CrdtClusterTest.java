@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,7 +122,7 @@ public final class CrdtClusterTest {
 				.with("crdt.cluster.localPartitionId", "first")
 				.with("crdt.cluster.replicationCount", "2")
 				.with("crdt.cluster.partitions.second", "localhost:8001")
-//				.with("crdt.cluster.partitions.file", "localhost:8002")
+				//				.with("crdt.cluster.partitions.file", "localhost:8002")
 		).launch(false, new String[0]);
 	}
 
@@ -136,7 +136,7 @@ public final class CrdtClusterTest {
 				.with("crdt.cluster.localPartitionId", "second")
 				.with("crdt.cluster.replicationCount", "2")
 				.with("crdt.cluster.partitions.first", "localhost:8000")
-//				.with("crdt.cluster.partitions.file", "localhost:8002")
+				//				.with("crdt.cluster.partitions.file", "localhost:8002")
 		).launch(false, new String[0]);
 	}
 
@@ -217,8 +217,9 @@ public final class CrdtClusterTest {
 		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);
 
 		client.download()
-				.getStream()
-				.streamTo(StreamConsumer.of(System.out::println))
-				.whenComplete(assertComplete($ -> System.out.println("finished")));
+				.thenCompose(supplierWithResult -> supplierWithResult
+						.getSupplier()
+						.streamTo(StreamConsumer.of(System.out::println))
+						.whenComplete(assertComplete($ -> System.out.println("finished"))));
 	}
 }
