@@ -19,7 +19,6 @@ package io.datakernel.crdt;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierWithResult;
 
 /**
  * Interface for various CRDT client implementations.
@@ -38,19 +37,19 @@ public interface CrdtClient<K extends Comparable<K>, S> {
 	Promise<StreamConsumer<CrdtData<K, S>>> upload();
 
 	/**
-	 * Returns a producer if all key-state pairs in the CRDT storage that were put AFTER given token was received.
+	 * Returns a producer if all key-state pairs in the CRDT storage that were put AFTER given timestamp was received.
 	 * Pairs are sorted by key.
 	 *
 	 * @return stage of stream producer of key-state pairs
 	 */
-	Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token);
+	Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp);
 
 	/**
 	 * Same as above, but downloads all possible key-state pairs.
 	 *
 	 * @return stage of stream producer of key-state pairs
 	 */
-	default Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download() {
+	default Promise<StreamSupplier<CrdtData<K, S>>> download() {
 		return download(0);
 	}
 
@@ -68,26 +67,4 @@ public interface CrdtClient<K extends Comparable<K>, S> {
 	 * @return stage that succeeds if this client is up
 	 */
 	Promise<Void> ping();
-
-	class CrdtStreamSupplierWithToken<K extends Comparable<K>, S> {
-		private final Promise<StreamSupplier<CrdtData<K, S>>> streamPromise;
-		private final Promise<Long> tokenPromise;
-
-		public CrdtStreamSupplierWithToken(Promise<StreamSupplier<CrdtData<K, S>>> streamPromise, Promise<Long> tokenPromise) {
-			this.streamPromise = streamPromise;
-			this.tokenPromise = tokenPromise;
-		}
-
-		public Promise<StreamSupplier<CrdtData<K, S>>> getStreamPromise() {
-			return streamPromise;
-		}
-
-		public StreamSupplier<CrdtData<K, S>> getStream() {
-			return StreamSupplier.ofPromise(streamPromise);
-		}
-
-		public Promise<Long> getTokenPromise() {
-			return tokenPromise;
-		}
-	}
 }

@@ -16,10 +16,15 @@
 
 package io.datakernel.crdt;
 
+import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataAcceptor;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.StreamMapSplitter;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,22 +50,37 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 	}
 
 	public Promise<Void> repartition() {
-		return Promises.toTuple(cluster.upload(), localClient.remove(), localClient.download())
-				.thenCompose(tuple -> {
-					int index = cluster.getOrderedIds().indexOf(localPartitionId);
-					StreamMapSplitter<CrdtData<K, S>> forker = StreamMapSplitter.create((data, acceptors) -> {
-						acceptors[0].accept(data);
-						int[] selected = cluster.getShardingFunction().shard(data.getKey());
-						for (int s : selected) {
-							if (s == index) {
-								return;
-							}
-						}
-						acceptors[1].accept(data.getKey());
-					});
-					forker.<CrdtData<K, S>>newOutput().streamTo(tuple.getValue1());
-					forker.<K>newOutput().streamTo(tuple.getValue2());
-					return tuple.getValue3().getSupplier().streamTo(forker.getInput());
+		return Promises.toTuple(cluster.upload().toTry(), localClient.remove().toTry(), localClient.download().toTry())
+				.thenCompose(all -> {
+					if (all.getValue1().isSuccess() && all.getValue2().isSuccess() && all.getValue3().isSuccess()) {
+						StreamConsumer<CrdtData<K, S>> cluster = all.getValue1().get();
+						StreamConsumer<K> remover = all.getValue2().get();
+						StreamSupplier<CrdtData<K, S>> downloader = all.getValue3().get();
+
+						int index = this.cluster.getOrderedIds().indexOf(localPartitionId);
+						StreamMapSplitter<CrdtData<K, S>> splitter = StreamMapSplitter.create(
+								(data, acceptors) -> {
+									StreamDataAcceptor<Object> clusterAcceptor = acceptors[0];
+									StreamDataAcceptor<Object> removeAcceptor = acceptors[1];
+									clusterAcceptor.accept(data);
+									int[] selected = this.cluster.getShardingFunction().shard(data.getKey());
+									for (int s : selected) {
+										if (s == index) {
+											return;
+										}
+									}
+									removeAcceptor.accept(data.getKey());
+								});
+						splitter.<CrdtData<K, S>>newOutput().streamTo(cluster);
+						splitter.<K>newOutput().streamTo(remover);
+						return downloader.streamTo(splitter.getInput());
+					} else {
+						StacklessException exception = new StacklessException();
+						all.getValue1().consume(Cancellable::cancel, exception::addSuppressed);
+						all.getValue2().consume(Cancellable::cancel, exception::addSuppressed);
+						all.getValue3().consume(Cancellable::cancel, exception::addSuppressed);
+						return Promise.ofException(exception);
+					}
 				});
 	}
 }

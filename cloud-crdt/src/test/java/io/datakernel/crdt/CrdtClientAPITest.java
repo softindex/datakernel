@@ -132,7 +132,7 @@ public class CrdtClientAPITest {
 				new CrdtData<>("test_1", 345),
 				new CrdtData<>("test_2", -28)).streamTo(StreamConsumer.ofPromise(client.upload())));
 
-		List<CrdtData<String, Integer>> list = await(await(client.download()).getSupplier().toList());
+		List<CrdtData<String, Integer>> list = await(await(client.download()).toList());
 		System.out.println(list);
 		assertEquals(expected, list);
 	}
@@ -153,7 +153,7 @@ public class CrdtClientAPITest {
 				new CrdtData<>("test_3", 2)).streamTo(StreamConsumer.ofPromise(client.upload())));
 		await(StreamSupplier.of("test_2").streamTo(StreamConsumer.ofPromise(client.remove())));
 
-		List<CrdtData<String, Integer>> list = await(await(client.download()).getSupplier().toList());
+		List<CrdtData<String, Integer>> list = await(await(client.download()).toList());
 		System.out.println(list);
 		assertEquals(expected, list);
 	}

@@ -17,7 +17,6 @@
 package io.datakernel.crdt;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.crdt.CrdtMessaging.*;
 import io.datakernel.csp.ChannelConsumer;
@@ -35,7 +34,7 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplierWithResult;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -119,32 +118,30 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 	}
 
 	@Override
-	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
-		SettablePromise<Long> newToken = new SettablePromise<>();
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return connect()
-				.thenCompose(messaging -> messaging.send(new Download(token))
+				.thenCompose(messaging -> messaging.send(new Download(timestamp))
 						.thenCompose($ -> messaging.receive())
 						.thenCompose(response -> {
 							if (response == null) {
 								return Promise.ofException(new IllegalStateException("Unexpected end of stream"));
 							}
-							if (response.getClass() == DownloadToken.class) {
-								return Promise.of(((DownloadToken) response).getToken());
+							if (response.getClass() == DownloadStarted.class) {
+								return Promise.complete();
 							}
 							if (response instanceof ServerError) {
 								return Promise.ofException(new StacklessException(RemoteCrdtClient.class, ((ServerError) response).getMsg()));
 							}
-							return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + DownloadToken.class.getSimpleName()));
+							return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + DownloadStarted.class.getSimpleName()));
 						})
-						.whenComplete(newToken::set)
 						.thenApply($ ->
-								StreamSupplierWithResult.of(messaging.receiveBinaryStream()
+								messaging.receiveBinaryStream()
 										.transformWith(ChannelDeserializer.create(serializer))
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
 												.thenCompose($2 -> messaging.sendEndOfStream())
 												.whenResult($2 -> messaging.close()))
-										.withLateBinding(), newToken)));
+										.withLateBinding()));
 	}
 
 	@Override

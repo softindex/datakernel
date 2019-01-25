@@ -84,7 +84,7 @@ public final class CrdtExample {
 							.streamTo(StreamConsumer.ofPromise(two.upload()));
 				})
 				.thenCompose($ -> cluster.download())
-				.thenCompose(supplierWithResult -> supplierWithResult.getSupplier().toList())
+				.thenCompose(StreamSupplier::toList)
 				.whenComplete((list, e) -> {
 					executor.shutdown();
 					if (e != null) {
@@ -92,7 +92,6 @@ public final class CrdtExample {
 					}
 					System.out.println(list);
 				});
-
 
 		eventloop.run();
 	}

@@ -36,7 +36,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	private final RuntimeCrdtClient<K, S> inMemory;
 	private final FsCrdtClient<K, S> localFiles;
 
-	private long lastToken = 0;
+	private long lastTimestamp = 0;
 
 	@Nullable
 	private Promise<Void> backupPromise = null;
@@ -57,7 +57,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	public Promise<Void> restore() {
 		return localFiles.download()
 				.thenCompose(supplierWithResult ->
-						supplierWithResult.getSupplier().streamTo(StreamConsumer.ofPromise(inMemory.upload())));
+						supplierWithResult.streamTo(StreamConsumer.ofPromise(inMemory.upload())));
 	}
 
 	public Promise<Void> backup() {
@@ -65,16 +65,17 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 			return backupPromise;
 		}
 		Set<K> removedKeys = inMemory.getRemovedKeys();
-		return backupPromise = inMemory.download(lastToken)
-				.thenCompose(supplierWithResult -> {
-					supplierWithResult.getResult().whenResult(token -> lastToken = token);
-					return supplierWithResult.getSupplier().streamTo(StreamConsumer.ofPromise(localFiles.upload()))
-							.thenCompose($ -> StreamSupplier.ofIterable(removedKeys).streamTo(StreamConsumer.ofPromise(localFiles.remove())))
-							.whenComplete(($, e) -> {
-								inMemory.clearRemovedKeys();
-								backupPromise = null;
-							});
-				});
+		long lastTimestamp = this.lastTimestamp;
+		this.lastTimestamp = eventloop.currentTimeMillis();
+		return backupPromise = inMemory.download(lastTimestamp)
+				.thenCompose(supplierWithResult -> supplierWithResult
+						.streamTo(StreamConsumer.ofPromise(localFiles.upload()))
+						.thenCompose($ -> StreamSupplier.ofIterable(removedKeys)
+								.streamTo(StreamConsumer.ofPromise(localFiles.remove())))
+						.whenComplete(($, e) -> {
+							inMemory.clearRemovedKeys();
+							backupPromise = null;
+						}));
 	}
 
 	public boolean backupInProgress() {

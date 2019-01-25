@@ -33,8 +33,7 @@ public final class CrdtMessaging {
 
 	public static final StructuredCodec<CrdtResponse> RESPONSE_CODEC = CodecSubtype.<CrdtResponse>create()
 			.with(CrdtResponses.class, ofEnum(CrdtResponses.class))
-			.with(DownloadToken.class, object(DownloadToken::new,
-					"token", DownloadToken::getToken, LONG64_CODEC))
+			.with(DownloadStarted.class, object(DownloadStarted::new))
 			.with(ServerError.class, object(ServerError::new,
 					"msg", ServerError::getMsg, STRING_CODEC));
 
@@ -71,20 +70,10 @@ public final class CrdtMessaging {
 		PONG
 	}
 
-	public final static class DownloadToken implements CrdtResponse {
-		private final long token;
-
-		public DownloadToken(long token) {
-			this.token = token;
-		}
-
-		public long getToken() {
-			return token;
-		}
-
+	public final static class DownloadStarted implements CrdtResponse {
 		@Override
 		public String toString() {
-			return "DownloadToken{token=" + token + '}';
+			return "DownloadStarted";
 		}
 	}
 

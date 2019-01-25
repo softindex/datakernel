@@ -1,5 +1,7 @@
 package io.datakernel.util;
 
+import org.jetbrains.annotations.Contract;
+
 import java.util.Objects;
 import java.util.StringJoiner;
 
@@ -20,26 +22,32 @@ public final class Tuple6<T1, T2, T3, T4, T5, T6> {
 		this.value6 = value6;
 	}
 
+	@Contract(pure = true)
 	public T1 getValue1() {
 		return value1;
 	}
 
+	@Contract(pure = true)
 	public T2 getValue2() {
 		return value2;
 	}
 
+	@Contract(pure = true)
 	public T3 getValue3() {
 		return value3;
 	}
 
+	@Contract(pure = true)
 	public T4 getValue4() {
 		return value4;
 	}
 
+	@Contract(pure = true)
 	public T5 getValue5() {
 		return value5;
 	}
 
+	@Contract(pure = true)
 	public T6 getValue6() {
 		return value6;
 	}

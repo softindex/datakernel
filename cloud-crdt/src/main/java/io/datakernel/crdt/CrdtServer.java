@@ -83,14 +83,10 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					}
 					if (msg instanceof Download) {
 						return client.download(((Download) msg).getToken())
-								.thenCompose(supplierWithResult ->
-										supplierWithResult.getResult()
-												.thenCompose(token -> messaging.send(new DownloadToken(token)))
-												.thenCompose($ ->
-														supplierWithResult
-																.getSupplier()
-																.transformWith(ChannelSerializer.create(serializer))
-																.streamTo(messaging.sendBinaryStream())));
+								.whenResult($ -> messaging.send(new DownloadStarted()))
+								.thenCompose(supplier -> supplier
+										.transformWith(ChannelSerializer.create(serializer))
+										.streamTo(messaging.sendBinaryStream()));
 					}
 					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
 				})

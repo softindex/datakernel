@@ -86,11 +86,9 @@ public final class TestSimpleCrdt {
 	public void testDownload() {
 		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Integer::max);
 
-		await(client.download().thenCompose(supplierWithResult ->
-				supplierWithResult
-						.getSupplier()
-						.streamTo(StreamConsumer.of(localStorage::put))
-						.whenComplete(($, err) -> server.close())));
+		await(client.download().thenCompose(supplierWithResult -> supplierWithResult
+				.streamTo(StreamConsumer.of(localStorage::put))
+				.whenComplete(($, err) -> server.close())));
 
 		System.out.println("Data fetched from 'remote' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

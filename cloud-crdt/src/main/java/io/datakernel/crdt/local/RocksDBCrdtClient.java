@@ -17,7 +17,6 @@
 package io.datakernel.crdt.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.crdt.CrdtClient;
@@ -36,7 +35,6 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -61,7 +59,6 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	private final WriteOptions writeOptions; // }
 
 	private MemSize bufferSize = MemSize.kilobytes(16);
-	private Duration tokenOffset = Duration.ofSeconds(1);
 
 	// region JMX
 	private boolean detailedStats;
@@ -104,11 +101,6 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	public RocksDBCrdtClient withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
-		return this;
-	}
-
-	public RocksDBCrdtClient withTokenOffset(Duration tokenOffset) {
-		this.tokenOffset = tokenOffset;
 		return this;
 	}
 
@@ -178,35 +170,30 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	@Override
-	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return Promise.ofCallable(executor,
 				() -> {
 					RocksIterator iterator = db.newIterator();
 					iterator.seekToFirst();
 					return iterator;
 				})
-				.thenApply(iterator -> {
-					SettablePromise<Long> tokenPromise = new SettablePromise<>();
-					StreamSupplier<CrdtData<K, S>> supplier = StreamSupplier.ofChannelSupplier(ChannelSupplier.of(() ->
-							Promise.ofCallable(executor, () -> {
-								while (iterator.isValid()) {
-									byte[] keyBytes = iterator.key();
-									BinaryInput stateBuf = new BinaryInput(iterator.value());
-									iterator.next();
-									long ts = stateBuf.readLong();
-									if (ts > token) {
-										return new CrdtData<>(
-												keySerializer.decode(keyBytes, 0),
-												stateSerializer.decode(stateBuf)
-										);
-									}
+				.thenApply(iterator -> StreamSupplier.ofChannelSupplier(ChannelSupplier.of(
+						() -> Promise.ofCallable(executor, () -> {
+							while (iterator.isValid()) {
+								byte[] keyBytes = iterator.key();
+								BinaryInput stateBuf = new BinaryInput(iterator.value());
+								iterator.next();
+								long ts = stateBuf.readLong();
+								if (ts > timestamp) {
+									return new CrdtData<>(
+											keySerializer.decode(keyBytes, 0),
+											stateSerializer.decode(stateBuf)
+									);
 								}
-								return null;
-							})))
-							.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
-							.withEndOfStream(eos -> eos.whenResult($ -> tokenPromise.set(currentTimeProvider.currentTimeMillis() - tokenOffset.toMillis())));
-					return StreamSupplierWithResult.of(supplier, tokenPromise);
-				});
+							}
+							return null;
+						})))
+						.transformWith(detailedStats ? downloadStatsDetailed : downloadStats));
 	}
 
 	@Override

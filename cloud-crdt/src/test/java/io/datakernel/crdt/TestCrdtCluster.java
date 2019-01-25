@@ -106,10 +106,9 @@ public final class TestCrdtCluster {
 		CrdtClusterClient<String, String, Set<Integer>> cluster = CrdtClusterClient.create(eventloop, clients, union);
 
 		await(cluster.download()
-				.thenCompose(supplierWithResult ->
-						supplierWithResult.getSupplier()
-								.streamTo(StreamConsumer.of(localStorage::put))
-								.whenComplete(($, e) -> servers.forEach(AbstractServer::close))));
+				.thenCompose(supplierWithResult -> supplierWithResult
+						.streamTo(StreamConsumer.of(localStorage::put))
+						.whenComplete(($, e) -> servers.forEach(AbstractServer::close))));
 
 		System.out.println("Data at 'local' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

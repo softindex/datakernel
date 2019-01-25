@@ -18,7 +18,6 @@ package io.datakernel.crdt;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
@@ -28,7 +27,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.processor.MultiSharder;
 import io.datakernel.stream.processor.ShardingStreamSplitter;
 import io.datakernel.stream.processor.StreamReducerSimple;
@@ -42,7 +40,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BinaryOperator;
@@ -62,8 +59,6 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 
 	private final BinaryOperator<CrdtData<K, S>> combiner;
 	private final RendezvousHashSharder<I, K> shardingFunction;
-
-	private Duration tokenOffset = Duration.ofSeconds(1);
 
 	private List<I> orderedIds;
 
@@ -106,11 +101,6 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	public CrdtClusterClient<I, K, S> withReplicationCount(int replicationCount) {
 		this.replicationCount = replicationCount;
 		recompute();
-		return this;
-	}
-
-	public CrdtClusterClient withTokenOffset(Duration tokenOffset) {
-		this.tokenOffset = tokenOffset;
 		return this;
 	}
 	// endregion
@@ -227,17 +217,11 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	}
 
 	@Override
-	public Promise<StreamSupplierWithResult<CrdtData<K, S>, Long>> download(long token) {
-		SettablePromise<Long> newToken = new SettablePromise<>();
-		List<Promise<Long>> tokens = new ArrayList<>();
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(entry ->
-								entry.getValue().download(token)
-										.thenApply(supplierWithResult -> {
-											tokens.add(supplierWithResult.getResult());
-											return supplierWithResult.getSupplier();
-										})
+								entry.getValue().download(timestamp)
 										.whenException(err -> markDead(entry.getKey(), err))
 										.toTry()))
 				.thenCompose(tries -> {
@@ -249,22 +233,17 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 						return Promise.ofException(new StacklessException(CrdtClusterClient.class, "No successful connections"));
 					}
 
-					//noinspection OptionalGetWithoutIsPresent checked for emptyness above
-					Promises.collect(toList(), tokens)
-							.thenApply(ts -> ts.stream().min(Comparator.naturalOrder()).get() - tokenOffset.toMillis())
-							.whenComplete(newToken::set);
-
 					StreamReducerSimple<K, CrdtData<K, S>, CrdtData<K, S>, CrdtData<K, S>> reducer =
 							StreamReducerSimple.create(CrdtData::getKey, Comparator.<K>naturalOrder(), new BinaryAccumulatorReducer<>(combiner));
 
-					return Promise.of(StreamSupplierWithResult.of(StreamSupplier.<CrdtData<K, S>>ofConsumer(consumer ->
+					return Promise.of(StreamSupplier.<CrdtData<K, S>>ofConsumer(consumer ->
 							reducer.getOutput()
 									.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 									.streamTo(consumer
 											.withAcknowledgement(ack -> ack.both(Promises.all(successes.stream()
 													.map(producer -> producer.streamTo(reducer.newInput())))
 													.materialize()))))
-							.withLateBinding(), newToken));
+							.withLateBinding());
 				});
 	}
 

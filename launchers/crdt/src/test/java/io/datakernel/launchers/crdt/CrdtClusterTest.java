@@ -218,7 +218,6 @@ public final class CrdtClusterTest {
 
 		client.download()
 				.thenCompose(supplierWithResult -> supplierWithResult
-						.getSupplier()
 						.streamTo(StreamConsumer.of(System.out::println))
 						.whenComplete(assertComplete($ -> System.out.println("finished"))));
 	}
