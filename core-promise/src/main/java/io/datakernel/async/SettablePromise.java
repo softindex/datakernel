@@ -31,10 +31,12 @@ import java.util.function.Function;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
- * Promise that can be completed or completedExceptionally manually.
- * <p>Can be used as root promise to start execution of chain of promises or when you want wrap your actions in {@code Promise}</p>
+ * Represents a promise which can be completed or completedExceptionally manually.
+ * <p>
+ * Can be used as root promise to start execution of chain of
+ * promises or when you want wrap your actions in {@code Promise}.
  *
- * @param <T> Result type
+ * @param <T> result type
  */
 public final class SettablePromise<T> extends AbstractPromise<T> implements MaterializedPromise<T> {
 	private static final Throwable PROMISE_NOT_SET = new StacklessException(SettablePromise.class, "Promise has not been completed yet");
@@ -69,7 +71,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 
 	/**
 	 * Sets the result of this {@code SettablePromise} and completes it.
-	 * <p>AssertionError is thrown when you try to set result for  already completed promise.</p>
+	 * <p>{@code AssertionError} is thrown when you try to set result for an already completed promise.</p>
 	 */
 	public void set(@Nullable T result) {
 		assert !isComplete();
@@ -88,7 +90,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 
 	/**
 	 * Sets exception and completes this {@code SettablePromise} exceptionally.
-	 * <p>AssertionError is thrown when you try to set exception for  already completed promise.</p>
+	 * <p>AssertionError is thrown when you try to set exception for already completed promise.</p>
 	 *
 	 * @param e exception
 	 */

@@ -19,6 +19,12 @@ package io.datakernel.async;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * A parent interface for materialized promises: {@link SettablePromise},
+ * {@link CompletePromise}, {@link CompleteExceptionallyPromise}.
+ * You can {@code getResult} of materialized {@code Promises}.
+ * @param <T> result type
+ */
 public interface MaterializedPromise<T> extends Promise<T> {
 	@Contract(pure = true)
 	T getResult();

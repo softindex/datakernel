@@ -28,6 +28,9 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
+/**
+ * Represents a {@code Promise} which is completed with an exception.
+ */
 public final class CompleteExceptionallyPromise<T> implements MaterializedPromise<T> {
 	@NotNull
 	private final Throwable exception;

@@ -43,11 +43,24 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public final class Promises {
+
+	/**
+	 * Allows to manage multiple {@link Promise}s.
+	 */
 	private Promises() {
 	}
 
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
 
+	/**
+	 * Returns the {@code Promise} if it is complete. Otherwise
+	 * waits until the delay passes and if the {@code Promise}
+	 * is still not complete, tries to complete current eventloop
+	 * and returns a {@code Promise} with {@code TIMEOUT_EXCEPTION}.
+	 * @param promise the Promise to be tracked
+	 * @param delay time of delay
+	 * @return {@code Promise}
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, long delay) {
@@ -74,6 +87,14 @@ public final class Promises {
 		return timeout(promise, delay.toMillis());
 	}
 
+	/**
+	 * Delays completion of provided {@code promise} for
+	 * the defined period of time.
+	 *
+	 * @param promise the {@code Promise} to be delayed
+	 * @param delayMillis delay in millis
+	 * @return completed {@code Promise}
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> delay(@NotNull Promise<T> promise, long delayMillis) {
@@ -87,6 +108,10 @@ public final class Promises {
 		return delay(promise, delay.toMillis());
 	}
 
+	/**
+	 * Schedules completion of the {@code promise}, it will
+	 * be completed after the timestamp.
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, long timestamp) {
@@ -237,8 +262,10 @@ public final class Promises {
 	}
 
 	/**
+	 * Returns one of the first completed promises. Since it's
+	 * async we can't really get the FIRST completed promise.
+	 *
 	 * @return first completed promise
-	 * this method returns one of the first completed promises, because it's async we can't really get FIRST completed promise.
 	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
@@ -273,7 +300,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Accumulates results of {@code Promise}s using {@code IndexedCollector}.
+	 * Accumulates results of {@code Promise}s using {@link IndexedCollector}.
 	 *
 	 * @param <T>       type of input value
 	 * @param <A>       type of accumulator
@@ -394,24 +421,22 @@ public final class Promises {
 		return collect(collector, promises.iterator());
 	}
 
+	/**
+	 * Returns a successfully completed {@code Promise}
+	 * with an empty list as the result.
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList() {
 		return Promise.of(emptyList());
 	}
 
-	/**
-	 * @see Promises#toList(Promise[])
-	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList(@NotNull Promise<? extends T> promise1) {
 		return promise1.thenApply(Arrays::asList);
 	}
 
-	/**
-	 * @see Promises#toList(Promise[])
-	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList(@NotNull Promise<? extends T> promise1, @NotNull Promise<? extends T> promise2) {
@@ -419,7 +444,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#toList(Promise[])
+	 * @see Promises#toList(List)
 	 */
 	@SafeVarargs
 	@Contract(pure = true)
@@ -429,7 +454,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#toList(Promise[])
+	 * @see Promises#toList(List)
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -439,7 +464,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Prepared version of reduce that reduces promises into Promise&lt;List&gt;
+	 * Reduces list of {@code Promise}s into Promise&lt;List&gt;.
 	 *
 	 * @see Promises#collect(IndexedCollector, List)
 	 */
@@ -456,9 +481,6 @@ public final class Promises {
 		return Promise.of((T[]) Array.newInstance(type, 0));
 	}
 
-	/**
-	 * @see Promises#toArray(Class, List)
-	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
@@ -470,9 +492,6 @@ public final class Promises {
 		});
 	}
 
-	/**
-	 * @see Promises#toArray(Class, List)
-	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
@@ -506,7 +525,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Prepared version of reduce that reduces promises into Promise&lt;Array&gt;
+	 * Reduces promises into Promise&lt;Array&gt;
 	 *
 	 * @see Promises#collect(IndexedCollector, List)
 	 */
@@ -744,7 +763,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Accumulate {@code Promise} results into one final using {@code Collector} sequentially
+	 * Accumulates {@code Promise} results into one final using {@code Collector} sequentially.
 	 *
 	 * @return new {@code Promise} that completes when all promises are completed
 	 * @see Collector
@@ -774,7 +793,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally
+	 * Picks the first {@code Promise} that was completed without exception.
 	 *
 	 * @see Promises#first(BiPredicate, Iterator)
 	 */
@@ -785,24 +804,23 @@ public final class Promises {
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally
-	 *
-	 * @see Promises#first(BiPredicate, Iterator)
+	 * @see #firstSuccessful(AsyncSupplier[])
 	 */
 	@NotNull
 	public static <T> Promise<T> firstSuccessful(@NotNull Iterable<? extends AsyncSupplier<? extends T>> promises) {
 		return first(isResult(), promises);
 	}
 
+	/**
+	 * @see #firstSuccessful(AsyncSupplier[])
+	 */
 	@NotNull
 	public static <T> Promise<T> firstSuccessful(@NotNull Stream<? extends AsyncSupplier<? extends T>> promises) {
 		return first(isResult(), promises);
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally
-	 *
-	 * @see Promises#first(BiPredicate, Iterator)
+	 * @see #firstSuccessful(AsyncSupplier[])
 	 */
 	@NotNull
 	public static <T> Promise<T> firstSuccessful(@NotNull Iterator<? extends Promise<? extends T>> promises) {
@@ -843,11 +861,6 @@ public final class Promises {
 		return cb;
 	}
 
-	/**
-	 * Instead of returning new Promise, this method sets supplied promise when result collected.
-	 *
-	 * @see Promises#first(BiPredicate, Iterator)
-	 */
 	private static <T> void firstImpl(Iterator<? extends Promise<? extends T>> promises,
 			@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull SettablePromise<T> cb) {
@@ -876,6 +889,10 @@ public final class Promises {
 		return ($, e) -> e != null;
 	}
 
+	/**
+	 * Repeats the operations of provided {@code supplier} infinitely,
+	 * until one of the {@code Promise}s completes exceptionally.
+	 */
 	@NotNull
 	public static Promise<Void> repeat(@NotNull Supplier<Promise<Void>> supplier) {
 		@NotNull SettablePromise<Void> cb = new SettablePromise<>();
@@ -899,6 +916,15 @@ public final class Promises {
 		}
 	}
 
+	/**
+	 * Repeats provided {@code Function} until can pass {@link Predicate} test.
+	 * Resembles a simple Java {@code for()} loop but with async capabilities.
+	 *
+	 * @param seed start value
+	 * @param test a boolean function which checks if this loop can continue
+	 * @param next a function applied to the seed, returns {@code Promise}
+	 * @return a {@link SettablePromise} with set result or exception
+	 */
 	@NotNull
 	public static <T> Promise<Void> loop(@Nullable T seed, @NotNull Predicate<T> test, @NotNull Function<T, Promise<T>> next) {
 		if (!test.test(seed)) return Promise.complete();

@@ -18,6 +18,10 @@ package io.datakernel.async;
 
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Represents a {@link CompletePromise} with result that equals {@code null}.
+ * Optimized for multiple reuse since its result never changes.
+ */
 public final class CompleteNullPromise<T> extends CompletePromise<T> {
 	public static final CompleteNullPromise<?> INSTANCE = new CompleteNullPromise<>();
 

@@ -28,6 +28,9 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
+/**
+ * Represents a completed {@code Promise} with a result of unspecified type.
+ */
 public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@Override
 	public final boolean isComplete() {
