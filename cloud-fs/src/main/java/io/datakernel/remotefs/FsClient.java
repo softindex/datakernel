@@ -122,7 +122,7 @@ public interface FsClient {
 	default Promise<Void> move(String filename, String newFilename) {
 		return download(filename)
 				.thenCompose(supplier ->
-						upload(filename)
+						upload(newFilename)
 								.thenCompose(supplier::streamTo))
 				.thenCompose($ -> delete(filename));
 	}
@@ -147,7 +147,7 @@ public interface FsClient {
 	default Promise<Void> copy(String filename, String newFilename) {
 		return download(filename)
 				.thenCompose(supplier ->
-						upload(filename)
+						upload(newFilename)
 								.thenCompose(supplier::streamTo));
 	}
 

@@ -36,6 +36,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -87,7 +88,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private LocalFsClient(Eventloop eventloop, ExecutorService executor, Path storageDir) {
 		this.eventloop = checkNotNull(eventloop, "eventloop");
 		this.executor = checkNotNull(executor, "executor");
-		this.storageDir = checkNotNull(storageDir, "storageDir").normalize();
+		this.storageDir = checkNotNull(storageDir, "storageDir");
 
 		try {
 			Files.createDirectories(storageDir);
@@ -154,9 +155,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
-		Path path = storageDir.resolve(filename).normalize();
-		if (!path.startsWith(storageDir)) {
-			return Promise.ofException(new RemoteFsException(LocalFsClient.class, "File " + filename + " goes outside of the root directory"));
+		Path path;
+		try {
+			path = resolve(filename);
+		} catch (IOException e) {
+			return Promise.ofException(e);
 		}
 
 		return AsyncFile.size(executor, path)
@@ -230,8 +233,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	private void doMove(String filename, String newFilename) {
 		try {
-			Path filePath = resolveFilePath(filename);
-			Path targetPath = resolveFilePath(newFilename);
+			Path filePath = resolve(filename);
+			Path targetPath = resolve(newFilename);
 
 			if (!Files.isDirectory(filePath)) {
 				long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
@@ -300,8 +303,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	private void doCopy(String filename, String copyName) {
 		try {
-			Path filePath = resolveFilePath(filename);
-			Path copyPath = resolveFilePath(copyName);
+			Path filePath = resolve(filename);
+			Path copyPath = resolve(copyName);
 
 			// copying 'nothing' into target equals deleting the target
 			if (!Files.isRegularFile(filePath)) {
@@ -352,7 +355,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				() -> {
 					synchronized (this) {
 						try {
-							Files.deleteIfExists(storageDir.resolve(filename));
+							Files.deleteIfExists(resolve(filename));
 						} catch (IOException e) {
 							throw new UncheckedException(e);
 						}
@@ -371,7 +374,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Promise<FileMetadata> getMetadata(String filename) {
 		return Promise.ofCallable(executor,
 				() -> {
-					Path file = storageDir.resolve(filename);
+					Path file = resolve(filename);
 					return Files.isRegularFile(file) ? getFileMeta(file) : null;
 				});
 	}
@@ -381,7 +384,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		if (folder.length() == 0) {
 			return this;
 		}
-		return new LocalFsClient(eventloop, executor, storageDir.resolve(folder));
+		try {
+			return new LocalFsClient(eventloop, executor, resolve(folder));
+		} catch (IOException e) {
+			throw new IllegalArgumentException(e); // when folder points outside of the storage directory
+		}
 	}
 
 	@NotNull
@@ -407,8 +414,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return "LocalFsClient{storageDir=" + storageDir + '}';
 	}
 
-	private Path resolveFilePath(String filePath) throws IOException {
-		Path path = storageDir.resolve(filePath).normalize();
+	private Path resolve(String filePath) throws IOException {
+		Path path = storageDir.resolve(File.separatorChar == '\\' ? filePath.replace('/', '\\') : filePath).normalize();
 		if (!path.startsWith(storageDir)) {
 			throw new IOException("File " + filePath + " goes outside of the storage directory");
 		}
@@ -418,7 +425,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private Promise<Path> ensureDirectory(String filePath) {
 		return Promise.ofCallable(executor,
 				() -> {
-					Path path = resolveFilePath(filePath);
+					Path path = resolve(filePath);
 					Files.createDirectories(path.getParent());
 					return path;
 				})
@@ -445,7 +452,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 		// optimization for single-file requests
 		if (!isWildcard(glob)) {
-			Path file = storageDir.resolve(glob);
+			Path file = resolve(glob);
 			if (Files.isRegularFile(file)) {
 				walker.accept(getFileMeta(file), file);
 			}
@@ -464,7 +471,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private FileMetadata getFileMeta(Path file) throws IOException {
-		return new FileMetadata(storageDir.relativize(file).toString(), Files.size(file), Files.getLastModifiedTime(file).toMillis());
+		String name = storageDir.relativize(file).toString();
+		return new FileMetadata(
+				File.separatorChar == '\\' ? name.replace('\\', '/') : name,
+				Files.size(file),
+				Files.getLastModifiedTime(file).toMillis());
 	}
 
 	@FunctionalInterface
