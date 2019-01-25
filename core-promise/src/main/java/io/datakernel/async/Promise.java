@@ -19,9 +19,9 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.NoSuchElementException;
@@ -113,7 +113,7 @@ public interface Promise<T> {
 
 	@NotNull
 	static <T> Promise<T> ofTry(@NotNull Try<T> t) {
-		return t.isSuccess() ? of(t.getResult()) : ofException(t.getException());
+		return t.reduce(Promise::of, Promise::ofException);
 	}
 
 	/**
@@ -364,8 +364,8 @@ public interface Promise<T> {
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
-	@NotNull
 	@Contract(" _ -> this")
+	@NotNull
 	Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action);
 
 	/**

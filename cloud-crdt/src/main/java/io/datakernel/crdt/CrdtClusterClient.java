@@ -243,7 +243,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 				.thenCompose(tries -> {
 					List<StreamSupplier<CrdtData<K, S>>> successes = tries.stream()
 							.filter(Try::isSuccess)
-							.map(Try::getOrNull)
+							.map(Try::get)
 							.collect(toList());
 					if (successes.isEmpty()) {
 						return Promise.ofException(new StacklessException(CrdtClusterClient.class, "No successful connections"));
@@ -279,7 +279,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 				.thenCompose(tries -> {
 					List<StreamConsumer<K>> successes = tries.stream()
 							.filter(Try::isSuccess)
-							.map(Try::getOrNull)
+							.map(Try::get)
 							.collect(toList());
 					if (successes.isEmpty()) {
 						return Promise.ofException(new StacklessException(CrdtClusterClient.class, "No successful connections"));

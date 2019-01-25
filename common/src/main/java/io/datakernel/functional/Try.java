@@ -17,40 +17,41 @@
 package io.datakernel.functional;
 
 import io.datakernel.exception.UncheckedException;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.function.*;
 import java.util.stream.Collector;
 
-import static io.datakernel.util.Preconditions.checkState;
-
 public final class Try<T> {
 	private final T result;
+
 	@Nullable
 	private final Throwable throwable;
 
-	private Try(T result, @Nullable Throwable e) {
+	private Try(@Nullable T result, @Nullable Throwable e) {
 		this.result = result;
 		this.throwable = e;
 	}
 
-	public static <T> Try<T> of(T result) {
+	public static <T> Try<T> of(@Nullable T result) {
 		return new Try<>(result, null);
 	}
 
-	public static <T> Try<T> of(T result, @Nullable Throwable e) {
+	public static <T> Try<T> of(@Nullable T result, @Nullable Throwable e) {
 		assert result == null || e == null;
 		return new Try<>(result, e);
 	}
 
-	public static <T> Try<T> ofException(Throwable e) {
-		assert e != null;
+	public static <T> Try<T> ofException(@NotNull Throwable e) {
 		return new Try<>(null, e);
 	}
 
-	public static <T> Try<T> wrap(Supplier<T> computation) {
+	public static <T> Try<T> wrap(@NotNull Supplier<T> computation) {
 		try {
 			return new Try<>(computation.get(), null);
 		} catch (UncheckedException u) {
@@ -58,7 +59,7 @@ public final class Try<T> {
 		}
 	}
 
-	public static <T> Try<T> wrap(Runnable computation) {
+	public static <T> Try<T> wrap(@NotNull Runnable computation) {
 		try {
 			computation.run();
 			return new Try<>(null, null);
@@ -67,155 +68,186 @@ public final class Try<T> {
 		}
 	}
 
+	public static <T> Try<T> wrap(@NotNull Callable<? extends T> computation) {
+		try {
+			@Nullable T result = computation.call();
+			return new Try<>(result, null);
+		} catch (UncheckedException u) {
+			return new Try<>(null, u.getCause());
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			return new Try<>(null, e);
+		}
+	}
+
 	public static Collector<Try<Void>, ?, Try<Void>> voidReducer() {
 		return reducer(($1, $2) -> null);
 	}
 
-	public static <T> Collector<Try<T>, ?, Try<T>> reducer(BinaryOperator<T> combiner) {
+	public static <T> Collector<Try<T>, ?, Try<T>> reducer(@NotNull BinaryOperator<T> combiner) {
 		return reducer(null, combiner);
 	}
 
-	public static <T> Collector<Try<T>, ?, Try<T>> reducer(@Nullable T identity, BinaryOperator<T> combiner) {
+	public static <T> Collector<Try<T>, ?, Try<T>> reducer(@Nullable T identity, @NotNull BinaryOperator<T> combiner) {
+		@SuppressWarnings("WeakerAccess")
 		class Accumulator {
 			T result = identity;
-			List<Throwable> throwables = new ArrayList<>();
+			final List<Throwable> throwables = new ArrayList<>();
 		}
-		return Collector.of(Accumulator::new, (acc, t) -> {
-			if (t.isSuccess()) {
-				acc.result = acc.result != null ? combiner.apply(acc.result, t.getResult()) : t.getResult();
-			} else {
-				acc.throwables.add(t.getException());
-			}
-		}, (acc1, acc2) -> {
-			acc1.result = combiner.apply(acc1.result, acc2.result);
-			acc1.throwables.addAll(acc2.throwables);
-			return acc1;
-		}, acc -> {
-			if (acc.throwables.isEmpty()) {
-				return Try.of(acc.result);
-			}
-			Throwable e = acc.throwables.get(0);
-			for (Throwable t : acc.throwables) {
-				if (t != e) {
-					e.addSuppressed(t);
-				}
-			}
-			return Try.ofException(e);
-		});
+		return Collector.of(Accumulator::new,
+				(acc, t) -> {
+					if (t.isSuccess()) {
+						acc.result = acc.result != null ? combiner.apply(acc.result, t.get()) : t.get();
+					} else {
+						acc.throwables.add(t.getException());
+					}
+				},
+				(acc1, acc2) -> {
+					acc1.result = combiner.apply(acc1.result, acc2.result);
+					acc1.throwables.addAll(acc2.throwables);
+					return acc1;
+				},
+				acc -> {
+					if (acc.throwables.isEmpty()) {
+						return Try.of(acc.result);
+					}
+					Throwable e = acc.throwables.get(0);
+					for (Throwable t : acc.throwables) {
+						if (t != e) {
+							e.addSuppressed(t);
+						}
+					}
+					return Try.ofException(e);
+				});
 	}
 
+	@Contract(pure = true)
 	public boolean isSuccess() {
 		return throwable == null;
 	}
 
-	public T get() throws Exception {
+	@Contract(pure = true)
+	public boolean isException() {
+		return throwable != null;
+	}
+
+	@Contract(pure = true)
+	public T get() {
+		assert isSuccess();
+		return result;
+	}
+
+	@Contract(pure = true)
+	public T getOrThrow() throws Exception {
 		if (throwable == null) {
 			return result;
 		}
 		throw throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
 	}
 
-	public T getOr(T defaultValue) {
-		if (throwable == null) {
-			return result;
-		}
-		return defaultValue;
+	@Contract(pure = true)
+	public T getOr(@Nullable T defaultValue) {
+		return throwable == null ? result : defaultValue;
 	}
 
-	public T getOrSupply(Supplier<? extends T> defaultValueSupplier) {
-		if (throwable == null) {
-			return result;
-		}
-		return defaultValueSupplier.get();
+	@Contract(pure = true)
+	public T getOrSupply(@NotNull Supplier<? extends T> defaultValueSupplier) {
+		return throwable == null ? result : defaultValueSupplier.get();
 	}
 
+	@Contract(pure = true)
 	@Nullable
 	public T getOrNull() {
 		return result;
 	}
 
-	public T getResult() {
-		assert isSuccess();
-		return result;
-	}
-
+	@Contract(pure = true)
+	@NotNull
 	public Throwable getException() {
-		assert !isSuccess();
+		assert throwable != null;
 		return throwable;
 	}
 
+	@Contract(pure = true)
 	@Nullable
 	public Throwable getExceptionOrNull() {
 		return throwable;
 	}
 
-	public void setTo(BiConsumer<? super T, Throwable> consumer) {
-		consumer.accept(result, throwable);
-	}
-
-	public boolean setResultTo(Consumer<? super T> consumer) {
+	@NotNull
+	public Try<T> ifSuccess(@NotNull Consumer<? super T> resultConsumer) {
 		if (isSuccess()) {
-			consumer.accept(result);
-			return true;
+			resultConsumer.accept(result);
 		}
-		return false;
+		return this;
 	}
 
-	public boolean setExceptionTo(Consumer<Throwable> consumer) {
-		if (!isSuccess()) {
-			consumer.accept(throwable);
-			return true;
+	@NotNull
+	public Try<T> ifException(@NotNull Consumer<Throwable> exceptionConsumer) {
+		if (isException()) {
+			exceptionConsumer.accept(throwable);
 		}
-		return false;
+		return this;
 	}
 
-	@SuppressWarnings("unchecked")
+	@NotNull
+	public Try<T> consume(@NotNull BiConsumer<? super T, Throwable> consumer) {
+		consumer.accept(result, throwable);
+		return this;
+	}
+
+	@NotNull
+	public Try<T> consume(@NotNull Consumer<? super T> resultConsumer, @NotNull Consumer<Throwable> exceptionConsumer) {
+		if (isSuccess()) {
+			resultConsumer.accept(result);
+		} else {
+			exceptionConsumer.accept(throwable);
+		}
+		return this;
+	}
+
+	@Contract(pure = true)
+	@NotNull
 	private <U> Try<U> mold() {
-		checkState(throwable != null, "Trying to mold a successful Try!");
+		assert throwable != null;
+		//noinspection unchecked
 		return (Try<U>) this;
 	}
 
-	public <U> U reduce(Function<? super T, ? extends U> function, Function<Throwable, ? extends U> exceptionFunction) {
-		if (throwable == null) {
-			return function.apply(result);
-		}
-		return exceptionFunction.apply(throwable);
+	@Contract(pure = true)
+	public <U> U reduce(@NotNull Function<? super T, ? extends U> function, @NotNull Function<Throwable, ? extends U> exceptionFunction) {
+		return throwable == null ? function.apply(result) : exceptionFunction.apply(throwable);
 	}
 
-	public <U> U reduce(BiFunction<? super T, Throwable, ? extends U> fn) {
+	@Contract(pure = true)
+	public <U> U reduce(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		return fn.apply(result, throwable);
 	}
 
-	public <U> Try<U> map(Function<T, U> function) {
+	@Contract(pure = true)
+	@NotNull
+	public <U> Try<U> map(@NotNull Function<T, U> function) {
 		if (throwable == null) {
 			try {
 				return new Try<>(function.apply(result), null);
-			} catch (Throwable e) {
-				return new Try<>(null, e);
+			} catch (UncheckedException u) {
+				return new Try<>(null, u.getCause());
 			}
 		}
 		return mold();
 	}
 
-	public <U> Try<U> flatMap(Function<T, Try<U>> function) {
-		if (throwable == null) {
-			return function.apply(result);
-		}
-		return mold();
+	@Contract(pure = true)
+	@NotNull
+	public <U> Try<U> flatMap(@NotNull Function<T, Try<U>> function) {
+		return throwable == null ? function.apply(result) : mold();
 	}
 
-	public Try<T> exceptionally(Function<Throwable, T> function) {
-		if (throwable != null) {
-			return new Try<>(function.apply(throwable), null);
-		}
-		return this;
-	}
-
-	public Either<Throwable, T> toEither() {
-		if (throwable == null) {
-			return Either.right(result);
-		}
-		return Either.left(throwable);
+	@Contract(pure = true)
+	@NotNull
+	public Either<T, Throwable> toEither() {
+		return throwable == null ? Either.left(result) : Either.right(throwable);
 	}
 
 	@Override

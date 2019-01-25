@@ -1,12 +1,10 @@
 package io.datakernel.functional;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-import static io.datakernel.util.Preconditions.checkState;
+import java.util.function.*;
 
 public final class Either<L, R> {
 	@Nullable
@@ -31,79 +29,127 @@ public final class Either<L, R> {
 		return new Either<>(null, right, true);
 	}
 
+	@Contract(pure = true)
 	public boolean isLeft() {
 		return !isRight;
 	}
 
+	@Contract(pure = true)
 	public boolean isRight() {
 		return isRight;
 	}
 
-	@Nullable
+	@Contract(pure = true)
 	public L getLeft() {
-		checkState(isLeft(), "Trying to get Left value from Right instance!");
+		assert isLeft();
 		return left;
 	}
 
-	@Nullable
+	@Contract(pure = true)
 	public R getRight() {
-		checkState(isRight(), "Trying to get Right value from Left instance!");
+		assert isRight();
 		return right;
 	}
 
+	@Contract(pure = true)
 	@Nullable
 	public L getLeftOrNull() {
 		return left;
 	}
 
+	@Contract(pure = true)
 	@Nullable
 	public R getRightOrNull() {
 		return right;
 	}
 
-	@Nullable
-	public L getLeftOr(L defaultValue) {
+	@Contract(pure = true)
+	public L getLeftOr(@Nullable L defaultValue) {
 		return isLeft() ? left : defaultValue;
 	}
 
-	@Nullable
-	public R getRightOr(R defaultValue) {
+	@Contract(pure = true)
+	public R getRightOr(@Nullable R defaultValue) {
 		return isRight() ? right : defaultValue;
 	}
 
-	@Nullable
-	public L getLeftOrSupply(Supplier<? extends L> defaultValueSupplier) {
+	@Contract(pure = true)
+	public L getLeftOrSupply(@NotNull Supplier<? extends L> defaultValueSupplier) {
 		return isLeft() ? left : defaultValueSupplier.get();
 	}
 
-	@Nullable
-	public R getRightOrSupply(Supplier<? extends R> defaultValueSupplier) {
+	@Contract(pure = true)
+	public R getRightOrSupply(@NotNull Supplier<? extends R> defaultValueSupplier) {
 		return isRight() ? right : defaultValueSupplier.get();
 	}
 
-	public <U> U reduce(Function<? super L, ? extends U> leftFn, Function<? super R, ? extends U> rightFn) {
+	@Contract(pure = true)
+	@NotNull
+	public Either<L, R> ifLeft(@NotNull Consumer<? super L> leftConsumer) {
+		if (isLeft()) {
+			leftConsumer.accept(left);
+		}
+		return this;
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public Either<L, R> ifRight(@NotNull Consumer<? super R> rightConsumer) {
+		if (isRight()) {
+			rightConsumer.accept(right);
+		}
+		return this;
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public Either<L, R> consume(@NotNull BiConsumer<? super L, ? super R> consumer) {
+		consumer.accept(left, right);
+		return this;
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public Either<L, R> consume(@NotNull Consumer<? super L> leftConsumer, @NotNull Consumer<? super R> rightConsumer) {
+		if (isLeft()) {
+			leftConsumer.accept(left);
+		} else {
+			rightConsumer.accept(right);
+		}
+		return this;
+	}
+
+	@Contract(pure = true)
+	public <U> U reduce(@NotNull Function<? super L, ? extends U> leftFn, @NotNull Function<? super R, ? extends U> rightFn) {
 		return isLeft() ? leftFn.apply(left) : rightFn.apply(right);
 	}
 
-	public <U> U reduce(BiFunction<? super L, ? super R, ? extends U> fn) {
+	@Contract(pure = true)
+	public <U> U reduce(@NotNull BiFunction<? super L, ? super R, ? extends U> fn) {
 		return fn.apply(left, right);
 	}
 
+	@Contract(pure = true)
+	@NotNull
 	public Either<R, L> swap() {
 		return new Either<>(right, left, !isRight);
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> Either<T, R> mapLeft(Function<? super L, ? extends T> function) {
+	@Contract(pure = true)
+	@NotNull
+	public <T> Either<T, R> mapLeft(@NotNull Function<? super L, ? extends T> fn) {
+		//noinspection unchecked
 		return isLeft() ?
-			new Either<>(function.apply(left), right, true) :
-			(Either<T, R>) this;
+				new Either<>(fn.apply(left), right, true) :
+				(Either<T, R>) this;
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> Either<L, T> mapRight(Function<? super R, ? extends T> function) {
+	@Contract(pure = true)
+	@NotNull
+	public <T> Either<L, T> mapRight(@NotNull Function<? super R, ? extends T> fn) {
+		//noinspection unchecked
 		return isRight() ?
-			new Either<>(left, function.apply(right), true) :
-			(Either<L, T>) this;
+				new Either<>(left, fn.apply(right), true) :
+				(Either<L, T>) this;
 	}
 }

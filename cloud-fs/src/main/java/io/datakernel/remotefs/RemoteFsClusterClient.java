@@ -274,7 +274,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.thenCompose(tries -> {
 					List<ConsumerWithId> successes = tries.stream()
 							.filter(Try::isSuccess)
-							.map(Try::getOrNull)
+							.map(Try::get)
 							.collect(toList());
 
 					if (successes.isEmpty()) {
@@ -352,7 +352,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.thenCompose(tries -> {
 					List<PartitionIdWithFileSize> successes = tries.stream() // filter succesfull connections
 							.filter(Try::isSuccess)
-							.map(Try::getOrNull)
+							.map(Try::get)
 							.collect(toList());
 
 					// recheck if our download request marked any partitions as dead
@@ -460,7 +460,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("There are more dead partitions than replication count(" +
 								deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", tries);
 					}
-					return Promise.of(FileMetadata.flatten(tries.stream().map(Try::getOrNull).filter(Objects::nonNull)));
+					return Promise.of(FileMetadata.flatten(tries.stream().filter(Try::isSuccess).map(Try::get)));
 				})
 				.whenComplete(listPromise.recordStats());
 	}

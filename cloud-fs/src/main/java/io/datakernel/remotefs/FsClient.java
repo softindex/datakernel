@@ -16,12 +16,14 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 
 import java.util.List;
 import java.util.Map;
@@ -120,10 +122,7 @@ public interface FsClient {
 	 * @param newFilename new file name
 	 */
 	default Promise<Void> move(String filename, String newFilename) {
-		return download(filename)
-				.thenCompose(supplier ->
-						upload(newFilename)
-								.thenCompose(supplier::streamTo))
+		return copy(filename, newFilename)
 				.thenCompose($ -> delete(filename));
 	}
 
@@ -145,10 +144,19 @@ public interface FsClient {
 	 * @param newFilename new file name
 	 */
 	default Promise<Void> copy(String filename, String newFilename) {
-		return download(filename)
-				.thenCompose(supplier ->
-						upload(newFilename)
-								.thenCompose(supplier::streamTo));
+		return Promises.toTuple(download(filename).toTry(), upload(newFilename).toTry())
+				.thenCompose(both -> {
+					if (both.getValue1().isSuccess() && both.getValue2().isSuccess()) {
+						ChannelSupplier<ByteBuf> supplier = both.getValue1().get();
+						ChannelConsumer<ByteBuf> consumer = both.getValue2().get();
+						return supplier.streamTo(consumer);
+					} else {
+						StacklessException exception = new StacklessException();
+						both.getValue1().consume(Cancellable::cancel, exception::addSuppressed);
+						both.getValue2().consume(Cancellable::cancel, exception::addSuppressed);
+						return Promise.ofException(exception);
+					}
+				});
 	}
 
 	/**
