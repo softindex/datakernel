@@ -22,26 +22,26 @@ import io.datakernel.stream.*;
 import java.util.function.Function;
 
 /**
- * Provides you apply function before sending data to the destination. It is a {@link StreamDecorator}
+ * Provides you apply function before sending data to the destination. It is a {@link StreamMapper}
  * which receives specified type and streams set of function's result  to the destination .
  *
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamDecorator<I, O> implements StreamTransformer<I, O> {
+public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 	private final Function<I, O> function;
 	private final Input input;
 	private final Output output;
 
 	// region creators
-	private StreamDecorator(Function<I, O> function) {
+	private StreamMapper(Function<I, O> function) {
 		this.function = function;
 		this.input = new Input();
 		this.output = new Output();
 	}
 
-	public static <I, O> StreamDecorator<I, O> create(Function<I, O> function) {
-		return new StreamDecorator<>(function);
+	public static <I, O> StreamMapper<I, O> create(Function<I, O> function) {
+		return new StreamMapper<>(function);
 	}
 
 	@Override

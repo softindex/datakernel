@@ -30,7 +30,6 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.*;
-import io.datakernel.stream.processor.StreamMap.MapperProjection;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.util.Initializable;
@@ -418,11 +417,11 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			from record class to result class.
 			 */
 			SequenceStream<S> sequence = sequences.get(0);
-			MapperProjection<S, R> mapper = createMapper(sequence.type, resultClass,
+			Function<S, R> mapper = createMapper(sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
 			return sequence.stream
-					.transformWith(StreamMap.create(mapper))
+					.transformWith(StreamMapper.create(mapper))
 					.transformWith((StreamStats<R>) stats.mergeMapOutput);
 		}
 

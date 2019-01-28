@@ -33,7 +33,6 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.StreamJoin.InnerJoiner;
-import io.datakernel.stream.processor.StreamMap.MapperProjection;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
 import io.datakernel.stream.processor.StreamSorterStorage;
 import org.junit.Ignore;
@@ -183,7 +182,7 @@ public class PageRankTest {
 
 	public static SortedDataset<Long, Rank> pageRank(SortedDataset<Long, Page> pages) {
 		SortedDataset<Long, Rank> ranks = castToSorted(map(pages,
-				new MapperProjection<Page, Rank>() {
+				new Function<Page, Rank>() {
 					@Override
 					public Rank apply(Page page) {
 						return new Rank(page.pageId, 1.0);

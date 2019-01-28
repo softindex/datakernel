@@ -27,7 +27,6 @@ import io.datakernel.codegen.*;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
-import io.datakernel.stream.processor.StreamMap.MapperProjection;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.lang.annotation.Annotation;
@@ -68,16 +67,16 @@ public class AggregationUtils {
 				.build();
 	}
 
-	public static <K extends Comparable, R> Comparator<R> createKeyComparator(Class<R> recordClass, List<String> keys, DefiningClassLoader classLoader) {
+	public static <R> Comparator<R> createKeyComparator(Class<R> recordClass, List<String> keys, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Comparator.class)
 				.withMethod("compare", compare(recordClass, keys))
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static <T, R> MapperProjection<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
+	public static <T, R> Function<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
-		return ClassBuilder.create(classLoader, MapperProjection.class)
+		return ClassBuilder.create(classLoader, Function.class)
 				.withMethod("apply", () -> {
 					Expression result1 = let(constructor(resultClass));
 					ExpressionSequence sequence = ExpressionSequence.create();

@@ -20,16 +20,16 @@ import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeMap;
-import io.datakernel.stream.processor.StreamMap.Mapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public final class DatasetMap<I, O> extends Dataset<O> {
 	private final Dataset<I> input;
-	private final Mapper<I, O> mapper;
+	private final Function<I, O> mapper;
 
-	public DatasetMap(Dataset<I> input, Mapper<I, O> mapper, Class<O> resultType) {
+	public DatasetMap(Dataset<I> input, Function<I, O> mapper, Class<O> resultType) {
 		super(resultType);
 		this.input = input;
 		this.mapper = mapper;

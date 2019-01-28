@@ -38,14 +38,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
-public class StreamDecoratorTest {
+public class StreamMapperTest {
 
 	@Test
 	public void testFunction() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		await(supplier.transformWith(StreamDecorator.create(input -> input * input))
+		await(supplier.transformWith(StreamMapper.create(input -> input * input))
 				.streamTo(consumer.transformWith(randomlySuspending())));
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
@@ -58,7 +58,7 @@ public class StreamDecoratorTest {
 
 	@Test
 	public void testFunctionConsumerError() {
-		StreamDecorator<Integer, Integer> streamFunction = StreamDecorator.create(input -> input * input);
+		StreamMapper<Integer, Integer> streamFunction = StreamMapper.create(input -> input * input);
 
 		List<Integer> list = new ArrayList<>();
 		StreamSupplier<Integer> source1 = StreamSupplier.of(1, 2, 3);
@@ -86,7 +86,7 @@ public class StreamDecoratorTest {
 
 	@Test
 	public void testFunctionSupplierError() {
-		StreamDecorator<Integer, Integer> streamFunction = StreamDecorator.create(input -> input * input);
+		StreamMapper<Integer, Integer> streamFunction = StreamMapper.create(input -> input * input);
 
 		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamSupplier<Integer> supplier = concat(

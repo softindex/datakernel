@@ -21,7 +21,6 @@ import io.datakernel.dataflow.node.*;
 import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.StreamMap.MapperFilter;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import org.junit.Test;
 
@@ -61,10 +60,10 @@ public class DatagraphSerializationTest {
 		public void onComplete(StreamDataAcceptor<Integer> stream, Integer key, Integer accumulator) {}
 	}
 
-	private static class TestFilter extends MapperFilter<String> {
+	private static class TestFunction implements Function<String, String> {
 		@Override
-		protected boolean apply(String input) {
-			return false;
+		public String apply(String input) {
+			return "<" + input + ">";
 		}
 	}
 
@@ -80,14 +79,14 @@ public class DatagraphSerializationTest {
 		DatagraphSerialization serialization = DatagraphSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestReducer.class, ofObject(TestReducer::new))
-				.withCodec(TestFilter.class, ofObject(TestFilter::new))
+				.withCodec(TestFunction.class, ofObject(TestFunction::new))
 				.withCodec(TestIdentityFunction.class, ofObject(TestIdentityFunction::new));
 
 		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new TestComparator());
 		reducer.addInput(new StreamId(), new TestIdentityFunction<>(), new TestReducer());
 		List<Node> nodes = Arrays.asList(
 				reducer,
-				new NodeMap<>(new TestFilter(), new StreamId(1)),
+				new NodeMap<>(new TestFunction(), new StreamId(1)),
 				new NodeUpload<>(Integer.class, new StreamId(Long.MAX_VALUE)),
 				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);

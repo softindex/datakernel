@@ -39,7 +39,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.StreamDecorator;
+import io.datakernel.stream.processor.StreamMapper;
 import io.datakernel.stream.processor.StreamReducerSimple;
 import io.datakernel.stream.processor.StreamReducers;
 import io.datakernel.stream.stats.StreamStats;
@@ -176,14 +176,14 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 					(timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
 							.forEach(meta -> ChannelSupplier.ofPromise(client.download(meta.getFilename()))
 									.transformWith(ChannelDeserializer.create(serializer))
-									.transformWith(StreamDecorator.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
+									.transformWith(StreamMapper.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
 									.streamTo(reducer.newInput()));
 
 					stream = f.tombstones.stream();
 					(timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
 							.forEach(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getFilename()))
 									.transformWith(ChannelDeserializer.create(serializer.getKeySerializer()))
-									.transformWith(StreamDecorator.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
+									.transformWith(StreamMapper.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
 									.streamTo(reducer.newInput()));
 
 					return reducer.getOutput()

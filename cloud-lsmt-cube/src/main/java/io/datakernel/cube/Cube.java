@@ -43,8 +43,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.StreamFilter;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamMapper;
 import io.datakernel.stream.processor.StreamReducer;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.processor.StreamSplitter;
@@ -626,10 +625,10 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				If query is fulfilled from the single aggregation,
 				just use mapper instead of reducer to copy requested fields.
 				 */
-				MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
+				Function<S, T> mapper = createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
 				queryResultSupplier = aggregationSupplier
-						.transformWith(StreamMap.create(mapper));
+						.transformWith(StreamMapper.create(mapper));
 				break;
 			}
 

@@ -18,10 +18,10 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamMap.Mapper;
+import io.datakernel.stream.processor.StreamMapper;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 import static java.util.Collections.singletonList;
 
@@ -32,16 +32,16 @@ import static java.util.Collections.singletonList;
  * @param <O> output items data type
  */
 public final class NodeMap<I, O> implements Node {
-	private final Mapper<I, O> mapper;
+	private final Function<I, O> function;
 	private final StreamId input;
 	private final StreamId output;
 
-	public NodeMap(Mapper<I, O> mapper, StreamId input) {
-		this(mapper, input, new StreamId());
+	public NodeMap(Function<I, O> function, StreamId input) {
+		this(function, input, new StreamId());
 	}
 
-	public NodeMap(Mapper<I, O> mapper, StreamId input, StreamId output) {
-		this.mapper = mapper;
+	public NodeMap(Function<I, O> function, StreamId input, StreamId output) {
+		this.function = function;
 		this.input = input;
 		this.output = output;
 	}
@@ -53,13 +53,13 @@ public final class NodeMap<I, O> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamMap<I, O> streamMap = StreamMap.create(mapper);
+		StreamMapper<I, O> streamMap = StreamMapper.create(function);
 		taskContext.bindChannel(input, streamMap.getInput());
 		taskContext.export(output, streamMap.getOutput());
 	}
 
-	public Mapper<I, O> getMapper() {
-		return mapper;
+	public Function<I, O> getFunction() {
+		return function;
 	}
 
 	public StreamId getInput() {
@@ -72,6 +72,6 @@ public final class NodeMap<I, O> implements Node {
 
 	@Override
 	public String toString() {
-		return "NodeMap{mapper=" + mapper + ", input=" + input + ", output=" + output + '}';
+		return "NodeMap{mapper=" + function + ", input=" + input + ", output=" + output + '}';
 	}
 }

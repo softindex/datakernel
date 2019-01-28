@@ -28,7 +28,6 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamJoin.Joiner;
-import io.datakernel.stream.processor.StreamMap.Mapper;
 import io.datakernel.stream.processor.StreamReducers.MergeDistinctReducer;
 import io.datakernel.stream.processor.StreamReducers.MergeSortReducer;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
@@ -125,7 +124,6 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 	final CodecProvider<Function> function = providerOf(() -> createCodec(Function.class));
 	final CodecProvider<Comparator> comparator = providerOf(() -> createCodec(Comparator.class));
 
-	final CodecProvider<Mapper> mapper = providerOf(() -> createCodec(Mapper.class));
 	final CodecProvider<Joiner> joiner = providerOf(() -> createCodec(Joiner.class));
 
 	final CodecProvider<ReducerToResult> REDUCER_TO_RESULT_PROVIDER = providerOf(() -> createCodec(ReducerToResult.class));
@@ -214,12 +212,12 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 			.with(NodeMap.class,
 					StructuredCodec.ofObject(
 							in -> new NodeMap(
-									in.readKey("mapper", mapper.get()),
+									in.readKey("function", function.get()),
 									in.readKey("input", STREAM_ID_CODEC),
 									in.readKey("output", STREAM_ID_CODEC)
 							),
 							(StructuredOutput out, NodeMap item) -> {
-								out.writeKey("mapper", mapper.get(), item.getMapper());
+								out.writeKey("function", function.get(), item.getFunction());
 								out.writeKey("input", STREAM_ID_CODEC, item.getInput());
 								out.writeKey("output", STREAM_ID_CODEC, item.getOutput());
 							}))

@@ -25,7 +25,7 @@ public interface StreamTransformer<I, O> extends StreamInput<I>, StreamOutput<O>
 		StreamConsumerTransformer<O, StreamConsumer<I>> {
 
 	static <X> StreamTransformer<X, X> identity() {
-		return StreamDecorator.create(Function.identity());
+		return StreamMapper.create(Function.identity());
 	}
 
 	@Override

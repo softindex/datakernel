@@ -20,8 +20,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.Sharders.HashSharder;
-import io.datakernel.stream.processor.StreamDecorator;
 import io.datakernel.stream.processor.StreamFilter;
+import io.datakernel.stream.processor.StreamMapper;
 import io.datakernel.stream.processor.StreamSharder;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -65,7 +65,7 @@ public class BuiltinStreamNodesExample {
 	private static void mapper() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-		StreamDecorator<Integer, String> simpleMap = StreamDecorator.create(x -> x + " times ten = " + x * 10);
+		StreamMapper<Integer, String> simpleMap = StreamMapper.create(x -> x + " times ten = " + x * 10);
 
 		StreamConsumerToList<String> consumer = StreamConsumerToList.create();
 

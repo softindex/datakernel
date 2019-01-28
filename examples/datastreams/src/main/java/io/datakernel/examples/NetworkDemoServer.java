@@ -23,7 +23,7 @@ import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.stream.processor.StreamDecorator;
+import io.datakernel.stream.processor.StreamMapper;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -53,7 +53,7 @@ public final class NetworkDemoServer {
 
 			ChannelSupplier.ofSocket(socket)
 					.transformWith(ChannelDeserializer.create(INT_SERIALIZER))
-					.transformWith(StreamDecorator.create(x -> x + " times 10 = " + x * 10))
+					.transformWith(StreamMapper.create(x -> x + " times 10 = " + x * 10))
 					.transformWith(ChannelSerializer.create(UTF8_SERIALIZER))
 					.streamTo(ChannelConsumer.ofSocket(socket));
 		});
