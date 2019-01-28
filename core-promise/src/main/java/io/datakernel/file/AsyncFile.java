@@ -41,7 +41,8 @@ import static java.nio.file.StandardOpenOption.*;
 import static java.util.Arrays.asList;
 
 /**
- * This class represents a file with asynchronous capabilities.
+ * Represents a file with asynchronous capabilities.
+ * Utilizes {@link FileChannel} for file I/O operations.
  */
 public final class AsyncFile {
 	public static final CloseException FILE_CLOSED = new CloseException(AsyncFile.class, "File has been closed");
@@ -59,7 +60,7 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Synchronously opens file
+	 * Opens file synchronously.
 	 *
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the path of the file to open or create
@@ -76,7 +77,7 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Asynchronously opens file
+	 * Opens file asynchronously.
 	 *
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the path of the file to open or create
@@ -97,7 +98,7 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Concurrently deletes the file.
+	 * Deletes the file concurrently.
 	 *
 	 * @param path the path of the file to open or create
 	 */
@@ -112,9 +113,9 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Checks the file size. For non-regular or non-existing files returns <code>null</code>
+	 * Checks the file size. For non-regular or non-existing files returns <code>null</code>.
 	 *
-	 * @param executor executor for running tasks in other thread
+	 * @param executor executor for running tasks in another thread
 	 * @param path     the path of the file to check
 	 * @return file size if given path is a regular file and <code>null</code> if it is a directory or it does not exist
 	 */
@@ -125,7 +126,7 @@ public final class AsyncFile {
 	/**
 	 * Moves or renames a file to a target file.
 	 *
-	 * @param executor executor for running tasks in other thread
+	 * @param executor executor for running tasks in another thread
 	 * @param source   the path to the file to move
 	 * @param target   the path to the target file (may be associated with a different provider to the source path)
 	 * @param options  options specifying how the move should be done
@@ -143,7 +144,7 @@ public final class AsyncFile {
 	/**
 	 * Copies a file to a target file.
 	 *
-	 * @param executor executor for running tasks in other thread
+	 * @param executor executor for running tasks in  another thread
 	 * @param source   the path to the file to copy
 	 * @param target   the path to the target file (may be associated with a different provider to the source path)
 	 * @param options  options specifying how the move should be done
@@ -206,9 +207,9 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Creates new file and writes a sequence of bytes to this file from the given buffer, starting at the given file
-	 * position.
-	 * If file exists then promise fails with exception.
+	 * Creates new file and writes a sequence of bytes to this file from
+	 * the given buffer, starting at the given file position.
+	 * If file already exists, promise fails with exception.
 	 *
 	 * @param path the path of the file to create and write
 	 * @param buf  the buffer from which bytes are to be transferred byteBuffer
@@ -247,7 +248,8 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Asynchronously writes all bytes of the buffer into this file at its internal position.
+	 * Writes all bytes of the buffer into this file
+	 * at its internal position asynchronously.
 	 *
 	 * @param buf byte buffer to be written
 	 */
@@ -271,7 +273,8 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Asynchronously writes all bytes of the buffer into this file starting at given position.
+	 * Writes all bytes of the buffer into this file
+	 * starting at given position asynchronously.
 	 *
 	 * @param position offset from which bytes will be written to the file
 	 * @param buf      byte buffer to be written
@@ -297,14 +300,15 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Asynchronously reads all bytes from this file into a buffer.
+	 * Reads all bytes from this file into a buffer asynchronously.
 	 */
 	public Promise<ByteBuf> read() {
 		return read(0);
 	}
 
 	/**
-	 * Asynchronously reads all bytes from this file into a buffer starting at given position.
+	 * Reads all bytes from this file into a buffer asynchronously,
+	 * starting at the given position.
 	 *
 	 * @param position offset from which bytes of the file will be read
 	 */
@@ -324,12 +328,13 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Asynchronously reads a sequence of bytes from this channel into the given buffer,
+	 * Reads a sequence of bytes from this channel into the given buffer asynchronously,
 	 * starting at the given position.
-	 * Reads are happenning in other thread(s).
+	 * Reads are happening in other thread(s).
 	 *
 	 * @param buf      the buffer into which bytes are to be transferred
-	 * @param position the file position at which the transfer is to begin; must be non-negative
+	 * @param position the file position at which the transfer is to begin;
+	 *                 must be non-negative
 	 */
 	public Promise<Void> read(ByteBuf buf, long position) {
 		return sanitize(ofRunnable(executor, () -> {
@@ -351,6 +356,7 @@ public final class AsyncFile {
 
 	/**
 	 * Forces physical write and then closes the channel
+	 * if the file is opened.
 	 *
 	 * @param forceMetadata whether or not to force metadata writes too
 	 */
@@ -367,7 +373,7 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Closes the channel
+	 * Closes the channel.
 	 */
 	public Promise<Void> close() {
 		if (!isOpen()) return Promise.ofException(FILE_CLOSED);
@@ -381,7 +387,9 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Truncates this file to the given size.
+	 * Truncates this file to the given size. If current size
+	 * of the file is greater than {@code size}, all bytes
+	 * beyond the new size will be discarded.
 	 *
 	 * @param size the new size, a non-negative byte count
 	 */
@@ -396,11 +404,13 @@ public final class AsyncFile {
 	}
 
 	/**
-	 * Forces any updates to this file to be written to the storage device that contains it.
+	 * Forces any updates to this file to be written
+	 * to the storage device that contains it.
 	 *
-	 * @param metaData if true then this method is required to force changes of both
-	 *                 file content and metadata to be written to storage;
-	 *                 otherwise, it need only force content changes to be written
+	 * @param metaData if {@code true}, this method is required
+	 *                 to force changes of both file content and
+	 *                 metadata to be written to storage; otherwise, it
+	 *                 only needs to force content changes to be written
 	 */
 	public Promise<Void> force(boolean metaData) {
 		return sanitize(ofRunnable(executor, () -> {

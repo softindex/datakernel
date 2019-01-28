@@ -28,6 +28,9 @@ import java.util.function.BiConsumer;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
 
+/**
+ * Allows to track stats of {@link Promise}s.
+ */
 public class PromiseStats {
 	@Nullable
 	private Eventloop eventloop;

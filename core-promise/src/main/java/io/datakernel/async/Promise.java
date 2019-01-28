@@ -381,7 +381,7 @@ public interface Promise<T> {
 
 	/**
 	 * Subscribes given action to be executed
-	 * after this promise completes exceptionally.
+	 * after this {@code Promise} completes exceptionally.
 	 *
 	 * @param action to be executed
 	 * @return this {@code Promise}
@@ -402,7 +402,8 @@ public interface Promise<T> {
 	Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn);
 
 	/**
-	 * Combines two {@code Promise} in one and completes when both have been completed.
+	 * Combines two {@code Promise} in one and
+	 * completes when both of them complete.
 	 *
 	 * @param other {@code Promise} to combine
 	 */

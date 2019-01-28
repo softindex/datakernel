@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * A parent interface for materialized promises: {@link SettablePromise},
  * {@link CompletePromise}, {@link CompleteExceptionallyPromise}.
- * You can {@code getResult} of materialized {@code Promises}.
+ * You can {@code getResult} of materialized {@code Promise}s.
  * @param <T> result type
  */
 public interface MaterializedPromise<T> extends Promise<T> {

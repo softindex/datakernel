@@ -15,16 +15,17 @@ import java.util.stream.Stream;
 import static io.datakernel.async.Promises.*;
 import static java.util.Arrays.asList;
 
+/**
+ * Allows to work with multiple {@link Promise}s and
+ * control which of them completed successfully.
+ */
 public class PromisesEx {
 	private PromisesEx() {
 		throw new AssertionError();
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally, method returns promise of default
-	 * value if none was succesfull
-	 *
-	 * @see Promises#first(BiPredicate, Iterator)
+	 * @see #firstSuccessfulOr(Object, Iterable)
 	 */
 	@SafeVarargs
 	public static <T> Promise<T> firstSuccessfulOr(T defaultValue, AsyncSupplier<? extends T>... promises) {
@@ -32,8 +33,8 @@ public class PromisesEx {
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally, method returns promise of default
-	 * value if none was succesfull
+	 * Picks first {@code Promise} that was completed without exceptions.
+	 * Returns {@code Promise} of {@code defaultValue} if none were successful.
 	 *
 	 * @see Promises#first(BiPredicate, Iterator)
 	 */
@@ -41,13 +42,16 @@ public class PromisesEx {
 		return firstSuccessfulOr(defaultValue, asPromises(promises.iterator()));
 	}
 
+	/**
+	 * @see #firstSuccessfulOr(Object, Iterator)
+	 */
 	public static <T> Promise<T> firstSuccessfulOr(T defaultValue, Stream<? extends AsyncSupplier<? extends T>> promises) {
 		return firstSuccessfulOr(defaultValue, asPromises(promises.iterator()));
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally, method returns promise of default
-	 * value if none was succesfull
+	 * Picks first {@code Promise} that was completed without exceptions.
+	 * Returns {@code Promise} of {@code defaultValue} if none were successful.
 	 *
 	 * @see Promises#first(BiPredicate, Iterator)
 	 */
@@ -57,10 +61,7 @@ public class PromisesEx {
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally, method returns default promise
-	 * if none was succesfull
-	 *
-	 * @see Promises#first(BiPredicate, Iterator)
+	 * @see #firstSuccessfulOr(Promise, Iterable)
 	 */
 	@SafeVarargs
 	public static <T> Promise<T> firstSuccessfulOr(Promise<T> defaultPromise, AsyncSupplier<? extends T>... promises) {
@@ -68,22 +69,22 @@ public class PromisesEx {
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally, method returns default promise
-	 * if none was succesfull
-	 *
-	 * @see Promises#first(BiPredicate, Iterator)
+	 * @see #firstSuccessfulOr(Promise, Iterator)
 	 */
 	public static <T> Promise<T> firstSuccessfulOr(Promise<T> defaultPromise, Iterable<? extends AsyncSupplier<? extends T>> promises) {
 		return firstSuccessfulOr(defaultPromise, asPromises(promises.iterator()));
 	}
 
+	/**
+	 * @see #firstSuccessfulOr(Promise, Iterator)
+	 */
 	public static <T> Promise<T> firstSuccessfulOr(Promise<T> defaultPromise, Stream<? extends AsyncSupplier<? extends T>> promises) {
 		return firstSuccessfulOr(defaultPromise, asPromises(promises.iterator()));
 	}
 
 	/**
-	 * Predicate in this case picks first {@code Promise} that was completed normally, method returns default promise
-	 * if none was succesfull
+	 * Picks first {@code Promise} that was completed without exceptions.
+	 * Returns {@code defaultPromise} if none were successful.
 	 *
 	 * @see Promises#first(BiPredicate, Iterator)
 	 */
@@ -92,10 +93,17 @@ public class PromisesEx {
 				.thenComposeEx((result, e) -> e == null ? Promise.of(result) : defaultPromise);
 	}
 
+	/**
+	 * @see #nSuccesses(int, Iterator)
+	 */
 	public static <T> Promise<List<T>> nSuccesses(int n, Stream<? extends AsyncSupplier<? extends T>> promises) {
 		return nSuccesses(n, asPromises(promises.iterator()));
 	}
 
+	/**
+	 * Returns a {@code List} of successfully completed {@code Promise}s.
+	 * Length of returned {@code List} must be strictly {@code n}.
+	 */
 	public static <T> Promise<List<T>> nSuccesses(int n, Iterator<Promise<T>> promises) {
 		SettablePromise<List<T>> result = new SettablePromise<>();
 		List<T> results = new ArrayList<>();
@@ -106,10 +114,17 @@ public class PromisesEx {
 		return result;
 	}
 
+	/**
+	 * @see #nSuccessesOrLess(int, Iterator)
+	 */
 	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Stream<? extends AsyncSupplier<? extends T>> promises) {
 		return nSuccessesOrLess(n, asPromises(promises.iterator()));
 	}
 
+	/**
+	 * Returns a {@code List} of successfully completed {@code Promise}s.
+	 * Length of returned {@code List} can't be greater than {@code n}.
+	 */
 	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Iterator<Promise<T>> promises) {
 		SettablePromise<List<T>> result = new SettablePromise<>();
 		List<T> results = new ArrayList<>();

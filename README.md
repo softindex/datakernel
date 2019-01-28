@@ -45,8 +45,8 @@ channels similarly to the Go language.
 
 ### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
 
-Promise module is similar to JavaScript Promise and is alternative to Java's `CompletionStage` and allows to organize 
-asynchronous code in convenient way. 
+Promise module is similar to JavaScript Promise and is alternative to Java's `CompletionStage`. It allows to organize 
+asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. 
 
 [Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise)
 

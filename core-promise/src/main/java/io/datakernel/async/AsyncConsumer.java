@@ -24,21 +24,21 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * This interface represents asynchronous consumer that consumes data items.
+ * Represents an asynchronous consumer that consumes data items.
  */
 @FunctionalInterface
 public interface AsyncConsumer<T> {
 	/**
-	 * Asynchronous operation to consume some data
+	 * Consumes some data asynchronously.
 	 *
 	 * @param value value to be consumed
-	 * @return {@link Promise} of {@link Void} that represents succesful consumption of data
+	 * @return {@link Promise} of {@link Void} that represents successful consumption of data
 	 */
 	@NotNull
 	Promise<Void> accept(T value);
 
 	/**
-	 * Wrapper around standard Java's {@link Consumer} interface.
+	 * Wraps standard Java's {@link Consumer} interface.
 	 *
 	 * @param consumer - Java's {@link Consumer} of Promises
 	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface

@@ -63,49 +63,50 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime);
 
 		/**
-		 * Scheduling immediate execution
+		 * Schedules immediate execution.
 		 */
 		static Schedule immediate() {
 			return (now, lastStartTime, lastCompleteTime) -> now;
 		}
 
 		/**
-		 * Scheduling task after delay
+		 * Schedules task after delay.
 		 */
 		static Schedule ofDelay(Duration delay) {
 			return ofDelay(delay.toMillis());
 		}
 
 		/**
-		 * @see Schedule#ofDelay(Duration)
+		 * @see #ofDelay(Duration)
 		 */
 		static Schedule ofDelay(long delay) {
 			return (now, lastStartTime, lastCompleteTime) -> now + delay;
 		}
 
 		/**
-		 * Scheduling task after last complete time and next task
+		 * @see #ofInterval(long)
 		 */
 		static Schedule ofInterval(Duration interval) {
 			return ofInterval(interval.toMillis());
 		}
 
 		/**
-		 * @see Schedule#ofInterval(Duration)
+		 * Schedules task after last complete time and next task.
 		 */
 		static Schedule ofInterval(long interval) {
 			return (now, lastStartTime, lastCompleteTime) -> lastCompleteTime + interval;
 		}
 
 		/**
-		 * Scheduling task in period of current and next task
+		 * @see #ofPeriod(long)
 		 */
 		static Schedule ofPeriod(Duration period) {
 			return ofPeriod(period.toMillis());
 		}
 
+
 		/**
-		 * @see Schedule#ofPeriod(Duration)
+		 * Schedules task in period of current and next task.
 		 */
 		static Schedule ofPeriod(long period) {
 			return (now, lastStartTime, lastCompleteTime) -> lastStartTime + period;

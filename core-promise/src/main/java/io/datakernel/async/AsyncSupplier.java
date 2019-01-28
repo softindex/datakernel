@@ -31,14 +31,12 @@ import java.util.stream.Stream;
 import static io.datakernel.async.Utils.forEachRemainingImpl;
 
 /**
- * This interface represents asynchronous supplier that returns {@link Promise} of some data.
+ * Represents asynchronous supplier that returns {@link Promise} of some data.
  */
 @FunctionalInterface
 public interface AsyncSupplier<T> {
 	/**
-	 * Asynchronous operation that is used to get {@link Promise} of data item.
-	 *
-	 * @return {@link Promise} of data item
+	 * Gets {@link Promise} of data item asynchronously.
 	 */
 	@NotNull
 	Promise<T> get();
@@ -109,9 +107,10 @@ public interface AsyncSupplier<T> {
 	}
 
 	/**
-	 * Method to ensure that supplied promise will complete asynchronously.
+	 * Ensures that supplied {@code Promise} will complete asynchronously.
 	 *
-	 * @return {@link AsyncSupplier} of promises that will be completed asynchronously
+	 * @return {@link AsyncSupplier} of {@code Promise}s
+	 * 			that will be completed asynchronously
 	 * @see Promise#async()
 	 */
 	@Contract(pure = true)
@@ -149,10 +148,10 @@ public interface AsyncSupplier<T> {
 	}
 
 	/**
-	 * Applies function before supplying a promise.
+	 * Applies function before supplying a {@code Promise}.
 	 *
-	 * @param fn function to be applied to result of promise
-	 * @return {@link AsyncSupplier} of promises after transformation
+	 * @param fn function to be applied to the result of {@code Promise}
+	 * @return {@link AsyncSupplier} of {@code Promise}s after transformation
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -161,9 +160,9 @@ public interface AsyncSupplier<T> {
 	}
 
 	/**
-	 * Applies function to the result of supplied promise.
+	 * Applies function to the result of supplied {@code Promise}.
 	 *
-	 * @param fn  - function to be applied to result of promise
+	 * @param fn function to be applied to the result of {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull

@@ -20,7 +20,7 @@ import io.datakernel.exception.CloseException;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * This interface describes methods that are used to handle exceptional behaviour or to handle closing.
+ * Describes methods that are used to handle exceptional behaviour or to handle closing.
  * <p>
  * After {@link #close()}, {@link #close(Throwable)} or {@link #cancel()} is called, the following things
  * should be done:
@@ -35,22 +35,22 @@ public interface Cancellable {
 	CloseException CLOSE_EXCEPTION = new CloseException(Cancellable.class, "Closed");
 
 	/**
-	 * This method should be called to close some process exceptionally in case of some exception is thrown while
-	 * executing the given process.
+	 * Closes process exceptionally in case an exception
+	 * is thrown while executing the given process.
 	 *
 	 * @param e exception that is used to close process with
 	 */
 	void close(@NotNull Throwable e);
 
 	/**
-	 * This method should be called in case user wants to cancel some process
+	 * Cancels the process.
 	 */
 	default void cancel() {
 		close(CANCEL_EXCEPTION);
 	}
 
 	/**
-	 * This method should be called after process has finished its job
+	 * Closes process when it has finished.
 	 */
 	default void close() {
 		close(CLOSE_EXCEPTION);

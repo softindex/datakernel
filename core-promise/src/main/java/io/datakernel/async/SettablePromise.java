@@ -31,10 +31,10 @@ import java.util.function.Function;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
- * Represents a promise which can be completed or completedExceptionally manually.
+ * Represents a {@link Promise} which can be completed or completedExceptionally manually.
  * <p>
- * Can be used as root promise to start execution of chain of
- * promises or when you want wrap your actions in {@code Promise}.
+ * Can be used as root {@code Promise} to start execution of chain of
+ * {@code Promises} or when you want wrap your actions in {@code Promise}.
  *
  * @param <T> result type
  */
@@ -90,7 +90,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 
 	/**
 	 * Sets exception and completes this {@code SettablePromise} exceptionally.
-	 * <p>AssertionError is thrown when you try to set exception for already completed promise.</p>
+	 * {@code AssertionError} is thrown when you try to set exception for
+	 * an already completed {@code Promise}.
 	 *
 	 * @param e exception
 	 */
@@ -102,7 +103,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * The same as {@link SettablePromise#trySet(Object, Throwable)} )} but for result only.
+	 * Tries to set provided {@code result} for this {@code SettablePromise}
+	 * if it is not completed yet.
 	 */
 	public void trySet(@Nullable T result) {
 		if (isComplete()) {
@@ -112,8 +114,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * Tries to set result or exception for this {@code SettablePromise} if it not yet set.
-	 * <p>Otherwise do nothing</p>
+	 * Tries to set result or exception for this {@code SettablePromise} if it not set yet.
+	 * Otherwise does nothing.
 	 */
 	public void trySet(@Nullable T result, @Nullable Throwable e) {
 		if (isComplete()) {
@@ -127,7 +129,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * The same as {@link SettablePromise#trySet(Object, Throwable)} )} but for exception only.
+	 * Tries to set provided {@code e} exception for this {@code SettablePromise}
+	 * if it is not completed yet.
 	 */
 	public void trySetException(@NotNull Throwable e) {
 		if (isComplete()) {
