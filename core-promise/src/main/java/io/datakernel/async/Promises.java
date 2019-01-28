@@ -53,10 +53,8 @@ public final class Promises {
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
 
 	/**
-	 * Returns the {@code Promise} if it is complete. Otherwise
-	 * waits until the delay passes and if the {@code Promise}
-	 * is still not complete, tries to complete current eventloop
-	 * and returns a {@code Promise} with {@code TIMEOUT_EXCEPTION}.
+	 * Waits until the delay passes and if the {@code Promise} is still
+	 * not complete, tries to complete it with {@code TIMEOUT_EXCEPTION}.
 	 * @param promise the Promise to be tracked
 	 * @param delay time of delay
 	 * @return {@code Promise}
@@ -109,8 +107,9 @@ public final class Promises {
 	}
 
 	/**
-	 * Schedules completion of the {@code promise}, it will
-	 * be completed after the timestamp.
+	 * Schedules completion of the {@code Promise} so that it will
+	 * be completed after the timestamp even if its operations
+	 * were completed earlier.
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -923,7 +922,10 @@ public final class Promises {
 	 * @param seed start value
 	 * @param test a boolean function which checks if this loop can continue
 	 * @param next a function applied to the seed, returns {@code Promise}
-	 * @return a {@link SettablePromise} with set result or exception
+	 * @return {@link SettablePromise} with {@code null} result if it was
+	 * 		    completed successfully, otherwise returns a {@code SettablePromise}
+	 * 			with an exception. In both situations returned {@code Promise}
+	 * 			is a marker of completion of the loop.
 	 */
 	@NotNull
 	public static <T> Promise<Void> loop(@Nullable T seed, @NotNull Predicate<T> test, @NotNull Function<T, Promise<T>> next) {
@@ -943,7 +945,10 @@ public final class Promises {
 			Promise<T> promise = next.apply(seed);
 			if (promise.isResult()) {
 				seed = promise.materialize().getResult();
-				if (!test.test(seed)) break;
+				if (!test.test(seed)) {
+					cb.set(null);
+					break;
+				}
 			} else {
 				promise.whenComplete((newSeed, e) -> {
 					if (e == null) {

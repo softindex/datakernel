@@ -235,7 +235,8 @@ public final class PromisesTest {
 
 	@Test
 	public void testCollectWithListener() {
-		CollectListener<Object, Object[], List<Object>> any = (canceller, accumulator) -> {};
+		CollectListener<Object, Object[], List<Object>> any = (canceller, accumulator) -> {
+		};
 		List<Object> list = await(collect(IndexedCollector.toList(), any, asList(of(1), of(2), of(3))));
 		assertEquals(3, list.size());
 	}
@@ -258,6 +259,22 @@ public final class PromisesTest {
 		}));
 		System.out.println(counter);
 		assertSame(exception, e);
+		assertEquals(5, counter.get());
+	}
+
+	@Test
+	public void testLoop() {
+		Promises.loop(0, i -> i < 5, i -> Promise.of(i+1)
+				.whenResult(counter::set));
+		assertEquals(5, counter.get());
+	}
+
+	@Test
+	public void testLoopAsync() {
+		await(Promises.loop(0, i -> i < 5, i ->
+				Promises.delay(Promise.of(i + 1), 10)
+						.whenResult(counter::set)
+						.whenResult(System.out::println)));
 		assertEquals(5, counter.get());
 	}
 
