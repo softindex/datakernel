@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.ApplicationSettings;
@@ -39,12 +40,12 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<LocalGlobalDbNode> {
@@ -69,6 +70,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 	private final NodeFactory<GlobalDbNode> nodeFactory;
 	private final Function<TableID, DbStorage> storageFactory;
 
+	private boolean discoveryConnectionLost = false;
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
@@ -123,25 +125,36 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 							.stream()
 							.map(master -> AsyncSupplier.cast(() -> master.upload(tableID))))
 							.thenApply(consumers -> {
+								ChannelZeroBuffer<SignedData<DbItem>> buffer = new ChannelZeroBuffer<>();
 
-								ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.<SignedData<DbItem>>create()
+								ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.create(buffer.getSupplier())
 										.lenient();
 
+								boolean[] localCompleted = {false};
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
-											.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+											.withAcknowledgement(ack -> ack
+													.whenComplete(($, e) -> {
+														if (e == null) {
+															localCompleted[0] = true;
+														} else {
+															splitter.close(e);
+														}
+													})));
+								} else {
+									localCompleted[0] = true;
 								}
 
 								int[] up = {consumers.size()};
 
 								consumers.forEach(output -> splitter.addOutput()
 										.set(output.withAcknowledgement(ack -> ack.whenException(e -> {
-											if (e != null && --up[0] < uploadSuccessNumber) {
+											if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
 												splitter.close(e);
 											}
 										}))));
 
-								return splitter.getInput().getConsumer()
+								return buffer.getConsumer()
 										.withAcknowledgement(ack -> ack
 												.thenCompose($ -> {
 													if (up[0] >= uploadSuccessNumber) {
@@ -261,9 +274,9 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 					.whenResult($ -> {
 						long timestampEnd = now.currentTimeMillis();
 						if (timestampEnd - started > latencyMargin.toMillis()) {
-							cb.set(null);
-						} else {
 							catchUpIteration(cb);
+						} else {
+							cb.set(null);
 						}
 					})
 					.whenException(cb::setException);
@@ -332,6 +345,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 			return discoveryService.find(space)
 					.thenApplyEx((announceData, e) -> {
 						if (e == null) {
+							discoveryConnectionLost = false;
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
@@ -349,8 +363,13 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}
-						} else if (e != NO_ANNOUNCEMENT) {
-							logger.warn("discovery service error", e);
+						} else if (e instanceof ConnectException) {
+							if (!discoveryConnectionLost) {
+								discoveryConnectionLost = true;
+								logger.warn("Lost connection to discovery", e);
+							}
+						} else {
+							discoveryConnectionLost = false;
 						}
 						return getMasterNodes();
 					});

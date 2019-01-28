@@ -44,6 +44,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -54,7 +55,6 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 import static java.util.stream.Collectors.toList;
 
@@ -81,6 +81,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	private final Function<PubKey, FsClient> storageFactory;
 	private final Function<PubKey, CheckpointStorage> checkpointStorageFactory;
 
+	private boolean discoveryConnectionLost = false;
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
@@ -171,10 +172,20 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 								ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
 
+								boolean[] localCompleted = {false};
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput()
 											.set(ChannelConsumer.ofPromise(ns.save(filename, offset))
-													.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+													.withAcknowledgement(ack -> ack
+															.whenComplete(($, e) -> {
+																if (e == null) {
+																	localCompleted[0] = true;
+																} else {
+																	splitter.close(e);
+																}
+															})));
+								} else {
+									localCompleted[0] = true;
 								}
 
 								int[] up = {consumers.size()};
@@ -182,7 +193,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								consumers.forEach(output -> splitter.addOutput()
 										.set(output
 												.withAcknowledgement(ack -> ack.whenException(e -> {
-													if (e != null && --up[0] < uploadSuccessNumber) {
+													if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
 														splitter.close(e);
 													}
 												}))));
@@ -358,6 +369,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			return discoveryService.find(space)
 					.thenApplyEx((announceData, e) -> {
 						if (e == null) {
+							discoveryConnectionLost = false;
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
@@ -375,8 +387,13 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}
-						} else if (e != NO_ANNOUNCEMENT) {
-							logger.warn("discovery service error", e);
+						} else if (e instanceof ConnectException) {
+							if (!discoveryConnectionLost) {
+								discoveryConnectionLost = true;
+								logger.warn("Lost connection to discovery", e);
+							}
+						} else {
+							discoveryConnectionLost = false;
 						}
 						return getMasterNodes();
 					});

@@ -39,6 +39,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
@@ -50,7 +51,6 @@ import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
@@ -72,6 +72,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	private int propagations = 1;
 	private int minimumSuccesses = 0;
 	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
+	private boolean discoveryConnectionLost = false;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -330,20 +331,27 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 							.thenApply(consumers -> {
 								ChannelZeroBuffer<CommitEntry> buffer = new ChannelZeroBuffer<>();
 
-								ChannelSplitter<CommitEntry> splitter = ChannelSplitter.<CommitEntry>create()
-										.withInput(buffer.getSupplier())
+								ChannelSplitter<CommitEntry> splitter = ChannelSplitter.create(buffer.getSupplier())
 										.lenient();
 
+								boolean[] localCompleted = {false};
 								splitter.addOutput()
 										.set(ChannelConsumer.ofPromise(uploadLocal(repositoryId))
-												.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+												.withAcknowledgement(ack -> ack
+														.whenComplete(($, e) -> {
+															if (e == null) {
+																localCompleted[0] = true;
+															} else {
+																splitter.close(e);
+															}
+														})));
 
 								int[] up = {consumers.size()};
 
 								consumers.forEach(output -> splitter.addOutput()
 										.set(output
 												.withAcknowledgement(ack -> ack.whenException(e -> {
-													if (e != null && --up[0] < minimumSuccesses) {
+													if (e != null && --up[0] < minimumSuccesses && localCompleted[0]) {
 														splitter.close(e);
 													}
 												}))));
@@ -545,9 +553,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					.whenResult($ -> {
 						long timestampEnd = now.currentTimeMillis();
 						if (timestampEnd - timestampBegin > latencyMargin.toMillis()) {
-							cb.set(null);
-						} else {
 							doCatchUp(cb);
+						} else {
+							cb.set(null);
 						}
 					})
 					.whenException(cb::setException);
@@ -647,18 +655,19 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		}
 
 		@NotNull
-		private Promise<List<GlobalOTNode>> doEnsureMasterNodes() {
+		Promise<List<GlobalOTNode>> doEnsureMasterNodes() {
 			if (updateNodesTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
 				return Promise.of(getMasterNodes());
 			}
 			return discoveryService.find(pubKey)
 					.thenApplyEx((announceData, e) -> {
 						if (e == null) {
+							discoveryConnectionLost = false;
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
 								masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
-								if (newServerIds.remove(id)) { // ensure that we are master for the pubKey if it was announced
+								if (newServerIds.remove(id)) { // ensure that we are master for the space if it was announced
 									if (managedPubKeys.add(pubKey)) {
 										logger.trace("became a master for {}: {}", pubKey, GlobalOTNodeImpl.this);
 									}
@@ -671,8 +680,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}
-						} else if (e != NO_ANNOUNCEMENT) {
-							logger.warn("discovery service error", e);
+						} else if (e instanceof ConnectException) {
+							if (!discoveryConnectionLost) {
+								discoveryConnectionLost = true;
+								logger.warn("Lost connection to discovery", e);
+							}
+						} else {
+							discoveryConnectionLost = false;
 						}
 						return getMasterNodes();
 					});
