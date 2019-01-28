@@ -33,11 +33,11 @@ import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 
 public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer<CrdtServer<K, S>> {
-	private final CrdtClient<K, S> client;
+	private final CrdtStorage<K, S> client;
 	private final CrdtDataSerializer<K, S> serializer;
 	private final BinarySerializer<K> keySerializer;
 
-	private CrdtServer(Eventloop eventloop, CrdtClient<K, S> client, CrdtDataSerializer<K, S> serializer) {
+	private CrdtServer(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
 		super(eventloop);
 		this.client = client;
 		this.serializer = serializer;
@@ -45,12 +45,12 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtClient<K, S> client,
+	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
 			CrdtDataSerializer<K, S> serializer) {
 		return new CrdtServer<>(eventloop, client, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtClient<K, S> client,
+	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
 			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}

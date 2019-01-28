@@ -20,7 +20,7 @@ import com.google.inject.*;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
-import io.datakernel.crdt.local.FsCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageFileSystem;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -103,15 +103,15 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 
 		@Provides
 		@Singleton
-		CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, FsCrdtClient<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
+		CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, CrdtStorageFileSystem<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return CrdtServer.create(eventloop, crdtClient, descriptor.getSerializer())
 					.initialize(ofAbstractServer(config.getChild("crdt.server")));
 		}
 
 		@Provides
 		@Singleton
-		FsCrdtClient<K, S> provideFsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
-			return FsCrdtClient.create(eventloop, localFsClient, descriptor.getCombiner(), descriptor.getSerializer())
+		CrdtStorageFileSystem<K, S> provideFsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
+			return CrdtStorageFileSystem.create(eventloop, localFsClient, descriptor.getCombiner(), descriptor.getSerializer())
 					.initialize(Initializers.ofFsCrdtClient(config.getChild("crdt.files")));
 		}
 	}

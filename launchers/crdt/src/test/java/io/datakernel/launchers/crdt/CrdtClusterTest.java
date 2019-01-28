@@ -28,7 +28,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.RemoteCrdtClient;
+import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
@@ -198,7 +198,7 @@ public final class CrdtClusterTest {
 
 	@Test
 	public void uploadWithStreams() {
-		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress("localhost", 9000), UTF8_SERIALIZER, INT_SERIALIZER);
+		CrdtStorageClient<String, Integer> client = CrdtStorageClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress("localhost", 9000), UTF8_SERIALIZER, INT_SERIALIZER);
 
 		PromiseStats uploadStat = PromiseStats.create(Duration.ofSeconds(5));
 
@@ -214,7 +214,7 @@ public final class CrdtClusterTest {
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
 	public void downloadStuff() {
-		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);
+		CrdtStorageClient<String, Integer> client = CrdtStorageClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);
 
 		client.download()
 				.thenCompose(supplierWithResult -> supplierWithResult

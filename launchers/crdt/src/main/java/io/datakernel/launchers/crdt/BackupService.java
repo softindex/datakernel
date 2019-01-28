@@ -19,8 +19,8 @@ package io.datakernel.launchers.crdt;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
-import io.datakernel.crdt.local.FsCrdtClient;
-import io.datakernel.crdt.local.RuntimeCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageFileSystem;
+import io.datakernel.crdt.local.CrdtStorageTreeMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamConsumer;
@@ -33,8 +33,8 @@ import java.util.Set;
 @Singleton
 public final class BackupService<K extends Comparable<K>, S> implements EventloopService {
 	private final Eventloop eventloop;
-	private final RuntimeCrdtClient<K, S> inMemory;
-	private final FsCrdtClient<K, S> localFiles;
+	private final CrdtStorageTreeMap<K, S> inMemory;
+	private final CrdtStorageFileSystem<K, S> localFiles;
 
 	private long lastTimestamp = 0;
 
@@ -42,7 +42,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	private Promise<Void> backupPromise = null;
 
 	@Inject
-	public BackupService(RuntimeCrdtClient<K, S> inMemory, FsCrdtClient<K, S> localFiles) {
+	public BackupService(CrdtStorageTreeMap<K, S> inMemory, CrdtStorageFileSystem<K, S> localFiles) {
 		this.inMemory = inMemory;
 		this.localFiles = localFiles;
 		this.eventloop = localFiles.getEventloop();

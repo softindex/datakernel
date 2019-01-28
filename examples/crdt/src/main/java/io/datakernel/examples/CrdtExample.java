@@ -16,11 +16,11 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.crdt.CrdtClient;
-import io.datakernel.crdt.CrdtClusterClient;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.local.FsCrdtClient;
+import io.datakernel.crdt.CrdtStorage;
+import io.datakernel.crdt.CrdtStorageCluster;
+import io.datakernel.crdt.local.CrdtStorageFileSystem;
 import io.datakernel.crdt.primitives.LWWSet;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
@@ -48,16 +48,16 @@ public final class CrdtExample {
 
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
-		Map<Integer, CrdtClient<String, LWWSet<String>>> clients = new HashMap<>();
+		Map<Integer, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
 
 		for (int i = 0; i < 8; i++) {
 			clients.put(i, createClient(eventloop, executor, i));
 		}
 
-		FsCrdtClient<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
-		FsCrdtClient<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
+		CrdtStorageFileSystem<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
+		CrdtStorageFileSystem<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
 
-		CrdtClusterClient<Integer, String, LWWSet<String>> cluster = CrdtClusterClient.create(eventloop, clients, LWWSet::merge)
+		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients, LWWSet::merge)
 				.withPartition(8, one)
 				.withPartition(9, two)
 				.withReplicationCount(5);
@@ -96,9 +96,9 @@ public final class CrdtExample {
 		eventloop.run();
 	}
 
-	private static FsCrdtClient<String, LWWSet<String>> createClient(Eventloop eventloop, ExecutorService executor, int n) {
+	private static CrdtStorageFileSystem<String, LWWSet<String>> createClient(Eventloop eventloop, ExecutorService executor, int n) {
 		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS/crdt_" + n));
-		return FsCrdtClient.create(eventloop, storage, LWWSet::merge, SERIALIZER);
+		return CrdtStorageFileSystem.create(eventloop, storage, LWWSet::merge, SERIALIZER);
 	}
 }
 

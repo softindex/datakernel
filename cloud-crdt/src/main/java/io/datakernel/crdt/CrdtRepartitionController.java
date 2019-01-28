@@ -30,16 +30,16 @@ import org.jetbrains.annotations.NotNull;
 
 public final class CrdtRepartitionController<I extends Comparable<I>, K extends Comparable<K>, S> implements EventloopJmxMBeanEx {
 	private final I localPartitionId;
-	private final CrdtClient<K, S> localClient;
-	private final CrdtClusterClient<I, K, S> cluster;
+	private final CrdtStorage<K, S> localClient;
+	private final CrdtStorageCluster<I, K, S> cluster;
 
-	public CrdtRepartitionController(I localPartitionId, CrdtClient<K, S> localClient, CrdtClusterClient<I, K, S> cluster) {
+	public CrdtRepartitionController(I localPartitionId, CrdtStorage<K, S> localClient, CrdtStorageCluster<I, K, S> cluster) {
 		this.localClient = localClient;
 		this.cluster = cluster;
 		this.localPartitionId = localPartitionId;
 	}
 
-	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtRepartitionController<I, K, S> create(CrdtClusterClient<I, K, S> cluster, I localPartitionId) {
+	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtRepartitionController<I, K, S> create(CrdtStorageCluster<I, K, S> cluster, I localPartitionId) {
 		return new CrdtRepartitionController<>(localPartitionId, cluster.getClients().get(localPartitionId), cluster);
 	}
 

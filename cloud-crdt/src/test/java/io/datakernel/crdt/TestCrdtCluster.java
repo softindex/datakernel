@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.RuntimeCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageTreeMap;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BinarySerializer;
@@ -46,23 +46,23 @@ public final class TestCrdtCluster {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		List<CrdtServer<String, Integer>> servers = new ArrayList<>();
-		Map<String, CrdtClient<String, Integer>> clients = new HashMap<>();
-		Map<String, RuntimeCrdtClient<String, Integer>> remoteStorages = new LinkedHashMap<>();
+		Map<String, CrdtStorage<String, Integer>> clients = new HashMap<>();
+		Map<String, CrdtStorageTreeMap<String, Integer>> remoteStorages = new LinkedHashMap<>();
 		for (int i = 0; i < 10; i++) {
-			RuntimeCrdtClient<String, Integer> storage = RuntimeCrdtClient.create(eventloop, Math::max);
+			CrdtStorageTreeMap<String, Integer> storage = CrdtStorageTreeMap.create(eventloop, Math::max);
 			InetSocketAddress address = new InetSocketAddress(5555 + i);
 			CrdtServer<String, Integer> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SERIALIZER);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
-			clients.put("server_" + i, RemoteCrdtClient.create(eventloop, address, UTF8_SERIALIZER, INT_SERIALIZER));
+			clients.put("server_" + i, CrdtStorageClient.create(eventloop, address, UTF8_SERIALIZER, INT_SERIALIZER));
 			remoteStorages.put("server_" + i, storage);
 		}
 
-		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(eventloop, Math::max);
+		CrdtStorageTreeMap<String, Integer> localStorage = CrdtStorageTreeMap.create(eventloop, Math::max);
 		for (int i = 0; i < 25; i++) {
 			localStorage.put((char) (i + 97) + "", i + 1);
 		}
-		CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(eventloop, clients, Math::max);
+		CrdtStorageCluster<String, String, Integer> cluster = CrdtStorageCluster.create(eventloop, clients, Math::max);
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(cluster.upload()))
@@ -79,8 +79,8 @@ public final class TestCrdtCluster {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		List<CrdtServer<String, Set<Integer>>> servers = new ArrayList<>();
-		Map<String, CrdtClient<String, Set<Integer>>> clients = new HashMap<>();
-		Map<String, RuntimeCrdtClient<String, Set<Integer>>> remoteStorages = new LinkedHashMap<>();
+		Map<String, CrdtStorage<String, Set<Integer>>> clients = new HashMap<>();
+		Map<String, CrdtStorageTreeMap<String, Set<Integer>>> remoteStorages = new LinkedHashMap<>();
 
 		BinaryOperator<Set<Integer>> union = (a, b) -> {
 			a.addAll(b);
@@ -88,7 +88,7 @@ public final class TestCrdtCluster {
 		};
 
 		for (int i = 0; i < 10; i++) {
-			RuntimeCrdtClient<String, Set<Integer>> storage = RuntimeCrdtClient.create(eventloop, union);
+			CrdtStorageTreeMap<String, Set<Integer>> storage = CrdtStorageTreeMap.create(eventloop, union);
 
 			storage.put("test_1", new HashSet<>(singleton(i)));
 			storage.put("test_2", new HashSet<>(singleton(i / 2)));
@@ -98,12 +98,12 @@ public final class TestCrdtCluster {
 			CrdtServer<String, Set<Integer>> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SET_SERIALIZER);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
-			clients.put("server_" + i, RemoteCrdtClient.create(eventloop, address, UTF8_SERIALIZER, INT_SET_SERIALIZER));
+			clients.put("server_" + i, CrdtStorageClient.create(eventloop, address, UTF8_SERIALIZER, INT_SET_SERIALIZER));
 			remoteStorages.put("server_" + i, storage);
 		}
 
-		RuntimeCrdtClient<String, Set<Integer>> localStorage = RuntimeCrdtClient.create(eventloop, union);
-		CrdtClusterClient<String, String, Set<Integer>> cluster = CrdtClusterClient.create(eventloop, clients, union);
+		CrdtStorageTreeMap<String, Set<Integer>> localStorage = CrdtStorageTreeMap.create(eventloop, union);
+		CrdtStorageCluster<String, String, Set<Integer>> cluster = CrdtStorageCluster.create(eventloop, clients, union);
 
 		await(cluster.download()
 				.thenCompose(supplierWithResult -> supplierWithResult

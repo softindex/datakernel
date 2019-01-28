@@ -27,7 +27,7 @@ import io.datakernel.stream.StreamSupplier;
  * @param <K> type of crdt keys
  * @param <S> type of crdt states
  */
-public interface CrdtClient<K extends Comparable<K>, S> {
+public interface CrdtStorage<K extends Comparable<K>, S> {
 
 	/**
 	 * Returns a consumer of key-state pairs to be added to the CRDT storage.

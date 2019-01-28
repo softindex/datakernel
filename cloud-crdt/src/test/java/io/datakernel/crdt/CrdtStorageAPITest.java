@@ -16,8 +16,8 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.FsCrdtClient;
-import io.datakernel.crdt.local.RocksDBCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageFileSystem;
+import io.datakernel.crdt.local.CrdtStorageRocksDB;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
@@ -52,7 +52,7 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunner.DatakernelRunnerFactory.class)
-public class CrdtClientAPITest {
+public class CrdtStorageAPITest {
 	private static final CrdtDataSerializer<String, Integer> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER);
 
 	@Rule
@@ -64,7 +64,7 @@ public class CrdtClientAPITest {
 	@Parameter(1)
 	public ICrdtClientFactory<String, Integer> clientFactory;
 
-	private CrdtClient<String, Integer> client;
+	private CrdtStorage<String, Integer> client;
 
 	@Before
 	public void setup() throws Exception {
@@ -75,7 +75,7 @@ public class CrdtClientAPITest {
 
 	@After
 	public void tearDown() {
-		if (client instanceof RocksDBCrdtClient) {
+		if (client instanceof CrdtStorageRocksDB) {
 			//			((RocksDBCrdtClient) client).getDb().close();
 		}
 	}
@@ -83,7 +83,7 @@ public class CrdtClientAPITest {
 	@FunctionalInterface
 	private interface ICrdtClientFactory<K extends Comparable<K>, S> {
 
-		CrdtClient<K, S> create(ExecutorService executor, Path testFolder, BinaryOperator<S> combiner) throws Exception;
+		CrdtStorage<K, S> create(ExecutorService executor, Path testFolder, BinaryOperator<S> combiner) throws Exception;
 	}
 
 	@Parameters(name = "{0}")
@@ -93,7 +93,7 @@ public class CrdtClientAPITest {
 						"FsCrdtClient",
 						(ICrdtClientFactory<String, Integer>) (executor, testFolder, combiner) -> {
 							Eventloop eventloop = Eventloop.getCurrentEventloop();
-							return FsCrdtClient.create(eventloop, LocalFsClient.create(eventloop, executor, testFolder), combiner, serializer);
+							return CrdtStorageFileSystem.create(eventloop, LocalFsClient.create(eventloop, executor, testFolder), combiner, serializer);
 						}
 				},
 				new Object[]{
@@ -101,9 +101,9 @@ public class CrdtClientAPITest {
 						(ICrdtClientFactory<String, Integer>) (executor, testFolder, combiner) -> {
 							Options options = new Options()
 									.setCreateIfMissing(true)
-									.setComparator(new RocksDBCrdtClient.KeyComparator<>(UTF8_SERIALIZER));
+									.setComparator(new CrdtStorageRocksDB.KeyComparator<>(UTF8_SERIALIZER));
 							RocksDB rocksdb = RocksDB.open(options, testFolder.resolve("rocksdb").normalize().toString());
-							return RocksDBCrdtClient.create(Eventloop.getCurrentEventloop(), executor, rocksdb, combiner, serializer);
+							return CrdtStorageRocksDB.create(Eventloop.getCurrentEventloop(), executor, rocksdb, combiner, serializer);
 						}
 				}
 		);

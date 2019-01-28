@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.FsCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageFileSystem;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.util.BinarySerializers;
@@ -59,7 +59,7 @@ public final class TestCrdtLocalFileConsolidation {
 
 	@Test
 	public void test() {
-		FsCrdtClient<String, Set<Integer>> client = FsCrdtClient.create(Eventloop.getCurrentEventloop(), fsClient, this::union,
+		CrdtStorageFileSystem<String, Set<Integer>> client = CrdtStorageFileSystem.create(Eventloop.getCurrentEventloop(), fsClient, this::union,
 				BinarySerializers.UTF8_SERIALIZER, BinarySerializers.ofSet(INT_SERIALIZER));
 
 		await(StreamSupplier.ofStream(Stream.of(

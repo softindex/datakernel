@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.RuntimeCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageTreeMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -35,15 +35,15 @@ public final class RepartitionTest {
 
 	@Test
 	public void test() {
-		Map<String, RuntimeCrdtClient<String, Integer>> clients = new LinkedHashMap<>();
+		Map<String, CrdtStorageTreeMap<String, Integer>> clients = new LinkedHashMap<>();
 		for (int i = 0; i < 10; i++) {
-			RuntimeCrdtClient<String, Integer> client = RuntimeCrdtClient.create(Eventloop.getCurrentEventloop(), Integer::max);
+			CrdtStorageTreeMap<String, Integer> client = CrdtStorageTreeMap.create(Eventloop.getCurrentEventloop(), Integer::max);
 			clients.put("client_" + i, client);
 		}
 		await(StreamSupplier.ofStream(IntStream.range(1, 100).mapToObj(i -> new CrdtData<>("test" + i, i)))
-				.streamTo(StreamConsumer.ofPromise(((CrdtClient<String, Integer>) clients.get("client_0")).upload())));
+				.streamTo(StreamConsumer.ofPromise(((CrdtStorage<String, Integer>) clients.get("client_0")).upload())));
 
-		CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(Eventloop.getCurrentEventloop(), clients, Integer::max)
+		CrdtStorageCluster<String, String, Integer> cluster = CrdtStorageCluster.create(Eventloop.getCurrentEventloop(), clients, Integer::max)
 				.withReplicationCount(3);
 
 		await(CrdtRepartitionController.create(cluster, "client_0").repartition());

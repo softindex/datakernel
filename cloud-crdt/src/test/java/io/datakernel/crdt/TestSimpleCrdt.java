@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.RuntimeCrdtClient;
+import io.datakernel.crdt.local.CrdtStorageTreeMap;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -36,13 +36,13 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class TestSimpleCrdt {
-	private RuntimeCrdtClient<String, Integer> remoteStorage;
+	private CrdtStorageTreeMap<String, Integer> remoteStorage;
 	private CrdtServer<String, Integer> server;
-	private CrdtClient<String, Integer> client;
+	private CrdtStorage<String, Integer> client;
 
 	@Before
 	public void setup() throws IOException {
-		remoteStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Integer::max);
+		remoteStorage = CrdtStorageTreeMap.create(getCurrentEventloop(), Integer::max);
 		remoteStorage.put("mx", 2);
 		remoteStorage.put("test", 3);
 		remoteStorage.put("test", 5);
@@ -52,12 +52,12 @@ public final class TestSimpleCrdt {
 		server = CrdtServer.create(getCurrentEventloop(), remoteStorage, UTF8_SERIALIZER, INT_SERIALIZER);
 		server.withListenAddress(new InetSocketAddress(5555)).listen();
 
-		client = RemoteCrdtClient.create(getCurrentEventloop(), new InetSocketAddress(5555), UTF8_SERIALIZER, INT_SERIALIZER);
+		client = CrdtStorageClient.create(getCurrentEventloop(), new InetSocketAddress(5555), UTF8_SERIALIZER, INT_SERIALIZER);
 	}
 
 	@Test
 	public void testUpload() {
-		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Math::max);
+		CrdtStorageTreeMap<String, Integer> localStorage = CrdtStorageTreeMap.create(getCurrentEventloop(), Math::max);
 		localStorage.put("mx", 22);
 		localStorage.put("mx", 2);
 		localStorage.put("mx", 23);
@@ -84,7 +84,7 @@ public final class TestSimpleCrdt {
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
 	public void testDownload() {
-		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Integer::max);
+		CrdtStorageTreeMap<String, Integer> localStorage = CrdtStorageTreeMap.create(getCurrentEventloop(), Integer::max);
 
 		await(client.download().thenCompose(supplierWithResult -> supplierWithResult
 				.streamTo(StreamConsumer.of(localStorage::put))

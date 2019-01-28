@@ -47,15 +47,15 @@ import java.util.function.BinaryOperator;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
-public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<CrdtClusterClient<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CrdtClusterClient.class);
+public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class);
 
-	private final Comparator<Entry<I, CrdtClient<K, S>>> comparingByKey = Comparator.comparing(Entry::getKey);
+	private final Comparator<Entry<I, CrdtStorage<K, S>>> comparingByKey = Comparator.comparing(Entry::getKey);
 
 	private final Eventloop eventloop;
-	private final Map<I, CrdtClient<K, S>> clients;
-	private final Map<I, CrdtClient<K, S>> aliveClients;
-	private final Map<I, CrdtClient<K, S>> deadClients;
+	private final Map<I, CrdtStorage<K, S>> clients;
+	private final Map<I, CrdtStorage<K, S>> aliveClients;
+	private final Map<I, CrdtStorage<K, S>> deadClients;
 
 	private final BinaryOperator<CrdtData<K, S>> combiner;
 	private final RendezvousHashSharder<I, K> shardingFunction;
@@ -76,7 +76,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	// endregion
 
 	// region creators
-	private CrdtClusterClient(Eventloop eventloop, Map<I, CrdtClient<K, S>> clients, BinaryOperator<S> combiner) {
+	private CrdtStorageCluster(Eventloop eventloop, Map<I, CrdtStorage<K, S>> clients, BinaryOperator<S> combiner) {
 		this.eventloop = eventloop;
 		this.clients = clients;
 		this.aliveClients = new LinkedHashMap<>(clients); // to keep order for indexed sharding
@@ -85,20 +85,20 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 		shardingFunction = RendezvousHashSharder.create(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
-	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtClusterClient<I, K, S> create(
-			Eventloop eventloop, Map<I, ? extends CrdtClient<K, S>> clients, BinaryOperator<S> combiner
+	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtStorageCluster<I, K, S> create(
+			Eventloop eventloop, Map<I, ? extends CrdtStorage<K, S>> clients, BinaryOperator<S> combiner
 	) {
-		return new CrdtClusterClient<>(eventloop, new HashMap<>(clients), combiner);
+		return new CrdtStorageCluster<>(eventloop, new HashMap<>(clients), combiner);
 	}
 
-	public CrdtClusterClient<I, K, S> withPartition(I partitionId, CrdtClient<K, S> client) {
+	public CrdtStorageCluster<I, K, S> withPartition(I partitionId, CrdtStorage<K, S> client) {
 		clients.put(partitionId, client);
 		aliveClients.put(partitionId, client);
 		recompute();
 		return this;
 	}
 
-	public CrdtClusterClient<I, K, S> withReplicationCount(int replicationCount) {
+	public CrdtStorageCluster<I, K, S> withReplicationCount(int replicationCount) {
 		this.replicationCount = replicationCount;
 		recompute();
 		return this;
@@ -106,15 +106,15 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	// endregion
 
 	// region getters
-	public Map<I, ? extends CrdtClient<K, S>> getClients() {
+	public Map<I, ? extends CrdtStorage<K, S>> getClients() {
 		return Collections.unmodifiableMap(clients);
 	}
 
-	public Map<I, CrdtClient<K, S>> getAliveClients() {
+	public Map<I, CrdtStorage<K, S>> getAliveClients() {
 		return Collections.unmodifiableMap(aliveClients);
 	}
 
-	public Map<I, CrdtClient<K, S>> getDeadClients() {
+	public Map<I, CrdtStorage<K, S>> getDeadClients() {
 		return Collections.unmodifiableMap(deadClients);
 	}
 
@@ -169,7 +169,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	}
 
 	private void markAlive(I partitionId) {
-		CrdtClient<K, S> removed = deadClients.remove(partitionId);
+		CrdtStorage<K, S> removed = deadClients.remove(partitionId);
 		if (removed != null) {
 			aliveClients.put(partitionId, removed);
 			recompute();
@@ -178,7 +178,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 	}
 
 	public void markDead(I partitionId, Throwable err) {
-		CrdtClient<K, S> removed = aliveClients.remove(partitionId);
+		CrdtStorage<K, S> removed = aliveClients.remove(partitionId);
 		if (removed != null) {
 			deadClients.put(partitionId, removed);
 			recompute();
@@ -206,7 +206,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 							})
 							.collect(toList());
 					if (!anyConnection[0]) {
-						return Promise.ofException(new StacklessException(CrdtClusterClient.class, "No successful connections"));
+						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
 					}
 					ShardingStreamSplitter<CrdtData<K, S>, K> shplitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);
 					successes.forEach(consumer -> shplitter.newOutput().streamTo(consumer));
@@ -230,7 +230,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 							.map(Try::get)
 							.collect(toList());
 					if (successes.isEmpty()) {
-						return Promise.ofException(new StacklessException(CrdtClusterClient.class, "No successful connections"));
+						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
 					}
 
 					StreamReducerSimple<K, CrdtData<K, S>, CrdtData<K, S>, CrdtData<K, S>> reducer =
@@ -261,7 +261,7 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 							.map(Try::get)
 							.collect(toList());
 					if (successes.isEmpty()) {
-						return Promise.ofException(new StacklessException(CrdtClusterClient.class, "No successful connections"));
+						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
 					}
 					StreamSplitter<K> splitter = StreamSplitter.create();
 					successes.forEach(consumer -> splitter.newOutput().streamTo(consumer));

@@ -18,10 +18,10 @@ package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
-import io.datakernel.crdt.CrdtClusterClient;
-import io.datakernel.crdt.RemoteCrdtClient;
-import io.datakernel.crdt.local.FsCrdtClient;
-import io.datakernel.crdt.local.RuntimeCrdtClient;
+import io.datakernel.crdt.CrdtStorageClient;
+import io.datakernel.crdt.CrdtStorageCluster;
+import io.datakernel.crdt.local.CrdtStorageFileSystem;
+import io.datakernel.crdt.local.CrdtStorageTreeMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.Initializer;
 
@@ -36,15 +36,15 @@ import static io.datakernel.util.Preconditions.checkState;
 public final class Initializers {
 	private Initializers() {}
 
-	public static <K extends Comparable<K>, S> Initializer<FsCrdtClient<K, S>> ofFsCrdtClient(Config config) {
+	public static <K extends Comparable<K>, S> Initializer<CrdtStorageFileSystem<K, S>> ofFsCrdtClient(Config config) {
 		return fsCrdtClient ->
 				fsCrdtClient.withConsolidationFolder(config.get("metafolder.consolidation", ".consolidation"))
 						.withTombstoneFolder(config.get("metafolder.tombstones", ".tombstones"))
 						.withConsolidationMargin(config.get(ofDuration(), "consolidationMargin", Duration.ofMinutes(30)));
 	}
 
-	public static <K extends Comparable<K>, S> Initializer<CrdtClusterClient<String, K, S>> ofCrdtCluster(
-			Config config, RuntimeCrdtClient<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
+	public static <K extends Comparable<K>, S> Initializer<CrdtStorageCluster<String, K, S>> ofCrdtCluster(
+			Config config, CrdtStorageTreeMap<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
 		return cluster -> {
 			Eventloop eventloop = localClient.getEventloop();
 
@@ -53,7 +53,7 @@ public final class Initializers {
 
 			for (Map.Entry<String, Config> entry : partitions.entrySet()) {
 				InetSocketAddress address = ConfigConverters.ofInetSocketAddress().get(entry.getValue());
-				cluster.withPartition(entry.getKey(), RemoteCrdtClient.create(eventloop, address, descriptor.getSerializer()));
+				cluster.withPartition(entry.getKey(), CrdtStorageClient.create(eventloop, address, descriptor.getSerializer()));
 			}
 			cluster.withReplicationCount(config.get(ofInteger(), "replicationCount", 1));
 		};

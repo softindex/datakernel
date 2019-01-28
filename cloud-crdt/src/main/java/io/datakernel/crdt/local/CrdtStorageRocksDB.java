@@ -19,9 +19,9 @@ package io.datakernel.crdt.local;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.crdt.CrdtClient;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
+import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
@@ -47,7 +47,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BinaryOperator;
 
-public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements CrdtClient<K, S>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final RocksDB db;
@@ -75,9 +75,9 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	private final EventStats singleRemoves = EventStats.create(Duration.ofMinutes(5));
 	// endregion
 
-	CurrentTimeProvider currentTimeProvider = CurrentTimeProvider.ofSystem();
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	private RocksDBCrdtClient(Eventloop eventloop, ExecutorService executor, RocksDB db, BinaryOperator<S> combiner,
+	private CrdtStorageRocksDB(Eventloop eventloop, ExecutorService executor, RocksDB db, BinaryOperator<S> combiner,
 			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		this.eventloop = eventloop;
 		this.executor = executor;
@@ -89,17 +89,17 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 		writeOptions = new WriteOptions().setDisableWAL(true);
 	}
 
-	public static <K extends Comparable<K>, S> RocksDBCrdtClient<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
+	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
 			BinaryOperator<S> combiner, CrdtDataSerializer<K, S> serializer) {
-		return new RocksDBCrdtClient<>(eventloop, executor, db, combiner, serializer.getKeySerializer(), serializer.getStateSerializer());
+		return new CrdtStorageRocksDB<>(eventloop, executor, db, combiner, serializer.getKeySerializer(), serializer.getStateSerializer());
 	}
 
-	public static <K extends Comparable<K>, S> RocksDBCrdtClient<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
+	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
 			BinaryOperator<S> combiner, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
-		return new RocksDBCrdtClient<>(eventloop, executor, db, combiner, keySerializer, stateSerializer);
+		return new CrdtStorageRocksDB<>(eventloop, executor, db, combiner, keySerializer, stateSerializer);
 	}
 
-	public RocksDBCrdtClient withBufferSize(MemSize bufferSize) {
+	public CrdtStorageRocksDB withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
 		return this;
 	}
@@ -142,7 +142,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 		}
 
 		buf.rewind();
-		buf.writeLong(currentTimeProvider.currentTimeMillis()); // new timestamp
+		buf.writeLong(now.currentTimeMillis()); // new timestamp
 		buf.tail(stateSerializer.encode(buf.array(), buf.tail(), state));
 		try {
 			db.put(writeOptions, keyBytes, buf.asArray());

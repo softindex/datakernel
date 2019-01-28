@@ -20,9 +20,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.crdt.CrdtClient;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
+import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelDeserializer;
@@ -60,9 +60,9 @@ import java.util.stream.Stream;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 
-public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClient<K, S>,
-		Initializable<FsCrdtClient<K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(FsCrdtClient.class);
+public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements CrdtStorage<K, S>,
+		Initializable<CrdtStorageFileSystem<K, S>>, EventloopService, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageFileSystem.class);
 
 	private final Eventloop eventloop;
 	private final FsClient client;
@@ -89,7 +89,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 	// endregion
 
 	// region creators
-	private FsCrdtClient(
+	private CrdtStorageFileSystem(
 			Eventloop eventloop,
 			FsClient client,
 			BinaryOperator<CrdtData<K, S>> combiner,
@@ -105,45 +105,45 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		this.tombstoneFolderClient = tombstoneFolderClient;
 	}
 
-	public static <K extends Comparable<K>, S> FsCrdtClient<K, S> create(
+	public static <K extends Comparable<K>, S> CrdtStorageFileSystem<K, S> create(
 			Eventloop eventloop, FsClient client, BinaryOperator<S> combiner,
 			CrdtDataSerializer<K, S> serializer) {
-		return new FsCrdtClient<>(eventloop, client, (a, b) -> new CrdtData<>(a.getKey(), combiner.apply(a.getState(), b.getState())),
+		return new CrdtStorageFileSystem<>(eventloop, client, (a, b) -> new CrdtData<>(a.getKey(), combiner.apply(a.getState(), b.getState())),
 				serializer, client.subfolder(".consolidation"), client.subfolder(".tombstones"));
 	}
 
-	public static <K extends Comparable<K>, S> FsCrdtClient<K, S> create(
+	public static <K extends Comparable<K>, S> CrdtStorageFileSystem<K, S> create(
 			Eventloop eventloop, FsClient client, BinaryOperator<S> combiner,
 			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return create(eventloop, client, combiner, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
-	public FsCrdtClient<K, S> withConsolidationMargin(Duration consolidationMargin) {
+	public CrdtStorageFileSystem<K, S> withConsolidationMargin(Duration consolidationMargin) {
 		this.consolidationMargin = consolidationMargin;
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withNamingStrategy(Function<String, String> namingStrategy) {
+	public CrdtStorageFileSystem<K, S> withNamingStrategy(Function<String, String> namingStrategy) {
 		this.namingStrategy = namingStrategy;
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withConsolidationFolder(String subfolder) {
+	public CrdtStorageFileSystem<K, S> withConsolidationFolder(String subfolder) {
 		consolidationFolderClient = client.subfolder(subfolder);
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withTombstoneFolder(String subfolder) {
+	public CrdtStorageFileSystem<K, S> withTombstoneFolder(String subfolder) {
 		tombstoneFolderClient = client.subfolder(subfolder);
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withConsolidationFolderClient(FsClient consolidationFolderClient) {
+	public CrdtStorageFileSystem<K, S> withConsolidationFolderClient(FsClient consolidationFolderClient) {
 		this.consolidationFolderClient = consolidationFolderClient;
 		return this;
 	}
 
-	public FsCrdtClient<K, S> withTombstoneFolderClient(FsClient tombstoneFolderClient) {
+	public CrdtStorageFileSystem<K, S> withTombstoneFolderClient(FsClient tombstoneFolderClient) {
 		this.tombstoneFolderClient = tombstoneFolderClient;
 		return this;
 	}

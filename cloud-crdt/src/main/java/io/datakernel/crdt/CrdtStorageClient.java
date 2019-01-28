@@ -49,7 +49,7 @@ import static io.datakernel.crdt.CrdtMessaging.CrdtResponses.*;
 import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 
-public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtClient<K, S>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 	private final CrdtDataSerializer<K, S> serializer;
@@ -69,7 +69,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 	// endregion
 
 	//region creators
-	private RemoteCrdtClient(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
+	private CrdtStorageClient(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
 		this.eventloop = eventloop;
 		this.address = address;
 		this.serializer = serializer;
@@ -77,17 +77,17 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> RemoteCrdtClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
+	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
 			CrdtDataSerializer<K, S> serializer) {
-		return new RemoteCrdtClient<>(eventloop, address, serializer);
+		return new CrdtStorageClient<>(eventloop, address, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> RemoteCrdtClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
+	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
 			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
-		return new RemoteCrdtClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
+		return new CrdtStorageClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
-	public RemoteCrdtClient<K, S> withSocketSettings(SocketSettings socketSettings) {
+	public CrdtStorageClient<K, S> withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
 		return this;
 	}
@@ -130,7 +130,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 								return Promise.complete();
 							}
 							if (response instanceof ServerError) {
-								return Promise.ofException(new StacklessException(RemoteCrdtClient.class, ((ServerError) response).getMsg()));
+								return Promise.ofException(new StacklessException(CrdtStorageClient.class, ((ServerError) response).getMsg()));
 							}
 							return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + DownloadStarted.class.getSimpleName()));
 						})
@@ -191,7 +191,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 				return Promise.complete();
 			}
 			if (response instanceof ServerError) {
-				return Promise.ofException(new StacklessException(RemoteCrdtClient.class, ((ServerError) response).getMsg()));
+				return Promise.ofException(new StacklessException(CrdtStorageClient.class, ((ServerError) response).getMsg()));
 			}
 			return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + expected));
 		};

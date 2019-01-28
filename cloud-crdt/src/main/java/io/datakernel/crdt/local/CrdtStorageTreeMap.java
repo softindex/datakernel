@@ -17,8 +17,8 @@
 package io.datakernel.crdt.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.crdt.CrdtClient;
 import io.datakernel.crdt.CrdtData;
+import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventStats;
@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toCollection;
 
-public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<RuntimeCrdtClient<K, S>>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageTreeMap<K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageTreeMap<K, S>>, EventloopService, EventloopJmxMBeanEx {
 	private static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
@@ -67,14 +67,14 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 	private final EventStats singleRemoves = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 	// endregion
 
-	private RuntimeCrdtClient(Eventloop eventloop, BinaryOperator<S> combiner) {
+	private CrdtStorageTreeMap(Eventloop eventloop, BinaryOperator<S> combiner) {
 		this.eventloop = eventloop;
 		this.combiner = (a, b) -> new StateWithTimestamp<>(combiner.apply(a.state, b.state), Math.max(a.timestamp, b.timestamp));
 		storage = new TreeMap<>();
 	}
 
-	public static <K extends Comparable<K>, V> RuntimeCrdtClient<K, V> create(Eventloop eventloop, BinaryOperator<V> combiner) {
-		return new RuntimeCrdtClient<>(eventloop, combiner);
+	public static <K extends Comparable<K>, V> CrdtStorageTreeMap<K, V> create(Eventloop eventloop, BinaryOperator<V> combiner) {
+		return new CrdtStorageTreeMap<>(eventloop, combiner);
 	}
 
 	@NotNull
@@ -87,11 +87,12 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		long timestamp = eventloop.currentTimeMillis();
-		return Promise.of(StreamConsumer.<CrdtData<K, S>>of(data -> {
-			K key = data.getKey();
-			removedKeys.remove(key);
-			storage.merge(key, new StateWithTimestamp<>(data.getState(), timestamp), combiner);
-		})
+		return Promise.of(StreamConsumer.<CrdtData<K, S>>of(
+				data -> {
+					K key = data.getKey();
+					removedKeys.remove(key);
+					storage.merge(key, new StateWithTimestamp<>(data.getState(), timestamp), combiner);
+				})
 				.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
 				.withLateBinding());
 	}
@@ -104,11 +105,12 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 				(timestamp == 0 ? stream : stream.filter(entry -> entry.getValue().timestamp >= timestamp))
 						.map(entry -> new CrdtData<>(entry.getKey(), entry.getValue().state)))
 				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
-				.withEndOfStream(eos -> eos.whenComplete(($, e) -> {
-					downloadCalls--;
-					removedWhileDownloading.forEach(storage::remove);
-					removedWhileDownloading.clear();
-				}))
+				.withEndOfStream(eos ->
+						eos.whenComplete(($, e) -> {
+							downloadCalls--;
+							removedWhileDownloading.forEach(storage::remove);
+							removedWhileDownloading.clear();
+						}))
 				.withLateBinding());
 	}
 
