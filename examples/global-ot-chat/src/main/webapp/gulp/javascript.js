@@ -1,16 +1,16 @@
 'use strict';
 
-var gulp = require('gulp');
-var browserify = require('browserify');
-var fs = require('fs');
-var del = require('del');
-var rename = require('gulp-rename')
+const gulp = require('gulp');
+const browserify = require('browserify');
+const fs = require('fs');
+const del = require('del');
 
-var BUNDLE_PATH = 'src/main/resources/static/js/bundle.js';
+const SRC_PATH = './src/main/webapp/src';
+const BUNDLE_PATH = 'src/main/resources/static/js/bundle.js';
 
 function createBundle() {
-	return browserify('./src/main/webapp/src')
-        .transform('babelify', {presets: ['react']})
+	return browserify(SRC_PATH)
+        .transform('babelify')
         .bundle()
         .pipe(fs.createWriteStream(BUNDLE_PATH));
 }

@@ -4,7 +4,8 @@
   "license": "Apache-2.0",
   "repository": "https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo",
   "scripts": {
-    "build": "gulp"
+    "build": "gulp",
+    "rebundle": "gulp rebundle"
   },
   "dependencies": {
     "clipboard-copy": "^2.0.1",

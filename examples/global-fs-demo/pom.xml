@@ -70,6 +70,7 @@
 											<mainClass>io.global.fs.demo.GlobalFsDemoApp</mainClass>
 										</transformer>
 									</transformers>
+									<finalName>fs-demo</finalName>
 								</configuration>
 							</execution>
 						</executions>

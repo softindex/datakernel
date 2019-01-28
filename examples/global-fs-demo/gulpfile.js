@@ -26,6 +26,7 @@ gulp.task('java:package', shell.task(['mvn package']));
 gulp.task('java:run', shell.task(['mvn exec:java -Dexec.mainClass=io.global.fs.demo.GlobalFsDemoApp']));
 
 // General tasks
+gulp.task('rebundle', gulp.series('js:clean', 'js:bundle'));
 gulp.task('clean', gulp.parallel('js:clean', 'java:clean'));
 gulp.task('test', gulp.series('java:test'));
 gulp.task('build', gulp.series('clean', 'js:bundle', 'java:compile'));
