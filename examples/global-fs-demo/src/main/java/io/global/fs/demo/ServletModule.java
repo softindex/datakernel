@@ -11,12 +11,12 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
-import io.datakernel.util.TypeT;
 import io.global.common.*;
 import io.global.fs.api.GlobalFsCheckpoint;
+import io.global.fs.demo.RepoManager.Repo;
 import io.global.fs.http.RemoteFsServlet;
+import io.global.fs.local.GlobalFsAdapter;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.fs.local.GlobalFsGateway;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.HashMap;
@@ -25,19 +25,18 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class ServletModule extends AbstractModule {
-
-	public static final StructuredCodec<PubKey> PUB_KEY_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
-	public static final StructuredCodec<PrivKey> PRIV_KEY_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
+	private static final StructuredCodec<PubKey> PUB_KEY_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
+	private static final StructuredCodec<PrivKey> PRIV_KEY_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
 
 	private static final StructuredCodec<Set<PubKey>> PUB_KEYS_CODEC = ofSet(PUB_KEY_CODEC);
-	private static final StructuredCodec<Set<Hash>> SIM_KEYS_CODEC = REGISTRY.get(new TypeT<Set<Hash>>() {});
+	private static final StructuredCodec<Hash> HASH_CODEC = REGISTRY.get(Hash.class);
+	private static final StructuredCodec<Set<Hash>> SIM_KEYS_CODEC = ofSet(HASH_CODEC);
 
 	private static final StructuredCodec<KeyPair> KEY_PAIR_CODEC =
 			tuple(KeyPair::new,
@@ -68,11 +67,20 @@ public final class ServletModule extends AbstractModule {
 		return MiddlewareServlet.create()
 				.with(GET, "/", SingleResourceStaticServlet.create(eventloop, resourceLoader, "index.html"))
 				.with(GET, "/newRepo", request -> {
-
 					KeyPair pair = repoManager.newRepo();
 					return Promise.of(HttpResponse.ok200()
 							.withHeader(CONTENT_TYPE, CONTENT_TYPE_JSON)
 							.withBody(JsonUtils.toJson(KEY_PAIR_CODEC, pair).getBytes(UTF_8)));
+				})
+				.with(GET, "/addRepo/:privKey", request -> {
+					try {
+						PubKey pubKey = repoManager.addRepo(PrivKey.fromString(request.getPathParameter("privKey")));
+						return Promise.of(HttpResponse.ok200()
+								.withHeader(CONTENT_TYPE, CONTENT_TYPE_JSON)
+								.withBody(JsonUtils.toJson(PUB_KEY_CODEC, pubKey).getBytes(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.with(GET, "/listRepos", request ->
 						Promise.of(HttpResponse.ok200()
@@ -81,30 +89,42 @@ public final class ServletModule extends AbstractModule {
 				.with(GET, "/deleteRepo/:privKey", request -> {
 					try {
 						PrivKey privKey = PrivKey.fromString(request.getPathParameter("privKey"));
-						repoManager.remove(privKey);
+						repoManager.delete(privKey);
 						return Promise.of(HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.with("/:owner", createPubKeyServlet(eventloop, resourceLoader, driver, repoManager))
-				.with("", createSimKeyStorageServlet(driver))
-				.withFallback(StaticServlet.create(eventloop, resourceLoader))
-				.map(response -> response.withHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*"));
+				.with("", createSimKeyServlet(repoManager))
+				.withFallback(StaticServlet.create(eventloop, resourceLoader));
 	}
 
 	private AsyncServlet createPubKeyServlet(Eventloop eventloop, StaticLoader resourceLoader, GlobalFsDriver driver, RepoManager repoManager) {
-		Map<GlobalFsGateway, RemoteFsServlet> servlets = new HashMap<>();
+		Map<GlobalFsAdapter, RemoteFsServlet> servlets = new HashMap<>();
 		return MiddlewareServlet.create()
 				.with(GET, "/", SingleResourceStaticServlet.create(eventloop, resourceLoader, "key-view.html"))
 				.with("/gateway", MiddlewareServlet.create()
 						.withFallback(request -> {
 							try {
 								PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-								String privKeyStr = request.getCookieOrNull("key");
-								GlobalFsGateway gateway = privKeyStr != null ? repoManager.get(PrivKey.fromString(privKeyStr)) : repoManager.get(pubKey);
+								String privKeyStr = request.getHeaderOrNull(HttpHeaders.of("Key"));
+								PrivKey privKey = privKeyStr != null ? PrivKey.fromString(privKeyStr) : null;
+								Repo repo = repoManager.getRepo(pubKey);
+								if (repo == null) {
+									throw HttpException.ofCode(404, "No such repo");
+								}
+								GlobalFsAdapter gateway;
+								if (privKey != null) {
+									if (!privKey.computePubKey().equals(pubKey)) {
+										return Promise.ofException(HttpException.ofCode(400, "Given private key does not match requested public key"));
+									}
+									gateway = repo.getGateway();
+								} else {
+									gateway = repo.getPublicGateway();
+								}
 								return servlets.computeIfAbsent(gateway, RemoteFsServlet::create).serve(request);
-							} catch (ParseException e) {
+							} catch (ParseException | HttpException e) {
 								throw new UncheckedException(e);
 							}
 						}))
@@ -122,34 +142,41 @@ public final class ServletModule extends AbstractModule {
 				});
 	}
 
-	private MiddlewareServlet createSimKeyStorageServlet(GlobalFsDriver driver) {
-		Map<Hash, SimKey> simKeys = new HashMap<>();
+	private MiddlewareServlet createSimKeyServlet(RepoManager repoManager) {
 		return MiddlewareServlet.create()
-				.with(GET, "/listKeys", request -> Promise.of(HttpResponse.ok200()
-						.withBody(JsonUtils.toJson(SIM_KEYS_CODEC, simKeys.keySet())
-								.getBytes(UTF_8))
-						.withHeader(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON)))
-				.with(GET, "/newKey", request -> {
-					SimKey simKey = SimKey.generate();
-					simKeys.put(Hash.sha1(simKey.getBytes()), simKey);
-					return Promise.of(HttpResponse.ok200());
-				})
-				.with(GET, "/setKey/:hash", request -> {
+				.with(GET, "/listKeys", request -> {
 					try {
-						String hashStr = request.getPathParameterOrNull("hash");
-						if (hashStr == null) {
-							driver.getPrivateKeyStorage().changeCurrentSimKey(null);
-							return Promise.of(HttpResponse.ok200());
+						Repo repo = repoManager.getRepo(getPrivKey(request).computePubKey());
+						if (repo == null) {
+							throw HttpException.ofCode(404, "No such repo");
 						}
-						SimKey simKey = simKeys.get(Hash.parseString(hashStr));
-						if (simKey == null) {
-							return Promise.ofException(HttpException.ofCode(400, "No such key"));
+						return Promise.of(HttpResponse.ok200()
+								.withBody(JsonUtils.toJson(SIM_KEYS_CODEC, repo.listKeys()).getBytes(UTF_8))
+								.withHeader(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON));
+					} catch (ParseException | HttpException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/newKey", request -> {
+					try {
+						Repo repo = repoManager.getRepo(getPrivKey(request).computePubKey());
+						if (repo == null) {
+							throw HttpException.ofCode(404, "No such repo");
 						}
-						driver.getPrivateKeyStorage().changeCurrentSimKey(simKey);
-						return Promise.of(HttpResponse.ok200());
-					} catch (ParseException e) {
+						return Promise.of(HttpResponse.ok200()
+								.withBody(JsonUtils.toJson(HASH_CODEC, repo.newKey()).getBytes(UTF_8))
+								.withHeader(CONTENT_TYPE, CONTENT_TYPE_JSON));
+					} catch (ParseException | HttpException e) {
 						return Promise.ofException(e);
 					}
 				});
+	}
+
+	private PrivKey getPrivKey(HttpRequest request) throws ParseException, HttpException {
+		String cookieStr = request.getHeaderOrNull(HttpHeaders.of("Key"));
+		if (cookieStr == null) {
+			throw HttpException.ofCode(400, "No private key cookie");
+		}
+		return PrivKey.fromString(cookieStr);
 	}
 }

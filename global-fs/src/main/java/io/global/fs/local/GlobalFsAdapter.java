@@ -50,12 +50,12 @@ import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
-public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGateway> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsGateway.class);
+public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsAdapter.class);
 
-	public static final ConstantException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new ConstantException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size");
-	public static final ConstantException UPK_UPLOAD = new ConstantException(GlobalFsGateway.class, "Trying to upload to public key without knowing it's private key");
-	public static final ConstantException UPK_DELETE = new ConstantException(GlobalFsGateway.class, "Trying to delete file at public key without knowing it's private key");
+	public static final ConstantException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new ConstantException(GlobalFsAdapter.class, "Trying to upload at offset greater than known file size");
+	public static final ConstantException UPK_UPLOAD = new ConstantException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
+	public static final ConstantException UPK_DELETE = new ConstantException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");
 
 	private static final StructuredCodec<GlobalFsCheckpoint> METADATA_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
 
@@ -69,29 +69,12 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 
 	private final CheckpointPosStrategy checkpointPosStrategy;
 
-	GlobalFsGateway(GlobalFsDriver driver, GlobalFsNode node, PubKey space, @Nullable PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
+	GlobalFsAdapter(GlobalFsDriver driver, GlobalFsNode node, PubKey space, @Nullable PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
 		this.driver = driver;
 		this.node = node;
 		this.space = space;
 		this.privKey = privKey;
 		this.checkpointPosStrategy = checkpointPosStrategy;
-	}
-
-	private Promise<ChannelConsumer<ByteBuf>> doUpload(String filename, @Nullable GlobalFsCheckpoint metadata, long offset, long skip, SHA256Digest startingDigest) {
-		long[] size = {offset + skip};
-		Promise<SimKey> simKey = metadata != null ?
-				driver.getPrivateKeyStorage().getKey(space, metadata.getSimKeyHash()) :
-				Promise.of(driver.getPrivateKeyStorage().getCurrentSimKey());
-		return simKey.thenCompose(key ->
-				node.upload(space, filename, offset + skip)
-						.thenApply(consumer -> {
-							Hash simKeyHash = key != null ? Hash.sha1(key.getBytes()) : null;
-							return consumer
-									.transformWith(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest, simKeyHash))
-									.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset + skip))
-									.peek(buf -> size[0] += buf.readRemaining())
-									.transformWith(ChannelByteRanger.drop(skip));
-						}));
 	}
 
 	public void setPrivKey(PrivKey privKey) {
@@ -104,8 +87,21 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 		this.privKey = privKey;
 	}
 
-	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+	private Promise<ChannelConsumer<ByteBuf>> doUpload(String filename, long offset, @Nullable SimKey key, long skip, SHA256Digest startingDigest) {
+		long[] size = {offset + skip};
+		return node.upload(space, filename, offset + skip)
+				.thenApply(consumer -> {
+					Hash simKeyHash = key != null ? Hash.sha1(key.getBytes()) : null;
+					assert privKey != null : "privKey cannot be null here";
+					return consumer
+							.transformWith(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest, simKeyHash))
+							.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset + skip))
+							.peek(buf -> size[0] += buf.readRemaining())
+							.transformWith(ChannelByteRanger.drop(skip));
+				});
+	}
+
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset, @Nullable SimKey key) {
 		if (privKey == null) {
 			return Promise.ofException(UPK_UPLOAD);
 		}
@@ -117,24 +113,32 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 					}
 					if (signedCheckpoint == null) {
 						return offset == -1 || offset == 0 ?
-								doUpload(filename, null, 0, 0, new SHA256Digest()) :
+								doUpload(filename, 0, key != null ? key : driver.getPrivateKeyStorage().getCurrentSimKey(), 0, new SHA256Digest()) :
 								Promise.ofException(UPLOAD_OFFSET_EXCEEDS_FILE_SIZE);
 					}
-					if (signedCheckpoint.getValue().isTombstone()) {
+					GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
+					if (checkpoint.isTombstone()) {
 						return Promise.ofException(UPLOADING_TO_TOMBSTONE);
 					}
 					if (offset == -1) {
 						return Promise.ofException(FILE_ALREADY_EXISTS);
 					}
-					GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
 					long metaSize = checkpoint.getPosition();
 					if (offset > metaSize) {
 						return Promise.ofException(UPLOAD_OFFSET_EXCEEDS_FILE_SIZE);
 					}
 					long skip = metaSize - offset;
-					return doUpload(filename, checkpoint, offset, skip, checkpoint.getDigest());
+					assert checkpoint.getDigest() != null : "tombstone check above";
+
+					return driver.getPrivateKeyStorage().getKey(space, checkpoint.getSimKeyHash())
+							.thenCompose(k -> doUpload(filename, offset, k, skip, checkpoint.getDigest()));
 				})
-				.whenComplete(toLogger(logger, "upload", filename, offset, this));
+				.whenComplete(toLogger(logger, "upload", filename, offset, key, this));
+	}
+
+	@Override
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+		return upload(filename, offset, null);
 	}
 
 	@Override

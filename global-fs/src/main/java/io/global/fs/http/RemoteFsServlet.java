@@ -73,7 +73,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 							boundary = boundary.substring(1, boundary.length() - 1);
 						}
 						return MultipartParser.create(boundary)
-								.splitByFiles(bodyStream, name -> ChannelConsumer.ofPromise(client.upload(name, offset)))
+								.splitByFiles(bodyStream, upload -> ChannelConsumer.ofPromise(client.upload(upload, offset)))
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -88,47 +88,47 @@ public final class RemoteFsServlet implements WithMiddleware {
 						if (headerRange == null) {
 							return client.getMetadata(path)
 									.thenCompose(meta -> {
-										if (meta != null) {
-											return client.download(path)
-													.thenApply(HttpResponse.ok200()
-															.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-															.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
-															.withHeader(ACCEPT_RANGES, "bytes")
-															.withHeader(CONTENT_LENGTH, Long.toString(meta.getSize()))
-															::withBodyStream);
+										if (meta == null) {
+											return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "File '" + path + "' not found"));
 										}
-										return Promise.ofException(HttpException.ofCode(404, "File '" + path + "' not found"));
+										return client.download(path, 0, -1)
+												.thenApply(HttpResponse.ok200()
+														.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+														.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
+														.withHeader(ACCEPT_RANGES, "bytes")
+														.withHeader(CONTENT_LENGTH, Long.toString(meta.getSize()))
+														::withBodyStream);
 									});
 						}
 						if (!headerRange.startsWith("bytes=")) {
-							return Promise.ofException(HttpException.ofCode(416, "Invalid range header (not in bytes)"));
+							throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
 						}
 						headerRange = headerRange.substring(6);
 						if (!headerRange.matches("(\\d+)?-(\\d+)?")) {
-							return Promise.ofException(HttpException.ofCode(416, "Only single part ranges are allowed"));
+							throw HttpException.ofCode(416, "Only single part ranges are allowed");
 						}
 						String[] parts = headerRange.split("-", 2);
 						long offset = parts[0].isEmpty() ? 0 : Long.parseLong(parts[0]);
 						long endOffset = parts[1].isEmpty() ? -1 : Long.parseLong(parts[1]);
 						if (endOffset != -1 && offset > endOffset) {
-							return Promise.ofException(HttpException.ofCode(416, "Invalid range"));
+							throw HttpException.ofCode(416, "Invalid range");
 						}
 						return client.getMetadata(path)
 								.thenCompose(meta -> {
-									if (meta != null) {
-										long length = (endOffset == -1 ? meta.getSize() : endOffset) - offset + 1;
-										return client.download(path, offset, length)
-												.thenApply(HttpResponse.ok206()
-														.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-														.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
-														.withHeader(ACCEPT_RANGES, "bytes")
-														.withHeader(CONTENT_RANGE, offset + "-" + endOffset + "/" + meta.getSize())
-														.withHeader(CONTENT_LENGTH, "" + length)
-														::withBodyStream);
+									if (meta == null) {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "File '" + path + "' not found"));
 									}
-									return Promise.ofException(HttpException.ofCode(404, "File '" + path + "' not found"));
+									long length = (endOffset == -1 ? meta.getSize() : endOffset) - offset + 1;
+									return client.download(path, offset, length)
+											.thenApply(HttpResponse.ok206()
+													.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+													.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
+													.withHeader(ACCEPT_RANGES, "bytes")
+													.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + meta.getSize())
+													.withHeader(CONTENT_LENGTH, "" + length)
+													::withBodyStream);
 								});
-					} catch (ParseException e) {
+					} catch (ParseException | HttpException e) {
 						return Promise.ofException(e);
 					}
 				})

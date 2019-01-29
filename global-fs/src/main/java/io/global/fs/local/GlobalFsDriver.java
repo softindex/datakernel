@@ -47,8 +47,8 @@ public final class GlobalFsDriver {
 		return new GlobalFsDriver(node, pks, checkpointPosStrategy);
 	}
 
-	public GlobalFsGateway gatewayFor(PubKey pubKey) {
-		return new GlobalFsGateway(this, node, pubKey, privateKeyStorage.getManagedKey(pubKey), checkpointPosStrategy);
+	public GlobalFsAdapter gatewayFor(PubKey pubKey) {
+		return new GlobalFsAdapter(this, node, pubKey, privateKeyStorage.getManagedKey(pubKey), checkpointPosStrategy);
 	}
 
 	public PrivateKeyStorage getPrivateKeyStorage() {

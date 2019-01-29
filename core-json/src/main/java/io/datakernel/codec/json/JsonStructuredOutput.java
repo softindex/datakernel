@@ -14,13 +14,15 @@ import java.util.Map;
 public class JsonStructuredOutput implements StructuredOutput {
 	final JsonWriter writer;
 
-	public JsonStructuredOutput(JsonWriter writer) {this.writer = writer;}
+	public JsonStructuredOutput(JsonWriter writer) {
+		this.writer = writer;
+	}
 
 	@Override
 	public void writeBoolean(boolean value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -29,7 +31,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeByte(byte value) {
 		try {
 			writer.value(value & 0xFF);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -38,7 +40,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeInt(int value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -47,7 +49,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeLong(long value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -56,7 +58,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeInt32(int value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -65,7 +67,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeLong64(long value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -74,7 +76,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeFloat(float value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -83,7 +85,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeDouble(double value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -97,7 +99,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeBytes(byte[] bytes) {
 		try {
 			writer.value(Base64.getEncoder().encodeToString(bytes));
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -106,7 +108,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeString(String value) {
 		try {
 			writer.value(value);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -115,7 +117,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeNull() {
 		try {
 			writer.nullValue();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -137,7 +139,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 				encoder.encode(this, item);
 			}
 			writer.endArray();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -162,7 +164,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 				}
 				writer.endArray();
 			}
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -173,7 +175,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 			writer.beginArray();
 			encoder.encode(this, value);
 			writer.endArray();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -184,7 +186,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 			writer.beginObject();
 			encoder.encode(this, value);
 			writer.endObject();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
@@ -193,7 +195,7 @@ public class JsonStructuredOutput implements StructuredOutput {
 	public void writeKey(String field) {
 		try {
 			writer.name(field);
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 			throw new AssertionError();
 		}
 	}
