@@ -28,12 +28,15 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.common.api.DiscoveryCommand.*;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
@@ -41,6 +44,8 @@ import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HttpDiscoveryService implements DiscoveryService {
+	private static final Logger logger = LoggerFactory.getLogger(HttpDiscoveryService.class);
+
 	private final IAsyncHttpClient client;
 	private final InetSocketAddress address;
 
@@ -65,7 +70,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.withBody(encode(SIGNED_ANNOUNCE, announceData)))
 				.thenCompose(response -> response.getCode() != 201 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.toVoid();
+				.toVoid()
+				.whenComplete(toLogger(logger, "announce", space, announceData, this));
 	}
 
 	private <T> Try<T> tryParseResponse(HttpResponse response, ByteBuf body, ParserFunction<ByteBuf, T> from) {
@@ -91,16 +97,23 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(FIND)
 						.appendPathPart(space.asString())
 						.build()))
-				.thenCompose(response -> response.getBody()
-						.thenCompose(body -> {
-							try {
-								return Promise.ofTry(
-										tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice()))
-												.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCEMENT)));
-							} finally {
-								body.recycle();
-							}
-						}));
+				.thenComposeEx((response, e) -> {
+					if (e == null) {
+						return response.getBody()
+								.thenCompose(body -> {
+									try {
+										return Promise.ofTry(
+												tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice()))
+														.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCEMENT)));
+									} finally {
+										body.recycle();
+									}
+								});
+					} else {
+						logger.warn("Failed to find announcements", e);
+						return Promise.ofException(NO_ANNOUNCEMENT);
+					}
+				});
 	}
 
 	@Override

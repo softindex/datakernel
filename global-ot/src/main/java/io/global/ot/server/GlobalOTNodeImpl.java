@@ -39,7 +39,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.ConnectException;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
@@ -75,7 +74,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	private int propagations = 1;
 	private int minimumSuccesses = 0;
 	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
-	private boolean discoveryConnectionLost = false;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -666,12 +664,11 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			return discoveryService.find(pubKey)
 					.thenApplyEx((announceData, e) -> {
 						if (e == null) {
-							discoveryConnectionLost = false;
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
 								masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
-								if (newServerIds.remove(id)) { // ensure that we are master for the space if it was announced
+								if (newServerIds.remove(id)) { // ensure that we are master for the pubKey if it was announced
 									if (managedPubKeys.add(pubKey)) {
 										logger.trace("became a master for {}: {}", pubKey, GlobalOTNodeImpl.this);
 									}
@@ -684,13 +681,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}
-						} else if (e instanceof ConnectException) {
-							if (!discoveryConnectionLost) {
-								discoveryConnectionLost = true;
-								logger.warn("Lost connection to discovery", e);
-							}
-						} else {
-							discoveryConnectionLost = false;
 						}
 						return getMasterNodes();
 					});

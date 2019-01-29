@@ -44,7 +44,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.ConnectException;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -83,7 +82,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	private final Function<PubKey, FsClient> storageFactory;
 	private final Function<PubKey, CheckpointStorage> checkpointStorageFactory;
 
-	private boolean discoveryConnectionLost = false;
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
@@ -371,7 +369,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			return discoveryService.find(space)
 					.thenApplyEx((announceData, e) -> {
 						if (e == null) {
-							discoveryConnectionLost = false;
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
@@ -389,13 +386,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}
-						} else if (e instanceof ConnectException) {
-							if (!discoveryConnectionLost) {
-								discoveryConnectionLost = true;
-								logger.warn("Lost connection to discovery", e);
-							}
-						} else {
-							discoveryConnectionLost = false;
 						}
 						return getMasterNodes();
 					});
