@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
@@ -88,7 +89,8 @@ public final class ServletModule extends AbstractModule {
 				})
 				.with("/:owner", createPubKeyServlet(eventloop, resourceLoader, driver, repoManager))
 				.with("", createSimKeyStorageServlet(driver))
-				.withFallback(StaticServlet.create(eventloop, resourceLoader));
+				.withFallback(StaticServlet.create(eventloop, resourceLoader))
+				.map(response -> response.withHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*"));
 	}
 
 	private AsyncServlet createPubKeyServlet(Eventloop eventloop, StaticLoader resourceLoader, GlobalFsDriver driver, RepoManager repoManager) {

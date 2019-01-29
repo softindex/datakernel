@@ -20,6 +20,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.UnaryOperator;
+
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
  * HTTP. Receives {@link HttpRequest}, creates {@link HttpResponse} and sends
@@ -29,4 +31,8 @@ import org.jetbrains.annotations.NotNull;
 public interface AsyncServlet {
 	@NotNull
 	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
+
+	default AsyncServlet map(UnaryOperator<HttpResponse> fn) {
+		return request -> serve(request).thenApply(fn);
+	}
 }
