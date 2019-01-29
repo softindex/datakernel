@@ -14,6 +14,8 @@ public interface LogNamingScheme {
 
 	LogFile format(long currentTimeMillis);
 
+	String getListGlob(String logPartition);
+
 	DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
 
 	LogNamingScheme NAME_PARTITION_REMAINDER = new LogNamingScheme() {
@@ -55,6 +57,11 @@ public interface LogNamingScheme {
 					DEFAULT_DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(currentTimeMillis)),
 					(int) ((currentTimeMillis / 1000L) % 3600));
 		}
+
+		@Override
+		public String getListGlob(String logPartition) {
+			return "**";
+		}
 	};
 
 	LogNamingScheme NAME_PARTITION_REMAINDER_SEQ = new LogNamingScheme() {
@@ -73,6 +80,11 @@ public interface LogNamingScheme {
 		@Override
 		public LogFile format(long currentTimeMillis) {
 			return new LogFile(NAME_PARTITION_REMAINDER.format(currentTimeMillis).getName(), remainder++);
+		}
+
+		@Override
+		public String getListGlob(String logPartition) {
+			return NAME_PARTITION_REMAINDER.getListGlob(logPartition);
 		}
 	};
 
@@ -94,6 +106,11 @@ public interface LogNamingScheme {
 			public LogFile format(long currentTimeMillis) {
 				return self.format(currentTimeMillis);
 			}
+
+			@Override
+			public String getListGlob(String logPartition) {
+				return self.getListGlob(logPartition);
+			}
 		};
 	}
 
@@ -114,6 +131,11 @@ public interface LogNamingScheme {
 			@Override
 			public LogFile format(long currentTimeMillis) {
 				return self.format(currentTimeMillis);
+			}
+
+			@Override
+			public String getListGlob(String logPartition) {
+				return self.getListGlob(logPartition);
 			}
 		};
 	}

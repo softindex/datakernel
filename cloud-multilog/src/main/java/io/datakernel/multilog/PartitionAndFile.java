@@ -1,6 +1,6 @@
 package io.datakernel.multilog;
 
-final class PartitionAndFile {
+public final class PartitionAndFile {
 	private final String logPartition;
 	private final LogFile logFile;
 
