@@ -16,7 +16,10 @@
 
 package io.global.db;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -46,6 +49,7 @@ import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.global.util.Utils.nSuccessesOrLess;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<LocalGlobalDbNode> {
@@ -121,7 +125,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 					if (isMasterFor(space)) {
 						return repo.upload();
 					}
-					return PromisesEx.nSuccessesOrLess(uploadCallNumber, masters
+					return nSuccessesOrLess(uploadCallNumber, masters
 							.stream()
 							.map(master -> AsyncSupplier.cast(() -> master.upload(tableID))))
 							.thenApply(consumers -> {

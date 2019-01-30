@@ -67,6 +67,12 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
+	public Try<T> getTry() {
+		return Try.ofException(exception);
+	}
+
+	@NotNull
+	@Override
 	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
 		promise.accept(null, exception);
 		return promise;

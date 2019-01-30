@@ -33,12 +33,12 @@ import java.util.function.*;
  * Replaces default Java {@link CompletionStage} interface.
  * Each promise represents some sort of operations executed
  * after the previous {@code Promise} completes.
- *
+ * <p>
  * {@code Promise} can complete either successfully with a result
  * which will be wrapped inside the {@code Promise} or exceptionally,
  * returning a new {@link CompletePromise} or {@link CompleteExceptionallyPromise}
  * respectively.
- *
+ * <p>
  * {@link SettablePromise} allows to create a root for chain of {@code Promise}s.
  */
 public interface Promise<T> {
@@ -105,9 +105,9 @@ public interface Promise<T> {
 	 * {@code errorSupplier} exception will be created.
 	 *
 	 * @return {@link CompletePromise} if the optional value
-	 * 			doesn't equal {@code null}, otherwise
-	 * 			{@link CompleteExceptionallyPromise} with
-	 * 			{@code errorSupplier} exception.
+	 * doesn't equal {@code null}, otherwise
+	 * {@link CompleteExceptionallyPromise} with
+	 * {@code errorSupplier} exception.
 	 */
 	@NotNull
 	@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "OptionalIsPresent"})

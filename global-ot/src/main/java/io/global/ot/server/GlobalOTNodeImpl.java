@@ -46,11 +46,14 @@ import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.resubscribe;
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.global.util.Utils.nSuccessesOrLess;
+import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
@@ -325,7 +328,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					if (isMasterFor(repositoryId)) {
 						return uploadLocal(repositoryId);
 					}
-					return PromisesEx.nSuccessesOrLess(propagations, nodes
+					return nSuccessesOrLess(propagations, nodes
 							.stream()
 							.map(node -> AsyncSupplier.cast(() -> node.upload(repositoryId))))
 							.thenApply(consumers -> {
@@ -563,7 +566,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	}
 
 	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
-		return PromisesEx.tolerantCollectVoid(pubKeys.values().stream().flatMap(entry -> entry.repositories.values().stream()), fn);
+		return tolerantCollectVoid(pubKeys.values().stream().flatMap(entry -> entry.repositories.values().stream()), fn);
 	}
 
 	public Promise<Void> fetch() {
@@ -572,7 +575,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	}
 
 	public Promise<Void> update() {
-		return PromisesEx.tolerantCollectVoid(pubKeys.values(), PubKeyEntry::updateRepositories)
+		return tolerantCollectVoid(pubKeys.values(), PubKeyEntry::updateRepositories)
 				.thenComposeEx(($, e) -> forEachRepository(RepositoryEntry::update));
 	}
 
@@ -601,9 +604,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					if (isMasterFor(repositoryId)) {
 						return defaultPromise;
 					}
-					return PromisesEx.firstSuccessfulOr(defaultPromise, masters
-							.stream()
-							.map(master -> AsyncSupplier.cast(() -> fn.apply(master))));
+					return firstSuccessful(masters.stream()
+							.map(master -> AsyncSupplier.cast(() ->
+									fn.apply(master))))
+							.thenComposeEx((v, e) -> e == null ? Promise.of(v) : defaultPromise);
 				});
 	}
 
@@ -613,7 +617,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					if (isMasterFor(repositoryId)) {
 						return Promise.complete();
 					}
-					return PromisesEx.nSuccessesOrLess(propagations, masters
+					return nSuccessesOrLess(propagations, masters
 							.stream()
 							.map(master -> AsyncSupplier.cast(() -> fn.apply(master))))
 							.toVoid();
@@ -699,8 +703,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
-					.thenCompose(masters -> PromisesEx.firstSuccessfulOr(Collections.<String>emptySet(), masters.stream()
-							.map(master -> AsyncSupplier.cast(() -> master.list(pubKey)))))
+					.thenCompose(masters -> firstSuccessful(masters.stream()
+							.map(master -> AsyncSupplier.cast(() ->
+									master.list(pubKey))))
+							.thenComposeEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))
 					.whenResult(repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(pubKey, name))))
 					.whenResult($ -> updateRepositoriesTimestamp = now.currentTimeMillis())
 					.toVoid();
@@ -789,8 +795,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				}
 				return ensureMasterNodes()
 						.thenCompose(masters -> commitStorage.getHeads(repositoryId)
-								.thenCompose(heads -> PromisesEx.firstSuccessfulOr(new Heads(emptySet(), emptySet()),
-										masters.stream().map(master -> AsyncSupplier.cast(() -> master.getHeads(repositoryId, heads.keySet())))))
+								.thenCompose(heads -> firstSuccessful(masters.stream()
+										.map(master -> AsyncSupplier.cast(() ->
+												master.getHeads(repositoryId, heads.keySet()))))
+										.thenComposeEx((v, e) -> Promise.of(e == null ? v : new Heads(emptySet(), emptySet()))))
 								.thenCompose(headsDelta ->
 										commitStorage.updateHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)
 												.thenCompose($ -> headsDelta.newHeads.isEmpty() ?
@@ -807,13 +815,14 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				}
 				return ensureMasterNodes()
 						.thenCompose(masters -> commitStorage.listSnapshotIds(repositoryId)
-								.thenCompose(localSnapshotIds -> PromisesEx.firstSuccessfulOr(Collections.<SignedData<RawSnapshot>>emptyList(),
-										masters.stream()
-												.map(master -> AsyncSupplier.cast(() -> master.listSnapshots(repositoryId, localSnapshotIds)
+								.thenCompose(localSnapshotIds -> firstSuccessful(masters.stream()
+										.map(master -> AsyncSupplier.cast(() ->
+												master.listSnapshots(repositoryId, localSnapshotIds)
 														.thenCompose(newSnapshotIds -> Promises.toList(
 																newSnapshotIds.stream()
 																		.map(snapshotId -> master.loadSnapshot(repositoryId, snapshotId)
-																				.thenCompose(Promise::ofOptional))))))))
+																				.thenCompose(Promise::ofOptional)))))))
+										.thenComposeEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawSnapshot>>emptyList())))
 								.thenCompose(snapshots -> Promises.all(snapshots.stream().map(commitStorage::saveSnapshot))))
 						.whenResult($ -> updateSnapshotsTimestamp = now.currentTimeMillis());
 			}
@@ -825,8 +834,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					return Promise.complete();
 				}
 				return ensureMasterNodes()
-						.thenCompose(masters -> PromisesEx.firstSuccessfulOr(Collections.<SignedData<RawPullRequest>>emptySet(),
-								masters.stream().map(master -> AsyncSupplier.cast(() -> master.getPullRequests(repositoryId)))))
+						.thenCompose(masters -> firstSuccessful(masters.stream()
+								.map(master -> AsyncSupplier.cast(() ->
+										master.getPullRequests(repositoryId))))
+								.thenComposeEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawPullRequest>>emptySet())))
 						.thenCompose(pullRequests -> Promises.all(
 								pullRequests.stream().map(commitStorage::savePullRequest)))
 						.whenResult($ -> updatePullRequestsTimestamp = now.currentTimeMillis());
@@ -842,7 +853,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {
 				return ensureMasterNodes()
-						.thenCompose(masters -> PromisesEx.tolerantCollectVoid(masters, action));
+						.thenCompose(masters -> tolerantCollectVoid(masters, action));
 			}
 
 			@NotNull
@@ -875,7 +886,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 									.thenApply(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds)))
 							.thenCompose(snapshotsIds -> Promises.toList(snapshotsIds.stream()
 									.map(snapshot -> commitStorage.loadSnapshot(repositoryId, snapshot))))
-							.thenCompose(snapshots -> PromisesEx.tolerantCollectVoid(snapshots,
+							.thenCompose(snapshots -> tolerantCollectVoid(snapshots,
 									snapshot -> master.saveSnapshot(repositoryId, snapshot.get())));
 				});
 			}
@@ -887,7 +898,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					return master.getPullRequests(repositoryId)
 							.thenCompose(remotePullRequests -> commitStorage.getPullRequests(repositoryId)
 									.thenApply(localPullRequests -> difference(localPullRequests, remotePullRequests)))
-							.thenCompose(pullRequests -> PromisesEx.tolerantCollectVoid(pullRequests, master::sendPullRequest));
+							.thenCompose(pullRequests -> tolerantCollectVoid(pullRequests, master::sendPullRequest));
 				});
 			}
 		}

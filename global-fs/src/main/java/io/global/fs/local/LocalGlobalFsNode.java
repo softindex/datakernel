@@ -56,6 +56,8 @@ import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
+import static io.global.util.Utils.nSuccessesOrLess;
+import static io.global.util.Utils.tolerantCollectBoolean;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
@@ -165,7 +167,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
 						return ns.save(filename, offset);
 					}
-					return PromisesEx.nSuccessesOrLess(uploadCallNumber, masters
+					return nSuccessesOrLess(uploadCallNumber, masters
 							.stream()
 							.map(master -> AsyncSupplier.cast(() -> master.upload(space, filename, offset))))
 							.thenApply(consumers -> {
@@ -288,7 +290,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	}
 
 	public Promise<Boolean> push() {
-		return PromisesEx.tolerantCollectBoolean(namespaces.values(), this::push)
+		return tolerantCollectBoolean(namespaces.values(), this::push)
 				.whenComplete(toLogger(logger, "push", this));
 	}
 
@@ -298,19 +300,19 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 	private Promise<Boolean> push(Namespace ns) {
 		return ns.ensureMasterNodes()
-				.thenCompose(nodes -> PromisesEx.tolerantCollectBoolean(nodes, node -> ns.push(node, "**")))
+				.thenCompose(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**")))
 				.whenComplete(toLogger(logger, "push", ns.space, this));
 	}
 
 	public Promise<Boolean> fetch() {
-		return PromisesEx.tolerantCollectBoolean(managedPubKeys, this::fetch)
+		return tolerantCollectBoolean(managedPubKeys, this::fetch)
 				.whenComplete(toLogger(logger, "fetch", this));
 	}
 
 	public Promise<Boolean> fetch(PubKey space) {
 		Namespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
-				.thenCompose(nodes -> PromisesEx.tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**")))
+				.thenCompose(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**")))
 				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
@@ -406,7 +408,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		@SuppressWarnings("SameParameterValue")
 		Promise<Boolean> push(GlobalFsNode node, String glob) {
 			return list(glob)
-					.thenCompose(files -> PromisesEx.tolerantCollectBoolean(files, signedLocalMeta -> {
+					.thenCompose(files -> tolerantCollectBoolean(files, signedLocalMeta -> {
 						GlobalFsCheckpoint localMeta = signedLocalMeta.getValue();
 						String filename = localMeta.getFilename();
 
@@ -443,7 +445,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		@SuppressWarnings("SameParameterValue")
 		Promise<Boolean> fetch(GlobalFsNode node, String glob) {
 			return node.list(space, glob)
-					.thenCompose(files -> PromisesEx.tolerantCollectBoolean(files, signedRemoteMeta -> {
+					.thenCompose(files -> tolerantCollectBoolean(files, signedRemoteMeta -> {
 								GlobalFsCheckpoint remoteMeta = signedRemoteMeta.getValue();
 								String filename = remoteMeta.getFilename();
 								return getMetadata(filename)

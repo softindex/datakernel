@@ -16,6 +16,7 @@
 
 package io.datakernel.async;
 
+import io.datakernel.functional.Try;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -23,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
  * A parent interface for materialized promises: {@link SettablePromise},
  * {@link CompletePromise}, {@link CompleteExceptionallyPromise}.
  * You can {@code getResult} of materialized {@code Promise}s.
+ *
  * @param <T> result type
  */
 public interface MaterializedPromise<T> extends Promise<T> {
@@ -32,6 +34,12 @@ public interface MaterializedPromise<T> extends Promise<T> {
 	@Contract(pure = true)
 	@NotNull
 	Throwable getException();
+
+	@Contract(pure = true)
+	@NotNull
+	default Try<T> getTry() {
+		return isResult() ? Try.of(getResult()) : Try.ofException(getException());
+	}
 
 	@Contract(pure = true, value = "-> this")
 	@NotNull

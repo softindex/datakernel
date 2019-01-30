@@ -17,7 +17,6 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.*;
 import org.junit.Test;
@@ -38,9 +37,8 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.fail;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
 public final class PromisesTest {
@@ -63,40 +61,24 @@ public final class PromisesTest {
 	public void toListSingleTest() {
 		List<Integer> list = await(Promises.toList(of(321)));
 		assertEquals(1, list.size());
-		// asserting mutability
-		Integer newInt = 123;
-		list.set(0, newInt);
-		assertEquals(newInt, list.get(0));
 	}
 
 	@Test
 	public void varargsToListTest() {
 		List<Integer> list = await(Promises.toList(of(321), of(322), of(323)));
 		assertEquals(3, list.size());
-		// asserting mutability
-		list.set(0, 123);
-		assertEquals(3, list.size());
-		assertEquals(new Integer(123), list.get(0));
 	}
 
 	@Test
 	public void streamToListTest() {
 		List<Integer> list = await(Promises.toList(Stream.of(of(321), of(322), of(323))));
 		assertEquals(3, list.size());
-		// asserting mutability
-		list.set(0, 123);
-		assertEquals(3, list.size());
-		assertEquals(new Integer(123), list.get(0));
 	}
 
 	@Test
 	public void listToListTest() {
 		List<Integer> list = await(Promises.toList(asList(of(321), of(322), of(323))));
 		assertEquals(3, list.size());
-		// asserting mutability
-		list.set(0, 123);
-		assertEquals(3, list.size());
-		assertEquals(new Integer(123), list.get(0));
 	}
 
 	@Test
@@ -234,14 +216,6 @@ public final class PromisesTest {
 	}
 
 	@Test
-	public void testCollectWithListener() {
-		CollectListener<Object, Object[], List<Object>> any = (canceller, accumulator) -> {
-		};
-		List<Object> list = await(collect(IndexedCollector.toList(), any, asList(of(1), of(2), of(3))));
-		assertEquals(3, list.size());
-	}
-
-	@Test
 	public void testCollectStream() {
 		List<Integer> list = await(collect(toList(), Stream.of(of(1), of(2), of(3))));
 		assertEquals(3, list.size());
@@ -293,49 +267,6 @@ public final class PromisesTest {
 				.sorted(Comparator.naturalOrder())
 				.map(n -> AsyncSupplier.cast(() ->
 						getStage(n)))));
-	}
-
-	@Test
-	public void testNSuccesses() {
-		// test success
-		Exception exception1 = new Exception("Test1");
-		Exception exception2 = new Exception("Test2");
-		List<Promise<Integer>> promises = asList(Promise.of(1),
-				Promise.of(2),
-				Promise.ofException(exception1),
-				Promise.of(3),
-				Promise.ofException(exception2),
-				Promise.of(4));
-
-		List<Integer> list = await(PromisesEx.nSuccesses(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
-		assertEquals(asList(1, 2, 3), list);
-
-		// test failure
-		Throwable e = awaitException(PromisesEx.nSuccesses(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
-		assertThat(e, instanceOf(StacklessException.class));
-		assertThat(e.getMessage(), containsString("Not enough successes"));
-		assertArrayEquals(new Exception[]{exception1, exception2}, e.getSuppressed());
-		assertArrayEquals(new Throwable[]{exception1, exception2}, e.getSuppressed());
-	}
-
-	@Test
-	public void testNSuccessesOrLess() {
-		// test n successes
-		Exception exception1 = new Exception("Test1");
-		Exception exception2 = new Exception("Test2");
-		List<Promise<Integer>> promises = asList(Promise.of(1),
-				Promise.of(2),
-				Promise.ofException(exception1),
-				Promise.of(3),
-				Promise.ofException(exception2),
-				Promise.of(4));
-
-		List<Integer> list1 = await(PromisesEx.nSuccessesOrLess(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
-		assertEquals(asList(1, 2, 3), list1);
-
-		// test less successes
-		List<Integer> list2 = await(PromisesEx.nSuccessesOrLess(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
-		assertEquals(asList(1, 2, 3, 4), list2);
 	}
 
 	private Promise<Integer> getStage(Integer number) {

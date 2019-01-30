@@ -274,6 +274,38 @@ public class CollectionUtils {
 		};
 	}
 
+	public static <T> Iterator<T> concat(Iterator<? extends T> iterator1, Iterator<? extends T> iterator2) {
+		return concatIterators(asIterator(iterator1, iterator2));
+	}
+
+	public static <T> Iterator<T> append(Iterator<T> iterator, T value) {
+		return concatIterators(asIterator(iterator, asIterator(value)));
+	}
+
+	public static <T> Iterator<T> prepend(T value, Iterator<T> iterator) {
+		return concatIterators(asIterator(asIterator(value), iterator));
+	}
+
+	public static <T> Iterator<T> concatIterators(Iterator<? extends Iterator<? extends T>> iterators) {
+		return new Iterator<T>() {
+			Iterator<? extends T> it = iterators.hasNext() ? iterators.next() : null;
+
+			@Override
+			public boolean hasNext() {
+				return it != null;
+			}
+
+			@Override
+			public T next() {
+				T next = it.next();
+				if (!it.hasNext()) {
+					it = iterators.hasNext() ? iterators.next() : null;
+				}
+				return next;
+			}
+		};
+	}
+
 	public static <K, V> Map<K, V> keysToMap(Set<K> keys, Function<K, V> fn) {
 		return keysToMap(keys.stream(), fn);
 	}

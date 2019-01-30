@@ -58,6 +58,12 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 
 	@NotNull
 	@Override
+	public Try<T> getTry() {
+		return Try.of(getResult());
+	}
+
+	@NotNull
+	@Override
 	public final <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
 		promise.accept(getResult(), null);
 		return promise;
