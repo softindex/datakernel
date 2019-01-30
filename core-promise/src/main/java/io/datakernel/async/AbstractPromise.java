@@ -124,7 +124,8 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	@Override
 	public <U> Promise<U> thenApply(@Async.Schedule @NotNull Function<? super T, ? extends U> fn) {
 		return then(new NextPromise<T, U>() {
-			private void accept(@Async.Execute Function<? super T, ? extends U> fn, T result, @Nullable Throwable e) {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					U newResult;
 					try {
@@ -138,11 +139,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					completeExceptionally(e);
 				}
 			}
-
-			@Override
-			public void accept(T result, @Nullable Throwable e) {
-				accept(fn, result, e);
-			}
 		});
 	}
 
@@ -150,7 +146,8 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	@Override
 	public <U> Promise<U> thenApplyEx(@Async.Schedule @NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		return then(new NextPromise<T, U>() {
-			private void accept(@Async.Execute BiFunction<? super T, Throwable, ? extends U> fn, T result, Throwable e) {
+			@Override
+			public void accept(T result, Throwable e) {
 				if (e == null) {
 					U newResult;
 					try {
@@ -171,11 +168,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					complete(newResult);
 				}
 			}
-
-			@Override
-			public void accept(T result, Throwable e) {
-				accept(fn, result, e);
-			}
 		});
 	}
 
@@ -183,7 +175,8 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	@Override
 	public <U> Promise<U> thenCompose(@Async.Schedule @NotNull Function<? super T, ? extends Promise<U>> fn) {
 		return then(new NextPromise<T, U>() {
-			private void accept(@Async.Execute Function<? super T, ? extends Promise<U>> fn, T result, Throwable e) {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					Promise<U> promise;
 					try {
@@ -196,11 +189,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				} else {
 					completeExceptionally(e);
 				}
-			}
-
-			@Override
-			public void accept(T result, @Nullable Throwable e) {
-				accept(fn, result, e);
 			}
 		});
 	}

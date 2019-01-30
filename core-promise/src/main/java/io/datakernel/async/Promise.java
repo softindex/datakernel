@@ -64,7 +64,7 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Creates an exceptionally completed {@code Promise}
+	 * Creates an exceptionally completed {@code Promise}.
 	 *
 	 * @param e Throwable
 	 */
@@ -73,6 +73,10 @@ public interface Promise<T> {
 		return new CompleteExceptionallyPromise<>(e);
 	}
 
+	/**
+	 * Creates a and returns a new {@link SettablePromise}
+	 * that is accepted by a provided {@link Consumer}
+	 */
 	@NotNull
 	static <T> Promise<T> ofCallback(@NotNull Consumer<SettablePromise<T>> callbackConsumer) {
 		SettablePromise<T> cb = new SettablePromise<>();
@@ -84,12 +88,27 @@ public interface Promise<T> {
 		return cb;
 	}
 
+	/**
+	 * @see #ofOptional(Optional, Supplier)
+	 */
 	@NotNull
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 	static <T> Promise<T> ofOptional(@NotNull Optional<T> optional) {
 		return ofOptional(optional, NoSuchElementException::new);
 	}
 
+	/**
+	 * Creates a new {@code Promise} of the given value.
+	 * If {@code Optional} doesn't equal {@code null}, a
+	 * {@code Promise} of {@code optional} contained value
+	 * will be created. Otherwise, a {@code Promise} with
+	 * {@code errorSupplier} exception will be created.
+	 *
+	 * @return {@link CompletePromise} if the optional value
+	 * 			doesn't equal {@code null}, otherwise
+	 * 			{@link CompleteExceptionallyPromise} with
+	 * 			{@code errorSupplier} exception.
+	 */
 	@NotNull
 	@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "OptionalIsPresent"})
 	static <T> Promise<T> ofOptional(@NotNull Optional<T> optional, @NotNull Supplier<? extends Throwable> errorSupplier) {
@@ -98,9 +117,9 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Creates a completed promise from value and throwable variables.
-	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs
-	 * (e.g. when mapping specific exceptions).
+	 * Creates a completed {@code Promise} from {@code T value} and
+	 * {@code Throwable e} parameters. Useful for {@link #thenComposeEx(BiFunction)}
+	 * passthroughs (for example, when mapping specific exceptions).
 	 *
 	 * @param value value to wrap when exception is null
 	 * @param e     possibly-null exception, determines type of promise completion
@@ -111,13 +130,18 @@ public interface Promise<T> {
 		return e == null ? of(value) : ofException(e);
 	}
 
+	/**
+	 * Returns a new {@link CompletePromise} or {@link CompleteExceptionallyPromise}
+	 * based on the provided {@link Try}.
+	 */
 	@NotNull
 	static <T> Promise<T> ofTry(@NotNull Try<T> t) {
 		return t.reduce(Promise::of, Promise::ofException);
 	}
 
 	/**
-	 * Creates a {@code Promise} wrapper around default java {@code CompletableFuture} and runs it immediately.
+	 * Creates a {@code Promise} wrapper around default
+	 * Java {@code CompletableFuture} and runs it immediately.
 	 *
 	 * @return result of the given future wrapped in a {@code Promise}
 	 */
@@ -127,7 +151,7 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Wraps Java {@code CompletionStage} in a {@code Promise}, running it in current eventloop.
+	 * Wraps Java {@link CompletionStage} in a {@code Promise}, running it in current eventloop.
 	 *
 	 * @param completionStage completion stage itself
 	 * @return result of the given completionStage wrapped in a {@code Promise}
@@ -152,7 +176,7 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Wraps Java {@code Future} in a {@code Promise} running it with given executor.
+	 * Wraps Java {@code Future} in a {@code Promise} running it with given {@link Executor}.
 	 *
 	 * @param executor executor to execute the future concurrently
 	 * @param future   the future itself
@@ -193,7 +217,7 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Runs some task in other thread (executed by a given {@code Executor})
+	 * Runs some task in another thread (executed by a given {@code Executor})
 	 * and returns a {@code Promise} for it. Also manages external task count
 	 * for current eventloop, so it won't shut down until the task is complete.
 	 *
@@ -285,8 +309,8 @@ public interface Promise<T> {
 
 	/**
 	 * Ensures that {@code Promise} completes asynchronously:
-	 * if this promise is already complete, its completion
-	 * will be posted to next eventloop tick.
+	 * if this {@code Promise} is already complete, its
+	 * completion will be posted to next eventloop tick.
 	 * Otherwise, does nothing.
 	 */
 	@Contract(pure = true)
@@ -311,7 +335,8 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Executes given promise after execution of this promise completes.
+	 * Executes given {@code promise} after execution
+	 * of this {@code Promise} completes.
 	 *
 	 * @param promise given promise
 	 * @param <U>     type of result
@@ -324,7 +349,7 @@ public interface Promise<T> {
 	 * Applies {@code fn} to the result of this {@code Promise}.
 	 *
 	 * @param fn function to apply
-	 * @return {@code Promise} that will apply given function
+	 * @return {@code Promise} that applies given function
 	 */
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn);
@@ -333,14 +358,15 @@ public interface Promise<T> {
 	 * Applies {@code fn} to the result or exception of this {@code Promise}.
 	 *
 	 * @param fn function to apply
-	 * @return {@code Promise} that will apply given function
+	 * @return {@code Promise} that applies given function
 	 */
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
-	 * Applies function to the result of this promise if it completes successfully.
-	 * Returned promise will be completed when promise returned from function completes.
+	 * Applies function to the result of this {@code Promise} if it
+	 * completes successfully. Returned {@code Promise} will be completed
+	 * when {@code Promise} returned from {@code fn} completes.
 	 *
 	 * @param fn to be applied
 	 */
@@ -348,18 +374,18 @@ public interface Promise<T> {
 	@NotNull <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn);
 
 	/**
-	 * Applies function to the result of this promise.
-	 * Returned promise will be completed when promise returned from function completes.
+	 * Applies {@link BiFunction} to the result of this {@code Promise}.
+	 * Returned {@code Promise} will be completed when {@code Promise} returned from function completes.
 	 *
 	 * @param fn to be applied
-	 * @return this promise
+	 * @return this {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
 
 	/**
 	 * Subscribes given action to be executed
-	 * after this promise completes.
+	 * after this {@code Promise} completes.
 	 *
 	 * @param action to be executed
 	 * @return this {@code Promise}
@@ -369,8 +395,8 @@ public interface Promise<T> {
 	Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action);
 
 	/**
-	 * Subscribes given action to be executed
-	 * after this promise completes successfully.
+	 * Subscribes given action to be executed after
+	 * this {@code Promise} completes successfully.
 	 *
 	 * @param action to be executed
 	 * @return this {@code Promise}
@@ -380,8 +406,8 @@ public interface Promise<T> {
 	Promise<T> whenResult(@NotNull Consumer<? super T> action);
 
 	/**
-	 * Subscribes given action to be executed
-	 * after this {@code Promise} completes exceptionally.
+	 * Subscribes given action to be executed after
+	 * this {@code Promise} completes exceptionally.
 	 *
 	 * @param action to be executed
 	 * @return this {@code Promise}
@@ -412,20 +438,19 @@ public interface Promise<T> {
 	Promise<Void> both(@NotNull Promise<?> other);
 
 	/**
-	 * Combines two {@code Promise}s in one.
+	 * Combines two {@code Promise}s in one and returns
+	 * the {@code Promise} which was completed first.
 	 *
 	 * @param other {@code Promise} to combine
-	 * @return result of the first completed {@code Promise}
+	 * @return the first completed {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull
 	Promise<T> either(@NotNull Promise<? extends T> other);
 
 	/**
-	 * Returns {@code Promise} that always completes
-	 * successfully with result or exception wrapped in Try.
-	 *
-	 * @see Try
+	 * Returns {@code Promise} that always completes successfully
+	 * with result or exception wrapped in {@link Try}.
 	 */
 	@Contract(pure = true)
 	@NotNull

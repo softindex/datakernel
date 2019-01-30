@@ -34,14 +34,16 @@ In order to optimise `Promise`s, there are several implementations of `Promise` 
                                 CompleteResultPromise_| |_CompleteNullPromise
 ```
 
+* `Promise` - root interface which represents *Promises* behaviour.
+* `AbstractPromise`, `NextPromise` - helper classes which enable creating chains of stateless *Promises*. You can treat 
+these chains as pipes which pass values through, but don't store them. 
 * `MaterializedPromise` - an interface which has `getResult()` and `getException()` methods. This allows to materialize 
 intermediate stateless `Promise`s and get their values.
-* `SettablePromise` - a class which can be used as a root for your chain of `Promise`s. Allows to wrap operations in 
-`Promise`s, can be completed manually.
+* `SettablePromise` - a class which can be used as a root for chain of `Promise`s. Allows to wrap operations in `Promise`s, 
+can be completed manually.
 * `CompleteExceptionallyPromise` - a `Promise` which was completed with an Exception.
 * `CompletePromise` - an abstract class which represents a successfully completed `Promise`.
-* `CompleteResultPromise` - a completed `Promise` with a result of undefined type.
+* `CompleteResultPromise` - a completed `Promise` with a result of any type.
 * `CompleteNullPromise` - a completed `Promise` with *null* result.
-* `AbstractPromise`, `NextPromise` - helper classes.
 
 ### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise)

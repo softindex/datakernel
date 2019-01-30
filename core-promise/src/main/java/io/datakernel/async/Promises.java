@@ -41,12 +41,11 @@ import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.CollectionUtils.transformIterator;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-
+/**
+ * Allows to manage multiple {@link Promise}s.
+ */
 public final class Promises {
 
-	/**
-	 * Allows to manage multiple {@link Promise}s.
-	 */
 	private Promises() {
 	}
 
@@ -79,6 +78,9 @@ public final class Promises {
 		});
 	}
 
+	/**
+	 * @see #timeout(Promise, long)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, @NotNull Duration delay) {
@@ -100,6 +102,9 @@ public final class Promises {
 		return Promise.ofCallback(cb -> getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb::set)));
 	}
 
+	/**
+	 * @see #delay(Promise, long)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> delay(@NotNull Promise<T> promise, @NotNull Duration delay) {
@@ -118,6 +123,9 @@ public final class Promises {
 		return Promise.ofCallback(cb -> getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb::set)));
 	}
 
+	/**
+	 * @see #schedule(Promise, long)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, @NotNull Instant instant) {
@@ -181,7 +189,8 @@ public final class Promises {
 	}
 
 	/**
-	 * @return {@code Promise} that completes when all promises are completed
+	 * Returns a {@code Promise} that completes when
+	 * all of the {@code promises} are completed.
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -194,7 +203,9 @@ public final class Promises {
 	}
 
 	/**
-	 * @return {@code Promise} that completes when all promises are completed
+	 * Returns {@code Promise} that completes when all of the {@code promises}
+	 * are completed. If at least one of the {@code promises} completes
+	 * exceptionally, a {@link CompleteExceptionallyPromise} will be returned.
 	 */
 	@NotNull
 	public static Promise<Void> all(@NotNull Iterator<? extends Promise<?>> promises) {
@@ -210,6 +221,12 @@ public final class Promises {
 		return resultPromise.countdown != 0 ? resultPromise : Promise.complete();
 	}
 
+	/**
+	 * Returns a {@link CompleteExceptionallyPromise} with {@link StacklessException},
+	 * since this method doesn't accept any {@code Promise}s
+	 *
+	 * @see #any(Iterator)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> any() {
@@ -217,7 +234,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#any(List)
+	 * @see #any(Iterator)
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -229,7 +246,7 @@ public final class Promises {
 	/**
 	 * Optimized for 2 promises.
 	 *
-	 * @see Promises#any(List)
+	 * @see #any(Iterator)
 	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
@@ -239,7 +256,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#any(List)
+	 * @see #any(Iterator)
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -248,12 +265,18 @@ public final class Promises {
 		return any(asIterator(promises));
 	}
 
+	/**
+	 * @see #any(Iterator)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> any(@NotNull Stream<? extends Promise<? extends T>> promises) {
 		return any(promises.iterator());
 	}
 
+	/**
+	 * @see #any(Iterator)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> any(@NotNull Iterable<? extends Promise<? extends T>> promises) {
@@ -261,10 +284,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Returns one of the first completed promises. Since it's
-	 * async we can't really get the FIRST completed promise.
-	 *
-	 * @return first completed promise
+	 * @see #any(Iterator)
 	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
@@ -276,6 +296,12 @@ public final class Promises {
 		return any(promises.iterator());
 	}
 
+	/**
+	 * Returns one of the first completed {@code Promise}s. Since it's
+	 * async, we can't really get the FIRST completed {@code Promise}.
+	 *
+	 * @return one of the first completed {@code Promise}s
+	 */
 	@NotNull
 	public static <T> Promise<T> any(@NotNull Iterator<? extends Promise<? extends T>> promises) {
 		if (!promises.hasNext()) return any();
@@ -307,7 +333,6 @@ public final class Promises {
 	 * @param collector reducer which is used for combining {@code Promise} results into one value
 	 * @param promises  collection of {@code Promise}s
 	 * @return {@code Promise} with accumulated result
-	 * @see IndexedCollector
 	 */
 	@Contract(pure = true)
 	@NotNull
@@ -341,7 +366,8 @@ public final class Promises {
 	}
 
 	/**
-	 * Allows you to do something on completion of every {@code Promise}.
+	 * Accumulates results of {@code Promise}s using {@link IndexedCollector}
+	 * and allows you to do something on completion of every {@code Promise}.
 	 *
 	 * @param listener calls {@link CollectListener#onCollectResult(Object)} with every {@code Promise} result
 	 * @see Promises#collect(IndexedCollector, List)
@@ -386,6 +412,10 @@ public final class Promises {
 		}
 	}
 
+	/**
+	 * Accumulates results of {@code promises} using {@link Collector}
+	 * and returns a {@code Promise} with accumulated result.
+	 */
 	@NotNull
 	public static <T, A, R> Promise<R> collect(@NotNull Collector<T, A, R> collector, @NotNull Iterator<? extends Promise<? extends T>> promises) {
 		A accumulatorValue = collector.supplier().get();
@@ -408,12 +438,18 @@ public final class Promises {
 		return resultPromise.countdown != 0 ? resultPromise : Promise.of(collector.finisher().apply(resultPromise.accumulator));
 	}
 
+	/**
+	 * @see #collect(Collector, Iterator)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T, A, R> Promise<R> collect(@NotNull Collector<T, A, R> collector, @NotNull Iterable<? extends Promise<? extends T>> promises) {
 		return collect(collector, promises.iterator());
 	}
 
+	/**
+	 * @see #collect(Collector, Iterator)
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T, A, R> Promise<R> collect(@NotNull Collector<T, A, R> collector, @NotNull Stream<? extends Promise<? extends T>> promises) {
@@ -430,12 +466,19 @@ public final class Promises {
 		return Promise.of(emptyList());
 	}
 
+	/**
+	 * Returns a completed {@code Promise}
+	 * with a result wrapped in {@code List}.
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList(@NotNull Promise<? extends T> promise1) {
 		return promise1.thenApply(Arrays::asList);
 	}
 
+	/**
+	 * Returns {@code Promise} with a list of {@code promise1} and {@code promise2} results.
+	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList(@NotNull Promise<? extends T> promise1, @NotNull Promise<? extends T> promise2) {
@@ -473,6 +516,10 @@ public final class Promises {
 		return collect(IndexedCollector.toList(), promises);
 	}
 
+	/**
+	 * Returns an array of provided {@code type} and length 0
+	 * wrapped in {@code Promise}.
+	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
@@ -480,6 +527,9 @@ public final class Promises {
 		return Promise.of((T[]) Array.newInstance(type, 0));
 	}
 
+	/**
+	 * Returns an array with {@code promise1} result.
+	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
@@ -491,6 +541,9 @@ public final class Promises {
 		});
 	}
 
+	/**
+	 * Returns an array with {@code promise1} and {@code promise2} results.
+	 */
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
@@ -661,7 +714,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * Returns a {@link CompleteNullPromise}
 	 */
 	@NotNull
 	public static Promise<Void> runSequence() {
@@ -669,7 +722,8 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * Gets {@code Promise} from provided {@code AsyncSupplier},
+	 * waits until it completes and than returns a {@code Promise<Void>}
 	 */
 	@NotNull
 	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?> promise) {
@@ -677,7 +731,8 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * Gets {@code Promise}s from provided {@code AsyncSupplier}s,
+	 * end executes them consequently, discarding their results.
 	 */
 	@NotNull
 	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2) {
@@ -693,7 +748,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * @see Promises#runSequence(AsyncSupplier, AsyncSupplier)
 	 */
 	@NotNull
 	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2, @NotNull AsyncSupplier<?> promise3) {
@@ -708,15 +763,20 @@ public final class Promises {
 		return runSequence(asPromises(promises.iterator()));
 	}
 
+	/**
+	 * @see Promises#runSequence(Iterator)
+	 */
 	@NotNull
 	public static Promise<Void> runSequence(@NotNull Stream<? extends AsyncSupplier<?>> promises) {
 		return runSequence(asPromises(promises.iterator()));
 	}
 
 	/**
-	 * Calls every {@code Promise} from promises in sequence.
+	 * Calls every {@code Promise} from {@code promises} in sequence and discards
+	 * their results.Returns a {@code SettablePromise} with {@code null} result as
+	 * a marker when all of the {@code promises} are completed.
 	 *
-	 * @return {@code Promise} that completes when all promises are completed
+	 * @return {@code Promise} that completes when all {@code promises} are completed
 	 */
 	@NotNull
 	public static Promise<Void> runSequence(@NotNull Iterator<? extends Promise<?>> promises) {
@@ -739,6 +799,9 @@ public final class Promises {
 		});
 	}
 
+	/**
+	 * @see Promises#collectSequence(Collector, Iterator)
+	 */
 	@NotNull
 	@SafeVarargs
 	public static <T, A, R> Promise<R> collectSequence(@NotNull Collector<T, A, R> collector, @NotNull AsyncSupplier<? extends T>... promises) {
@@ -762,10 +825,9 @@ public final class Promises {
 	}
 
 	/**
-	 * Accumulates {@code Promise} results into one final using {@code Collector} sequentially.
+	 * Accumulates {@code promises} results into one final using {@link Collector} sequentially.
 	 *
-	 * @return new {@code Promise} that completes when all promises are completed
-	 * @see Collector
+	 * @return new {@code Promise} that completes when all {@code promises} are completed
 	 */
 	@NotNull
 	public static <T, A, R> Promise<R> collectSequence(@NotNull Collector<T, A, R> collector, @NotNull Iterator<? extends Promise<? extends T>> promises) {
@@ -804,6 +866,7 @@ public final class Promises {
 
 	/**
 	 * @see #firstSuccessful(AsyncSupplier[])
+	 * @see Promises#first(BiPredicate, Iterator)
 	 */
 	@NotNull
 	public static <T> Promise<T> firstSuccessful(@NotNull Iterable<? extends AsyncSupplier<? extends T>> promises) {
@@ -812,6 +875,7 @@ public final class Promises {
 
 	/**
 	 * @see #firstSuccessful(AsyncSupplier[])
+	 * @see Promises#first(BiPredicate, Iterator)
 	 */
 	@NotNull
 	public static <T> Promise<T> firstSuccessful(@NotNull Stream<? extends AsyncSupplier<? extends T>> promises) {
@@ -820,6 +884,7 @@ public final class Promises {
 
 	/**
 	 * @see #firstSuccessful(AsyncSupplier[])
+	 * @see Promises#first(BiPredicate, Iterator)
 	 */
 	@NotNull
 	public static <T> Promise<T> firstSuccessful(@NotNull Iterator<? extends Promise<? extends T>> promises) {
@@ -836,12 +901,18 @@ public final class Promises {
 		return first(predicate, asList(promises));
 	}
 
+	/**
+	 * @see Promises#first(BiPredicate, Iterator)
+	 */
 	@NotNull
 	public static <T> Promise<T> first(@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull Iterable<? extends AsyncSupplier<? extends T>> promises) {
 		return first(predicate, asPromises(promises.iterator()));
 	}
 
+	/**
+	 * @see Promises#first(BiPredicate, Iterator)
+	 */
 	@NotNull
 	public static <T> Promise<T> first(@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull Stream<? extends AsyncSupplier<? extends T>> promises) {
@@ -849,7 +920,7 @@ public final class Promises {
 	}
 
 	/**
-	 * @param predicate for filtering results, consumes result of {@code Promise}
+	 * @param predicate filters results, consumes result of {@code Promise}
 	 * @return first completed result of {@code Promise} that satisfies predicate
 	 */
 	@NotNull
@@ -864,7 +935,7 @@ public final class Promises {
 			@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull SettablePromise<T> cb) {
 		if (!promises.hasNext()) {
-			cb.setException(new StacklessException(Promises.class, "No promise result met the condidtion"));
+			cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
 			return;
 		}
 		promises.next().whenComplete((result, e) -> {
@@ -876,12 +947,20 @@ public final class Promises {
 		});
 	}
 
+	/**
+	 * Returns a {@link BiPredicate} which checks if
+	 * {@code Promise} wasn't completed exceptionally.
+	 */
 	@Contract(value = " -> new", pure = true)
 	@NotNull
 	public static <T> BiPredicate<T, Throwable> isResult() {
 		return ($, e) -> e == null;
 	}
 
+	/**
+	 * Returns a {@link BiPredicate} which checks if
+	 * {@code Promise} was completed with an exception.
+	 */
 	@Contract(value = " -> new", pure = true)
 	@NotNull
 	public static <T> BiPredicate<T, Throwable> isError() {
@@ -916,7 +995,7 @@ public final class Promises {
 	}
 
 	/**
-	 * Repeats provided {@code Function} until can pass {@link Predicate} test.
+	 * Repeats provided {@link Function} until can pass {@link Predicate} test.
 	 * Resembles a simple Java {@code for()} loop but with async capabilities.
 	 *
 	 * @param seed start value
@@ -935,6 +1014,9 @@ public final class Promises {
 		return cb;
 	}
 
+	/**
+	 * @see #loop(Object, Predicate, Function)
+	 */
 	@NotNull
 	public static Promise<Void> loop(@NotNull Predicate<Void> test, @NotNull Function<Void, Promise<Void>> next) {
 		return loop(null, test, next);
@@ -966,6 +1048,10 @@ public final class Promises {
 		}
 	}
 
+	/**
+	 * Transforms a collection of {@link AsyncSupplier}
+	 * {@code tasks} to a collection of {@code Promise}s.
+	 */
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public static <T> Iterator<Promise<T>> asPromises(@NotNull Iterator<? extends AsyncSupplier<? extends T>> tasks) {

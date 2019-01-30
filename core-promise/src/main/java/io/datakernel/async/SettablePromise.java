@@ -47,6 +47,10 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@Nullable
 	private Throwable exception = PROMISE_NOT_SET;
 
+	/**
+	 * Returns a {@code SettablePromise} created from
+	 * {@code Promise} after it completes.
+	 */
 	@NotNull
 	public static <T> SettablePromise<T> ofPromise(@NotNull Promise<T> promise) {
 		SettablePromise<T> result = new SettablePromise<>();
@@ -70,8 +74,9 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * Sets the result of this {@code SettablePromise} and completes it.
-	 * <p>{@code AssertionError} is thrown when you try to set result for an already completed promise.</p>
+	 * Sets the result of this {@code SettablePromise} and
+	 * completes it. {@code AssertionError} is thrown when you
+	 * try to set result for an already completed {@code Promise}.
 	 */
 	public void set(@Nullable T result) {
 		assert !isComplete();
@@ -103,8 +108,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * Tries to set provided {@code result} for this {@code SettablePromise}
-	 * if it is not completed yet.
+	 * Tries to set provided {@code result} for this
+	 * {@code SettablePromise} if it is not completed yet.
 	 */
 	public void trySet(@Nullable T result) {
 		if (isComplete()) {
@@ -114,8 +119,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * Tries to set result or exception for this {@code SettablePromise} if it not set yet.
-	 * Otherwise does nothing.
+	 * Tries to set result or exception for this {@code SettablePromise}
+	 * if it not completed yet. Otherwise does nothing.
 	 */
 	public void trySet(@Nullable T result, @Nullable Throwable e) {
 		if (isComplete()) {
@@ -129,8 +134,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	/**
-	 * Tries to set provided {@code e} exception for this {@code SettablePromise}
-	 * if it is not completed yet.
+	 * Tries to set provided {@code e} exception for this
+	 * {@code SettablePromise} if it is not completed yet.
 	 */
 	public void trySetException(@NotNull Throwable e) {
 		if (isComplete()) {
