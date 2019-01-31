@@ -51,6 +51,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -571,8 +572,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 		Promise<List<SignedData<GlobalFsCheckpoint>>> list(String glob) {
 			return checkpointStorage.listMetaCheckpoints(glob)
-					.thenCompose(list -> Promises.collectSequence(toList(),
-							list.stream().map(filename -> () -> checkpointStorage.loadMetaCheckpoint(filename))));
+					.thenCompose(list -> Promises.reduce(toList(), 1,
+							asPromises(list.stream().map(
+									filename ->
+											() -> checkpointStorage.loadMetaCheckpoint(filename)
+							))));
 		}
 
 		Promise<SignedData<GlobalFsCheckpoint>> getMetadata(String fileName) {

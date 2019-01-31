@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.Promises.collectSequence;
+import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
@@ -114,7 +114,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 					Promise<List<LogDiff<CubeDiff>>> promise = parallelRunner ?
 							Promises.toList(tasks.stream().map(AsyncSupplier::get)) :
-							collectSequence(toList(), tasks);
+							Promises.reduce(toList(), 1, asPromises(tasks));
 
 					return promise
 							.whenComplete(promiseProcessLogsImpl.recordStats())

@@ -721,7 +721,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 							})));
 		});
 
-		return Promises.runSequence(runnables).thenApply($ -> CubeDiff.of(map));
+		return Promises.sequence(runnables).thenApply($ -> CubeDiff.of(map));
 	}
 
 	private List<String> getAllParents(String dimension) {

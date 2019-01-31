@@ -126,7 +126,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		repartitionPromise = localStorage.list(glob)
 				.thenCompose(list -> {
 					allFiles = list.size();
-					return Promises.runSequence( // just handling all local files sequentially
+					return Promises.sequence( // just handling all local files sequentially
 							filterNot(list.stream(), negativeGlob)
 									.map(meta -> AsyncSupplier.cast(() ->
 											repartitionFile(meta)

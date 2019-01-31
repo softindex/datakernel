@@ -34,7 +34,6 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertNull;
@@ -217,7 +216,7 @@ public final class PromisesTest {
 
 	@Test
 	public void testCollectStream() {
-		List<Integer> list = await(collect(toList(), Stream.of(of(1), of(2), of(3))));
+		List<Integer> list = await(Promises.toList(Stream.of(of(1), of(2), of(3))));
 		assertEquals(3, list.size());
 	}
 
@@ -238,7 +237,7 @@ public final class PromisesTest {
 
 	@Test
 	public void testLoop() {
-		Promises.loop(0, i -> i < 5, i -> Promise.of(i+1)
+		Promises.loop(0, i -> i < 5, i -> Promise.of(i + 1)
 				.whenResult(counter::set));
 		assertEquals(5, counter.get());
 	}
@@ -255,7 +254,7 @@ public final class PromisesTest {
 	@Test
 	public void testRunSequence() {
 		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
-		await(runSequence(list.stream()
+		await(sequence(list.stream()
 				.map(n -> AsyncSupplier.cast(() ->
 						getStage(n)))));
 	}
@@ -263,7 +262,7 @@ public final class PromisesTest {
 	@Test
 	public void testRunSequenceWithSorted() {
 		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
-		await(runSequence(list.stream()
+		await(sequence(list.stream()
 				.sorted(Comparator.naturalOrder())
 				.map(n -> AsyncSupplier.cast(() ->
 						getStage(n)))));

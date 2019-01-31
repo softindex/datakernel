@@ -193,6 +193,16 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		throw new IllegalStateException();
 	}
 
+	@Override
+	public @NotNull Try<T> getTry() {
+		if (isResult()) return Try.of(result);
+		if (isException()) {
+			//noinspection ConstantConditions
+			return Try.ofException(exception);
+		}
+		throw new IllegalStateException();
+	}
+
 	@NotNull
 	@Override
 	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {

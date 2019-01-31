@@ -37,9 +37,7 @@ public interface MaterializedPromise<T> extends Promise<T> {
 
 	@Contract(pure = true)
 	@NotNull
-	default Try<T> getTry() {
-		return isResult() ? Try.of(getResult()) : Try.ofException(getException());
-	}
+	Try<T> getTry();
 
 	@Contract(pure = true, value = "-> this")
 	@NotNull

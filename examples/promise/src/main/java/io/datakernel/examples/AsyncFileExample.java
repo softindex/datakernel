@@ -77,7 +77,7 @@ public class AsyncFileExample {
 	}
 
 	public static void main(String[] args) {
-		Promises.runSequence(
+		Promises.sequence(
 				AsyncSupplier.cast(AsyncFileExample::writeToFile),
 				AsyncSupplier.cast(AsyncFileExample::readFromFile))
 				.whenComplete(($, e) -> {

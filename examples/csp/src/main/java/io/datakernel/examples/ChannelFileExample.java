@@ -74,7 +74,7 @@ public class ChannelFileExample {
 	}
 
 	public static void main(String[] args) {
-		Promises.runSequence(
+		Promises.sequence(
 				AsyncSupplier.cast(ChannelFileExample::writeToFile),
 				AsyncSupplier.cast(ChannelFileExample::readFile))
 				.whenComplete(($, e) -> {

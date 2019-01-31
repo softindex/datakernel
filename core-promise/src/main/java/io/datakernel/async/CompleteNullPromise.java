@@ -23,15 +23,14 @@ import org.jetbrains.annotations.Nullable;
  * Optimized for multiple reuse since its result never changes.
  */
 public final class CompleteNullPromise<T> extends CompletePromise<T> {
-	public static final CompleteNullPromise<?> INSTANCE = new CompleteNullPromise<>();
+	static final CompleteNullPromise<?> INSTANCE = new CompleteNullPromise<>();
 
 	@SuppressWarnings("unchecked")
 	static <T> CompleteNullPromise<T> instance() {
 		return (CompleteNullPromise<T>) INSTANCE;
 	}
 
-	private CompleteNullPromise() {
-	}
+	private CompleteNullPromise() {}
 
 	@Nullable
 	@Override

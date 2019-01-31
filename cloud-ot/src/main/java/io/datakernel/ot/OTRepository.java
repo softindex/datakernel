@@ -10,7 +10,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.Promises.runSequence;
 import static java.lang.Math.min;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
@@ -20,7 +19,7 @@ import static java.util.stream.Collectors.toSet;
 
 public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	default Promise<Void> push(Collection<OTCommit<K, D>> commits) {
-		return runSequence(commits.stream()
+		return Promises.sequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
 				.map(commit -> AsyncSupplier.cast(() ->
 						push(commit))));

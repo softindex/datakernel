@@ -283,7 +283,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create().lenient();
 
-					MaterializedPromise<List<Try<Void>>> uploadResults = Promises.collect(toList(), successes.stream()
+					MaterializedPromise<List<Try<Void>>> uploadResults = Promises.toList(successes.stream()
 							.map(s -> getAcknowledgement(cb ->
 									splitter.addOutput()
 											.set(s.consumer.withAcknowledgement(cb)))

@@ -32,10 +32,8 @@ public class Utils {
 	 */
 	@SuppressWarnings("Convert2MethodRef")
 	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Iterator<Promise<T>> promises) {
-		return reduceEx(
-				promises,
-				() -> new ArrayList<T>(),
-				a -> n - a.size(),
+		return reduceEx(promises, a -> n - a.size(),
+				new ArrayList<T>(),
 				(a, v) -> {
 					if (v.isSuccess()) {
 						a.add(v.get());
@@ -54,7 +52,8 @@ public class Utils {
 	}
 
 	public static <T> Promise<Boolean> tolerantCollectBoolean(Stream<T> items, Function<T, Promise<Boolean>> fn) {
-		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry())))
+		return Promises.reduce(Try.reducer(false, (a, b) -> a || b), 1,
+				asPromises(items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry()))))
 				.thenCompose(Promise::ofTry);
 	}
 
@@ -63,7 +62,8 @@ public class Utils {
 	}
 
 	public static <T> Promise<Void> tolerantCollectVoid(Stream<T> items, Function<T, Promise<Void>> fn) {
-		return Promises.collectSequence(Try.voidReducer(), items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry())))
+		return Promises.reduce(Try.voidReducer(), 1,
+				asPromises(items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry()))))
 				.thenCompose(Promise::ofTry);
 	}
 }

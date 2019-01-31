@@ -180,7 +180,7 @@ public final class CrdtClusterTest {
 				CrdtData::getKey, STRING_CODEC,
 				CrdtData::getState, INT_CODEC);
 
-		Promises.runSequence(IntStream.range(0, 1_000_000)
+		Promises.sequence(IntStream.range(0, 1_000_000)
 				.mapToObj(i -> AsyncSupplier.cast(() ->
 						client.request(HttpRequest.of(PUT, "http://127.0.0.1:7000")
 								.withBody(JsonUtils.toJson(codec, new CrdtData<>("value_" + i, i)).getBytes(UTF_8))))))

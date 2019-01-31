@@ -28,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Array;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +42,7 @@ import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.CollectionUtils.transformIterator;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+
 /**
  * Allows to manage multiple {@link Promise}s.
  */
@@ -326,87 +328,6 @@ public final class Promises {
 	}
 
 	/**
-	 * Accumulates results of {@code Promise}s using {@link IndexedCollector}.
-	 *
-	 * @param <T>       type of input value
-	 * @param <A>       type of accumulator
-	 * @param <R>       type of result
-	 * @param collector reducer which is used for combining {@code Promise} results into one value
-	 * @param promises  collection of {@code Promise}s
-	 * @return {@code Promise} with accumulated result
-	 */
-	@Contract(pure = true)
-	@NotNull
-	public static <T, A, R> Promise<R> collect(@NotNull IndexedCollector<T, A, R> collector, @NotNull List<? extends Promise<? extends T>> promises) {
-		int size = promises.size();
-		if (size == 0) return Promise.of(collector.resultOf());
-		if (size == 1) return promises.get(0).thenApply(collector::resultOf);
-		if (size == 2) return promises.get(0).combine(promises.get(1), collector::resultOf);
-
-		A accumulator = collector.accumulator(size);
-		@NotNull PromiseIndexedCollect<T, A, R> resultPromise = new PromiseIndexedCollect<>(collector, accumulator);
-
-		for (int i = 0; i < size; i++) {
-			Promise<? extends T> promise = promises.get(i);
-			if (promise.isResult()) {
-				collector.accumulate(resultPromise.accumulator, i, promise.materialize().getResult());
-				continue;
-			}
-			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
-			int index = i;
-			resultPromise.countdown++;
-			promise.whenComplete((result, e) -> {
-				if (e == null) {
-					resultPromise.processComplete(result, index);
-				} else {
-					resultPromise.tryCompleteExceptionally(e);
-				}
-			});
-		}
-		return resultPromise.countdown != 0 ? resultPromise : Promise.of(collector.finish(resultPromise.accumulator));
-	}
-
-	@NotNull
-	public static <T, A, R> Promise<R> collect(@NotNull Collector<T, A, R> collector, @NotNull Iterator<? extends Promise<? extends T>> promises) {
-		A accumulatorValue = collector.supplier().get();
-		BiConsumer<A, T> accumulatorConsumer = collector.accumulator();
-		if (!promises.hasNext()) {
-			return Promise.of(collector.finisher().apply(accumulatorValue));
-		}
-		@NotNull PromiseCollect<T, A, R> resultPromise = new PromiseCollect<>(collector, accumulatorValue);
-
-		while (promises.hasNext()) {
-			Promise<? extends T> promise = promises.next();
-			if (promise.isResult()) {
-				accumulatorConsumer.accept(resultPromise.accumulator, promise.materialize().getResult());
-				continue;
-			}
-			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
-			resultPromise.countdown++;
-			promise.then(resultPromise);
-		}
-		return resultPromise.countdown != 0 ? resultPromise : Promise.of(collector.finisher().apply(resultPromise.accumulator));
-	}
-
-	/**
-	 * @see #collect(Collector, Iterator)
-	 */
-	@Contract(pure = true)
-	@NotNull
-	public static <T, A, R> Promise<R> collect(@NotNull Collector<T, A, R> collector, @NotNull Iterable<? extends Promise<? extends T>> promises) {
-		return collect(collector, promises.iterator());
-	}
-
-	/**
-	 * @see #collect(Collector, Iterator)
-	 */
-	@Contract(pure = true)
-	@NotNull
-	public static <T, A, R> Promise<R> collect(@NotNull Collector<T, A, R> collector, @NotNull Stream<? extends Promise<? extends T>> promises) {
-		return collect(collector, promises.iterator());
-	}
-
-	/**
 	 * Returns a successfully completed {@code Promise}
 	 * with an empty list as the result.
 	 */
@@ -457,13 +378,35 @@ public final class Promises {
 
 	/**
 	 * Reduces list of {@code Promise}s into Promise&lt;List&gt;.
-	 *
-	 * @see Promises#collect(IndexedCollector, List)
 	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList(@NotNull List<? extends Promise<? extends T>> promises) {
-		return collect(IndexedCollector.toList(), promises);
+		int size = promises.size();
+		if (size == 0) return Promise.of(Collections.emptyList());
+		if (size == 1) return promises.get(0).thenApply(Collections::singletonList);
+		if (size == 2) return promises.get(0).combine(promises.get(1), Arrays::asList);
+
+		@SuppressWarnings("unchecked") PromiseToList<T> resultPromise = new PromiseToList<>((T[]) new Object[size]);
+
+		for (int i = 0; i < size; i++) {
+			Promise<? extends T> promise = promises.get(i);
+			if (promise.isResult()) {
+				resultPromise.accumulator[i] = promise.materialize().getResult();
+				continue;
+			}
+			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
+			int index = i;
+			resultPromise.countdown++;
+			promise.whenComplete((result, e) -> {
+				if (e == null) {
+					resultPromise.processComplete(result, index);
+				} else {
+					resultPromise.tryCompleteExceptionally(e);
+				}
+			});
+		}
+		return resultPromise.countdown != 0 ? resultPromise : Promise.of(asList(resultPromise.accumulator));
 	}
 
 	/**
@@ -528,13 +471,35 @@ public final class Promises {
 
 	/**
 	 * Reduces promises into Promise&lt;Array&gt;
-	 *
-	 * @see Promises#collect(IndexedCollector, List)
 	 */
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T[]> toArray(@NotNull Class<T> type, @NotNull List<? extends Promise<? extends T>> promises) {
-		return collect(IndexedCollector.toArray(type), promises);
+		int size = promises.size();
+		if (size == 0) return toArray(type);
+		if (size == 1) return toArray(type, promises.get(0));
+		if (size == 2) return toArray(type, promises.get(0), promises.get(1));
+
+		@SuppressWarnings("unchecked") PromiseToArray<T> resultPromise = new PromiseToArray<>((T[]) Array.newInstance(type, size));
+
+		for (int i = 0; i < size; i++) {
+			Promise<? extends T> promise = promises.get(i);
+			if (promise.isResult()) {
+				resultPromise.accumulator[i] = promise.materialize().getResult();
+				continue;
+			}
+			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
+			int index = i;
+			resultPromise.countdown++;
+			promise.whenComplete((result, e) -> {
+				if (e == null) {
+					resultPromise.processComplete(result, index);
+				} else {
+					resultPromise.tryCompleteExceptionally(e);
+				}
+			});
+		}
+		return resultPromise.countdown != 0 ? resultPromise : Promise.of(resultPromise.accumulator);
 	}
 
 	@Contract(pure = true)
@@ -667,7 +632,7 @@ public final class Promises {
 	 * Returns a {@link CompleteNullPromise}
 	 */
 	@NotNull
-	public static Promise<Void> runSequence() {
+	public static Promise<Void> sequence() {
 		return Promise.complete();
 	}
 
@@ -676,7 +641,7 @@ public final class Promises {
 	 * waits until it completes and than returns a {@code Promise<Void>}
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?> promise) {
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<?> promise) {
 		return promise.get().toVoid();
 	}
 
@@ -685,40 +650,40 @@ public final class Promises {
 	 * end executes them consequently, discarding their results.
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2) {
-		return promise1.get().thenCompose($ -> runSequence(promise2));
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2) {
+		return promise1.get().thenCompose($ -> sequence(promise2));
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * @see Promises#sequence(Iterator)
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?>... promises) {
-		return runSequence(asList(promises));
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<?>... promises) {
+		return sequence(asList(promises));
 	}
 
 	/**
-	 * @see Promises#runSequence(AsyncSupplier, AsyncSupplier)
+	 * @see Promises#sequence(AsyncSupplier, AsyncSupplier)
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2, @NotNull AsyncSupplier<?> promise3) {
-		return promise1.get().thenCompose($ -> runSequence(promise2, promise3));
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2, @NotNull AsyncSupplier<?> promise3) {
+		return promise1.get().thenCompose($ -> sequence(promise2, promise3));
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * @see Promises#sequence(Iterator)
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull Iterable<? extends AsyncSupplier<?>> promises) {
-		return runSequence(asPromises(promises.iterator()));
+	public static Promise<Void> sequence(@NotNull Iterable<? extends AsyncSupplier<?>> promises) {
+		return sequence(asPromises(promises.iterator()));
 	}
 
 	/**
-	 * @see Promises#runSequence(Iterator)
+	 * @see Promises#sequence(Iterator)
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull Stream<? extends AsyncSupplier<?>> promises) {
-		return runSequence(asPromises(promises.iterator()));
+	public static Promise<Void> sequence(@NotNull Stream<? extends AsyncSupplier<?>> promises) {
+		return sequence(asPromises(promises.iterator()));
 	}
 
 	/**
@@ -729,78 +694,26 @@ public final class Promises {
 	 * @return {@code Promise} that completes when all {@code promises} are completed
 	 */
 	@NotNull
-	public static Promise<Void> runSequence(@NotNull Iterator<? extends Promise<?>> promises) {
-		SettablePromise<Void> result = new SettablePromise<>();
-		runSequenceImpl(promises, result);
-		return result;
+	public static Promise<Void> sequence(@NotNull Iterator<? extends Promise<?>> promises) {
+		SettablePromise<Void> cb = new SettablePromise<>();
+		sequenceImpl(promises, cb);
+		return cb;
 	}
 
-	private static void runSequenceImpl(@NotNull Iterator<? extends Promise<?>> promises, @NotNull SettablePromise<Void> cb) {
-		if (!promises.hasNext()) {
-			cb.set(null);
+	private static void sequenceImpl(@NotNull Iterator<? extends Promise<?>> promises, @NotNull SettablePromise<Void> cb) {
+		while (promises.hasNext()) {
+			Promise<?> promise = promises.next();
+			if (promise.isResult()) continue;
+			promise.whenComplete((result, e) -> {
+				if (e == null) {
+					sequenceImpl(promises, cb);
+				} else {
+					cb.setException(e);
+				}
+			});
 			return;
 		}
-		promises.next().whenComplete((result, e) -> {
-			if (e == null) {
-				runSequenceImpl(promises, cb);
-			} else {
-				cb.setException(e);
-			}
-		});
-	}
-
-	/**
-	 * @see Promises#collectSequence(Collector, Iterator)
-	 */
-	@NotNull
-	@SafeVarargs
-	public static <T, A, R> Promise<R> collectSequence(@NotNull Collector<T, A, R> collector, @NotNull AsyncSupplier<? extends T>... promises) {
-		return collectSequence(collector, asList(promises));
-	}
-
-	/**
-	 * @see Promises#collectSequence(Collector, Iterator)
-	 */
-	@NotNull
-	public static <T, A, R> Promise<R> collectSequence(@NotNull Collector<T, A, R> collector, @NotNull Iterable<? extends AsyncSupplier<? extends T>> promises) {
-		return collectSequence(collector, asPromises(promises.iterator()));
-	}
-
-	/**
-	 * @see Promises#collectSequence(Collector, Iterator)
-	 */
-	@NotNull
-	public static <T, A, R> Promise<R> collectSequence(@NotNull Collector<T, A, R> collector, @NotNull Stream<? extends AsyncSupplier<? extends T>> promises) {
-		return collectSequence(collector, asPromises(promises.iterator()));
-	}
-
-	/**
-	 * Accumulates {@code promises} results into one final using {@link Collector} sequentially.
-	 *
-	 * @return new {@code Promise} that completes when all {@code promises} are completed
-	 */
-	@NotNull
-	public static <T, A, R> Promise<R> collectSequence(@NotNull Collector<T, A, R> collector, @NotNull Iterator<? extends Promise<? extends T>> promises) {
-		@NotNull SettablePromise<R> result = new SettablePromise<>();
-		collectSequenceImpl(promises, collector.accumulator(), collector.finisher(), collector.supplier().get(), result);
-		return result;
-	}
-
-	private static <T, A, R> void collectSequenceImpl(@NotNull Iterator<? extends Promise<? extends T>> promises,
-			@NotNull BiConsumer<A, T> accumulator, @NotNull Function<A, R> finisher,
-			@Nullable A accumulatedValue, @NotNull SettablePromise<R> cb) {
-		if (!promises.hasNext()) {
-			cb.set(finisher.apply(accumulatedValue));
-			return;
-		}
-		promises.next().whenComplete((result, e) -> {
-			if (e == null) {
-				accumulator.accept(accumulatedValue, result);
-				collectSequenceImpl(promises, accumulator, finisher, accumulatedValue, cb);
-			} else {
-				cb.setException(e);
-			}
-		});
+		cb.set(null);
 	}
 
 	/**
@@ -857,7 +770,7 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<T> first(@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull Iterable<? extends AsyncSupplier<? extends T>> promises) {
-		return first(predicate, asPromises(promises.iterator()));
+		return first(predicate, asPromises(promises));
 	}
 
 	/**
@@ -866,7 +779,7 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<T> first(@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull Stream<? extends AsyncSupplier<? extends T>> promises) {
-		return first(predicate, asPromises(promises.iterator()));
+		return first(predicate, asPromises(promises));
 	}
 
 	/**
@@ -1012,19 +925,31 @@ public final class Promises {
 		return asPromises(tasks.iterator());
 	}
 
-	public static <T, A, R> Promise<R> reduce(@NotNull Iterator<Promise<T>> promises,
-			@NotNull Supplier<A> accumulatorSupplier,
-			int maxCalls,
+	public static <T> Iterator<Promise<T>> asPromises(@NotNull Iterable<? extends AsyncSupplier<? extends T>> tasks) {
+		return asPromises(tasks.iterator());
+	}
+
+	@SafeVarargs
+	public static <T> Iterator<Promise<T>> asPromises(@NotNull AsyncSupplier<? extends T>... tasks) {
+		return asPromises(asList(tasks));
+	}
+
+	public static <T, A, R> Promise<R> reduce(@NotNull Collector<T, A, R> collector, int maxCalls,
+			@NotNull Iterator<Promise<T>> promises) {
+		return reduce(promises, maxCalls, collector.supplier().get(), collector.accumulator(), collector.finisher());
+	}
+
+	public static <T, A, R> Promise<R> reduce(@NotNull Iterator<Promise<T>> promises, int maxCalls,
+			A accumulator,
 			@NotNull BiConsumer<A, T> consumer,
-			@NotNull Function<A, R> finalizer,
-			@Nullable Consumer<A> recycler) {
+			@NotNull Function<A, R> finisher) {
 		return Promise.ofCallback(cb ->
 				reduceImpl(promises, maxCalls, new int[]{0},
-						accumulatorSupplier.get(), consumer, finalizer, recycler, cb));
+						accumulator, consumer, finisher, cb));
 	}
 
 	private static <T, A, R> void reduceImpl(Iterator<Promise<T>> promises, int maxCalls, int[] calls,
-			A accumulator, BiConsumer<A, T> consumer, Function<A, R> finalizer, @Nullable Consumer<A> recycler,
+			A accumulator, BiConsumer<A, T> consumer, Function<A, R> finisher,
 			SettablePromise<R> cb) {
 		while (promises.hasNext() && calls[0] < maxCalls) {
 			assert !cb.isComplete();
@@ -1034,7 +959,6 @@ public final class Promises {
 					consumer.accept(accumulator, promise.materialize().getResult());
 					continue;
 				} else {
-					if (recycler != null) recycler.accept(accumulator);
 					cb.setException(promise.materialize().getException());
 					return;
 				}
@@ -1048,32 +972,30 @@ public final class Promises {
 				if (e == null) {
 					consumer.accept(accumulator, v);
 					reduceImpl(promises, maxCalls, calls,
-							accumulator, consumer, finalizer, recycler, cb);
+							accumulator, consumer, finisher, cb);
 				} else {
-					if (recycler != null) recycler.accept(accumulator);
 					cb.setException(e);
 				}
 			});
 		}
 		if (calls[0] == 0) {
-			R result = finalizer.apply(accumulator);
+			R result = finisher.apply(accumulator);
 			cb.set(result);
 		}
 	}
 
-	public static <T, A, R> Promise<R> reduceEx(@NotNull Iterator<Promise<T>> promises,
-			@NotNull Supplier<A> accumulatorSupplier,
-			@NotNull ToIntFunction<A> maxCalls,
+	public static <T, A, R> Promise<R> reduceEx(@NotNull Iterator<Promise<T>> promises, @NotNull ToIntFunction<A> maxCalls,
+			A accumulator,
 			@NotNull BiFunction<A, Try<T>, @Nullable Try<R>> consumer,
-			@NotNull Function<A, @NotNull Try<R>> finalizer,
+			@NotNull Function<A, @NotNull Try<R>> finisher,
 			@Nullable Consumer<T> recycler) {
 		return Promise.ofCallback(cb ->
 				reduceExImpl(promises, maxCalls, new int[]{0},
-						accumulatorSupplier.get(), consumer, finalizer, recycler, cb));
+						accumulator, consumer, finisher, recycler, cb));
 	}
 
 	private static <T, A, R> void reduceExImpl(Iterator<Promise<T>> promises, ToIntFunction<A> maxCalls, int[] calls,
-			A accumulator, BiFunction<A, Try<T>, Try<R>> consumer, Function<A, @NotNull Try<R>> finalizer, @Nullable Consumer<T> recycler,
+			A accumulator, BiFunction<A, Try<T>, Try<R>> consumer, Function<A, @NotNull Try<R>> finisher, @Nullable Consumer<T> recycler,
 			SettablePromise<R> cb) {
 		while (promises.hasNext() && calls[0] < maxCalls.applyAsInt(accumulator)) {
 			assert !cb.isComplete();
@@ -1081,11 +1003,7 @@ public final class Promises {
 			if (promise.isComplete()) {
 				@Nullable Try<R> maybeResult = consumer.apply(accumulator, promise.materialize().getTry());
 				if (maybeResult != null) {
-					if (maybeResult.isSuccess()) {
-						cb.set(maybeResult.get());
-					} else {
-						cb.setException(maybeResult.getException());
-					}
+					cb.set(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
 					return;
 				}
 				continue;
@@ -1099,19 +1017,15 @@ public final class Promises {
 				}
 				@Nullable Try<R> maybeResult = consumer.apply(accumulator, Try.of(v, e));
 				if (maybeResult != null) {
-					if (maybeResult.isSuccess()) {
-						cb.set(maybeResult.get());
-					} else {
-						cb.setException(maybeResult.getException());
-					}
+					cb.set(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
 				} else {
 					reduceExImpl(promises, maxCalls, calls,
-							accumulator, consumer, finalizer, recycler, cb);
+							accumulator, consumer, finisher, recycler, cb);
 				}
 			});
 		}
 		if (calls[0] == 0) {
-			@NotNull Try<R> result = finalizer.apply(accumulator);
+			@NotNull Try<R> result = finisher.apply(accumulator);
 			if (result.isSuccess()) {
 				cb.set(result.get());
 			} else {
@@ -1151,55 +1065,11 @@ public final class Promises {
 		}
 	}
 
-	private static final class PromiseCollect<T, A, R> extends NextPromise<T, R> {
-		@NotNull
-		final Collector<T, A, R> collector;
-		@Nullable
-		A accumulator;
+	private static final class PromiseToArray<T> extends NextPromise<T, T[]> {
+		T[] accumulator;
 		int countdown;
 
-		private PromiseCollect(@NotNull Collector<T, A, R> collector, @Nullable A accumulator) {
-			this.collector = collector;
-			this.accumulator = accumulator;
-		}
-
-		void processComplete(@Nullable T result) {
-			if (isComplete()) {
-				return;
-			}
-			collector.accumulator().accept(accumulator, result);
-			if (--countdown == 0) {
-				R reducerResult = collector.finisher().apply(accumulator);
-				//noinspection AssignmentToNull - resource release
-				accumulator = null;
-				complete(reducerResult);
-			}
-		}
-
-		@Override
-		public void accept(@Nullable T result, @Nullable Throwable e) {
-			if (e == null) {
-				processComplete(result);
-			} else {
-				tryCompleteExceptionally(e);
-			}
-		}
-	}
-
-	private static final class PromiseIndexedCollect<T, A, R> extends NextPromise<T, R> {
-		@NotNull
-		final IndexedCollector<T, A, R> collector;
-		@Nullable
-		A accumulator;
-		int countdown;
-
-		private PromiseIndexedCollect(@NotNull IndexedCollector<T, A, R> collector, @Nullable A accumulator) {
-			this.collector = collector;
-			this.accumulator = accumulator;
-		}
-
-		private PromiseIndexedCollect(@NotNull Collector<T, A, R> collector, @Nullable A accumulator) {
-			this.collector = IndexedCollector.ofCollector(collector);
+		private PromiseToArray(@NotNull T[] accumulator) {
 			this.accumulator = accumulator;
 		}
 
@@ -1207,12 +1077,11 @@ public final class Promises {
 			if (isComplete()) {
 				return;
 			}
-			collector.accumulate(accumulator, i, result);
+			accumulator[i] = result;
 			if (--countdown == 0) {
-				R reducerResult = collector.finish(accumulator);
-				//noinspection AssignmentToNull - resource release
-				accumulator = null;
-				complete(reducerResult);
+				T[] accumulator = this.accumulator;
+				this.accumulator = null;
+				complete(accumulator);
 			}
 		}
 
@@ -1224,7 +1093,36 @@ public final class Promises {
 				tryCompleteExceptionally(e);
 			}
 		}
+	}
 
+	private static final class PromiseToList<T> extends NextPromise<T, List<T>> {
+		T[] accumulator;
+		int countdown;
+
+		private PromiseToList(@NotNull T[] accumulator) {
+			this.accumulator = accumulator;
+		}
+
+		void processComplete(@Nullable T result, int i) {
+			if (isComplete()) {
+				return;
+			}
+			accumulator[i] = result;
+			if (--countdown == 0) {
+				T[] accumulator = this.accumulator;
+				this.accumulator = null;
+				complete(Arrays.asList(accumulator));
+			}
+		}
+
+		@Override
+		public void accept(@Nullable T result, @Nullable Throwable e) {
+			if (e == null) {
+				processComplete(result, 0);
+			} else {
+				tryCompleteExceptionally(e);
+			}
+		}
 	}
 
 	static final class ReduceTimeouter<T, A, R> implements Runnable, CollectListener<T, A, R> {

@@ -171,7 +171,7 @@ public final class TestRemoteFsClusterClient {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
-		await(Promises.runSequence(IntStream.range(0, 1000)
+		await(Promises.sequence(IntStream.range(0, 1000)
 				.mapToObj(i -> AsyncSupplier.cast(() ->
 						ChannelSupplier.of(data.slice())
 								.streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded_" + i + ".txt"))))))
