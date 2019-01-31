@@ -921,24 +921,71 @@ public final class Promises {
 		return transformIterator((Iterator<AsyncSupplier<T>>) tasks, AsyncSupplier::get);
 	}
 
+	/**
+	 * Transforms a {@link Stream} of {@link AsyncSupplier}
+	 * {@code tasks} to a collection of {@code Promise}s.
+	 */
 	public static <T> Iterator<Promise<T>> asPromises(@NotNull Stream<? extends AsyncSupplier<? extends T>> tasks) {
 		return asPromises(tasks.iterator());
 	}
 
+	/**
+	 * Transforms an {@link Iterable} of {@link AsyncSupplier}
+	 * {@code tasks} to a collection of {@code Promise}s.
+	 */
 	public static <T> Iterator<Promise<T>> asPromises(@NotNull Iterable<? extends AsyncSupplier<? extends T>> tasks) {
 		return asPromises(tasks.iterator());
 	}
 
+	/**
+	 * Transforms an {@link AsyncSupplier} {@code tasks}
+	 * to a collection of {@code Promise}s.
+	 */
 	@SafeVarargs
 	public static <T> Iterator<Promise<T>> asPromises(@NotNull AsyncSupplier<? extends T>... tasks) {
 		return asPromises(asList(tasks));
 	}
 
+	/**
+	 * Allows to asynchronously reduce {@link Iterator} of {@code Promise}s
+	 * into a {@code Promise} with the help of {@link Collector}. You can
+	 * control the amount of concurrently running {@code Promise}.
+	 * <p>
+	 * This method is universal and allows to implement app-specific logic.
+	 *
+	 * @param collector mutable reduction operation that accumulates input
+	 *                     elements into a mutable result container
+	 * @param maxCalls 	max amount of concurrently running {@code Promise}s
+	 * @param promises	{@code Iterable} of {@code Promise}s
+	 * @param <T>		type of input elements for this operation
+	 * @param <A>		mutable accumulation type of the operation
+	 * @param <R>		the result type of the operation
+	 * @return			a {@code Promise} which wraps the accumulated result
+	 * of the reduction. If one of the {@code promises} completed exceptionally,
+	 * a {@code Promise} with an exception will be returned.
+	 */
 	public static <T, A, R> Promise<R> reduce(@NotNull Collector<T, A, R> collector, int maxCalls,
 			@NotNull Iterator<Promise<T>> promises) {
 		return reduce(promises, maxCalls, collector.supplier().get(), collector.accumulator(), collector.finisher());
 	}
 
+	/**
+	 * @param promises 	  {@code Iterable} of {@code Promise}s
+	 * @param accumulator supplier of the result
+	 * @param maxCalls	  max amount of concurrently running {@code Promise}s
+	 * @param consumer	  a {@link BiConsumer} which folds a result of each of the
+	 *                       completed {@code promises} into accumulator
+	 * @param finisher	  a {@link Function} which performs the final transformation
+	 *                       from the intermediate accumulations
+	 * @param <T>		  type of input elements for this operation
+	 * @param <A>		  mutable accumulation type of the operation
+	 * @param <R>		  result type of the reduction operation
+	 * @return			  a {@code Promise} which wraps the accumulated result of the
+	 * reduction. If one of the {@code promises} completed exceptionally, a {@code Promise}
+	 * with an exception will be returned.
+	 *
+	 * @see #reduce(Collector, int, Iterator)
+	 */
 	public static <T, A, R> Promise<R> reduce(@NotNull Iterator<Promise<T>> promises, int maxCalls,
 			A accumulator,
 			@NotNull BiConsumer<A, T> consumer,
@@ -984,6 +1031,49 @@ public final class Promises {
 		}
 	}
 
+	/**
+	 * Allows to asynchronously reduce {@link Iterator} of {@code Promise}s
+	 * into a {@code Promise} with the help of {@link Collector}. You can
+	 * control the amount of concurrently running {@code promises} and explicitly
+	 * process exceptions and intermediate results.
+	 * <p>
+	 * The main feature of this method is that you can set up {@code consumer}
+	 * for different use cases, for example:
+	 * <ul>
+	 *     <li> If one of the {@code promises} completes exceptionally, reduction
+	 *     will stop without waiting for all of the {@code promises} to be completed.
+	 *     A {@code Promise} with exception will be returned.
+	 *     <li> If one of the {@code promises} finishes with needed result, reduction
+	 *     will stop without waiting for all of the {@code promises} to be completed.
+	 *     <li> If a needed result accumulates before all of the {@code promises} run,
+	 *     reduction will stop without waiting for all of the {@code promises} to be completed.
+	 * </ul>
+	 * <p>
+	 * To implement the use cases, you need to set up the provided {@code consumer}'s
+	 * {@link BiFunction#apply(Object, Object)} function. This function will be applied
+	 * to each of the completed {@code promises} and corresponding accumulated result.
+	 * <p>
+	 * When {@code apply} returns {@code null}, nothing happens and reduction continues.
+	 * When {@link Try} with any result or exception is returned, the reduction stops without
+	 * waiting for all of the {@code promises} to be completed and {@code Promise} with
+	 * {@code Try}'s result or exception is returned
+	 * .
+	 *
+	 * @param promises 		{@code Iterable} of {@code Promise}s
+	 * @param maxCalls 		{@link ToIntFunction} which calculates max amount of concurrently
+	 *                         running {@code Promise}s based on the {@code accumulator} value
+	 * @param accumulator   mutable supplier of the result
+	 * @param consumer 		a {@link BiConsumer} which folds a result of each of the completed
+	 *                         {@code promises} into accumulator for further processing
+	 * @param finisher      a {@link Function} which performs the final transformation
+	 *                         from the intermediate accumulations
+	 * @param recycler		processes results of those {@code promises} which were
+	 *                         completed after result of the reduction was returned
+	 * @param <T>		    type of input elements for this operation
+	 * @param <A>		    mutable accumulation type of the operation
+	 * @param <R>		    result type of the reduction operation
+	 * @return				a {@code Promise} which wraps accumulated result or exception.
+	 */
 	public static <T, A, R> Promise<R> reduceEx(@NotNull Iterator<Promise<T>> promises, @NotNull ToIntFunction<A> maxCalls,
 			A accumulator,
 			@NotNull BiFunction<A, Try<T>, @Nullable Try<R>> consumer,
