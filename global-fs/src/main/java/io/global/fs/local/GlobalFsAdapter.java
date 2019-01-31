@@ -17,37 +17,23 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.exception.ConstantException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
-import io.global.fs.api.CheckpointPosStrategy;
-import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.fs.api.GlobalFsNode;
-import io.global.fs.transformers.FrameSigner;
-import io.global.fs.transformers.FrameVerifier;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
-import static io.global.fs.api.GlobalFsNode.FILE_ALREADY_EXISTS;
-import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
-import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {
@@ -57,162 +43,79 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	public static final ConstantException UPK_UPLOAD = new ConstantException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
 	public static final ConstantException UPK_DELETE = new ConstantException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");
 
-	private static final StructuredCodec<GlobalFsCheckpoint> METADATA_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
-
-	private final GlobalFsDriver driver;
-
-	private final GlobalFsNode node;
+	private final GlobalFsDriver gateway;
 	private final PubKey space;
 
 	@Nullable
-	private PrivKey privKey;
+	private final PrivKey privKey;
 
-	private final CheckpointPosStrategy checkpointPosStrategy;
+	@Nullable
+	private SimKey currentSimKey = null;
 
-	GlobalFsAdapter(GlobalFsDriver driver, GlobalFsNode node, PubKey space, @Nullable PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
-		this.driver = driver;
-		this.node = node;
+	public GlobalFsAdapter(GlobalFsDriver gateway, PubKey space, @Nullable PrivKey privKey) {
+		this.gateway = gateway;
 		this.space = space;
 		this.privKey = privKey;
-		this.checkpointPosStrategy = checkpointPosStrategy;
 	}
 
-	public void setPrivKey(PrivKey privKey) {
-		if (this.privKey != null) {
-			throw new IllegalStateException("Gateway already knows it's private key");
-		}
-		if (!privKey.computePubKey().equals(space)) {
-			throw new IllegalStateException("Trying to set gateway's private key that does not correspond to the public key");
-		}
-		this.privKey = privKey;
+	@Nullable
+	public SimKey getCurrentSimKey() {
+		return currentSimKey;
 	}
 
-	private Promise<ChannelConsumer<ByteBuf>> doUpload(String filename, long offset, @Nullable SimKey key, long skip, SHA256Digest startingDigest) {
-		long[] size = {offset + skip};
-		return node.upload(space, filename, offset + skip)
-				.thenApply(consumer -> {
-					Hash simKeyHash = key != null ? Hash.sha1(key.getBytes()) : null;
-					assert privKey != null : "privKey cannot be null here";
-					return consumer
-							.transformWith(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest, simKeyHash))
-							.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset + skip))
-							.peek(buf -> size[0] += buf.readRemaining())
-							.transformWith(ChannelByteRanger.drop(skip));
-				});
-	}
-
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset, @Nullable SimKey key) {
-		if (privKey == null) {
-			return Promise.ofException(UPK_UPLOAD);
-		}
-		// cut off the part of the file that is already there
-		return node.getMetadata(space, filename)
-				.thenComposeEx((signedCheckpoint, e) -> {
-					if (e != null && e != NO_CHECKPOINT) {
-						return Promise.ofException(e);
-					}
-					if (signedCheckpoint == null) {
-						return offset == -1 || offset == 0 ?
-								doUpload(filename, 0, key != null ? key : driver.getPrivateKeyStorage().getCurrentSimKey(), 0, new SHA256Digest()) :
-								Promise.ofException(UPLOAD_OFFSET_EXCEEDS_FILE_SIZE);
-					}
-					GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
-					if (checkpoint.isTombstone()) {
-						return Promise.ofException(UPLOADING_TO_TOMBSTONE);
-					}
-					if (offset == -1) {
-						return Promise.ofException(FILE_ALREADY_EXISTS);
-					}
-					long metaSize = checkpoint.getPosition();
-					if (offset > metaSize) {
-						return Promise.ofException(UPLOAD_OFFSET_EXCEEDS_FILE_SIZE);
-					}
-					long skip = metaSize - offset;
-					assert checkpoint.getDigest() != null : "tombstone check above";
-
-					return driver.getPrivateKeyStorage().getKey(space, checkpoint.getSimKeyHash())
-							.thenCompose(k -> doUpload(filename, offset, k, skip, checkpoint.getDigest()));
-				})
-				.whenComplete(toLogger(logger, "upload", filename, offset, key, this));
+	public void setCurrentSimKey(@Nullable SimKey currentSimKey) {
+		this.currentSimKey = currentSimKey;
 	}
 
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		return upload(filename, offset, null);
+		return privKey != null ?
+				gateway.upload(new KeyPair(privKey, space), filename, offset, currentSimKey) :
+				Promise.ofException(UPK_UPLOAD);
 	}
 
 	@Override
 	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long limit) {
-		return node.getMetadata(space, filename)
-				.thenComposeEx((signedMetadata, e) -> {
-					if (e != null) {
-						return Promise.ofException(e == NO_CHECKPOINT ? FILE_NOT_FOUND : e);
-					}
-					GlobalFsCheckpoint metadata = signedMetadata.getValue();
-					if (metadata.isTombstone()) {
-						return Promise.ofException(FILE_NOT_FOUND);
-					}
-					return node.download(space, filename, offset, limit)
-							.thenCompose(supplier ->
-									driver.getPrivateKeyStorage()
-											.getKey(space, metadata.getSimKeyHash())
-											.thenApply(key -> supplier
-													.transformWith(FrameVerifier.create(space, filename, offset, limit))
-													.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset))));
-				})
-				.whenComplete(toLogger(logger, "download", filename, offset, limit, this));
+		return gateway.download(space, filename, offset, limit)
+				.thenApply(supplier -> supplier
+						.transformWith(CipherTransformer.create(currentSimKey, CryptoUtils.nonceFromString(filename), offset)));
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
-		return node.list(space, glob)
+		return gateway.list(space, glob)
 				.thenApply(res -> res.stream()
-						.map(signedMeta -> {
-							GlobalFsCheckpoint value = signedMeta.getValue();
-							return new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), value.getSimKeyHash() == null ? 0 : 1);
-						})
+						.map(checkpoint -> new FileMetadata(
+								checkpoint.getFilename(),
+								checkpoint.isTombstone() ? -1 : checkpoint.getPosition(),
+								0
+						))
 						.collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
 	}
 
-	public Promise<List<GlobalFsCheckpoint>> extentedList(String glob) {
-		return node.list(space, glob)
-				.thenApply(res -> res.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "extendedList", glob, this));
-	}
-
 	@Override
 	public Promise<FileMetadata> getMetadata(String filename) {
-		return node.getMetadata(space, filename)
-				.thenComposeEx((signedMeta, e) -> {
-					if (e != null) {
-						return e == NO_CHECKPOINT ? Promise.of(null) : Promise.ofException(e);
-					}
-					GlobalFsCheckpoint value = signedMeta.getValue();
-					return Promise.of(new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), 0));
-				})
+		return gateway.getMetadata(space, filename)
+				.thenApply(checkpoint ->
+						checkpoint != null ?
+								new FileMetadata(checkpoint.getFilename(), checkpoint.isTombstone() ? -1 : checkpoint.getPosition(), 0) :
+								null)
 				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
 	}
 
 	@Override
 	public Promise<Void> deleteBulk(String glob) {
-		return isWildcard(glob) ?
-				node.list(space, glob)
-						.thenCompose(list ->
-								Promises.all(list.stream()
-										.filter(signedMeta -> !signedMeta.getValue().isTombstone())
-										.map(signedMeta -> delete(signedMeta.getValue().getFilename()))))
-						.whenComplete(toLogger(logger, TRACE, "deleteBulk", glob, this)) :
-				delete(glob);
+		return privKey != null ?
+				gateway.delete(new KeyPair(privKey, space), glob) :
+				Promise.ofException(UPK_DELETE);
 	}
 
 	@Override
 	public Promise<Void> delete(String filename) {
-		if (privKey == null) {
-			return Promise.ofException(UPK_DELETE);
-		}
-		return node.delete(space, SignedData.sign(METADATA_CODEC, GlobalFsCheckpoint.createTombstone(filename), privKey))
-				.whenComplete(toLogger(logger, TRACE, "delete", filename, this));
+		return privKey != null ?
+				gateway.delete(new KeyPair(privKey, space), filename) :
+				Promise.ofException(UPK_DELETE);
 	}
 
 	@Override

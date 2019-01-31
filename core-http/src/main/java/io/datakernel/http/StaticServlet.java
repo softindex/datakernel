@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -37,13 +38,21 @@ public final class StaticServlet implements AsyncServlet {
 	private final Eventloop eventloop;
 	private final StaticLoader resourceLoader;
 
-	private StaticServlet(Eventloop eventloop, StaticLoader resourceLoader) {
+	@Nullable
+	private final String defaultResource;
+
+	private StaticServlet(Eventloop eventloop, StaticLoader resourceLoader, @Nullable String defaultResource) {
 		this.eventloop = eventloop;
 		this.resourceLoader = resourceLoader;
+		this.defaultResource = defaultResource;
 	}
 
 	public static StaticServlet create(Eventloop eventloop, StaticLoader resourceLoader) {
-		return new StaticServlet(eventloop, resourceLoader);
+		return new StaticServlet(eventloop, resourceLoader, null);
+	}
+
+	public static StaticServlet create(Eventloop eventloop, StaticLoader resourceLoader, String defaultResource) {
+		return new StaticServlet(eventloop, resourceLoader, defaultResource);
 	}
 
 	static ContentType getContentType(String path) {
@@ -74,16 +83,27 @@ public final class StaticServlet implements AsyncServlet {
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		assert eventloop.inEventloopThread();
-
 		String path = request.getRelativePath();
-
-		if (request.getMethod() != HttpMethod.GET) return Promise.ofException(METHOD_NOT_ALLOWED);
-
+		if (request.getMethod() != HttpMethod.GET) {
+			return Promise.ofException(METHOD_NOT_ALLOWED);
+		}
 		if (path.equals("")) {
 			path = DEFAULT_INDEX_FILE_NAME;
 		}
 		String finalPath = path;
 
-		return resourceLoader.getResource(path).thenApply(byteBuf -> createHttpResponse(byteBuf, finalPath));
+		return resourceLoader.getResource(path)
+				.thenComposeEx((byteBuf, e) -> {
+					if (byteBuf != null) {
+						return Promise.of(createHttpResponse(byteBuf, finalPath));
+					}
+					if (defaultResource != null) {
+						return resourceLoader.getResource(defaultResource)
+								.thenApply(byteBuf2 -> HttpResponse.ofCode(404)
+										.withBody(byteBuf2)
+										.withHeader(CONTENT_TYPE, ofContentType(getContentType(finalPath))));
+					}
+					return Promise.ofException(e);
+				});
 	}
 }

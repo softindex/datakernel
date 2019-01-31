@@ -21,7 +21,6 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Tuple3;
 import io.global.common.PrivKey;
-import io.global.common.PrivateKeyStorage;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.HttpGlobalFsNode;
@@ -35,7 +34,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.util.CollectionUtils.map;
 
 @Command
 public final class GlobalFsCommon {
@@ -63,8 +61,6 @@ public final class GlobalFsCommon {
 		}
 
 		GlobalFsNode node = HttpGlobalFsNode.create(endpoint.toString(), AsyncHttpClient.create(eventloop));
-		PrivateKeyStorage pks = new PrivateKeyStorage(map(privKey.computePubKey(), privKey));
-
-		return new Tuple3<>(executor, eventloop, GlobalFsDriver.create(node, pks, checkpointPosStrategy).gatewayFor(privKey.computePubKey()));
+		return new Tuple3<>(executor, eventloop, GlobalFsDriver.create(node, checkpointPosStrategy).adapt(privKey.computePubKey()));
 	}
 }

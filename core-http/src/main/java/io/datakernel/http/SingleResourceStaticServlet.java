@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
@@ -34,9 +33,6 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 
 	private int responseCode = 200;
 	private ContentType contentType;
-
-	@Nullable
-	private ByteBuf cached = null;
 
 	private SingleResourceStaticServlet(Eventloop eventloop, StaticLoader resourceLoader, String path, ContentType contentType) {
 		this.eventloop = eventloop;
@@ -74,21 +70,10 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 		if (request.getMethod() != HttpMethod.GET) {
 			return Promise.ofException(METHOD_NOT_ALLOWED);
 		}
-		if (cached != null) {
-			return Promise.of(getCached());
-		}
 		return resourceLoader.getResource(path)
-				.thenApply(buf -> {
-					cached = buf;
-					return getCached();
-				});
-	}
-
-	@NotNull
-	private HttpResponse getCached() {
-		assert cached != null;
-		return HttpResponse.ofCode(responseCode)
-				.withBody(cached.slice())
-				.withHeader(CONTENT_TYPE, ofContentType(contentType));
+				.thenApply(buf ->
+						HttpResponse.ofCode(responseCode)
+								.withBody(buf)
+								.withHeader(CONTENT_TYPE, ofContentType(contentType)));
 	}
 }

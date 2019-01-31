@@ -83,6 +83,6 @@ public final class Hash {
 
 	@Override
 	public String toString() {
-		return "Hash@" + Integer.toHexString(hashCode());
+		return "Hash(" + CryptoUtils.toHexString(bytes) + ')';
 	}
 }

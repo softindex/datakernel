@@ -45,7 +45,7 @@ public final class ChatClientModule extends AbstractModule {
 	private static final PrivKey DEMO_PRIVATE_KEY =
 			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));
 
-	private static final SimKey DEMO_SIM_KEY = SimKey.fromString("AjOMkWsCzvXwvtp_P5OmzQ");
+	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Example");
 	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
 	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("src/main/resources/static");

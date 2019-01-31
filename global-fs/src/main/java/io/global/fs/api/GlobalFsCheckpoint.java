@@ -86,6 +86,12 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 	}
 
 	public SHA256Digest getDigest() {
+		assert digest != null;
+		return digest;
+	}
+
+	@Nullable
+	public SHA256Digest getDigestOrNull() {
 		return digest;
 	}
 

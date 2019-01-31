@@ -8,7 +8,7 @@ const del = require('del');
 const fs = require('fs');
 
 const SRC_PATH = './src/main/webapp/src';
-const BUNDLE_PATH = './src/main/resources/static/js/bundle.js';
+const BUNDLE_PATH = './src/main/resources/static/bundle.js';
 
 function bundle() {
   return browserify(SRC_PATH).transform('babelify').bundle().pipe(fs.createWriteStream(BUNDLE_PATH));

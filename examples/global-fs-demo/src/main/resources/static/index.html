@@ -4,15 +4,17 @@
   <meta charset="UTF-8">
   <title>Global-FS gateway</title>
 
-  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <link rel="stylesheet" type="text/css" href="/style.css">
 </head>
 <body>
-<button id="newRepo">new repo</button>
-<br>
-<label for="pubkey">Enter public key:</label>
-<input id="pubkey" type="text">
-<button id="go">go</button>
+<div class="box" style="width: fit-content; position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);">
+  <label for="pubkey">public key:</label>
+  <input id="pubkey" type="text"
+         style="border-color: #eee; width: 1000px; font-size: 1em; font-family: monospace; text-align: center">
+  <button id="generate">generate</button>
+  <button id="go">go</button>
+</div>
 <div id="repos"></div>
-<script type="text/javascript" src="/js/bundle.js"></script>
+<script type="text/javascript" src="/bundle.js"></script>
 </body>
 </html>

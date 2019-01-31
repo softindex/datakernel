@@ -65,6 +65,9 @@ abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteB
 			SignedData<GlobalFsCheckpoint> signedCheckpoint = frame.getCheckpoint();
 			GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
 			position = checkpoint.getPosition();
+			if (checkpoint.isTombstone()) {
+				return Promise.ofException(new StacklessException(getClass(), "File is a tombstone!"));
+			}
 			digest = new SHA256Digest(checkpoint.getDigest());
 		}
 		if (frame.isBuf()) {
@@ -79,7 +82,6 @@ abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteB
 		if (result != CheckpointVerificationResult.SUCCESS) {
 			return Promise.ofException(new StacklessException(getClass(), "Checkpoint verification failed: " + result.message));
 		}
-		// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
 		return receiveCheckpoint(signedCheckpoint);
 	}
 }

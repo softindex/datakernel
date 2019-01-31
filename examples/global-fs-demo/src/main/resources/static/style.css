@@ -10,6 +10,7 @@ body {
   border-radius: 5px;
   font-size: 0.9em;
   color: #333;
+  width: fit-content;
 }
 
 label {

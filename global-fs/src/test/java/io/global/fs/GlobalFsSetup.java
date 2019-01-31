@@ -47,7 +47,6 @@ import java.util.Set;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.http.AsyncHttpClient.create;
-import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.SignedData.sign;
@@ -83,11 +82,11 @@ public final class GlobalFsSetup {
 		GlobalFsNode firstClient = HttpGlobalFsNode.create(firstAddress, client);
 		GlobalFsNode secondClient = HttpGlobalFsNode.create(secondAddress, client);
 
-		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), of(5));
-		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), of(6));
+		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, of(5));
+		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, of(6));
 
-		FsClient firstAdapter = firstDriver.gatewayFor(alice.getPubKey());
-		FsClient secondAdapter = secondDriver.gatewayFor(alice.getPubKey());
+		FsClient firstAdapter = firstDriver.adapt(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.adapt(alice.getPubKey());
 
 		String text1 = "Hello world, this is some bytes ";
 		String text2 = "to be sent through the GlobalFs HTTP interface";

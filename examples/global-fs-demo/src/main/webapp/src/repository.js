@@ -14,6 +14,8 @@ const keySelect = $('#key');
 
 let knownKeys = {};
 
+const viewing = localStorage.getItem('viewing');
+
 function good(msg) {
   status.css('color', 'darkgreen')
     .html(msg);
@@ -91,7 +93,7 @@ function updateView(keepBars) {
   } else {
     folderLabel.css('display', 'none');
   }
-  $.ajax(`${location.pathname}/list`)
+  $.ajax(`/list/${viewing}`)
     .then(res => {
       const folderSet = {};
       const folders = [];
@@ -197,13 +199,9 @@ function createProgressBar(filename) {
   }
 }
 
-const repo = location.pathname.substring(1);
-const key = JSON.parse(localStorage.getItem('repos') || '{}')[repo];
-if (key) {
-  document.cookie = `key=${key}`;
-}
+const privKey = JSON.parse(localStorage.getItem('repos') || '{}')[viewing];
 
-$('#pubkey').html(repo);
+$('#pubkey').html(viewing);
 
 $('#upload').click(() => {
   if (inputFile.files.length === 0) {

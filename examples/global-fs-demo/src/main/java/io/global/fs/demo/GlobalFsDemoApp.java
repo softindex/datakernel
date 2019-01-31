@@ -106,7 +106,7 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Provides
 					@Singleton
 					GlobalFsDriver provide(GlobalFsNode node, PrivateKeyStorage pks, Config config) {
-						return GlobalFsDriver.create(node, pks, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
+						return GlobalFsDriver.create(node, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
 					}
 
 					@Provides

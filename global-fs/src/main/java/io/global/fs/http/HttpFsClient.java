@@ -32,7 +32,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.FileUtils.escapeGlob;
 import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.http.RemoteFsServlet.FILE_META_LIST;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -105,7 +104,10 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response -> response.getCode() == 200 ? Promise.of(response) : Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
 				.thenCompose(HttpMessage::getBody)
 				.thenCompose(body -> {
 					try {
@@ -159,14 +161,26 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(DELETE)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response -> response.getCode() == 200 ?
-						Promise.of(response) :
-						Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
 				.toVoid();
 	}
 
 	@Override
 	public Promise<Void> delete(String filename) {
-		return deleteBulk(escapeGlob(filename));
+		return client.request(
+				HttpRequest.get(
+						UrlBuilder.http()
+								.withAuthority(address)
+								.appendPathPart(DELETE)
+								.appendPath(filename)
+								.build()))
+				.thenCompose(response ->
+						response.getCode() == 200 ?
+								Promise.of(response) :
+								Promise.ofException(HttpException.ofCode(response.getCode())))
+				.toVoid();
 	}
 }
