@@ -18,7 +18,6 @@ import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
-import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.httpDownload;
 import static io.global.fs.util.HttpDataFormats.httpUpload;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -37,7 +36,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				new SHA256Digest(digest).doFinal(hash, 0);
 				return CryptoUtils.toHexString(hash);
 			})),
-			GlobalFsCheckpoint::getSimKeyHash, REGISTRY.get(Hash.class).nullable());
+			GlobalFsCheckpoint::getSimKeyHash, STRING_CODEC.transform(Hash::fromString, Hash::asString).nullable());
 	private static final StructuredCodec<GlobalFsCheckpoint> NULLABLE_CHECKPOINT_CODEC = CHECKPOINT_CODEC.nullable();
 	private static final StructuredCodec<List<GlobalFsCheckpoint>> LIST_CODEC = ofList(CHECKPOINT_CODEC);
 
@@ -50,7 +49,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 
 	@Nullable
 	private static SimKey getSimKey(HttpRequest request) throws ParseException {
-		String simKeyString = request.getHeaderOrNull(HttpHeaders.of("Sim-Key"));
+		String simKeyString = request.getCookieOrNull("Sim-Key");
 		return simKeyString != null ? SimKey.fromString(simKeyString) : null;
 	}
 
@@ -60,20 +59,26 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						SimKey simKey = getSimKey(request);
-
-						return httpDownload(request,
-								(name, offset, limit) -> driver.download(space, name, offset, limit)
-										.thenApply(supplier -> supplier
-												.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
-								name -> driver.getMetadata(space, name)
-										.thenApply(meta -> meta != null ? meta.getPosition() : null));
+						String name = request.getPathParameter("name");
+						return driver.getMetadata(space, name)
+								.thenCompose(meta -> {
+									if (meta != null) {
+										return httpDownload(request,
+												(offset, limit) ->
+														driver.download(space, name, offset, limit)
+																.thenApply(supplier -> supplier
+																		.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
+												name, meta.getPosition());
+									}
+									return Promise.ofException(HttpException.ofCode(404, "File '" + name + "' not found"));
+								});
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.with(POST, "/upload", request -> {
 					try {
-						KeyPair keys = PrivKey.fromString(request.getHeader(HttpHeaders.of("Key"))).computeKeys();
+						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						SimKey simKey = getSimKey(request);
 						return httpUpload(request, (name, offset) -> driver.upload(keys, name, offset, simKey));
 					} catch (ParseException e) {
@@ -103,7 +108,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				})
 				.with(POST, "/delete", request -> {
 					try {
-						KeyPair keys = PrivKey.fromString(request.getHeader(HttpHeaders.of("Key"))).computeKeys();
+						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						return driver.deleteBulk(keys, request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
@@ -112,7 +117,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				})
 				.with(POST, "/delete/:name*", request -> {
 					try {
-						KeyPair keys = PrivKey.fromString(request.getHeader(HttpHeaders.of("Key"))).computeKeys();
+						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						String name = request.getPathParameter("name");
 						return driver.delete(keys, name)
 								.thenApply($ -> HttpResponse.ok200());

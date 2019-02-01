@@ -18,7 +18,6 @@ import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
-import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class ServletModule extends AbstractModule {
@@ -26,7 +25,7 @@ public final class ServletModule extends AbstractModule {
 	private static final StructuredCodec<PrivKey> PRIV_KEY_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
 	private static final StructuredCodec<SimKey> SIM_KEY_CODEC = STRING_CODEC.transform(SimKey::fromString, SimKey::asString);
 
-	private static final StructuredCodec<Hash> HASH_CODEC = REGISTRY.get(Hash.class);
+	private static final StructuredCodec<Hash> HASH_CODEC = STRING_CODEC.transform(Hash::fromString, Hash::asString);
 
 	private static final StructuredCodec<KeyPair> KEY_PAIR_CODEC =
 			tuple(KeyPair::new,

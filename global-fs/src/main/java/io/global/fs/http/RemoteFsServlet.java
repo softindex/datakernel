@@ -69,8 +69,18 @@ public final class RemoteFsServlet implements WithMiddleware {
 					}
 				})
 				.with(POST, "/" + UPLOAD, request -> httpUpload(request, client::upload))
-				.with(GET, "/" + DOWNLOAD + "/:name*", request ->
-						httpDownload(request, client::download, name -> client.getMetadata(name).thenApply(meta -> meta == null ? null : meta.getSize())))
+				.with(GET, "/" + DOWNLOAD + "/:name*", request -> {
+					try {
+						String name = request.getPathParameter("name");
+						return client.getMetadata(name)
+								.thenCompose(meta ->
+										meta != null ?
+												httpDownload(request, (offset, limit) -> client.download(name, offset, limit), name, meta.getSize()) :
+												Promise.ofException(HttpException.ofCode(404, "File '" + name + "' not found")));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
 				.with(POST, "/" + DELETE, request -> {
 					try {
 						return client.deleteBulk(request.getQueryParameter("glob"))

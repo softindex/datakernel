@@ -11,6 +11,7 @@
     "clipboard-copy": "^2.0.1",
     "jquery": "^3.3.1",
     "jquery-simple-upload": "^1.1.0",
+    "js-cookie": "^2.2.0",
     "pretty-byte": "^1.0.1"
   },
   "devDependencies": {

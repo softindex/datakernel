@@ -174,7 +174,7 @@ public final class RawServerServlet implements WithMiddleware {
 					try {
 						return node.getSharedKey(
 								req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey),
-								req.parsePathParameter("hash", Hash::parseString))
+								req.parsePathParameter("hash", Hash::fromString))
 								.thenApply(sharedSimKey -> HttpResponse.ok200()
 										.withBody(toJson(SIGNED_SHARED_KEY_JSON, sharedSimKey).getBytes(UTF_8))
 								);

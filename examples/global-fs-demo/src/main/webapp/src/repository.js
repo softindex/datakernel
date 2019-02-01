@@ -1,23 +1,37 @@
 const $ = require('jquery');
 const prettyByte = require('pretty-byte');
+const cookies = require('js-cookie');
 
 const status = $('#status');
 const list = $('#list');
-const inputFile = $('#file').get(0);
+const inputFile = $('#file');
 const prefix = $('#prefix');
-const offset = $('#offset').get(0);
-const from = $('#from').get(0);
-const to = $('#to').get(0);
+const offset = $('#offset');
+const from = $('#from');
+const to = $('#to');
 const folderLabel = $('#folder');
 const bars = $('#bars');
 const keySelect = $('#key');
 
-let knownKeys = {};
+const space = localStorage.getItem('space');
+const privKey = JSON.parse(localStorage.getItem('repos') || '{}')[space];
+const keys = JSON.parse(localStorage.getItem('keys') || '{}');
 
-const viewing = localStorage.getItem('viewing');
+$('#pubkey').html(space);
+if (privKey) {
+  cookies.set('Key', privKey);
+  const selectedKey = (keys[localStorage.getItem('selectedKey') || ''] || {}).key;
+  if (selectedKey) {
+    cookies.set('Sim-Key', selectedKey);
+  }
+} else {
+  $('#upload-panel').hide();
+  cookies.remove('Sim-Key');
+}
 
 function good(msg) {
-  status.css('color', 'darkgreen')
+  status
+    .css('color', 'darkgreen')
     .html(msg);
 }
 
@@ -39,43 +53,53 @@ function getCurrentFolder() {
 }
 
 function updateKeys() {
-  $.ajax('/listKeys')
-    .then(res => {
-      keySelect.children().remove();
-      knownKeys = {};
-      keySelect.append('<option value="&lt;none&gt;">&lt;none&gt;</option>');
-      for (const [name, hash] of res) {
-        knownKeys[hash] = name;
-        keySelect.append(`<option value="${name}">${name}</option>`);
+  keySelect.children().remove();
+  keySelect.append('<option value="_#none#_">&lt;none&gt;</option>');
+
+  for (const hash of Object.keys(keys)) {
+    keySelect.append(`<option value="${hash}">${keys[hash].name}</option>`);
+  }
+  let guard = false;
+  keySelect
+    .append('<option value="_#new#_">&lt;generate new&gt;</option>')
+    .val(localStorage.getItem('selectedKey') || '_#new#_')
+    .change(() => {
+      console.log('change called ' + keySelect.val());
+      if (guard) {
+        return;
       }
-      let guard = false;
-      keySelect.get(0).value = localStorage.getItem('selectedKey');
-      keySelect
-        .append('<option value="&lt;new&gt;">&lt;generate new&gt;</option>')
-        .change(() => {
-          if (guard) {
-            return;
-          }
-          if (keySelect.get(0).value === '<new>') {
-            const name = prompt('Please, enter a name for the new key');
-            if (name !== null) {
-              $.ajax(`/newKey/${name}`)
-                .then(() => {
-                  good('Key ' + name + ' generated and added');
-                  localStorage.setItem('selectedKey', name);
-                  updateKeys();
-                }, response => bad('Key generation failed', response));
-            }
-            return;
-          }
-          const name = keySelect.get(0).value;
-          $.ajax(`/setKey/${name}`)
-            .then(() => {
-              good(`Key ${name} selected`);
-              localStorage.setItem('selectedKey', name);
-              updateKeys();
-            })
-        });
+      const selected = keySelect.val();
+      if (selected === '_#none#_') {
+        localStorage.removeItem('selectedKey');
+        cookies.remove('Sim-Key');
+      }
+      if (selected !== '_#new#_') {
+        localStorage.setItem('selectedKey', selected);
+        const key = (keys[selected] || {}).key;
+        if (key) {
+          cookies.set('Sim-Key', key);
+        }
+        return;
+      }
+      guard = true;
+      keySelect.val('_#none#_');
+      guard = false;
+      const name = prompt('Please, enter a name for the new key');
+      if (!name) {
+        return;
+      }
+      $.ajax(`/genSimKey`)
+        .then(data => {
+          good('New key generated and stored as \'' + name + '\'');
+          keys[data[1]] = {name, key: data[0]};
+          localStorage.setItem('selectedKey', data[1]);
+          localStorage.setItem('keys', JSON.stringify(keys));
+          cookies.set('Sim-Key', data[0]);
+          guard = true;
+          updateKeys();
+          keySelect.val(data[1]);
+          guard = false;
+        }, response => bad('Key generation failed', response));
     });
 }
 
@@ -93,7 +117,7 @@ function updateView(keepBars) {
   } else {
     folderLabel.css('display', 'none');
   }
-  $.ajax(`/list/${viewing}`)
+  $.ajax(`/list/${space}`)
     .then(res => {
       const folderSet = {};
       const folders = [];
@@ -105,13 +129,7 @@ function updateView(keepBars) {
         const localName = name.substring(folder.length);
         const idx = localName.indexOf('/');
         if (idx === -1) {
-          files.push({
-            name: name,
-            localName: localName,
-            size: size,
-            encryptionKeyHash: encryptionKeyHash,
-            sha256: sha256
-          });
+          files.push({name, localName, size, sha256, encryptionKeyHash});
           continue;
         }
         const localFolderName = localName.substring(0, idx);
@@ -136,14 +154,14 @@ function updateView(keepBars) {
         const panel = $('<div class="file-panel"></div>');
         const del = $('<div class="control">delete</div>')
           .click(() =>
-            $.ajax(`${location.pathname}/gateway/delete?glob=${f.name}/**`, {method: 'POST'})
+            $.ajax(`/delete?glob=${f.name}/**`, {method: 'POST'})
               .then(() => {
                 updateView();
                 good('Folder deletion succeeded');
               }, response => bad('Folder deletion failed', response)));
 
         panel.append(del);
-        box.append(`<a href="${location.pathname}#${f.name}">${f.localName}/</a>`);
+        box.append(`<a href="#${f.name}">${f.localName}/</a>`);
         box.append(panel);
         list.append(box);
       }
@@ -152,19 +170,19 @@ function updateView(keepBars) {
         const panel = $('<div class="file-panel"></div>');
         const del = $('<div class="control">delete</div>')
           .click(() =>
-            $.ajax(`${location.pathname}/gateway/delete/${f.name}`, {method: 'POST'})
+            $.ajax(`/delete/${f.name}`, {method: 'POST'})
               .then(() => {
                 updateView();
                 good('Deletion succeeded');
               }, response => bad('Deletion failed', response)));
 
         if (f.encryptionKeyHash) {
-          const name = knownKeys[f.encryptionKeyHash];
-          panel.append(`<div class="encrypted">encrypted${name ? `: ${name}` : ''}</div>`);
+          const data = keys[f.encryptionKeyHash];
+          panel.append(`<div class="encrypted" title="SHA1: ${f.encryptionKeyHash}">encrypted${data ? `: ${data.name}` : ''}</div>`);
         }
-        panel.append(`<div class="size" title="${f.size.toString().replace(/\\\\B(?=(\\\\d{3})+(?!\\\\d))/g, " ")} bytes">${prettyByte(f.size)}</div>`);
+        panel.append(`<div class="size" title="${f.size.toString().replace(/\\\\B(?=(\\\\d{3})+(?!\\\\d))/g, " ")} bytes">${f.size === 0 ? '0 b' : prettyByte(f.size)}</div>`);
         panel.append(del);
-        box.append(`<a href="${location.pathname}/gateway/download/${f.name}" title="SHA256: ${f.sha256}">${f.localName}</a>`);
+        box.append(`<a href="/download/${space}/${f.name}" title="SHA256: ${f.sha256}">${f.localName}</a>`);
         box.append(panel);
         list.append(box);
       }
@@ -199,22 +217,24 @@ function createProgressBar(filename) {
   }
 }
 
-const privKey = JSON.parse(localStorage.getItem('repos') || '{}')[viewing];
-
-$('#pubkey').html(viewing);
-
 $('#upload').click(() => {
-  if (inputFile.files.length === 0) {
+  if (!privKey) {
+    bad('You dont have the private key required to upload files');
+    return;
+  }
+  const files = inputFile.prop('files');
+  if (files.length === 0) {
     bad('Please select a file first');
     return;
   }
-  const start = from.valueAsNumber;
-  const limit = to.valueAsNumber;
-  if (inputFile.files.length !== 1 && (offset.valueAsNumber > 0 || start !== 0 || limit !== -1)) {
+  const off = parseInt(offset.val());
+  const start = parseInt(from.val());
+  const limit = parseInt(to.val());
+  if (files.length !== 1 && (off > 0 || start !== 0 || limit !== -1)) {
     bad('Cannot upload multiple files partially (remote offset is not -1 or 0, offset is not 0 and/or limit is not -1)');
     return;
   }
-  if (offset.valueAsNumber < -1) {
+  if (off < -1) {
     bad('Remote offset value cannot be less than -1');
     return;
   }
@@ -228,8 +248,8 @@ $('#upload').click(() => {
   }
   updateView();
 
-  const pref = prefix.get(0).value;
-  let running = inputFile.files.length;
+  const pref = prefix.val();
+  let running = files.length;
   let errors = 0;
 
   function check() {
@@ -243,14 +263,15 @@ $('#upload').click(() => {
     }
   }
 
-  for (const file of inputFile.files) {
+  for (const file of files) {
+    const filename = getCurrentFolder() + pref + (pref === '' || pref.endsWith('/') ? '' : '/') + file.name;
     const bar = createProgressBar(file.name);
-    const request = new XMLHttpRequest();
-    request.onreadystatechange = function () {
+    const xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
       if (this.readyState !== 4) {
         return;
       }
-      if (this.status === 200 || this.status === 201) {
+      if (this.status === 200) {
         bar.remove();
       } else {
         errors++;
@@ -258,14 +279,13 @@ $('#upload').click(() => {
       }
       check();
     };
-    request.upload.addEventListener('progress', e => bar.set(e.loaded / e.total * 100));
-    const filename = getCurrentFolder() + pref + (pref === '' || pref.endsWith('/') ? '' : '/') + file.name;
-    request.open('POST', `${location.pathname}/gateway/upload${(offset.valueAsNumber !== -1 ? `?offset=${offset.valueAsNumber}` : '')}`, true);
+    xhr.upload.addEventListener('progress', e => bar.set(e.loaded / e.total * 100));
+    xhr.open('POST', `/upload${(off !== -1 ? `?offset=${off}` : '')}`, true);
     const fd = new FormData();
     fd.append('file', start <= 0 && limit === -1 ? file : file.slice(start, limit === -1 ? file.size : start + limit), filename);
-    request.send(fd);
+    xhr.send(fd);
     bar.onCancel(() => {
-      request.abort();
+      xhr.abort();
       bar.error(`upload of '${file.name}' cancelled`);
       check();
     });

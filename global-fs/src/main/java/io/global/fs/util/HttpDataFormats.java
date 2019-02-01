@@ -22,9 +22,6 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.function.Function;
 
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.MediaTypes.OCTET_STREAM;
@@ -46,7 +43,7 @@ public final class HttpDataFormats {
 	@FunctionalInterface
 	public interface HttpDownloader {
 
-		Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long limit);
+		Promise<ChannelSupplier<ByteBuf>> download(long offset, long limit);
 	}
 
 	public static Promise<HttpResponse> httpUpload(HttpRequest request, HttpUploader uploader) {
@@ -69,26 +66,17 @@ public final class HttpDataFormats {
 		}
 	}
 
-	public static Promise<HttpResponse> httpDownload(HttpRequest request, HttpDownloader downloader, Function<String, Promise<@Nullable Long>> fileSize) {
+	public static Promise<HttpResponse> httpDownload(HttpRequest request, HttpDownloader downloader, String name, long size) {
 		try {
-			String path = request.getPathParameter("name");
-			int lastSlash = path.lastIndexOf('/');
-			String name = lastSlash != -1 ? path.substring(lastSlash + 1) : path;
 			String headerRange = request.getHeaderOrNull(HttpHeaders.RANGE);
 			if (headerRange == null) {
-				return fileSize.apply(path)
-						.thenCompose(size -> {
-							if (size == null) {
-								return Promise.ofException(HttpException.ofCode(404, "File '" + path + "' not found"));
-							}
-							return downloader.download(path, 0, -1)
-									.thenApply(HttpResponse.ok200()
-											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-											.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
-											.withHeader(ACCEPT_RANGES, "bytes")
-											.withHeader(CONTENT_LENGTH, Long.toString(size))
-											::withBodyStream);
-						});
+				return downloader.download(0, -1)
+						.thenApply(HttpResponse.ok200()
+								.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+								.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
+								.withHeader(ACCEPT_RANGES, "bytes")
+								.withHeader(CONTENT_LENGTH, Long.toString(size))
+								::withBodyStream);
 			}
 			if (!headerRange.startsWith("bytes=")) {
 				throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
@@ -103,22 +91,16 @@ public final class HttpDataFormats {
 			if (endOffset != -1 && offset > endOffset) {
 				throw HttpException.ofCode(416, "Invalid range");
 			}
-			return fileSize.apply(path)
-					.thenCompose(size -> {
-						if (size == null) {
-							return Promise.ofException(HttpException.ofCode(404, "File '" + path + "' not found"));
-						}
-						long length = (endOffset == -1 ? size : endOffset) - offset + 1;
-						return downloader.download(path, offset, length)
-								.thenApply(HttpResponse.ok206()
-										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-										.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
-										.withHeader(ACCEPT_RANGES, "bytes")
-										.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
-										.withHeader(CONTENT_LENGTH, "" + length)
-										::withBodyStream);
-					});
-		} catch (ParseException | HttpException e) {
+			long length = (endOffset == -1 ? size : endOffset) - offset + 1;
+			return downloader.download(offset, length)
+					.thenApply(HttpResponse.ok206()
+							.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+							.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
+							.withHeader(ACCEPT_RANGES, "bytes")
+							.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
+							.withHeader(CONTENT_LENGTH, "" + length)
+							::withBodyStream);
+		} catch (HttpException e) {
 			return Promise.ofException(e);
 		}
 	}

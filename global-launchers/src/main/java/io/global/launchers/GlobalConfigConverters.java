@@ -23,6 +23,6 @@ public class GlobalConfigConverters {
 	}
 
 	public static ConfigConverter<Hash> ofHash() {
-		return ofString().transform(Hash::parseString, Hash::asString);
+		return ofString().transform(Hash::fromString, Hash::asString);
 	}
 }

@@ -7,14 +7,15 @@
   <link rel="stylesheet" type="text/css" href="/style.css">
 </head>
 <body>
-<div class="box" style="width: fit-content; position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);">
-  <label for="pubkey">public key:</label>
-  <input id="pubkey" type="text"
-         style="border-color: #eee; width: 1000px; font-size: 1em; font-family: monospace; text-align: center">
+<div id="pubkeyBox" class="box">
+  <label for="pubkeyField">public key:</label>
+  <input id="pubkeyField" type="text">
   <button id="generate">generate</button>
   <button id="go">go</button>
 </div>
-<div id="repos"></div>
+<div id="reposContainer">
+  <div id="repos"></div>
+</div>
 <script type="text/javascript" src="/bundle.js"></script>
 </body>
 </html>

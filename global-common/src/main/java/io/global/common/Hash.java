@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Base64;
 
 /**
- * Thin holder/wrapper around SHA-256 hash of some object.
+ * Thin holder/wrapper around hash of some object.
  */
 public final class Hash {
 	private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
@@ -51,9 +51,9 @@ public final class Hash {
 		return new Hash(bytes);
 	}
 
-	public static Hash parseString(String s) throws ParseException {
+	public static Hash fromString(String s) throws ParseException {
 		try {
-			return parse(DECODER.decode(s));
+			return parse(CryptoUtils.fromHexString(s));
 		} catch (IllegalArgumentException e) {
 			throw new ParseException(e);
 		}
@@ -65,7 +65,7 @@ public final class Hash {
 	}
 
 	public String asString() {
-		return ENCODER.encodeToString(bytes);
+		return CryptoUtils.toHexString(bytes);
 	}
 
 	@Override

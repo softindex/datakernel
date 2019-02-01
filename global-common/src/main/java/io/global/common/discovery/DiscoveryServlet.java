@@ -91,7 +91,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					try {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-						Hash simKeyHash = Hash.parseString(request.getPathParameter("hash"));
+						Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
 						return discoveryService.getSharedKey(receiver, simKeyHash)
 								.thenComposeEx((signedSharedKey, e) ->
 										e == null ?
