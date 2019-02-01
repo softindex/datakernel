@@ -1,20 +1,22 @@
 ## Promise
 
-`Promise` is an efficient replacement of default Java `CompletionStage` interface and represents partial computations of a 
-large one. Promise will succeed (or fail) at some unspecified time and you should chain method calls that will be executed 
-in both cases. These methods basically convert one `Promise` into another. If you need to get a result of your `Promise`, 
-you should first materialize it.
+`Promise` is an efficient replacement of default Java `CompletionStage` interface and resembles JavaScript `Promise`, 
+representing partial and possibly asynchronous computations of a large one. These `Promise`s are faster and better 
+optimized, with minimal overhead, memory consumption and Garbage Collector load: 
 
-* Compared to JavaScript, these `Promise`s are better optimized - intermediate promises are stateless and the `Promise` 
-graph executes with minimal garbage and overhead.
-* Since Eventloop is single-threaded, so are `Promise`s. That is why `Promise`s are much more efficient comparing to Java's 
-`CompletableFuture`.
-* `Promise` module also contains utility classes that help to collect results of promises, add loops and conditional logic 
-to `Promise`s execution.
-* `AsyncFile` allows to work with files asynchronously.
+* Compared to JavaScript, intermediate `Promise`s are stateless
+* Since these `Promise`s work in single thread of `Eventloop`, they are much more efficient comparing to 
+multithreaded Java's `CompletableFuture` overhead.
+* `Promise` has simple and orthogonal API, which is more applicable in practice than `CompletionStage` API. 
+* This module includes a comprehensive set of libraries to work with `Promise`s, their combiners and provide function 
+compositions.
 
 [`Promise` interface](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/async/Promise.java) 
 represents methods which you can use to create chains of `Promise`s.
+
+Promise will succeed (or fail) at some unspecified time and you should chain method calls that will be executed 
+in both cases. These methods basically convert one `Promise` into another, passing intermediate results without storing 
+them. If you need to get a result of your `Promise`, you should first materialize it.
 
 In order to optimise `Promise`s, there are several implementations of `Promise` interface:
 
@@ -47,3 +49,6 @@ can be completed manually.
 * `CompleteNullPromise` - a completed `Promise` with *null* result.
 
 ### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise)
+These examples represent how to utilize [`Promises`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/async/Promises.java) 
+and [`AsyncFile`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/file/AsyncFile.java) utility classes. `AsyncFile` allows you to work 
+with files I/O asynchronously while `Promises` includes handy methods for Promises managing.

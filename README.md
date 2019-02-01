@@ -1,9 +1,9 @@
 ## Introduction
 
-DataKernel is a full-stack application framework for Java. It contains components for building applications of different 
-scales, from single-node HTTP-server to large distributed systems. DataKernel was inspired by Node.js, so it's 
-asynchronous, event-driven, lightweight and very easy to use. Moreover, it is completely free of legacy stuff, such 
-as XML, Java EE, etc.
+DataKernel is a full-stack application framework for Java. It contains components for building app-specific databases 
+and applications of different scales, from single-node HTTP-server to large distributed systems. DataKernel is 
+asynchronous, event-driven, lightweight and very easy to use. Moreover, it is completely free of legacy stuff, such as 
+XML, Java EE, etc.
 
 Due to the usage of modern asynchronous I/O, DataKernel is extremely fast, which is proven by benchmarks.
 
@@ -11,13 +11,42 @@ The essential components of DataKernel form the basis of high-load applications 
 processing billions of requests. Specifically, DataKernel is the foundation for systems that provide real-time analytics, 
 user data processing tools and also web crawlers that perform content indexing on a large scale.
 
+## DataKernel capabilities
+
+1. DataKernel allows to efficiently work with **massive amounts of data**. With its help you can create **custom 
+app-specific databases, data services and data applications**. This framework includes a variety of storage engines which 
+can be used to set up specific databases, data repositories or services with a specific business logic of data processing. 
+To make your life simpler, DataKernel incorporates **LSMT, CRDT and OT** storage engines and algorithms. Moreover, there 
+are built-in algorithms for creating **distributed data storage and processing**. 
+
+2. It is a simple and handy application server for developing full-stack web applications with **high-speed server, 
+support of React.js front-end and minimalistic Dependency Injection.**
+
+3. DataKernel utilizes efficient solutions as core technologies:
+    * Custom optimized **Eventloops and Promises**
+    * Go-like **CSP**
+    * Fast high-level network abstractions
+    * **Bytecode generation** utilized for high-performance data serializers
+
+DataKernel is an actively used production-ready technology. It has a full **JMX monitoring** coverage of all of the 
+components and also a **bootstrap for applications' components graph**.
+
+## DataKernel concepts
+
+1. Fully **decentralized and asynchronous** cluster architecture with no centralized Apache ZooKeeper-like consensus algorithms.
+2. Developing **embedded servers and services** that are tailored to specific business application instead of 
+"config file"-configured servers. 
+3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.
+4. No multithreaded overhead. All worker threads are **single-threaded** and interact within common threadsafe shared state. 
+5. Up-to-date **CSP, Promises, bytecode generation, LSMT, CRDT and OT** technologies.
+
 ## Core components 
 
 ### [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)
 ByteBuf is a more lightweight and efficient version of Java's `ByteBuffer` class with support of simultaneous input and 
 output. Module's `ByteBufQueue` allows you to work with multiple `ByteBuf`s in a convenient way. `ByteBufPool` 
-significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. It provides you with 
-stats on pool's memory consumption and efficiency. 
+significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. You can also get  
+stats on pool's memory consumption and efficiency.
 
 [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
 
@@ -46,7 +75,8 @@ channels similarly to the Go language.
 ### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
 
 Promise module was inspired by JavaScript Promise and is alternative to Java's `CompletionStage`. It allows to organize 
-asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. 
+asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. They have a 
+minimalistic and an extremely fast single-threaded implementation with minimal overhead and memory consumption.
 
 [Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise)
 
