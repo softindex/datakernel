@@ -17,6 +17,11 @@ public interface StaticLoader {
 				Promise.ofException(HttpException.notFound404());
 	}
 
+	default StaticLoader subfolder(String subfolder) {
+		String folder = subfolder.endsWith("/") ? subfolder : subfolder + '/';
+		return name -> getResource(folder + name);
+	}
+
 	default StaticLoader cached(Cache cache) {
 		return new CachedStaticLoader(this, cache);
 	}
