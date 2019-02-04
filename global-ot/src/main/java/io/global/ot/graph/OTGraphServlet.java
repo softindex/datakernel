@@ -1,4 +1,4 @@
-package io.global.ot.chat.common;
+package io.global.ot.graph;
 
 import io.datakernel.async.Promise;
 import io.datakernel.http.*;

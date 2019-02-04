@@ -17,29 +17,36 @@
 package io.global.ot.demo.util;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.ot.OTState;
+import io.datakernel.util.Tuple2;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
-import io.global.ot.demo.operations.OperationState;
-import io.global.ot.demo.state.StateManagerInfo;
 
-import javax.xml.bind.DatatypeConverter;
 import java.util.List;
+import java.util.function.Function;
 
-import static io.datakernel.codec.StructuredCodecs.object;
-import static io.datakernel.codec.StructuredCodecs.ofList;
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.http.MediaTypes.PLAIN_TEXT;
-import static io.global.ot.util.HttpDataFormats.COMMIT_ID_JSON;
+import static io.global.common.CryptoUtils.fromHexString;
+import static io.global.common.CryptoUtils.toHexString;
 
 @SuppressWarnings("WeakerAccess")
-public class Utils {
+public final class Utils {
+	private Utils() {
+		throw new AssertionError();
+	}
+
+	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
+	public static final Function<Operation, String> OPERATION_TO_STRING = operation -> {
+		int value = operation.getValue();
+		return (value > 0 ? "+" : "-") + value;
+	};
+
 	public static final StructuredCodec<Operation> OPERATION_CODEC = StructuredCodec.of(
 			in -> AddOperation.add(Integer.parseInt(in.readString())),
 			(out, item) -> {
@@ -49,27 +56,15 @@ public class Utils {
 
 	public static final StructuredCodec<List<Operation>> LIST_DIFFS_CODEC = ofList(OPERATION_CODEC);
 
-	public static final StructuredCodec<OTState<Operation>> STATE_CODEC = StructuredCodec.of(
-			in -> new OperationState(in.readInt()),
-			(out, item) -> out.writeInt(((OperationState) item).getCounter()));
-
-	public static final StructuredCodec<StateManagerInfo> INFO_CODEC = object(StateManagerInfo::new,
-			"diffs", StateManagerInfo::getWorkingDiffs, LIST_DIFFS_CODEC,
-			"revision", StateManagerInfo::getRevision, COMMIT_ID_JSON,
-			"fetchedRevision", StateManagerInfo::getFetchedRevision, COMMIT_ID_JSON.nullable(),
-			"state", StateManagerInfo::getState, STATE_CODEC
-	);
-
 	public static final StructuredCodec<CommitId> COMMIT_ID_HASH = StructuredCodec.of(
-			in -> {
-				try {
-					return CommitId.ofBytes(DatatypeConverter.parseHexBinary(in.readString()));
-				} catch (IllegalArgumentException e) {
-					throw new ParseException(e);
-				}
-			},
-			(out, item) -> out.writeString(DatatypeConverter.printHexBinary(item.toBytes()).toLowerCase())
+			in -> CommitId.ofBytes(fromHexString(in.readString())),
+			(out, item) -> out.writeString(toHexString(item.toBytes()))
 	);
+
+	public static final StructuredCodec<Tuple2<CommitId, Integer>> INFO_CODEC = tuple(Tuple2::new,
+			Tuple2::getValue1, COMMIT_ID_HASH,
+			Tuple2::getValue2, INT_CODEC);
+
 
 	public static HttpResponse okText() {
 		return HttpResponse.ok200()

@@ -24,7 +24,6 @@ import io.datakernel.ot.*;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
-import io.global.ot.demo.state.StateManagerProvider;
 
 import java.util.concurrent.ExecutorService;
 
@@ -32,16 +31,10 @@ import static io.global.ot.demo.operations.AddOperation.add;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-public class OTStateModule extends AbstractModule {
+final class OTStateModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(ExecutorService.class).toInstance(newCachedThreadPool());
-	}
-
-	@Provides
-	@Singleton
-	StateManagerProvider provide(Eventloop eventloop, OTAlgorithms<CommitId, Operation> algorithms) {
-		return new StateManagerProvider(eventloop, algorithms);
 	}
 
 	@Provides

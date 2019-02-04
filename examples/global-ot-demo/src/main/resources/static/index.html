@@ -1,59 +1,40 @@
-<!--
-  ~ Copyright (C) 2015-2019 SoftIndex LLC.
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License");
-  ~ you may not use this file except in compliance with the License.
-  ~ You may obtain a copy of the License at
-  ~
-  ~ http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
-  -->
-
 <!DOCTYPE html>
 <meta charset="utf-8">
 
 <head>
   <link rel="stylesheet" type="text/css" href="css/style.css">
-  <script src="js/libs/d3.v4.min.js"></script>
-  <script src="js/libs/viz-lite.js" type="javascript/worker"></script>
-  <script src="js/libs/d3-graphviz.min.js"></script>
-  <script src="js/libs/jquery.min.js"></script>
 </head>
 
-<body>
-<div id="control">
-  <input id="toAdd" type="number" step="1">
-  <button id="add">Add</button>
-  <br>
+<div class="container">
+  <div class="control">
+    <input id="toAdd" type="number" step="1">
+    <button id="add">Add</button>
+    <br>
 
-  <button id="commit">Commit</button>
-  <button id="push">Push</button>
-  <br>
+    <button id="push">Push</button>
+    <br>
 
-  <button id="fetch">Fetch</button>
-  <button id="rebase">Rebase</button>
-  <button id="pull">Pull</button>
-  <br>
+    <button id="checkout">Checkout</button>
+    <button id="pull">Pull</button>
+    <br>
 
-  <button id="merge">Merge Heads</button>
-  <button id="reset">Reset</button>
-  <br>
+    <button id="merge">Merge Heads</button>
+    <button id="reset">Reset</button>
+    <br>
 
-  Current state:
-  <span id="state"></span>
-  <br>
-  Uncommitted operations:
-  <span id="ops"></span>
-  <br>
-  <button id="newManager">New Manager</button>
-  <br>
+    Remote state:
+    <span id="state"></span>
+    <br>
+    Uncommitted operations:
+    <span id="ops"></span>
+    <br>
+    <button id="newManager">New Manager</button>
+    <br>
+  </div>
+
+  <div class='graph'>
+    <div id="graphviz" style="text-align: center;"></div>
+  </div>
 </div>
-
-<div id="graph" style="text-align: center;"></div>
 <script src="js/bundle.js"></script>
 </body>

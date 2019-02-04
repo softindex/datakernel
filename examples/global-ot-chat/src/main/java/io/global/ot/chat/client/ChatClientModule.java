@@ -17,12 +17,12 @@ import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
 import io.global.ot.chat.common.Bootstrap;
-import io.global.ot.chat.common.OTGraphServlet;
 import io.global.ot.chat.operations.ChatOTState;
 import io.global.ot.chat.operations.ChatOperation;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
+import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 
 import java.math.BigInteger;
@@ -49,7 +49,7 @@ public final class ChatClientModule extends AbstractModule {
 	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Example");
 	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
 	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("src/main/resources/static");
-	private static final Duration DEFAULT_PULL_PUSH_INTERVAL = Duration.ofSeconds(5);
+	private static final Duration DEFAULT_SYNC_INTERVAL = Duration.ofSeconds(5);
 
 	@Override
 	protected void configure() {
@@ -110,10 +110,7 @@ public final class ChatClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	StateManagerProvider provideManagerProvider(Eventloop eventloop, OTAlgorithms<CommitId, ChatOperation> algorithms, Config config) {
-		return new StateManagerProvider(eventloop, algorithms,
-				config.get(ofDuration(), "push.interval", DEFAULT_PULL_PUSH_INTERVAL),
-				config.get(ofDuration(), "pull.interval", DEFAULT_PULL_PUSH_INTERVAL)
-		);
+		return new StateManagerProvider(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), config.get(ofDuration(), "sync.interval", DEFAULT_SYNC_INTERVAL));
 	}
 
 	@Provides

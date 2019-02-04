@@ -29,7 +29,7 @@ import java.util.Collection;
 import static io.datakernel.config.Config.ofProperties;
 import static java.util.Arrays.asList;
 
-public class GlobalOTDemoApp extends Launcher {
+public final class GlobalOTDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
 	@Inject
 	AsyncHttpServer server;

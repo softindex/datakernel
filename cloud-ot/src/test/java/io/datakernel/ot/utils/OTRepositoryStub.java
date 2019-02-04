@@ -16,7 +16,7 @@ import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
-	final Supplier<K> revisionIdSupplier;
+	public Supplier<K> revisionIdSupplier;
 
 	public final Map<K, OTCommit<K, D>> commits = new LinkedHashMap<>();
 	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();

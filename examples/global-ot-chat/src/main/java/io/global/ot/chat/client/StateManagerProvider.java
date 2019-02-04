@@ -6,8 +6,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTNode;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.global.ot.api.CommitId;
 import io.global.ot.chat.operations.ChatOTState;
 import io.global.ot.chat.operations.ChatOperation;
@@ -22,15 +23,15 @@ final class StateManagerProvider {
 	private static final Map<String, OTStateManager<CommitId, ChatOperation>> entries = new HashMap<>();
 
 	private final Eventloop eventloop;
-	private final OTAlgorithms<CommitId, ChatOperation> algorithms;
-	private final Duration pushInterval;
-	private final Duration pullInterval;
+	private final OTSystem<ChatOperation> otSystem;
+	private final OTNode<CommitId, ChatOperation> node;
+	private final Duration syncInterval;
 
-	public StateManagerProvider(Eventloop eventloop, OTAlgorithms<CommitId, ChatOperation> algorithms, Duration pushInterval, Duration pullInterval) {
+	public StateManagerProvider(Eventloop eventloop, OTSystem<ChatOperation> otSystem, OTNode<CommitId, ChatOperation> node, Duration syncInterval) {
 		this.eventloop = eventloop;
-		this.algorithms = algorithms;
-		this.pushInterval = pushInterval;
-		this.pullInterval = pullInterval;
+		this.otSystem = otSystem;
+		this.node = node;
+		this.syncInterval = syncInterval;
 	}
 
 	public Promise<OTStateManager<CommitId, ChatOperation>> get(HttpRequest request) {
@@ -38,14 +39,13 @@ final class StateManagerProvider {
 			String sessionId = request.getCookie(SESSION_ID);
 			OTStateManager<CommitId, ChatOperation> stateManager = entries.get(sessionId);
 			if (stateManager == null) {
-				stateManager = OTStateManager.create(eventloop, algorithms, new ChatOTState());
+				stateManager = new OTStateManager<>(otSystem, node, new ChatOTState());
 				entries.put(sessionId, stateManager);
-				EventloopTaskScheduler pushScheduler = EventloopTaskScheduler.create(eventloop, stateManager::commitAndPush)
-						.withInterval(pushInterval);
-				EventloopTaskScheduler pullScheduler = EventloopTaskScheduler.create(eventloop, stateManager::pull).withInterval(pullInterval);
+				EventloopTaskScheduler syncScheduler = EventloopTaskScheduler.create(eventloop, stateManager::sync)
+						.withInterval(syncInterval);
 				OTStateManager<CommitId, ChatOperation> finalStateManager1 = stateManager;
-				return stateManager.start()
-						.thenCompose($ -> pullScheduler.start().both(pushScheduler.start()))
+				return stateManager.checkout()
+						.thenCompose($ -> syncScheduler.start())
 						.thenApply($ -> finalStateManager1);
 			} else {
 				return Promise.of(stateManager);

@@ -1,62 +1,49 @@
+const d3 = require("d3-graphviz");
+const $ = require("jquery");
+
+var localChanges = [];
+
 $(document).ready(function () {
     update();
     $('#add').click(add);
-    $('#push').click(function () {
-        execute('/push', 'post');
-    });
+    $('#reset').click(reset);
+    $('#push').click(push);
     $('#merge').click(function () {
         execute('/merge', 'post');
-    });
-    $('#fetch').click(function () {
-        doFetch('');
-    });
-    $('#commit').click(function () {
-        execute('/commit', 'post');
     });
     $('#pull').click(function () {
         execute('/pull', 'get');
     });
-    $('#rebase').click(function () {
-        execute('/rebase', 'post');
-    });
-    $('#reset').click(function () {
-        execute('/reset', 'post');
-    })
+    $('#checkout').click(checkout)
     $('#newManager').click(openNew);
     document.title = '[' + $.urlParam('id') + ']' + ' OT State Manager';
 });
 
 function add() {
     var toAdd = Math.floor($('#toAdd').val());
-    $.ajax({
-        type: "put",
-        dataType: 'json',
-        url: '/add' + getId() + '&value=' + toAdd,
-        success: function (data) {
-            updateOps(data);
-            updateState();
-        },
-        error: function (xhr, error) {
-            alert('Failed to add commits: ' + error);
-        }
-    });
+    if (toAdd === 0) {
+        return;
+    }
+    localChanges.push(toAdd);
+    updateOps()
 }
 
-function updateOps(json) {
-    $('#ops').empty();
-    json.forEach(element => {
-        $('#ops').append('[' + element + '] ');
-    });
+function reset(){
+    localChanges = [];
+    updateOps();
 }
 
-function updateState() {
+function push() {
+    if (localChanges.length === 0){
+        return;
+    }
     $.ajax({
-        type: "get",
-        dataType: 'json',
-        url: '/state' + getId(),
+        type: "post",
+        url: '/push' + getId(),
+        data: JSON.stringify(localChanges),
         success: function (data) {
-            $('#state').empty();
-            $('#state').append(data);
+            reset();
+            update();
         },
         error: function (xhr, error) {
             alert('Failed to update state: ' + error);
@@ -64,10 +51,23 @@ function updateState() {
     });
 }
 
-function checkout(id) {
+function updateOps() {
+    var ops = $('#ops');
+    ops.empty();
+    localChanges.forEach(element => {
+        $('#ops').append('[' + (element > 0 ? '+' : '-') + element + '] ');
+    });
+}
+
+function updateState(state) {
+    $('#state').empty();
+    $('#state').append(state);
+}
+
+function checkout() {
     $.ajax({
         type: "get",
-        url: '/checkout' + getId() + '&commitId=' + id,
+        url: '/checkout' + getId(),
         success: function (data) {
             update();
         },
@@ -93,6 +93,7 @@ function execute(path, method) {
 function update() {
     fetch('/info' + getId(), {
         method: 'GET',
+        dataType: 'json',
         credentials: 'include'
     })
         .then(function (res) {
@@ -103,8 +104,7 @@ function update() {
             return res.json();
         })
         .then(function (json) {
-            updateOps(json['diffs']);
-            updateState();
+            updateState(json[1]);
             updateGraph();
         });
 }
@@ -122,23 +122,9 @@ function updateGraph() {
 }
 
 function render(textGraphViz) {
-    d3.select("#graph")
-        .graphviz()
+    d3.graphviz("#graphviz")
         .zoom(false)
-        .renderDot(textGraphViz, updateCb);
-}
-
-function doFetch(id) {
-    $.ajax({
-        type: 'get',
-        url: '/fetch' + getId() + '&commitId=' + id,
-        success: function (data) {
-            update();
-        },
-        error: function (xhr, error) {
-            alert('Fetch failed: ' + error);
-        }
-    });
+        .renderDot(textGraphViz);
 }
 
 function getId() {
@@ -156,19 +142,5 @@ $.urlParam = function (name) {
         return '';
     }
     return decodeURI(results[1]) || 0;
-}
-
-function updateCb() {
-    $('.node').off("click");
-    $('.node').click(function () {
-        let id = $("g > a", this).attr('title');
-        checkout(JSON.stringify(id));
-    })
-    $('.node').off("contextmenu");
-    $('.node').contextmenu(function (event) {
-        event.preventDefault();
-        let id = $("g > a", this).attr('title');
-        doFetch(JSON.stringify(id))
-    });
 }
 

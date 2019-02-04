@@ -44,7 +44,7 @@ import static io.global.ot.demo.util.Utils.OPERATION_CODEC;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
-public class Bootstrap implements EventloopService {
+public final class Bootstrap implements EventloopService {
 	private final Eventloop eventloop;
 	private final Config config;
 	private final DiscoveryService discoveryService;

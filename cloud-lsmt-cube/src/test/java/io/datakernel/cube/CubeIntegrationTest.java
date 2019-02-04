@@ -133,7 +133,6 @@ public class CubeIntegrationTest {
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems).streamTo(
 				StreamConsumer.ofPromise(multilog.write("partitionA"))));
-		;
 		Files.list(logsDir).forEach(System.out::println);
 
 //		AsynchronousFileChannel channel = AsynchronousFileChannel.open(Files.list(logsDir).findFirst().get(),
@@ -149,7 +148,6 @@ public class CubeIntegrationTest {
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
 				StreamConsumer.ofPromise(multilog.write("partitionA"))));
-		;
 		Files.list(logsDir).forEach(System.out::println);
 
 		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
@@ -157,7 +155,6 @@ public class CubeIntegrationTest {
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
 		await(StreamSupplier.ofIterable(listOfRandomLogItems3).streamTo(
 				StreamConsumer.ofPromise(multilog.write("partitionA"))));
-		;
 		Files.list(logsDir).forEach(System.out::println);
 
 		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
@@ -177,24 +174,14 @@ public class CubeIntegrationTest {
 		// Check query results
 		assertEquals(map, logItems.stream().collect(toMap(r -> r.date, r -> r.clicks)));
 
-		// checkout revision 3 and consolidate it:
-//		await(logCubeStateManager.checkout(3L)); FIXME
-
+		// Consolidate revision 4 as revision 5:
 		CubeDiff consolidatingCubeDiff = await(cube.consolidate(Aggregation::consolidateHotSegment));
-		;
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
 		await(logCubeStateManager.sync());
 
 		await(aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())));
-
-		// merge heads: revision 4, and revision 5 (which is a consolidation of 3)
-		await(algorithms.merge());
-
-		// make a checkpoint and checkout it
-//		await(logCubeStateManager.checkout(6L)); FIXME
-
 		await(aggregationChunkStorage.cleanup((Set) cube.getAllChunks()));
 
 		// Query
@@ -208,7 +195,7 @@ public class CubeIntegrationTest {
 		for (File file : aggregationsDir.toFile().listFiles()) {
 			actualChunkFileNames.add(file.getName());
 		}
-		assertEquals(concat(Stream.of("backups"), Stream.of(7, 8, 9, 10, 11, 12).map(n -> n + ".log")).collect(toSet()),
+		assertEquals(concat(Stream.of("backups"), cube.getAllChunks().stream().map(n -> n + ".log")).collect(toSet()),
 				actualChunkFileNames);
 	}
 

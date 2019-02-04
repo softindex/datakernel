@@ -235,7 +235,7 @@ public class CubeMeasureRemovalTest {
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
-		await(logCubeStateManager.sync());
+		await(logCubeStateManager.commit(), logCubeStateManager.push());
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());

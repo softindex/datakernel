@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.exceptions.OTTransformException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,11 @@ public final class OTStateManager<K, D> {
 		return commit.get();
 	}
 
+	@NotNull
 	private Promise<Void> doCommit() {
+		if (workingDiffs.isEmpty()) {
+			return Promise.complete();
+		}
 		K revisionCopy = localRevision;
 		List<D> workingDiffsCopy = new ArrayList<>(workingDiffs);
 		workingDiffs = new ArrayList<>();
@@ -147,8 +152,12 @@ public final class OTStateManager<K, D> {
 
 	private Promise<Void> doPush() {
 		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
+		K revisionCopy = localRevision;
 		return repository.pushAll(list)
-				.whenResult($ -> list.forEach(commit -> pendingCommits.remove(commit.getId())))
+				.whenResult($ -> {
+					list.forEach(commit -> pendingCommits.remove(commit.getId()));
+					remoteRevision = revisionCopy;
+				})
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
@@ -196,6 +205,10 @@ public final class OTStateManager<K, D> {
 
 	public K getLocalRevision() {
 		return checkNotNull(localRevision, "Internal state has been invalidated");
+	}
+
+	public OTState<D> getState() {
+		return state;
 	}
 
 	public boolean isValid() {

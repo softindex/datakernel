@@ -21,11 +21,16 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepository;
+import io.global.ot.api.CommitId;
 import io.global.ot.demo.api.OTStateServlet;
-import io.global.ot.demo.state.StateManagerProvider;
+import io.global.ot.demo.operations.Operation;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,14 +38,8 @@ import java.nio.file.Paths;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-class HttpModule extends AbstractModule {
+final class HttpModule extends AbstractModule {
 	private static final String DEFAULT_PATH_TO_RESOURCES = "src/main/resources/static";
-
-	@Provides
-	@Singleton
-	IAsyncHttpClient provideClient(Eventloop eventloop) {
-		return AsyncHttpClient.create(eventloop);
-	}
 
 	@Provides
 	@Singleton
@@ -51,11 +50,11 @@ class HttpModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncServlet provideMainServlet(Eventloop eventloop, StateManagerProvider stateManagerProvider) {
+	AsyncServlet provideMainServlet(Eventloop eventloop, OTRepository<CommitId, Operation> repository, OTAlgorithms<CommitId, Operation> algorithms) {
 		Path resources = Paths.get(DEFAULT_PATH_TO_RESOURCES);
 		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), resources);
 		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
-		return OTStateServlet.create(stateManagerProvider).getMiddlewareServlet()
+		return OTStateServlet.create(repository, algorithms).getMiddlewareServlet()
 				.withFallback(staticServlet);
 	}
 }

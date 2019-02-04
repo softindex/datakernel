@@ -17,136 +17,107 @@
 package io.global.ot.demo.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
-import io.datakernel.ot.OTStateManager;
-import io.datakernel.ot.exceptions.OTTransformException;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepository;
+import io.datakernel.util.Tuple2;
 import io.global.ot.api.CommitId;
-import io.global.ot.demo.operations.AddOperation;
+import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
-import io.global.ot.demo.state.StateManagerInfo;
-import io.global.ot.demo.state.StateManagerProvider;
+import io.global.ot.demo.util.StateManagerProvider;
+import io.global.ot.graph.NodesWalker;
 
-import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import java.util.List;
+
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
+import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
 import static io.global.ot.demo.util.Utils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.singleton;
 
-public class OTStateServlet implements WithMiddleware {
-	private static final StateManagerInfo INFO = new StateManagerInfo();
+public final class OTStateServlet implements WithMiddleware {
 	private final StateManagerProvider provider;
+	private final OTAlgorithms<CommitId, Operation> algorithms;
 	private final MiddlewareServlet servlet;
 
-	private OTStateServlet(StateManagerProvider provider) {
+	private OTStateServlet(StateManagerProvider provider, OTAlgorithms<CommitId, Operation> algorithms) {
 		this.provider = provider;
+		this.algorithms = algorithms;
 		this.servlet = getServlet();
 	}
 
-	public static OTStateServlet create(StateManagerProvider provider) {
-		return new OTStateServlet(provider);
+	public static OTStateServlet create(OTRepository<CommitId, Operation> repository, OTAlgorithms<CommitId, Operation> algorithms) {
+		return new OTStateServlet(new StateManagerProvider(algorithms.getOtSystem(), algorithms.getOtNode(), repository), algorithms);
 	}
 
 	private MiddlewareServlet getServlet() {
 		return MiddlewareServlet.create()
-				.with(PUT, "/add", add())
-				.with(POST, "/commit", commit())
 				.with(GET, "/info", info())
 				.with(GET, "/state", state())
 				.with(GET, "/checkout", checkout())
 				.with(POST, "/push", push())
 				.with(GET, "/graph", graph())
 				.with(POST, "/merge", merge())
-				.with(GET, "/pull", pull())
-				.with(GET, "/fetch", fetch())
-				.with(POST, "/reset", reset())
-				.with(POST, "/rebase", rebase());
+				.with(GET, "/pull", pull());
 	}
 
 	// region servlets
-	private AsyncServlet rebase() {
-		return request -> provider.get(request)
-				.thenApply(manager -> {
-					try {
-						manager.rebase();
-					} catch (OTTransformException e) {
-						throw new UncheckedException(e);
-					}
-					return okText();
-				});
-	}
-
-	private AsyncServlet reset() {
-		return request -> provider.get(request)
-				.whenResult(OTStateManager::reset)
-				.thenApply($ -> okText());
-	}
-
-	private AsyncServlet fetch() {
-		return request -> {
-			try {
-				String stringCommitId = request.getQueryParameter("commitId");
-				CommitId commitId = stringCommitId.isEmpty() ? null : JsonUtils.fromJson(COMMIT_ID_HASH, stringCommitId);
-				return provider.get(request)
-						.thenCompose(manager -> commitId != null ?
-								manager.fetch(commitId) :
-								manager.fetch()
-										.thenCompose(rev -> provider.getWalker(manager).walkFull()
-												.thenApply($ -> rev))
-						)
-						.thenApply(fetchedRev -> okText()
-								.withBody(wrapUtf8(String.valueOf(fetchedRev))));
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
-		};
-	}
-
 	private AsyncServlet pull() {
 		return request -> provider.get(request)
 				.thenCompose(manager -> manager.pull()
-						.thenCompose(pulledId -> provider.getWalker(manager).walk(singleton(pulledId))))
+						.thenCompose(pulledId -> provider.getWalker(manager).walk(manager.getLocalRevision())))
 				.thenApply($ -> okText());
 	}
 
 	private AsyncServlet merge() {
 		return request -> provider.get(request)
-				.thenCompose(manager -> manager.getAlgorithms().mergeHeadsAndPush()
-						.thenCompose(mergeId -> provider.getWalker(manager).walk(singleton(mergeId))))
+				.thenCompose(manager -> algorithms.merge()
+						.thenCompose(mergeId -> provider.getWalker(manager).walk(manager.getLocalRevision())))
 				.thenApply($ -> okText());
 	}
 
 	private AsyncServlet graph() {
 		return request -> provider.get(request)
-				.thenApply(manager -> okText()
-						.withBody(provider.getWalker(manager).toGraphViz().getBytes(UTF_8)));
+				.thenCompose(manager -> {
+					NodesWalker<CommitId, Operation> walker = provider.getWalker(manager);
+					return walker.walk(manager.getLocalRevision())
+							.thenApply($ -> okText()
+									.withBody(walker.toGraphViz().getBytes(UTF_8)));
+				});
 	}
 
 	private AsyncServlet push() {
-		return request -> provider.get(request)
-				.thenCompose(manager -> manager.push()
-						.thenCompose($ -> provider.getWalker(manager).walk()))
-				.thenApply($ -> okText());
+		return request -> request.getBody()
+				.thenCompose(body -> {
+					try {
+						List<Operation> operations = fromJson(LIST_DIFFS_CODEC, body.getString(UTF_8));
+						return provider.get(request)
+								.thenCompose(manager -> {
+									manager.addAll(operations);
+									return manager.commit()
+											.thenCompose($ -> manager.push())
+											.thenCompose($ -> provider.getWalker(manager).walk(manager.getLocalRevision()));
+								})
+								.thenApply($ -> okText());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					} finally {
+						body.recycle();
+					}
+				});
 	}
 
 	private AsyncServlet checkout() {
-		return request -> {
-			try {
-				CommitId commitId = JsonUtils.fromJson(COMMIT_ID_HASH, request.getQueryParameter("commitId"));
-				return provider.get(request)
-						.thenCompose(manager -> manager.checkout(commitId))
-						.thenApply($ -> okText());
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
-		};
+		return request -> provider.get(request)
+				.thenCompose(manager -> manager.checkout()
+						.thenCompose($ -> provider.getWalker(manager).walk(manager.getLocalRevision())))
+				.thenApply($ -> okText());
 	}
 
 	private AsyncServlet state() {
@@ -156,39 +127,16 @@ public class OTStateServlet implements WithMiddleware {
 						.withBody(toJson(INT_CODEC, counter).getBytes(UTF_8)));
 	}
 
-	private AsyncServlet commit() {
-		return request -> provider.get(request)
-				.thenCompose(manager -> manager.commit()
-						.thenCompose($ -> provider.getWalker(manager).walk()))
-				.thenApply($ -> okText());
-	}
-
-	private AsyncServlet add() {
-		return request -> {
-			try {
-				Integer value = request.parseQueryParameter("value", Integer::parseInt);
-				return provider.get(request)
-						.thenApply(manager -> {
-							manager.add(AddOperation.add(value));
-							return okJson()
-									.withBody(toJson(LIST_DIFFS_CODEC, manager.getWorkingDiffs()).getBytes(UTF_8));
-						});
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
-		};
-	}
-
 	private AsyncServlet info() {
 		return request -> provider.get(request)
 				.thenApply(manager -> {
 							String redirectUrl = provider.isNew() ? ("../?id=" + provider.getId(manager)) : "";
-							INFO.setRevision(manager.getLocalRevision());
-							INFO.setFetchedRevision(manager.getFetchedRevisionOrNull());
-							INFO.setWorkingDiffs(manager.getWorkingDiffs());
-							INFO.setState(manager.getState());
+					Tuple2<CommitId, Integer> infoTuple = new Tuple2<>(
+							manager.getLocalRevision(),
+							((OperationState) manager.getState()).getCounter()
+					);
 							return redirectUrl.isEmpty() ?
-									okJson().withBody(toJson(INFO_CODEC, INFO).getBytes(UTF_8)) :
+									okJson().withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8)) :
 									HttpResponse.redirect302(redirectUrl);
 						}
 				);

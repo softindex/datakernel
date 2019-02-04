@@ -3,7 +3,6 @@ package io.datakernel.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
@@ -23,17 +22,27 @@ import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 @RunWith(DatakernelRunner.class)
 public class OTStateManagerTest {
 	private Eventloop eventloop;
 	private OTSystem<TestOp> system;
+	private OTRepositoryStub<Integer, TestOp> repository;
+	private OTStateManager<Integer, TestOp> stateManager;
+	private TestOpState testOpState;
 
 	@Before
 	public void before() {
 		eventloop = Eventloop.getCurrentEventloop();
 		system = createTestOp();
+		repository = OTRepositoryStub.create();
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
+		testOpState = new TestOpState();
+		stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
+
+		initializeRepository(repository, stateManager);
 	}
 
 	@Test
@@ -46,7 +55,7 @@ public class OTStateManagerTest {
 			}
 		};
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState());
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
 
 		initializeRepository(repository, stateManager);
 
@@ -66,13 +75,6 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testPullFullHistory() {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
 		for (int i = 1; i <= 5; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
@@ -84,23 +86,15 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testPullAfterFetch() {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
+	public void testPull() {
 		for (int i = 1; i <= 10; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 3 || i == 5 || i == 7) {
-				stateManager.pull();
-				eventloop.run();
+				await(stateManager.pull());
 			}
 		}
 
-		assertEquals(0, testOpState.getValue());
+		assertEquals(7, testOpState.getValue());
 
 		await(stateManager.pull());
 		assertEquals(10, testOpState.getValue());
@@ -108,13 +102,6 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testApplyDiffBeforePull() {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
 		for (int i = 1; i <= 10; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
@@ -128,14 +115,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testTwoFetchAndTwoPullOneAfterAnother() {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
+	public void testMultiplePulls() {
 		for (int i = 1; i <= 20; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 5 || i == 15) {
@@ -150,153 +130,88 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testRebaseConflictResolving() throws OTTransformException {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
+	public void testConflictResolving() {
+		repository.addGraph(g -> g.add(0, 1, asList(add(5))));
 
 		assertEquals(0, testOpState.getValue());
 
-		repository.addGraph(g -> g.add(0, 1, asList(set(0, 10))));
-
+		stateManager.add(add(3));
 		await(stateManager.pull());
 
-		assertEquals(0, testOpState.getValue());
-
-		stateManager.add(set(0, 15));
-		stateManager.pull();
-
-		assertEquals(10, testOpState.getValue());
-//		assertEquals(emptyList(), stateManager.getWorkingDiffs());
+		assertEquals(8, testOpState.getValue());
 	}
 
 	@Test
-	public void testRebaseConflictResolving2() throws OTTransformException {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
+	public void testConflictResolving2() {
 		repository.addGraph(g -> g.add(0, 1, set(0, 15)));
-		await(stateManager.pull());
 
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(set(0, 10));
-		stateManager.pull();
+		await(stateManager.pull());
 
 		assertEquals(10, testOpState.getValue());
-//		assertEquals(asList(set(15, 10)), stateManager.getWorkingDiffs());
 	}
 
 	@Test
-	public void testRebaseConflictResolving3() throws OTTransformException {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
-		assertEquals(0, testOpState.getValue());
-
+	public void testConflictResolving3() {
 		repository.addGraph(g -> g.add(0, 1, set(0, 10)));
-		await(stateManager.pull());
 
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(add(5));
-		stateManager.pull();
+		await(stateManager.pull());
 
 		assertEquals(10, testOpState.getValue());
-//		assertEquals(emptyList(), stateManager.getWorkingDiffs());
 	}
 
 	@Test
-	public void testRebaseConflictResolving4() throws OTTransformException {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
-		assertEquals(0, testOpState.getValue());
-
+	public void testConflictResolving4() {
 		repository.addGraph(g -> g.add(0, 1, add(5)));
-		await(stateManager.pull());
 
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(set(0, 10));
-		stateManager.pull();
+		await(stateManager.pull());
 
 		assertEquals(10, testOpState.getValue());
-//		assertEquals(asList(set(5, 10)), stateManager.getWorkingDiffs());
 	}
 
 	@Test
-	public void testRebaseConflictResolving5() throws OTTransformException {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
-
-		initializeRepository(repository, stateManager);
-
-		assertEquals(0, testOpState.getValue());
-
+	public void testConflictResolving5() {
 		repository.addGraph(g -> g.add(0, 1, add(10)));
-		await(stateManager.pull());
 
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(add(5));
-		stateManager.pull();
+		await(stateManager.pull());
 
 		assertEquals(15, testOpState.getValue());
-//		assertEquals(asList(add(5)), stateManager.getWorkingDiffs());
 	}
 
 	@Test
-	public void testParallelPullsAndPushes() {
-		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create(asList(1, 2, 4, 6));
-		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
+	public void testPullAfterPush() {
+		Random random = new Random();
+		repository.revisionIdSupplier = random::nextInt;
 
-		initializeRepository(repository, stateManager);             // rev = 0;
-		assertEquals(0, testOpState.getValue());
+		Integer initialRevision = stateManager.getLocalRevision();
+		stateManager.add(add(3));
+		assertEquals(3, testOpState.getValue());
+		assertEquals(initialRevision, stateManager.getLocalRevision());
 
-		stateManager.addAll(asList(add(1), set(1, 5), add(10)));       // rev = 1
-		assertEquals(15, testOpState.getValue());
-		stateManager.sync();
+		await(stateManager.commit());
+		assertEquals(3, testOpState.getValue());
+		Integer afterCommitRevision = stateManager.getLocalRevision();
+		assertNotEquals(initialRevision, afterCommitRevision);
 
-		stateManager.addAll(asList(add(1), set(16, 20), add(10)));     // rev = 2
-		assertEquals(30, testOpState.getValue());
-		stateManager.sync();
+		await(stateManager.push());
+		assertEquals(3, testOpState.getValue());
+		assertEquals(afterCommitRevision, stateManager.getLocalRevision());
 
-		repository.addGraph(builder -> builder.add(2, 3, add(3)));
-		stateManager.add(add(10));
-		assertEquals(40, testOpState.getValue());
-
-		// pull will do nothing, as push below changed revision while pool in process
-		stateManager.pull();
-
-		stateManager.sync();                               // rev = 4 (2 heads: [3,4])
-		eventloop.run();
-		assertEquals(40, testOpState.getValue());
-
-		await(algorithms.merge());                        // rev = 6
 		await(stateManager.pull());
-
-		assertEquals(43, testOpState.getValue());
+		// Nothing changed
+		assertEquals(3, testOpState.getValue());
+		assertEquals(afterCommitRevision, stateManager.getLocalRevision());
 	}
 
 	private class OTRepositoryDecorator<K, D> implements OTRepository<K, D> {

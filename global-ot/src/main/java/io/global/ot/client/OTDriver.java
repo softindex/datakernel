@@ -147,7 +147,7 @@ public final class OTDriver {
 
 		for (OTCommit<CommitId, D> commit : commits) {
 			try {
-				rawCommits.put(commit.getId(), decode(COMMIT_CODEC, (byte[]) commit.getSerializedData()));
+				rawCommits.put(commit.getId(), decode(COMMIT_CODEC, commit.getSerializedData()));
 			} catch (ParseException e) {
 				return Promise.ofException(e);
 			}

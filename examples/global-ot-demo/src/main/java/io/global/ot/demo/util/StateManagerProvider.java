@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package io.global.ot.demo.state;
+package io.global.ot.demo.util;
 
 import io.datakernel.async.Promise;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTNode;
+import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
+import io.global.ot.graph.NodesWalker;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -31,30 +33,33 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static io.datakernel.util.Preconditions.checkState;
-import static io.global.ot.demo.util.Utils.COMMIT_ID_HASH;
+import static io.global.ot.demo.util.Utils.ID_TO_STRING;
+import static io.global.ot.demo.util.Utils.OPERATION_TO_STRING;
 
-public class StateManagerProvider {
-	private final Eventloop eventloop;
-	private final OTAlgorithms<CommitId, Operation> algorithms;
+public final class StateManagerProvider {
+	private final OTSystem<Operation> otSystem;
+	private final OTNode<CommitId, Operation> otNode;
+	private final OTRepository<CommitId, Operation> otRepository;
 	private final Map<Integer, OTStateManager<CommitId, Operation>> stateManagerMap = new HashMap<>();
-	private final Map<OTStateManager<CommitId, Operation>, NodesWalker<CommitId>> walkerMap = new HashMap<>();
+	private final Map<OTStateManager<CommitId, Operation>, NodesWalker<CommitId, Operation>> walkerMap = new HashMap<>();
 
 	// shows whether last get operation returned new StateManager or not
 	private boolean isNew;
 
-	public StateManagerProvider(Eventloop eventloop, OTAlgorithms<CommitId, Operation> algorithms) {
-		this.eventloop = eventloop;
-		this.algorithms = algorithms;
+	public StateManagerProvider(OTSystem<Operation> otSystem, OTNode<CommitId, Operation> otNode, OTRepository<CommitId, Operation> otRepository) {
+		this.otSystem = otSystem;
+		this.otNode = otNode;
+		this.otRepository = otRepository;
 	}
 
 	public Promise<OTStateManager<CommitId, Operation>> get(HttpRequest request) {
 		Integer id = getId(request);
 		isNew = !stateManagerMap.containsKey(id);
 		OTStateManager<CommitId, Operation> stateManager = stateManagerMap.computeIfAbsent(id,
-				$ -> OTStateManager.create(eventloop, algorithms, new OperationState()));
+				$ -> new OTStateManager<>(otSystem, otNode, new OperationState()));
 		return isNew ?
-				stateManager.start()
-						.thenCompose($ -> getWalker(stateManager).walkFull())
+				stateManager.checkout()
+						.thenCompose($ -> getWalker(stateManager).walk())
 						.thenApply($ -> stateManager) :
 				Promise.of(stateManager);
 	}
@@ -73,8 +78,8 @@ public class StateManagerProvider {
 		throw new NoSuchElementException();
 	}
 
-	public NodesWalker<CommitId> getWalker(OTStateManager<CommitId, Operation> manager) {
-		return walkerMap.computeIfAbsent(manager, $ -> new NodesWalker<>(manager, COMMIT_ID_HASH));
+	public NodesWalker<CommitId, Operation> getWalker(OTStateManager<CommitId, Operation> manager) {
+		return walkerMap.computeIfAbsent(manager, $ -> NodesWalker.create(otRepository, ID_TO_STRING, OPERATION_TO_STRING));
 	}
 
 	private Integer getId(HttpRequest request) {

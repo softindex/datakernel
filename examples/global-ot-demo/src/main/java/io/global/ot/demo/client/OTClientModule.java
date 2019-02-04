@@ -29,7 +29,7 @@ import io.global.ot.demo.operations.Operation;
 
 import static java.util.Collections.emptySet;
 
-class OTClientModule extends AbstractModule {
+final class OTClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	Eventloop provide() {

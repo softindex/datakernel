@@ -16,7 +16,7 @@
 
 package io.global.ot.demo.operations;
 
-public class AddOperation implements Operation {
+public final class AddOperation implements Operation {
 	private final int delta;
 
 	private AddOperation(int delta) {

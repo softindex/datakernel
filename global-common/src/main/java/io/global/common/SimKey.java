@@ -82,6 +82,6 @@ public final class SimKey {
 
 	@Override
 	public String toString() {
-		return "SimKey@" + Integer.toHexString(Arrays.hashCode(key));
+		return "SimKey(" + CryptoUtils.toHexString(key) + ')';
 	}
 }
