@@ -13,11 +13,11 @@ user data processing tools and also web crawlers that perform content indexing o
 
 ## DataKernel capabilities
 
-1. DataKernel allows to efficiently work with **massive amounts of data**. With its help you can create **custom 
+1. DataKernel allows to efficiently work with massive amounts of data. With its help you can create **custom 
 app-specific databases, data services and data applications**. This framework includes a variety of storage engines which 
 can be used to set up specific databases, data repositories or services with a specific business logic of data processing. 
-To make your life simpler, DataKernel incorporates **LSMT, CRDT and OT** storage engines and algorithms. Moreover, there 
-are built-in algorithms for creating **distributed data storage and processing**. 
+DataKernel incorporates **LSMT, CRDT and OT** storage engines and algorithms. Moreover, there are built-in algorithms 
+for creating **distributed data storage and processing**. 
 
 2. It is a simple and handy application server for developing full-stack web applications with **high-speed server, 
 support of React.js front-end and minimalistic Dependency Injection.**
@@ -40,20 +40,31 @@ components and also a **bootstrap for applications' components graph**.
 4. No multithreaded overhead. All worker threads are **single-threaded** and interact within common threadsafe shared state. 
 5. Up-to-date **CSP, Promises, bytecode generation, LSMT, CRDT and OT** technologies.
 
+## Getting started
+
+There are three guides which demonstrate some basic yet extremely important features of DataKernel to get started with 
+the framework:
+1. ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) - this 5-minute guide shows 
+how to create a simple “Hello World” application using Eventloop, which is one the core components of DataKernel framework.
+2. ["Hello World!" HTTP Server](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld) - create a 
+simple but scalable HTTP server using Boot and HTTP modules.
+3. [Remote key-value storage](https://github.com/softindex/datakernel/tree/master/examples/remote-key-value-storage) - in 
+this guide you will create a remote key-value storage with basic operations "put" and "get" utilizing Boot and RPC modules.
+
 ## Core components 
 
 ### [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)
 ByteBuf is a more lightweight and efficient version of Java's `ByteBuffer` class with support of simultaneous input and 
 output. Module's `ByteBufQueue` allows you to work with multiple `ByteBuf`s in a convenient way. `ByteBufPool` 
-significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. You can also get  
-stats on pool's memory consumption and efficiency.
+significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. You can also get stats 
+on pool's memory consumption and efficiency.
 
 [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
 
 ### [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop)
 
-Eventloop provides efficient non-blocking network and file I/O for building Node.js-like client/server applications 
-with high performance requirements. It resembles Event Loop in Node.js. Although Eventloop runs in a single thread, 
+Eventloop resembles Event Loop in Node.js and provides efficient non-blocking network and file I/O for building 
+Node.js-like client/server applications with high performance requirements. Although Eventloop runs in a single thread, 
 multiple Eventloops can run at the same time providing efficient CPU usage.
 
 [Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop)
@@ -74,9 +85,9 @@ channels similarly to the Go language.
 
 ### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
 
-Promise module was inspired by JavaScript Promise and is alternative to Java's `CompletionStage`. It allows to organize 
+Promise module resembles JavaScript Promise and is alternative to Java's `CompletionStage`. It allows to organize 
 asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. They have a 
-minimalistic and an extremely fast single-threaded implementation with minimal overhead and memory consumption.
+minimalistic and extremely fast single-threaded implementation with minimal overhead and memory consumption.
 
 [Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise)
 
@@ -84,8 +95,8 @@ minimalistic and an extremely fast single-threaded implementation with minimal o
 
 Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the 
 complexity of direct bytecode manipulation, so you can use it to create custom classes on the fly by providing a class 
-description. It is particularly useful in the situations when you have to adjust class behavior in the runtime, based on some external
-factors.
+description. It is particularly useful in the situations when you have to adjust class behavior in the runtime, based on 
+some external factors.
 
 [Codegen examples](https://github.com/softindex/datakernel/tree/master/examples/codegen)
 
@@ -240,13 +251,3 @@ This module represents integration with UIKernel.io JS frontend library: JSON se
 Using this module you can build a server application that will be compatible with UIKernel JS library. 
 
 [UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)
-
-## Getting started
-There are three guides which demonstrate some basic yet extremely important features of DataKernel to get started with 
-the framework:
-1. ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) - this guide shows 
- how to create a simple “Hello World” application using Eventloop, which is the core component of DataKernel framework.
-2. ["Hello World!" HTTP Server](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld) - create a 
-simple but scalable HTTP server using Boot and HTTP modules.
-3. [Remote key-value storage](https://github.com/softindex/datakernel/tree/master/examples/remote-key-value-storage) - in 
-this guide we will create a remote key-value storage with basic operations "put" and "get" utilizing Boot and RPC modules.

@@ -4,7 +4,7 @@
 representing partial and possibly asynchronous computations of a large one. These `Promise`s are faster and better 
 optimized, with minimal overhead, memory consumption and Garbage Collector load: 
 
-* Compared to JavaScript, intermediate `Promise`s are stateless
+* Compared to JavaScript, intermediate `Promise`s are stateless.
 * Since these `Promise`s work in single thread of `Eventloop`, they are much more efficient comparing to 
 multithreaded Java's `CompletableFuture` overhead.
 * `Promise` has simple and orthogonal API, which is more applicable in practice than `CompletionStage` API. 
@@ -48,7 +48,8 @@ can be completed manually.
 * `CompleteResultPromise` - a completed `Promise` with a result of any type.
 * `CompleteNullPromise` - a completed `Promise` with *null* result.
 
-### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise)
+### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise) 
 These examples represent how to utilize [`Promises`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/async/Promises.java) 
-and [`AsyncFile`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/file/AsyncFile.java) utility classes. `AsyncFile` allows you to work 
-with files I/O asynchronously while `Promises` includes handy methods for Promises managing.
+and [`AsyncFile`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/file/AsyncFile.java) 
+utility classes. `AsyncFile` allows you to work with files I/O asynchronously while `Promises` includes handy methods for 
+*Promises* managing.

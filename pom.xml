@@ -11,8 +11,8 @@
 
 	<name>DataKernel</name>
 	<description>
-		Java components for building high-performance and scalable applications with asynchronous I/O,
-		ranging from standalone applications with high-performance I/O, to cluster-wide solutions.
+		Java components for building app-specific databases and high-performance scalable
+		applications with asynchronous I/O, ranging from standalone applications to global solutions
 	</description>
 	<url>http://datakernel.io/</url>
 

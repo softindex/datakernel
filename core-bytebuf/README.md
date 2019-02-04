@@ -3,7 +3,7 @@
 ByteBuf module provides memory-efficient, recyclable byte buffers. The main components of the module are:
 
 ### ByteBuf 
-An extremely light-weight and efficient implementation compared to the Java NIO ByteBuffer. There are no *direct buffers* 
+An extremely light-weight and efficient implementation compared to the Java NIO ByteBuffer. There are no *direct buffers*, 
 which simplifies and improves `ByteBuf` performance. 
 
 ByteBuf is similar to a FIFO byte queue and has two positions: `head` and `tail`. When you write data to your 
@@ -56,24 +56,20 @@ a new `ByteBuf` or returns one from the pool.
 
 The core methods of `ByteBuf` are:
 
-* *head() / head(int pos)* - gets/sets index of the `ByteBuf` from which bytes can be read.
-* *tail() / tail(int pos)* - gets/sets index of the `ByteBuf` from which bytes can be written.
-* *limit()* - returns length of the `ByteBuf`.
-* *drainTo(ByteBuf buf, int length)* - drains `ByteBuf` to another `ByteBuf`, returns the number of elements to be drained.
-* *set(int index, byte b)* - sets byte `b` at the particular index of `ByteBuf`.
-* *put(byte b)* - puts given data in the `ByteBuf`.
-* *getArray()* - returns a byte array created from the `ByteBuf` from `head` to `tail`.
-* *asArray()* - returns a byte array created from the `ByteBuf` from `head` to `tail` and **recycles** the 
-`ByteBuf`.
-* *readByte() / readBoolean() / readChar() / readDouble() / readFloat() / readInt() / readLong() / readShort() / 
-readString()* - allows to read primitives and Strings from the `ByteBuf`. Returns the value of appropriate data type from 
-current `head` and increases `head` by the amount of used by the data type bytes.
-* *writeByte(byte v) / writeBoolean(boolean v) / writeChar(char v) / writeDouble(double v) / writeFloat(float v) / 
-writeInt(int v) / writeLong(long v) / writeShort(short v) / writeString(String s)* - allows to write primitives and Strings 
-to the `ByteBuf`. Writes the value to the current `tail` and then increases it by the amount of used by the data 
-type bytes.
-* *slice() / slice (int length) / slice (int offset, int length)* - returns a new `SliceByteBuf` which is a slice of your 
-`ByteBuf`. By default, length is the number of bytes between `head` and `tail`, offset is `head`.
-* *recycle()* - recycles your `ByteBuf` by returning it to `ByteBufPool`.
+| Method | Purpose |
+| --- | --- |
+| *head() / head(int pos)* | gets/sets index of the `ByteBuf` from which bytes can be read |
+| *tail() / tail(int pos)* | gets/sets index of the `ByteBuf` from which bytes can be written |
+| *limit()* | returns length of the `ByteBuf`|
+| *drainTo(ByteBuf buf, int length)* | drains `ByteBuf` to another `ByteBuf`, returns the number of elements to be drained |
+| *set(int index, byte b)* | sets byte `b` at the particular index of `ByteBuf` |
+| *put(byte b)* | puts given data in the `ByteBuf`|
+| *getArray()* | returns a byte array created from the `ByteBuf` from `head` to `tail`|
+| *asArray()* | returns a byte array created from the `ByteBuf` from `head` to `tail` and **recycles** the `ByteBuf`|
+| *readByte() / readBoolean() / readChar() / readDouble() / readFloat() / readInt() / readLong() / readShort() / readString()* | allows to read primitives and Strings from the `ByteBuf`. Returns the value of appropriate data type from current `head` and increases `head` by the amount of used by the data type bytes|
+| *writeByte(byte v) / writeBoolean(boolean v) / writeChar(char v) / writeDouble(double v) / writeFloat(float v) / writeInt(int v) / writeLong(long v) / writeShort(short v) / writeString(String s)* | allows to write primitives and Strings to the `ByteBuf`. Writes the value to the current `tail` and then increases it by the amount of used by the data type bytes.|
+| *slice() / slice (int length) / slice (int offset, int length)* | returns a new `SliceByteBuf` which is a slice of your `ByteBuf`. By default, length is the number of bytes between `head` and `tail`, offset is `head`.
+| *recycle()* | recycles your `ByteBuf` by returning it to `ByteBufPool`.|
+
 
 ### You can explore ByteBuf examples [here](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
