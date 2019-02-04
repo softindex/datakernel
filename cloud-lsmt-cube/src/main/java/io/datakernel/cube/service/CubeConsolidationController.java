@@ -89,14 +89,20 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	}
 
 	Promise<Void> doConsolidate() {
-		return stateManager.pull()
-				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-				.thenCompose(stateManager::pull)
+		return Promise.complete()
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(promiseConsolidateImpl.recordStats()))
 				.whenResult(this::cubeDiffJmx)
 				.whenComplete(this::logCubeDiff)
-				.thenCompose(this::tryPushConsolidation)
+				.thenCompose(cubeDiff -> {
+					if (cubeDiff.isEmpty()) return Promise.complete();
+					stateManager.add(cubeDiffScheme.wrap(cubeDiff));
+					return Promise.complete()
+							.thenCompose($ -> stateManager.pull())
+							.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
+							.thenCompose($ -> stateManager.sync())
+							.whenComplete(toLogger(logger, thisMethod(), cubeDiff));
+				})
 				.whenComplete(promiseConsolidate.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
@@ -124,20 +130,6 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		addedChunksRecords.recordValue(curAddedChunksRecords);
 		removedChunks.recordValue(curRemovedChunks);
 		removedChunksRecords.recordValue(curRemovedChunksRecords);
-	}
-
-	private Promise<Void> tryPushConsolidation(CubeDiff cubeDiff) {
-		if (cubeDiff.isEmpty()) return Promise.complete();
-
-		stateManager.add(cubeDiffScheme.wrap(cubeDiff));
-		return stateManager.pull()
-				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-				.thenCompose(stateManager::pull)
-				.thenCompose($ -> stateManager.pull())
-				.thenCompose($ -> stateManager.commit())
-				.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
-				.thenCompose($ -> stateManager.push())
-				.whenComplete(toLogger(logger, thisMethod(), cubeDiff));
 	}
 
 	@SuppressWarnings("unchecked")

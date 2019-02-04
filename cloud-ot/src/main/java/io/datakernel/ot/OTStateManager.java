@@ -18,280 +18,147 @@ package io.datakernel.ot;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.exceptions.OTTransformException;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.function.Supplier;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.async.AsyncSuppliers.resubscribe;
+import static io.datakernel.async.Promises.sequence;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.*;
-import static io.datakernel.util.Utils.coalesce;
-import static java.util.Collections.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.singletonList;
 
-public final class OTStateManager<K, D> implements EventloopService, EventloopJmxMBeanEx {
+public final class OTStateManager<K, D> {
 	private static final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
 
-	private final Eventloop eventloop;
-
-	private final OTAlgorithms<K, D> algorithms;
 	private final OTSystem<D> otSystem;
-	private final OTRepository<K, D> repository;
-	private Supplier<Promise<Void>> checkoutValidator;
+	private final OTNode<K, D> repository;
 
 	private OTState<D> state;
 
 	@Nullable
-	private K revision;
-	private Long revisionLevel;
+	private K localRevision;
+	private long localRevisionLevel;
+
+	@Nullable
+	private K remoteRevision;
+	private long remoteRevisionLevel;
+
 	private List<D> workingDiffs = new ArrayList<>();
-
-	@Nullable
-	private K fetchedRevision;
-	@Nullable
-	private Long fetchedRevisionLevel;
-	@Nullable
-	private List<D> fetchedDiffs;
-
 	private Map<K, OTCommit<K, D>> pendingCommits = new HashMap<>();
 
-	OTStateManager(Eventloop eventloop, OTAlgorithms<K, D> algorithms, OTState<D> state) {
-		this.eventloop = eventloop;
-		this.algorithms = algorithms;
-		this.otSystem = algorithms.getOtSystem();
-		this.repository = algorithms.getRepository();
+	public OTStateManager(OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
+		this.otSystem = otSystem;
+		this.repository = repository;
 		this.state = state;
 	}
 
-	public static <K, D> OTStateManager<K, D> create(Eventloop eventloop, OTAlgorithms<K, D> algorithms, OTState<D> state) {
-		checkArgument(eventloop != null, "Cannot create OTStateManager with Eventloop that is null");
-		checkArgument(algorithms != null, "Cannot create OTStateManager with OTAlgorithms that is null");
-		checkArgument(state != null, "Cannot create OTStateManager with OTState that is null");
-		return new OTStateManager<>(eventloop, algorithms, state);
-	}
+	public Promise<Void> checkout() {
+		return repository.checkout()
+				.whenResult(checkoutData -> {
+					state.init();
+					apply(checkoutData.getDiffs());
 
-	public OTStateManager<K, D> withCheckoutValidator(Supplier<Promise<Void>> stateValidator) {
-		this.checkoutValidator = stateValidator;
-		return this;
-	}
+					workingDiffs.clear();
+					pendingCommits.clear();
 
-	@NotNull
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	@NotNull
-	@Override
-	public Promise<Void> start() {
-		return checkout().toVoid();
-	}
-
-	@NotNull
-	@Override
-	public Promise<Void> stop() {
-		invalidateInternalState();
-		return Promise.complete();
-	}
-
-	public Promise<K> checkout() {
-		return repository.getHeads()
-				.thenCompose(heads -> checkout(first(heads)))
-				.thenCompose($ -> pull())
+					localRevision = remoteRevision = checkoutData.getCommitId();
+					localRevisionLevel = remoteRevisionLevel = checkoutData.getLevel();
+				})
+				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public Promise<K> checkout(K commitId) {
-		return repository.loadCommit(commitId)
-				.thenCompose(commit -> algorithms.checkout(commitId)
-						.thenApply(diffs -> {
-							state.init();
-							apply(diffs);
+	private final AsyncSupplier<Void> pull = resubscribe(this::doPull);
 
-							workingDiffs.clear();
-							pendingCommits.clear();
-
-							revision = commit.getId();
-							revisionLevel = commit.getLevel();
-
-							fetchedRevision = null;
-							fetchedRevisionLevel = null;
-							fetchedDiffs = null;
-
-							return revision;
-						}))
-				.thenCompose(k -> {
-					if (checkoutValidator == null) return Promise.of(k);
-					return checkoutValidator.get()
-							.whenException(e -> invalidateInternalState())
-							.thenApply($ -> k);
-				})
-				.whenComplete(toLogger(logger, thisMethod(), commitId, this));
+	public Promise<Void> pull() {
+		checkState(isValid());
+		return pull.get();
 	}
 
-	private final AsyncSupplier<K> fetch = reuse(this::doFetch);
+	private Promise<Void> doPull() {
+		checkState(isValid());
+		return repository.fetch(remoteRevision)
+				.whenResult(fetchData -> {
+					checkState(isValid());
+					List<D> fetchedDiffs = fetchData.getDiffs();
 
-	public Promise<K> fetch() {
-		return fetch.get();
-	}
-
-	public Promise<K> fetch(K head) {
-		fetchedRevision = null;
-		fetchedRevisionLevel = null;
-		fetchedDiffs = null;
-		return doFetch(singleton(head));
-	}
-
-	@NotNull
-	private Promise<K> doFetch() {
-		if (!pendingCommits.isEmpty()) return Promise.of(null);
-		return repository.getHeads()
-				.thenCompose(this::doFetch);
-	}
-
-	private Promise<K> doFetch(Set<K> heads) {
-		if (!pendingCommits.isEmpty()) return Promise.of(null);
-		K fetchedRevisionCopy = coalesce(fetchedRevision, revision);
-		return algorithms.findParent(heads,
-				DiffsReducer.toList(),
-				commit -> Promise.of(commit.getId().equals(fetchedRevisionCopy)))
-				.thenCompose(findResult -> {
-					if (!findResult.isFound()) {
-						logger.warn("Commit not found: {} in {}", heads, this);
-						return Promise.of(null);
+					TransformResult<D> transformed;
+					try {
+						transformed = otSystem.transform(
+								otSystem.squash(workingDiffs),
+								otSystem.squash(fetchedDiffs));
+					} catch (OTTransformException e) {
+						invalidateInternalState();
+						throw new UncheckedException(e);
 					}
 
-					if (fetchedRevisionCopy != coalesce(fetchedRevision, revision)) {
-						logger.info("Concurrent revision modification: {} in {}", fetchedRevisionCopy, this);
-						return Promise.of(null);
-					}
+					apply(transformed.left);
+					workingDiffs = new ArrayList<>(transformed.right);
 
-					fetchedRevision = findResult.getChild();
-					fetchedRevisionLevel = findResult.getChildLevel();
-					fetchedDiffs = otSystem.squash(concat(
-							coalesce(fetchedDiffs, emptyList()),
-							findResult.getAccumulatedDiffs()));
-
-					return Promise.of(fetchedRevision);
+					localRevision = remoteRevision = fetchData.getCommitId();
+					localRevisionLevel = remoteRevisionLevel = fetchData.getLevel();
 				})
+				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public Promise<K> pull() {
-		return fetch()
-				.thenCompose(this::doPull)
+	public Promise<Void> sync() {
+		return sequence(this::pull, this::commit, this::push)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public Promise<K> pull(K pullRevision) {
-		return fetch(pullRevision)
-				.thenCompose(this::doPull)
-				.whenComplete(toLogger(logger, thisMethod(), this));
-	}
+	private final AsyncSupplier<Void> commit = resubscribe(this::doCommit);
 
-	private Promise<K> doPull(K fetchedRevision) {
-		if (fetchedRevision == null) return Promise.of(null);
-		try {
-			return Promise.of(rebase());
-		} catch (OTTransformException e) {
-			invalidateInternalState();
-			return Promise.ofException(e);
-		}
-	}
-
-	public K rebase() throws OTTransformException {
-		if (fetchedRevision == null) return null;
-
-		TransformResult<D> transformed = otSystem.transform(
-				otSystem.squash(workingDiffs),
-				otSystem.squash(fetchedDiffs));
-		apply(transformed.left);
-		workingDiffs = new ArrayList<>(transformed.right);
-
-		revision = checkNotNull(fetchedRevision, "Cannot rebase onto fetched revision that is null");
-		revisionLevel = checkNotNull(fetchedRevisionLevel, "Cannot rebase when fetched revision level is null");
-
-		fetchedRevision = null;
-		fetchedRevisionLevel = null;
-		fetchedDiffs = null;
-
-		return revision;
-	}
-
-	public void reset() {
-		List<D> diffs = new ArrayList<>(workingDiffs);
-		diffs = otSystem.invert(diffs);
-		apply(diffs);
-		workingDiffs = new ArrayList<>();
-	}
-
-	public Promise<K> commitAndPush() {
-		return commit()
-				.thenCompose(id -> push().thenApply($ -> id))
-				.whenComplete(toLogger(logger, thisMethod(), this));
-	}
-
-	private final AsyncSupplier<K> commit = reuse(this::doCommit);
-
-	public Promise<K> commit() {
+	public Promise<Void> commit() {
 		return commit.get();
 	}
 
-	@NotNull
-	Promise<K> doCommit() {
-		if (workingDiffs.isEmpty()) {
-			return Promise.of(null);
-		}
-		K revisionCopy = revision;
+	private Promise<Void> doCommit() {
+		K revisionCopy = localRevision;
 		List<D> workingDiffsCopy = new ArrayList<>(workingDiffs);
-		return repository.createCommit(revision, otSystem.squash(workingDiffs), revisionLevel + 1L)
-				.thenApply(newCommit -> {
-					if (revisionCopy != revision || !isShallowEquals(workingDiffs, workingDiffsCopy)) {
-						return null;
-					}
-					pendingCommits.put(newCommit.getId(), newCommit);
+		workingDiffs = new ArrayList<>();
+		return repository.createCommit(revisionCopy, otSystem.squash(workingDiffsCopy), localRevisionLevel + 1L)
+				.whenResult(commit -> {
+					pendingCommits.put(commit.getId(), commit);
 
-					revision = newCommit.getId();
-					revisionLevel = newCommit.getLevel();
+					localRevision = commit.getId();
+					localRevisionLevel = commit.getLevel();
 					workingDiffs = new ArrayList<>();
-
-					fetchedRevision = null;
-					fetchedRevisionLevel = null;
-					fetchedDiffs = null;
-
-					return newCommit.getId();
 				})
+				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private final AsyncSupplier<Void> push = reuse(this::doPush);
+	private final AsyncSupplier<Void> push = resubscribe(this::doPush);
 
 	public Promise<Void> push() {
 		return push.get();
 	}
 
-	Promise<Void> doPush() {
+	private Promise<Void> doPush() {
 		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
-		return repository.push(list)
-				.whenResult($ -> list.stream().map(OTCommit::getId).forEach(pendingCommits::remove))
+		return repository.pushAll(list)
+				.whenResult($ -> list.forEach(commit -> pendingCommits.remove(commit.getId())))
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	public void add(D diff) {
-		add(singletonList(diff));
+		checkState(isValid());
+		addAll(singletonList(diff));
 	}
 
-	public void add(List<D> diffs) {
+	public void addAll(List<D> diffs) {
+		checkState(isValid());
 		try {
 			for (D diff : diffs) {
 				if (!otSystem.isEmpty(diff)) {
@@ -320,95 +187,34 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	private void invalidateInternalState() {
 		state = null;
 
-		revision = null;
-		revisionLevel = null;
+		localRevision = null;
+		localRevisionLevel = 0;
 		workingDiffs = null;
-
-		fetchedRevision = null;
-		fetchedRevisionLevel = null;
-		fetchedDiffs = null;
 
 		pendingCommits = null;
 	}
 
-	private boolean isInternalStateValid() {
-		checkState(state == null || (revision != null && pendingCommits != null), "Internal state invalid");
-		checkState(revision == null || (revisionLevel != null && workingDiffs != null), "Internal state invalid");
-		checkState(fetchedRevision == null || (fetchedRevisionLevel != null && fetchedDiffs != null), "Internal state invalid");
-		return state != null;
+	public K getLocalRevision() {
+		return checkNotNull(localRevision, "Internal state has been invalidated");
 	}
 
-	public OTAlgorithms<K, D> getAlgorithms() {
-		return algorithms;
-	}
-
-	public OTState<D> getState() {
-		return checkNotNull(state, "Internal state has been invalidated");
-	}
-
-	public K getRevision() {
-		return checkNotNull(revision, "Internal state has been invalidated");
-	}
-
-	@Nullable
-	public K getFetchedRevisionOrNull() {
-		return fetchedRevision;
-	}
-
-	public List<D> getWorkingDiffs() {
-		return workingDiffs;
+	public boolean isValid() {
+		return localRevision != null;
 	}
 
 	public boolean hasWorkingDiffs() {
 		return !workingDiffs.isEmpty();
 	}
 
-	public Map<K, OTCommit<K, D>> getPendingCommits() {
-		return pendingCommits;
-	}
-
 	public boolean hasPendingCommits() {
 		return !pendingCommits.isEmpty();
-	}
-
-	public boolean hasFetchedDiffs() {
-		return fetchedDiffs != null;
-	}
-
-	@Nullable
-	@JmxAttribute(name = "revision")
-	public String getJmxRevision() {
-		return revision != null ? revision.toString() : null;
-	}
-
-	@JmxAttribute
-	public String getFetchedRevision() {
-		return fetchedRevision != null ? fetchedRevision.toString() : null;
-	}
-
-	// -1 indicates that fetchedDiffs is currently null
-	@JmxAttribute
-	public int getFetchedDiffsSize() {
-		return fetchedDiffs != null ? fetchedDiffs.size() : -1;
-	}
-
-	@JmxAttribute
-	public int getPendingCommitsSize() {
-		return pendingCommits.size();
-	}
-
-	@JmxAttribute
-	public int getWorkingCommitsSize() {
-		return workingDiffs.size();
 	}
 
 	@Override
 	public String toString() {
 		return "{" +
-				"revision=" + revision +
+				"revision=" + localRevision +
 				" workingDiffs:" + (workingDiffs != null ? workingDiffs.size() : null) +
-				" fetchedRevision=" + fetchedRevision +
-				" fetchedDiffs:" + (fetchedDiffs != null ? fetchedDiffs.size() : null) +
 				" pendingCommits:" + (pendingCommits != null ? pendingCommits.size() : null) +
 				'}';
 	}

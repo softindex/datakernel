@@ -50,7 +50,7 @@ public final class TestUtils {
 		await(aggregationChunkStorage
 				.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet())));
 		logCubeStateManager.add(logDiff);
-		await(logCubeStateManager.commitAndPush());
+		await(logCubeStateManager.sync());
 	}
 
 }

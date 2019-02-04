@@ -155,7 +155,7 @@ public final class ChatClientModule extends AbstractModule {
 	@Singleton
 	@Named("Merge")
 	EventloopTaskScheduler provideMergeScheduler(Eventloop eventloop, Config config, OTAlgorithms<CommitId, ChatOperation> algorithms) {
-		return EventloopTaskScheduler.create(eventloop, algorithms::mergeHeadsAndPush)
+		return EventloopTaskScheduler.create(eventloop, algorithms::merge)
 				.initialize(ofEventloopTaskScheduler(config.getChild("merge")));
 	}
 }

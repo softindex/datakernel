@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -75,8 +74,8 @@ public class ChannelFileExample {
 
 	public static void main(String[] args) {
 		Promises.sequence(
-				AsyncSupplier.cast(ChannelFileExample::writeToFile),
-				AsyncSupplier.cast(ChannelFileExample::readFile))
+				ChannelFileExample::writeToFile,
+				ChannelFileExample::readFile)
 				.whenComplete(($, e) -> {
 					if (e != null) {
 						e.printStackTrace();

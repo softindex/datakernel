@@ -60,7 +60,7 @@ public class NodesWalker<T> {
 						.get()
 						.getParents()
 						.keySet()) :
-				stateManager.getRevision();
+				stateManager.getLocalRevision();
 		return walk(singleton(current));
 	}
 
@@ -186,7 +186,7 @@ public class NodesWalker<T> {
 			pendingCommits.values().stream()
 					.sorted(Comparator.comparingLong(OTCommit::getTimestamp))
 					.forEach(this::updatePendingState);
-			revision = stateManager.getRevision();
+			revision = stateManager.getLocalRevision();
 			fetchedRevision = stateManager.getFetchedRevisionOrNull();
 			StringBuilder sb = new StringBuilder();
 			sb.append("digraph {\n");

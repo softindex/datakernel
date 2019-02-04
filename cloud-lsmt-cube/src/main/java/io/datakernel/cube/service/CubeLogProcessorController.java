@@ -14,9 +14,7 @@ import io.datakernel.etl.LogOTProcessor;
 import io.datakernel.etl.LogOTState;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
-import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.ot.OTSystem;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +23,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.AsyncSuppliers.resubscribe;
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -39,7 +37,6 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	private final Eventloop eventloop;
 	private final List<LogOTProcessor<?, CubeDiff>> logProcessors;
-	private final OTSystem<LogDiff<CubeDiff>> otSystem;
 	private final AggregationChunkStorage<C> chunkStorage;
 	private final OTStateManager<K, LogDiff<CubeDiff>> stateManager;
 	private final AsyncPredicate<K> predicate;
@@ -52,27 +49,23 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
 
 	CubeLogProcessorController(Eventloop eventloop,
-			List<LogOTProcessor<?, CubeDiff>> logProcessors,
-			OTSystem<LogDiff<CubeDiff>> otSystem,
-			AggregationChunkStorage<C> chunkStorage,
-			OTStateManager<K, LogDiff<CubeDiff>> stateManager,
-			AsyncPredicate<K> predicate) {
+							   List<LogOTProcessor<?, CubeDiff>> logProcessors,
+							   AggregationChunkStorage<C> chunkStorage,
+							   OTStateManager<K, LogDiff<CubeDiff>> stateManager,
+							   AsyncPredicate<K> predicate) {
 		this.eventloop = eventloop;
 		this.logProcessors = logProcessors;
-		this.otSystem = otSystem;
 		this.chunkStorage = chunkStorage;
 		this.stateManager = stateManager;
 		this.predicate = predicate;
 	}
 
 	public static <K, C> CubeLogProcessorController<K, C> create(Eventloop eventloop,
-			OTStateManager<K, LogDiff<CubeDiff>> stateManager,
-			AggregationChunkStorage<C> chunkStorage,
-			List<LogOTProcessor<?, CubeDiff>> logProcessors) {
-		OTAlgorithms<K, LogDiff<CubeDiff>> algorithms = stateManager.getAlgorithms();
-		OTSystem<LogDiff<CubeDiff>> system = algorithms.getOtSystem();
-		LogOTState<CubeDiff> logState = (LogOTState<CubeDiff>) stateManager.getState();
-		Cube cube = (Cube) logState.getDataState();
+																 LogOTState<CubeDiff> state,
+																 OTStateManager<K, LogDiff<CubeDiff>> stateManager,
+																 AggregationChunkStorage<C> chunkStorage,
+																 List<LogOTProcessor<?, CubeDiff>> logProcessors) {
+		Cube cube = (Cube) state.getDataState();
 		AsyncPredicate<K> predicate = AsyncPredicate.of(commitId -> {
 			if (cube.containsExcessiveNumberOfOverlappingChunks()) {
 				logger.info("Cube contains excessive number of overlapping chunks");
@@ -80,7 +73,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 			}
 			return true;
 		});
-		return new CubeLogProcessorController<>(eventloop, logProcessors, system, chunkStorage, stateManager, predicate);
+		return new CubeLogProcessorController<>(eventloop, logProcessors, chunkStorage, stateManager, predicate);
 	}
 
 	public CubeLogProcessorController<K, C> withParallelRunner(boolean parallelRunner) {
@@ -88,7 +81,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 		return this;
 	}
 
-	private final AsyncSupplier<Boolean> processLogs = reuse(this::doProcessLogs);
+	private final AsyncSupplier<Boolean> processLogs = resubscribe(this::doProcessLogs);
 
 	public Promise<Boolean> processLogs() {
 		return processLogs.get();
@@ -101,12 +94,14 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 	}
 
 	Promise<Boolean> process() {
-		return stateManager.pull()
+		return Promise.complete()
+				.thenCompose($ -> stateManager.pull())
+				.thenApply($ -> stateManager.getLocalRevision())
 				.thenCompose(predicate::test)
 				.thenCompose(ok -> {
 					if (!ok) return Promise.of(false);
 
-					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
+					logger.info("Pull to commit: {}, start log processing", stateManager.getLocalRevision());
 
 					List<AsyncSupplier<LogDiff<CubeDiff>>> tasks = logProcessors.stream()
 							.map(logProcessor -> AsyncSupplier.cast(logProcessor::processLog))
@@ -119,18 +114,12 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 					return promise
 							.whenComplete(promiseProcessLogsImpl.recordStats())
 							.whenResult(this::cubeDiffJmx)
-							.thenCompose(diffs -> {
-								stateManager.add(otSystem.squash(diffs));
-
-								return stateManager.pull()
-										.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-										.thenCompose(stateManager::pull)
-										.thenCompose($ -> stateManager.pull())
-										.thenCompose($ -> stateManager.commit())
-										.thenCompose($ -> chunkStorage.finish(addedChunks(diffs)))
-										.thenCompose($ -> stateManager.push())
-										.thenApply($ -> true);
-							});
+							.thenCompose(diffs -> Promise.complete()
+									.whenResult($ -> stateManager.addAll(diffs))
+									.thenCompose($ -> stateManager.pull())
+									.thenCompose($ -> chunkStorage.finish(addedChunks(diffs)))
+									.thenCompose($ -> stateManager.sync())
+									.thenApply($ -> true));
 				})
 				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}

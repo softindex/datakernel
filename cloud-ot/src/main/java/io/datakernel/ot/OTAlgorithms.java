@@ -47,7 +47,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public static <K, D> OTAlgorithms<K, D> create(Eventloop eventloop,
-			OTSystem<D> otSystem, OTRepository<K, D> source) {
+												   OTSystem<D> otSystem, OTRepository<K, D> source) {
 		return new OTAlgorithms<>(eventloop, otSystem, source);
 	}
 
@@ -63,6 +63,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public OTSystem<D> getOtSystem() {
 		return otSystem;
+	}
+
+	public OTNode<K, D> getOtNode() {
+		return new OTNodeImpl<>(this);
 	}
 
 	public interface GraphWalker<K, D, R> {
@@ -99,7 +103,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private <R> Promise<R> walkGraphImpl(GraphWalker<K, D, R> walker, PriorityQueue<OTCommit<K, D>> queue,
-			Set<K> visited) {
+										 Set<K> visited) {
 		if (queue.isEmpty()) {
 			return Promise.ofException(new OTException("Incomplete graph"));
 		}
@@ -138,10 +142,6 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 		public static <K, A> FindResult<K, A> of(K commit, K child, Set<K> parents, long commitLevel, long childLevel, A accumulator) {
 			return new FindResult<>(commit, child, parents, commitLevel, childLevel, accumulator);
-		}
-
-		public static <K, A> FindResult<K, A> notFound() {
-			return new FindResult<>(null, null, null, 0, 0, null);
 		}
 
 		public boolean isFound() {
@@ -190,8 +190,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public <A> Promise<FindResult<K, A>> findParent(Set<K> startNodes,
-			DiffsReducer<A, D> diffAccumulator,
-			AsyncPredicate<OTCommit<K, D>> matchPredicate) {
+													DiffsReducer<A, D> diffAccumulator,
+													AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return walkGraph(startNodes,
 				new FindParentWalker<>(startNodes, matchPredicate, diffAccumulator));
 	}
@@ -258,6 +258,12 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
+	public Promise<K> merge() {
+		return repository.getHeads()
+				.thenCompose(this::merge)
+				.whenComplete(toLogger(logger, thisMethod()));
+	}
+
 	static class Tuple<K, D> {
 		final Map<K, List<D>> mergeDiffs;
 		final long parentsMaxLevel;
@@ -268,28 +274,27 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	public Promise<K> mergeHeadsAndPush() {
-		return repository.getHeads()
-				.thenCompose(heads -> {
-					if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
+	@NotNull
+	public Promise<K> merge(@NotNull Set<K> heads) {
+		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
 
-					return Promises.toTuple(Tuple::new,
-							loadAndMerge(heads),
-							toList(heads.stream()
-									.map(repository::loadCommit))
-									.thenApply(headCommits -> headCommits.stream()
-											.mapToLong(OTCommit::getLevel)
-											.max()
-											.getAsLong()))
-							.thenCompose(tuple -> repository.createCommit(tuple.mergeDiffs, tuple.parentsMaxLevel + 1L))
-							.thenCompose(mergeCommit -> repository.push(mergeCommit)
-									.thenApply($ -> mergeCommit.getId()));
-				})
-				.whenComplete(toLogger(logger, thisMethod()));
+
+		//noinspection OptionalGetWithoutIsPresent
+		return Promises.toTuple(Tuple::new,
+				loadAndMerge(heads),
+				toList(heads.stream()
+						.map(repository::loadCommit))
+						.thenApply(headCommits -> headCommits.stream()
+								.mapToLong(OTCommit::getLevel)
+								.max()
+								.getAsLong()))
+				.thenCompose(tuple -> repository.createCommit(tuple.mergeDiffs, tuple.parentsMaxLevel + 1L))
+				.thenCompose(mergeCommit -> repository.push(mergeCommit)
+						.thenApply($ -> mergeCommit.getId()));
 	}
 
 	public Promise<Set<K>> findCut(Set<K> startNodes,
-			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
+								   Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		return toList(startNodes.stream().map(repository::loadCommit))
 				.thenCompose(commits -> {
 					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
@@ -300,7 +305,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private Promise<Set<K>> findCutImpl(PriorityQueue<OTCommit<K, D>> queue, Set<K> visited,
-			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
+										Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		if (queue.isEmpty()) {
 			return Promise.ofException(new NoSuchElementException());
 		}
@@ -441,7 +446,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public <A> Promise<Map<K, A>> reduceEdges(Set<K> heads, K parentNode,
-			DiffsReducer<A, D> diffAccumulator) {
+											  DiffsReducer<A, D> diffAccumulator) {
 		return walkGraph(heads, new ReduceEdgesWalker<>(heads, parentNode, diffAccumulator));
 	}
 
@@ -500,6 +505,24 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 			return null;
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public Promise<List<D>> checkout() {
+		List<D>[] cachedSnapshot = new List[1];
+		return repository.getHeads()
+				.thenCompose(heads ->
+						findParent(heads, DiffsReducer.toVoid(),
+								commit -> commit.getSnapshotHint() == Boolean.FALSE ?
+										Promise.of(false) :
+										repository.loadSnapshot(commit.getId())
+												.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
+								.thenCompose(findResult -> {
+									if (!findResult.isFound())
+										return Promise.ofException(new OTException("No snapshot or root from heads:" + heads));
+									return Promise.of(cachedSnapshot[0]);
+								}))
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@SuppressWarnings("unchecked")

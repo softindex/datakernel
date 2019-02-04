@@ -141,7 +141,7 @@ public class OTRepositoryMySqlTest {
 		assertEquals(3, heads.size());
 		assertEquals(set(2L, 3L, 4L), heads);
 
-		Long mergeId = await(algorithms.mergeHeadsAndPush());
+		Long mergeId = await(algorithms.merge());
 
 		Set<Long> headsAfterMerge = await(repository.getHeads());
 		assertEquals(1, headsAfterMerge.size());
@@ -225,7 +225,7 @@ public class OTRepositoryMySqlTest {
 					g.add(6, 8, add(1));
 				}))));
 
-		await(algorithms.mergeHeadsAndPush());
+		await(algorithms.merge());
 		//		assertEquals(searchSurface, rootNodesFuture.get());
 	}
 

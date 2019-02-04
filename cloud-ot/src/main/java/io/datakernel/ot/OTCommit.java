@@ -36,7 +36,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	@Nullable
 	private Boolean snapshotHint;
 	@Nullable
-	private Object serializedData;
+	private byte[] serializedData;
 
 	private OTCommit(K id, Map<K, List<D>> parents, long level) {
 		this.id = id;
@@ -83,7 +83,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 		return this;
 	}
 
-	public OTCommit<K, D> withSerializedData(Object serializedData) {
+	public OTCommit<K, D> withSerializedData(byte[] serializedData) {
 		this.serializedData = serializedData;
 		return this;
 	}
@@ -131,11 +131,11 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	}
 
 	@Nullable
-	public Object getSerializedData() {
+	public byte[] getSerializedData() {
 		return serializedData;
 	}
 
-	public void setSerializedData(@Nullable Object serializedData) {
+	public void setSerializedData(@Nullable byte[] serializedData) {
 		this.serializedData = serializedData;
 	}
 

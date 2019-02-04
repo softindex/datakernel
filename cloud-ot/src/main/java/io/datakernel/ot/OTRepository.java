@@ -21,8 +21,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	default Promise<Void> push(Collection<OTCommit<K, D>> commits) {
 		return Promises.sequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
-				.map(commit -> AsyncSupplier.cast(() ->
-						push(commit))));
+				.map(commit ->
+						() -> push(commit)));
 	}
 
 	default Promise<Void> push(OTCommit<K, D> commit) {
@@ -42,14 +42,14 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	Promise<Void> saveSnapshot(K revisionId, List<D> diffs);
 
 	static <R, K, D> OTRepository<K, D> compound(OTCommitFactory<K, D> commitFactory,
-			Map<R, OTRepository<K, D>> repositories,
-			Function<K, List<R>> readList,
-			Function<K, List<R>> writeList,
-			int writeRedundancy) {
+												 Map<R, OTRepository<K, D>> repositories,
+												 Function<K, List<R>> readList,
+												 Function<K, List<R>> writeList,
+												 int writeRedundancy) {
 		return new OTRepository<K, D>() {
 
 			private Promise<Void> doCall(Stream<? extends AsyncSupplier<?>> callables,
-					int minSuccesses) {
+										 int minSuccesses) {
 				List<? extends AsyncSupplier<?>> list = callables.collect(toList());
 				int minSuccessesFinal = min(minSuccesses, list.size());
 				if (minSuccessesFinal == 0) {

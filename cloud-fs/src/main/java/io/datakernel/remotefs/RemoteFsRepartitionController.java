@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -128,10 +127,10 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					allFiles = list.size();
 					return Promises.sequence( // just handling all local files sequentially
 							filterNot(list.stream(), negativeGlob)
-									.map(meta -> AsyncSupplier.cast(() ->
-											repartitionFile(meta)
+									.map(meta ->
+											() -> repartitionFile(meta)
 													.whenComplete(singleFileRepartitionPromiseStats.recordStats())
-													.thenCompose(success -> {
+													.thenCompose((Boolean success) -> {
 														if (success) {
 															ensuredFiles++;
 														} else {
@@ -141,7 +140,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 															return Promise.ofException(new Exception("forced stop"));
 														}
 														return Promise.complete();
-													}))));
+													})));
 				})
 				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenComposeEx(($, e) -> {

@@ -144,7 +144,7 @@ public class CubeMeasureRemovalTest {
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop, multilog,
 				cube.logStreamConsumer(LogItem.class), "testlog", asList("partitionA"), cubeDiffLogOTState);
@@ -187,7 +187,7 @@ public class CubeMeasureRemovalTest {
 				.withRelation("banner", "campaign");
 
 		LogOTState<CubeDiff> cubeDiffLogOTState1 = LogOTState.create(cube);
-		logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState1);
+		logCubeStateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState1);
 
 		logOTProcessor = LogOTProcessor.create(eventloop, multilog, cube.logStreamConsumer(LogItem.class),
 				"testlog", asList("partitionA"), cubeDiffLogOTState1);
@@ -235,7 +235,7 @@ public class CubeMeasureRemovalTest {
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
-		await(logCubeStateManager.commitAndPush());
+		await(logCubeStateManager.sync());
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
@@ -278,7 +278,7 @@ public class CubeMeasureRemovalTest {
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
 			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
@@ -338,7 +338,7 @@ public class CubeMeasureRemovalTest {
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
 			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
 

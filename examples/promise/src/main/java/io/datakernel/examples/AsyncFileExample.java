@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -36,6 +35,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
+@SuppressWarnings("Convert2MethodRef")
 public class AsyncFileExample {
 	private static final ExecutorService executorService = Executors.newCachedThreadPool();
 	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
@@ -58,9 +58,7 @@ public class AsyncFileExample {
 		try {
 			return AsyncFile.open(executorService, PATH, new OpenOption[]{READ})
 					.read()
-					.whenResult(buf -> {
-						System.out.println(buf.getString(UTF_8));
-					});
+					.whenResult(buf -> System.out.println(buf.getString(UTF_8)));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
@@ -78,12 +76,10 @@ public class AsyncFileExample {
 
 	public static void main(String[] args) {
 		Promises.sequence(
-				AsyncSupplier.cast(AsyncFileExample::writeToFile),
-				AsyncSupplier.cast(AsyncFileExample::readFromFile))
-				.whenComplete(($, e) -> {
-					if (e != null) {
-						System.out.println("Something went wrong : " + e);
-					}
+				() -> writeToFile(),
+				() -> readFromFile().toVoid())
+				.whenException(e -> {
+					System.out.println("Something went wrong : " + e);
 					cleanup();
 				});
 

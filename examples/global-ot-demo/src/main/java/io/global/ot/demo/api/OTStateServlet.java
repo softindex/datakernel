@@ -183,7 +183,7 @@ public class OTStateServlet implements WithMiddleware {
 		return request -> provider.get(request)
 				.thenApply(manager -> {
 							String redirectUrl = provider.isNew() ? ("../?id=" + provider.getId(manager)) : "";
-							INFO.setRevision(manager.getRevision());
+							INFO.setRevision(manager.getLocalRevision());
 							INFO.setFetchedRevision(manager.getFetchedRevisionOrNull());
 							INFO.setWorkingDiffs(manager.getWorkingDiffs());
 							INFO.setState(manager.getState());

@@ -641,7 +641,7 @@ public final class Promises {
 	 * waits until it completes and than returns a {@code Promise<Void>}
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull AsyncSupplier<?> promise) {
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void> promise) {
 		return promise.get().toVoid();
 	}
 
@@ -650,7 +650,7 @@ public final class Promises {
 	 * end executes them consequently, discarding their results.
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2) {
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void> promise1, @NotNull AsyncSupplier<Void> promise2) {
 		return promise1.get().thenCompose($ -> sequence(promise2));
 	}
 
@@ -658,7 +658,8 @@ public final class Promises {
 	 * @see Promises#sequence(Iterator)
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull AsyncSupplier<?>... promises) {
+	@SafeVarargs
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void>... promises) {
 		return sequence(asList(promises));
 	}
 
@@ -666,7 +667,7 @@ public final class Promises {
 	 * @see Promises#sequence(AsyncSupplier, AsyncSupplier)
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull AsyncSupplier<?> promise1, @NotNull AsyncSupplier<?> promise2, @NotNull AsyncSupplier<?> promise3) {
+	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void> promise1, @NotNull AsyncSupplier<Void> promise2, @NotNull AsyncSupplier<Void> promise3) {
 		return promise1.get().thenCompose($ -> sequence(promise2, promise3));
 	}
 
@@ -674,7 +675,7 @@ public final class Promises {
 	 * @see Promises#sequence(Iterator)
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull Iterable<? extends AsyncSupplier<?>> promises) {
+	public static Promise<Void> sequence(@NotNull Iterable<? extends AsyncSupplier<Void>> promises) {
 		return sequence(asPromises(promises.iterator()));
 	}
 
@@ -682,7 +683,7 @@ public final class Promises {
 	 * @see Promises#sequence(Iterator)
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull Stream<? extends AsyncSupplier<?>> promises) {
+	public static Promise<Void> sequence(@NotNull Stream<? extends AsyncSupplier<Void>> promises) {
 		return sequence(asPromises(promises.iterator()));
 	}
 
@@ -694,13 +695,13 @@ public final class Promises {
 	 * @return {@code Promise} that completes when all {@code promises} are completed
 	 */
 	@NotNull
-	public static Promise<Void> sequence(@NotNull Iterator<? extends Promise<?>> promises) {
+	public static Promise<Void> sequence(@NotNull Iterator<? extends Promise<Void>> promises) {
 		SettablePromise<Void> cb = new SettablePromise<>();
 		sequenceImpl(promises, cb);
 		return cb;
 	}
 
-	private static void sequenceImpl(@NotNull Iterator<? extends Promise<?>> promises, @NotNull SettablePromise<Void> cb) {
+	private static void sequenceImpl(@NotNull Iterator<? extends Promise<Void>> promises, @NotNull SettablePromise<Void> cb) {
 		while (promises.hasNext()) {
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;

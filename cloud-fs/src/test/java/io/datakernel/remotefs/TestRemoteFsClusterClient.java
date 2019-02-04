@@ -17,7 +17,6 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
@@ -172,9 +171,9 @@ public final class TestRemoteFsClusterClient {
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
 		await(Promises.sequence(IntStream.range(0, 1000)
-				.mapToObj(i -> AsyncSupplier.cast(() ->
-						ChannelSupplier.of(data.slice())
-								.streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded_" + i + ".txt"))))))
+				.mapToObj(i ->
+						() -> ChannelSupplier.of(data.slice())
+								.streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded_" + i + ".txt")))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
 
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
