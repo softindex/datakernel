@@ -26,12 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.async.AsyncSuppliers.resubscribe;
 import static io.datakernel.async.Promises.sequence;
+import static io.datakernel.util.CollectionUtils.isShallowEquals;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -47,15 +46,13 @@ public final class OTStateManager<K, D> {
 	private OTState<D> state;
 
 	@Nullable
-	private K localRevision;
-	private long localRevisionLevel;
-
-	@Nullable
-	private K remoteRevision;
-	private long remoteRevisionLevel;
+	private K revision;
+	private long level;
 
 	private List<D> workingDiffs = new ArrayList<>();
-	private Map<K, OTCommit<K, D>> pendingCommits = new HashMap<>();
+
+	@Nullable
+	private OTCommit<K, D> pendingCommit;
 
 	public OTStateManager(OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
 		this.otSystem = otSystem;
@@ -63,34 +60,44 @@ public final class OTStateManager<K, D> {
 		this.state = state;
 	}
 
+	@NotNull
 	public Promise<Void> checkout() {
+		checkState(revision == null);
 		return repository.checkout()
 				.whenResult(checkoutData -> {
 					state.init();
 					apply(checkoutData.getDiffs());
 
 					workingDiffs.clear();
-					pendingCommits.clear();
 
-					localRevision = remoteRevision = checkoutData.getCommitId();
-					localRevisionLevel = remoteRevisionLevel = checkoutData.getLevel();
+					revision = checkoutData.getCommitId();
+					level = checkoutData.getLevel();
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private final AsyncSupplier<Void> pull = resubscribe(this::doPull);
+	private final AsyncSupplier<Void> sync = resubscribe(this::doSync);
 
-	public Promise<Void> pull() {
-		checkState(isValid());
-		return pull.get();
+	@NotNull
+	public Promise<Void> sync() {
+		return sync.get();
 	}
 
-	private Promise<Void> doPull() {
+	@NotNull
+	private Promise<Void> doSync() {
 		checkState(isValid());
-		return repository.fetch(remoteRevision)
+		return sequence(
+				pendingCommit == null ? Promise::complete : this::push,
+				this::pull, this::commit, this::push)
+				.whenComplete(toLogger(logger, thisMethod(), this));
+	}
+
+	@NotNull
+	private Promise<Void> pull() {
+		assert pendingCommit == null;
+		return repository.fetch(revision, level)
 				.whenResult(fetchData -> {
-					checkState(isValid());
 					List<D> fetchedDiffs = fetchData.getDiffs();
 
 					TransformResult<D> transformed;
@@ -106,67 +113,43 @@ public final class OTStateManager<K, D> {
 					apply(transformed.left);
 					workingDiffs = new ArrayList<>(transformed.right);
 
-					localRevision = remoteRevision = fetchData.getCommitId();
-					localRevisionLevel = remoteRevisionLevel = fetchData.getLevel();
+					revision = fetchData.getCommitId();
+					level = fetchData.getLevel();
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
-	}
-
-	public Promise<Void> sync() {
-		return sequence(this::pull, this::commit, this::push)
-				.whenComplete(toLogger(logger, thisMethod(), this));
-	}
-
-	private final AsyncSupplier<Void> commit = resubscribe(this::doCommit);
-
-	public Promise<Void> commit() {
-		return commit.get();
 	}
 
 	@NotNull
-	private Promise<Void> doCommit() {
-		if (workingDiffs.isEmpty()) {
-			return Promise.complete();
-		}
-		K revisionCopy = localRevision;
+	private Promise<Void> commit() {
+		assert pendingCommit == null;
+		if (workingDiffs.isEmpty()) return Promise.complete();
 		List<D> workingDiffsCopy = new ArrayList<>(workingDiffs);
-		workingDiffs = new ArrayList<>();
-		return repository.createCommit(revisionCopy, otSystem.squash(workingDiffsCopy), localRevisionLevel + 1L)
+		return repository.createCommit(revision, otSystem.squash(workingDiffsCopy), level + 1L)
 				.whenResult(commit -> {
-					pendingCommits.put(commit.getId(), commit);
-
-					localRevision = commit.getId();
-					localRevisionLevel = commit.getLevel();
-					workingDiffs = new ArrayList<>();
+					assert pendingCommit == null;
+					pendingCommit = commit;
+					assert isShallowEquals(workingDiffs.subList(0, workingDiffsCopy.size()), workingDiffsCopy);
+					workingDiffs = new ArrayList<>(workingDiffs.subList(workingDiffsCopy.size(), workingDiffs.size()));
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private final AsyncSupplier<Void> push = resubscribe(this::doPush);
-
-	public Promise<Void> push() {
-		return push.get();
-	}
-
-	private Promise<Void> doPush() {
-		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
-		K revisionCopy = localRevision;
-		return repository.pushAll(list)
-				.whenResult($ -> {
-					list.forEach(commit -> pendingCommits.remove(commit.getId()));
-					remoteRevision = revisionCopy;
-				})
+	@NotNull
+	private Promise<Void> push() {
+		if (pendingCommit == null) return Promise.complete();
+		return repository.push(pendingCommit)
+				.whenResult($ -> pendingCommit = null)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public void add(D diff) {
+	public void add(@NotNull D diff) {
 		checkState(isValid());
 		addAll(singletonList(diff));
 	}
 
-	public void addAll(List<D> diffs) {
+	public void addAll(@NotNull List<D> diffs) {
 		checkState(isValid());
 		try {
 			for (D diff : diffs) {
@@ -196,15 +179,15 @@ public final class OTStateManager<K, D> {
 	private void invalidateInternalState() {
 		state = null;
 
-		localRevision = null;
-		localRevisionLevel = 0;
+		revision = null;
+		level = 0;
 		workingDiffs = null;
 
-		pendingCommits = null;
+		pendingCommit = null;
 	}
 
-	public K getLocalRevision() {
-		return checkNotNull(localRevision, "Internal state has been invalidated");
+	public K getRevision() {
+		return checkNotNull(revision, "Internal state has been invalidated");
 	}
 
 	public OTState<D> getState() {
@@ -212,7 +195,7 @@ public final class OTStateManager<K, D> {
 	}
 
 	public boolean isValid() {
-		return localRevision != null;
+		return revision != null;
 	}
 
 	public boolean hasWorkingDiffs() {
@@ -220,15 +203,15 @@ public final class OTStateManager<K, D> {
 	}
 
 	public boolean hasPendingCommits() {
-		return !pendingCommits.isEmpty();
+		return pendingCommit != null;
 	}
 
 	@Override
 	public String toString() {
 		return "{" +
-				"revision=" + localRevision +
+				"revision=" + revision +
 				" workingDiffs:" + (workingDiffs != null ? workingDiffs.size() : null) +
-				" pendingCommits:" + (pendingCommits != null ? pendingCommits.size() : null) +
-				'}';
+				" pendingCommits:" + (pendingCommit != null) +
+				"}";
 	}
 }

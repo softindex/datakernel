@@ -60,13 +60,10 @@ public class OTStateManagerTest {
 		initializeRepository(repository, stateManager);
 
 		stateManager.add(add(1));
-		await(stateManager.commit());
+		await(stateManager.sync());
 
-		await(stateManager.push());
 		stateManager.add(add(1));
-		await(stateManager.commit());
-
-		await(stateManager.push());
+		await(stateManager.sync());
 
 		Set<Integer> heads = await(repository.getHeads());
 		assertEquals(1, heads.size());
@@ -81,7 +78,7 @@ public class OTStateManagerTest {
 
 		assertEquals(0, testOpState.getValue());
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		assertEquals(5, testOpState.getValue());
 	}
 
@@ -90,13 +87,13 @@ public class OTStateManagerTest {
 		for (int i = 1; i <= 10; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 3 || i == 5 || i == 7) {
-				await(stateManager.pull());
+				await(stateManager.sync());
 			}
 		}
 
 		assertEquals(7, testOpState.getValue());
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		assertEquals(10, testOpState.getValue());
 	}
 
@@ -110,7 +107,7 @@ public class OTStateManagerTest {
 		stateManager.add(add(1));
 		assertEquals(1, testOpState.getValue());
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		assertEquals(11, testOpState.getValue());
 	}
 
@@ -119,10 +116,10 @@ public class OTStateManagerTest {
 		for (int i = 1; i <= 20; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 5 || i == 15) {
-				await(stateManager.pull());
+				await(stateManager.sync());
 			}
 			if (i == 10 || i == 20) {
-				await(stateManager.pull());
+				await(stateManager.sync());
 			}
 		}
 
@@ -136,7 +133,7 @@ public class OTStateManagerTest {
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(add(3));
-		await(stateManager.pull());
+		await(stateManager.sync());
 
 		assertEquals(8, testOpState.getValue());
 	}
@@ -148,7 +145,7 @@ public class OTStateManagerTest {
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(set(0, 10));
-		await(stateManager.pull());
+		await(stateManager.sync());
 
 		assertEquals(10, testOpState.getValue());
 	}
@@ -160,7 +157,7 @@ public class OTStateManagerTest {
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(add(5));
-		await(stateManager.pull());
+		await(stateManager.sync());
 
 		assertEquals(10, testOpState.getValue());
 	}
@@ -172,7 +169,7 @@ public class OTStateManagerTest {
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(set(0, 10));
-		await(stateManager.pull());
+		await(stateManager.sync());
 
 		assertEquals(10, testOpState.getValue());
 	}
@@ -184,7 +181,7 @@ public class OTStateManagerTest {
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(add(5));
-		await(stateManager.pull());
+		await(stateManager.sync());
 
 		assertEquals(15, testOpState.getValue());
 	}
@@ -194,24 +191,24 @@ public class OTStateManagerTest {
 		Random random = new Random();
 		repository.revisionIdSupplier = random::nextInt;
 
-		Integer initialRevision = stateManager.getLocalRevision();
+		Integer initialRevision = stateManager.getRevision();
 		stateManager.add(add(3));
 		assertEquals(3, testOpState.getValue());
-		assertEquals(initialRevision, stateManager.getLocalRevision());
+		assertEquals(initialRevision, stateManager.getRevision());
 
-		await(stateManager.commit());
+		await(stateManager.sync());
 		assertEquals(3, testOpState.getValue());
-		Integer afterCommitRevision = stateManager.getLocalRevision();
+		Integer afterCommitRevision = stateManager.getRevision();
 		assertNotEquals(initialRevision, afterCommitRevision);
 
-		await(stateManager.push());
+		await(stateManager.sync());
 		assertEquals(3, testOpState.getValue());
-		assertEquals(afterCommitRevision, stateManager.getLocalRevision());
+		assertEquals(afterCommitRevision, stateManager.getRevision());
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		// Nothing changed
 		assertEquals(3, testOpState.getValue());
-		assertEquals(afterCommitRevision, stateManager.getLocalRevision());
+		assertEquals(afterCommitRevision, stateManager.getRevision());
 	}
 
 	private class OTRepositoryDecorator<K, D> implements OTRepository<K, D> {

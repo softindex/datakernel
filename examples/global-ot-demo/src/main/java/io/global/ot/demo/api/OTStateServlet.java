@@ -70,15 +70,15 @@ public final class OTStateServlet implements WithMiddleware {
 	// region servlets
 	private AsyncServlet pull() {
 		return request -> provider.get(request)
-				.thenCompose(manager -> manager.pull()
-						.thenCompose(pulledId -> provider.getWalker(manager).walk(manager.getLocalRevision())))
+				.thenCompose(manager -> manager.sync()
+						.thenCompose(pulledId -> provider.getWalker(manager).walk(manager.getRevision())))
 				.thenApply($ -> okText());
 	}
 
 	private AsyncServlet merge() {
 		return request -> provider.get(request)
 				.thenCompose(manager -> algorithms.merge()
-						.thenCompose(mergeId -> provider.getWalker(manager).walk(manager.getLocalRevision())))
+						.thenCompose(mergeId -> provider.getWalker(manager).walk(manager.getRevision())))
 				.thenApply($ -> okText());
 	}
 
@@ -86,7 +86,7 @@ public final class OTStateServlet implements WithMiddleware {
 		return request -> provider.get(request)
 				.thenCompose(manager -> {
 					NodesWalker<CommitId, Operation> walker = provider.getWalker(manager);
-					return walker.walk(manager.getLocalRevision())
+					return walker.walk(manager.getRevision())
 							.thenApply($ -> okText()
 									.withBody(walker.toGraphViz().getBytes(UTF_8)));
 				});
@@ -100,9 +100,8 @@ public final class OTStateServlet implements WithMiddleware {
 						return provider.get(request)
 								.thenCompose(manager -> {
 									manager.addAll(operations);
-									return manager.commit()
-											.thenCompose($ -> manager.push())
-											.thenCompose($ -> provider.getWalker(manager).walk(manager.getLocalRevision()));
+									return manager.sync()
+											.thenCompose($ -> provider.getWalker(manager).walk(manager.getRevision()));
 								})
 								.thenApply($ -> okText());
 					} catch (ParseException e) {
@@ -116,7 +115,7 @@ public final class OTStateServlet implements WithMiddleware {
 	private AsyncServlet checkout() {
 		return request -> provider.get(request)
 				.thenCompose(manager -> manager.checkout()
-						.thenCompose($ -> provider.getWalker(manager).walk(manager.getLocalRevision())))
+						.thenCompose($ -> provider.getWalker(manager).walk(manager.getRevision())))
 				.thenApply($ -> okText());
 	}
 
@@ -132,7 +131,7 @@ public final class OTStateServlet implements WithMiddleware {
 				.thenApply(manager -> {
 							String redirectUrl = provider.isNew() ? ("../?id=" + provider.getId(manager)) : "";
 					Tuple2<CommitId, Integer> infoTuple = new Tuple2<>(
-							manager.getLocalRevision(),
+							manager.getRevision(),
 							((OperationState) manager.getState()).getCounter()
 					);
 							return redirectUrl.isEmpty() ?

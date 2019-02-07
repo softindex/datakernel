@@ -81,7 +81,7 @@ public final class OTSystemTest {
 
 		await(stateManager.checkout());
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
 
@@ -93,23 +93,23 @@ public final class OTSystemTest {
 		stateManager.add(new TestAdd(50));
 		System.out.println(stateManager);
 
-		await(stateManager.commit());
+		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
 		stateManager.add(new TestAdd(3));
 		System.out.println(stateManager);
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
 
-		await(stateManager.commit());
+		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
 		System.out.println(repository);
 		System.out.println(stateManager);
 
-		await(stateManager.push());
+		await(stateManager.sync());
 		System.out.println(repository.loadCommit("x"));
 		System.out.println(repository.loadCommit("y"));
 		System.out.println(stateManager);
@@ -154,7 +154,7 @@ public final class OTSystemTest {
 	private void pullAndThenMergeAndPush(OTRepositoryStub<String, TestOp> otSource, OTAlgorithms<String, TestOp> algorithms, OTStateManager<String, TestOp> stateManager) {
 		await(stateManager.checkout());
 
-		await(stateManager.pull());
+		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
 

@@ -156,8 +156,7 @@ public class CollectionUtils {
 				return false;
 			}
 		}
-		assert !it1.hasNext() && !it2.hasNext();
-		return true;
+		return !it1.hasNext() && !it2.hasNext();
 	}
 
 	public static <T> String toLimitedString(Collection<T> collection, int limit) {

@@ -49,7 +49,7 @@ public final class OTNodeImpl<K, D> implements OTNode<K, D> {
 								findResult.getChild(),
 								findResult.getChildLevel(),
 								concat(cachedSnapshot[0], findResult.getAccumulatedDiffs()))))
-				.thenCompose(checkoutData -> fetch(checkoutData.getCommitId())
+				.thenCompose(checkoutData -> fetch(checkoutData.getCommitId(), checkoutData.getLevel())
 						.thenApply(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
 								fetchData.getLevel(),
@@ -60,7 +60,7 @@ public final class OTNodeImpl<K, D> implements OTNode<K, D> {
 	}
 
 	@Override
-	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
+	public Promise<FetchData<K, D>> fetch(K currentCommitId, long level) {
 		return algorithms.merge()
 				.thenApply(Collections::singleton)
 				.thenCompose(heads -> algorithms.findParent(

@@ -90,7 +90,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 
 	Promise<Void> doConsolidate() {
 		return Promise.complete()
-				.thenCompose($ -> stateManager.pull())
+				.thenCompose($ -> stateManager.sync())
 				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(promiseConsolidateImpl.recordStats()))
 				.whenResult(this::cubeDiffJmx)
 				.whenComplete(this::logCubeDiff)
@@ -98,7 +98,6 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 					if (cubeDiff.isEmpty()) return Promise.complete();
 					stateManager.add(cubeDiffScheme.wrap(cubeDiff));
 					return Promise.complete()
-							.thenCompose($ -> stateManager.pull())
 							.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
 							.thenCompose($ -> stateManager.sync())
 							.whenComplete(toLogger(logger, thisMethod(), cubeDiff));

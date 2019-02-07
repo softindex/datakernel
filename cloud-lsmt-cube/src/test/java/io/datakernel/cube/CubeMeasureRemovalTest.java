@@ -201,7 +201,7 @@ public class CubeMeasureRemovalTest {
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager = logCubeStateManager;
 		LogOTProcessor<LogItem, CubeDiff> finalLogOTProcessor = logOTProcessor;
-		await(finalLogCubeStateManager.pull());
+		await(finalLogCubeStateManager.sync());
 		runProcessLogs(aggregationChunkStorage, finalLogCubeStateManager, finalLogOTProcessor);
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
@@ -235,7 +235,7 @@ public class CubeMeasureRemovalTest {
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
-		await(logCubeStateManager.commit(), logCubeStateManager.push());
+		await(logCubeStateManager.sync());
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
