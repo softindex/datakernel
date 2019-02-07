@@ -16,7 +16,7 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Cancellable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -361,31 +361,33 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", tries);
 					}
 
-					List<Object> found = successes.stream() // ↙ filter partitions where file was found
-							.filter(Objects::nonNull) //   ↓ and also sort them by file size
-							.sorted(Comparator.<PartitionIdWithFileSize>comparingLong(piwfs -> piwfs.fileSize).reversed())
-							.map(piwfs -> piwfs.partitionId)
-							.collect(toList());
+					// filter partitions where file was found
+					List<PartitionIdWithFileSize> found = successes.stream().filter(Objects::nonNull).collect(toList());
 
-					if (found.isEmpty()) {
+					// find any partition with the biggest file size
+					Optional<PartitionIdWithFileSize> maybeBest = found.stream().max(Comparator.comparingLong(piwfs -> piwfs.fileSize));
+
+					if (!maybeBest.isPresent()) {
 						return ofFailure("File not found: " + filename, tries);
 					}
+					PartitionIdWithFileSize best = maybeBest.get();
 
-					return Promises.firstSuccessful(found.stream() // try to download successively
-							.map(partitionId -> AsyncSupplier.cast(() -> {
-								FsClient client = aliveClients.get(partitionId);
+					return Promises.any(found.stream()
+							.filter(piwfs -> piwfs.fileSize == best.fileSize)
+							.map(piwfs -> {
+								FsClient client = aliveClients.get(piwfs.partitionId);
 								if (client == null) { // marked as dead already by somebody
-									return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Client " + partitionId + " is not alive"));
+									return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Client " + piwfs.partitionId + " is not alive"));
 								}
-								logger.trace("downloading file {} from {}", filename, partitionId);
+								logger.trace("downloading file {} from {}", filename, piwfs.partitionId);
 								return client.download(filename, offset, length)
-										.whenException(e -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, e))
-										.thenComposeEx(wrapDeath(partitionId))
+										.whenException(e -> logger.warn("Failed to connect to server with key " + piwfs.partitionId + " to download file " + filename, e))
+										.thenComposeEx(wrapDeath(piwfs.partitionId))
 										.thenApply(supplier -> supplier
 												.withEndOfStream(eos -> eos
-														.whenException(e -> markIfDead(partitionId, e))
+														.whenException(e -> markIfDead(piwfs.partitionId, e))
 														.whenComplete(downloadFinishPromise.recordStats())));
-							})));
+							}), Cancellable::cancel);
 				})
 				.whenComplete(downloadStartPromise.recordStats());
 	}

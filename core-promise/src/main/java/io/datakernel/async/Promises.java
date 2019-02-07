@@ -299,6 +299,21 @@ public final class Promises {
 		return any(promises.iterator());
 	}
 
+	@NotNull
+	public static <T> Promise<T> any(@NotNull Iterator<? extends Promise<? extends T>> promises) {
+		return any(promises, $ -> {});
+	}
+
+	@NotNull
+	public static <T> Promise<T> any(@NotNull Stream<? extends Promise<? extends T>> promises, @NotNull Consumer<T> cleanup) {
+		return any(promises.iterator(), cleanup);
+	}
+
+	@NotNull
+	public static <T> Promise<T> any(@NotNull Iterable<? extends Promise<? extends T>> promises, @NotNull Consumer<T> cleanup) {
+		return any(promises.iterator(), cleanup);
+	}
+
 	/**
 	 * Returns one of the first completed {@code Promise}s. Since it's
 	 * async, we can't really get the FIRST completed {@code Promise}.
@@ -306,7 +321,7 @@ public final class Promises {
 	 * @return one of the first completed {@code Promise}s
 	 */
 	@NotNull
-	public static <T> Promise<T> any(@NotNull Iterator<? extends Promise<? extends T>> promises) {
+	public static <T> Promise<T> any(@NotNull Iterator<? extends Promise<? extends T>> promises, @NotNull Consumer<T> cleanup) {
 		if (!promises.hasNext()) return any();
 		@NotNull PromiseAny<T> resultPromise = new PromiseAny<>();
 		while (promises.hasNext()) {
@@ -316,7 +331,11 @@ public final class Promises {
 			resultPromise.errors++;
 			promise.whenComplete((result, e) -> {
 				if (e == null) {
-					resultPromise.tryComplete(result);
+					if (resultPromise.isComplete()) {
+						cleanup.accept(result);
+					} else {
+						resultPromise.complete(result);
+					}
 				} else {
 					if (--resultPromise.errors == 0) {
 						resultPromise.completeExceptionally(e);

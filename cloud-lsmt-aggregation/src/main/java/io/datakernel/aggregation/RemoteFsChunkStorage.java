@@ -126,7 +126,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		return this;
 	}
 
-	public RemoteFsChunkStorage withBackupPath(String backupDir) {
+	public RemoteFsChunkStorage<C> withBackupPath(String backupDir) {
 		this.backupDir = backupDir;
 		return this;
 	}

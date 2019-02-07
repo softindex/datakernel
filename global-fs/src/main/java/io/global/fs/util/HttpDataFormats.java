@@ -68,12 +68,14 @@ public final class HttpDataFormats {
 
 	public static Promise<HttpResponse> httpDownload(HttpRequest request, HttpDownloader downloader, String name, long size) {
 		try {
+			int idx = name.lastIndexOf('/');
+			String localName = idx != -1 ? name.substring(idx + 1) : name;
 			String headerRange = request.getHeaderOrNull(HttpHeaders.RANGE);
 			if (headerRange == null) {
 				return downloader.download(0, -1)
 						.thenApply(HttpResponse.ok200()
 								.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-								.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
+								.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
 								.withHeader(ACCEPT_RANGES, "bytes")
 								.withHeader(CONTENT_LENGTH, Long.toString(size))
 								::withBodyStream);
@@ -95,7 +97,7 @@ public final class HttpDataFormats {
 			return downloader.download(offset, length)
 					.thenApply(HttpResponse.ok206()
 							.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-							.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
+							.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + localName + "\""))
 							.withHeader(ACCEPT_RANGES, "bytes")
 							.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
 							.withHeader(CONTENT_LENGTH, "" + length)
