@@ -99,9 +99,9 @@ public final class StaticServlet implements AsyncServlet {
 					}
 					if (defaultResource != null) {
 						return resourceLoader.getResource(defaultResource)
-								.thenApply(byteBuf2 -> HttpResponse.ofCode(404)
+								.thenApply(byteBuf2 -> HttpResponse.ofCode(200)
 										.withBody(byteBuf2)
-										.withHeader(CONTENT_TYPE, ofContentType(getContentType(finalPath))));
+										.withHeader(CONTENT_TYPE, ofContentType(getContentType(defaultResource))));
 					}
 					return Promise.ofException(e);
 				});
