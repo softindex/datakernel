@@ -54,10 +54,10 @@ public class OTNodeImplTest {
 			g.add(5, 6, add(6));
 		});
 
-		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0, 0));
+		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0));
 		assertFetchData(6, 7, 21, fetchData1);
 
-		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(3, 0));
+		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(3));
 		assertFetchData(6, 7, 15, fetchData2);
 	}
 
@@ -74,7 +74,7 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
-		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0, 0));
+		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0));
 		assertFetchData(6, 5, 15, fetchData1);
 
 		resetRepo(g -> {
@@ -86,7 +86,7 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
-		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1, 0));
+		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1));
 		assertFetchData(6, 5, 14, fetchData2);
 
 		resetRepo(g -> {
@@ -98,7 +98,7 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
-		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4, 0));
+		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4));
 		assertFetchData(6, 5, 11, fetchData3);
 	}
 
@@ -118,7 +118,7 @@ public class OTNodeImplTest {
 			g.add(6, 7, add(7));
 		});
 
-		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0, 0));
+		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0));
 		assertFetchData(7, 6, 22, fetchData1);
 
 		resetRepo(g -> {
@@ -135,7 +135,7 @@ public class OTNodeImplTest {
 			g.add(6, 7, add(7));
 		});
 
-		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1, 0));
+		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1));
 		assertFetchData(7, 6, 21, fetchData2);
 
 		resetRepo(g -> {
@@ -152,13 +152,13 @@ public class OTNodeImplTest {
 			g.add(6, 7, add(7));
 		});
 
-		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4, 0));
+		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4));
 		assertFetchData(7, 6, 18, fetchData3);
 	}
 
 	@Test
 	public void testFetchInvalidRevision() {
-		Throwable exception = awaitException(node.fetch(100, 0));
+		Throwable exception = awaitException(node.fetch(100));
 		assertThat(exception, instanceOf(OTException.class));
 		assertThat(exception.getMessage(), containsString("Incomplete graph"));
 	}

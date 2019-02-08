@@ -26,16 +26,16 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.OTStateManager;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.api.OTStateServlet;
 import io.global.ot.demo.operations.Operation;
+import io.global.ot.graph.NodesWalker;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 final class HttpModule extends AbstractModule {
@@ -45,16 +45,16 @@ final class HttpModule extends AbstractModule {
 	@Singleton
 	AsyncHttpServer provide(Eventloop eventloop, AsyncServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
-				.withListenPort(config.get(ofInteger(), "http.listenPort"));
+				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
 	@Provides
 	@Singleton
-	AsyncServlet provideMainServlet(Eventloop eventloop, OTRepository<CommitId, Operation> repository, OTAlgorithms<CommitId, Operation> algorithms) {
+	AsyncServlet provideMainServlet(Eventloop eventloop, OTStateManager<CommitId, Operation> stateManager, NodesWalker<CommitId, Operation> walker) {
 		Path resources = Paths.get(DEFAULT_PATH_TO_RESOURCES);
 		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), resources);
 		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
-		return OTStateServlet.create(repository, algorithms).getMiddlewareServlet()
+		return OTStateServlet.create(stateManager, walker).getMiddlewareServlet()
 				.withFallback(staticServlet);
 	}
 }

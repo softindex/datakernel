@@ -1,4 +1,4 @@
-package io.global.ot.chat.common;
+package io.global.ot.util;
 
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
@@ -12,6 +12,12 @@ import org.jetbrains.annotations.NotNull;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
+/**
+ * Utility class that initializes repository with root commit and snapshot for this commit. If repository has already
+ * been initialized, does nothing.
+ *
+ * @param <D> - diffs type parameter
+ */
 public final class Bootstrap<D> implements EventloopService {
 	private final Eventloop eventloop;
 	private final OTDriver driver;
@@ -23,13 +29,15 @@ public final class Bootstrap<D> implements EventloopService {
 		this.myRepositoryId = myRepositoryId;
 	}
 
+	@NotNull
 	@Override
-	public @NotNull Eventloop getEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
+	@NotNull
 	@Override
-	public @NotNull Promise<Void> start() {
+	public Promise<Void> start() {
 		return driver.getHeads(myRepositoryId.getRepositoryId())
 				.thenCompose(heads -> {
 					if (!heads.isEmpty()) return Promise.complete();
@@ -40,8 +48,9 @@ public final class Bootstrap<D> implements EventloopService {
 				});
 	}
 
+	@NotNull
 	@Override
-	public @NotNull Promise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

@@ -22,18 +22,15 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
-import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTRepository;
-import io.datakernel.util.Tuple2;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
-import io.global.ot.demo.util.StateManagerProvider;
 import io.global.ot.graph.NodesWalker;
 
 import java.util.List;
 
-import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpMethod.GET;
@@ -42,103 +39,60 @@ import static io.global.ot.demo.util.Utils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTStateServlet implements WithMiddleware {
-	private final StateManagerProvider provider;
-	private final OTAlgorithms<CommitId, Operation> algorithms;
+	private final OTStateManager<CommitId, Operation> manager;
+	private final NodesWalker<CommitId, Operation> walker;
 	private final MiddlewareServlet servlet;
 
-	private OTStateServlet(StateManagerProvider provider, OTAlgorithms<CommitId, Operation> algorithms) {
-		this.provider = provider;
-		this.algorithms = algorithms;
+	private OTStateServlet(OTStateManager<CommitId, Operation> manager, NodesWalker<CommitId, Operation> walker) {
+		this.manager = manager;
+		this.walker = walker;
 		this.servlet = getServlet();
 	}
 
-	public static OTStateServlet create(OTRepository<CommitId, Operation> repository, OTAlgorithms<CommitId, Operation> algorithms) {
-		return new OTStateServlet(new StateManagerProvider(algorithms.getOtSystem(), algorithms.getOtNode(), repository), algorithms);
+	public static OTStateServlet create(OTStateManager<CommitId, Operation> stateManager, NodesWalker<CommitId, Operation> walker) {
+		return new OTStateServlet(stateManager, walker);
 	}
 
 	private MiddlewareServlet getServlet() {
 		return MiddlewareServlet.create()
 				.with(GET, "/info", info())
-				.with(GET, "/state", state())
-				.with(GET, "/checkout", checkout())
-				.with(POST, "/push", push())
-				.with(GET, "/graph", graph())
-				.with(POST, "/merge", merge())
-				.with(GET, "/pull", pull());
+				.with(POST, "/add", add())
+				.with(GET, "/sync", sync());
 	}
 
 	// region servlets
-	private AsyncServlet pull() {
-		return request -> provider.get(request)
-				.thenCompose(manager -> manager.sync()
-						.thenCompose(pulledId -> provider.getWalker(manager).walk(manager.getRevision())))
+	private AsyncServlet sync() {
+		return request -> manager.sync()
 				.thenApply($ -> okText());
 	}
 
-	private AsyncServlet merge() {
-		return request -> provider.get(request)
-				.thenCompose(manager -> algorithms.merge()
-						.thenCompose(mergeId -> provider.getWalker(manager).walk(manager.getRevision())))
-				.thenApply($ -> okText());
-	}
-
-	private AsyncServlet graph() {
-		return request -> provider.get(request)
-				.thenCompose(manager -> {
-					NodesWalker<CommitId, Operation> walker = provider.getWalker(manager);
-					return walker.walk(manager.getRevision())
-							.thenApply($ -> okText()
-									.withBody(walker.toGraphViz().getBytes(UTF_8)));
-				});
-	}
-
-	private AsyncServlet push() {
+	private AsyncServlet add() {
 		return request -> request.getBody()
 				.thenCompose(body -> {
 					try {
-						List<Operation> operations = fromJson(LIST_DIFFS_CODEC, body.getString(UTF_8));
-						return provider.get(request)
-								.thenCompose(manager -> {
-									manager.addAll(operations);
-									return manager.sync()
-											.thenCompose($ -> provider.getWalker(manager).walk(manager.getRevision()));
-								})
-								.thenApply($ -> okText());
+						Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
+						manager.add(operation);
+						return Promise.of(okText());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.<HttpResponse>ofException(e);
 					} finally {
 						body.recycle();
 					}
 				});
 	}
 
-	private AsyncServlet checkout() {
-		return request -> provider.get(request)
-				.thenCompose(manager -> manager.checkout()
-						.thenCompose($ -> provider.getWalker(manager).walk(manager.getRevision())))
-				.thenApply($ -> okText());
-	}
-
-	private AsyncServlet state() {
-		return request -> provider.get(request)
-				.thenApply(manager -> ((OperationState) manager.getState()).getCounter())
-				.thenApply(counter -> okJson()
-						.withBody(toJson(INT_CODEC, counter).getBytes(UTF_8)));
-	}
-
 	private AsyncServlet info() {
-		return request -> provider.get(request)
-				.thenApply(manager -> {
-							String redirectUrl = provider.isNew() ? ("../?id=" + provider.getId(manager)) : "";
-					Tuple2<CommitId, Integer> infoTuple = new Tuple2<>(
+		return request -> walker.walk(manager.getRevision())
+				.thenApply($ -> {
+					Tuple4<CommitId, Integer, List<Operation>, String> infoTuple = new Tuple4<>(
 							manager.getRevision(),
-							((OperationState) manager.getState()).getCounter()
+							((OperationState) manager.getState()).getCounter(),
+							manager.getWorkingDiffs(),
+							walker.toGraphViz()
 					);
-							return redirectUrl.isEmpty() ?
-									okJson().withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8)) :
-									HttpResponse.redirect302(redirectUrl);
-						}
-				);
+					return okJson()
+							.withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8));
+				});
 	}
 
 	@Override

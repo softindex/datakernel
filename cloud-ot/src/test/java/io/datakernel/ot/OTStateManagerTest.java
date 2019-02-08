@@ -1,8 +1,10 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
@@ -12,66 +14,68 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.*;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
-import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static java.util.Collections.singleton;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 @RunWith(DatakernelRunner.class)
 public class OTStateManagerTest {
-	private Eventloop eventloop;
-	private OTSystem<TestOp> system;
+	private static final StacklessException FAILED = new StacklessException("Failed");
+
 	private OTRepositoryStub<Integer, TestOp> repository;
+	private OTAlgorithms<Integer, TestOp> algorithms;
 	private OTStateManager<Integer, TestOp> stateManager;
 	private TestOpState testOpState;
+	private boolean alreadyFailed = false;
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.getCurrentEventloop();
-		system = createTestOp();
+		Random random = new Random();
 		repository = OTRepositoryStub.create();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
+		repository.revisionIdSupplier = () -> random.nextInt(1000) + 1000;
+		algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), repository);
 		testOpState = new TestOpState();
-		stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
+		stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
 
 		initializeRepository(repository, stateManager);
 	}
 
 	@Test
-	public void testCommitBeforePushFinished() {
-		OTRepository<Integer, TestOp> repositoryStub = OTRepositoryStub.create(asList(2, 3));
-		OTRepository<Integer, TestOp> repository = new OTRepositoryDecorator<Integer, TestOp>(repositoryStub) {
+	public void testSyncBeforeSyncFinished() {
+		repository.revisionIdSupplier = () -> 2;
+		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
-			public Promise<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
-				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
+			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
+				return super.fetch(currentCommitId).thenCompose(fetchData -> scheduledResult(getCurrentEventloop(), 100, fetchData));
 			}
 		};
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
 
 		initializeRepository(repository, stateManager);
-
 		stateManager.add(add(1));
+		stateManager.sync();
 		await(stateManager.sync());
 
-		stateManager.add(add(1));
-		await(stateManager.sync());
-
-		Set<Integer> heads = await(repository.getHeads());
-		assertEquals(1, heads.size());
-		assertEquals(3, first(heads).intValue());
+		assertFalse(stateManager.hasWorkingDiffs());
+		assertFalse(stateManager.hasPendingCommits());
+		assertEquals((Integer) 2, stateManager.getRevision());
+		assertEquals(1, testOpState.getValue());
 	}
 
 	@Test
-	public void testPullFullHistory() {
+	public void testSyncFullHistory() {
 		for (int i = 1; i <= 5; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
@@ -83,22 +87,8 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testPull() {
-		for (int i = 1; i <= 10; i++) {
-			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
-			if (i == 3 || i == 5 || i == 7) {
-				await(stateManager.sync());
-			}
-		}
-
-		assertEquals(7, testOpState.getValue());
-
-		await(stateManager.sync());
-		assertEquals(10, testOpState.getValue());
-	}
-
-	@Test
-	public void testApplyDiffBeforePull() {
+	public void testApplyDiffBeforeSync() {
+		repository.revisionIdSupplier = () -> 11;
 		for (int i = 1; i <= 10; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
@@ -112,7 +102,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testMultiplePulls() {
+	public void testMultipleSyncs() {
 		for (int i = 1; i <= 20; i++) {
 			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 5 || i == 15) {
@@ -187,70 +177,147 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testPullAfterPush() {
-		Random random = new Random();
-		repository.revisionIdSupplier = random::nextInt;
+	public void testSyncAfterFailedCommit() {
+		repository.revisionIdSupplier = () -> 1;
+		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+			@Override
+			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+				return failOnce(() -> super.createCommit(parent, diffs, level));
+			}
+		};
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		initializeRepository(repository, stateManager);
 
-		Integer initialRevision = stateManager.getRevision();
-		stateManager.add(add(3));
-		assertEquals(3, testOpState.getValue());
-		assertEquals(initialRevision, stateManager.getRevision());
+		stateManager.add(add(1));
+		Throwable exception = awaitException(stateManager.sync());
+
+		assertEquals(FAILED, exception);
+		assertEquals((Integer) 0, stateManager.getRevision());
+		assertFalse(stateManager.hasPendingCommits());
+		assertTrue(stateManager.hasWorkingDiffs());
+
+		// new ops added in the meantime
+		stateManager.add(add(100));
 
 		await(stateManager.sync());
-		assertEquals(3, testOpState.getValue());
-		Integer afterCommitRevision = stateManager.getRevision();
-		assertNotEquals(initialRevision, afterCommitRevision);
+		assertEquals((Integer) 1, stateManager.getRevision());
+		assertFalse(stateManager.hasWorkingDiffs());
+		assertFalse(stateManager.hasPendingCommits());
 
-		await(stateManager.sync());
-		assertEquals(3, testOpState.getValue());
-		assertEquals(afterCommitRevision, stateManager.getRevision());
-
-		await(stateManager.sync());
-		// Nothing changed
-		assertEquals(3, testOpState.getValue());
-		assertEquals(afterCommitRevision, stateManager.getRevision());
+		Set<Integer> heads = await(repository.getHeads());
+		assertEquals(singleton(1), heads);
+		assertEquals(101, testOpState.getValue());
 	}
 
-	private class OTRepositoryDecorator<K, D> implements OTRepository<K, D> {
-		private final OTRepository<K, D> repository;
+	@Test
+	public void testSyncAfterFailedPull() {
+		repository.revisionIdSupplier = () -> 3;
+		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+			@Override
+			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
+				return failOnce(() -> super.fetch(currentCommitId));
+			}
+		};
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		initializeRepository(repository, stateManager);
+		repository.setGraph(g -> {
+			g.add(0, 1, add(10));
+			g.add(1, 2, add(20));
+		});
 
-		private OTRepositoryDecorator(OTRepository<K, D> repository) {
-			this.repository = repository;
+		stateManager.add(add(1));
+		Throwable exception = awaitException(stateManager.sync());
+
+		assertEquals(FAILED, exception);
+		assertEquals((Integer) 0, stateManager.getRevision());
+		assertFalse(stateManager.hasPendingCommits());
+		assertTrue(stateManager.hasWorkingDiffs());
+
+		// new ops added in the meantime
+		stateManager.add(add(100));
+
+		await(stateManager.sync());
+		assertEquals((Integer) 3, stateManager.getRevision());
+		assertFalse(stateManager.hasWorkingDiffs());
+		assertFalse(stateManager.hasPendingCommits());
+
+		Set<Integer> heads = await(repository.getHeads());
+		assertEquals(singleton(3), heads);
+		assertEquals(131, testOpState.getValue());
+	}
+
+	@Test
+	public void testSyncAfterFailedPush() {
+		repository.revisionIdSupplier = asList(3, 4, 5).iterator()::next;
+		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+			@Override
+			public Promise<Void> push(OTCommit<Integer, TestOp> commit) {
+				return failOnce(() -> super.push(commit));
+			}
+		};
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		initializeRepository(repository, stateManager);
+
+		stateManager.add(add(1));
+		Throwable exception = awaitException(stateManager.sync());
+
+		assertEquals(FAILED, exception);
+		assertEquals((Integer) 3, stateManager.getRevision());
+		assertTrue(stateManager.hasPendingCommits());
+		assertFalse(stateManager.hasWorkingDiffs());
+
+		// new ops added in the meantime, repo changed
+		stateManager.add(add(100));
+		repository.setGraph(g -> {
+			g.add(0, 1, add(10));
+			g.add(1, 2, add(20));
+
+		});
+
+		await(stateManager.sync());
+		assertEquals((Integer) 5, stateManager.getRevision());
+		assertFalse(stateManager.hasWorkingDiffs());
+		assertFalse(stateManager.hasPendingCommits());
+
+		Set<Integer> heads = await(repository.getHeads());
+		assertEquals(singleton(5), heads);
+		assertEquals(131, testOpState.getValue());
+	}
+
+	class OTNodeDecorator implements OTNode<Integer, TestOp> {
+		private final OTNode<Integer, TestOp> node;
+
+		OTNodeDecorator(OTNode<Integer, TestOp> node) {
+			this.node = node;
 		}
 
 		@Override
-		public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
-			return repository.createCommit(parentDiffs, level);
+		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+			return node.createCommit(parent, diffs, level);
 		}
 
 		@Override
-		public Promise<Void> push(Collection<OTCommit<K, D>> otCommits) {
-			return repository.push(otCommits);
+		public Promise<Void> push(OTCommit<Integer, TestOp> commit) {
+			return node.push(commit);
 		}
 
 		@Override
-		public Promise<Set<K>> getHeads() {
-			return repository.getHeads();
+		public Promise<FetchData<Integer, TestOp>> checkout() {
+			return node.checkout();
 		}
 
 		@Override
-		public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
-			return repository.loadSnapshot(revisionId);
+		public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
+			return node.fetch(currentCommitId);
 		}
+	}
 
-		@Override
-		public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
-			return repository.loadCommit(revisionId);
-		}
-
-		@Override
-		public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
-			return repository.saveSnapshot(revisionId, diffs);
-		}
-
-		@Override
-		public String toString() {
-			return repository.toString();
+	private <T> Promise<T> failOnce(AsyncSupplier<T> supplier) {
+		if (alreadyFailed) {
+			return supplier.get();
+		} else {
+			alreadyFailed = true;
+			return Promise.ofException(FAILED);
 		}
 	}
 

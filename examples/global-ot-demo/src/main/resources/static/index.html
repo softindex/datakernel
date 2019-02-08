@@ -2,24 +2,18 @@
 <meta charset="utf-8">
 
 <head>
+  <title>OT State Manager</title>
   <link rel="stylesheet" type="text/css" href="css/style.css">
 </head>
 
+<body>
 <div class="container">
   <div class="control">
     <input id="toAdd" type="number" step="1">
     <button id="add">Add</button>
     <br>
 
-    <button id="push">Push</button>
-    <br>
-
-    <button id="checkout">Checkout</button>
-    <button id="pull">Pull</button>
-    <br>
-
-    <button id="merge">Merge Heads</button>
-    <button id="reset">Reset</button>
+    <button id="sync">Sync</button>
     <br>
 
     Remote state:
@@ -28,13 +22,14 @@
     Uncommitted operations:
     <span id="ops"></span>
     <br>
-    <button id="newManager">New Manager</button>
     <br>
+    <p id="status"></p>
   </div>
 
   <div class='graph'>
     <div id="graphviz" style="text-align: center;"></div>
   </div>
 </div>
+
 <script src="js/bundle.js"></script>
 </body>

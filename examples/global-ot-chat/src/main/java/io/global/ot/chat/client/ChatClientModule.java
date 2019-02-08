@@ -3,7 +3,6 @@ package io.global.ot.chat.client;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
@@ -12,11 +11,11 @@ import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.OTStateManager;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
-import io.global.ot.chat.common.Bootstrap;
 import io.global.ot.chat.operations.ChatOTState;
 import io.global.ot.chat.operations.ChatOperation;
 import io.global.ot.client.MyRepositoryId;
@@ -24,6 +23,7 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.GlobalOTNodeHttpClient;
+import io.global.ot.util.Bootstrap;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -33,10 +33,11 @@ import java.time.Duration;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.launchers.initializers.Initializers.*;
-import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
+import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
+import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
-import static io.global.launchers.ot.GlobalOTConfigConverters.ofRepoID;
+import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
+import static io.global.ot.chat.operations.ChatOperation.OPERATION_CODEC;
 import static io.global.ot.chat.operations.Utils.*;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -47,9 +48,11 @@ public final class ChatClientModule extends AbstractModule {
 
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Example");
+	private static final MyRepositoryId<ChatOperation> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, OPERATION_CODEC);
 	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
 	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("src/main/resources/static");
-	private static final Duration DEFAULT_SYNC_INTERVAL = Duration.ofSeconds(5);
+	private static final Duration DEFAULT_SYNC_INTERVAL = Duration.ofSeconds(2);
+	private static final Duration DEFAULT_SYNC_INITIAL_DELAY = Duration.ofMillis(0);
 
 	@Override
 	protected void configure() {
@@ -66,7 +69,7 @@ public final class ChatClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	AsyncHttpServer provideServer(Eventloop eventloop, MiddlewareServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, ensureSessionID(servlet))
+		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
@@ -103,14 +106,14 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	ClientServlet provideClientServlet(StateManagerProvider stateManagerProvider) {
-		return ClientServlet.create(stateManagerProvider);
+	ClientServlet provideClientServlet(OTStateManager<CommitId, ChatOperation> stateManager) {
+		return ClientServlet.create(stateManager);
 	}
 
 	@Provides
 	@Singleton
-	StateManagerProvider provideManagerProvider(Eventloop eventloop, OTAlgorithms<CommitId, ChatOperation> algorithms, Config config) {
-		return new StateManagerProvider(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), config.get(ofDuration(), "sync.interval", DEFAULT_SYNC_INTERVAL));
+	OTStateManager<CommitId, ChatOperation> provideStateManager(Eventloop eventloop, OTAlgorithms<CommitId, ChatOperation> algorithms) {
+		return new OTStateManager<>(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), new ChatOTState());
 	}
 
 	@Provides
@@ -143,16 +146,14 @@ public final class ChatClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	MyRepositoryId<ChatOperation> provideMyRepositoryId(Config config) {
-		RepoID repoID = config.get(ofRepoID(), "credentials.repositoryId", DEMO_REPO_ID);
-		PrivKey privKey = config.get(ofPrivKey(), "credentials.privateKey", DEMO_PRIVATE_KEY);
-		return new MyRepositoryId<>(repoID, privKey, ChatOperation.OPERATION_CODEC);
+		return config.get(ofMyRepositoryId(OPERATION_CODEC), "credentials", DEMO_MY_REPOSITORY_ID);
 	}
 
 	@Provides
 	@Singleton
-	@Named("Merge")
-	EventloopTaskScheduler provideMergeScheduler(Eventloop eventloop, Config config, OTAlgorithms<CommitId, ChatOperation> algorithms) {
-		return EventloopTaskScheduler.create(eventloop, algorithms::merge)
-				.initialize(ofEventloopTaskScheduler(config.getChild("merge")));
+	EventloopTaskScheduler provideSyncScheduler(Eventloop eventloop, OTStateManager<CommitId, ChatOperation> stateManager, Config config) {
+		return EventloopTaskScheduler.create(eventloop, stateManager::sync)
+				.withInterval(config.get(ofDuration(), "sync.interval", DEFAULT_SYNC_INTERVAL))
+				.withInitialDelay(config.get(ofDuration(), "sync.initialDelay", DEFAULT_SYNC_INITIAL_DELAY));
 	}
 }

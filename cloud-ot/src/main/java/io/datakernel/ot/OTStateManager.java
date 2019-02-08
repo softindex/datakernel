@@ -18,6 +18,8 @@ package io.datakernel.ot;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.exceptions.OTTransformException;
 import org.jetbrains.annotations.NotNull;
@@ -37,9 +39,10 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.singletonList;
 
-public final class OTStateManager<K, D> {
+public final class OTStateManager<K, D> implements EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
 
+	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;
 	private final OTNode<K, D> repository;
 
@@ -54,10 +57,31 @@ public final class OTStateManager<K, D> {
 	@Nullable
 	private OTCommit<K, D> pendingCommit;
 
-	public OTStateManager(OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
+	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
+		this.eventloop = eventloop;
 		this.otSystem = otSystem;
 		this.repository = repository;
 		this.state = state;
+	}
+
+	@NotNull
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+
+	@NotNull
+	@Override
+	public Promise<Void> start() {
+		return checkout();
+	}
+
+	@NotNull
+	@Override
+	public Promise<Void> stop() {
+		invalidateInternalState();
+		return Promise.complete();
 	}
 
 	@NotNull
@@ -96,7 +120,7 @@ public final class OTStateManager<K, D> {
 	@NotNull
 	private Promise<Void> pull() {
 		assert pendingCommit == null;
-		return repository.fetch(revision, level)
+		return repository.fetch(revision)
 				.whenResult(fetchData -> {
 					List<D> fetchedDiffs = fetchData.getDiffs();
 
@@ -131,6 +155,7 @@ public final class OTStateManager<K, D> {
 					pendingCommit = commit;
 					assert isShallowEquals(workingDiffs.subList(0, workingDiffsCopy.size()), workingDiffsCopy);
 					workingDiffs = new ArrayList<>(workingDiffs.subList(workingDiffsCopy.size(), workingDiffs.size()));
+					revision = commit.getId();
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
@@ -192,6 +217,10 @@ public final class OTStateManager<K, D> {
 
 	public OTState<D> getState() {
 		return state;
+	}
+
+	public List<D> getWorkingDiffs() {
+		return new ArrayList<>(workingDiffs);
 	}
 
 	public boolean isValid() {

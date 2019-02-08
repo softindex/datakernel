@@ -35,6 +35,6 @@ public interface OTNode<K, D> {
 
 	Promise<FetchData<K, D>> checkout();
 
-	Promise<FetchData<K, D>> fetch(K currentCommitId, long level);
+	Promise<FetchData<K, D>> fetch(K currentCommitId);
 
 }

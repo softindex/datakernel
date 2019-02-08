@@ -1,146 +1,75 @@
 const d3 = require("d3-graphviz");
 const $ = require("jquery");
 
-var localChanges = [];
+const STATUS = $('#status');
+const STATE = $('#state');
+const OPS = $('#ops');
+const TO_ADD = $('#toAdd');
 
 $(document).ready(function () {
-    update();
     $('#add').click(add);
-    $('#reset').click(reset);
-    $('#push').click(push);
-    $('#merge').click(function () {
-        execute('/merge', 'post');
-    });
-    $('#pull').click(function () {
-        execute('/pull', 'get');
-    });
-    $('#checkout').click(checkout)
-    $('#newManager').click(openNew);
-    document.title = '[' + $.urlParam('id') + ']' + ' OT State Manager';
+    $('#sync').click(sync);
+
+    setInterval(info, 500);
 });
 
 function add() {
-    var toAdd = Math.floor($('#toAdd').val());
+    var toAdd = Math.floor(TO_ADD.val());
     if (toAdd === 0) {
         return;
     }
-    localChanges.push(toAdd);
-    updateOps()
-}
-
-function reset(){
-    localChanges = [];
-    updateOps();
-}
-
-function push() {
-    if (localChanges.length === 0){
-        return;
-    }
+    TO_ADD.empty();
     $.ajax({
         type: "post",
-        url: '/push' + getId(),
-        data: JSON.stringify(localChanges),
-        success: function (data) {
-            reset();
-            update();
-        },
-        error: function (xhr, error) {
-            alert('Failed to update state: ' + error);
-        }
-    });
+        url: '/add',
+        data: JSON.stringify(toAdd),
+    }).then($ => good("Operation added"),
+        error => bad("Failed to add", error));
 }
 
-function updateOps() {
-    var ops = $('#ops');
-    ops.empty();
-    localChanges.forEach(element => {
-        $('#ops').append('[' + (element > 0 ? '+' : '-') + element + '] ');
+function sync() {
+    $.ajax({
+        type: "get",
+        url: '/sync',
+    }).then($ => good("Successfully synced"),
+        error => bad("Failed to sync", error));
+}
+
+function info() {
+    $.getJSON("/info", json => {
+        updateState(json[1]);
+        updateOps(json[2]);
+        updateGraph(json[3]);
     });
 }
 
 function updateState(state) {
-    $('#state').empty();
-    $('#state').append(state);
+    STATE.empty();
+    STATE.append(state);
 }
 
-function checkout() {
-    $.ajax({
-        type: "get",
-        url: '/checkout' + getId(),
-        success: function (data) {
-            update();
-        },
-        error: function (xhr, error) {
-            alert('Checkout failed: ' + error);
-        }
+function updateOps(ops) {
+    OPS.empty();
+    ops.forEach(element => {
+        OPS.append(element + ' ');
     });
 }
 
-function execute(path, method) {
-    $.ajax({
-        type: method,
-        url: path + getId(),
-        success: function (data) {
-            update();
-        },
-        error: function (xhr, error) {
-            alert(path + ' request failed: ' + error);
-        }
-    });
-}
-
-function update() {
-    fetch('/info' + getId(), {
-        method: 'GET',
-        dataType: 'json',
-        credentials: 'include'
-    })
-        .then(function (res) {
-            if (res.redirected) {
-                window.location.href = res.url;
-                return;
-            }
-            return res.json();
-        })
-        .then(function (json) {
-            updateState(json[1]);
-            updateGraph();
-        });
-}
-
-function updateGraph() {
-    fetch('/graph' + getId(), {
-        method: 'GET'
-    })
-        .then(function (res) {
-            return res.text();
-        })
-        .then(function (graph) {
-            render(graph);
-        });
-}
-
-function render(textGraphViz) {
+function updateGraph(textGraphViz) {
     d3.graphviz("#graphviz")
         .zoom(false)
         .renderDot(textGraphViz);
 }
 
-function getId() {
-    return '?id=' + $.urlParam('id');
+function good(msg) {
+    console.log(msg);
+    STATUS
+        .css('color', 'darkgreen')
+        .html(msg);
 }
 
-function openNew() {
-    var win = window.open('/', '_blank');
-    win.focus();
+function bad(msg, response) {
+    STATUS
+        .css('color', 'red')
+        .html(msg + (response ? (response.responseText ? ': ' + response.responseText : ': code ' + response.status) : ''));
 }
-
-$.urlParam = function (name) {
-    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-    if (results == null) {
-        return '';
-    }
-    return decodeURI(results[1]) || 0;
-}
-

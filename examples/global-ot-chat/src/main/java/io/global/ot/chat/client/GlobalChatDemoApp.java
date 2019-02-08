@@ -2,7 +2,6 @@ package io.global.ot.chat.client;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -21,15 +20,12 @@ public final class GlobalChatDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
 	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
-	public static final String DEFAULT_MERGE_INTERVAL = "10 seconds";
-	public static final String DEFAULT_MERGE_TYPE = "interval";
 
 	@Inject
 	AsyncHttpServer server;
 
 	@Inject
-	@Named("Merge")
-	EventloopTaskScheduler mergeScheduler;
+	EventloopTaskScheduler syncScheduler;
 
 	@Override
 	protected Collection<Module> getModules() {
@@ -37,8 +33,6 @@ public final class GlobalChatDemoApp extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
-								.with("merge.schedule.type", DEFAULT_MERGE_TYPE)
-								.with("merge.schedule.value", DEFAULT_MERGE_INTERVAL)
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 								.override(Config.ofProperties(PROPERTIES_FILE, true)
 										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))

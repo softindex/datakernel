@@ -16,7 +16,6 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
@@ -28,6 +27,7 @@ import org.junit.runner.RunWith;
 import java.util.List;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
 
@@ -76,8 +76,8 @@ public final class OTSystemTest {
 		});
 
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), system, repository);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), state);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), system, repository);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), state);
 
 		await(stateManager.checkout());
 
@@ -131,8 +131,8 @@ public final class OTSystemTest {
 			g.add("a2", "b1", add(10));
 		});
 
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), createTestOp(), otSource);
-		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), otSource);
+		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
 	}
 
 	@Test
@@ -147,8 +147,8 @@ public final class OTSystemTest {
 			g.add("b1", "b2", add(1));
 		});
 
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), createTestOp(), otSource);
-		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), otSource);
+		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
 	}
 
 	private void pullAndThenMergeAndPush(OTRepositoryStub<String, TestOp> otSource, OTAlgorithms<String, TestOp> algorithms, OTStateManager<String, TestOp> stateManager) {

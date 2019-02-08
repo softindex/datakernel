@@ -19,7 +19,10 @@ package io.global.ot.demo.util;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.util.Tuple2;
+import io.datakernel.ot.OTSystem;
+import io.datakernel.ot.OTSystemImpl;
+import io.datakernel.ot.TransformResult;
+import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
@@ -34,6 +37,8 @@ import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.http.MediaTypes.PLAIN_TEXT;
 import static io.global.common.CryptoUtils.fromHexString;
 import static io.global.common.CryptoUtils.toHexString;
+import static io.global.ot.demo.operations.AddOperation.add;
+import static java.util.Collections.singletonList;
 
 @SuppressWarnings("WeakerAccess")
 public final class Utils {
@@ -54,17 +59,16 @@ public final class Utils {
 				out.writeString((value > 0 ? "+" : "") + value);
 			});
 
-	public static final StructuredCodec<List<Operation>> LIST_DIFFS_CODEC = ofList(OPERATION_CODEC);
-
 	public static final StructuredCodec<CommitId> COMMIT_ID_HASH = StructuredCodec.of(
 			in -> CommitId.ofBytes(fromHexString(in.readString())),
 			(out, item) -> out.writeString(toHexString(item.toBytes()))
 	);
 
-	public static final StructuredCodec<Tuple2<CommitId, Integer>> INFO_CODEC = tuple(Tuple2::new,
-			Tuple2::getValue1, COMMIT_ID_HASH,
-			Tuple2::getValue2, INT_CODEC);
-
+	public static final StructuredCodec<Tuple4<CommitId, Integer, List<Operation>, String>> INFO_CODEC = tuple(Tuple4::new,
+			Tuple4::getValue1, COMMIT_ID_HASH,
+			Tuple4::getValue2, INT_CODEC,
+			Tuple4::getValue3, ofList(OPERATION_CODEC),
+			Tuple4::getValue4, STRING_CODEC);
 
 	public static HttpResponse okText() {
 		return HttpResponse.ok200()
@@ -73,5 +77,13 @@ public final class Utils {
 
 	public static HttpResponse okJson() {
 		return HttpResponse.ok200().withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON)));
+	}
+
+	public static OTSystem<Operation> createOTSystem() {
+		return OTSystemImpl.<Operation>create()
+				.withTransformFunction(AddOperation.class, AddOperation.class, (left, right) -> TransformResult.of(right, left))
+				.withEmptyPredicate(AddOperation.class, addOperation -> addOperation.getValue() == 0)
+				.withInvertFunction(AddOperation.class, addOperation -> singletonList(add(-addOperation.getValue())))
+				.withSquashFunction(AddOperation.class, AddOperation.class, (op1, op2) -> add(op1.getValue() + op2.getValue()));
 	}
 }

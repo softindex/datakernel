@@ -20,15 +20,17 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.OTStateManager;
 import io.global.ot.api.CommitId;
-import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
+import io.global.ot.demo.operations.OperationState;
+import io.global.ot.graph.NodesWalker;
 
 import java.util.concurrent.ExecutorService;
 
-import static io.global.ot.demo.operations.AddOperation.add;
-import static java.util.Collections.singletonList;
+import static io.global.ot.demo.util.Utils.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 final class OTStateModule extends AbstractModule {
@@ -39,17 +41,19 @@ final class OTStateModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTAlgorithms<CommitId, Operation> provide(Eventloop eventloop, OTSystem<Operation> system, OTRepository<CommitId, Operation> repository) {
-		return OTAlgorithms.create(eventloop, system, repository);
+	OTStateManager<CommitId, Operation> provideStateManager(Eventloop eventloop, OTAlgorithms<CommitId, Operation> algorithms) {
+		return new OTStateManager<>(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), new OperationState());
 	}
 
 	@Provides
 	@Singleton
-	OTSystem<Operation> provide() {
-		return OTSystemImpl.<Operation>create()
-				.withTransformFunction(AddOperation.class, AddOperation.class, (left, right) -> TransformResult.of(right, left))
-				.withEmptyPredicate(AddOperation.class, addOperation -> addOperation.getValue() == 0)
-				.withInvertFunction(AddOperation.class, addOperation -> singletonList(add(-addOperation.getValue())))
-				.withSquashFunction(AddOperation.class, AddOperation.class, (op1, op2) -> add(op1.getValue() + op2.getValue()));
+	OTAlgorithms<CommitId, Operation> provide(Eventloop eventloop, OTRepository<CommitId, Operation> repository) {
+		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
+	}
+
+	@Provides
+	@Singleton
+	NodesWalker<CommitId, Operation> provideNodesWalker(OTRepository<CommitId, Operation> repository) {
+		return NodesWalker.create(repository, ID_TO_STRING, OPERATION_TO_STRING);
 	}
 }

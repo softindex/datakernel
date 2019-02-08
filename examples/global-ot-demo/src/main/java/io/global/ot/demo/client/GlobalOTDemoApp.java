@@ -31,6 +31,8 @@ import static java.util.Arrays.asList;
 
 public final class GlobalOTDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
+	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
+
 	@Inject
 	AsyncHttpServer server;
 
@@ -39,7 +41,9 @@ public final class GlobalOTDemoApp extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
-						Config.ofProperties(PROPERTIES_FILE)
+						Config.create()
+								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
+								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new OTClientModule(),

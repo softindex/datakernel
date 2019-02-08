@@ -97,7 +97,7 @@ public final class LogToCubeTest {
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 		Multilog<TestPubRequest> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
