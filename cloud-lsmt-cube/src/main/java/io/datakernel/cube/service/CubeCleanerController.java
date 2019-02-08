@@ -4,6 +4,7 @@ import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -161,18 +162,24 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	Promise<Optional<K>> findSnapshot(Set<K> heads, int skipSnapshots) {
-		return algorithms.findParent(heads, DiffsReducer.toVoid(),
+		return Promise.ofCallback(cb -> doFindSnapshot(heads, skipSnapshots, cb));
+	}
+
+	private void doFindSnapshot(Set<K> heads, int skipSnapshots, SettablePromise<Optional<K>> cb) {
+		algorithms.findParent(heads, DiffsReducer.toVoid(),
 				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
 						Promise.of(false) :
 						commit.getSnapshotHint() == Boolean.TRUE ?
 								Promise.of(true) :
 								repository.hasSnapshot(commit.getId()))
-				.async()
-				.thenCompose(findResult -> {
-					if (!findResult.isFound()) return Promise.of(Optional.empty());
-					else if (skipSnapshots <= 0) return Promise.of(Optional.of(findResult.getCommit()));
-					else return findSnapshot(findResult.getCommitParents(), skipSnapshots - 1);
-				});
+				.whenResult(findResult -> {
+					if (skipSnapshots <= 0) {
+						cb.set(Optional.of(findResult.getCommit()));
+					} else {
+						doFindSnapshot(findResult.getCommitParents(), skipSnapshots - 1, cb);
+					}
+				})
+				.whenException(cb::setException);
 	}
 
 	private Promise<Set<C>> collectRequiredChunks(K checkpointNode) {

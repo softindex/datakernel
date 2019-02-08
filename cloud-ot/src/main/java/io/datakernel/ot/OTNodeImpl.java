@@ -1,7 +1,6 @@
 package io.datakernel.ot;
 
 import io.datakernel.async.Promise;
-import io.datakernel.ot.exceptions.OTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,15 +44,11 @@ public final class OTNodeImpl<K, D> implements OTNode<K, D> {
 								repository.loadSnapshot(commit.getId())
 										.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null)
 				))
-				.thenCompose(findResult -> {
-					if (!findResult.isFound())
-						return Promise.ofException(new OTException("No snapshot found in graph"));
-					return Promise.of(
-							new FetchData<>(
-									findResult.getChild(),
-									findResult.getChildLevel(),
-									concat(cachedSnapshot[0], findResult.getAccumulatedDiffs())));
-				})
+				.thenCompose(findResult -> Promise.of(
+						new FetchData<>(
+								findResult.getChild(),
+								findResult.getChildLevel(),
+								concat(cachedSnapshot[0], findResult.getAccumulatedDiffs()))))
 				.thenCompose(checkoutData -> fetch(checkoutData.getCommitId())
 						.thenApply(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
