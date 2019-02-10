@@ -17,9 +17,11 @@
 package io.datakernel.ot;
 
 import io.datakernel.ot.exceptions.OTException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -27,6 +29,7 @@ import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.*;
 
+@SuppressWarnings("StringConcatenationInsideStringBufferAppend")
 public class OTLoadedGraph<K, D> {
 	private final AtomicLong mergeId = new AtomicLong();
 
@@ -70,6 +73,9 @@ public class OTLoadedGraph<K, D> {
 	private final Map<K, Long> timestamps = new HashMap<>();
 	protected final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
 	protected final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
+	private Function<K, String> idToString = Objects::toString;
+	private Function<D, String> diffToString = Objects::toString;
+
 
 	public void setNodeTimestamp(K node, long timestamp) {
 		timestamps.put(node, timestamp);
@@ -224,8 +230,11 @@ public class OTLoadedGraph<K, D> {
 		throw new OTException("Graph cannot be merged");
 	}
 
-	@SuppressWarnings("StringConcatenationInsideStringBufferAppend")
 	public String toGraphViz() {
+		return toGraphViz(null);
+	}
+
+	private String toGraphViz(@Nullable K revision) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n");
 		for (K child : child2parent.keySet()) {
@@ -233,26 +242,47 @@ public class OTLoadedGraph<K, D> {
 			String color = (parent2diffs.size() == 1) ? "color=blue; " : "";
 			for (K parent : parent2diffs.keySet()) {
 				List<D> diffs = parent2diffs.get(parent);
-				sb.append("\t" + nodeToGraphViz(child) + " -> " + nodeToGraphViz(parent) +
-						" [ dir=\"back\"; " + color + "label=\"" + diffsToGraphViz(diffs) + "\"];\n");
+				sb.append("\t" +
+						nodeToGraphViz(child) +
+						" -> " + nodeToGraphViz(parent) +
+						" [ dir=\"back\"; " + color + "label=\"" +
+						diffsToGraphViz(diffs) +
+						"\"];\n");
 			}
+			addStyle(sb, child, revision);
 		}
+
+		Set<K> roots = getRoots();
+		for (K root : roots) {
+			addStyle(sb, root, revision);
+		}
+
 		sb.append("\t{ rank=same; " +
-				getOriginalTips().stream().map(OTLoadedGraph::nodeToGraphViz).collect(joining(" ")) +
+				getOriginalTips().stream().map(this::nodeToGraphViz).collect(joining(" ")) +
 				" }\n");
 		sb.append("\t{ rank=same; " +
-				getRoots().stream().map(OTLoadedGraph::nodeToGraphViz).collect(joining(" ")) +
+				roots.stream().map(this::nodeToGraphViz).collect(joining(" ")) +
 				" }\n");
 		sb.append("}\n");
+
 		return sb.toString();
 	}
 
-	protected static <K> String nodeToGraphViz(K node) {
-		return "\"" + node + "\"";
+	private void addStyle(StringBuilder sb, K node, @Nullable K revision) {
+		sb.append("\t" +
+				nodeToGraphViz(node) +
+				" [style=filled fillcolor=" +
+				(node.equals(revision) ? "green" : "white") +
+				"];\n");
 	}
 
-	protected static <D> String diffsToGraphViz(Collection<D> diffs) {
-		return diffs.isEmpty() ? "∅" : diffs.size() == 1 ? first(diffs).toString() : diffs.toString();
+
+	private String nodeToGraphViz(K node) {
+		return "\"" + idToString.apply(node) + "\"";
+	}
+
+	private String diffsToGraphViz(List<D> diffs) {
+		return diffs.isEmpty() ? "∅" : diffs.stream().map(diffToString).collect(joining(",\n"));
 	}
 
 	@Override

@@ -168,7 +168,7 @@ public final class NodesWalker<K, D> {
 			sb.append("\t")
 					.append(nodeToGraphViz(node))
 					.append(" [style=filled fillcolor=")
-					.append(node.equals(revision) ? "green" : "white")
+					.append(Objects.equals(node, revision) ? "green" : "white")
 					.append("];\n");
 		}
 

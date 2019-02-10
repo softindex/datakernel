@@ -1,8 +1,8 @@
 package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTNode.FetchData;
-import io.datakernel.ot.exceptions.OTException;
 import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -159,7 +159,7 @@ public class OTNodeImplTest {
 	@Test
 	public void testFetchInvalidRevision() {
 		Throwable exception = awaitException(node.fetch(100));
-		assertThat(exception, instanceOf(OTException.class));
+		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Incomplete graph"));
 	}
 
