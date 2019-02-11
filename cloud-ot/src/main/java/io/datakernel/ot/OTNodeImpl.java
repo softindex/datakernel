@@ -23,15 +23,17 @@ public final class OTNodeImpl<K, D> implements OTNode<K, D> {
 	}
 
 	@Override
-	public Promise<ProtoCommit<K, D>> createCommit(K parent, List<? extends D> diffs, long level) {
+	public Promise<Object> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.createCommit(parent, diffs, level)
-				.thenApply(commit -> new ProtoCommit<>(commit.getId(), diffs, commit));
+				.thenApply(commit -> commit);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<Void> push(ProtoCommit<K, D> commit) {
-		return repository.push((OTCommit<K, D>) commit.getCommitData());
+	public Promise<K> push(Object commit) {
+		OTCommit<K, D> otCommit = (OTCommit<K, D>) commit;
+		return repository.push(otCommit)
+				.thenApply($ -> otCommit.getId());
 	}
 
 	@Override

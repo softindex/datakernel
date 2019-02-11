@@ -5,33 +5,9 @@ import io.datakernel.async.Promise;
 import java.util.List;
 
 public interface OTNode<K, D> {
-	final class ProtoCommit<K, D> {
-		private final K commitId;
-		private final List<? extends D> diffs;
-		private final Object commitData;
+	Promise<Object> createCommit(K parent, List<? extends D> diffs, long level);
 
-		public ProtoCommit(K commitId, List<? extends D> diffs, Object commitData) {
-			this.commitId = commitId;
-			this.diffs = diffs;
-			this.commitData = commitData;
-		}
-
-		public K getId() {
-			return commitId;
-		}
-
-		public List<? extends D> getDiffs() {
-			return diffs;
-		}
-
-		public Object getCommitData() {
-			return commitData;
-		}
-	}
-
-	Promise<ProtoCommit<K, D>> createCommit(K parent, List<? extends D> diffs, long level);
-
-	Promise<Void> push(ProtoCommit<K, D> commit);
+	Promise<K> push(Object commitData);
 
 	final class FetchData<K, D> {
 		private final K commitId;

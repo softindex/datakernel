@@ -34,8 +34,8 @@ public final class DelayedCommitNode<D> implements OTNode<CommitId, D> {
 	}
 
 	@Override
-	public Promise<ProtoCommit<CommitId>> createCommit(CommitId parent, List<? extends D> diffs, long level) {
-		SettablePromise<ProtoCommit<CommitId>> promise = new SettablePromise<>();
+	public Promise<Object> createCommit(CommitId parent, List<? extends D> diffs, long level) {
+		SettablePromise<Object> promise = new SettablePromise<>();
 		long pushAt = System.currentTimeMillis() + delay;
 		Eventloop.getCurrentEventloop().schedule(pushAt,
 				() -> node.createCommit(parent, diffs, level).whenComplete(promise::set));
@@ -43,8 +43,8 @@ public final class DelayedCommitNode<D> implements OTNode<CommitId, D> {
 	}
 
 	@Override
-	public Promise<Void> push(ProtoCommit<CommitId> commit) {
-		return null;
+	public Promise<CommitId> push(Object commit) {
+		return node.push(commit);
 	}
 
 	@Override

@@ -21,7 +21,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.ot.OTNode.ProtoCommit;
 import io.datakernel.ot.exceptions.OTTransformException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -58,7 +57,8 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private List<D> workingDiffs = new ArrayList<>();
 
 	@Nullable
-	private ProtoCommit<K, D> pendingCommit;
+	private Object pendingCommit;
+	private List<D> pendingCommitDiffs;
 
 	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
 		this.eventloop = eventloop;
@@ -123,7 +123,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> pull() {
-		assert pendingCommit == null;
+		assert pendingCommit == null && pendingCommitDiffs == null;
 		return repository.fetch(revision)
 				.whenResult(fetchData -> {
 					List<D> fetchedDiffs = fetchData.getDiffs();
@@ -150,16 +150,17 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> commit() {
-		assert pendingCommit == null;
+		assert pendingCommit == null && pendingCommitDiffs == null;
 		if (workingDiffs.isEmpty()) return Promise.complete();
 		List<D> workingDiffsCopy = new ArrayList<>(workingDiffs);
-		return repository.createCommit(revision, otSystem.squash(workingDiffsCopy), level + 1L)
+		List<D> diffs = otSystem.squash(workingDiffsCopy);
+		return repository.createCommit(revision, diffs, level + 1L)
 				.whenResult(commit -> {
 					assert pendingCommit == null;
 					pendingCommit = commit;
+					pendingCommitDiffs = diffs;
 					assert isShallowEquals(workingDiffs.subList(0, workingDiffsCopy.size()), workingDiffsCopy);
 					workingDiffs = new ArrayList<>(workingDiffs.subList(workingDiffsCopy.size(), workingDiffs.size()));
-					revision = commit.getId();
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
@@ -168,17 +169,24 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	private Promise<Void> push() {
 		if (pendingCommit == null) return Promise.complete();
+		assert pendingCommitDiffs != null;
 		return repository.push(pendingCommit)
-				.whenResult($ -> pendingCommit = null)
+				.whenResult(id -> {
+					revision = id;
+					pendingCommit = null;
+					pendingCommitDiffs = null;
+				})
+				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	public void reset() {
 		apply(otSystem.invert(concat(
-				pendingCommit != null ? pendingCommit.getDiffs() : emptyList(),
+				pendingCommitDiffs != null ? pendingCommitDiffs : emptyList(),
 				workingDiffs)));
-		pendingCommit = null;
 		workingDiffs.clear();
+		pendingCommit = null;
+		pendingCommitDiffs = null;
 	}
 
 	public void add(@NotNull D diff) {
@@ -221,6 +229,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		workingDiffs = null;
 
 		pendingCommit = null;
+		pendingCommitDiffs = null;
 	}
 
 	public K getRevision() {
