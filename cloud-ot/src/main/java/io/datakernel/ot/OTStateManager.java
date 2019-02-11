@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.ot.OTNode.ProtoCommit;
 import io.datakernel.ot.exceptions.OTTransformException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -55,7 +56,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private List<D> workingDiffs = new ArrayList<>();
 
 	@Nullable
-	private OTCommit<K, D> pendingCommit;
+	private ProtoCommit<K> pendingCommit;
 
 	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
 		this.eventloop = eventloop;
@@ -80,8 +81,9 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		invalidateInternalState();
-		return Promise.complete();
+		return isValid() ?
+				sync().whenComplete(($, e) -> invalidateInternalState()) :
+				Promise.complete();
 	}
 
 	@NotNull
@@ -155,7 +157,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 					pendingCommit = commit;
 					assert isShallowEquals(workingDiffs.subList(0, workingDiffsCopy.size()), workingDiffsCopy);
 					workingDiffs = new ArrayList<>(workingDiffs.subList(workingDiffsCopy.size(), workingDiffs.size()));
-					revision = commit.getId();
+					revision = commit.getCommitId();
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
