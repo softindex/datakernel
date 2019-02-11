@@ -24,6 +24,16 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 
+/**
+ * An abstract AsyncProcess which describes interactions
+ * between ChannelSupplier and ChannelConsumer. A universal
+ * class which can be set up for various behaviours. May contain
+ * an input ({@link ChannelSupplier}) and output ({@link ChannelConsumer}).
+ * <p>
+ * After process completes, a {@code Promise} of {@code null} is returned.
+ * New process can't be started before the previous one ends.
+ * Process can be cancelled or closed manually.
+ */
 public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	public static final ConstantException ASYNC_PROCESS_IS_COMPLETE = new ConstantException(AbstractCommunicatingProcess.class, "AsyncProcess is complete");
 
@@ -66,6 +76,14 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		return processResult;
 	}
 
+	/**
+	 * Starts this communicating process if it is not started yet.
+	 * Consistently executes {@link #beforeProcess()} and
+	 * {@link #doProcess()}.
+	 *
+	 * @return {@code promise} with null result as the marker
+	 * of completion of the process
+	 */
 	@NotNull
 	@Override
 	public final MaterializedPromise<Void> startProcess() {
@@ -77,8 +95,20 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		return processResult;
 	}
 
+	/**
+	 * Describes the main operations of the communicating process.
+	 * May include interaction between input ({@link ChannelSupplier})
+	 * and output ({@link ChannelConsumer}).
+	 */
 	protected abstract void doProcess();
 
+	/**
+	 * Closes this process if it is not completed yet.
+	 * Executes {@link #doClose(Throwable)} and
+	 * {@link #afterProcess(Throwable)}.
+	 *
+	 * @param e exception that is used to close process with
+	 */
 	@Override
 	public final void close(@NotNull Throwable e) {
 		if (isProcessComplete()) return;
@@ -88,13 +118,25 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		afterProcess(e);
 	}
 
+	/**
+	 * An operation which is executed in case
+	 * of manual closing.
+	 *
+	 * @param e an exception thrown on closing
+	 */
 	protected abstract void doClose(Throwable e);
 
+	/**
+	 * Closes this process with {@link Cancellable#CANCEL_EXCEPTION}
+	 */
 	@Override
 	public final void cancel() {
 		AsyncProcess.super.cancel();
 	}
 
+	/**
+	 * Closes this process with {@link Cancellable#CLOSE_EXCEPTION}
+	 */
 	@Override
 	public final void close() {
 		AsyncProcess.super.close();
@@ -156,6 +198,19 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 				.thenComposeEx(this::sanitize);
 	}
 
+	/**
+	 * Closes this process and returns a promise of {@code e}
+	 * exception if provided {@code e} is not {@code null}.
+	 * Otherwise, returns a promise of {@code value}. If the
+	 * process was already completed, returns a promise of
+	 * {@link #ASYNC_PROCESS_IS_COMPLETE} and recycles the
+	 * provided {@code value}.
+	 *
+	 * @return a promise of {@code value} if {@code e} is
+	 * {@code null} and {@code promise} of {@code e} exception
+	 * otherwise. If the process was already completed,
+	 * returns {@link #ASYNC_PROCESS_IS_COMPLETE}.
+	 */
 	public <T> Promise<T> sanitize(T value, Throwable e) {
 		if (isProcessComplete()) {
 			tryRecycle(value);

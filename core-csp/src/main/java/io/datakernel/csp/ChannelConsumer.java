@@ -27,33 +27,43 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
- * This interface represents consumer of data items that should be used serially (each consecutive {@link #accept(Object)}
- * operation should be called only after previous {@link #accept(Object)} operation finishes.
+ * This interface represents consumer of data items that should be used serially
+ * (each consecutive {@link #accept(Object)} operation should be called only after
+ * previous {@link #accept(Object)} operation finishes.
  * <p>
- * After consumer is closed, all subsequent calls to {@link #accept(Object)} will return promise, completed exceptionally.
+ * After consumer is closed, all subsequent calls to {@link #accept(Object)} will
+ * return a completed exceptionally promise.
  * <p>
- * If any exception is caught while consuming data items, {@link #close(Throwable)} method should
- * be called. All resources should be freed and the caught exception should be propagated to all related processes.
+ * If any exception is caught while consuming data items, {@link #close(Throwable)}
+ * method should be called. All resources should be freed and the caught exception
+ * should be propagated to all related processes.
  * <p>
- * If {@link #accept(Object)} takes {@code null} as argument, it represents end-of-stream and means that no additional
- * data should be consumed.
- * <p>
+ * If {@link #accept(Object)} takes {@code null} as argument, it represents end-of-stream
+ * and means that no additional data should be consumed.
  */
 
 public interface ChannelConsumer<T> extends Cancellable {
+
+	/**
+	 * Consumes a provided value and returns a
+	 * {@link Promise} as a marker of success.
+	 */
 	@NotNull
 	Promise<Void> accept(@Nullable T value);
 
+	/**
+	 * Accepts two items and returns a {@code Promise} as a
+	 * marker of completion. If the first item was accepted
+	 * with an exception, second item will be recycled and
+	 * a Promise of exception will be returned.
+	 */
 	@NotNull
 	default Promise<Void> accept(@Nullable T item1, @Nullable T item2) {
 		return accept(item1)
@@ -67,6 +77,12 @@ public interface ChannelConsumer<T> extends Cancellable {
 				});
 	}
 
+	/**
+	 * Accepts provided items and returns {@code Promise} as a
+	 * marker of completion. If one of the items was accepted
+	 * with an error, subsequent items will be recycled and a
+	 * {@code Promise} of exception will be returned.
+	 */
 	@NotNull
 	@SuppressWarnings("unchecked")
 	default Promise<Void> accept(T item1, T item2, T... items) {
@@ -91,23 +107,45 @@ public interface ChannelConsumer<T> extends Cancellable {
 				.thenCompose($ -> acceptAll(asIterator(items)));
 	}
 
+	/**
+	 * @see ChannelConsumers#acceptAll(ChannelConsumer, Iterator)
+	 */
 	@NotNull
 	default Promise<Void> acceptAll(@NotNull Iterator<? extends T> it) {
 		return ChannelConsumers.acceptAll(this, it);
 	}
 
+	/**
+	 * @see #acceptAll(Iterator)
+	 */
 	default Promise<Void> acceptAll(@NotNull Iterable<T> iterable) {
 		return acceptAll(iterable.iterator());
 	}
 
+	/**
+	 * Wraps Java's {@link Consumer} in {@code ChannelConsumer}.
+	 */
 	static <T> ChannelConsumer<T> ofConsumer(@NotNull Consumer<T> consumer) {
 		return of(AsyncConsumer.of(consumer));
 	}
 
+	/**
+	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
+	 *
+	 * @see ChannelConsumer#of(AsyncConsumer, Cancellable)
+	 */
 	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer) {
 		return of(consumer, e -> {});
 	}
 
+	/**
+	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
+	 *
+	 * @param consumer AsyncConsumer to be wrapped
+	 * @param cancellable a Cancellable, which will be set to the returned ChannelConsumer
+	 * @param <T> type of data to be consumed
+	 * @return AbstractChannelConsumer which wraps AsyncConsumer
+	 */
 	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable Cancellable cancellable) {
 		return new AbstractChannelConsumer<T>(cancellable) {
 			final AsyncConsumer<T> thisConsumer = consumer;
@@ -122,6 +160,16 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a consumer which always returns Promise
+	 * of exception when accepts values.
+	 *
+	 * @param e an exception which is wrapped in returned
+	 *             Promise when {@code accept()} is called
+	 * @param <T> type of data to be consumed
+	 * @return an AbstractChannelConsumer which always
+	 * returns Promise of exception when accepts values
+	 */
 	static <T> ChannelConsumer<T> ofException(Throwable e) {
 		return new AbstractChannelConsumer<T>() {
 			@Override
@@ -132,6 +180,9 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * @see #ofSupplier(Function, ChannelQueue)
+	 */
 	static <T> ChannelConsumer<T> ofSupplier(Function<ChannelSupplier<T>, MaterializedPromise<Void>> supplier) {
 		return ofSupplier(supplier, new ChannelZeroBuffer<>());
 	}
@@ -144,6 +195,18 @@ public interface ChannelConsumer<T> extends Cancellable {
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
+	/**
+	 * Unwraps {@code ChannelConsumer} of provided {@code Promise}.
+	 * If provided Promise is already successfully completed, its
+	 * result will be returned, otherwise an {@code AbstractChannelConsumer}
+	 * is created, which waits for the Promise to be completed before accepting
+	 * any value. A Promise of Exception will be returned if Promise was completed
+	 * with an exception.
+	 *
+	 * @param promise Promise of {@code ChannelConsumer}
+	 * @param <T> type of data to be consumed
+	 * @return ChannelConsumer b
+	 */
 	static <T> ChannelConsumer<T> ofPromise(Promise<? extends ChannelConsumer<T>> promise) {
 		if (promise.isResult()) return promise.materialize().getResult();
 		MaterializedPromise<? extends ChannelConsumer<T>> materializedPromise = promise.materialize();
@@ -193,9 +256,9 @@ public interface ChannelConsumer<T> extends Cancellable {
 	}
 
 	/**
-	 * Wraps {@link AsyncTcpSocket#write(ByteBuf)} operation into {@link ChannelConsumer}
+	 * Wraps {@link AsyncTcpSocket#write(ByteBuf)} operation into {@link ChannelConsumer}.
 	 *
-	 * @return {@link ChannelConsumer} of  ByteBufs that will be sent to network
+	 * @return {@link ChannelConsumer} of ByteBufs that will be sent to network
 	 */
 	static ChannelConsumer<ByteBuf> ofSocket(AsyncTcpSocket socket) {
 		return ChannelConsumer.of(socket::write, socket)
@@ -204,6 +267,13 @@ public interface ChannelConsumer<T> extends Cancellable {
 	}
 
 
+	/**
+	 * Transforms current {@code ChannelConsumer} with provided {@link ChannelConsumerTransformer}.
+	 *
+	 * @param fn transformer of the {@code ChannelConsumer}
+	 * @param <R> result value after transformation
+	 * @return result of transformation applied to the current {@code ChannelConsumer}
+	 */
 	default <R> R transformWith(ChannelConsumerTransformer<T, R> fn) {
 		return fn.transform(this);
 	}
@@ -217,6 +287,15 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a wrapper ChannelConsumer which executes current
+	 * ChannelConsumer's {@code accept(T value)} within the
+	 * {@code asyncExecutor}.
+	 *
+	 * @param asyncExecutor executes ChannelConsumer
+	 * @return a wrapper of current ChannelConsumer which executes
+	 * in provided {@code asyncExecutor}
+	 */
 	default ChannelConsumer<T> withExecutor(AsyncExecutor asyncExecutor) {
 		return new AbstractChannelConsumer<T>(this) {
 			@Override
@@ -226,6 +305,15 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a wrapper ChannelConsumer - when its {@code accept(T value)}
+	 * is called, if provided {@code value} doesn't equal {@code null}, it
+	 * will be accepted by the provided {@code fn} first and then by this
+	 * ChannelConsumer.
+	 *
+	 * @param fn {@link Consumer} which accepts the value passed by {@code apply(T value)}
+	 * @return a wrapper ChannelConsumer
+	 */
 	default ChannelConsumer<T> peek(Consumer<? super T> fn) {
 		return new AbstractChannelConsumer<T>(this) {
 			@Override
@@ -236,6 +324,16 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a wrapper ChannelConsumer - when its {@code accept(T value)}
+	 * is called, {@code fn} will be applied to the provided {@code value} first
+	 * and the result of the {@code fn} will be accepted by current ChannelConsumer.
+	 * If provide {@code value} is {@code null}, {@code fn} won't be applied.
+	 *
+	 * @param fn {@link Function} to be applied to the value of {@code apply(T value)}
+	 * @param <V> type of data accepted and returned by the {@code fn} and accepted by ChannelConsumer
+	 * @return a wrapper ChannelConsumer
+	 */
 	default <V> ChannelConsumer<V> map(Function<? super V, ? extends T> fn) {
 		return new AbstractChannelConsumer<V>(this) {
 			@Override
@@ -256,6 +354,17 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a wrapper ChannelConsumer - when its {@code accept(T value)}
+	 * is called, {@code fn} will be applied to the provided {@code value} first
+	 * and the result of the {@code fn} will be accepted by current ChannelConsumer
+	 * asynchronously. If provided {@code value} is {@code null}, {@code fn} won't
+	 * be applied.
+	 *
+	 * @param fn {@link Function} to be applied to the value of {@code apply(T value)}
+	 * @param <V> type of data accepted by the {@code fn} and ChannelConsumer
+	 * @return a wrapper ChannelConsumer
+	 */
 	default <V> ChannelConsumer<V> mapAsync(Function<? super V, ? extends Promise<T>> fn) {
 		return new AbstractChannelConsumer<V>(this) {
 			@Override
@@ -268,6 +377,14 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a wrapper ChannelConsumer - when its {@code accept(T value)}
+	 * is called, current ChannelConsumer will accept the value only of it
+	 * passes {@link Predicate} test.
+	 *
+	 * @param predicate {@link Predicate} which is used to filter accepted value
+	 * @return a wrapper ChannelConsumer
+	 */
 	default ChannelConsumer<T> filter(Predicate<? super T> predicate) {
 		return new AbstractChannelConsumer<T>(this) {
 			@Override
@@ -282,6 +399,16 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates a wrapper ChannelConsumer - after its {@code accept(T value)}
+	 * is called and completed, an acknowledgement is returned. An acknowledgement
+	 * is a {@link SettablePromise} which is accepted by the provided {@code fn}
+	 * and then materialized.
+	 *
+	 * @param fn a function applied to the {@code SettablePromise} which is then
+	 *              materialized and returned
+	 * @return a wrapper ChannelConsumer
+	 */
 	default ChannelConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
 		SettablePromise<Void> acknowledgement = new SettablePromise<>();
 		MaterializedPromise<Void> newAcknowledgement = fn.apply(acknowledgement).materialize();
@@ -310,6 +437,9 @@ public interface ChannelConsumer<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Returns a MaterializedPromise as a marker of completion.
+	 */
 	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> cb) {
 		SettablePromise<Void> result = new SettablePromise<>();
 		cb.accept(ack -> ack.whenComplete(result::set));

@@ -24,6 +24,13 @@ import org.jetbrains.annotations.Nullable;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.lang.Integer.numberOfLeadingZeros;
 
+/**
+ * Represents a queue of elements which you can {@code put} and {@code take}.
+ * In order to mark if an object is pending put or take to/from the queue,
+ * there are corresponding {@code put} and {@code take} {@link SettablePromise}s.
+ *
+ * @param <T> the type of values that are stored in the buffer
+ */
 public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	private Exception exception;
 
@@ -39,28 +46,90 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	@Nullable
 	private SettablePromise<T> take;
 
+	/**
+	 * @see #ChannelBuffer(int, int)
+	 */
 	public ChannelBuffer(int bufferSize) {
 		this(0, bufferSize);
 	}
 
+	/**
+	 * Creates a ChannelBuffer with the buffer size of the next highest
+	 * power of 2 (for example, if {@code bufferMaxSize = 113}, a buffer
+	 * of 128 elements will be created).
+	 *
+	 * @param bufferMinSize a minimal amount of elements in the buffer
+	 * @param bufferMaxSize a max amount of elements in the buffer
+	 */
 	public ChannelBuffer(int bufferMinSize, int bufferMaxSize) {
 		this.bufferMinSize = bufferMinSize + 1;
 		this.bufferMaxSize = bufferMaxSize;
-		this.elements = new Object[32 - numberOfLeadingZeros(bufferMaxSize + 1)];
+		//This code computes the next highest power of 2 for a 32-bit integer bufferMaxSize
+		//If x is greater than 2^31, IllegalArgumentException will be thrown
+		int x = bufferMaxSize;
+		if (x > 0) {
+			x--;
+			x |= x >> 1;
+			x |= x >> 2;
+			x |= x >> 4;
+			x |= x >> 8;
+			x |= x >> 16;
+			x++;
+			if (x < 0) {
+				throw new IllegalArgumentException("Integer overflow");
+			}
+			this.elements = new Object[x];
+		} else {
+			this.elements = new Object[1];
+		}
 	}
 
+	/**
+	 * Checks if this buffer is saturated by comparing
+	 * its current size with {@code bufferMaxSize}.
+	 *
+	 * @return {@code true} if this buffer size is greater
+	 * than {@code bufferMaxSize}, otherwise returns {@code false}
+	 */
 	public boolean isSaturated() {
 		return size() > bufferMaxSize;
 	}
 
+	/**
+	 * Checks if this buffer will be saturated if at
+	 * least one more element will be added, by comparing
+	 * its current size with {@code bufferMaxSize}.
+	 *
+	 * @return {@code true} if this buffer size is
+	 * bigger or equal to the {@code bufferMaxSize},
+	 * otherwise returns {@code false}
+	 */
 	public boolean willBeSaturated() {
 		return size() >= bufferMaxSize;
 	}
 
+	/**
+	 * Checks if this buffer has less
+	 * elements than {@code bufferMinSize}.
+	 *
+	 * @return {@code true} if this buffer size is
+	 * smaller than {@code bufferMinSize},
+	 * otherwise returns {@code false}
+	 */
 	public boolean isExhausted() {
 		return size() < bufferMinSize;
 	}
 
+	/**
+	 * Checks if this buffer will have less elements
+	 * than {@code bufferMinSize}, if at least one
+	 * more element will be taken, by comparing its
+	 * current size with {@code bufferMinSize}.
+	 *
+	 * @return {@code true} if this buffer size is
+	 * smaller or equal to the {@code bufferMinSize},
+	 * otherwise returns {@code false}
+	 */
 	public boolean willBeExhausted() {
 		return size() <= bufferMinSize;
 	}
@@ -73,14 +142,27 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		return take != null;
 	}
 
+	/**
+	 * Returns amount of elements in this buffer.
+	 */
 	public int size() {
 		return (tail - head) & (elements.length - 1);
 	}
 
+	/**
+	 * Checks if this buffer contains elements.
+	 *
+	 * @return {@code true} if {@code tail}
+	 * and {@code head} indexes are equal,
+	 * otherwise {@code false}
+	 */
 	public boolean isEmpty() {
 		return tail == head;
 	}
 
+	/**
+	 * Adds provided item to the buffer and resets current {@code take}.
+	 */
 	public void add(@Nullable T item) throws Exception {
 		if (exception == null) {
 			if (take != null) {
@@ -118,6 +200,23 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		tail = elements.length;
 	}
 
+	/**
+	 * Returns the element of {@code head} index of
+	 * the buffer if it is not empty, otherwise returns
+	 * {@code null}. Increases the value of {@code head}.
+	 * <p>
+	 * If the buffer will have less elements than {@code bufferMinSize}
+	 * after this poll and {@code put} promise is not {@code null},
+	 * {@code put} will be set {@code null} after the poll.
+	 * <p>
+	 * If current {@code exception} is not {@code null},
+	 * it will be thrown.
+	 *
+	 * @return element of this buffer at {@code head}
+	 * index if the buffer is not empty, otherwise {@code null}
+	 * @throws Exception if current {@code exception}
+	 * is not {@code null}
+	 */
 	@Nullable
 	public T poll() throws Exception {
 		if (exception != null) throw exception;
@@ -142,6 +241,25 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		return result;
 	}
 
+	/**
+	 * Puts {@code value} in this buffer at {@code tail}
+	 * index and increases {@code tail} value. If after the
+	 * operation {@code tail} will be equal to {@code head},
+	 * the buffer capacity will be doubled.
+	 * <p>
+	 * Current {@code put} must be {@code null}. If
+	 * current {@code exception} is not {@code null},
+	 * a promise of this exception will be returned and
+	 * the {@code value} will be recycled.
+	 * <p>
+	 * If this {@code take} is not {@code null}, the value
+	 * will be set directly to the {@code set}, without
+	 * adding to the buffer.
+	 *
+	 * @param value a value passed to the buffer
+	 * @return promise of {@code null} or {@code exception}
+	 * as a marker of completion
+	 */
 	@Override
 	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
@@ -168,6 +286,20 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		}
 	}
 
+	/**
+	 * Returns a promise of the {@code head} index of
+	 * the {@code buffer} if it is not empty.
+	 * <p>
+	 * If this buffer will be exhausted after this
+	 * take and {@code put} promise is not {@code null},
+	 * {@code put} will be set {@code null} after the poll.
+	 * <p>
+	 * Current {@code take} must be {@code null}. If
+	 * current {@code exception} is not {@code null},
+	 * a promise of this exception will be returned.
+	 *
+	 * @return promise of element taken from the buffer
+	 */
 	@Override
 	public Promise<T> take() {
 		assert take == null;
@@ -192,6 +324,14 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		}
 	}
 
+	/**
+	 * Closes the buffer if this {@code exception} is not
+	 * {@code null}. Recycles all elements of the buffer and
+	 * sets {@code elements}, {@code put} and {@code take} to
+	 * {@code null}.
+	 *
+	 * @param e exception that is used to close buffer with
+	 */
 	@Override
 	public void close(@NotNull Throwable e) {
 		if (exception != null) return;

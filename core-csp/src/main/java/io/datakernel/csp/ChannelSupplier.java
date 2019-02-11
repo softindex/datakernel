@@ -39,34 +39,56 @@ import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
- * This interface represents supplier of {@link Promise} of data that should be used serially (each consecutive {@link #get()})
- * operation should be called only after previous {@link #get()} operation finishes.
+ * This interface represents supplier of {@link Promise} of data that should be used serially
+ * (each consecutive {@link #get()}) operation should be called only after previous
+ * {@link #get()} operation finishes.
  * <p>
- * After supplier is closed, all subsequent calls to {@link #get()} will return promise, completed exceptionally.
+ * After supplier is closed, all subsequent calls to {@link #get()} will return promise,
+ * completed exceptionally.
  * <p>
- * If any exception is caught while supplying data items, {@link #close(Throwable)} method should
- * be called. All resources should be freed and the caught exception should be propagated to all related processes.
+ * If any exception is caught while supplying data items, {@link #close(Throwable)} method
+ * should be called. All resources should be freed and the caught exception should be
+ * propagated to all related processes.
  * <p>
- * If {@link #get()} returns {@link Promise} of {@code null}, it represents end-of-stream and means that no additional
- * data should be querried.
+ * If {@link #get()} returns {@link Promise} of {@code null}, it represents end-of-stream
+ * and means that no additional data should be queried.
  */
 public interface ChannelSupplier<T> extends Cancellable {
 	@NotNull
 	Promise<T> get();
 
+	/**
+	 * Returns a ChannelSupplier received from {@link ChannelQueue}.
+	 */
 	static <T> ChannelSupplier<T> ofConsumer(Consumer<ChannelConsumer<T>> consumer, ChannelQueue<T> queue) {
 		consumer.accept(queue.getConsumer());
 		return queue.getSupplier();
 	}
 
+	/**
+	 * Wraps provided default {@link Supplier} to ChannelSupplier.
+	 */
 	static <T> ChannelSupplier<T> ofSupplier(Supplier<? extends Promise<T>> supplier) {
 		return of(AsyncSupplier.of(supplier));
 	}
 
+	/**
+	 * @see #of(AsyncSupplier, Cancellable)
+	 */
 	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier) {
 		return of(supplier, null);
 	}
 
+	/**
+	 * Wraps {@link AsyncSupplier} in ChannelSupplier, when {@code get()}
+	 * is called, {@code AsyncSupplier}'s {@code get()} will be executed.
+	 *
+	 * @param supplier an {@code AsyncSupplier} to be wrapped in ChannelSupplier
+	 * @param cancellable a {@code Cancellable} which will be set
+	 *                       for the ChannelSupplier wrapper
+	 * @param <T> data type wrapped in {@code AsyncSupplier} and ChannelSupplier
+	 * @return ChannelSupplier which wraps {@code AsyncSupplier}
+	 */
 	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier, @Nullable Cancellable cancellable) {
 		return new AbstractChannelSupplier<T>(cancellable) {
 			@Override
@@ -76,31 +98,62 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Returns a {@link ChannelSuppliers.ChannelSupplierEmpty}.
+	 */
 	static <T> ChannelSupplier<T> of() {
 		return new ChannelSuppliers.ChannelSupplierEmpty<>();
 	}
 
+	/**
+	 * Wraps provided {@code value} to a {@link ChannelSuppliers.ChannelSupplierOfValue}.
+	 *
+	 * @param value a value to be wrapped in ChannelSupplier
+	 * @return a {@code ChannelSupplierOfValue} which wraps the {@code value}
+	 */
 	static <T> ChannelSupplier<T> of(T value) {
 		return new ChannelSuppliers.ChannelSupplierOfValue<>(value);
 	}
 
+	/**
+	 * @see #ofIterator(Iterator)
+	 */
 	@SafeVarargs
 	static <T> ChannelSupplier<T> of(T... values) {
 		return ofIterator(asIterator(values));
 	}
 
+	/**
+	 * Returns a {@link ChannelSuppliers.ChannelSupplierOfException}
+	 * of provided exception.
+	 *
+	 * @param e a {@link Throwable} to be wrapped in ChannelSupplier
+	 */
 	static <T> ChannelSupplier<T> ofException(Throwable e) {
 		return new ChannelSuppliers.ChannelSupplierOfException<>(e);
 	}
 
+	/**
+	 * @see #ofIterator(Iterator)
+	 */
 	static <T> ChannelSupplier<T> ofIterable(Iterable<? extends T> iterable) {
 		return ofIterator(iterable.iterator());
 	}
 
+	/**
+	 * @see #ofIterator(Iterator)
+	 */
 	static <T> ChannelSupplier<T> ofStream(Stream<? extends T> stream) {
 		return ofIterator(stream.iterator());
 	}
 
+	/**
+	 * Wraps provided {@code Iterator} into
+	 * {@link ChannelSuppliers.ChannelSupplierOfIterator}.
+	 *
+	 * @param iterator an iterator to be wrapped in ChannelSupplier
+	 * @return a ChannelSupplier which wraps elements of <T> type
+	 */
 	static <T> ChannelSupplier<T> ofIterator(Iterator<? extends T> iterator) {
 		return new ChannelSuppliers.ChannelSupplierOfIterator<>(iterator);
 	}
@@ -114,6 +167,21 @@ public interface ChannelSupplier<T> extends Cancellable {
 		return ChannelSuppliers.prefetch(ChannelSupplier.of(socket::read, socket));
 	}
 
+	/**
+	 * Wraps {@code promise} of ChannelSupplier in ChannelSupplier or
+	 * returns the ChannelSupplier from {@code promise} itself.
+	 * <p>
+	 * If {@code promise} is completed, it will be materialized and its result
+	 * (a ChannelSupplier) will be returned.
+	 * <p>
+	 * Otherwise, when {@code get()} is called, it will wait until {@code promise}
+	 * completes and {@code promise} result's (a ChannelSupplier) {@code get()}
+	 * operation will be executed. If the {@code promise} completes exceptionally,
+	 * a {@code promise} of exception will be returned.
+	 *
+	 * @param promise wraps a {@code ChannelSupplier}
+	 * @return a ChannelSupplier of {@code promise} or a wrapper ChannelSupplier
+	 */
 	static <T> ChannelSupplier<T> ofPromise(Promise<? extends ChannelSupplier<T>> promise) {
 		if (promise.isResult()) return promise.materialize().getResult();
 		MaterializedPromise<? extends ChannelSupplier<T>> materializedPromise = promise.materialize();
@@ -161,10 +229,21 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Transforms this ChannelSupplier with the provided {@code fn}.
+	 *
+	 * @param <R> returned result after transformation
+	 * @param fn {@link ChannelSupplierTransformer} applied to the ChannelSupplier
+	 */
 	default <R> R transformWith(ChannelSupplierTransformer<T, R> fn) {
 		return fn.transform(this);
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier and makes its promise
+	 * complete asynchronously.
+	 */
 	default ChannelSupplier<T> async() {
 		return new AbstractChannelSupplier<T>(this) {
 			@Override
@@ -174,6 +253,11 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier and makes its promise
+	 * executed by the provided {@code asyncExecutor}.
+	 */
 	default ChannelSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {
 		return new AbstractChannelSupplier<T>(this) {
 			@Override
@@ -183,6 +267,11 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier and when its Promise completes
+	 * successfully, the result is accepted by the provided {@code fn}.
+	 */
 	default ChannelSupplier<T> peek(Consumer<? super T> fn) {
 		return new AbstractChannelSupplier<T>(this) {
 			@Override
@@ -193,6 +282,11 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier and when its Promise completes,
+	 * applies provided {@code fn} to the result.
+	 */
 	default <V> ChannelSupplier<V> map(Function<? super T, ? extends V> fn) {
 		return new AbstractChannelSupplier<V>(this) {
 			@Override
@@ -214,6 +308,11 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier and applies provided {@code fn}
+	 * to its Promise asynchronously.
+	 */
 	default <V> ChannelSupplier<V> mapAsync(Function<? super T, ? extends Promise<V>> fn) {
 		return new AbstractChannelSupplier<V>(this) {
 			@Override
@@ -226,6 +325,12 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier and checks if its Promise's value(s)
+	 * match(es) the predicate, leaving only those value(s) which pass the test.
+	 */
 	default ChannelSupplier<T> filter(Predicate<? super T> predicate) {
 		return new AbstractChannelSupplier<T>(this) {
 			@Override
@@ -251,6 +356,12 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier} based on current
+	 * ChannelSupplier, when its {@code get} is called, its values will be returned
+	 * until they don't fit the {@code predicate}. If one of the results passed the
+	 * {@code predicate test}, consequent {@code get} operations will return {@code null}.
+	 */
 	default ChannelSupplier<T> until(Predicate<? super T> predicate) {
 		return new AbstractChannelSupplier<T>(this) {
 			boolean stop = false;
@@ -274,6 +385,12 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Creates and returns a new {@link AbstractChannelSupplier}
+	 * based on current ChannelSupplier. Even if its Promise completes
+	 * with an exception, {@code get()} method will return a successfully
+	 * completed Promise (in case of exception, with {@code null} result value).
+	 */
 	default ChannelSupplier<T> lenient() {
 		return new AbstractChannelSupplier<T>(this) {
 			@Override
@@ -283,19 +400,31 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * @see ChannelSuppliers#streamTo(ChannelSupplier, ChannelConsumer)
+	 */
 	default MaterializedPromise<Void> streamTo(ChannelConsumer<T> consumer) {
 		return ChannelSuppliers.streamTo(this, consumer);
 	}
 
+	/**
+	 * Binds this ChannelSupplier to provided {@link ChannelInput}
+	 */
 	default MaterializedPromise<Void> bindTo(ChannelInput<T> to) {
 		return to.set(this);
 	}
 
+	/**
+	 * @see ChannelSuppliers#collect
+	 */
 	default <A, R> Promise<R> toCollector(Collector<T, A, R> collector) {
 		return ChannelSuppliers.collect(this,
 				collector.supplier().get(), collector.accumulator(), collector.finisher());
 	}
 
+	/**
+	 * @see #toCollector(Collector)
+	 */
 	default Promise<List<T>> toList() {
 		return toCollector(Collectors.toList());
 	}

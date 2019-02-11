@@ -32,19 +32,43 @@ import java.util.function.Function;
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
+/**
+ * Provides additional functionality for managing {@link ChannelSupplier}s.
+ */
 public final class ChannelSuppliers {
 	private ChannelSuppliers() {
 	}
 
+	/**
+	 * @see #concat(Iterator)
+	 */
 	public static <T> ChannelSupplier<T> concat(ChannelSupplier<? extends T> supplier1, ChannelSupplier<? extends T> supplier2) {
 		return concat(CollectionUtils.asIterator(supplier1, supplier2));
 	}
 
+	/**
+	 * @see #concat(Iterator)
+	 */
 	@SafeVarargs
 	public static <T> ChannelSupplier<T> concat(ChannelSupplier<? extends T>... suppliers) {
 		return concat(CollectionUtils.asIterator(suppliers));
 	}
 
+	/**
+	 * Creates a new ChannelSupplier which on {@code get()} call returns
+	 * the result wrapped in {@code promise} of the first ChannelSuppliers'
+	 * {@code promise} that was successfully completed with a non-null result.
+	 * If all of the ChannelSuppliers of the iterator have a {@code null}
+	 * {@code promise} result, a {@code promise} of {@code null} will be returned.
+	 * <p>
+	 * If one of the ChannelSuppliers' {@code promises} completes with an exception,
+	 * all subsequent elements of the iterator will be closed and a
+	 * {@code promise} of exception will be returned.
+	 *
+	 * @param iterator an iterator of ChannelSuppliers
+	 * @param <T> type of data wrapped in the ChannelSuppliers
+	 * @return a ChannelSupplier of {@code <T>}
+	 */
 	public static <T> ChannelSupplier<T> concat(Iterator<? extends ChannelSupplier<? extends T>> iterator) {
 		return new AbstractChannelSupplier<T>() {
 			ChannelSupplier<? extends T> current = ChannelSupplier.of();

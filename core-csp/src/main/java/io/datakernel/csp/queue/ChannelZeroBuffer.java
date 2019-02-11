@@ -23,6 +23,15 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 
+/**
+ * Represents a buffer of zero capacity and stores only
+ * one value. There are {@code take} and {@code put}
+ * {@link SettablePromise}s which represent status of
+ * corresponding operations. Unless they are {@code null},
+ * they are waiting for the operation to be completed.
+ *
+ * @param <T> type of data passed through the buffer
+ */
 public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	private Exception exception;
 
@@ -34,6 +43,13 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	@Nullable
 	private SettablePromise<T> take;
 
+	/**
+	 * Shows if this buffer is waiting for take
+	 * or put operation to be completed.
+	 *
+	 * @return {@code true} if either {@code put}
+	 * or {@code take} doesn't equal {@code null}
+	 */
 	public boolean isWaiting() {
 		return take != null || put != null;
 	}
@@ -46,6 +62,25 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 		return take != null;
 	}
 
+	/**
+	 * Sets the provided {@code value} to current {@code value},
+	 * then sets {@code put} as a new {@link SettablePromise}
+	 * and returns it.
+	 * <p>
+	 * If {@code take} isn't {@code null}, the {@code value}
+	 * will be set to it.
+	 * <p>
+	 * Current {@code put} must be {@code null}. If current
+	 * {@code exception} is not {@code null}, provided
+	 * {@code value} will be recycled and a promise of the
+	 * exception will be returned.
+	 *
+	 * @param value a value passed to the buffer
+	 * @return {@code put} if current {@code take} is {@code null},
+	 * otherwise returns a successfully completed promise. If
+	 * current {@code exception} is not {@code null}, a promise of
+	 * the {@code exception} will be returned.
+	 */
 	@Override
 	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
@@ -66,6 +101,22 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 		}
 	}
 
+	/**
+	 * Returns a promise of current {@code value}, if
+	 * the {@code put} is not {@code null}.
+	 * <p>
+	 * Sets {@code put} and {@code value} as {@code null}
+	 * after the operation.
+	 * <p>
+	 * If the {@code put} is {@code null}, sets {@code take}
+	 * as a new {@link SettablePromise} and returns it. If
+	 * current {@code exception} is not {@code null}, returns
+	 * a promise of the exception and does nothing else.
+	 *
+	 * @return a promise of the {@code value} or of {@code null}.
+	 * If this {@code exception} is not {@code null}, returns a
+	 * promise of exception.
+	 */
 	@Override
 	public Promise<T> take() {
 		assert take == null;
@@ -86,6 +137,14 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 		}
 	}
 
+	/**
+	 * Closes the buffer if this {@code exception} is not
+	 * {@code null}. Recycles all elements of the buffer and
+	 * sets {@code elements}, {@code put} and {@code take} to
+	 * {@code null}.
+	 *
+	 * @param e exception that is used to close buffer with
+	 */
 	@Override
 	public void close(@NotNull Throwable e) {
 		if (exception != null) return;
