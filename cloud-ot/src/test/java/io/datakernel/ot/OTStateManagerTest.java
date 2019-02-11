@@ -181,7 +181,7 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = () -> 1;
 		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
-			public Promise<ProtoCommit<Integer>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+			public Promise<ProtoCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
 				return failOnce(() -> super.createCommit(parent, diffs, level));
 			}
 		};
@@ -251,7 +251,7 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = asList(3, 4, 5).iterator()::next;
 		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
-			public Promise<Void> push(ProtoCommit<Integer> commit) {
+			public Promise<Void> push(ProtoCommit<Integer, TestOp> commit) {
 				return failOnce(() -> super.push(commit));
 			}
 		};
@@ -292,12 +292,12 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Promise<ProtoCommit<Integer>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+		public Promise<ProtoCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
 			return node.createCommit(parent, diffs, level);
 		}
 
 		@Override
-		public Promise<Void> push(ProtoCommit<Integer> commit) {
+		public Promise<Void> push(ProtoCommit<Integer, TestOp> commit) {
 			return node.push(commit);
 		}
 

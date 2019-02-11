@@ -33,11 +33,13 @@ import java.util.List;
 
 import static io.datakernel.async.AsyncSuppliers.resubscribe;
 import static io.datakernel.async.Promises.sequence;
+import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.isShallowEquals;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public final class OTStateManager<K, D> implements EventloopService {
@@ -56,7 +58,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private List<D> workingDiffs = new ArrayList<>();
 
 	@Nullable
-	private ProtoCommit<K> pendingCommit;
+	private ProtoCommit<K, D> pendingCommit;
 
 	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
 		this.eventloop = eventloop;
@@ -157,7 +159,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 					pendingCommit = commit;
 					assert isShallowEquals(workingDiffs.subList(0, workingDiffsCopy.size()), workingDiffsCopy);
 					workingDiffs = new ArrayList<>(workingDiffs.subList(workingDiffsCopy.size(), workingDiffs.size()));
-					revision = commit.getCommitId();
+					revision = commit.getId();
 				})
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
@@ -171,12 +173,20 @@ public final class OTStateManager<K, D> implements EventloopService {
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
+	public void reset() {
+		apply(otSystem.invert(concat(
+				pendingCommit != null ? pendingCommit.getDiffs() : emptyList(),
+				workingDiffs)));
+		pendingCommit = null;
+		workingDiffs.clear();
+	}
+
 	public void add(@NotNull D diff) {
 		checkState(isValid());
 		addAll(singletonList(diff));
 	}
 
-	public void addAll(@NotNull List<D> diffs) {
+	public void addAll(@NotNull List<? extends D> diffs) {
 		checkState(isValid());
 		try {
 			for (D diff : diffs) {

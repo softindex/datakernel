@@ -29,7 +29,8 @@ import static java.util.stream.Collectors.toSet;
 public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
 
-	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation, Promise<AggregationDiff>>>() {
+	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation,
+			Promise<AggregationDiff>>>() {
 		private boolean hotSegment = false;
 
 		@Override
@@ -99,7 +100,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 					stateManager.add(cubeDiffScheme.wrap(cubeDiff));
 					return Promise.complete()
 							.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
-							.thenCompose($ -> stateManager.sync())
+							.thenCompose($ -> stateManager.sync().whenException(e -> stateManager.reset()))
 							.whenComplete(toLogger(logger, thisMethod(), cubeDiff));
 				})
 				.whenComplete(promiseConsolidate.recordStats())
