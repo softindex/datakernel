@@ -25,7 +25,7 @@
 		<module>core-bytebuf</module>
 		<module>core-codegen</module>
 		<module>core-serializer</module>
-		<module>core-json</module>
+		<module>core-codec</module>
 		<module>core-promise</module>
 		<module>core-csp</module>
 		<module>core-net</module>

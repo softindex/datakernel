@@ -124,12 +124,12 @@ content loading.
 [HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http)  
 [Benchmark](https://github.com/softindex/datakernel/tree/master/core-http#benchmark)
 
-### [JSON](https://github.com/softindex/datakernel/tree/master/core-json)
+### [Codec](https://github.com/softindex/datakernel/tree/master/core-codec)
 
 Contains tools for encoding/decoding primitives and objects with built-in support of conversion to/from JSON and ByteBuf. 
 The process resembles serialization and can be used to convert objects to a custom representation.
 
-[JSON examples](https://github.com/softindex/datakernel/tree/master/examples/codec)  
+[Codec examples](https://github.com/softindex/datakernel/tree/master/examples/codec)  
 
 ## Cloud components
 
