@@ -16,18 +16,21 @@
 
 package io.global.ot.demo.util;
 
+import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.http.ContentType;
+import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
+import io.global.ot.common.ManagerProvider;
 import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
 
-import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
@@ -42,15 +45,15 @@ import static java.util.Collections.singletonList;
 
 @SuppressWarnings("WeakerAccess")
 public final class Utils {
-	private Utils() {
-		throw new AssertionError();
-	}
-
 	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
-	public static final Function<Operation, String> OPERATION_TO_STRING = operation -> {
+	public static final Function<Operation, String> DIFF_TO_STRING = operation -> {
 		int value = operation.getValue();
 		return (value > 0 ? "+" : "-") + value;
 	};
+
+	private Utils() {
+		throw new AssertionError();
+	}
 
 	public static final StructuredCodec<Operation> OPERATION_CODEC = StructuredCodec.of(
 			in -> AddOperation.add(Integer.parseInt(in.readString())),
@@ -64,10 +67,10 @@ public final class Utils {
 			(out, item) -> out.writeString(toHexString(item.toBytes()))
 	);
 
-	public static final StructuredCodec<Tuple4<CommitId, Integer, List<Operation>, String>> INFO_CODEC = tuple(Tuple4::new,
+	public static final StructuredCodec<Tuple4<CommitId, Integer, String, String>> INFO_CODEC = tuple(Tuple4::new,
 			Tuple4::getValue1, COMMIT_ID_HASH,
 			Tuple4::getValue2, INT_CODEC,
-			Tuple4::getValue3, ofList(OPERATION_CODEC),
+			Tuple4::getValue3, STRING_CODEC,
 			Tuple4::getValue4, STRING_CODEC);
 
 	public static HttpResponse okText() {
@@ -85,5 +88,22 @@ public final class Utils {
 				.withEmptyPredicate(AddOperation.class, addOperation -> addOperation.getValue() == 0)
 				.withInvertFunction(AddOperation.class, addOperation -> singletonList(add(-addOperation.getValue())))
 				.withSquashFunction(AddOperation.class, AddOperation.class, (op1, op2) -> add(op1.getValue() + op2.getValue()));
+	}
+
+	public static Promise<OTStateManager<CommitId, Operation>> getManager(ManagerProvider<Operation> managerProvider, HttpRequest request) {
+		String id = request.getQueryParameterOrNull("id");
+		if (id == null || id.isEmpty()) {
+			return Promise.of(null);
+		} else {
+			return managerProvider.get(id);
+		}
+	}
+
+	public static String getNextId(ManagerProvider<Operation> managerProvider) {
+		return String.valueOf(managerProvider.getIds()
+				.stream()
+				.map(Integer::valueOf)
+				.sorted()
+				.reduce(0, (acc, next) -> !next.equals(acc) ? acc : next + 1));
 	}
 }

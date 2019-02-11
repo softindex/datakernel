@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.async.Promises.toList;
@@ -256,7 +257,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			return Promise.ofException(new NoSuchElementException());
 		}
 
-		HashSet<OTCommit<K, D>> commits = new HashSet<>(queue);
+		Set<OTCommit<K, D>> commits = new HashSet<>(queue);
 		if (matchPredicate.test(commits)) {
 			return Promise.of(commits.stream().map(OTCommit::getId).collect(toSet()));
 		}
@@ -416,7 +417,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	private Promise<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
 		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
-		return loadGraph(heads)
+		return loadForMerge(heads)
 				.thenCompose(graph -> {
 					try {
 						Map<K, List<D>> mergeResult = graph.merge(graph.excludeParents(heads));
@@ -455,8 +456,6 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			K node = commit.getId();
 			Map<K, List<D>> parents = commit.getParents();
 
-			graph.setNodeTimestamp(commit.getId(), commit.getTimestamp());
-
 			Set<K> affectedHeads = root2heads.remove(node);
 			for (K affectedHead : affectedHeads) {
 				head2roots.get(affectedHead).remove(node);
@@ -471,9 +470,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				}
 			}
 
-			for (K parent : parents.keySet()) {
-				graph.addEdge(parent, node, parents.get(parent));
-			}
+			graph.addNode(commit);
 
 			if (head2roots.keySet()
 					.stream()
@@ -491,14 +488,30 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
+	public Promise<OTLoadedGraph<K, D>> loadForMerge(Set<K> heads) {
 		return reduce(heads, new LoadGraphReducer())
-//				.whenException(e -> {
-//					if (logger.isTraceEnabled()) {
-//						logger.error(graph.toGraphViz() + "\n", e);
-//					}
-//				})
 				.whenComplete(toLogger(logger, thisMethod(), heads));
+	}
+
+	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads, OTLoadedGraph<K, D> graph) {
+		return visit(heads,
+				commit -> {
+					if (graph.hasVisited(commit.getId())) {
+						return Promise.of(SKIP_COMMIT);
+					}
+					graph.addNode(commit);
+					return commit.isRoot() ? Promise.of(BREAK) : Promise.of(CONTINUE);
+				})
+				.thenApply($ -> graph)
+				.whenComplete(toLogger(logger, thisMethod(), heads, graph));
+	}
+
+	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
+		return loadGraph(heads, new OTLoadedGraph<>(otSystem));
+	}
+
+	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads, Function<K, String> idToString, Function<D, String> diffToString) {
+		return loadGraph(heads, new OTLoadedGraph<>(otSystem, idToString, diffToString));
 	}
 
 	@JmxAttribute

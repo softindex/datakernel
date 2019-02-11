@@ -26,20 +26,22 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTAlgorithms;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.api.OTStateServlet;
 import io.global.ot.demo.operations.Operation;
-import io.global.ot.graph.NodesWalker;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 
+import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 final class HttpModule extends AbstractModule {
 	private static final String DEFAULT_PATH_TO_RESOURCES = "src/main/resources/static";
+	private static final Duration DEFAULT_SYNC_INTERVAL = Duration.ofSeconds(2);
 
 	@Provides
 	@Singleton
@@ -50,11 +52,12 @@ final class HttpModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncServlet provideMainServlet(Eventloop eventloop, OTStateManager<CommitId, Operation> stateManager, NodesWalker<CommitId, Operation> walker) {
+	AsyncServlet provideMainServlet(Eventloop eventloop, OTAlgorithms<CommitId, Operation> algorithms, Config config) {
 		Path resources = Paths.get(DEFAULT_PATH_TO_RESOURCES);
 		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), resources);
 		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
-		return OTStateServlet.create(stateManager, walker).getMiddlewareServlet()
+		Duration interval = config.get(ofDuration(), "sync.inte", DEFAULT_SYNC_INTERVAL);
+		return OTStateServlet.create(algorithms, interval).getMiddlewareServlet()
 				.withFallback(staticServlet);
 	}
 }

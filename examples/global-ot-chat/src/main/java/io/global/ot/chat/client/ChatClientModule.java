@@ -3,7 +3,6 @@ package io.global.ot.chat.client;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -21,6 +20,7 @@ import io.global.ot.chat.operations.ChatOperation;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
+import io.global.ot.common.ManagerProvider;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 import io.global.ot.util.Bootstrap;
@@ -52,7 +52,6 @@ public final class ChatClientModule extends AbstractModule {
 	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
 	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("src/main/resources/static");
 	private static final Duration DEFAULT_SYNC_INTERVAL = Duration.ofSeconds(2);
-	private static final Duration DEFAULT_SYNC_INITIAL_DELAY = Duration.ofMillis(0);
 
 	@Override
 	protected void configure() {
@@ -69,7 +68,7 @@ public final class ChatClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	AsyncHttpServer provideServer(Eventloop eventloop, MiddlewareServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, servlet)
+		return AsyncHttpServer.create(eventloop, ensureSessionID(servlet))
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
@@ -86,8 +85,9 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTGraphServlet<CommitId, ChatOperation> provideGraphServlet(OTRepository<CommitId, ChatOperation> repository) {
-		return OTGraphServlet.create(repository, getCommitIdToString(), getChatOperationToString());
+	OTGraphServlet<CommitId, ChatOperation> provideGraphServlet(OTAlgorithms<CommitId, ChatOperation> algorithms, ManagerProvider<ChatOperation> managerProvider) {
+		return OTGraphServlet.create(algorithms, ID_TO_STRING, DIFF_TO_STRING)
+				.withCurrentCommit(request -> getManager(managerProvider, request).thenApply(OTStateManager::getRevision));
 	}
 
 	@Provides
@@ -106,14 +106,14 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	ClientServlet provideClientServlet(OTStateManager<CommitId, ChatOperation> stateManager) {
-		return ClientServlet.create(stateManager);
+	ClientServlet provideClientServlet(ManagerProvider<ChatOperation> managerProvider) {
+		return ClientServlet.create(managerProvider);
 	}
 
 	@Provides
 	@Singleton
-	OTStateManager<CommitId, ChatOperation> provideStateManager(Eventloop eventloop, OTAlgorithms<CommitId, ChatOperation> algorithms) {
-		return new OTStateManager<>(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), new ChatOTState());
+	ManagerProvider<ChatOperation> provideManagerProvider(OTAlgorithms<CommitId, ChatOperation> algorithms, Config config) {
+		return new ManagerProvider<>(algorithms, ChatOTState::new, config.get(ofDuration(), "sync.interval", DEFAULT_SYNC_INTERVAL));
 	}
 
 	@Provides
@@ -149,11 +149,4 @@ public final class ChatClientModule extends AbstractModule {
 		return config.get(ofMyRepositoryId(OPERATION_CODEC), "credentials", DEMO_MY_REPOSITORY_ID);
 	}
 
-	@Provides
-	@Singleton
-	EventloopTaskScheduler provideSyncScheduler(Eventloop eventloop, OTStateManager<CommitId, ChatOperation> stateManager, Config config) {
-		return EventloopTaskScheduler.create(eventloop, stateManager::sync)
-				.withInterval(config.get(ofDuration(), "sync.interval", DEFAULT_SYNC_INTERVAL))
-				.withInitialDelay(config.get(ofDuration(), "sync.initialDelay", DEFAULT_SYNC_INITIAL_DELAY));
-	}
 }

@@ -25,8 +25,10 @@ import java.util.function.Function;
 
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Utils.coalesce;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
+import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.*;
 
 @SuppressWarnings("StringConcatenationInsideStringBufferAppend")
@@ -35,6 +37,12 @@ public class OTLoadedGraph<K, D> {
 
 	public OTLoadedGraph(OTSystem<D> otSystem) {
 		this.otSystem = otSystem;
+	}
+
+	public OTLoadedGraph(OTSystem<D> otSystem, @Nullable Function<K, String> idToString, @Nullable Function<D, String> diffToString) {
+		this.otSystem = otSystem;
+		this.idToString = coalesce(idToString, this.idToString);
+		this.diffToString = coalesce(diffToString, this.diffToString);
 	}
 
 	private static final class MergeNode {
@@ -61,29 +69,44 @@ public class OTLoadedGraph<K, D> {
 			if (node2 instanceof MergeNode) {
 				return -1;
 			} else {
-				Long timestamp1 = timestamps.getOrDefault(node1, 0L);
-				Long timestamp2 = timestamps.getOrDefault(node2, 0L);
-				return Long.compare(timestamp1, timestamp2);
+				Long level1 = levels.getOrDefault(node1, 0L);
+				Long level2 = levels.getOrDefault(node2, 0L);
+				return Long.compare(level1, level2);
 			}
 		}
 	}
 
 	private final OTSystem<D> otSystem;
 
-	private final Map<K, Long> timestamps = new HashMap<>();
-	protected final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
-	protected final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
+	private final Map<K, Long> levels = new HashMap<>();
+	private final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
+	private final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
 	private Function<K, String> idToString = Objects::toString;
 	private Function<D, String> diffToString = Objects::toString;
 
-
-	public void setNodeTimestamp(K node, long timestamp) {
-		timestamps.put(node, timestamp);
+	void setNodeLevel(K node, long level) {
+		levels.put(node, level);
 	}
 
-	public void addEdge(K parent, K child, List<D> diff) {
+	void addEdge(K parent, K child, List<D> diff) {
 		child2parent.computeIfAbsent(child, $ -> new HashMap<>()).put(parent, diff);
 		parent2child.computeIfAbsent(parent, $ -> new HashMap<>()).put(child, diff);
+	}
+
+	public void addNode(OTCommit<K, D> commit) {
+		K node = commit.getId();
+		levels.put(node, commit.getLevel());
+
+		if (commit.isRoot()) {
+			parent2child.computeIfAbsent(node, $ -> new HashMap<>());
+			return;
+		}
+
+		commit.getParents().forEach((parent, diffs) -> addEdge(parent, node, diffs));
+	}
+
+	public boolean hasVisited(K node) {
+		return levels.keySet().contains(node);
 	}
 
 	public Map<K, List<D>> getParents(K child) {
@@ -231,10 +254,12 @@ public class OTLoadedGraph<K, D> {
 	}
 
 	public String toGraphViz() {
-		return toGraphViz(null);
+		Set<K> tips = getTips();
+		K currentCommit = tips.isEmpty() ? first(getRoots()) : first(getTips());
+		return toGraphViz(currentCommit);
 	}
 
-	private String toGraphViz(@Nullable K revision) {
+	public String toGraphViz(@Nullable K currentCommit) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n");
 		for (K child : child2parent.keySet()) {
@@ -249,12 +274,12 @@ public class OTLoadedGraph<K, D> {
 						diffsToGraphViz(diffs) +
 						"\"];\n");
 			}
-			addStyle(sb, child, revision);
+			addStyle(sb, child, currentCommit);
 		}
 
 		Set<K> roots = getRoots();
 		for (K root : roots) {
-			addStyle(sb, root, revision);
+			addStyle(sb, root, currentCommit);
 		}
 
 		sb.append("\t{ rank=same; " +
@@ -291,4 +316,21 @@ public class OTLoadedGraph<K, D> {
 				", edges:" + parent2child.values().stream().mapToInt(Map::size).sum() + '}';
 	}
 
+	public void cleanUp(int levelsToKeep) {
+		Optional<Long> maybeMaxLevel = this.levels.values().stream()
+				.max(naturalOrder());
+		if (!maybeMaxLevel.isPresent() || maybeMaxLevel.get() - levelsToKeep < 1) {
+			return;
+		}
+
+		long minLevel = maybeMaxLevel.get() - levelsToKeep;
+
+		clearMap(parent2child, minLevel);
+		clearMap(child2parent, minLevel + 1);
+	}
+
+	private void clearMap(Map<K, ?> map, long minLevel) {
+		Set<K> toKeep = map.keySet().stream().filter(k -> levels.get(k) > minLevel).collect(toSet());
+		map.keySet().retainAll(toKeep);
+	}
 }

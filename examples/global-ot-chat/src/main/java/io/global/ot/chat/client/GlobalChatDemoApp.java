@@ -2,7 +2,6 @@ package io.global.ot.chat.client;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
-import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncHttpServer;
@@ -23,9 +22,6 @@ public final class GlobalChatDemoApp extends Launcher {
 
 	@Inject
 	AsyncHttpServer server;
-
-	@Inject
-	EventloopTaskScheduler syncScheduler;
 
 	@Override
 	protected Collection<Module> getModules() {

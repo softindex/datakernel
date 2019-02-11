@@ -231,10 +231,6 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return state;
 	}
 
-	public List<D> getWorkingDiffs() {
-		return new ArrayList<>(workingDiffs);
-	}
-
 	public boolean isValid() {
 		return revision != null;
 	}

@@ -37,7 +37,7 @@ public class OTMergeAlgorithmTest {
 			Utils.calcLevels(commitId, levels,
 					parentId -> coalesce(graph.getParents(parentId), Collections.<K, List<D>>emptyMap()).keySet());
 		}
-		levels.forEach(graph::setNodeTimestamp);
+		levels.forEach(graph::setNodeLevel);
 
 		return graph;
 	}
@@ -68,7 +68,7 @@ public class OTMergeAlgorithmTest {
 		repository.setGraph(graphBuilder);
 		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), system, repository);
 
-		OTLoadedGraph<String, TestOp> graph = await(algorithms.loadGraph(heads));
+		OTLoadedGraph<String, TestOp> graph = await(algorithms.loadForMerge(heads));
 		Map<String, List<TestOp>> merge;
 		try {
 			merge = graph.merge(heads);

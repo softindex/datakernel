@@ -6,7 +6,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Collection;
 
 public interface GraphVisitor<K, D> {
-	void onStart(@NotNull Collection<OTCommit<K, D>> heads);
+	default void onStart(@NotNull Collection<OTCommit<K, D>> heads) {
+	}
 
 	enum Status {
 		CONTINUE,

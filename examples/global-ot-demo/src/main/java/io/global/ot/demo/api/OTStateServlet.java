@@ -17,19 +17,21 @@
 package io.global.ot.demo.api;
 
 import io.datakernel.async.Promise;
+import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
+import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
+import io.global.ot.common.ManagerProvider;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
-import io.global.ot.graph.NodesWalker;
 
-import java.util.List;
+import java.time.Duration;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -39,18 +41,19 @@ import static io.global.ot.demo.util.Utils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTStateServlet implements WithMiddleware {
-	private final OTStateManager<CommitId, Operation> manager;
-	private final NodesWalker<CommitId, Operation> walker;
+	private static final ConstantException MANAGER_NOT_INITIALIZED = new ConstantException(OTStateServlet.class, "Manager has not been initialized yet");
+	private final ManagerProvider<Operation> provider;
+	private final OTAlgorithms<CommitId, Operation> algorithms;
 	private final MiddlewareServlet servlet;
 
-	private OTStateServlet(OTStateManager<CommitId, Operation> manager, NodesWalker<CommitId, Operation> walker) {
-		this.manager = manager;
-		this.walker = walker;
+	private OTStateServlet(ManagerProvider<Operation> provider, OTAlgorithms<CommitId, Operation> algorithms) {
+		this.provider = provider;
+		this.algorithms = algorithms;
 		this.servlet = getServlet();
 	}
 
-	public static OTStateServlet create(OTStateManager<CommitId, Operation> stateManager, NodesWalker<CommitId, Operation> walker) {
-		return new OTStateServlet(stateManager, walker);
+	public static OTStateServlet create(OTAlgorithms<CommitId, Operation> algorithms, Duration syncInterval) {
+		return new OTStateServlet(new ManagerProvider<>(algorithms, OperationState::new, syncInterval), algorithms);
 	}
 
 	private MiddlewareServlet getServlet() {
@@ -62,36 +65,51 @@ public final class OTStateServlet implements WithMiddleware {
 
 	// region servlets
 	private AsyncServlet sync() {
-		return request -> manager.sync()
+		return request -> getManager(provider, request)
+				.thenCompose(OTStateManager::sync)
 				.thenApply($ -> okText());
 	}
 
 	private AsyncServlet add() {
 		return request -> request.getBody()
-				.thenCompose(body -> {
-					try {
-						Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
-						manager.add(operation);
-						return Promise.of(okText());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				});
+				.thenCompose(body -> getManager(provider, request)
+						.thenCompose(manager -> {
+							if (manager != null) {
+								try {
+									Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
+									manager.add(operation);
+									return Promise.of(okText());
+								} catch (ParseException e) {
+									return Promise.<HttpResponse>ofException(e);
+								} finally {
+									body.recycle();
+								}
+							} else {
+								return Promise.ofException(MANAGER_NOT_INITIALIZED);
+							}
+						}));
 	}
 
 	private AsyncServlet info() {
-		return request -> walker.walk(manager.getRevision())
-				.thenApply($ -> {
-					Tuple4<CommitId, Integer, List<Operation>, String> infoTuple = new Tuple4<>(
-							manager.getRevision(),
-							((OperationState) manager.getState()).getCounter(),
-							manager.getWorkingDiffs(),
-							walker.toGraphViz()
-					);
-					return okJson()
-							.withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8));
+		return request -> getManager(provider, request)
+				.thenCompose(manager -> {
+					if (manager != null) {
+						return algorithms.getRepository()
+								.getHeads()
+								.thenCompose(heads -> algorithms.loadGraph(heads, ID_TO_STRING, DIFF_TO_STRING))
+								.thenApply(graph -> {
+									String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
+									Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(
+											manager.getRevision(),
+											((OperationState) manager.getState()).getCounter(),
+											status,
+											graph.toGraphViz(manager.getRevision())
+									);
+									return okJson().withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8));
+								});
+					} else {
+						return Promise.of(HttpResponse.redirect302("../?id=" + getNextId(provider)));
+					}
 				});
 	}
 
