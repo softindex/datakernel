@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.stream.processor.LambdaStatement.ThrowingRunnable;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -25,8 +26,9 @@ import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.Assert.*;
 
 public class HttpUtilsTest {
 	private static final Random RANDOM = new Random();
@@ -82,6 +84,14 @@ public class HttpUtilsTest {
 		}
 	}
 
+	@Test
+	public void testNegativeValueWithOffset() {
+		String text = "Content-Length: -1";
+		byte[] bytes = text.getBytes();
+		assertNegativeSizeException(() -> HttpUtils.trimAndDecodePositiveInt(bytes, 15, 3));
+		assertNegativeSizeException(() -> HttpUtils.trimAndDecodePositiveInt(bytes, 16, 2));
+	}
+
 	// region helpers
 	private void encodePositiveIntTest(ByteBuf buf, int value) throws ParseException {
 		buf.rewind();
@@ -102,6 +112,17 @@ public class HttpUtilsTest {
 		byte[] bytesRepr = string.getBytes();
 		long decoded = decodePositiveInt(bytesRepr, 0, string.length());
 		assertEquals(value, decoded);
+	}
+
+	private void assertNegativeSizeException(ThrowingRunnable runnable) {
+		try {
+			runnable.run();
+			fail();
+		} catch (Throwable e) {
+			assertThat(e, instanceOf(ParseException.class));
+			assertThat(e.getMessage(), containsString("Not a decimal value"));
+		}
+
 	}
 	// endregion
 }

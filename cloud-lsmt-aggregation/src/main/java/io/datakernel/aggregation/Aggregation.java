@@ -291,17 +291,19 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		Comparator<T> keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
 		BinarySerializer<T> binarySerializer = createBinarySerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
-		if (temporarySortDir == null) {
-			try {
-				temporarySortDir = Files.createTempDirectory("aggregation_sort_dir");
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
-			}
-		}
-		return unsortedStream
+		Path sortDir = (temporarySortDir != null) ? temporarySortDir : createSortDir();
+		StreamSupplier<T> stream = unsortedStream
 				.transformWith(StreamSorter.create(
-						StreamSorterStorageImpl.create(executorService, binarySerializer, temporarySortDir),
+						StreamSorterStorageImpl.create(executorService, binarySerializer, sortDir),
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
+
+		stream.getEndOfStream()
+				.whenComplete(($, e) -> {
+					if (temporarySortDir == null) {
+						deleteSortDirSilent(sortDir);
+					}
+				});
+		return stream;
 	}
 
 	private Promise<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
@@ -525,6 +527,22 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 					}
 				})
 				.thenApply(removedChunks -> AggregationDiff.of(new LinkedHashSet<>(removedChunks), new LinkedHashSet<>(chunks)));
+	}
+
+	private Path createSortDir() {
+		try {
+			return Files.createTempDirectory("aggregation_sort_dir");
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private void deleteSortDirSilent(Path sortDir) {
+		try {
+			Files.delete(sortDir);
+		} catch (IOException e) {
+			logger.warn("Could not delete temporal directory {} : {}", temporarySortDir, e.toString());
+		}
 	}
 
 	public static String getChunkIds(Iterable<AggregationChunk> chunks) {

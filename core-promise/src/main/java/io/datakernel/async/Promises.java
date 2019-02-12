@@ -65,6 +65,7 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, long delay) {
 		if (promise.isComplete()) return promise;
+		if (delay <= 0) return Promise.ofException(TIMEOUT_EXCEPTION);
 		return promise.then(new NextPromise<T, T>() {
 			@NotNull ScheduledRunnable schedule = getCurrentEventloop().delay(delay, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
 

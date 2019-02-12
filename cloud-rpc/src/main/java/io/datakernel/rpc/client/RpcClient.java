@@ -441,7 +441,11 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	 */
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-		requestSender.sendRequest(request, timeout, cb);
+		if (timeout > 0) {
+			requestSender.sendRequest(request, timeout, cb);
+		} else {
+			cb.setException(RPC_TIMEOUT_EXCEPTION);
+		}
 	}
 
 	public IRpcClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
@@ -452,7 +456,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-				eventloop.execute(() ->
+				eventloop.execute(() -> {
+					if (timeout > 0) {
 						requestSender.sendRequest(request, timeout,
 								new Callback<O>() {
 									@Override
@@ -464,7 +469,11 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 									public void setException(Throwable e) {
 										anotherEventloop.execute(() -> cb.setException(e));
 									}
-								}));
+								});
+					} else {
+						cb.setException(RPC_TIMEOUT_EXCEPTION);
+					}
+				});
 			}
 
 		};
