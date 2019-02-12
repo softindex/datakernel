@@ -13,7 +13,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 abstract class AbstractStage<T> implements Stage<T> {
 
@@ -429,7 +428,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 		if (timeout == null) {
 			return this;
 		}
-		checkArgument(timeout.toMillis() >= 0, "Timeout cannot be less than zero");
+
+		if (timeout.toMillis() <= 0) {
+			return Stage.ofException(TIMEOUT_EXCEPTION);
+		}
+
 		ScheduledRunnable schedule = getCurrentEventloop().delay(timeout, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
 		return then(new NextStage<T, T>() {
 
