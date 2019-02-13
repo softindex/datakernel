@@ -26,10 +26,25 @@ import java.util.Iterator;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 
+/**
+ * Provides additional functionality for managing {@link ChannelConsumer}s.
+ */
 public final class ChannelConsumers {
 	private ChannelConsumers() {
 	}
 
+	/**
+	 * Passes iterator's values to the {@code output} until it {@code hasNext()},
+	 * then returns a promise of {@code null} as a marker of completion.
+	 * <p>
+	 * If there was an exception while accepting iterator, a promise of
+	 * exception will be returned.
+	 *
+	 * @param output a {@code ChannelConsumer}, which accepts the iterator
+	 * @param it an {@link Iterator} which provides some values
+	 * @param <T> a data type of passed values
+	 * @return a promise of {@code null} as a marker of completion
+	 */
 	public static <T> Promise<Void> acceptAll(ChannelConsumer<T> output, Iterator<? extends T> it) {
 		if (!it.hasNext()) return Promise.complete();
 		SettablePromise<Void> result = new SettablePromise<>();
@@ -54,6 +69,11 @@ public final class ChannelConsumers {
 		cb.set(null);
 	}
 
+	/**
+	 * Represents a {@code ChannelConsumer} which recycles all of the accepted values.
+	 *
+	 * @param <T> a data type of accepted values, must extend {@link Recyclable}
+	 */
 	static final class Recycler<T extends Recyclable> implements ChannelConsumer<T> {
 		@Override
 		public @NotNull Promise<Void> accept(@Nullable Recyclable value) {
@@ -68,6 +88,11 @@ public final class ChannelConsumers {
 		}
 	}
 
+	/**
+	 * Represents a {@code ChannelConsumer} which accepts only one non-null value and
+	 * recycles all subsequent {@code accept(T value)} values. In both cases returns a
+	 * promise of {@code null} as a marker of completion.
+	 */
 	static final class Lenient<T extends Recyclable> implements ChannelConsumer<T> {
 		final ChannelConsumer<T> peer;
 		boolean stop = false;

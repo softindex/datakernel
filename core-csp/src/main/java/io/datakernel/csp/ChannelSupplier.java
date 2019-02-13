@@ -210,6 +210,14 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	/**
+	 * Returns a {@code ChannelSupplier} wrapped in {@link Supplier}
+	 * and calls its {@code get()} when {@code get()} method is called.
+	 *
+	 * @param provider a provider of {@code ChannelSupplier}
+	 * @return a {@code ChannelSupplier} that was wrapped in
+	 * the {@code provider}
+	 */
 	static <T> ChannelSupplier<T> ofLazyProvider(Supplier<? extends ChannelSupplier<T>> provider) {
 		return new AbstractChannelSupplier<T>() {
 			private ChannelSupplier<T> supplier;

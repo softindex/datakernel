@@ -16,15 +16,17 @@ user data processing tools and also web crawlers that perform content indexing o
 1. DataKernel allows to efficiently work with massive amounts of data. With its help you can create **custom 
 app-specific databases, data services and data applications**. This framework includes a variety of storage engines which 
 can be used to set up specific databases, data repositories or services with a specific business logic of data processing. 
-DataKernel incorporates **LSMT, CRDT and OT** storage engines and algorithms. Moreover, there are built-in algorithms 
-for creating **distributed data storage and processing**. 
+DataKernel incorporates **[LSMT](https://en.wikipedia.org/wiki/Log-structured_merge-tree), 
+[CRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) and 
+[Operational Transformation (OT)](https://en.wikipedia.org/wiki/Operational_transformation)** storage engines and algorithms. 
+Moreover, there are built-in algorithms for creating **distributed data storage and processing**. 
 
 2. It is a simple and handy application server for developing full-stack web applications with **high-speed server, 
 support of React.js front-end and minimalistic Dependency Injection.**
 
 3. DataKernel utilizes efficient solutions as core technologies:
     * Custom optimized **Eventloops and Promises**
-    * Go-like **CSP**
+    * Go-like **[CSP](https://en.wikipedia.org/wiki/Communicating_sequential_processes)**
     * Fast high-level network abstractions
     * **Bytecode generation** utilized for high-performance data serializers
 
@@ -33,7 +35,8 @@ components and also a **bootstrap for applications' components graph**.
 
 ## DataKernel concepts
 
-1. Fully **decentralized and asynchronous** cluster architecture with no centralized Apache ZooKeeper-like consensus algorithms.
+1. Fully **decentralized and asynchronous** cluster architecture with no centralized Apache ZooKeeper-like consensus 
+algorithms.
 2. Developing **embedded servers and services** that are tailored to specific business application instead of 
 "config file"-configured servers. 
 3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.

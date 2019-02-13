@@ -34,6 +34,8 @@ import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
+ * Includes helper classes: ChannelSupplierOfException, ChannelSupplierOfIterator,
+ * ChannelSupplierOfValue, ChannelSupplierEmpty.
  */
 public final class ChannelSuppliers {
 	private ChannelSuppliers() {
@@ -107,6 +109,27 @@ public final class ChannelSuppliers {
 		};
 	}
 
+	/**
+	 * Collects data provided by the {@code supplier} asynchronously and returns a
+	 * promise of accumulated result. This process will be getting values from the
+	 * {@code supplier}, until a promise of {@code null} is returned, which represents
+	 * end of stream.
+	 * <p>
+	 * If {@code get} returns a promise of exception or there was an exception while
+	 * {@code accumulator} accepted values, a promise of {@code exception} will be
+	 * returned and the process will stop.
+	 *
+	 * @param supplier 		a {@code ChannelSupplier} which provides data to be collected
+	 * @param initialValue  a value which will accumulate the results of accumulator
+	 * @param accumulator 	a {@link BiConsumer} which may perform some operations over provided
+	 *                         by supplier data and accumulates the result to the initialValue
+	 * @param finisher 		a {@link Function} which performs the final transformation of the
+	 *                         accumulated value
+	 * @param <T>			a data type provided by the {@code supplier}
+	 * @param <A>			an intermediate accumulation data type
+	 * @param <R>			a data type of final result of {@code finisher}
+	 * @return a promise of accumulated result, transformed by the {@code finisher}
+	 */
 	public static <T, A, R> Promise<R> collect(ChannelSupplier<T> supplier,
 			A initialValue, BiConsumer<A, T> accumulator, Function<A, R> finisher) {
 		SettablePromise<R> cb = new SettablePromise<>();
@@ -157,6 +180,20 @@ public final class ChannelSuppliers {
 		});
 	}
 
+	/**
+	 * Streams data from the {@code supplier} to the {@code consumer} until {@code get()}
+	 * of {@code supplier} returns a promise of {@code null}.
+	 * <p>
+	 * If {@code get} returns a promise of exception or there was an exception while
+	 * {@code consumer} accepted values, a promise of {@code exception} will be
+	 * returned and the process will stop.
+	 *
+	 * @param supplier a supplier which provides some data
+	 * @param consumer a consumer which accepts the provided by supplier data
+	 * @param <T> a data type of values passed from the supplier to consumer
+	 * @return a promise of {@code null} as a marker of completion of stream,
+	 * or promise of exception, if there was an exception while streaming
+	 */
 	public static <T> MaterializedPromise<Void> streamTo(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer) {
 		SettablePromise<Void> cb = new SettablePromise<>();
 		streamToImpl(supplier, consumer, cb);
@@ -351,6 +388,10 @@ public final class ChannelSuppliers {
 		};
 	}
 
+	/**
+	 * Transforms this {@code ChannelSupplier} data of <T> type with provided {@code fn},
+	 * which returns an {@link Iterator} of a <V> type. Then provides this value to ChannelSupplier of <V>.
+	 */
 	public static <T, V> ChannelSupplier<V> remap(ChannelSupplier<T> supplier, Function<? super T, ? extends Iterator<? extends V>> fn) {
 		return new AbstractChannelSupplier<V>(supplier) {
 			Iterator<? extends V> iterator = CollectionUtils.emptyIterator();
@@ -387,6 +428,10 @@ public final class ChannelSuppliers {
 		};
 	}
 
+	/**
+	 * Represents a {@code ChannelSupplier} which always returns
+	 * a promise of {@code null}.
+	 */
 	public static class ChannelSupplierEmpty<T> extends AbstractChannelSupplier<T> {
 		@Override
 		protected Promise<T> doGet() {
@@ -394,6 +439,10 @@ public final class ChannelSuppliers {
 		}
 	}
 
+	/**
+	 * Represents a {@code ChannelSupplier} of one value. Returns a promise of the value when
+	 * {@code get} is called for the first time, all subsequent calls will return {@code null}.
+	 */
 	public static final class ChannelSupplierOfValue<T> extends AbstractChannelSupplier<T> {
 		private T item;
 
@@ -418,6 +467,11 @@ public final class ChannelSuppliers {
 		}
 	}
 
+	/**
+	 * Represents a {@code ChannelSupplier} which wraps the provided iterator and
+	 * returns promises of iterator's values until {@code hasNext()} is true, when
+	 * there are no more values left, a promise of {@code null} is returned.
+	 */
 	public static final class ChannelSupplierOfIterator<T> extends AbstractChannelSupplier<T> {
 		private final Iterator<? extends T> iterator;
 
@@ -436,6 +490,9 @@ public final class ChannelSuppliers {
 		}
 	}
 
+	/**
+	 * Represents a {@code ChannelSupplier} which always returns a promise of exception.
+	 */
 	public static final class ChannelSupplierOfException<T> extends AbstractChannelSupplier<T> {
 		private final Throwable e;
 

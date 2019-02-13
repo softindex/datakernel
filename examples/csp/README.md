@@ -5,7 +5,7 @@ basic interactions between CSP `ChannelSupplier` and `ChannelConsumers`.
 3. [Channel File Example](https://github.com/softindex/datakernel/blob/master/examples/csp/src/main/java/io/datakernel/examples/ChannelFileExample.java) - 
 represents working with files utilizing CSP `ChannelFileReader` and `ChannelFileWriter`.
 4. [Communicating Process Example](https://github.com/softindex/datakernel/blob/master/examples/csp/src/main/java/io/datakernel/examples/CommunicatingProcessExample.java) - 
-represents communication between `ChannelSupplier` and `ChannelConsumer` utilizing transformation and `Promise` features.
+represents communication between `ChannelSupplier` and `ChannelConsumer` utilizing `Communicating Sequential Process`.
 
 To run the examples, you should enter these commands in your console in appropriate folder:
 ```
@@ -19,7 +19,6 @@ $ mvn clean compile exec:java@ChannelFileExample
 $ # or
 $ mvn clean compile exec:java@CommunicatingProcessExample
 ```
-
 
 **ByteBufs Parser Example** shows how to process bytes with CSP and ByteBuf modules and produces a `Hello` message.
 
@@ -44,25 +43,26 @@ public class ByteBufsParserExample {
 }
 ```
 
-In **Channel Example** Eventloop module is utilized. The main methods of the example are:
+**Channel Example** shows interaction between suppliers and consumers:
 ```java
 private static void supplierOfValues() {
 	//passing Supplier five Strings which are streamed to Consumer and then printed in accordance to 
 	//ofConsumer() setup.
-	//ChannelSupplier.of() defines what data will be passed and .streamTo() to which ChannelConsumer
+	//ChannelSupplier.of() defines what data will be provided and .streamTo() - to what ChannelConsumer
 	//ChannelConsumer.ofConsumer() defines consumer behaviour when it receives data
+	//streamTo() streams all supplier's data to consumer
 	ChannelSupplier.of("1", "2", "3", "4", "5")
 			.streamTo(ChannelConsumer.ofConsumer(System.out::println));
 }
         
 private static void supplierOfList(List<String> list) {
-	//ofIterable() allows supplier to pass values from list to consumer one by one.
+	//ofIterable() allows to wrap an Iterable in ChannelSupplier and stream it to consumer.
 	ChannelSupplier.ofIterable(list)
 			.streamTo(ChannelConsumer.ofConsumer(System.out::println));
 }
 
 private static void map() {
-	//transforms Integers to needed format and then passes modified values to consumer one by one
+	//transforms Integers to needed format and then passes modified values to consumer
 	ChannelSupplier.of(1, 2, 3, 4, 5)
 			.map(integer -> integer + " times 10 = " + integer * 10)
 			.streamTo(ChannelConsumer.ofConsumer(System.out::println));
@@ -70,12 +70,13 @@ private static void map() {
 
 private static void toCollector() {
 	ChannelSupplier.of(1, 2, 3, 4, 5)
+	        //collects the provided Integers to List
 			.toCollector(Collectors.toList())
 			.whenResult(System.out::println);
 }
 
 private static void filter() {
-	//filter() allows you to filter data which passes to your ChannelConsumer
+	//filter() allows to filter supplier's data
 	ChannelSupplier.of(1, 2, 3, 4, 5, 6)
 			.filter(integer -> integer % 2 == 0)
 			.streamTo(ChannelConsumer.ofConsumer(System.out::println));
@@ -120,4 +121,13 @@ TO(2)
 SEE(3)
 YOU(3)
 ```
+In this example ChannelSupplier represents an input and ChannelConsumer - output. `doProcess()` represents the main 
+process of the example. In order to transform a ChannelSupplier with described process, the following lines are executed: 
 
+```java
+CommunicatingProcessExample process = new CommunicatingProcessExample();
+		ChannelSupplier.of("hello", "world", "nice", "to", "see", "you")
+		        //transforms this supplier with the described process
+				.transformWith(process)
+				.streamTo(ChannelConsumer.ofConsumer(System.out::println));
+```

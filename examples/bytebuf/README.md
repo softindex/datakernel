@@ -1,9 +1,12 @@
-1. [ByteBuf Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufExample) - represents some basics of ByteBuf possiblities, such as: 
+1. [ByteBuf Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufExample) - 
+represents some basic ByteBuf possibilities, such as: 
     * wrapping data in ByteBuf for writing/reading, 
     * slicing particular parts out of data,
     * conversions.
-2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample) - pools in ByteBuf and their behaviour.
-3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample) - shows how queues of ByteBufs are created and processed.
+2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample) - 
+represents how to work with ByteBufPool.
+3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample) - 
+shows how queues of ByteBufs are created and processed.
 
 To run the examples, you should execute these three lines in the console in appropriate folder:
 ```
@@ -41,7 +44,8 @@ byte[] data = new byte[]{0, 1, 2, 3, 4, 5};
 ByteBuf byteBuf = ByteBuf.wrapForReading(data);
 ```
 
-* The line `[0, 1, 2, 3, 4, 5]` is a result of converting bytes to ByteBuf and wrapping them for writing:
+* The line `[0, 1, 2, 3, 4, 5]` is a result of converting an empty array of bytes to ByteBuf and wrapping them for 
+writing. Then the ByteBuf was filled with bytes with the help of `while` loop:
 ```java
 byte[] data = new byte[6];
 ByteBuf byteBuf = ByteBuf.wrapForWriting(data);
@@ -51,23 +55,25 @@ while (byteBuf.canWrite()) {
 }
 ```
 
-* "Hello" line was first converted from String to ByteBuf and wrapped for reading, then represented as a String for output:
+* "Hello" line was first converted from String to ByteBuf and wrapped for reading, then represented as a String for 
+output with the help of `byteBuf.asString()`:
 ```java
 String message = "Hello";
 ByteBuf byteBuf = ByteBuf.wrapForReading(message.getBytes(UTF_8));
 String unWrappedMessage = byteBuf.asString(UTF_8);
 ```
+
 * The last two outputs represent some other possibilities of ByteBuf, such as slicing:
 ```java
 byte[] data = new byte[]{0, 1, 2, 3, 4, 5};
 ByteBuf byteBuf = ByteBuf.wrap(data, 0, data.length);
-//the first parameter is an offset and the second is length
+//the first parameter is an offset and the second is length of slice
 ByteBuf slice = byteBuf.slice(1, 3);
 ```
-and conversions:
+and conversions of default ByteBuffer to ByteBuf:
 ```java
-//Creating a ByteBuf instance. 
-//The first parameter is the bytes to be wrapped, the second and the third are read and write positions
+//creating a ByteBuf instance. 
+//the first parameter is the bytes to be wrapped, the second and the third are read and write positions
 ByteBuf byteBuf = ByteBuf.wrap(new byte[20], 0, 0);
 //Creating a ByteBuffer instance
 ByteBuffer buffer = byteBuf.toWriteByteBuffer();

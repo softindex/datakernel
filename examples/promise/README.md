@@ -21,7 +21,8 @@ This is iteration #3
 This is iteration #4
 This is iteration #5
 ```
-In this situation we created a repetitive Promise which continues iterations until Promise.ofException() is triggered:
+In this example we created a repetitive Promise which continues iterations until one of the Promises completes with an 
+exception `Promise.ofException(new Exception("Breaking the loop"))`.
 ```java
 Promises.repeat(() -> {
 	System.out.println("This is iteration #" + ++counter);
@@ -58,6 +59,7 @@ List: [1, 2, 3, 4, 5, 6]
 Here a `Promises.toList()` method is utilized:
 ```java
 Promises.toList(Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
+    //waits for completion of toList()
 	.whenResult(list -> System.out.println("Size of collected list: " + list.size() + "\nList: " + list));
 
 ```
@@ -71,6 +73,7 @@ Array: [1, 2, 3, 4, 5, 6]
 Here a `Promises.toArray()` method is utilized:
 ```java
 Promises.toArray(Integer.class, Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
+    //waits for completion of toArray()
     .whenResult(array -> System.out.println("Size of collected array: " + array.length + "\nArray: " + Arrays.toString(array)));
 ```
 
@@ -88,5 +91,4 @@ In this example Promise's `AsyncFile` is utilized along with several methods ass
 * open()
 * write()
 * read()
-
 `AsyncFile` represents a file with asynchronous capabilities.
