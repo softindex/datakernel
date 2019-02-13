@@ -17,14 +17,20 @@
 package io.global.ot.client;
 
 import io.datakernel.async.Promise;
+import io.datakernel.codec.binary.BinaryUtils;
+import io.datakernel.exception.ParseException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepository;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.RawCommit;
 import io.global.ot.api.RepoID;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
 import static io.datakernel.util.CollectionUtils.union;
+import static io.global.common.CryptoUtils.sha256;
+import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.singleton;
 import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toCollection;
@@ -73,5 +79,20 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	@Override
 	public Promise<Void> saveSnapshot(CommitId revisionId, List<D> diffs) {
 		return driver.saveSnapshot(myRepositoryId, revisionId, diffs);
+	}
+
+	@NotNull
+	public OTCommit<CommitId, D> rawBytesToCommit(byte[] rawBytes) throws ParseException {
+		RawCommit rawCommit = BinaryUtils.decode(REGISTRY.get(RawCommit.class), rawBytes);
+		return driver.getOTCommit(myRepositoryId, CommitId.ofBytes(sha256(rawBytes)), rawCommit, driver.getCurrentSimKey())
+				.withSerializedData(rawBytes);
+	}
+
+	@NotNull
+	public byte[] commitToRawBytes(OTCommit<CommitId, D> commit) {
+		byte[] serializedData = commit.getSerializedData();
+		return serializedData != null ?
+				serializedData :
+				driver.getRawCommitBytes(myRepositoryId, commit.getParents(), commit.getLevel(), commit.getTimestamp());
 	}
 }

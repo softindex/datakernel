@@ -112,11 +112,13 @@ public class Utils {
 	};
 
 	public static <K> long calcLevels(K commitId, Map<K, Long> levels, Function<K, Collection<K>> getParents) {
-		return levels.computeIfAbsent(commitId,
-				k -> 1L + getParents.apply(k).stream()
-						.mapToLong(parentId -> calcLevels(parentId, levels, getParents))
-						.max()
-						.orElse(0L));
+		if (!levels.containsKey(commitId)) {
+			levels.put(commitId, 1L + getParents.apply(commitId).stream()
+					.mapToLong(parentId -> calcLevels(parentId, levels, getParents))
+					.max()
+					.orElse(0L));
+		}
+		return levels.get(commitId);
 	}
 
 	public static <D> Consumer<OTGraphBuilder<Long, D>> asLong(Consumer<OTGraphBuilder<Integer, D>> intGraphConsumer) {

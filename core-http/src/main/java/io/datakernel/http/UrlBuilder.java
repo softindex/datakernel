@@ -135,7 +135,7 @@ public class UrlBuilder {
 		return this;
 	}
 
-	private static String urlEncode(String str) {
+	public static String urlEncode(String str) {
 		try {
 			return URLEncoder.encode(str, UTF_8.name());
 		} catch (UnsupportedEncodingException e) {

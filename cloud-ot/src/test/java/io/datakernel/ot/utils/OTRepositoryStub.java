@@ -2,6 +2,7 @@ package io.datakernel.ot.utils;
 
 import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTCommitFactory;
 import io.datakernel.ot.OTRepository;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ import static java.util.stream.Collectors.toSet;
 
 public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	public Supplier<K> revisionIdSupplier;
+	private OTCommitFactory<K, D> commitFactory;
 
 	public final Map<K, OTCommit<K, D>> commits = new LinkedHashMap<>();
 	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();
@@ -39,6 +41,10 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	public static <K, D> OTRepositoryStub<K, D> create(Iterator<K> newIds) {
 		return new OTRepositoryStub<>(newIds::next);
+	}
+
+	public void setCommitFactory(OTCommitFactory<K, D> commitFactory) {
+		this.commitFactory = commitFactory;
 	}
 
 	public void setGraph(Consumer<OTGraphBuilder<K, D>> builder) {
@@ -67,8 +73,10 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	@Override
 	public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
-		return createCommitId()
-				.thenApply(newId -> OTCommit.of(newId, parentDiffs, level));
+		return commitFactory != null ?
+				commitFactory.createCommit(parentDiffs, level) :
+				createCommitId()
+						.thenApply(newId -> OTCommit.of(newId, parentDiffs, level));
 	}
 
 	@Override

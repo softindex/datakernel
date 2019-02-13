@@ -30,7 +30,7 @@ import io.global.common.SignedData;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.*;
@@ -57,22 +57,34 @@ public final class OTDriver {
 
 	private Map<Hash, SimKey> simKeys = new HashMap<>();
 
-	@Nullable
+	@NotNull
 	private SimKey currentSimKey;
 
-	public OTDriver(GlobalOTNode service, SimKey currentSimKey) {
+	public OTDriver(GlobalOTNode service, @NotNull SimKey currentSimKey) {
 		this.service = service;
-		changeCurrentSimKey(currentSimKey);
+		this.currentSimKey = currentSimKey;
+		simKeys.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
 	}
 
-	public OTDriver(GlobalOTNode service) {
-		this(service, null);
+	@NotNull
+	public SimKey getCurrentSimKey() {
+		return currentSimKey;
 	}
 
-	@SuppressWarnings("unchecked")
 	public <D> OTCommit<CommitId, D> createCommit(MyRepositoryId<D> myRepositoryId,
 			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
 		long timestamp = now.currentTimeMillis();
+		byte[] rawCommitBytes = getRawCommitBytes(myRepositoryId, parentDiffs, level, timestamp);
+		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
+		return OTCommit.of(commitId, parentDiffs, level)
+				.withTimestamp(timestamp)
+				.withSerializedData(rawCommitBytes);
+	}
+
+	@SuppressWarnings("unchecked")
+	@NotNull
+	public <D> byte[] getRawCommitBytes(MyRepositoryId<D> myRepositoryId, Map<CommitId, ? extends List<? extends D>> parentDiffs,
+			long level, long timestamp) {
 		EncryptedData encryptedDiffs = encryptAES(
 				encodeAsArray(COMMIT_DIFFS_CODEC,
 						parentDiffs.values()
@@ -80,17 +92,13 @@ public final class OTDriver {
 								.map(value -> encodeAsArray(myRepositoryId.getDiffsCodec(), (List<D>) value))
 								.collect(toList())),
 				currentSimKey.getAesKey());
-		byte[] rawCommitBytes = encodeAsArray(COMMIT_CODEC,
+		return encodeAsArray(COMMIT_CODEC,
 				RawCommit.of(
 						parentDiffs.keySet(),
 						encryptedDiffs,
 						Hash.sha1(currentSimKey.getAesKey().getKey()),
 						level,
-						now.currentTimeMillis()));
-		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
-		return OTCommit.of(commitId, parentDiffs, level)
-				.withTimestamp(timestamp)
-				.withSerializedData(rawCommitBytes);
+						timestamp));
 	}
 
 	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
@@ -191,24 +199,29 @@ public final class OTDriver {
 				.thenCompose(rawCommit -> ensureSimKey(myRepositoryId, originRepositoryIds, rawCommit.getSimKeyHash())
 						.thenApply(simKey -> {
 							try {
-								List<byte[]> list = decode(COMMIT_DIFFS_CODEC,
-										decryptAES(rawCommit.getEncryptedDiffs(), simKey.getAesKey()));
-								if (list.size() != rawCommit.getParents().size()) {
-									throw new ParseException();
-								}
-
-								Map<CommitId, List<? extends D>> parents = new HashMap<>();
-								Iterator<byte[]> it = list.iterator();
-								for (CommitId parent : rawCommit.getParents()) {
-									parents.put(parent, decode(myRepositoryId.getDiffsCodec(), it.next()));
-								}
-
-								return OTCommit.of(revisionId, parents, rawCommit.getLevel())
-										.withTimestamp(rawCommit.getTimestamp());
+								return getOTCommit(myRepositoryId, revisionId, rawCommit, simKey);
 							} catch (ParseException e) {
 								throw new UncheckedException(e);
 							}
 						}));
+	}
+
+	@NotNull
+	public <D> OTCommit<CommitId, D> getOTCommit(MyRepositoryId<D> myRepositoryId, CommitId revisionId, RawCommit rawCommit, SimKey simKey) throws ParseException {
+		List<byte[]> list = decode(COMMIT_DIFFS_CODEC,
+				decryptAES(rawCommit.getEncryptedDiffs(), simKey.getAesKey()));
+		if (list.size() != rawCommit.getParents().size()) {
+			throw new ParseException();
+		}
+
+		Map<CommitId, List<? extends D>> parents = new HashMap<>();
+		Iterator<byte[]> it = list.iterator();
+		for (CommitId parent : rawCommit.getParents()) {
+			parents.put(parent, decode(myRepositoryId.getDiffsCodec(), it.next()));
+		}
+
+		return OTCommit.of(revisionId, parents, rawCommit.getLevel())
+				.withTimestamp(rawCommit.getTimestamp());
 	}
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
@@ -260,10 +273,8 @@ public final class OTDriver {
 						myRepositoryId.getPrivKey()));
 	}
 
-	public void changeCurrentSimKey(@Nullable SimKey currentSimKey) {
+	public void changeCurrentSimKey(@NotNull SimKey currentSimKey) {
 		this.currentSimKey = currentSimKey;
-		if (currentSimKey != null) {
-			simKeys.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
-		}
+		simKeys.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
 	}
 }

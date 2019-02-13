@@ -262,7 +262,7 @@ public class OTStateManagerTest {
 		Throwable exception = awaitException(stateManager.sync());
 
 		assertEquals(FAILED, exception);
-//		assertEquals((Integer) 3, stateManager.getRevision());
+		assertEquals((Integer) 0, stateManager.getRevision());
 		assertTrue(stateManager.hasPendingCommits());
 		assertFalse(stateManager.hasWorkingDiffs());
 
