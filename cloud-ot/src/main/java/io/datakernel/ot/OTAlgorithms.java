@@ -70,7 +70,13 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public OTNode<K, D> getOtNode() {
-		return new OTNodeImpl<>(this);
+		return OTNodeImpl.create(this);
+	}
+
+	public OTNode<K, D> getOtNode(
+			Function<OTCommit<K, D>, Object> commitToObject,
+			Function<Object, OTCommit<K, D>> objectToCommit) {
+		return OTNodeImpl.create(this, commitToObject, objectToCommit);
 	}
 
 	public Promise<Void> visit(Set<K> heads, GraphVisitor<K, D> visitor) {

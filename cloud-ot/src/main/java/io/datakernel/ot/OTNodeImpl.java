@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.LogUtils.thisMethod;
@@ -16,22 +17,35 @@ public final class OTNodeImpl<K, D> implements OTNode<K, D> {
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTRepository<K, D> repository;
+	private final Function<OTCommit<K, D>, Object> commitToObject;
+	private final Function<Object, OTCommit<K, D>> objectToCommit;
 
-	public OTNodeImpl(OTAlgorithms<K, D> algorithms) {
+	private OTNodeImpl(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, Object> commitToObject, Function<Object, OTCommit<K, D>> objectToCommit) {
 		this.algorithms = algorithms;
 		this.repository = algorithms.getRepository();
+		this.commitToObject = commitToObject;
+		this.objectToCommit = objectToCommit;
+	}
+
+	public static <K, D> OTNodeImpl<K, D> create(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, Object> commitToObject, Function<Object, OTCommit<K,
+			D>> objectToCommit) {
+		return new OTNodeImpl<>(algorithms, commitToObject, objectToCommit);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <K, D> OTNodeImpl<K, D> create(OTAlgorithms<K, D> algorithms) {
+		return new OTNodeImpl<K, D>(algorithms, commit -> commit, object -> (OTCommit<K, D>) object);
 	}
 
 	@Override
 	public Promise<Object> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.createCommit(parent, diffs, level)
-				.thenApply(commit -> commit);
+				.thenApply(commitToObject);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<K> push(Object commit) {
-		OTCommit<K, D> otCommit = (OTCommit<K, D>) commit;
+	public Promise<K> push(Object commitData) {
+		OTCommit<K, D> otCommit = objectToCommit.apply(commitData);
 		return repository.push(otCommit)
 				.thenApply($ -> otCommit.getId());
 	}

@@ -1,37 +1,34 @@
 ## Introduction
 
-DataKernel is a full-stack application framework for Java. It contains components for building app-specific databases 
-and applications of different scales, from single-node HTTP-server to large distributed systems. DataKernel is 
-asynchronous, event-driven, lightweight and very easy to use. Moreover, it is completely free of legacy stuff, such as 
-XML, Java EE, etc.
+DataKernel is a full-stack application framework for Java. 
+It contains components for building application-specific embedded databases, specialized high-performance servers, clients and network protocols, 
+and applications of different scales: from single-node HTTP-server to large distributed systems spanning multiple datacenters. 
 
-Due to the usage of modern asynchronous I/O, DataKernel is extremely fast, which is proven by benchmarks.
+DataKernel framework is asynchronous, event-driven, lightweight and legacy-free, and features modern high-level abstractions and DSLs. 
+Its asynchronous architecture inspired by Node.js and efficient multi-threading model makes DataKernel extremely fast, which is proven by various benchmarks.
 
-The essential components of DataKernel form the basis of high-load applications running in production environments and 
-processing billions of requests. Specifically, DataKernel is the foundation for systems that provide real-time analytics, 
-user data processing tools and also web crawlers that perform content indexing on a large scale.
+The essential components of DataKernel form the basis of various high-load applications 
+processing billions of daily requests: ad-serving solutions, online analytics, 
+web crawlers that perform content indexing on a large scale.
 
 ## DataKernel capabilities
 
 1. DataKernel allows to efficiently work with massive amounts of data. With its help you can create **custom 
-app-specific databases, data services and data applications**. This framework includes a variety of storage engines which 
-can be used to set up specific databases, data repositories or services with a specific business logic of data processing. 
-DataKernel incorporates **[LSMT](https://en.wikipedia.org/wiki/Log-structured_merge-tree), 
+app-specific databases, data services and applications**. DataKernel incorporates **[LSMT](https://en.wikipedia.org/wiki/Log-structured_merge-tree), 
 [CRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) and 
-[Operational Transformation (OT)](https://en.wikipedia.org/wiki/Operational_transformation)** storage engines and algorithms. 
-Moreover, there are built-in algorithms for creating **distributed data storage and processing**. 
+[Operational Transformation (OT)](https://en.wikipedia.org/wiki/Operational_transformation)** storage engines and algorithms, 
+with built-in support of **distributed data storage and processing**. 
 
-2. It is a simple and handy application server for developing full-stack web applications with **high-speed server, 
-support of React.js front-end and minimalistic Dependency Injection.**
+2. It has high-performance embedded HTTP server for developing of full-stack web applications with **support of React.js front-end and minimalistic Dependency Injection.**
 
 3. DataKernel utilizes efficient solutions as core technologies:
-    * Custom optimized **Eventloops and Promises**
-    * Go-like **[CSP](https://en.wikipedia.org/wiki/Communicating_sequential_processes)**
-    * Fast high-level network abstractions
-    * **Bytecode generation** utilized for high-performance data serializers
+    * Optimized **Eventloop and Promises**, inspired by Node.js
+    * **[CSP](https://en.wikipedia.org/wiki/Communicating_sequential_processes)** implementation, similar to Go language
+    * Fast and high-level network abstractions
+    * **Bytecode generation** - for high-performance data serializers and for runtime data processing
 
 DataKernel is an actively used production-ready technology. It has a full **JMX monitoring** coverage of all of the 
-components and also a **bootstrap for applications' components graph**.
+components and also a **automatic bootstrap of applications' components graph**.
 
 ## DataKernel concepts
 
@@ -39,9 +36,9 @@ components and also a **bootstrap for applications' components graph**.
 algorithms.
 2. Developing **embedded servers and services** that are tailored to specific business application instead of 
 "config file"-configured servers. 
-3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.
-4. No multithreaded overhead. All worker threads are **single-threaded** and interact within common threadsafe shared state. 
-5. Up-to-date **CSP, Promises, bytecode generation, LSMT, CRDT and OT** technologies.
+3. Focus on **functional composition and OOP design** to develop complicated services from simple building blocks and strategies.
+4. No multi-threading overhead. All worker threads are essentially **single-threaded** but can interact with each other and common threadsafe shared state. 
+5. Modern **CSP, Promises, bytecode generation, LSMT, CRDT and OT** technologies.
 
 ## Getting started
 
