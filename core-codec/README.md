@@ -1,6 +1,6 @@
-## JSON
+## Codec
 
-JSON module allows to work with custom object transformations by encoding and decoding them in a fast and efficient way. 
+Codec module allows to work with custom object transformations by encoding and decoding them in a fast and efficient way. 
 
 `CodecRegistry` allows to easily access pre-defined codecs based on your custom data types. Use `create()` method to 
 create your `CodecRegistry`, and `with()` to setup the codec.
@@ -40,5 +40,5 @@ and then use it for this purpose.
 	* `ofMap()`
 	* `ofObjectMap()`
 
-### You can explore JSON example [here](https://github.com/softindex/datakernel/tree/master/examples/codec)
+### You can explore Codec example [here](https://github.com/softindex/datakernel/tree/master/examples/codec)
  
