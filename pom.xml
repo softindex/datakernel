@@ -32,6 +32,7 @@
 		<module>core-datastream</module>
 		<module>core-http</module>
 		<module>cloud-rpc</module>
+		<module>cloud-memcache</module>
 		<module>cloud-fs</module>
 		<module>cloud-multilog</module>
 		<module>cloud-crdt</module>
@@ -165,6 +166,11 @@
 				<groupId>com.madgag.spongycastle</groupId>
 				<artifactId>core</artifactId>
 				<version>1.58.0.0</version>
+			</dependency>
+			<dependency>
+				<groupId>com.carrotsearch</groupId>
+				<artifactId>hppc</artifactId>
+				<version>0.7.3</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

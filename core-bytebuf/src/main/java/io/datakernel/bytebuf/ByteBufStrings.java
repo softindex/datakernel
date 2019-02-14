@@ -159,8 +159,7 @@ public final class ByteBufStrings {
 	public static int hashCode(byte[] array, int offset, int size) {
 		int result = 1;
 		for (int i = offset; i < offset + size; i++) {
-			byte a = array[i];
-			result = 31 * result + a;
+			result = 31 * result + array[i];
 		}
 		return result;
 	}

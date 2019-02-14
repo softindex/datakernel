@@ -729,7 +729,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	@Override
 	public String toString() {
 		if (totalCount == 0) {
-			return "no data";
+			return null;
 		}
 
 		double min = smoothedMin;

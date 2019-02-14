@@ -41,5 +41,4 @@ final class OTStateModule extends AbstractModule {
 	OTAlgorithms<CommitId, Operation> provide(Eventloop eventloop, OTRepository<CommitId, Operation> repository) {
 		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
 	}
-
 }
