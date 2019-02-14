@@ -19,6 +19,8 @@ package io.datakernel.csp;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.csp.queue.ChannelBuffer;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
@@ -243,149 +245,16 @@ public final class ChannelSuppliers {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> ChannelSupplier<T> prefetch(int count, ChannelSupplier<? extends T> actual) {
-		return count == 0 ?
-				(ChannelSupplier<T>) actual :
-				new AbstractChannelSupplier<T>() {
-					private final ArrayDeque<T> deque = new ArrayDeque<>();
-					private boolean endOfStream;
-					private boolean prefetching;
-					@Nullable
-					private SettablePromise<T> pending;
-
-					{
-						tryPrefetch();
-					}
-
-					private void tryPrefetch() {
-						if (prefetching || deque.size() == count || endOfStream) return;
-						prefetching = true;
-						actual.get()
-								.whenComplete((item, e) -> {
-									if (isClosed()) return;
-									prefetching = false;
-									if (e == null) {
-										assert pending == null || (deque.isEmpty() && !endOfStream);
-										if (pending != null) {
-											SettablePromise<T> pending = this.pending;
-											this.pending = null;
-											if (item != null) {
-												tryPrefetch();
-											} else {
-												endOfStream = true;
-											}
-											pending.set(item);
-											return;
-										}
-										if (item != null) {
-											deque.add(item);
-											tryPrefetch();
-										} else {
-											endOfStream = true;
-										}
-									} else {
-										close(e);
-									}
-								});
-					}
-
-					@Override
-					protected Promise<T> doGet() {
-						assert pending == null;
-						if (!deque.isEmpty() || endOfStream) {
-							T result = deque.poll();
-							tryPrefetch();
-							return Promise.of(result);
-						}
-						SettablePromise<T> pending = new SettablePromise<>();
-						this.pending = pending;
-						tryPrefetch();
-						return pending;
-					}
-
-					@Override
-					protected void onClosed(@NotNull Throwable e) {
-						deepRecycle(deque);
-						actual.close(e);
-						if (pending != null) {
-							pending.trySetException(e);
-							pending = null;
-						}
-					}
-				};
+	public static <T> ChannelSupplier<T> prefetch(int count, ChannelSupplier<T> actual) {
+		ChannelBuffer<T> buffer = new ChannelBuffer<>(count);
+		actual.streamTo(buffer.getConsumer());
+		return buffer.getSupplier();
 	}
 
-	public static <T> ChannelSupplier<T> prefetch(ChannelSupplier<? extends T> actual) {
-		return new AbstractChannelSupplier<T>() {
-			@Nullable
-			private T prefetched;
-			private boolean endOfStream;
-			private boolean prefetching;
-			@Nullable
-			private SettablePromise<T> pending;
-
-			{
-				tryPrefetch();
-			}
-
-			private void tryPrefetch() {
-				assert !isClosed();
-				if (prefetching || prefetched != null || endOfStream) return;
-				prefetching = true;
-				actual.get()
-						.whenComplete((item, e) -> {
-							if (isClosed()) return;
-							prefetching = false;
-							if (e == null) {
-								assert pending == null || (prefetched == null && !endOfStream);
-								if (pending != null) {
-									SettablePromise<T> pending = this.pending;
-									this.pending = null;
-									if (item != null) {
-										// do nothing
-									} else {
-										endOfStream = true;
-									}
-									pending.set(item);
-									return;
-								}
-								if (item != null) {
-									prefetched = item;
-								} else {
-									endOfStream = true;
-								}
-							} else {
-								close(e);
-							}
-						});
-			}
-
-			@Override
-			protected Promise<T> doGet() {
-				assert pending == null;
-				if (prefetched != null || endOfStream) {
-					T result = prefetched;
-					prefetched = null;
-					tryPrefetch();
-					return Promise.of(result);
-				}
-				SettablePromise<T> pending = new SettablePromise<>();
-				this.pending = pending;
-				tryPrefetch();
-				return pending;
-			}
-
-			@Override
-			protected void onClosed(@NotNull Throwable e) {
-				tryRecycle(prefetched);
-				prefetched = null;
-				actual.close(e);
-				if (pending != null) {
-					pending.setException(e);
-					pending = null;
-				}
-			}
-		};
+	public static <T> ChannelSupplier<T> prefetch(ChannelSupplier<T> actual) {
+		ChannelZeroBuffer<T> buffer = new ChannelZeroBuffer<>();
+		actual.streamTo(buffer.getConsumer());
+		return buffer.getSupplier();
 	}
 
 	/**

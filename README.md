@@ -36,7 +36,7 @@ components and also a **automatic bootstrap of applications' components graph**.
 algorithms.
 2. Developing **embedded servers and services** that are tailored to specific business application instead of 
 "config file"-configured servers. 
-3. Focus on **functional composition and OOP design** to develop complicated services from simple building blocks and strategies.
+3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.
 4. No multi-threading overhead. All worker threads are essentially **single-threaded** but can interact with each other and common threadsafe shared state. 
 5. Modern **CSP, Promises, bytecode generation, LSMT, CRDT and OT** technologies.
 
