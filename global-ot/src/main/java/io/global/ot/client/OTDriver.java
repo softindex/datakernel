@@ -71,20 +71,10 @@ public final class OTDriver {
 		return currentSimKey;
 	}
 
+	@SuppressWarnings("unchecked")
 	public <D> OTCommit<CommitId, D> createCommit(MyRepositoryId<D> myRepositoryId,
 			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
 		long timestamp = now.currentTimeMillis();
-		byte[] rawCommitBytes = getRawCommitBytes(myRepositoryId, parentDiffs, level, timestamp);
-		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
-		return OTCommit.of(commitId, parentDiffs, level)
-				.withTimestamp(timestamp)
-				.withSerializedData(rawCommitBytes);
-	}
-
-	@SuppressWarnings("unchecked")
-	@NotNull
-	public <D> byte[] getRawCommitBytes(MyRepositoryId<D> myRepositoryId, Map<CommitId, ? extends List<? extends D>> parentDiffs,
-			long level, long timestamp) {
 		EncryptedData encryptedDiffs = encryptAES(
 				encodeAsArray(COMMIT_DIFFS_CODEC,
 						parentDiffs.values()
@@ -92,13 +82,17 @@ public final class OTDriver {
 								.map(value -> encodeAsArray(myRepositoryId.getDiffsCodec(), (List<D>) value))
 								.collect(toList())),
 				currentSimKey.getAesKey());
-		return encodeAsArray(COMMIT_CODEC,
+		byte[] rawCommitBytes = encodeAsArray(COMMIT_CODEC,
 				RawCommit.of(
 						parentDiffs.keySet(),
 						encryptedDiffs,
 						Hash.sha1(currentSimKey.getAesKey().getKey()),
 						level,
 						timestamp));
+		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
+		return OTCommit.of(commitId, parentDiffs, level)
+				.withTimestamp(timestamp)
+				.withSerializedData(rawCommitBytes);
 	}
 
 	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,

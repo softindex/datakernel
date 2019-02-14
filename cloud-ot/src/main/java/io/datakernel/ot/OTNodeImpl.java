@@ -12,40 +12,40 @@ import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
-public final class OTNodeImpl<K, D> implements OTNode<K, D> {
+public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTRepository<K, D> repository;
-	private final Function<OTCommit<K, D>, Object> commitToObject;
-	private final Function<Object, OTCommit<K, D>> objectToCommit;
+	private final Function<OTCommit<K, D>, C> commitToObject;
+	private final Function<C, OTCommit<K, D>> objectToCommit;
 
-	private OTNodeImpl(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, Object> commitToObject, Function<Object, OTCommit<K, D>> objectToCommit) {
+	private OTNodeImpl(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K, D>> objectToCommit) {
 		this.algorithms = algorithms;
 		this.repository = algorithms.getRepository();
 		this.commitToObject = commitToObject;
 		this.objectToCommit = objectToCommit;
 	}
 
-	public static <K, D> OTNodeImpl<K, D> create(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, Object> commitToObject, Function<Object, OTCommit<K,
+	public static <K, D, C> OTNodeImpl<K, D, C> create(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K,
 			D>> objectToCommit) {
 		return new OTNodeImpl<>(algorithms, commitToObject, objectToCommit);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <K, D> OTNodeImpl<K, D> create(OTAlgorithms<K, D> algorithms) {
-		return new OTNodeImpl<K, D>(algorithms, commit -> commit, object -> (OTCommit<K, D>) object);
+	public static <K, D> OTNodeImpl<K, D, OTCommit<K, D>> create(OTAlgorithms<K, D> algorithms) {
+		return new OTNodeImpl<>(algorithms, commit -> commit, object -> object);
 	}
 
 	@Override
-	public Promise<Object> createCommit(K parent, List<? extends D> diffs, long level) {
+	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.createCommit(parent, diffs, level)
 				.thenApply(commitToObject);
 	}
 
 	@Override
-	public Promise<K> push(Object commitData) {
-		OTCommit<K, D> otCommit = objectToCommit.apply(commitData);
+	public Promise<K> push(C commit) {
+		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
 				.thenApply($ -> otCommit.getId());
 	}

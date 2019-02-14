@@ -31,8 +31,7 @@ public class OTNodeImplTest {
 	private static final TestOpState state = new TestOpState();
 	private final OTRepositoryStub<Integer, TestOp> REPOSITORY = OTRepositoryStub.create();
 
-	private OTNode<Integer, TestOp> node;
-
+	private OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> node;
 
 	@Before
 	public void setUp() {

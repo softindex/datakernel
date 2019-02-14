@@ -69,13 +69,13 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return otSystem;
 	}
 
-	public OTNode<K, D> getOtNode() {
+	public OTNode<K, D, OTCommit<K, D>> getOtNode() {
 		return OTNodeImpl.create(this);
 	}
 
-	public OTNode<K, D> getOtNode(
-			Function<OTCommit<K, D>, Object> commitToObject,
-			Function<Object, OTCommit<K, D>> objectToCommit) {
+	public <C> OTNode<K, D, C> getOtNode(
+			Function<OTCommit<K, D>, C> commitToObject,
+			Function<C, OTCommit<K, D>> objectToCommit) {
 		return OTNodeImpl.create(this, commitToObject, objectToCommit);
 	}
 

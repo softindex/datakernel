@@ -55,7 +55,7 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncBeforeSyncFinished() {
 		repository.revisionIdSupplier = () -> 2;
-		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
 				return super.fetch(currentCommitId).thenCompose(fetchData -> scheduledResult(getCurrentEventloop(), 100, fetchData));
@@ -179,9 +179,9 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncAfterFailedCommit() {
 		repository.revisionIdSupplier = () -> 1;
-		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
-			public Promise<Object> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
 				return failOnce(() -> super.createCommit(parent, diffs, level));
 			}
 		};
@@ -212,7 +212,7 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncAfterFailedPull() {
 		repository.revisionIdSupplier = () -> 3;
-		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
 				return failOnce(() -> super.fetch(currentCommitId));
@@ -249,9 +249,9 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncAfterFailedPush() {
 		repository.revisionIdSupplier = asList(3, 4, 5).iterator()::next;
-		OTNode<Integer, TestOp> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
-			public Promise<Integer> push(Object commit) {
+			public Promise<Integer> push(OTCommit<Integer, TestOp> commit) {
 				return failOnce(() -> super.push(commit));
 			}
 		};
@@ -284,20 +284,20 @@ public class OTStateManagerTest {
 		assertEquals(131, testOpState.getValue());
 	}
 
-	class OTNodeDecorator implements OTNode<Integer, TestOp> {
-		private final OTNode<Integer, TestOp> node;
+	class OTNodeDecorator implements OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> {
+		private final OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> node;
 
-		OTNodeDecorator(OTNode<Integer, TestOp> node) {
+		OTNodeDecorator(OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> node) {
 			this.node = node;
 		}
 
 		@Override
-		public Promise<Object> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
 			return node.createCommit(parent, diffs, level);
 		}
 
 		@Override
-		public Promise<Integer> push(Object commit) {
+		public Promise<Integer> push(OTCommit<Integer, TestOp> commit) {
 			return node.push(commit);
 		}
 

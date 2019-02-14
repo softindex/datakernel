@@ -10,7 +10,6 @@ import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.datakernel.ot.OTNode.FetchData;
-import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -38,7 +37,7 @@ import static io.datakernel.util.CollectionUtils.map;
 import static io.global.common.CryptoUtils.sha256;
 import static io.global.ot.api.OTNodeCommand.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
-import static io.global.ot.util.TestUtils.getCodec;
+import static io.global.ot.util.TestUtils.TEST_OP_CODEC;
 import static io.global.ot.util.TestUtils.getCommitId;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -50,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 public class OTNodeServletTest {
 	private static final String HOST = "http://localhost/";
 	private static final StructuredCodec<CommitId> REVISION_CODEC = REGISTRY.get(CommitId.class);
-	private static final StructuredCodec<TestOp> DIFF_CODEC = getCodec();
+	private static final StructuredCodec<TestOp> DIFF_CODEC = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();
 	private static final StructuredCodec<FetchData<CommitId, TestOp>> FETCH_DATA_CODEC = getFetchDataCodec(REVISION_CODEC, DIFF_CODEC);
 
@@ -71,7 +70,7 @@ public class OTNodeServletTest {
 			g.add(getCommitId(3), getCommitId(4), set(4, 5));
 		});
 		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), createTestOp(), repository);
-		OTNode<CommitId, TestOp> node = new OTNodeImpl<>(algorithms);
+		OTNode<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = algorithms.getOtNode();
 		servlet = OTNodeServlet.forGlobalNode(node, DIFF_CODEC, adapter);
 	}
 
@@ -109,15 +108,15 @@ public class OTNodeServletTest {
 		int level = 6;
 		List<TestOp> diffs = singletonList(add(100));
 
-		FetchData<CommitId, TestOp> commitData = new FetchData<>(parent, level, diffs);
+		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, level, diffs);
 		HttpResponse response = await(servlet.serve(post(HOST + CREATE_COMMIT)
-				.withBody(toJson(FETCH_DATA_CODEC, commitData).getBytes(UTF_8))));
+				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8))));
 		ByteBuf body = await(response.getBody());
 		byte[] bytes = body.asArray();
-		OTCommit<CommitId, TestOp> commit = adapter.rawBytesToCommit(bytes);
-		assertEquals(commit.getLevel(), level);
-		assertEquals(commit.getParents(), map(parent, diffs));
-		assertEquals(CommitId.ofBytes(sha256(bytes)), commit.getId());
+		OTCommit<CommitId, TestOp> otCommit = adapter.parseRawBytes(bytes);
+		assertEquals(otCommit.getLevel(), level);
+		assertEquals(otCommit.getParents(), map(parent, diffs));
+		assertEquals(CommitId.ofBytes(sha256(bytes)), otCommit.getId());
 	}
 
 	@Test
@@ -126,9 +125,9 @@ public class OTNodeServletTest {
 		int level = 6;
 		List<TestOp> diffs = singletonList(add(100));
 
-		FetchData<CommitId, TestOp> commitData = new FetchData<>(parent, level, diffs);
+		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, level, diffs);
 		HttpResponse response = await(servlet.serve(post(HOST + CREATE_COMMIT)
-				.withBody(toJson(FETCH_DATA_CODEC, commitData).getBytes(UTF_8))));
+				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8))));
 		byte[] bytes = await(response.getBody()).asArray();
 		response = await(servlet.serve(post(HOST + PUSH)
 				.withBody(bytes)));
@@ -136,7 +135,7 @@ public class OTNodeServletTest {
 		ByteBuf body = await(response.getBody());
 		String bodyString = body.asString(UTF_8);
 		CommitId commitId = fromJson(REVISION_CODEC, bodyString);
-		assertEquals(adapter.rawBytesToCommit(bytes).getId(), commitId);
+		assertEquals(adapter.parseRawBytes(bytes).getId(), commitId);
 
 		Set<CommitId> heads = await(repository.getHeads());
 		assertEquals(singleton(commitId), heads);

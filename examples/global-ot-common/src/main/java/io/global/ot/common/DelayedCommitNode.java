@@ -19,23 +19,24 @@ package io.global.ot.common;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.global.ot.api.CommitId;
 
 import java.util.List;
 
-public final class DelayedCommitNode<D> implements OTNode<CommitId, D> {
-	private final OTNode<CommitId, D> node;
+public final class DelayedCommitNode<D> implements OTNode<CommitId, D, OTCommit<CommitId, D>> {
+	private final OTNode<CommitId, D, OTCommit<CommitId, D>> node;
 	private final int delay;
 
-	public DelayedCommitNode(OTNode<CommitId, D> node, int delay) {
+	public DelayedCommitNode(OTNode<CommitId, D, OTCommit<CommitId, D>> node, int delay) {
 		this.node = node;
 		this.delay = delay;
 	}
 
 	@Override
-	public Promise<Object> createCommit(CommitId parent, List<? extends D> diffs, long level) {
-		SettablePromise<Object> promise = new SettablePromise<>();
+	public Promise<OTCommit<CommitId, D>> createCommit(CommitId parent, List<? extends D> diffs, long level) {
+		SettablePromise<OTCommit<CommitId, D>> promise = new SettablePromise<>();
 		long pushAt = System.currentTimeMillis() + delay;
 		Eventloop.getCurrentEventloop().schedule(pushAt,
 				() -> node.createCommit(parent, diffs, level).whenComplete(promise::set));
@@ -43,7 +44,7 @@ public final class DelayedCommitNode<D> implements OTNode<CommitId, D> {
 	}
 
 	@Override
-	public Promise<CommitId> push(Object commit) {
+	public Promise<CommitId> push(OTCommit<CommitId, D> commit) {
 		return node.push(commit);
 	}
 

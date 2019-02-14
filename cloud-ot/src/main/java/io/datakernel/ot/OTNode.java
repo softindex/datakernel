@@ -7,10 +7,10 @@ import java.util.List;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
-public interface OTNode<K, D> {
-	Promise<Object> createCommit(K parent, List<? extends D> diffs, long level);
+public interface OTNode<K, D, C> {
+	Promise<C> createCommit(K parent, List<? extends D> diffs, long level);
 
-	Promise<K> push(Object commitData);
+	Promise<K> push(C commit);
 
 	final class FetchData<K, D> {
 		private final K commitId;

@@ -26,7 +26,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.common.CryptoUtils.sha256;
-import static io.global.ot.util.TestUtils.getCodec;
+import static io.global.ot.util.TestUtils.TEST_OP_CODEC;
 import static io.global.ot.util.TestUtils.getCommitId;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
@@ -36,7 +36,7 @@ import static org.junit.Assert.assertEquals;
 @SuppressWarnings("unchecked")
 @RunWith(DatakernelRunner.class)
 public class OTNodeHttpClientTest {
-	private static final StructuredCodec<TestOp> diffCodec = getCodec();
+	private static final StructuredCodec<TestOp> diffCodec = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();
 
 	private OTNodeHttpClient<CommitId, TestOp> client;
@@ -57,8 +57,8 @@ public class OTNodeHttpClientTest {
 			g.add(getCommitId(3), getCommitId(4), set(4, 5));
 		});
 		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), createTestOp(), repository);
-		OTNodeImpl<CommitId, TestOp> node = new OTNodeImpl(algorithms);
-		OTNodeServlet<CommitId, TestOp> servlet = OTNodeServlet.forGlobalNode(node, diffCodec, adapter);
+		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(algorithms);
+		OTNodeServlet<CommitId, TestOp, OTCommit<CommitId, TestOp>> servlet = OTNodeServlet.forGlobalNode(node, diffCodec, adapter);
 		client = OTNodeHttpClient.forGlobalNode(servlet::serve, "http://localhost/", diffCodec);
 	}
 
@@ -84,12 +84,11 @@ public class OTNodeHttpClientTest {
 		List<TestOp> diffs = asList(add(100), set(90, -34));
 		long level = 6;
 
-		Object commitData = await(client.createCommit(parent, diffs, level));
-		byte[] rawData = (byte[]) commitData;
-		OTCommit<CommitId, TestOp> commit = adapter.rawBytesToCommit(rawData);
-		assertEquals(map(parent, diffs), commit.getParents());
-		assertEquals(level, commit.getLevel());
-		assertEquals(CommitId.ofBytes(sha256(rawData)), commit.getId());
+		byte[] rawData = await(client.createCommit(parent, diffs, level));
+		OTCommit<CommitId, TestOp> otCommit = adapter.parseRawBytes(rawData);
+		assertEquals(map(parent, diffs), otCommit.getParents());
+		assertEquals(level, otCommit.getLevel());
+		assertEquals(CommitId.ofBytes(sha256(rawData)), otCommit.getId());
 	}
 
 	@Test
@@ -98,9 +97,9 @@ public class OTNodeHttpClientTest {
 		List<TestOp> diffs = asList(add(100), set(90, -34));
 		long level = 6;
 
-		Object data = await(client.createCommit(parent, diffs, level));
-		CommitId commitId = await(client.push(data));
-		assertEquals(adapter.rawBytesToCommit((byte[]) data).getId(), commitId);
+		byte[] commit = await(client.createCommit(parent, diffs, level));
+		CommitId commitId = await(client.push(commit));
+		assertEquals(adapter.parseRawBytes(commit).getId(), commitId);
 
 		Set<CommitId> heads = await(repository.getHeads());
 		assertEquals(singleton(commitId), heads);

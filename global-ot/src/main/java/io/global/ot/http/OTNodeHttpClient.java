@@ -24,7 +24,7 @@ import static io.global.ot.api.OTNodeCommand.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class OTNodeHttpClient<K, D> implements OTNode<K, D> {
+public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 	private final IAsyncHttpClient httpClient;
 	private final String url;
 	private final StructuredCodec<K> revisionCodec;
@@ -41,13 +41,14 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D> {
 		return new OTNodeHttpClient<>(httpClient, url, revisionCodec, diffCodec);
 	}
 
-	public static <D> OTNodeHttpClient<CommitId, D> forGlobalNode(IAsyncHttpClient httpClient, String url, StructuredCodec<D> diffCodec) {
+	public static <D> OTNodeHttpClient<CommitId, D> forGlobalNode(IAsyncHttpClient httpClient, String url,
+			StructuredCodec<D> diffCodec) {
 		return new OTNodeHttpClient<>(httpClient, url, REGISTRY.get(CommitId.class), diffCodec);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<Object> createCommit(K parent, List<? extends D> diffs, long level) {
+	public Promise<byte[]> createCommit(K parent, List<? extends D> diffs, long level) {
 		FetchData<K, D> fetchData = new FetchData<>(parent, level, (List<D>) diffs);
 		return httpClient.request(post(url + CREATE_COMMIT)
 				.withBody(toJson(fetchDataCodec, fetchData).getBytes(UTF_8)))
@@ -56,9 +57,9 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D> {
 	}
 
 	@Override
-	public Promise<K> push(Object commitData) {
+	public Promise<K> push(byte[] commit) {
 		return httpClient.request(post(url + PUSH)
-				.withBody((byte[]) commitData))
+				.withBody(commit))
 				.thenCompose(response -> response.getBody()
 						.thenCompose(body -> processResult(response, body, revisionCodec)));
 	}

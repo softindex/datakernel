@@ -1,5 +1,6 @@
 package io.global.ot.util;
 
+import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
@@ -8,8 +9,17 @@ import io.global.ot.api.CommitId;
 
 import java.util.Random;
 
+import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
+import static io.datakernel.codec.StructuredCodecs.object;
+
 public class TestUtils {
 	private static final Random RANDOM = new Random();
+	public static final StructuredCodec<TestOp> TEST_OP_CODEC = CodecSubtype.<TestOp>create()
+			.with(TestAdd.class, object(TestAdd::new,
+					"delta", TestAdd::getDelta, INT_CODEC))
+			.with(TestSet.class, object(TestSet::new,
+					"prev", TestSet::getPrev, INT_CODEC,
+					"next", TestSet::getNext, INT_CODEC));
 
 	private TestUtils() {
 		throw new AssertionError();
@@ -20,34 +30,6 @@ public class TestUtils {
 		RANDOM.setSeed(seed);
 		RANDOM.nextBytes(bytes);
 		return CommitId.ofBytes(bytes);
-	}
-
-	public static StructuredCodec<TestOp> getCodec() {
-		return StructuredCodec.of(
-				in -> {
-					switch (in.readString()) {
-						case "add":
-							return new TestAdd(in.readInt());
-						case "set":
-							return new TestSet(in.readInt(), in.readInt());
-						default:
-							throw new UnsupportedOperationException();
-					}
-				}, (out, item) -> {
-					if (item instanceof TestAdd) {
-						TestAdd addOp = (TestAdd) item;
-						out.writeString("add");
-						out.writeInt(addOp.getDelta());
-					} else if (item instanceof TestSet) {
-						TestSet setOp = (TestSet) item;
-						out.writeString("set");
-						out.writeInt(setOp.getPrev());
-						out.writeInt(setOp.getNext());
-					} else {
-						throw new UnsupportedOperationException();
-					}
-				}
-		);
 	}
 
 }

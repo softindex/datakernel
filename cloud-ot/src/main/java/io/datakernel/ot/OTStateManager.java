@@ -46,7 +46,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;
-	private final OTNode<K, D> repository;
+	private final OTNode<K, D, Object> repository;
 
 	private OTState<D> state;
 
@@ -60,10 +60,11 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Object pendingCommit;
 	private List<D> pendingCommitDiffs;
 
-	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D> repository, OTState<D> state) {
+	@SuppressWarnings("unchecked")
+	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D, ?> repository, OTState<D> state) {
 		this.eventloop = eventloop;
 		this.otSystem = otSystem;
-		this.repository = repository;
+		this.repository = (OTNode<K, D, Object>) repository;
 		this.state = state;
 	}
 
