@@ -9,7 +9,7 @@ import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTStateManager;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
@@ -23,6 +23,7 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.common.ManagerProvider;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.GlobalOTNodeHttpClient;
+import io.global.ot.http.OTNodeServlet;
 import io.global.ot.util.Bootstrap;
 
 import java.math.BigInteger;
@@ -74,12 +75,14 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	MiddlewareServlet provideMiddlewareServlet(ClientServlet apiServlet, StaticServlet staticServlet, SingleResourceStaticServlet chatHtmlServlet, OTGraphServlet<CommitId, ChatOperation> graphServlet) {
+	MiddlewareServlet provideMiddlewareServlet(ClientServlet apiServlet, StaticServlet staticServlet, SingleResourceStaticServlet chatHtmlServlet,
+			OTGraphServlet<CommitId, ChatOperation> graphServlet, OTNodeServlet<CommitId, ChatOperation, OTCommit<CommitId, ChatOperation>> nodeServlet) {
 		return MiddlewareServlet.create()
 				.with("/api", apiServlet)
 				.with(GET, "/api/graph", graphServlet)
 				.with(GET, "/chat/:user", chatHtmlServlet)
 				.with(GET, "/", staticServlet)
+				.with("/node", nodeServlet)
 				.withFallback(staticServlet);
 	}
 
@@ -112,6 +115,12 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
+	OTNodeServlet<CommitId, ChatOperation, OTCommit<CommitId, ChatOperation>> provideNodeServlet(OTAlgorithms<CommitId, ChatOperation> algorithms, OTRepositoryAdapter<ChatOperation> repositoryAdapter) {
+		return OTNodeServlet.forGlobalNode(algorithms.getOtNode(), OPERATION_CODEC, repositoryAdapter);
+	}
+
+	@Provides
+	@Singleton
 	ManagerProvider<ChatOperation> provideManagerProvider(OTAlgorithms<CommitId, ChatOperation> algorithms, Config config) {
 		return new ManagerProvider<>(algorithms, ChatOTState::new, config.get(ofDuration(), "sync.interval", DEFAULT_SYNC_INTERVAL));
 	}
@@ -124,13 +133,13 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTAlgorithms<CommitId, ChatOperation> provideAlgorithms(Eventloop eventloop, OTRepository<CommitId, ChatOperation> repository) {
+	OTAlgorithms<CommitId, ChatOperation> provideAlgorithms(Eventloop eventloop, OTRepositoryAdapter<ChatOperation> repository) {
 		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
 	}
 
 	@Provides
 	@Singleton
-	OTRepository<CommitId, ChatOperation> provideRepository(Eventloop eventloop, Bootstrap<ChatOperation> bootstrap) {
+	OTRepositoryAdapter<ChatOperation> provideRepository(Eventloop eventloop, Bootstrap<ChatOperation> bootstrap) {
 		return new OTRepositoryAdapter<>(bootstrap.getDriver(), bootstrap.getMyRepositoryId(), emptySet());
 	}
 

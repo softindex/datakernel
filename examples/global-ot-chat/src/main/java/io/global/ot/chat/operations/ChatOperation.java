@@ -10,12 +10,12 @@ import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class ChatOperation {
 	public static final ChatOperation EMPTY = new ChatOperation(new ChatEntry(0, "", ""), false);
-	public static final StructuredCodec<ChatOperation> OPERATION_CODEC = StructuredCodecs.tuple(
+	public static final StructuredCodec<ChatOperation> OPERATION_CODEC = StructuredCodecs.object(
 			(a, b, c, d) -> new ChatOperation(new ChatEntry(a, b, c), d),
-			ChatOperation::getTimestamp, LONG_CODEC,
-			ChatOperation::getAuthor, STRING_CODEC,
-			ChatOperation::getContent, STRING_CODEC,
-			ChatOperation::isTombstone, BOOLEAN_CODEC);
+			"timestamp", ChatOperation::getTimestamp, LONG_CODEC,
+			"author", ChatOperation::getAuthor, STRING_CODEC,
+			"content", ChatOperation::getContent, STRING_CODEC,
+			"isDelete", ChatOperation::isTombstone, BOOLEAN_CODEC);
 
 	private final ChatEntry entry;
 	private final boolean isTombstone;
