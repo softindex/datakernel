@@ -1235,35 +1235,5 @@ public final class Promises {
 			}
 		}
 	}
-
-	static final class ReduceTimeouter<T, A, R> implements Runnable, CollectListener<T, A, R> {
-		CollectCanceller canceller;
-		@Nullable
-		ScheduledRunnable scheduledRunnable;
-
-		@Override
-		public void onStart(@NotNull CollectCanceller canceller, @Nullable A accumulator) {
-			this.canceller = canceller;
-		}
-
-		@Override
-		public void onCollectResult(@Nullable R result) {
-			if (scheduledRunnable != null) {
-				scheduledRunnable.cancel();
-			}
-		}
-
-		@Override
-		public void onCollectException(@NotNull Throwable e) {
-			if (scheduledRunnable != null) {
-				scheduledRunnable.cancel();
-			}
-		}
-
-		@Override
-		public void run() {
-			canceller.finish();
-		}
-	}
 	// endregion
 }
