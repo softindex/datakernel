@@ -23,29 +23,39 @@ import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.global.ot.api.CommitId;
 
+import java.time.Duration;
 import java.util.List;
 
-public final class DelayedCommitNode<D> implements OTNode<CommitId, D, OTCommit<CommitId, D>> {
-	private final OTNode<CommitId, D, OTCommit<CommitId, D>> node;
-	private final int delay;
+import static io.datakernel.util.Preconditions.checkArgument;
 
-	public DelayedCommitNode(OTNode<CommitId, D, OTCommit<CommitId, D>> node, int delay) {
+public final class DelayedPushNode<D> implements OTNode<CommitId, D, OTCommit<CommitId, D>> {
+	private final OTNode<CommitId, D, OTCommit<CommitId, D>> node;
+	private final long delay;
+
+	private DelayedPushNode(OTNode<CommitId, D, OTCommit<CommitId, D>> node, long delay) {
 		this.node = node;
 		this.delay = delay;
 	}
 
+	public static <D> DelayedPushNode<D> create(OTNode<CommitId, D, OTCommit<CommitId, D>> node, Duration delay) {
+		checkArgument(delay.toMillis() >= 0, "Delay cannot be a negative value");
+		return new DelayedPushNode<>(node, delay.toMillis());
+	}
+
 	@Override
 	public Promise<OTCommit<CommitId, D>> createCommit(CommitId parent, List<? extends D> diffs, long level) {
-		SettablePromise<OTCommit<CommitId, D>> promise = new SettablePromise<>();
-		long pushAt = System.currentTimeMillis() + delay;
-		Eventloop.getCurrentEventloop().schedule(pushAt,
-				() -> node.createCommit(parent, diffs, level).whenComplete(promise::set));
-		return promise;
+		return node.createCommit(parent, diffs, level);
 	}
 
 	@Override
 	public Promise<CommitId> push(OTCommit<CommitId, D> commit) {
-		return node.push(commit);
+		if (delay != 0) {
+			SettablePromise<CommitId> promise = new SettablePromise<>();
+			Eventloop.getCurrentEventloop().delay(delay, () -> node.push(commit).whenComplete(promise::set));
+			return promise;
+		} else {
+			return node.push(commit);
+		}
 	}
 
 	@Override

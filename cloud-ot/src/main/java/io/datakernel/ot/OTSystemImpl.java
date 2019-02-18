@@ -24,8 +24,8 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	}
 
 	@FunctionalInterface
-	public interface InvertFunction<OP> {
-		List<? extends OP> invert(OP op);
+	public interface InvertFunction<OP, OP2 extends OP> {
+		List<? extends OP> invert(OP2 op);
 	}
 
 	@FunctionalInterface
@@ -62,8 +62,8 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 
 	private final Map<KeyPair<D>, TransformFunction<D, ?, ?>> transformers = new HashMap<>();
 	private final Map<KeyPair<D>, SquashFunction<D, ?, ?>> squashers = new HashMap<>();
-	private final Map<Class<D>, InvertFunction<D>> inverters = new HashMap<>();
-	private final Map<Class<D>, EmptyPredicate<D>> emptyPredicates = new HashMap<>();
+	private final Map<Class<? extends D>, InvertFunction<D, ? extends D>> inverters = new HashMap<>();
+	private final Map<Class<? extends D>, EmptyPredicate<? extends D>> emptyPredicates = new HashMap<>();
 
 	private OTSystemImpl() {
 	}
@@ -100,23 +100,23 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <O extends D> OTSystemImpl<D> withInvertFunction(Class<? super O> opType, InvertFunction<O> inverter) {
-		inverters.put((Class<D>) opType, (InvertFunction<D>) inverter);
+	public <O extends D> OTSystemImpl<D> withInvertFunction(Class<? super O> opType, InvertFunction<D, O> inverter) {
+		inverters.put((Class<D>) opType, inverter);
 		return this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O extends D> OTSystemImpl<D> withEmptyPredicate(Class<? super O> opType, EmptyPredicate<O> emptyChecker) {
-		emptyPredicates.put((Class<D>) opType, (EmptyPredicate<D>) emptyChecker);
+		emptyPredicates.put((Class<D>) opType, emptyChecker);
 		return this;
 	}
 
-	@SuppressWarnings({"SuspiciousMethodCalls", "SimplifiableIfStatement"})
+	@SuppressWarnings({"SuspiciousMethodCalls", "SimplifiableIfStatement", "unchecked"})
 	@Override
 	public boolean isEmpty(D op) {
 		if (emptyPredicates.isEmpty())
 			return false;
-		EmptyPredicate<D> emptyChecker = emptyPredicates.get(op.getClass());
+		EmptyPredicate<D> emptyChecker = (EmptyPredicate<D>) emptyPredicates.get(op.getClass());
 		if (emptyChecker == null)
 			return false;
 		return emptyChecker.isEmpty(op);
@@ -202,14 +202,14 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		return result;
 	}
 
-	@SuppressWarnings("SuspiciousMethodCalls")
+	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls"})
 	@Override
-	public List<D> invert(List<? extends D> ops) {
+	public <O extends D> List<D> invert(List<O> ops) {
 		int size = ops.size();
 		List<D> result = new ArrayList<>(size);
 		for (int i = 0; i < size; i++) {
-			D op = ops.get(size - i - 1);
-			InvertFunction<D> inverter = inverters.get(op.getClass());
+			O op = ops.get(size - i - 1);
+			InvertFunction<D, O> inverter = (InvertFunction<D, O>) inverters.get(op.getClass());
 			List<? extends D> inverted = inverter.invert(op);
 			result.addAll(inverted);
 		}

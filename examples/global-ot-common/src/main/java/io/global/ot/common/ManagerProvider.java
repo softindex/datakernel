@@ -32,7 +32,7 @@ public final class ManagerProvider<D> {
 	public Promise<OTStateManager<CommitId, D>> get(String id) {
 		if (!entries.containsKey(id)) {
 			OTStateManager<CommitId, D> stateManager = new OTStateManager<>(algorithms.getEventloop(), algorithms.getOtSystem(),
-					new DelayedCommitNode<>(algorithms.getOtNode(), 5_000), stateSupplier.get());
+					DelayedPushNode.create(algorithms.getOtNode(), Duration.ofSeconds(5)), stateSupplier.get());
 
 			EventloopTaskScheduler syncScheduler = EventloopTaskScheduler.create(algorithms.getEventloop(), stateManager::sync)
 					.withInterval(syncInterval);

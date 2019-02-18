@@ -18,5 +18,5 @@ public interface OTSystem<D> {
 
 	boolean isEmpty(D op);
 
-	List<D> invert(List<? extends D> ops);
+	<O extends D> List<D> invert(List<O> ops);
 }
