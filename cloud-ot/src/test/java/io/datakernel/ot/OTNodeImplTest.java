@@ -159,7 +159,7 @@ public class OTNodeImplTest {
 	public void testFetchInvalidRevision() {
 		Throwable exception = awaitException(node.fetch(100));
 		assertThat(exception, instanceOf(StacklessException.class));
-		assertThat(exception.getMessage(), containsString("Incomplete graph"));
+		assertThat(exception.getMessage(), containsString("Graph exhausted"));
 	}
 
 	@Test

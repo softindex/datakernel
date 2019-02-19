@@ -39,7 +39,7 @@ public class AsyncSuppliersTest {
 	public void resubscribe() {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		AtomicInteger counter = new AtomicInteger();
-		AsyncSupplier<Void> resubscribe = AsyncSuppliers.resubscribe(() -> {
+		AsyncSupplier<Void> resubscribe = AsyncSuppliers.subscribe(() -> {
 			System.out.println("Running resubscribe task");
 			counter.incrementAndGet();
 			SettablePromise<Void> settablePromise = new SettablePromise<>();

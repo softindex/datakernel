@@ -8,13 +8,13 @@ public final class AsyncConsumers {
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> AsyncConsumer<T> buffered(@NotNull AsyncConsumer<T> actual) {
-		return buffered(1, Integer.MAX_VALUE, actual);
+	public static <T> AsyncConsumer<T> buffer(@NotNull AsyncConsumer<T> actual) {
+		return buffer(1, Integer.MAX_VALUE, actual);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> AsyncConsumer<T> buffered(int maxParallelCalls, int maxBufferedCalls, @NotNull AsyncConsumer<T> asyncConsumer) {
+	public static <T> AsyncConsumer<T> buffer(int maxParallelCalls, int maxBufferedCalls, @NotNull AsyncConsumer<T> asyncConsumer) {
 		return asyncConsumer.withExecutor(AsyncExecutors.buffered(maxParallelCalls, maxBufferedCalls));
 	}
 

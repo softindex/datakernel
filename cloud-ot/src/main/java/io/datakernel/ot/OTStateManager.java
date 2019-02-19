@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.async.AsyncSuppliers.resubscribe;
+import static io.datakernel.async.AsyncSuppliers.subscribe;
 import static io.datakernel.async.Promises.sequence;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.isShallowEquals;
@@ -106,7 +106,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private final AsyncSupplier<Void> sync = resubscribe(this::doSync);
+	private final AsyncSupplier<Void> sync = subscribe(this::doSync);
 
 	@NotNull
 	public Promise<Void> sync() {
