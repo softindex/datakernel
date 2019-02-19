@@ -3,7 +3,6 @@ package io.datakernel.cube.service;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ChunkIdCodec;
 import io.datakernel.aggregation.RemoteFsChunkStorage;
-import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeDiffScheme;
@@ -15,7 +14,10 @@ import io.datakernel.etl.LogDiff;
 import io.datakernel.etl.LogDiffCodec;
 import io.datakernel.etl.LogOT;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRepositoryMySql;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
@@ -29,7 +31,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,7 +41,6 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
 
 @RunWith(DatakernelRunner.class)
 public class CubeCleanerControllerTest {
@@ -74,37 +74,6 @@ public class CubeCleanerControllerTest {
 		algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 		repository.initialize();
 		repository.truncateTables();
-	}
-
-	@Test
-	public void testCheckOutEmpty() throws IOException, SQLException {
-		repository.initialize();
-		repository.truncateTables();
-		// 1N -> 2N
-		Long id1 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofRoot(id1)));
-		Long id2 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
-
-		await(algorithms.checkout(id2));
-	}
-
-	@Test
-	public void testFindParentEmpty() {
-		// 1N -> 2N
-		Long id1 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofRoot(id1)));
-		Long id2 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
-
-		await(algorithms.findParent(singleton(id2), DiffsReducer.toVoid(), this::isSnapshot));
-	}
-
-	private Promise<Boolean> isSnapshot(OTCommit<Long, LogDiff<CubeDiff>> commit) {
-		return commit.getSnapshotHint() == Boolean.FALSE ?
-				Promise.of(false) :
-				repository.loadSnapshot(commit.getId())
-						.thenApply(Optional::isPresent);
 	}
 
 	@Test

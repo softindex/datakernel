@@ -11,7 +11,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.exceptions.OTException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,12 +26,12 @@ import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
+	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
@@ -93,7 +92,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			Set<K> visited, SettablePromise<R> cb) {
 		OTCommit<K, D> commit = queue.peek();
 		if (commit == null) {
-			cb.setException(GraphExhaustedException.INSTANCE);
+			cb.setException(GRAPH_EXHAUSTED);
 			return;
 		}
 		reducer.onCommit(commit)
@@ -117,6 +116,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public static final class FindResult<K, A> {
+		@NotNull
 		private final K commit;
 		private final Set<K> commitParents;
 		private final long commitLevel;
@@ -124,7 +124,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		private final long childLevel;
 		private final A accumulatedDiffs;
 
-		private FindResult(@Nullable K commit, Set<K> commitParents, long commitLevel, K child, long childLevel, A accumulatedDiffs) {
+		private FindResult(@NotNull K commit, Set<K> commitParents, long commitLevel, K child, long childLevel, A accumulatedDiffs) {
 			this.commit = commit;
 			this.commitParents = commitParents;
 			this.commitLevel = commitLevel;
@@ -133,6 +133,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			this.accumulatedDiffs = accumulatedDiffs;
 		}
 
+		@NotNull
 		public K getCommit() {
 			return commit;
 		}
@@ -142,7 +143,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		public Long getChildLevel() {
-			return checkNotNull(childLevel);
+			return childLevel;
 		}
 
 		public Set<K> getCommitParents() {
@@ -150,7 +151,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		public long getCommitLevel() {
-			return checkNotNull(commitLevel);
+			return commitLevel;
 		}
 
 		public A getAccumulatedDiffs() {
@@ -461,7 +462,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 					return Promise.of(resume());
 				})
 				.thenComposeEx((v, e) -> {
-					if (e instanceof GraphExhaustedException) return Promise.of(null);
+					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
 					return Promise.of(v, e);
 				})
 				.thenApply($ -> graph)

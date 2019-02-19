@@ -1,63 +1,222 @@
 package io.datakernel.async;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.Assert.assertEquals;
+import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.AsyncSuppliers.subscribe;
+import static io.datakernel.async.TestUtils.await;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
 public class AsyncSuppliersTest {
 	@Test
-	public void reuse() {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		AtomicInteger counter = new AtomicInteger();
-		AsyncSupplier<Void> reuse = AsyncSuppliers.reuse(() -> {
-			System.out.println("Running reuse task");
-			counter.incrementAndGet();
-			SettablePromise<Void> settablePromise = new SettablePromise<>();
-			eventloop.post(() -> {
-				System.out.println("Completing reuse task");
-				settablePromise.set(null);
-			});
-			return settablePromise;
-		});
+	public void testReuse() {
+		AsyncSupplier<Void> reuse = reuse(() -> Promise.complete().async());
 
-		System.out.println("First call of reuse");
-		reuse.get().whenResult($ -> System.out.println("First reuse completed"));
-		System.out.println("Second call of reuse");
-		reuse.get().whenResult($ -> System.out.println("Second reuse completed"));
+		Promise<Void> promise1 = reuse.get();
+		Promise<Void> promise2 = reuse.get();
+		Promise<Void> promise3 = reuse.get();
+		Promise<Void> promise4 = reuse.get();
 
-		eventloop.run();
-		assertEquals(1, counter.get());
+		assertSame(promise1, promise2);
+		assertSame(promise2, promise3);
+		assertSame(promise3, promise4);
 	}
 
 	@Test
-	public void resubscribe() {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		AtomicInteger counter = new AtomicInteger();
-		AsyncSupplier<Void> resubscribe = AsyncSuppliers.subscribe(() -> {
-			System.out.println("Running resubscribe task");
-			counter.incrementAndGet();
-			SettablePromise<Void> settablePromise = new SettablePromise<>();
-			eventloop.post(() -> {
-				System.out.println("Completing resubscribe task");
-				settablePromise.set(null);
-			});
-			return settablePromise;
-		});
+	public void subscribeNormalUsage() {
+		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
 
-		System.out.println("First call of resubscribe");
-		resubscribe.get().whenResult($ -> System.out.println("First resubscribe completed"));
-		System.out.println("Second call of resubscribe");
-		resubscribe.get().whenResult($ -> System.out.println("Second resubscribe completed"));
-		System.out.println("Third call of resubscribe");
-		resubscribe.get().whenResult($ -> System.out.println("Third resubscribe completed"));
+		Promise<Void> promise1 = subscribe.get();
 
-		eventloop.run();
-		assertEquals(2, counter.get());
+		Promise<Void> promise2 = subscribe.get();
+		Promise<Void> promise3 = subscribe.get();
+		Promise<Void> promise4 = subscribe.get();
+
+		assertNotSame(promise1, promise2);
+
+		assertSame(promise2, promise3);
+		assertSame(promise2, promise4);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void subscribeIfGetAfterFirstPromise() {
+		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+
+		Promise<Void>[] nextPromise = new Promise[1];
+		Promise<Void> promise1 = subscribe.get()
+				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+
+		Promise<Void> promise2 = subscribe.get();
+		Promise<Void> promise3 = subscribe.get();
+		Promise<Void> promise4 = subscribe.get();
+
+		await(promise1);
+
+		assertNotSame(promise1, promise2);
+
+		assertSame(promise2, promise3);
+		assertSame(promise2, promise4);
+
+		// subscribed to secondly returned promise
+		assertNotSame(nextPromise[0], promise1);
+		assertSame(nextPromise[0], promise2);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void subscribeIfGetAfterFirstPromiseRecursive() {
+		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+
+		Promise<Void>[] nextPromise = new Promise[3];
+		Promise<Void> promise1 = subscribe.get()
+				.whenComplete(($1, e1) -> nextPromise[0] = subscribe.get()
+						.whenComplete(($2, e2) -> nextPromise[1] = subscribe.get()
+								.whenComplete(($3, e3) -> nextPromise[2] = subscribe.get())));
+
+		Promise<Void> promise2 = subscribe.get();
+		Promise<Void> promise3 = subscribe.get();
+		Promise<Void> promise4 = subscribe.get();
+
+		await(promise1);
+
+		assertNotSame(promise1, promise2);
+
+		assertSame(promise2, promise3);
+		assertSame(promise2, promise4);
+
+		// first recursion subscribed to secondly returned promise
+		assertNotSame(nextPromise[0], promise1);
+		assertSame(nextPromise[0], promise2);
+
+		// next recursions subscribed to newly created promises
+		assertNotSame(nextPromise[0], nextPromise[1]);
+		assertNotSame(nextPromise[1], nextPromise[2]);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void subscribeIfGetAfterLaterPromises() {
+		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+
+		Promise<Void>[] nextPromise = new Promise[1];
+		Promise<Void> promise1 = subscribe.get();
+
+		Promise<Void> promise2 = subscribe.get();
+		Promise<Void> promise3 = subscribe.get()
+				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+		Promise<Void> promise4 = subscribe.get();
+
+		await(promise1);
+
+		assertNotSame(promise1, promise2);
+
+		assertSame(promise2, promise3);
+		assertSame(promise2, promise4);
+
+		// subscribed to new promise
+		assertNotSame(nextPromise[0], promise1);
+		assertNotSame(nextPromise[0], promise2);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void subscribeIfGetAfterLaterPromisesRecursive() {
+		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+
+		Promise<Void>[] nextPromise = new Promise[3];
+		Promise<Void> promise1 = subscribe.get();
+
+		Promise<Void> promise2 = subscribe.get();
+		Promise<Void> promise3 = subscribe.get()
+				.whenComplete(($1, e1) -> nextPromise[0] = subscribe.get()
+						.whenComplete(($2, e2) -> nextPromise[1] = subscribe.get()
+								.whenComplete(($3, e3) -> nextPromise[2] = subscribe.get())));
+		Promise<Void> promise4 = subscribe.get();
+
+		await(promise1);
+
+		assertNotSame(promise1, promise2);
+
+		assertSame(promise2, promise3);
+		assertSame(promise2, promise4);
+
+		// first recursion subscribed to new promise
+		assertNotSame(nextPromise[0], promise1);
+		assertNotSame(nextPromise[0], promise2);
+
+		// next recursions subscribed to newly created promises
+		assertNotSame(nextPromise[0], nextPromise[1]);
+		assertNotSame(nextPromise[1], nextPromise[2]);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void subscribeMultipleRecursions() {
+		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+
+		Promise<Void>[] nextPromise1 = new Promise[3];
+		Promise<Void>[] nextPromise2 = new Promise[3];
+		Promise<Void> promise1 = subscribe.get();
+
+		Promise<Void> promise2 = subscribe.get();
+		Promise<Void> promise3 = subscribe.get()
+				.whenComplete(($1, e1) -> nextPromise1[0] = subscribe.get()
+						.whenComplete(($2, e2) -> nextPromise1[1] = subscribe.get()
+								.whenComplete(($3, e3) -> nextPromise1[2] = subscribe.get())));
+		Promise<Void> promise4 = subscribe.get()
+				.whenComplete(($1, e1) -> nextPromise2[0] = subscribe.get()
+						.whenComplete(($2, e2) -> nextPromise2[1] = subscribe.get()
+								.whenComplete(($3, e3) -> nextPromise2[2] = subscribe.get())));
+		;
+
+		await(promise1);
+
+		assertNotSame(promise1, promise2);
+
+		assertSame(promise2, promise3);
+		assertSame(promise2, promise4);
+
+		// first recursions subscribed to new promise and are the same
+		assertNotSame(nextPromise1[0], promise1);
+		assertNotSame(nextPromise2[0], promise1);
+		assertNotSame(nextPromise1[0], promise2);
+		assertNotSame(nextPromise2[0], promise2);
+		assertSame(nextPromise1[0], nextPromise2[0]);
+
+		// next recursions subscribed to newly created promises and are the same (between each other)
+		assertNotSame(nextPromise1[0], nextPromise1[1]);
+		assertNotSame(nextPromise1[1], nextPromise1[2]);
+
+		assertNotSame(nextPromise2[0], nextPromise2[1]);
+		assertNotSame(nextPromise2[1], nextPromise2[2]);
+
+		assertSame(nextPromise1[1], nextPromise1[1]);
+		assertSame(nextPromise1[2], nextPromise1[2]);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void subscribeIfNotAsync() {
+		AsyncSupplier<Void> subscribe = subscribe(Promise::complete);
+
+		Promise<Void>[] nextPromise = new Promise[1];
+		Promise<Void> promise1 = subscribe.get();
+		Promise<Void> promise2 = subscribe.get()
+				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+		Promise<Void> promise3 = subscribe.get();
+
+		await(promise1);
+
+		assertNotSame(promise1, promise2);
+		assertNotSame(promise1, promise3);
+		assertNotSame(promise1, nextPromise[0]);
+		assertNotSame(promise2, promise3);
+		assertNotSame(promise2, nextPromise[0]);
+		assertNotSame(promise3, nextPromise[0]);
 	}
 }

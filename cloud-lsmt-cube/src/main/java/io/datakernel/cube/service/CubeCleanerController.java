@@ -11,7 +11,10 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.ot.*;
+import io.datakernel.ot.DiffsReducer;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRepositoryEx;
 import io.datakernel.util.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -26,6 +29,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.cube.Utils.chunksInDiffs;
+import static io.datakernel.ot.OTAlgorithms.GRAPH_EXHAUSTED;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -109,7 +113,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentInstant().minus(freezeTimeout)))
 				.thenCompose(this::cleanupFrozenCut)
 				.thenComposeEx((v, e) -> {
-					if (e instanceof GraphExhaustedException) return Promise.of(null);
+					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
 					return Promise.of(v, e);
 				})
 				.whenComplete(promiseCleanup.recordStats())

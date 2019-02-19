@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -10,22 +11,23 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.ot.OTAlgorithms.GRAPH_EXHAUSTED;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class OTAlgorithmsTest {
+	private static final Random RANDOM = new Random();
 	private static final OTSystem<TestOp> TEST_OP = Utils.createTestOp();
 	private static final OTRepositoryStub<Integer, TestOp> REPOSITORY = OTRepositoryStub.create();
 	private static Eventloop eventloop;
@@ -36,6 +38,34 @@ public class OTAlgorithmsTest {
 		eventloop = Eventloop.getCurrentEventloop();
 		algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 		REPOSITORY.reset();
+	}
+
+	@Test
+	public void testCheckOutNoSnapshot() {
+		REPOSITORY.revisionIdSupplier = () -> RANDOM.nextInt(1000) + 1;
+		Integer id1 = await(REPOSITORY.createCommitId());
+		await(REPOSITORY.push(OTCommit.ofRoot(id1)));
+		Integer id2 = await(REPOSITORY.createCommitId());
+		await(REPOSITORY.push(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
+
+		Throwable exception = awaitException(algorithms.checkout(id2));
+		assertSame(GRAPH_EXHAUSTED, exception);
+	}
+
+	@Test
+	public void testFindParentNoSnapshot() {
+		REPOSITORY.revisionIdSupplier = () -> RANDOM.nextInt(1000) + 1;
+		Integer id1 = await(REPOSITORY.createCommitId());
+		await(REPOSITORY.push(OTCommit.ofRoot(id1)));
+		Integer id2 = await(REPOSITORY.createCommitId());
+		await(REPOSITORY.push(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
+
+		Throwable exception = awaitException(algorithms.findParent(singleton(id2), DiffsReducer.toVoid(),
+				commit -> commit.getSnapshotHint() != null ?
+						Promise.of(commit.getSnapshotHint()) :
+						REPOSITORY.loadSnapshot(commit.getId())
+								.thenApply(Optional::isPresent)));
+		assertSame(GRAPH_EXHAUSTED, exception);
 	}
 
 	@Test
