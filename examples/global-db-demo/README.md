@@ -4,14 +4,16 @@ To run the demo application, you should enter the following commands:
 
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/global-launchers
-$ mvn clean compile exec:java@DiscoveryServiceLauncher
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd global-launchers
+$ mvn exec:java@DiscoveryServiceLauncher
 $ # in another console
 $ cd datakernel/global-launchers
-$ mvn clean compile exec:java@GlobalNodesLauncher
+$ mvn exec:java@GlobalNodesLauncher
 $ # in another console
 $ cd datakernel/examples/global-db-demo
-$ mvn clean compile exec:java@GlobalDbDemoApp
+$ mvn exec:java@GlobalDbDemoApp
 ```
 
 After you enter the commands, you'll receive the following output:

@@ -11,13 +11,13 @@ To run the examples, you should enter these commands in your console in appropri
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/csp
-$ mvn clean compile exec:java@ByteBufsParserExample
+$ mvn exec:java@ByteBufsParserExample
 $ # or
-$ mvn clean compile exec:java@ChannelExample
+$ mvn exec:java@ChannelExample
 $ # or
-$ mvn clean compile exec:java@ChannelFileExample
+$ mvn exec:java@ChannelFileExample
 $ # or
-$ mvn clean compile exec:java@CommunicatingProcessExample
+$ mvn exec:java@CommunicatingProcessExample
 ```
 
 **ByteBufs Parser Example** shows how to process bytes with CSP and ByteBuf modules and produces a `Hello` message.

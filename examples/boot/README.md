@@ -8,12 +8,14 @@ creating a Worker Pool with 4 workers.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ``` 
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/boot
-$ mvn clean compile exec:java@ConfigModuleExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/boot
+$ mvn exec:java@ConfigModuleExample
 $ #or
-$ mvn clean compile exec:java@ServiceGraphModuleExample
+$ mvn exec:java@ServiceGraphModuleExample
 $ #or
-$ mvn clean compile exec:java@WorkerPoolModuleExample
+$ mvn exec:java@WorkerPoolModuleExample
 ```
 
 If you run the **Config Module Example**, you will see the following output:

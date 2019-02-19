@@ -8,12 +8,14 @@ downloading file from `RemoteFsServer`.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/remotefs
-$ mvn clean compile exec:java@ServerSetupExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/remotefs
+$ mvn exec:java@ServerSetupExample
 $ # in another console
-$ mvn clean compile exec:java@FileUploadExample
+$ mvn exec:java@FileUploadExample
 $ # then
-$ mvn clean compile exec:java@FileDownloadExample
+$ mvn exec:java@FileDownloadExample
 ```
 
 Note that to work properly all these three examples should be launched in order given here.

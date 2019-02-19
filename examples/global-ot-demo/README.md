@@ -26,14 +26,16 @@ each edge on the graph represents applied operations.
 To run Global-OT demo application, you should enter these commands in your console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/global-launchers
-$ mvn clean compile exec:java@DiscoveryServiceLauncher
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd global-launchers
+$ mvn exec:java@DiscoveryServiceLauncher
 $ # in another console
 $ cd datakernel/global-launchers
-$ mvn clean compile exec:java@GlobalNodesLauncher
+$ mvn exec:java@GlobalNodesLauncher
 $ # in another console
 $ cd datakernel/examples/global-ot-demo
-$ mvn clean compile exec:java@GlobalOTDemoApp
+$ mvn exec:java@GlobalOTDemoApp
 ```
 Note that it is important to execute commands in the given order.
 

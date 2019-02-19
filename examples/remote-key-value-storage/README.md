@@ -36,7 +36,9 @@ fast serialzers and custom optimized communication protocol, which allows to gre
 To download the complete example, enter next commands:
 ```
 $ git clone https://github.com/softindex/datakernel
-$ cd datakernel/examples/remote-key-value-storage
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/remote-key-value-storage
 ```
 
 Then, go to [testing](#testing) section.
@@ -418,13 +420,13 @@ $ mvn clean package
 
 Firstly, launch server:
 ```
-$ mvn clean compile exec:java@RpcServerLauncher
+$ mvn exec:java@RpcServerLauncher
 ```
 
 Then make a "put" request:
 
 ```
-$ mvn clean compile exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
+$ mvn exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
 ```
 
 You should see the following output:
@@ -437,7 +439,7 @@ previous value: null
 Finally, make a "get" request:
 
 ```
-$ mvn clean compile exec:java@RpcClientLauncher -Dexec.args="--get key1"
+$ mvn exec:java@RpcClientLauncher -Dexec.args="--get key1"
 
 ```
 

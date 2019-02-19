@@ -6,10 +6,12 @@ implementation of echo server utilizing `NioChannelEventHandler`.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/eventloop
-$ mvn clean compile exec:java@BusyWaitEventloopEchoServer
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/eventloop
+$ mvn exec:java@BusyWaitEventloopEchoServer
 $ # or
-$ mvn clean compile exec:java@SelectorEventloopEchoServer
+$ mvn exec:java@SelectorEventloopEchoServer
 ```
 
 After you launch any of the servers, enter this command in console:

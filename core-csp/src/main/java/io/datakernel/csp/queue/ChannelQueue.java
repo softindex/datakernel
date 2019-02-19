@@ -29,7 +29,7 @@ public interface ChannelQueue<T> extends Cancellable {
 	/**
 	 * Takes an element of this queue and wraps it in {@code promise}.
 	 *
-	 * @return a value from the queue wrapped in the {@code promise}
+	 * @return a {@code promise} of value from the queue
 	 */
 	Promise<T> take();
 

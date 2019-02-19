@@ -6,10 +6,12 @@ an example of asynchronous work with a text file using Promise.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/promise
-$ mvn clean compile exec:java@PromisesExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/promise
+$ mvn exec:java@PromisesExample
 $ # or
-$ mvn clean compile exec:java@AsyncFileExample
+$ mvn exec:java@AsyncFileExample
 ```
 
 If you run **Promises Example**, you'll receive the following output:

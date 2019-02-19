@@ -6,10 +6,12 @@ dynamically creates a class with method `sayHello()` which is described using ex
 To run the examples, you should execute these three lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/codegen
-$ mvn clean compile exec:java@DynamicClassCreationExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/codegen
+$ mvn exec:java@DynamicClassCreationExample
 $ # or
-$ mvn clean compile exec:java@ExpressionsExample
+$ mvn exec:java@ExpressionsExample
 ```
 
 If you run **Dynamic Class Creation Example**, you will receive the following output:

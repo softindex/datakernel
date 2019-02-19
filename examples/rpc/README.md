@@ -6,10 +6,12 @@ RPC benchmarks.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/rpc
-$ mvn clean compile exec:java@RpcExample
-$ #or
-$ mvn clean compile exec:java@RpcBenchmark
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/rpc
+$ mvn exec:java@RpcExample
+$ # or
+$ mvn exec:java@RpcBenchmark
 ```
 **RPC Benchmark** demonstrates capabilities of the RPC module. You can adjust different parameters and see how they impact the 
 performance. Try it out!

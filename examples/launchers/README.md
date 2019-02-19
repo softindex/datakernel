@@ -8,12 +8,14 @@ a simple "Hello World" launcher.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel
-$ cd datakernel/examples/launchers
-$ mvn clean compile exec:java@HelloWorldLauncher
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/launchers
+$ mvn exec:java@HelloWorldLauncher
 # or 
-$ mvn clean compile exec:java@HttpServerScratch
+$ mvn exec:java@HttpServerScratch
 # or 
-$ mvn clean compile exec:java@HttpSimpleServer
+$ mvn exec:java@HttpSimpleServer
 ```
 
 If you started **HTTP Simple Servlet** or **HTTP Server Scratch**, open your browser and go to [localhost:25565](localhost:25565). 

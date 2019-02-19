@@ -5,8 +5,10 @@ To run the example, you should execute these lines in the console in appropriate
 
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/codec
-$ mvn clean compile exec:java@StructuredCodecsExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/codec
+$ mvn exec:java@StructuredCodecsExample
 ```
 
 You will receive the following output:

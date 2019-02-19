@@ -5,10 +5,12 @@ Very simple implementation (less then 100 lines of code!) of interserver stream:
 To run the examples, you should execute these lines in the console in appropriate folder in the order given here:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/datastreams
-$ mvn clean compile exec:java@NetworkDemoServer
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/datastreams
+$ mvn exec:java@NetworkDemoServer
 $ # and then
-$ mvn clean compile exec:java@NetworkDemoClient
+$ mvn exec:java@NetworkDemoClient
 ```
 
 Example's stream graph is illustrated in the picture below:
@@ -80,13 +82,13 @@ To run the examples, you should execute these lines in the console in the approp
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/datastreams
-$ mvn clean compile exec:java@SupplierExample
+$ mvn exec:java@SupplierExample
 $ # or
-$ mvn clean compile exec:java@ConsumerExample
+$ mvn exec:java@ConsumerExample
 $ # or
-$ mvn clean compile exec:java@TransformerExample
+$ mvn exec:java@TransformerExample
 $ # or
-$ mvn clean compile exec:java@BuiltinStreamNodesExample
+$ mvn exec:java@BuiltinStreamNodesExample
 ```
 
 

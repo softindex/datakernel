@@ -10,10 +10,12 @@ a console application which sends to a simple server "PING" request and receives
 To run the examples, you should enter these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/net
-$ mvn clean compile exec:java@TcpEchoServerExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/net
+$ mvn exec:java@TcpEchoServerExample
 $ # or
-$ mvn clean compile exec:java@MultiEchoServerExample
+$ mvn exec:java@MultiEchoServerExample
 ```
 This will start your echo server.
 Both of the servers utilize `SimpleServer` as their basis. `SimpleServer` is an implementation of 
@@ -47,7 +49,7 @@ server.listen();
 You can connect to your server from telnet with command `telnet localhost 9922` or by launching your TcpClient example:
 ```
 $ cd datakernel/examples/eventloop
-$ mvn clean compile exec:java@TcpClientExample
+$ mvn exec:java@TcpClientExample
 ```
 
 Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
@@ -58,7 +60,7 @@ To run **Ping Pong Socket Connection** example enter these lines in the console 
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/net
-$ mvn clean compile exec:java@PingPongSocketConnection
+$ mvn exec:java@PingPongSocketConnection
 ```
 
 Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an implementation of `AsyncTcpSocket` 

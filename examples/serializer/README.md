@@ -10,14 +10,16 @@ example of using generics and interfaces with serializers and deserializers.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/serializer
-$ mvn clean compile exec:java@SimpleObjectSerializationExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/serializer
+$ mvn exec:java@SimpleObjectSerializationExample
 $ # or
-$ mvn clean compile exec:java@ComplexObjectSerializationExample
+$ mvn exec:java@ComplexObjectSerializationExample
 $ # or
-$ mvn clean compile exec:java@FixedSizeFieldsSerializationExample
+$ mvn exec:java@FixedSizeFieldsSerializationExample
 $ # or
-$ mvn clean compile exec:java@GenericsAndInterfacesSerializationExample
+$ mvn exec:java@GenericsAndInterfacesSerializationExample
 ```
 In all of these examples method `serializeAndDeserialized()` is utilized but with different arguments and configurations.
  

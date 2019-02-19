@@ -14,20 +14,22 @@ an example of `StaticServlet` utilizing.
 To run the examples, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/http
-$ mvn clean compile exec:java@HttpServerExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/http
+$ mvn exec:java@HttpServerExample
 $ # or
-$ mvn clean compile exec:java@HttpMultithreadedServerExample
+$ mvn exec:java@HttpMultithreadedServerExample
 $ # or
-$ mvn clean compile exec:java@MiddlewareServletExample
+$ mvn exec:java@MiddlewareServletExample
 $ # or
-$ mvn clean compile exec:java@RequestParametrExample
+$ mvn exec:java@RequestParametrExample
 $ # or
-$ mvn clean compile exec:java@StaticServletExample
+$ mvn exec:java@StaticServletExample
 ```
 To check how **HTTP Server Example** or **HTTP Multithreaded Server Example** works, you should start your client:
 ```
-$ mvn clean compile exec:java@HttpClientExample
+$ mvn exec:java@HttpClientExample
 ```
 
 If you connected to the multithreaded server, you'll receive a message representing which worker processed your request:
@@ -57,3 +59,5 @@ utilized with `postParameters.get()`.
 **Static Servlet Example** shows how to set up and utilize `StaticServlet`. Method `StaticServlet.create()` returns a 
 new `StaticServlet`. 
 
+### Benchmark
+You can check the speed of work of `HTTP` module by running `HttpBenchmark`.

@@ -4,14 +4,16 @@ This demo application shows uploading and downloading file processes in Global-F
 To run the Global-FS demo application enter these commands in your console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/global-launchers
-$ mvn clean compile exec:java@DiscoveryServiceLauncher
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd global-launchers
+$ mvn exec:java@DiscoveryServiceLauncher
 $ # in another console
 $ cd datakernel/global-launchers
-$ mvn clean compile exec:java@GlobalNodesLauncher
+$ mvn exec:java@GlobalNodesLauncher
 $ # in another console
 $ cd datakernel/examples/global-fs-demo
-$ mvn clean compile exec:java@GlobalFsDemoApp
+$ mvn exec:java@GlobalFsDemoApp
 ```
 Note that it is important to execute commands in the given order.
 

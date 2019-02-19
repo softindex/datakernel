@@ -1,55 +1,41 @@
 ## Introduction
 
 DataKernel is a full-stack application framework for Java. 
-It contains components for building application-specific embedded databases, specialized high-performance servers, clients and network protocols, 
-and applications of different scales: from single-node HTTP-server to large distributed systems spanning multiple datacenters. 
+It contains components for building **application-specific embedded databases, specialized high-performance servers, clients and network protocols** 
+and **applications of different scales**: from single-node HTTP-server to large distributed systems spanning multiple data centers. 
 
-DataKernel framework is asynchronous, event-driven, lightweight and legacy-free, and features modern high-level abstractions and DSLs. 
-Its asynchronous architecture inspired by Node.js and efficient multi-threading model makes DataKernel extremely fast, which is proven by various benchmarks.
+DataKernel framework is **asynchronous, event-driven, lightweight and legacy-free**, featuring modern **high-level abstractions** and **DSLs**. 
+Its asynchronous architecture was **inspired by Node.js**, and efficient multi-threading model makes DataKernel **extremely fast**, which is proven by various benchmarks.
 
-The essential components of DataKernel form the basis of various high-load applications 
-processing billions of daily requests: ad-serving solutions, online analytics, 
-web crawlers that perform content indexing on a large scale.
-
-## DataKernel capabilities
-
-1. DataKernel allows to efficiently work with massive amounts of data. With its help you can create **custom 
-app-specific databases, data services and applications**. DataKernel incorporates **[LSMT](https://en.wikipedia.org/wiki/Log-structured_merge-tree), 
+The main concepts of DataKernel are:
+1. Fully **decentralized and asynchronous** cluster architecture with no centralized Apache ZooKeeper-like consensus algorithms.
+2. Developing **embedded servers and services** that are tailored to specific business application instead of "config file"-configured servers. 
+3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.
+4. No multi-threading overhead. All worker threads are essentially **single-threaded** but can interact with each other and common threadsafe shared state. 
+5. Modern and efficient solutions as core technologies:
+    * Optimized **Eventloop and Promise**, inspired by Node.js
+    * **[CSP](https://en.wikipedia.org/wiki/Communicating_sequential_processes)** implementation, similar to Go language
+    * **Bytecode generation** - for high-performance data serializers and for runtime data processing
+    * Fast and high-level network abstractions
+6. Incorporating **[LSMT](https://en.wikipedia.org/wiki/Log-structured_merge-tree), 
 [CRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) and 
 [Operational Transformation (OT)](https://en.wikipedia.org/wiki/Operational_transformation)** storage engines and algorithms, 
 with built-in support of **distributed data storage and processing**. 
 
-2. It has high-performance embedded HTTP server for developing of full-stack web applications with **support of React.js front-end and minimalistic Dependency Injection.**
-
-3. DataKernel utilizes efficient solutions as core technologies:
-    * Optimized **Eventloop and Promises**, inspired by Node.js
-    * **[CSP](https://en.wikipedia.org/wiki/Communicating_sequential_processes)** implementation, similar to Go language
-    * Fast and high-level network abstractions
-    * **Bytecode generation** - for high-performance data serializers and for runtime data processing
-
 DataKernel is an actively used production-ready technology. It has a full **JMX monitoring** coverage of all of the 
-components and also a **automatic bootstrap of applications' components graph**.
+components and also a **automatic bootstrap of applications' components graph**. It also has a high-performance embedded HTTP 
+server for developing of full-stack web applications with **support of React.js front-end and minimalistic Dependency Injection.**
 
-## DataKernel concepts
-
-1. Fully **decentralized and asynchronous** cluster architecture with no centralized Apache ZooKeeper-like consensus 
-algorithms.
-2. Developing **embedded servers and services** that are tailored to specific business application instead of 
-"config file"-configured servers. 
-3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.
-4. No multi-threading overhead. All worker threads are essentially **single-threaded** but can interact with each other and common threadsafe shared state. 
-5. Modern **CSP, Promises, bytecode generation, LSMT, CRDT and OT** technologies.
+The essential components of DataKernel form the basis of diverse high-load applications processing billions of requests 
+daily: ad-serving solutions, online analytics and web crawlers that perform content indexing on a large scale.
 
 ## Getting started
 
-There are three guides which demonstrate some basic yet extremely important features of DataKernel to get started with 
-the framework:
-1. ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) - this 5-minute guide shows 
-how to create a simple “Hello World” application using Eventloop, which is one the core components of DataKernel framework.
-2. ["Hello World!" HTTP Server](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld) - create a 
-simple but scalable HTTP server using Boot and HTTP modules.
-3. [Remote key-value storage](https://github.com/softindex/datakernel/tree/master/examples/remote-key-value-storage) - in 
-this guide you will create a remote key-value storage with basic operations "put" and "get" utilizing Boot and RPC modules.
+You can start with ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 5-minute guide, which 
+shows how to create a simple “Hello World” application using Eventloop - one the core components of DataKernel framework.
+
+Also, check out [examples module](https://github.com/softindex/datakernel/tree/master/examples), which includes examples 
+for most of the DataKernel components and use cases of their combinations.
 
 ## Core components 
 

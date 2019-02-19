@@ -1,6 +1,6 @@
 ## Purpose
 In this guide we will create a simple “Hello World” application using 
-[Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop), which is the core component of Datakernel 
+[Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop), which is the core component of DataKernel 
 Framework.
 
 ## What you will need:
@@ -15,14 +15,30 @@ Framework.
 
 ## 1. Working Example
 
-To run the complete example, enter next commands:
+To run the complete example you can start it in your console by entering next commands:
 
 ```
 $ git clone https://github.com/softindex/datakernel
-$ cd datakernel/examples/getting-started
-$ mvn clean complile exec:java@HelloWorld
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/getting-started
+$ mvn exec:java@HelloWorld
 ```
 
+Alternatively you can simply open your favorite IDE and clone DataKernel project. Then open: 
+```
+datakernel
+└── examples
+    └── getting-started
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── HelloWorld.java
+```
+and run `HelloWorld.main()`.
 
 ## 2. Step-by-step guide
 
@@ -63,7 +79,7 @@ Add a maven dependency to use DataKernel in your project, as shown below:
 
 	<artifactId>getting-started</artifactId>
 
-	<name>Datakernel Examples: Getting started</name>
+	<name>DataKernel Examples: Getting started</name>
 
 	<dependencies>
 		<dependency>
@@ -106,10 +122,10 @@ import io.datakernel.eventloop.Eventloop;
 public class HelloWorld {
 
 	public static void main(String[] args) {
-        //creating an eventloop and setting a task for it
-
+		
+        //creating an eventloop 
 		Eventloop eventloop = Eventloop.create();
-
+        //setting a runnable task for it
 		eventloop.post(() -> System.out.println("Hello World"));
         
         //starting the created eventlloop
@@ -121,6 +137,12 @@ public class HelloWorld {
 Finally, enter the commands below in console to compile and run this app:
 ```
 $ cd helloworld
-$ mvn clean compile exec:java@HelloWorld
+$ mvn exec:java@HelloWorld
 ```
-You'll receive a `Hello World` message proceeded by eventloop.
+... and receive a `Hello World` message proceeded by Eventloop. Congratulations, you've just created your first DataKernel application!
+
+##What's next?
+To make DataKernel more developer-friendly, we created dozens examples of different scales, representing most of the 
+framework's capabilities. 
+Depending on your objectives, you can either explore [core components examples](https://github.com/softindex/datakernel/tree/master/examples#core-examples) 
+or go directly to [advanced integrated examples](https://github.com/softindex/datakernel/tree/master/examples#integrated-examples).

@@ -4,8 +4,10 @@ an example of conflict-free merging of two modified replicas.
 To run the example, you should first execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/crdt
-$ mvn clean compile exec:java@CrdtExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/crdt
+$ mvn exec:java@CrdtExample
 ```
 
 In this example, we have two replicas - independent nodes which store different information.

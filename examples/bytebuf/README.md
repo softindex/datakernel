@@ -11,12 +11,14 @@ shows how queues of ByteBufs are created and processed.
 To run the examples, you should execute these three lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/bytebuf
-$ mvn clean compile exec:java@ByteBufExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/bytebuf
+$ mvn exec:java@ByteBufExample
 $ # or
-$ mvn clean compile exec:java@ByteBufPoolExample
+$ mvn exec:java@ByteBufPoolExample
 $ # or
-$ mvn clean compile exec:java@ByteBufQueueExample
+$ mvn exec:java@ByteBufQueueExample
 ```
 
 If you run the **ByteBuf Example**, you'll receive the following output:

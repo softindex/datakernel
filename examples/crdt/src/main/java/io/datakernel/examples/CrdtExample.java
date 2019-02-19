@@ -62,7 +62,7 @@ public final class CrdtExample {
 				.withPartition(9, two)
 				.withReplicationCount(5);
 
-		// * one replica:
+		// * first replica:
 		//   first = [#1, #2, #3, #4]
 		//   second = ["#3", "#4", "#5", "#6"]
 		//
