@@ -1,8 +1,7 @@
-1. [HTTP Server Scratch](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpServerScratch.java) - 
-an example of setting up a simple HTTP server utilizing `Launcher`.
-2. [HTTP Simple Server](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpSimpleServer.java) - 
-an example of setting up a simple HTTP server utilizing `HttpServerLauncher`
-3. ["Hello World" Launcher](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HelloWorldLauncher.java) - 
+## Launchers
+
+### Hello world
+1. ["Hello World" Launcher](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HelloWorldLauncher.java) - 
 a simple "Hello World" launcher.
 
 To run the examples, you should execute these lines in the console in appropriate folder:
@@ -12,13 +11,25 @@ $ cd datakernel
 $ mvn clean install -DskipTests
 $ cd examples/launchers
 $ mvn exec:java@HelloWorldLauncher
-# or 
+```
+
+### HTTP
+1. [HTTP Server Scratch](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpServerScratch.java) - 
+an example of setting up a simple HTTP server utilizing `Launcher`.
+2. [HTTP Simple Server](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpSimpleServer.java) - 
+an example of setting up a simple HTTP server utilizing `HttpServerLauncher`
+
+To run the examples, you should execute these lines in the console in appropriate folder:
+```
+$ git clone https://github.com/softindex/datakernel
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/launchers
 $ mvn exec:java@HttpServerScratch
 # or 
 $ mvn exec:java@HttpSimpleServer
 ```
-
-If you started **HTTP Simple Servlet** or **HTTP Server Scratch**, open your browser and go to [localhost:25565](localhost:25565). 
+When you start **HTTP Simple Servlet** or **HTTP Server Scratch**, open your browser and go to [localhost:25565](localhost:25565). 
 You will see the following content:
 ```
 "Hello from HTTP server" 

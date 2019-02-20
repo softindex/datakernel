@@ -1,11 +1,11 @@
-1. [ByteBuf Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufExample) - 
+1. [ByteBuf Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufExample.java) - 
 represents some basic ByteBuf possibilities, such as: 
     * wrapping data in ByteBuf for writing/reading, 
     * slicing particular parts out of data,
     * conversions.
-2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample) - 
+2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample.java) - 
 represents how to work with ByteBufPool.
-3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample) - 
+3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample.java) - 
 shows how queues of ByteBufs are created and processed.
 
 To run the examples, you should execute these three lines in the console in appropriate folder:

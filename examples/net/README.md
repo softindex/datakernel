@@ -59,7 +59,9 @@ To run **Ping Pong Socket Connection** example enter these lines in the console 
 
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/net
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/net
 $ mvn exec:java@PingPongSocketConnection
 ```
 

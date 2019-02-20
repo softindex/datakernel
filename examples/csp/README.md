@@ -10,7 +10,9 @@ represents communication between `ChannelSupplier` and `ChannelConsumer` utilizi
 To run the examples, you should enter these commands in your console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/csp
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/csp
 $ mvn exec:java@ByteBufsParserExample
 $ # or
 $ mvn exec:java@ChannelExample

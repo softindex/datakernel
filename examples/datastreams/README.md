@@ -81,7 +81,9 @@ demonstrates some of builtin Stream possibilities, such as filtering, sharding a
 To run the examples, you should execute these lines in the console in the appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/datastreams
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/datastreams
 $ mvn exec:java@SupplierExample
 $ # or
 $ mvn exec:java@ConsumerExample
