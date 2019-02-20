@@ -2,15 +2,15 @@ import React from 'react';
 import connectService from '../common/connectService';
 import ChatContext from '../modules/chat/ChatContext';
 
-function Messages({messages}) {
+function Messages({messages, ready}) {
   return (
     <>
+      {!ready && <span>Loading...</span>}
       {messages.map((message, index) => (
         <React.Fragment key={index}>
           <b>{message.author}: </b>
-          {message.loaded && <span>({message.time.toDateString()}) </span>}
-          {!message.loaded && <span>(Loading) </span>}
-          <div>{message.text}</div>
+          <span>({new Date(message.timestamp).toDateString()})</span>
+          <div>{message.content}</div>
           <hr/>
         </React.Fragment>
       ))}
@@ -18,4 +18,4 @@ function Messages({messages}) {
   );
 }
 
-export default connectService(ChatContext, ({messages}) => ({messages}))(Messages);
+export default connectService(ChatContext, ({messages, ready}) => ({messages, ready}))(Messages);

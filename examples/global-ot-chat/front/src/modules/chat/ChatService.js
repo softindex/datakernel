@@ -1,46 +1,49 @@
 import Service from '../../common/Service';
-
-function wait(time) {
-  return new Promise(resolve => {
-    setTimeout(resolve, time);
-  });
-}
+import ChatOTOperation from './ot/ChatOTOperation';
 
 class ChatService extends Service {
-  constructor() {
+  constructor(chatOTStateManager) {
     super({
-      messages: []
+      messages: [],
+      ready: false
     });
-    this._maxMessageId = 0;
+    this._chatOTStateManager = chatOTStateManager;
   }
 
-  async sendMessage(author, text) {
-    const messageId = ++this._maxMessageId;
+  async init() {
+    await this._chatOTStateManager.checkout();
+    this.setState({
+      messages: this._getMessagesFromStateManager(),
+      ready: true
+    });
+  }
+
+  async sendMessage(author, content) {
+    const timestamp = Date.now();
+    const operation = new ChatOTOperation(timestamp, author, content, false);
+    this._chatOTStateManager.add([operation]);
 
     this.setState({
       messages: [...this.state.messages, {
-        id: messageId,
         author,
-        text,
-        time: new Date(),
-        loaded: false
+        content,
+        timestamp
       }]
     });
 
-    await wait(1000);
+    await this._chatOTStateManager.sync();
 
     this.setState({
-      messages: this.state.messages.map(message => {
-        if (message.id === messageId) {
-          return {
-            ...message,
-            loaded: true
-          };
-        }
-
-        return message;
-      })
+      messages: this._getMessagesFromStateManager()
     });
+  }
+
+  _getMessagesFromStateManager() {
+    const otState = this._chatOTStateManager.getState();
+    const orderedMessages = [...otState]
+      .map(JSON.parse)
+      .sort((left, right) => left.timestamp - right.timestamp);
+    return orderedMessages;
   }
 }
 
