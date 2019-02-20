@@ -1,56 +1,47 @@
 package io.global.ot.chat.operations;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
-import io.global.ot.chat.operations.ChatOTState.ChatEntry;
-
-import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class ChatOperation {
-	public static final ChatOperation EMPTY = new ChatOperation(new ChatEntry(0, "", ""), false);
-	public static final StructuredCodec<ChatOperation> OPERATION_CODEC = StructuredCodecs.object(
-			(a, b, c, d) -> new ChatOperation(new ChatEntry(a, b, c), d),
+	public static final ChatOperation EMPTY = new ChatOperation(0, "", "", false);
+	public static final StructuredCodec<ChatOperation> OPERATION_CODEC = object(ChatOperation::new,
 			"timestamp", ChatOperation::getTimestamp, LONG_CODEC,
 			"author", ChatOperation::getAuthor, STRING_CODEC,
 			"content", ChatOperation::getContent, STRING_CODEC,
 			"isDelete", ChatOperation::isTombstone, BOOLEAN_CODEC);
 
-	private final ChatEntry entry;
+	private final long timestamp;
+	private final String author;
+	private final String content;
 	private final boolean isTombstone;
 
-	private ChatOperation(ChatEntry entry, boolean remove) {
-		this.entry = entry;
+	private ChatOperation(long timestamp, String author, String content, boolean remove) {
+		this.timestamp = timestamp;
+		this.author = author;
+		this.content = content;
 		this.isTombstone = remove;
 	}
 
 	public static ChatOperation insert(long timestamp, String author, String content) {
-		return new ChatOperation(new ChatEntry(timestamp, author, content), false);
+		return new ChatOperation(timestamp, author, content, false);
 	}
 
 	public static ChatOperation delete(long timestamp, String author, String content) {
-		return new ChatOperation(new ChatEntry(timestamp, author, content), true);
-	}
-
-	public void apply(Set<ChatEntry> entries) {
-		if (isTombstone) {
-			entries.remove(entry);
-		} else {
-			entries.add(entry);
-		}
+		return new ChatOperation(timestamp, author, content, true);
 	}
 
 	public long getTimestamp() {
-		return entry.getTimestamp();
+		return timestamp;
 	}
 
 	public String getContent() {
-		return entry.getContent();
+		return content;
 	}
 
 	public String getAuthor() {
-		return entry.getAuthor();
+		return author;
 	}
 
 	public boolean isTombstone() {
@@ -58,22 +49,25 @@ public final class ChatOperation {
 	}
 
 	public boolean isEmpty() {
-		return getContent().isEmpty() || getAuthor().isEmpty();
+		return content.isEmpty() || author.isEmpty();
 	}
 
 	public ChatOperation invert() {
-		return new ChatOperation(entry, !isTombstone);
+		return new ChatOperation(timestamp, author, content, !isTombstone);
 	}
 
 	public boolean isInversionFor(ChatOperation operation) {
-		return entry.equals(operation.entry) && isTombstone != operation.isTombstone;
+		return timestamp == operation.timestamp &&
+				author.equals(operation.author) &&
+				content.equals(operation.content) &&
+				isTombstone != operation.isTombstone;
 	}
 
 	@Override
 	public String toString() {
 		return '{' + (isTombstone ? "-" : "+") +
-				entry.getContent() +
-				" [" + entry.getAuthor() +
+				content +
+				" [" + author +
 				"]}";
 	}
 }
