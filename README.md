@@ -23,7 +23,7 @@ The main concepts of DataKernel are:
 with built-in support of **distributed data storage and processing**. 
 
 DataKernel is an actively used production-ready technology. It has a full **JMX monitoring** coverage of all of the 
-components and also a **automatic bootstrap of applications' components graph**. It also has a high-performance embedded HTTP 
+components and also an **automatic bootstrap of applications' components graph**. It also has a high-performance embedded HTTP 
 server for developing of full-stack web applications with **support of React.js front-end and minimalistic Dependency Injection.**
 
 The essential components of DataKernel form the basis of diverse high-load applications processing billions of requests 
@@ -64,8 +64,8 @@ utilize Eventloop and support SSL.
 
 ### [CSP](https://github.com/softindex/datakernel/tree/master/core-csp)
 
-CSP stands for Communicating Sequential Processes. This module provides sequential communication between processes via 
-channels similarly to the Go language.
+CSP stands for Communicating Sequential Processes. This module provides ASYNCHRONOUS sequential communication between 
+processes via channels similarly to the Go language.
 
 [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp)
 

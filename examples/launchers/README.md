@@ -4,7 +4,7 @@
 1. ["Hello World" Launcher](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HelloWorldLauncher.java) - 
 a simple "Hello World" launcher.
 
-To run the examples, you should execute these lines in the console in appropriate folder:
+To run the example, you should execute these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel
 $ cd datakernel
