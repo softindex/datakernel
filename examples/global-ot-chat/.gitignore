@@ -1,2 +1,3 @@
 /dependency-reduced-pom.xml
+node_modules
 *.properties
