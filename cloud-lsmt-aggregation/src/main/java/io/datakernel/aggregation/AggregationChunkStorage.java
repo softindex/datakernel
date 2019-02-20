@@ -40,11 +40,6 @@ public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	<T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
-	default <T> StreamSupplier<T> readStream(AggregationStructure aggregation, List<String> fields,
-			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamSupplier.ofPromise(read(aggregation, fields, recordClass, chunkId, classLoader));
-	}
-
 	/**
 	 * Creates a {@code StreamConsumer} that persists streamed records.
 	 * The chunk to write is determined by {@code aggregationId} and {@code id}.
@@ -55,11 +50,6 @@ public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	 */
 	<T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
-
-	default <T> StreamConsumer<T> writeStream(AggregationStructure aggregation, List<String> fields,
-			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamConsumer.ofPromise(write(aggregation, fields, recordClass, chunkId, classLoader));
-	}
 
 	Promise<Void> finish(Set<C> chunkIds);
 
