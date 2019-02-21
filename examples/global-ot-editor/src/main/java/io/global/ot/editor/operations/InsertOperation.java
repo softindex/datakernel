@@ -1,10 +1,16 @@
 package io.global.ot.editor.operations;
 
+import io.datakernel.codec.StructuredCodec;
 import org.jetbrains.annotations.NotNull;
 
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.ot.editor.operations.DeleteOperation.delete;
 
 public class InsertOperation implements EditorOperation {
+	public static final StructuredCodec<InsertOperation> INSERT_CODEC = object(InsertOperation::new,
+			"pos", InsertOperation::getPosition, INT_CODEC,
+			"content", InsertOperation::getContent, STRING_CODEC);
+
 	private final int position;
 	@NotNull
 	private final String content;
