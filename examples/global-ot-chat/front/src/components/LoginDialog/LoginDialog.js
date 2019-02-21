@@ -7,12 +7,9 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 import connectService from '../../common/connectService';
-import ChatContext from "../../modules/chat/ChatContext";
-import darkTheme from '../theme/darkTheme';
-import {MuiThemeProvider} from "@material-ui/core";
+import AccountContext from "../../modules/account/AccountContext";
 
 class LoginDialog extends React.Component {
-
   state = {
     value: null
   };
@@ -20,52 +17,50 @@ class LoginDialog extends React.Component {
   handleChange = (e) => {
     this.setState({
       value: e.currentTarget.value
-    })
+    });
   };
 
-  onSubmit = () => {
+  onSubmit = (event) => {
+    event.preventDefault();
     this.props.onSubmit(this.state.value)
   };
 
   render() {
     return (
-      <MuiThemeProvider theme={darkTheme}>
-        <Dialog
-          open={Boolean(this.props.isOpen)}
-          onClose={this.handleClose}
-          aria-labelledby="form-dialog-title"
-        >
+      <Dialog
+        open={!this.props.authorized}
+        onClose={this.handleClose}
+        aria-labelledby="form-dialog-title"
+      >
+        <form onSubmit={this.onSubmit}>
           <DialogTitle id="form-dialog-title">Subscribe</DialogTitle>
           <DialogContent>
             <DialogContentText>
               Enter your username to start chat
             </DialogContentText>
             <TextField
+              required={true}
               autoFocus
               margin="normal"
-              id="name"
               label="Login"
-              type="email"
+              type="text"
               fullWidth
               variant="outlined"
               onChange={this.handleChange}
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={this.onSubmit} color="primary">
+            <Button type="submit" color="primary">
               Enter
             </Button>
           </DialogActions>
-        </Dialog>
-      </MuiThemeProvider>
+        </form>
+      </Dialog>
     )
   }
 }
 
-export default connectService(ChatContext, (state, chatService) => ({
-  async sendMessage(login, message) {
-    await chatService.sendMessage(login, message);
-  }
+export default connectService(AccountContext, ({authorized}, accountService) => ({
+  authorized,
+  onSubmit: login => accountService.auth(login)
 }))(LoginDialog);
-
-
