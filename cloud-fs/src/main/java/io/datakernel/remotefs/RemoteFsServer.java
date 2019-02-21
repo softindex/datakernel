@@ -17,8 +17,8 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
@@ -37,10 +37,14 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
+import static io.datakernel.remotefs.RemoteFsUtils.checkRange;
+import static io.datakernel.remotefs.RemoteFsUtils.getErrorCode;
+import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.toLogger;
 
 /**
  * An implementation of {@link AbstractServer} for RemoteFs.
@@ -49,6 +53,8 @@ import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private static final ByteBufSerializer<FsCommand, FsResponse> SERIALIZER =
 			ofJsonCodec(RemoteFsCommands.CODEC, RemoteFsResponses.CODEC);
+
+	public static final StacklessException NO_HANDLER_FOR_MESSAGE = new StacklessException(RemoteFsServer.class, "No handler for received message type");
 
 	private final Map<Class<?>, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;
@@ -70,7 +76,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	public static RemoteFsServer create(Eventloop eventloop, Executor executor, Path storage) {
-		return new RemoteFsServer(eventloop, LocalFsClient.create(eventloop, executor, storage));
+		return new RemoteFsServer(eventloop, LocalFsClient.create(eventloop, storage));
 	}
 
 	public static RemoteFsServer create(Eventloop eventloop, FsClient client) {
@@ -94,7 +100,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 					if (handler == null) {
-						return Promise.ofException(new Exception("no handler for " + msg + " " + this));
+						logger.warn("received a message with no associated handler, type: " + msg.getClass());
+						return Promise.ofException(NO_HANDLER_FOR_MESSAGE);
 					}
 					return handler.onMessage(messaging, msg);
 				})
@@ -104,73 +111,70 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						return Promise.complete();
 					}
 					logger.warn("got an error while handling message (" + e + ") : " + this);
-					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
-					return messaging.send(new ServerError(prefix + e.getMessage()))
-							.thenCompose($1 -> messaging.sendEndOfStream())
-							.whenResult($1 -> messaging.close());
+					return messaging.send(new ServerError(getErrorCode(e)))
+							.thenCompose($2 -> messaging.sendEndOfStream())
+							.whenResult($2 -> messaging.close());
 				});
 	}
 
 	private void addHandlers() {
 		onMessage(Upload.class, (messaging, msg) -> {
-			String file = msg.getFileName();
-			logger.trace("receiving data for {}: {}", file, this);
-			return messaging.receiveBinaryStream()
-					.streamTo(ChannelConsumer.ofPromise(client.upload(file, msg.getOffset())))
+			String name = msg.getName();
+			return client.upload(name, msg.getOffset(), msg.getRevision())
+					.thenCompose(uploader -> {
+						if (uploader instanceof RecyclingChannelConsumer) {
+							return messaging.send(new UploadAck(false));
+						}
+						return messaging.send(new UploadAck(true))
+								.thenCompose($ -> messaging.receiveBinaryStream()
+										.streamTo(uploader));
+					})
 					.thenCompose($ -> messaging.send(new UploadFinished()))
 					.thenCompose($ -> messaging.sendEndOfStream())
 					.whenResult($ -> messaging.close())
 					.whenComplete(uploadPromise.recordStats())
-					.whenResult($ -> logger.trace("finished receiving data for {}: {}", file, this))
+					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
 					.toVoid();
 		});
 
 		onMessage(Download.class, (messaging, msg) -> {
-			String fileName = msg.getFileName();
-			return client.list(fileName)
-					.thenCompose(list -> {
-						if (list.isEmpty()) {
-							return Promise.ofException(new StacklessException(RemoteFsServer.class, "File not found: " + fileName));
+			String name = msg.getName();
+			return client.getMetadata(name)
+					.thenCompose(meta -> {
+						if (meta == null) {
+							return Promise.ofException(FILE_NOT_FOUND);
 						}
-						long size = list.get(0).getSize();
-						long length = msg.getLength();
+						long size = meta.getSize();
 						long offset = msg.getOffset();
+						long length = msg.getLength();
 
-						String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
-						logger.trace("requested file {}: {}", repr, this);
-
-						if (offset > size) {
-							return Promise.ofException(new StacklessException(RemoteFsServer.class, "Offset exceeds file size for " + repr));
-						}
-						if (length != -1 && offset + length > size) {
-							return Promise.ofException(new StacklessException(RemoteFsServer.class, "Boundaries exceed file size for " + repr));
-						}
+						checkRange(size, offset, length);
 
 						long fixedLength = length == -1 ? size - offset : length;
 
 						return messaging.send(new DownloadSize(fixedLength))
-								.thenCompose($ -> {
-									logger.trace("sending data for {}: {}", repr, this);
-									return ChannelSupplier.ofPromise(client.download(fileName, offset, fixedLength))
-											.streamTo(messaging.sendBinaryStream())
-											.whenResult($1 -> logger.trace("finished sending data for {}: {}", repr, this));
-								});
+								.thenCompose($ ->
+										ChannelSupplier.ofPromise(client.download(name, offset, fixedLength))
+												.streamTo(messaging.sendBinaryStream()))
+								.whenComplete(toLogger(logger, "sending data", meta, offset, fixedLength, this));
 					})
 					.whenComplete(downloadPromise.recordStats());
 		});
-		simpleHandler(Move.class, Move::getChanges, FsClient::moveBulk, $ -> new MoveFinished(), movePromise);
-		simpleHandler(Copy.class, Copy::getChanges, FsClient::copyBulk, $ -> new CopyFinished(), copyPromise);
-		simpleHandler(Delete.class, Delete::getGlob, FsClient::deleteBulk, $ -> new DeleteFinished(), deletePromise);
-		simpleHandler(List.class, List::getGlob, FsClient::list, ListFinished::new, listPromise);
+		onMessage(Move.class, simpleHandler(msg -> client.move(msg.getName(), msg.getTarget(), msg.getTargetRevision(), msg.getRemoveRevision()), $ -> new MoveFinished(), movePromise));
+		onMessage(Copy.class, simpleHandler(msg -> client.copy(msg.getName(), msg.getTarget(), msg.getRevision()), $ -> new CopyFinished(), copyPromise));
+		onMessage(Delete.class, simpleHandler(msg -> client.delete(msg.getName(), msg.getRevision()), $ -> new DeleteFinished(), deletePromise));
+		onMessage(List.class, simpleHandler(msg ->
+						msg.needTombstones() ?
+								client.listEntities(msg.getGlob()) :
+								client.list(msg.getGlob()),
+				ListFinished::new, listPromise));
 	}
 
-	private <T extends FsCommand, E, R> void simpleHandler(Class<T> cls,
-			Function<T, E> extractor, BiFunction<FsClient, E, Promise<R>> action,
-			Function<R, FsResponse> res, PromiseStats stats) {
-		onMessage(cls, (messaging, msg) -> action.apply(client, extractor.apply(msg))
-				.thenCompose(item -> messaging.send(res.apply(item)))
+	private <T extends FsCommand, R> MessagingHandler<T> simpleHandler(Function<T, Promise<R>> action, Function<R, FsResponse> response, PromiseStats stats) {
+		return (messaging, msg) -> action.apply(msg)
+				.thenCompose(res -> messaging.send(response.apply(res)))
 				.thenCompose($ -> messaging.sendEndOfStream())
-				.whenComplete(stats.recordStats()));
+				.whenComplete(stats.recordStats());
 	}
 
 	@FunctionalInterface

@@ -17,8 +17,8 @@
 package io.global.ot.demo.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
@@ -38,7 +38,7 @@ import static io.global.ot.demo.util.Utils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTStateServlet implements WithMiddleware {
-	private static final ConstantException MANAGER_NOT_INITIALIZED = new ConstantException(OTStateServlet.class, "Manager has not been initialized yet");
+	private static final StacklessException MANAGER_NOT_INITIALIZED = new StacklessException(OTStateServlet.class, "Manager has not been initialized yet");
 	private final ManagerProvider<Operation> provider;
 	private final OTAlgorithms<CommitId, Operation> algorithms;
 	private final MiddlewareServlet servlet;

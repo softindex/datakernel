@@ -16,71 +16,105 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.exception.StacklessException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.remotefs.RemoteFsUtils.escapeGlob;
 import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.FileUtils.escapeGlob;
+import static java.util.stream.Collectors.toList;
 
 /**
  * This interface represents a simple filesystem client with upload, download, move, delete and list operations.
  */
 public interface FsClient {
-	ConstantException FILE_NOT_FOUND = new ConstantException(FsClient.class, "File not found");
+	StacklessException FILE_NOT_FOUND = new StacklessException(FsClient.class, "File not found");
+	StacklessException FILE_EXISTS = new StacklessException(FsClient.class, "File already exists");
+	StacklessException BAD_PATH = new StacklessException(FsClient.class, "Given file name points to file outside root");
+	StacklessException OFFSET_TOO_BIG = new StacklessException(FsClient.class, "Offset exceeds the actual file size");
+	StacklessException LENGTH_TOO_BIG = new StacklessException(FsClient.class, "Length with offset exceeds the actual file size");
+	StacklessException BAD_RANGE = new StacklessException(FsClient.class, "Given offset or length don't make sense");
+	StacklessException MOVING_DIRS = new StacklessException(FsClient.class, "Tried to move or copy a directory");
+	StacklessException UNSUPPORTED_REVISION = new StacklessException(FsClient.class, "Given revision is not supported");
+
+	long DEFAULT_REVISION = 0;
 
 	/**
 	 * Returns a consumer of bytebufs which are written (or sent) to the file.
 	 * <p>
-	 * Void result is a marker, which is completed when uploading is complete.
-	 * <p>
 	 * So, outer promise might fail on connection try, end-of-stream promise
 	 * might fail while uploading and result promise might fail when closing.
 	 * <p>
-	 * If offset is -1 then when file exists this will fail.
+	 * If offset is -1 then this will fail when file exists.
 	 * If offset is 0 or more then this will override existing file starting from that byte
 	 * and fail if file does not exist or is smaller than the offset.
+	 * <p>
+	 * Note that this method expects that you're uploading the same file prefix with same revision
+	 * so 'override' here means 'skip (size - offset) received bytes and append to existing file'.
+	 * For real overrides, upload a new file with same name and greater revision.
 	 *
-	 * @param filename name of the file to upload
-	 * @param offset   from which byte to write the uploaded data
+	 * @param name   name of the file to upload
+	 * @param offset from which byte to write the uploaded data
 	 * @return promise for stream consumer of byte buffers
 	 */
-	Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset);
+	Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision);
+
+	// region upload shortcuts
+
+	default Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+		return upload(name, offset, DEFAULT_REVISION);
+	}
 
 	/**
 	 * Shortcut for uploading NEW file
 	 *
-	 * @param filename name of the file to upload
+	 * @param name name of the file to upload
 	 * @return promise for stream consumer of byte buffers
 	 */
-	default Promise<ChannelConsumer<ByteBuf>> upload(String filename) {
-		return upload(filename, -1);
+	default Promise<ChannelConsumer<ByteBuf>> upload(String name) {
+		return upload(name, 0);
 	}
+
+	default Promise<ChannelConsumer<ByteBuf>> append(String name) {
+		return getMetadata(name)
+				.thenCompose(m -> m != null ?
+						upload(name, m.isTombstone() ? 0 : m.getSize(), m.getRevision()) :
+						upload(name, 0, DEFAULT_REVISION));
+	}
+
+	default Promise<Void> truncate(String name, long revision) {
+		return upload(name, 0, revision)
+				.thenCompose(consumer -> consumer.accept(null));
+	}
+
+	// endregion
 
 	/**
 	 * Returns a supplier of bytebufs which are read (or received) from the file.
 	 * If file does not exist, or specified range goes beyond it's size,
 	 * an error will be returned from the server.
+	 * <p>
+	 * Length can be set to -1 to download all available data.
 	 *
-	 * @param filename name of the file to be downloaded
-	 * @param offset   from which byte to download the file
-	 * @param length   how much bytes of the file do download
+	 * @param name   name of the file to be downloaded
+	 * @param offset from which byte to download the file
+	 * @param length how much bytes of the file do download
 	 * @return promise for stream supplier of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String)
 	 */
-	Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length);
+	Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length);
+
+	// region download shortcuts
 
 	/**
 	 * Shortcut for downloading the whole file from given offset.
@@ -89,120 +123,118 @@ public interface FsClient {
 	 * @see #download(String, long, long)
 	 * @see #download(String)
 	 */
-	default Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset) {
-		return download(filename, offset, -1);
+	default Promise<ChannelSupplier<ByteBuf>> download(String name, long offset) {
+		return download(name, offset, -1);
 	}
 
 	/**
 	 * Shortcut for downloading the whole available file.
 	 *
-	 * @param filename name of the file to be downloaded
+	 * @param name name of the file to be downloaded
 	 * @return stream supplier of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String, long, long)
 	 */
-	default Promise<ChannelSupplier<ByteBuf>> download(String filename) {
-		return download(filename, 0, -1);
+	default Promise<ChannelSupplier<ByteBuf>> download(String name) {
+		return download(name, 0, -1);
 	}
 
+	// endregion
+
 	/**
-	 * Renames files by a given mapping.
+	 * Deletes given file.
 	 *
-	 * @param changes mapping from old file names to new file names
+	 * @param name name of the file to be deleted
+	 * @return marker promise that completes when deletion completes
 	 */
-	default Promise<Void> moveBulk(Map<String, String> changes) {
-		return Promises.all(changes.entrySet().stream().map(entry -> move(entry.getKey(), entry.getValue()).toTry()));
+	Promise<Void> delete(String name, long revision);
+
+	default Promise<Void> delete(String name) {
+		return delete(name, DEFAULT_REVISION);
 	}
 
 	/**
-	 * Shortcut for {@link #moveBulk} for a single file.
-	 * By default is is equivalent to calling strictMove(Collections.singletonMap(fileName, newFileName))
+	 * Duplicates a file
 	 *
-	 * @param filename    file to be moved
-	 * @param newFilename new file name
+	 * @param name   file to be copied
+	 * @param target new file name
 	 */
-	default Promise<Void> move(String filename, String newFilename) {
-		return copy(filename, newFilename)
-				.thenCompose($ -> delete(filename));
+	default Promise<Void> copy(String name, String target, long targetRevision) {
+		return ChannelSuppliers.streamTo(download(name), upload(target, targetRevision));
+	}
+
+	default Promise<Void> copy(String name, String target) {
+		return copy(name, target, DEFAULT_REVISION);
 	}
 
 	/**
-	 * Copies files by a given mapping.
+	 * Moves (renames) a file from one name to another.
+	 * Equivalent to copying a file to new location and
+	 * then deleting the original file.
 	 *
-	 * @param changes mapping from old file names to copy file names
-	 * @implNote RemoteFS is considered as an immutable fs, so at first copy will try to create a hard link instead.
+	 * @param name   file to be moved
+	 * @param target new file name
 	 */
-	default Promise<Void> copyBulk(Map<String, String> changes) {
-		return Promises.all(changes.entrySet().stream().map(entry -> copy(entry.getKey(), entry.getValue()).toTry()));
+	default Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+		return copy(name, target, targetRevision)
+				.thenCompose($ -> delete(name, removeRevision));
+	}
+
+	default Promise<Void> move(String name, String target) {
+		return move(name, target, DEFAULT_REVISION, DEFAULT_REVISION);
 	}
 
 	/**
-	 * Shortcut for {@link #copyBulk} for a single file.
-	 * By default is is equivalent to calling strictCopy(Collections.singletonMap(fileName, newFileName))
-	 *
-	 * @param filename    file to be moved
-	 * @param newFilename new file name
-	 */
-	default Promise<Void> copy(String filename, String newFilename) {
-		return Promises.toTuple(download(filename).toTry(), upload(newFilename).toTry())
-				.thenCompose(both -> {
-					if (both.getValue1().isSuccess() && both.getValue2().isSuccess()) {
-						ChannelSupplier<ByteBuf> supplier = both.getValue1().get();
-						ChannelConsumer<ByteBuf> consumer = both.getValue2().get();
-						return supplier.streamTo(consumer);
-					} else {
-						StacklessException exception = new StacklessException();
-						both.getValue1().consume(Cancellable::cancel, exception::addSuppressed);
-						both.getValue2().consume(Cancellable::cancel, exception::addSuppressed);
-						return Promise.ofException(exception);
-					}
-				});
-	}
-
-	/**
-	 * Lists files that are matched by glob. Be sure to escape metachars if your filenames contain them
+	 * Lists files or their tombstones that are matched by glob.
+	 * Be sure to escape metachars if your paths contain them.
+	 * <p>
+	 * Note that it is not recommended to use this API outside of
+	 * Cloud-FS internals or unless you really need recent tombstones for
+	 * some kind of merge or repartition operations.
+	 * <p>
+	 * Use {@link #list} instead.
 	 *
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
-	 * @return promise for fetched list of file descriptions
+	 * @return list of {@link FileMetadata file metadata}
 	 */
-	Promise<List<FileMetadata>> list(String glob);
+	Promise<List<FileMetadata>> listEntities(String glob);
 
 	/**
-	 * Shortcut for {@link #list(String)} with empty 'ping' list request
+	 * Lists files that are matched by glob.
+	 * Be sure to escape metachars if your paths contain them.
+	 * <p>
+	 * This method never returns tombstones.
+	 *
+	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
+	 * @return list of {@link FileMetadata file metadata}
 	 */
-	default Promise<Void> ping() {
-		return list("").toVoid();
+	default Promise<List<FileMetadata>> list(String glob) {
+		return listEntities(glob)
+				.thenApply(list -> list.stream()
+						.filter(m -> !m.isTombstone())
+						.collect(toList()));
 	}
 
 	/**
-	 * Shrtcut to get Promise of {@link FileMetadata} of a single file.
+	 * Shrtcut to get {@link FileMetadata metadata} of a single file or tombstone.
 	 *
-	 * @param filename name of a file to fetch its metadata.
+	 * @param name name of a file to fetch its metadata.
 	 * @return promise of file description or <code>null</code>
 	 */
-	default Promise<FileMetadata> getMetadata(String filename) {
-		return list(escapeGlob(filename))
+	default Promise<@Nullable FileMetadata> getMetadata(String name) {
+		return listEntities(escapeGlob(name))
 				.thenApply(list -> list.isEmpty() ? null : list.get(0));
 	}
 
 	/**
-	 * Deletes files that are matched by glob. Be sure to escape metachars if your filenames contain them
-	 *
-	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
-	 * @return marker promise that completes when deletion completes
+	 * Send a ping request.
+	 * <p>
+	 * Used to check availability of the fs
+	 * (is server up in case of remote implementation, for example).
 	 */
-	default Promise<Void> deleteBulk(String glob) {
-		return list(glob).thenCompose(list -> Promises.all(list.stream().map(meta -> delete(meta.getFilename()).toTry())));
+	default Promise<Void> ping() {
+		return listEntities("").toVoid();
 	}
-
-	/**
-	 * Shortcut for {@link #deleteBulk(String)} for a single file.
-	 * Given filename is glob-escaped, so only one or zero files could be deleted regardless of given string.
-	 *
-	 * @param filename name of the file to be deleted
-	 * @return marker promise that completes when deletion completes
-	 */
-	Promise<Void> delete(String filename);
 
 	static FsClient empty() {
 		return EmptyFsClient.INSTANCE;

@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Random;
@@ -37,6 +36,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.assertArrayEquals;
@@ -53,12 +53,12 @@ public final class AsyncFileTest {
 	public void testReadFully() throws Exception {
 		File tempFile = temporaryFolder.newFile("hello-2.html");
 		Path srcPath = Paths.get("test_data/hello.html");
-		AsyncFile srcFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}));
+		AsyncFile srcFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, set(READ)));
 		logger.info("Opened file.");
 		ByteBuf byteBuf = await(srcFile.read());
 		Path destPath = Paths.get(tempFile.getAbsolutePath());
 
-		AsyncFile destFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}));
+		AsyncFile destFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), destPath, set(WRITE)));
 		logger.info("Finished reading file.");
 		await(destFile.write(byteBuf));
 		logger.info("Finished writing file");
@@ -74,7 +74,7 @@ public final class AsyncFileTest {
 		new Random().nextBytes(data);
 		Files.write(file.toPath(), data);
 		Path srcPath = file.toPath();
-		AsyncFile asyncFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}));
+		AsyncFile asyncFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, set(READ)));
 		logger.info("Opened file");
 		Eventloop originalEventloop = Eventloop.getCurrentEventloop();
 

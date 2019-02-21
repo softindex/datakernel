@@ -166,8 +166,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
 						return ns.save(filename, offset);
 					}
-					return nSuccessesOrLess(uploadCallNumber, masters
-							.stream()
+					return nSuccessesOrLess(uploadCallNumber, masters.stream()
 							.map(master -> AsyncSupplier.cast(() -> master.upload(space, filename, offset))))
 							.thenApply(consumers -> {
 								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();

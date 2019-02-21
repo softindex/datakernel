@@ -17,17 +17,14 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
 
-import static io.datakernel.util.CollectorsEx.toMap;
 import static java.util.stream.Collectors.toList;
 
 final class FilterFsClient implements FsClient {
@@ -40,56 +37,51 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		if (!predicate.test(filename)) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+		if (!predicate.test(name)) {
 			return Promise.of(ChannelConsumers.recycling());
 		}
-		return parent.upload(filename, offset);
+		return parent.upload(name, offset);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		if (!predicate.test(filename)) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+		if (!predicate.test(name)) {
+			return Promise.of(ChannelConsumers.recycling());
+		}
+		return parent.upload(name, offset, revision);
+	}
+
+	@Override
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+		if (!predicate.test(name)) {
 			return Promise.ofException(FILE_NOT_FOUND);
 		}
-		return parent.download(filename, offset, length);
+		return parent.download(name, offset, length);
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return parent.moveBulk(changes.entrySet().stream()
-				.filter(e -> !predicate.test(e.getKey()) && !predicate.test(e.getValue()))
-				.collect(toMap()));
-	}
-
-	@Override
-	public Promise<Void> move(String filename, String newFilename) {
-		if (!predicate.test(filename) || !predicate.test(newFilename)) {
+	public Promise<Void> move(String name, String target) {
+		if (!predicate.test(name) || !predicate.test(target)) {
 			return Promise.complete();
 		}
-		return parent.move(filename, newFilename);
+		return parent.move(name, target);
 	}
 
-	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return parent.copyBulk(changes.entrySet().stream()
-				.filter(e -> !predicate.test(e.getKey()) && !predicate.test(e.getValue()))
-				.collect(toMap()));
-	}
 
 	@Override
-	public Promise<Void> copy(String filename, String newFilename) {
-		if (!predicate.test(filename) || !predicate.test(newFilename)) {
+	public Promise<Void> copy(String name, String target) {
+		if (!predicate.test(name) || !predicate.test(target)) {
 			return Promise.complete();
 		}
-		return parent.copy(filename, newFilename);
+		return parent.copy(name, target);
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
-		return parent.list(glob)
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		return parent.listEntities(glob)
 				.thenApply(list -> list.stream()
-						.filter(meta -> predicate.test(meta.getFilename()))
+						.filter(meta -> predicate.test(meta.getName()))
 						.collect(toList()));
 	}
 
@@ -98,20 +90,11 @@ final class FilterFsClient implements FsClient {
 		return parent.ping();
 	}
 
-
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		return list(glob) // use that list impl
-				.thenCompose(list ->
-						Promises.all(list.stream()
-								.map(meta -> delete(meta.getFilename()))));
-	}
-
-	@Override
-	public Promise<Void> delete(String filename) {
-		if (!predicate.test(filename)) {
+	public Promise<Void> delete(String name, long revision) {
+		if (!predicate.test(name)) {
 			return Promise.complete();
 		}
-		return parent.delete(filename);
+		return parent.delete(name, revision);
 	}
 }

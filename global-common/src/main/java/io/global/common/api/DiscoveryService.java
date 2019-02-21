@@ -17,12 +17,12 @@
 package io.global.common.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
 public interface DiscoveryService extends SharedKeyManager {
-	ConstantException REJECTED_OUTDATED_ANNOUNCE_DATA = new ConstantException(DiscoveryService.class, "Rejected announce data as outdated");
+	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
 
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 

@@ -28,39 +28,64 @@ import io.datakernel.http.*;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 
-import java.net.InetSocketAddress;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
 
+import static io.datakernel.remotefs.RemoteFsUtils.KNOWN_ERRORS;
 import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.http.RemoteFsServlet.FILE_META_LIST;
+import static io.global.fs.util.HttpDataFormats.ERROR_CODE_CODEC;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class HttpFsClient implements FsClient {
+public final class HttpFsClient implements FsClient {
 	private final IAsyncHttpClient client;
-	private final InetSocketAddress address;
+	private final String url;
 
-	private HttpFsClient(InetSocketAddress address, IAsyncHttpClient client) {
-		this.address = address;
+	private HttpFsClient(String url, IAsyncHttpClient client) {
+		this.url = url;
 		this.client = client;
 	}
 
-	public static HttpFsClient create(InetSocketAddress address, IAsyncHttpClient client) {
-		return new HttpFsClient(address, client);
+	public static HttpFsClient create(String url, IAsyncHttpClient client) {
+		return new HttpFsClient(url, client);
 	}
 
+	private static final Function<HttpResponse, Promise<HttpResponse>> checkResponse =
+			response -> {
+				switch (response.getCode()) {
+					case 200:
+						return Promise.of(response);
+					case 500:
+						return response.getBody()
+								.thenCompose(body -> {
+									try {
+										int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.asString(UTF_8)).getValue1();
+										return Promise.ofException(code >= 1 && code <= KNOWN_ERRORS.length ?
+												KNOWN_ERRORS[code - 1] :
+												HttpException.ofCode(500));
+									} catch (ParseException ignored) {
+										return Promise.ofException(HttpException.ofCode(500));
+									}
+								});
+					default:
+						return Promise.ofException(HttpException.ofCode(response.getCode()));
+				}
+			};
+
+
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset, long revision) {
 		SettablePromise<ChannelConsumer<ByteBuf>> channelPromise = new SettablePromise<>();
 		SettablePromise<HttpResponse> responsePromise = new SettablePromise<>();
 
+		UrlBuilder urlBuilder = UrlBuilder.relative().appendPathPart(DOWNLOAD).appendPath(filename);
+		if (offset != 0) {
+			urlBuilder.appendQuery("offset", "" + offset);
+		}
 		client.request(
 				HttpRequest.post(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(DOWNLOAD)
-								.appendPath(filename)
-								.appendQuery("offset", "" + offset)
+						url + urlBuilder
+								.appendQuery("revision", "" + revision)
 								.build())
 						.withBodyStream(ChannelSupplier.ofLazyProvider(() -> {
 							ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
@@ -68,10 +93,7 @@ public class HttpFsClient implements FsClient {
 									.withAcknowledgement(ack -> ack.both(responsePromise)));
 							return buffer.getSupplier();
 						})))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(checkResponse)
 				.whenException(channelPromise::trySetException)
 				.whenComplete(responsePromise::trySet);
 
@@ -79,35 +101,27 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(DOWNLOAD)
-								.appendPath(filename)
+								.appendPath(name)
 								.appendQuery("range", offset + (length == -1 ? "" : ("-" + (offset + length))))
 								.build()))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(checkResponse)
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(checkResponse)
 				.thenCompose(HttpMessage::getBody)
 				.thenCompose(body -> {
 					try {
@@ -121,66 +135,44 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
+	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(MOVE)
-								.build())
-						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
+								.appendQuery("name", name)
+								.appendQuery("target", target)
+								.appendQuery("revision", targetRevision)
+								.appendQuery("removeRevision", removeRevision)
+								.build()))
+				.thenCompose(checkResponse)
 				.toVoid();
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
+	public Promise<Void> copy(String name, String target, long targetRevision) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(COPY)
-								.build())
-						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
+								.appendQuery("name", name)
+								.appendQuery("target", target)
+								.appendQuery("revision", targetRevision)
+								.build()))
+				.thenCompose(checkResponse)
 				.toVoid();
 	}
 
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
+	public Promise<Void> delete(String name, long revision) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(DELETE)
-								.appendQuery("glob", glob)
+								.appendPath(name)
+								.appendQuery("revision", revision)
 								.build()))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
-				.toVoid();
-	}
-
-	@Override
-	public Promise<Void> delete(String filename) {
-		return client.request(
-				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(DELETE)
-								.appendPath(filename)
-								.build()))
-				.thenCompose(response ->
-						response.getCode() == 200 ?
-								Promise.of(response) :
-								Promise.ofException(HttpException.ofCode(response.getCode())))
+				.thenCompose(checkResponse)
 				.toVoid();
 	}
 }

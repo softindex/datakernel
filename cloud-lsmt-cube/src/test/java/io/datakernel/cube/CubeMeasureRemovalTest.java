@@ -66,7 +66,6 @@ import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SE
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.*;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -100,17 +99,17 @@ public class CubeMeasureRemovalTest {
 		executor = Executors.newCachedThreadPool();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
-		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
 		BinarySerializer<LogItem> serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
 		multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+				LocalFsClient.create(eventloop, logsDir),
 				serializer,
 				NAME_PARTITION_REMAINDER_SEQ);
 	}
 
 	@Test
 	public void test() throws Exception {
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -138,7 +137,7 @@ public class CubeMeasureRemovalTest {
 		initializeRepository(repository);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+				LocalFsClient.create(eventloop, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

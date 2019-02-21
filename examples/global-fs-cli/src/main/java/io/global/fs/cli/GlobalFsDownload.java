@@ -33,16 +33,18 @@ import picocli.CommandLine.Parameters;
 
 import java.nio.file.OpenOption;
 import java.nio.file.Paths;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.cli.GlobalFs.err;
 import static io.global.fs.cli.GlobalFs.info;
 import static java.nio.file.StandardOpenOption.*;
 
 @Command(name = "download", description = "Download file from Global-FS")
 public final class GlobalFsDownload implements Callable<Void> {
-	private static final OpenOption[] OPEN_OPTIONS = new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING};
+	private static final Set<OpenOption> OPEN_OPTIONS = set(WRITE, CREATE, TRUNCATE_EXISTING);
 
 	@Mixin
 	private GlobalFsCommon common;

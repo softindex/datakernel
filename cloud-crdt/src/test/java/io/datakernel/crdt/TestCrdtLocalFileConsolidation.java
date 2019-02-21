@@ -32,7 +32,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
@@ -48,7 +47,7 @@ public final class TestCrdtLocalFileConsolidation {
 
 	@Before
 	public void setup() throws IOException {
-		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
+		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
 	}
 
 	private Set<Integer> union(Set<Integer> first, Set<Integer> second) {

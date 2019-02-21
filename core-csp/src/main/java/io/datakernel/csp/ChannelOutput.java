@@ -30,6 +30,10 @@ import java.util.function.Predicate;
 public interface ChannelOutput<T> {
 	void set(ChannelConsumer<T> output);
 
+	default void set(Promise<ChannelConsumer<T>> outputPromise) {
+		set(ChannelConsumer.ofPromise(outputPromise));
+	}
+
 	default ChannelSupplier<T> getSupplier() {
 		return getSupplier(new ChannelZeroBuffer<>());
 	}

@@ -17,7 +17,6 @@ import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class CrdtNodeLauncherTest {
 	@Test
@@ -38,8 +37,8 @@ public class CrdtNodeLauncherTest {
 							}
 
 							@Provides
-							FsClient provideFsClient(){
-								return LocalFsClient.create(Eventloop.create(), newSingleThreadExecutor(), Paths.get(""));
+							FsClient provideFsClient() {
+								return LocalFsClient.create(Eventloop.create(), Paths.get(""));
 							}
 						}
 				);

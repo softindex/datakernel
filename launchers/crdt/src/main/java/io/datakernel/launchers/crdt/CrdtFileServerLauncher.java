@@ -88,7 +88,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 					@Provides
 					@Singleton
 					LocalFsClient provideLocalFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
-						return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "crdt.localPath"));
+						return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.localPath"));
 					}
 				}
 		);

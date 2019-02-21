@@ -17,21 +17,16 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.util.FileUtils;
-import io.datakernel.util.Tuple2;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toList;
 
@@ -49,17 +44,17 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		Optional<String> transformed = into.apply(filename);
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
 			return Promise.of(ChannelConsumers.recycling());
 		}
-		return parent.upload(transformed.get(), offset);
+		return parent.upload(transformed.get(), offset, revision);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		Optional<String> transformed = into.apply(filename);
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
 			return Promise.ofException(FILE_NOT_FOUND);
 		}
@@ -67,66 +62,58 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return parent.moveBulk(transformChanges(changes));
+	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+		return renamingOp(name, target, () -> parent.move(name, target, targetRevision, removeRevision));
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return parent.copyBulk(transformChanges(changes));
+	public Promise<Void> copy(String name, String target, long targetRevision) {
+		return renamingOp(name, target, () -> parent.copy(name, target, targetRevision));
 	}
 
-	private Map<String, String> transformChanges(Map<String, String> changes) {
-		return changes.entrySet().stream()
-				.map(e -> new Tuple2<>(into.apply(e.getKey()), into.apply(e.getValue())))
-				.filter(t -> t.getValue1().isPresent() && t.getValue2().isPresent())
-				.collect(Collectors.toMap(t -> t.getValue1().get(), t -> t.getValue2().get()));
-	}
-
-	@Override
-	public Promise<Void> move(String filename, String newFilename) {
-		return renamingOp(filename, newFilename, parent::move);
-	}
-
-	@Override
-	public Promise<Void> copy(String filename, String newFilename) {
-		return renamingOp(filename, newFilename, parent::copy);
-	}
-
-	private Promise<Void> renamingOp(String filename, String newFilename, BiFunction<String, String, Promise<Void>> original) {
+	private Promise<Void> renamingOp(String filename, String newFilename, Supplier<Promise<Void>> original) {
 		Optional<String> transformed = into.apply(filename);
 		Optional<String> transformedNew = into.apply(newFilename);
 		if (!transformed.isPresent() || !transformedNew.isPresent()) {
 			return Promise.complete();
 		}
-		return original.apply(transformed.get(), transformedNew.get());
+		return original.get();
 	}
 
+	@Override
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		return parent.listEntities(globInto.apply(glob).orElse("**"))
+				.thenApply(transformList(glob));
+	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
-		Predicate<String> pred = FileUtils.getGlobStringPredicate(glob);
 		return parent.list(globInto.apply(glob).orElse("**"))
-				.thenApply(list -> list.stream()
-						.map(meta ->
-								from.apply(meta.getFilename())
-										.map(name -> new FileMetadata(name, meta.getSize(), meta.getTimestamp())))
-						.filter(meta -> meta.isPresent() && pred.test(meta.get().getFilename()))
-						.map(Optional::get)
-						.collect(toList()));
+				.thenApply(transformList(glob));
+	}
+
+	private Function<List<FileMetadata>, List<FileMetadata>> transformList(String glob) {
+		Predicate<String> pred = RemoteFsUtils.getGlobStringPredicate(glob);
+		return list -> list.stream()
+				.map(meta ->
+						from.apply(meta.getName())
+								.map(name -> FileMetadata.of(name, meta.getSize(), meta.getTimestamp(), meta.getRevision())))
+				.filter(meta -> meta.isPresent() && pred.test(meta.get().getName()))
+				.map(Optional::get)
+				.collect(toList());
 	}
 
 	@Override
-	public Promise<FileMetadata> getMetadata(String filename) {
-		Optional<String> transformed = into.apply(filename);
+	public Promise<FileMetadata> getMetadata(String name) {
+		Optional<String> transformed = into.apply(name);
 		return transformed.map(s ->
 				parent.getMetadata(s)
 						.thenApply(meta -> {
 							if (meta == null) {
 								return null;
 							}
-							return from.apply(meta.getFilename())
-									.map(name -> new FileMetadata(name, meta.getSize(), meta.getTimestamp()))
+							return from.apply(meta.getName())
+									.map(meta::withName)
 									.orElse(null);
 						})).orElse(Promise.of(null));
 	}
@@ -137,20 +124,12 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		return list(glob) // use that list impl
-				.thenCompose(list ->
-						Promises.all(list.stream()
-								.map(meta -> delete(meta.getFilename()))));
-	}
-
-	@Override
-	public Promise<Void> delete(String filename) {
-		Optional<String> transformed = into.apply(filename);
+	public Promise<Void> delete(String name, long revision) {
+		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
 			return Promise.complete();
 		}
-		return parent.delete(transformed.get());
+		return parent.delete(transformed.get(), revision);
 	}
 
 	@Override

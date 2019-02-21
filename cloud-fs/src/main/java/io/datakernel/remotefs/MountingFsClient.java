@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.FileUtils.isWildcard;
-
 final class MountingFsClient implements FsClient {
 	private final FsClient root;
 	private final Map<String, FsClient> mounts;
@@ -52,13 +50,19 @@ final class MountingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		return findMount(filename).upload(filename, offset);
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+		return findMount(name).upload(name, offset, revision);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		return findMount(filename).download(filename, offset, length);
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+		return findMount(name).download(name, offset, length);
+	}
+
+	@Override
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		return Promises.toList(Stream.concat(Stream.of(root), mounts.values().stream()).map(f -> f.listEntities(glob)))
+				.thenApply(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
 	}
 
 	@Override
@@ -68,43 +72,35 @@ final class MountingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String newFilename) {
-		FsClient first = findMount(filename);
-		FsClient second = findMount(newFilename);
+	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+		FsClient first = findMount(name);
+		FsClient second = findMount(target);
 		if (first == second) {
-			return first.move(filename, newFilename);
+			return first.move(name, target, targetRevision, removeRevision);
 		}
-		return first.download(filename)
+		return first.download(name)
 				.thenCompose(supplier ->
-						second.upload(filename)
+						second.upload(name, 0, targetRevision)
 								.thenCompose(supplier::streamTo))
-				.thenCompose($ -> first.delete(filename));
+				.thenCompose($ -> first.delete(name));
 	}
 
 	@Override
-	public Promise<Void> copy(String filename, String newFilename) {
-		FsClient first = findMount(filename);
-		FsClient second = findMount(newFilename);
+	public Promise<Void> copy(String name, String target, long targetRevision) {
+		FsClient first = findMount(name);
+		FsClient second = findMount(target);
 		if (first == second) {
-			return first.copy(filename, newFilename);
+			return first.copy(name, target, targetRevision);
 		}
-		return first.download(filename)
+		return first.download(name)
 				.thenCompose(supplier ->
-						second.upload(filename)
+						second.upload(name, 0, targetRevision)
 								.thenCompose(supplier::streamTo));
 	}
 
 	@Override
-	public Promise<Void> delete(String filename) {
-		return findMount(filename).delete(filename);
-	}
-
-	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		if (!isWildcard(glob)) {
-			return delete(glob);
-		}
-		return list(glob).thenCompose(list -> Promises.all(list.stream().map(meta -> delete(meta.getFilename()))));
+	public Promise<Void> delete(String name, long revision) {
+		return findMount(name).delete(name, revision);
 	}
 
 	@Override

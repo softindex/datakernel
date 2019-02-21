@@ -19,7 +19,9 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
 
-import static io.datakernel.http.AsyncHttpServer.DEFAULT_ERROR_FORMATTER;
+import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * A stub client which forwards requests straight to the underlying servlet without any real I/O operations.
@@ -49,7 +51,9 @@ public final class StubHttpClient implements IAsyncHttpClient {
 			if (e == null) {
 				return Promise.of(res);
 			} else {
-				return Promise.of(DEFAULT_ERROR_FORMATTER.formatException(e));
+				return Promise.of(HttpResponse.ofCode(500)
+						.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8))
+						.withBody(e.toString().getBytes(UTF_8)));
 			}
 		});
 	}

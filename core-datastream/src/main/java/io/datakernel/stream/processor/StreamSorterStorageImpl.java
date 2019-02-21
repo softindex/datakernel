@@ -31,12 +31,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.*;
@@ -126,7 +126,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
+		return AsyncFile.openAsync(executor, path, set(WRITE, CREATE_NEW, APPEND))
 				.thenApply(file -> StreamConsumer.<T>ofSupplier(
 						supplier -> supplier
 								.transformWith(ChannelSerializer.create(serializer))
@@ -146,7 +146,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executor, path, new OpenOption[]{READ})
+		return AsyncFile.openAsync(executor, path, set(READ))
 				.thenApply(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
 						.transformWith(ChannelLZ4Decompressor.create())
 						.transformWith(ChannelDeserializer.create(serializer))

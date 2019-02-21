@@ -81,7 +81,6 @@ import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -288,7 +287,7 @@ public final class ReportingTest {
 		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
 		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
 				.initialize(cube -> DIMENSIONS_CUBE.forEach(cube::addDimension))
@@ -325,7 +324,7 @@ public final class ReportingTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
+				LocalFsClient.create(eventloop, temporaryFolder.getRoot().toPath()),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

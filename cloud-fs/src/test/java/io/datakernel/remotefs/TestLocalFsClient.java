@@ -35,7 +35,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -49,6 +48,7 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.csp.file.ChannelFileReader.READ_OPTIONS;
 import static io.datakernel.csp.file.ChannelFileReader.readFile;
 import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
+import static io.datakernel.remotefs.FsClient.FILE_EXISTS;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -72,8 +72,8 @@ public final class TestLocalFsClient {
 
 	@Before
 	public void setup() throws IOException {
-		storagePath = Paths.get(tmpFolder.newFolder("storage").toURI());
-		clientPath = Paths.get(tmpFolder.newFolder("client").toURI());
+		storagePath = tmpFolder.newFolder("storage").toPath();
+		clientPath = tmpFolder.newFolder("client").toPath();
 
 		Files.createDirectories(storagePath);
 		Files.createDirectories(clientPath);
@@ -110,7 +110,7 @@ public final class TestLocalFsClient {
 		} catch (IOException ignored) {
 		}
 
-		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, storagePath);
+		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), storagePath);
 	}
 
 	@Test
@@ -259,14 +259,14 @@ public final class TestLocalFsClient {
 
 	@Test
 	public void testDeleteFile() {
-		await(client.deleteBulk("2/3/a.txt"));
+		await(client.delete("2/3/a.txt"));
 
 		assertFalse(Files.exists(storagePath.resolve("2/3/a.txt")));
 	}
 
 	@Test
 	public void testDeleteNonExistingFile() {
-		await(client.deleteBulk("no_file.txt"));
+		await(client.delete("no_file.txt"));
 	}
 
 	@Test
@@ -281,7 +281,7 @@ public final class TestLocalFsClient {
 
 		List<FileMetadata> actual = await(client.list("**"));
 
-		assertEquals(expected, actual.stream().map(FileMetadata::getFilename).collect(toSet()));
+		assertEquals(expected, actual.stream().map(FileMetadata::getName).collect(toSet()));
 	}
 
 	@Test
@@ -294,7 +294,7 @@ public final class TestLocalFsClient {
 
 		List<FileMetadata> actual = await(client.list("2/*/*.txt"));
 
-		assertEquals(expected, actual.stream().map(FileMetadata::getFilename).collect(toSet()));
+		assertEquals(expected, actual.stream().map(FileMetadata::getName).collect(toSet()));
 	}
 
 	@Test
@@ -307,30 +307,11 @@ public final class TestLocalFsClient {
 	}
 
 	@Test
-	public void testPossiblyPreviousSuccessfulMove() throws IOException {
-		await(client.move("3/new_folder/z.txt", "1/a.txt"));
-
-		assertArrayEquals(Files.readAllBytes(storagePath.resolve("1/a.txt")), Files.readAllBytes(storagePath.resolve("1/a.txt")));
-		assertFalse(Files.exists(storagePath.resolve("3/new_folder/z.txt")));
-	}
-
-	@Test
-	public void testMoveBiggerIntoSmaller() throws IOException {
-		//		1/a.txt -> 12 bytes
-		//		1/b.txt -> 15 bytes
+	public void testMoveIntoExisting() throws IOException {
 		byte[] expected = Files.readAllBytes(storagePath.resolve("1/b.txt"));
-		await(client.move("1/b.txt", "1/a.txt"));
+		assertSame(FILE_EXISTS, awaitException(client.move("1/b.txt", "1/a.txt")));
 
-		assertArrayEquals(expected, Files.readAllBytes(storagePath.resolve("1/a.txt")));
-		assertFalse(Files.exists(storagePath.resolve("1/b.txt")));
-	}
-
-	@Test
-	public void testMoveSmallerIntoBigger() throws IOException {
-		await(client.move("1/a.txt", "1/b.txt"));
-
-		assertArrayEquals(Files.readAllBytes(storagePath.resolve("1/b.txt")), Files.readAllBytes(storagePath.resolve("1/b.txt")));
-		assertFalse(Files.exists(storagePath.resolve("1/a.txt")));
+		assertArrayEquals(expected, Files.readAllBytes(storagePath.resolve("1/b.txt")));
 	}
 
 	@Test

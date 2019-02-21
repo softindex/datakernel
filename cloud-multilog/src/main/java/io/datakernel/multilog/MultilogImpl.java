@@ -125,7 +125,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 		return client.list("**")
 				.thenApply(files ->
 						files.stream()
-								.map(FileMetadata::getFilename)
+								.map(FileMetadata::getName)
 								.map(namingScheme::parse)
 								.filter(Objects::nonNull)
 								.filter(partitionAndFile -> partitionAndFile.getLogPartition().equals(logPartition))

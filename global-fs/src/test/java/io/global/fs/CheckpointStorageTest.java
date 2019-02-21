@@ -52,7 +52,7 @@ public final class CheckpointStorageTest {
 		Executor executor = Executors.newSingleThreadExecutor();
 		Path path = temporaryFolder.newFolder().toPath();
 
-		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, path));
+		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), path));
 	}
 
 	@Test

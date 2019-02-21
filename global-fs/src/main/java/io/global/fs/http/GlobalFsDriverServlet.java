@@ -18,6 +18,7 @@ import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.global.fs.util.HttpDataFormats.httpDownload;
 import static io.global.fs.util.HttpDataFormats.httpUpload;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -70,7 +71,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 																		.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
 												name, meta.getPosition());
 									}
-									return Promise.ofException(HttpException.ofCode(404, "File '" + name + "' not found"));
+									return Promise.ofException(FILE_NOT_FOUND);
 								});
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -80,7 +81,8 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						SimKey simKey = getSimKey(request);
-						return httpUpload(request, (name, offset) -> driver.upload(keys, name, offset, simKey));
+						return httpUpload(request,
+								(name, offset, revision) -> driver.upload(keys, name, offset, simKey, revision));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -109,7 +111,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				.with(POST, "/delete", request -> {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
-						return driver.deleteBulk(keys, request.getQueryParameter("glob"))
+						return driver.delete(keys, request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);

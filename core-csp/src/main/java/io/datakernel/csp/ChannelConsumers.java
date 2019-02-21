@@ -20,8 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.util.Recyclable;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 
@@ -42,8 +40,8 @@ public final class ChannelConsumers {
 	 * exception will be returned.
 	 *
 	 * @param output a {@code ChannelConsumer}, which accepts the iterator
-	 * @param it an {@link Iterator} which provides some values
-	 * @param <T> a data type of passed values
+	 * @param it     an {@link Iterator} which provides some values
+	 * @param <T>    a data type of passed values
 	 * @return a promise of {@code null} as a marker of completion
 	 */
 	public static <T> Promise<Void> acceptAll(ChannelConsumer<T> output, Iterator<? extends T> it) {
@@ -68,72 +66,7 @@ public final class ChannelConsumers {
 		cb.set(null);
 	}
 
-	/**
-	 * Represents a {@code ChannelConsumer} which recycles all of the accepted values.
-	 *
-	 * @param <T> a data type of accepted values, must extend {@link Recyclable}
-	 */
-	static final class Recycler<T extends Recyclable> implements ChannelConsumer<T> {
-		@Override
-		public @NotNull Promise<Void> accept(@Nullable Recyclable value) {
-			if (value != null) {
-				value.recycle();
-			}
-			return Promise.complete();
-		}
-
-		@Override
-		public void close(@NotNull Throwable e) {
-		}
-	}
-
-	/**
-	 * Represents a {@code ChannelConsumer} which accepts only one non-null value and
-	 * recycles all subsequent {@code accept(T value)} values. In both cases returns a
-	 * promise of {@code null} as a marker of completion.
-	 */
-	static final class Lenient<T extends Recyclable> implements ChannelConsumer<T> {
-		final ChannelConsumer<T> peer;
-		boolean stop = false;
-
-		Lenient(ChannelConsumer<T> peer) {
-			this.peer = peer;
-		}
-
-		@Override
-		public @NotNull Promise<Void> accept(@Nullable T value) {
-			if (stop) {
-				if (value != null) {
-					value.recycle();
-				}
-				return Promise.complete();
-			}
-			return peer.accept(value)
-					.thenComposeEx(($, e) -> {
-						if (e != null) {
-							stop = true;
-						}
-						return Promise.complete();
-					});
-		}
-
-		@Override
-		public void close(@NotNull Throwable e) {
-			peer.close(e);
-		}
-	}
-
-
-	/** A hacky optimization */
-	public static boolean isRecycler(ChannelConsumer<? extends Recyclable> consumer) {
-		return consumer instanceof Recycler || (consumer instanceof Lenient && ((Lenient) consumer).stop);
-	}
-
 	public static <T extends Recyclable> ChannelConsumer<T> recycling() {
-		return new Recycler<>();
-	}
-
-	public static <T extends Recyclable> ChannelConsumer<T> lenient(ChannelConsumer<T> consumer) {
-		return new Lenient<>(consumer);
+		return new RecyclingChannelConsumer<>();
 	}
 }

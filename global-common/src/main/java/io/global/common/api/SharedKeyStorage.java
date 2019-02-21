@@ -17,7 +17,7 @@
 package io.global.common.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -26,7 +26,7 @@ import io.global.common.SignedData;
 import java.util.List;
 
 public interface SharedKeyStorage {
-	ConstantException NO_SHARED_KEY = new ConstantException(DiscoveryService.class, "No shared key found");
+	StacklessException NO_SHARED_KEY = new StacklessException(DiscoveryService.class, "No shared key found");
 
 	Promise<Void> store(PubKey receiver, SignedData<SharedSimKey> signedSharedSimKey);
 

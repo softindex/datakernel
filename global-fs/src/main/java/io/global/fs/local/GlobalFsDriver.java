@@ -17,13 +17,12 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteRanger;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -39,7 +38,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.INFO;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -52,8 +50,8 @@ import static java.util.stream.Collectors.toList;
 public final class GlobalFsDriver {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsDriver.class);
 
-	public static final ConstantException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new ConstantException(GlobalFsDriver.class, "Trying to upload at offset greater than known file size");
-	public static final ConstantException FILE_APPEND_WITH_OTHER_KEY = new ConstantException(GlobalFsDriver.class, "Trying to upload to the file with other symmetric key");
+	public static final StacklessException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new StacklessException(GlobalFsDriver.class, "Trying to upload at offset greater than known file size");
+	public static final StacklessException FILE_APPEND_WITH_OTHER_KEY = new StacklessException(GlobalFsDriver.class, "Trying to upload to the file with other symmetric key");
 
 	private static final StructuredCodec<GlobalFsCheckpoint> CHECKPOINT_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
 	protected final GlobalFsNode node;
@@ -90,7 +88,7 @@ public final class GlobalFsDriver {
 				});
 	}
 
-	public Promise<ChannelConsumer<ByteBuf>> upload(KeyPair keys, String filename, long offset, @Nullable SimKey key) {
+	private Promise<ChannelConsumer<ByteBuf>> upload(KeyPair keys, String filename, long offset, @Nullable SimKey key, @Nullable Long revision) {
 		// cut off the part of the file that is already there
 		return node.getMetadata(keys.getPubKey(), filename)
 				.thenComposeEx((signedCheckpoint, e) -> {
@@ -120,6 +118,14 @@ public final class GlobalFsDriver {
 					return doUpload(keys, filename, offset, key, skip, checkpoint.getDigest());
 				})
 				.whenComplete(toLogger(logger, INFO, INFO, "upload", filename, offset, key, this));
+	}
+
+	public Promise<ChannelConsumer<ByteBuf>> upload(KeyPair keys, String filename, long offset, @Nullable SimKey key) {
+		return upload(keys, filename, offset, key, null);
+	}
+
+	public Promise<ChannelConsumer<ByteBuf>> upload(KeyPair keys, String filename, long offset, @Nullable SimKey key, long revision) {
+		return upload(keys, filename, offset, key, (Long) revision);
 	}
 
 	public Promise<ChannelSupplier<ByteBuf>> download(PubKey space, String filename, long offset, long limit) {
@@ -158,16 +164,5 @@ public final class GlobalFsDriver {
 	public Promise<Void> delete(KeyPair keys, String filename) {
 		return node.delete(keys.getPubKey(), SignedData.sign(CHECKPOINT_CODEC, GlobalFsCheckpoint.createTombstone(filename), keys.getPrivKey()))
 				.whenComplete(toLogger(logger, TRACE, "delete", filename, this));
-	}
-
-	public Promise<Void> deleteBulk(KeyPair keys, String glob) {
-		return isWildcard(glob) ?
-				node.list(keys.getPubKey(), glob)
-						.thenCompose(list ->
-								Promises.all(list.stream()
-										.filter(signedMeta -> !signedMeta.getValue().isTombstone())
-										.map(signedMeta -> delete(keys, signedMeta.getValue().getFilename()))))
-						.whenComplete(toLogger(logger, TRACE, "deleteBulk", glob, this)) :
-				delete(keys, glob);
 	}
 }

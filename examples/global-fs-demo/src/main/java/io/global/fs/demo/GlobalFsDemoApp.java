@@ -97,7 +97,7 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Provides
 					@Singleton
 					FsClient provide(Eventloop eventloop, ExecutorService executor, Config config) {
-						return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "app.simKeyStoragePath"));
+						return LocalFsClient.create(eventloop, config.get(ofPath(), "app.simKeyStoragePath"));
 					}
 
 					@Provides

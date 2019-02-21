@@ -125,7 +125,7 @@ class StressClient {
 			int index = rand.nextInt(existingClientFiles.size());
 			String fileName = existingClientFiles.get(index);
 
-			client.deleteBulk(fileName).whenComplete(($, e) -> {
+			client.delete(fileName).whenComplete(($, e) -> {
 				if (e == null) {
 					existingClientFiles.remove(fileName);
 					logger.info("Deleted: " + fileName);

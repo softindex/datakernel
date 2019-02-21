@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.FileUtils.escapeGlob;
 import static io.datakernel.util.Preconditions.*;
 
 /**
@@ -45,7 +44,7 @@ import static io.datakernel.util.Preconditions.*;
  * It is backed up by second one, which acts as a cache folder, typically it is a local filesystem client ({@link LocalFsClient})
  * Cache replacement policy is defined by supplying a {@link Comparator} of {@link FullCacheStat}.
  */
-public class CachedFsClient implements FsClient, EventloopService {
+public final class CachedFsClient implements FsClient, EventloopService {
 	private static final double LOAD_FACTOR = 0.75;
 	private final Eventloop eventloop;
 	private final FsClient mainClient;
@@ -114,69 +113,74 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		return mainClient.upload(filename, offset);
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+		return mainClient.upload(name, offset);
+	}
+
+	@Override
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+		return mainClient.upload(name, offset, revision);
 	}
 
 	/**
 	 * Tries to download file either from cache (if present) or from server.
 	 *
-	 * @param filename name of the file to be downloaded
-	 * @param offset   from which byte to download the file
-	 * @param length   how much bytes of the file do download
+	 * @param name   name of the file to be downloaded
+	 * @param offset from which byte to download the file
+	 * @param length how much bytes of the file do download
 	 * @return promise for stream supplier of byte buffers
 	 */
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		checkNotNull(filename, "fileName");
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+		checkNotNull(name, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
-		return cacheClient.getMetadata(filename)
+		return cacheClient.getMetadata(name)
 				.thenCompose(cacheMetadata -> {
 					if (cacheMetadata == null) {
 						if (offset != 0) {
-							return mainClient.download(filename, offset, length);
+							return mainClient.download(name, offset, length);
 						}
-						return mainClient.getMetadata(filename)
+						return mainClient.getMetadata(name)
 								.thenCompose(mainMetadata -> {
 									if (mainMetadata == null) {
-										return Promise.ofException(new StacklessException(CachedFsClient.class, "File not found: " + filename));
+										return Promise.ofException(new StacklessException(CachedFsClient.class, "File not found: " + name));
 									}
-									return downloadToCache(filename, offset, length, 0, mainMetadata.getSize());
+									return downloadToCache(name, offset, length, 0, mainMetadata.getSize());
 								});
 					}
 					long sizeInCache = cacheMetadata.getSize();
 
 					if (length != -1 && sizeInCache >= offset + length) {
-						return cacheClient.download(filename, offset, length)
-								.whenComplete((val, e) -> updateCacheStats(filename));
+						return cacheClient.download(name, offset, length)
+								.whenComplete((val, e) -> updateCacheStats(name));
 					}
 
 					if (offset > sizeInCache) {
-						return mainClient.download(filename, offset, length);
+						return mainClient.download(name, offset, length);
 					}
 
-					return mainClient.getMetadata(filename)
+					return mainClient.getMetadata(name)
 							.thenCompose(mainMetadata -> {
 								if (mainMetadata == null) {
-									return cacheClient.download(filename, offset, length)
-											.whenComplete(($, e) -> updateCacheStats(filename));
+									return cacheClient.download(name, offset, length)
+											.whenComplete(($, e) -> updateCacheStats(name));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
 
 								if (sizeInCache >= sizeInMain) {
-									return cacheClient.download(filename, offset, length)
-											.whenComplete((val, e) -> updateCacheStats(filename));
+									return cacheClient.download(name, offset, length)
+											.whenComplete((val, e) -> updateCacheStats(name));
 								}
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
-									String repr = filename + "(size=" + sizeInMain + (offset != 0 ? ", offset=" + offset : "") + ", length=" + length;
+									String repr = name + "(size=" + sizeInMain + (offset != 0 ? ", offset=" + offset : "") + ", length=" + length;
 									return Promise.ofException(new StacklessException(CachedFsClient.class, "Boundaries exceed file size: " + repr));
 								}
 
-								return downloadToCache(filename, offset, length, sizeInCache, sizeInMain);
+								return downloadToCache(name, offset, length, sizeInCache, sizeInMain);
 							});
 
 				});
@@ -195,9 +199,8 @@ public class CachedFsClient implements FsClient, EventloopService {
 					return ensureSpace()
 							.thenApply($ -> {
 								ChannelSplitter<ByteBuf> splitter = ChannelSplitter.create(supplier);
-								long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 								splitter.addOutput()
-										.set(ChannelConsumer.ofPromise(cacheClient.upload(fileName, cacheOffset)));
+										.set(ChannelConsumer.ofPromise(cacheClient.upload(fileName, sizeInCache)));
 								ChannelSupplier<ByteBuf> prefix = sizeInCache != 0 ?
 										ChannelSupplier.ofPromise(cacheClient.download(fileName, offset, sizeInCache)) :
 										ChannelSupplier.of();
@@ -215,13 +218,13 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return mainClient.moveBulk(changes);
+	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+		return mainClient.move(name, target, targetRevision, removeRevision);
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return mainClient.copyBulk(changes);
+	public Promise<Void> copy(String name, String target, long targetRevision) {
+		return mainClient.copy(name, target, targetRevision);
 	}
 
 	/**
@@ -231,6 +234,12 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise that is a union of the most actual files from cache folder and server
 	 */
 	@Override
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		return Promises.toList(cacheClient.listEntities(glob), mainClient.listEntities(glob))
+				.thenApply(lists -> FileMetadata.flatten(lists.stream()));
+	}
+
+	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return Promises.toList(cacheClient.list(glob), mainClient.list(glob))
 				.thenApply(lists -> FileMetadata.flatten(lists.stream()));
@@ -239,24 +248,12 @@ public class CachedFsClient implements FsClient, EventloopService {
 	/**
 	 * Deletes file both on server and in cache folder
 	 *
-	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
 	 * @return promise of {@link Void} that represents succesfull deletion
 	 */
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		return Promises.all(cacheClient.list(glob)
-						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getFilename())))
-						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
-						.thenCompose(size -> cacheClient.deleteBulk(glob)
-								.thenApply($ -> size))
-						.whenResult(size -> totalCacheSize -= size),
-				mainClient.deleteBulk(glob));
-	}
-
-	@Override
-	public Promise<Void> delete(String filename) {
-		// TODO eduard: maybe implement this from scratch too
-		return deleteBulk(escapeGlob(filename));
+	public Promise<Void> delete(String name, long revision) {
+		cacheStats.remove(name);
+		return Promises.all(cacheClient.delete(name, revision), mainClient.delete(name, revision));
 	}
 
 	@NotNull
@@ -290,7 +287,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.thenApply(list -> list
 						.stream()
 						.map(metadata -> {
-							CacheStat cacheStat = cacheStats.get(metadata.getFilename());
+							CacheStat cacheStat = cacheStats.get(metadata.getName());
 							return cacheStat == null ?
 									new FullCacheStat(metadata, 0, 0) :
 									new FullCacheStat(metadata, cacheStat.numberOfHits, cacheStat.lastHitTimestamp);
@@ -302,10 +299,10 @@ public class CachedFsClient implements FsClient, EventloopService {
 						}))
 				.thenCompose(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
-								.deleteBulk(fullCacheStat.getFileMetadata().getFilename())
+								.delete(fullCacheStat.getFileMetadata().getName())
 								.whenResult($ -> {
 									totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
-									cacheStats.remove(fullCacheStat.getFileMetadata().getFilename());
+									cacheStats.remove(fullCacheStat.getFileMetadata().getName());
 								}))));
 	}
 

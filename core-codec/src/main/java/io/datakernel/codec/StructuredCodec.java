@@ -53,7 +53,7 @@ public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDeco
 		return of(StructuredDecoder.ofTuple(decoder), StructuredEncoder.ofTuple(encoder));
 	}
 
-	default StructuredCodec<T> nullable() {
+	default StructuredCodec<@Nullable T> nullable() {
 		return new StructuredCodec<T>() {
 			@Nullable
 			@Override

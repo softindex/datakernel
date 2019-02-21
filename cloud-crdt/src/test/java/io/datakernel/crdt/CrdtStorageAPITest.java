@@ -93,7 +93,7 @@ public class CrdtStorageAPITest {
 						"FsCrdtClient",
 						(ICrdtClientFactory<String, Integer>) (executor, testFolder, combiner) -> {
 							Eventloop eventloop = Eventloop.getCurrentEventloop();
-							return CrdtStorageFileSystem.create(eventloop, LocalFsClient.create(eventloop, executor, testFolder), combiner, serializer);
+							return CrdtStorageFileSystem.create(eventloop, LocalFsClient.create(eventloop, testFolder), combiner, serializer);
 						}
 				},
 				new Object[]{

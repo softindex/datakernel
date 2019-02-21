@@ -35,7 +35,6 @@ import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -52,7 +51,7 @@ public final class DiscoveryHttpTest {
 
 	@Test
 	public void test() throws IOException, CryptoException {
-		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
 		DiscoveryServlet servlet = DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
 
 		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), servlet::serve);

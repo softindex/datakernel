@@ -26,7 +26,6 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 import static io.datakernel.async.TestUtils.await;
@@ -43,7 +42,7 @@ public final class TestFsAlgebra {
 
 	@Before
 	public void setup() throws IOException {
-		local = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder("test").toPath());
+		local = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder("test").toPath());
 	}
 
 	private void upload(FsClient client, String filename) {
@@ -51,7 +50,7 @@ public final class TestFsAlgebra {
 	}
 
 	private void expect(String... realFiles) {
-		assertEquals(Arrays.stream(realFiles).collect(toSet()), await(local.list("**")).stream().map(FileMetadata::getFilename).collect(toSet()));
+		assertEquals(Arrays.stream(realFiles).collect(toSet()), await(local.list("**")).stream().map(FileMetadata::getName).collect(toSet()));
 	}
 
 	@Test

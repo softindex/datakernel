@@ -71,7 +71,7 @@ public final class TestRepartitionController {
 		Path storage = tmpFolder.newFolder().toPath();
 		localStorage = storage.resolve("local");
 		Files.createDirectories(localStorage);
-		LocalFsClient localFsClient = LocalFsClient.create(eventloop, executor, localStorage);
+		LocalFsClient localFsClient = LocalFsClient.create(eventloop, localStorage);
 
 		Object localPartitionId = "local";
 		clients.put(localPartitionId, localFsClient);

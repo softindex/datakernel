@@ -59,7 +59,7 @@ public final class GlobalFsList implements Callable<Void> {
 		FsClient gateway = tuple.getValue3();
 
 		info("Listing files " + (glob != null ? "with glob '" + glob + "' " : "") + "...");
-		gateway.list(glob != null ? glob : "**")
+		gateway.listEntities(glob != null ? glob : "**")
 				.whenComplete((list, e) -> {
 					if (e != null) {
 						err("List " + (glob != null ? '\'' + glob + "' " : "") + "finished with exception " + e);
@@ -69,20 +69,20 @@ public final class GlobalFsList implements Callable<Void> {
 							showTombstones ?
 									(meta -> {
 										if (meta.getSize() == -1) {
-											System.out.println(meta.getFilename() + "\t<deleted>");
+											System.out.println(meta.getName() + "\t<deleted>");
 										}
 									}) :
 									(meta -> {
 										if (meta.getSize() == -1) {
-											System.out.println(meta.getFilename());
+											System.out.println(meta.getName());
 										}
 									}) :
 							showTombstones ?
-									(meta -> System.out.println(meta.getFilename() + '\t' + formatSize(meta.getSize()))) :
+									(meta -> System.out.println(meta.getName() + '\t' + formatSize(meta.getSize()))) :
 									(meta -> {
 										long size = meta.getSize();
 										if (size != -1) {
-											System.out.println(meta.getFilename() + '\t' + formatSize(size));
+											System.out.println(meta.getName() + '\t' + formatSize(size));
 										}
 									}));
 				});

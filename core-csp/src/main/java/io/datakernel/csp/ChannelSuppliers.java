@@ -16,12 +16,15 @@
 
 package io.datakernel.csp;
 
+import io.datakernel.async.*;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.functional.Try;
 import io.datakernel.util.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -176,6 +179,21 @@ public final class ChannelSuppliers {
 				cb.setException(e);
 			}
 		});
+	}
+
+	public static <T> Promise<Void> streamTo(Promise<ChannelSupplier<T>> supplier, Promise<ChannelConsumer<T>> consumer) {
+		return Promises.toTuple(supplier.toTry(), consumer.toTry())
+				.thenCompose(t -> streamTo(t.getValue1(), t.getValue2()));
+	}
+
+	public static <T> MaterializedPromise<Void> streamTo(Try<ChannelSupplier<T>> supplier, Try<ChannelConsumer<T>> consumer) {
+		if (supplier.isSuccess() && consumer.isSuccess()) {
+			return streamTo(supplier.get(), consumer.get());
+		}
+		StacklessException exception = new StacklessException("Channel stream failed");
+		supplier.consume(Cancellable::cancel, exception::addSuppressed);
+		consumer.consume(Cancellable::cancel, exception::addSuppressed);
+		return Promise.ofException(exception);
 	}
 
 	/**

@@ -17,12 +17,12 @@
 package io.global.common.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
 public interface AnnouncementStorage {
-	ConstantException NO_ANNOUNCEMENT = new ConstantException(AnnouncementStorage.class, "No announcement found for key");
+	StacklessException NO_ANNOUNCEMENT = new StacklessException(AnnouncementStorage.class, "No announcement found for key");
 
 	Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData);
 

@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -190,7 +191,7 @@ public final class TestRemoteFsClusterClient {
 		Throwable exception = awaitException(ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded.txt")))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
 
-		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Didn't connect to enough partitions"));
 	}
 
@@ -202,7 +203,7 @@ public final class TestRemoteFsClusterClient {
 				.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
 
-		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString(fileName));
 	}
 }

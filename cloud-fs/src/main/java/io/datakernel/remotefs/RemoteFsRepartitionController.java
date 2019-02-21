@@ -43,7 +43,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
-import static io.datakernel.util.FileUtils.isWildcard;
+import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -165,26 +165,26 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 			return stream;
 		}
 		if (!isWildcard(glob)) {
-			return stream.filter(file -> !file.getFilename().equals(negativeGlob));
+			return stream.filter(file -> !file.getName().equals(negativeGlob));
 		}
 		PathMatcher negativeMatcher = FileSystems.getDefault().getPathMatcher("glob:" + negativeGlob);
-		return stream.filter(file -> !negativeMatcher.matches(Paths.get(file.getFilename())));
+		return stream.filter(file -> !negativeMatcher.matches(Paths.get(file.getName())));
 	}
 
 	private Promise<Boolean> repartitionFile(FileMetadata meta) {
 		Set<Object> partitionIds = new HashSet<>(clients.keySet());
 		partitionIds.add(localPartitionId); // ensure local partition could also be selected
-		List<Object> selected = serverSelector.selectFrom(meta.getFilename(), partitionIds, replicationCount);
+		List<Object> selected = serverSelector.selectFrom(meta.getName(), partitionIds, replicationCount);
 
 		return getPartitionsWithoutFile(meta, selected)
 				.thenCompose(uploadTargets -> {
 					if (uploadTargets == null) { // null return means failure
 						return Promise.of(false);
 					}
-					String name = meta.getFilename();
+					String name = meta.getName();
 					if (uploadTargets.isEmpty()) { // everybody had the file
 						logger.trace("deleting file {} locally", meta);
-						return localStorage.deleteBulk(name) // so we delete the copy which does not belong to local partition
+						return localStorage.delete(name) // so we delete the copy which does not belong to local partition
 								.thenApply($ -> {
 									logger.info("handled file {} (ensured on {})", meta, selected);
 									return true;
@@ -232,7 +232,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								}
 
 								logger.trace("deleting file {} on {}", meta, localPartitionId);
-								return localStorage.deleteBulk(name)
+								return localStorage.delete(name)
 										.thenApply($ -> {
 											logger.info("handled file {} (ensured on {}, uploaded to {})", meta, selected, uploadTargets);
 											return true;
@@ -251,15 +251,15 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 						return Promise.of(Try.of(null));  // and skip other logic
 					}
 					return clients.get(partitionId)
-							.list(fileToUpload.getFilename()) // checking file existense and size on particular partition
+							.listEntities(fileToUpload.getName()) // checking file existense and size on particular partition
 							.whenComplete((list, e) -> {
 								if (e != null) {
 									logger.warn("failed connecting to partition " + partitionId + " (" + e + ')');
 									cluster.markDead(partitionId, e);
 									return;
 								}
-								// ↓ when there is no file or it is smaller than ours
-								if (list.isEmpty() || list.get(0).getSize() < fileToUpload.getSize()) {
+								// ↓ when there is no file or it is worse than ours
+								if (list.isEmpty() || FileMetadata.COMPARATOR.compare(list.get(0), fileToUpload) < 0) {
 									uploadTargets.add(partitionId);
 								}
 							})

@@ -21,7 +21,6 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.inspector.AbstractInspector;
 import io.datakernel.inspector.BaseInspector;
@@ -36,6 +35,7 @@ import java.net.InetAddress;
 import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
+import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaders.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -46,12 +46,17 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
-			int code = ((HttpException) e).getCode();
-			response = HttpResponse.ofCode(code).withBody(e.getLocalizedMessage().getBytes(UTF_8));
+			response = HttpResponse.ofCode(((HttpException) e).getCode())
+					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+			if (e.getLocalizedMessage() != null) {
+				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
+			}
 		} else if (e instanceof ParseException) {
-			response = HttpResponse.ofCode(400).withBody(e.getLocalizedMessage().getBytes(UTF_8));
-		} else if (e instanceof ConstantException) {
-			response = HttpResponse.ofCode(500).withBody(e.getLocalizedMessage().getBytes(UTF_8));
+			response = HttpResponse.ofCode(400)
+					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+			if (e.getLocalizedMessage() != null) {
+				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
+			}
 		} else {
 			response = HttpResponse.ofCode(500);
 		}

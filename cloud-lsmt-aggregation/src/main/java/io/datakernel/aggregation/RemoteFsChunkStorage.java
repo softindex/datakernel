@@ -55,7 +55,6 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
-import static java.util.stream.Collectors.toMap;
 import static org.slf4j.LoggerFactory.getLogger;
 
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
@@ -191,7 +190,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@Override
 	public Promise<Void> finish(Set<C> chunkIds) {
 		finishChunks = chunkIds.size();
-		return client.moveBulk(chunkIds.stream().collect(toMap(this::getTempPath, this::getPath)))
+		return Promises.all(chunkIds.stream().map(id -> client.move(getTempPath(id), getPath(id)).toTry()))
 				.whenComplete(promiseFinishChunks.recordStats());
 	}
 
@@ -216,15 +215,12 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		long timestamp = instant != null ? instant.toEpochMilli() : -1;
 		int[] skipped = {0};
 		int[] deleted = {0};
-		return client.list("*")
+		return client.list("*" + LOG)
 				.thenCompose(list -> Promises.all(list.stream()
 						.filter(file -> {
-							if (!file.getFilename().endsWith(LOG)) {
-								return false;
-							}
 							C id;
 							try {
-								String filename = file.getFilename();
+								String filename = file.getName();
 								id = fromFileName(filename.substring(0, filename.length() - LOG.length()));
 							} catch (NumberFormatException e) {
 								cleanupWarnings.recordException(e);
@@ -247,11 +243,11 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 						.map(file -> {
 							if (logger.isTraceEnabled()) {
 								FileTime lastModifiedTime = FileTime.fromMillis(file.getTimestamp());
-								logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file.getFilename(),
+								logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file.getName(),
 										lastModifiedTime, lastModifiedTime.toMillis());
 							}
 							deleted[0]++;
-							return client.deleteBulk(file.getFilename());
+							return client.delete(file.getName());
 						}))
 						.whenResult($ -> {
 							cleanupPreservedFiles = preserveChunks.size();
@@ -264,12 +260,12 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	public Promise<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
-		return client.list("*")
+		return client.list("*" + LOG)
 				.thenApply(list ->
 						list.stream()
 								.filter(file -> lastModified.test(file.getTimestamp()))
-								.map(FileMetadata::getFilename)
-								.filter(name -> name.endsWith(LOG) && filter.test(name))
+								.map(FileMetadata::getName)
+								.filter(filter)
 								.map(name -> Long.parseLong(name.substring(0, name.length() - LOG.length())))
 								.collect(Collectors.toSet()))
 				.whenComplete(promiseList.recordStats());

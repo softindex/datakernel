@@ -29,8 +29,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -40,7 +42,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelFileReader.class);
 
-	public static final OpenOption[] READ_OPTIONS = {READ};
+	public static final Set<OpenOption> READ_OPTIONS = set(READ);
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
 
@@ -98,7 +100,6 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 					if (e != null) {
 						buf.recycle();
 						close(e);
-						//noinspection ConstantConditions - just closed the file with exception, it is not null
 						return Promise.ofException(getException());
 					}
 					int bytesRead = buf.readRemaining();

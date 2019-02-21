@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -39,9 +38,9 @@ import static java.util.stream.Collectors.toList;
 public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsAdapter.class);
 
-	public static final ConstantException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new ConstantException(GlobalFsAdapter.class, "Trying to upload at offset greater than known file size");
-	public static final ConstantException UPK_UPLOAD = new ConstantException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
-	public static final ConstantException UPK_DELETE = new ConstantException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");
+	public static final StacklessException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new StacklessException(GlobalFsAdapter.class, "Trying to upload at offset greater than known file size");
+	public static final StacklessException UPK_UPLOAD = new StacklessException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
+	public static final StacklessException UPK_DELETE = new StacklessException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");
 
 	private final GlobalFsDriver gateway;
 	private final PubKey space;
@@ -68,63 +67,56 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
 		return privKey != null ?
-				gateway.upload(new KeyPair(privKey, space), filename, offset, currentSimKey) :
+				gateway.upload(new KeyPair(privKey, space), name, offset, currentSimKey) :
 				Promise.ofException(UPK_UPLOAD);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long limit) {
-		return gateway.download(space, filename, offset, limit)
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long limit) {
+		return gateway.download(space, name, offset, limit)
 				.thenApply(supplier -> supplier
-						.transformWith(CipherTransformer.create(currentSimKey, CryptoUtils.nonceFromString(filename), offset)));
+						.transformWith(CipherTransformer.create(currentSimKey, CryptoUtils.nonceFromString(name), offset)));
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return gateway.list(space, glob)
 				.thenApply(res -> res.stream()
-						.map(checkpoint -> new FileMetadata(
+						.map(checkpoint -> FileMetadata.of(
 								checkpoint.getFilename(),
 								checkpoint.isTombstone() ? -1 : checkpoint.getPosition(),
-								0
-						))
+								0,
+								0)) // TODO anton: globalfs timestamps and revisions
 						.collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 	@Override
-	public Promise<FileMetadata> getMetadata(String filename) {
-		return gateway.getMetadata(space, filename)
+	public Promise<FileMetadata> getMetadata(String name) {
+		return gateway.getMetadata(space, name)
 				.thenApply(checkpoint ->
 						checkpoint != null ?
-								new FileMetadata(checkpoint.getFilename(), checkpoint.isTombstone() ? -1 : checkpoint.getPosition(), 0) :
+								FileMetadata.of(checkpoint.getFilename(), checkpoint.isTombstone() ? -1 : checkpoint.getPosition(), 0, 0) :
 								null)
-				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
+				.whenComplete(toLogger(logger, TRACE, "getMetadata", name, this));
 	}
 
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
+	public Promise<Void> delete(String name, long revision) {
 		return privKey != null ?
-				gateway.delete(new KeyPair(privKey, space), glob) :
+				gateway.delete(new KeyPair(privKey, space), name) :
 				Promise.ofException(UPK_DELETE);
 	}
 
 	@Override
-	public Promise<Void> delete(String filename) {
-		return privKey != null ?
-				gateway.delete(new KeyPair(privKey, space), filename) :
-				Promise.ofException(UPK_DELETE);
-	}
-
-	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
+	public Promise<Void> move(String name, String target, long revision, long removeRevision) {
 		throw new UnsupportedOperationException("No file moving in GlobalFS yet");
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
+	public Promise<Void> copy(String name, String target, long revision) {
 		throw new UnsupportedOperationException("No file copying in GlobalFS yet");
 	}
 }

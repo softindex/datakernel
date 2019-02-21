@@ -27,8 +27,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -37,13 +39,13 @@ import static java.nio.file.StandardOpenOption.*;
 public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelFileWriter.class);
 
-	public static final OpenOption[] CREATE_OPTIONS = {WRITE, CREATE_NEW, APPEND};
+	public static final Set<OpenOption> CREATE_OPTIONS = set(WRITE, CREATE_NEW, APPEND);
 
 	private final AsyncFile asyncFile;
 
 	private boolean forceOnClose = false;
 	private boolean forceMetadata = false;
-	private long startingOffset = -1;
+	private long startingOffset = 0;
 	private boolean started;
 
 	// region creators
@@ -127,7 +129,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 			return Promise.complete();
 		}
 		started = true;
-		return startingOffset != -1 ? asyncFile.seek(startingOffset) : Promise.complete();
+		return startingOffset != 0 ? asyncFile.seek(startingOffset) : Promise.complete();
 	}
 
 	@Override

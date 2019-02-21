@@ -25,13 +25,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -44,7 +44,7 @@ public class AsyncFileExample {
 	@NotNull
 	private static Promise<Void> writeToFile() {
 		try {
-			AsyncFile asyncFile = AsyncFile.open(executorService, PATH, new OpenOption[]{WRITE, CREATE_NEW, APPEND});
+			AsyncFile asyncFile = AsyncFile.open(executorService, PATH, set(WRITE, CREATE_NEW, APPEND));
 			return asyncFile.write(wrapAscii("Hello\n"))
 					.thenCompose($ -> asyncFile.write(wrapAscii("This is test file\n")))
 					.thenCompose($ -> asyncFile.write(wrapAscii("This is the 3rd line in file")));
@@ -56,7 +56,7 @@ public class AsyncFileExample {
 	@NotNull
 	private static Promise<ByteBuf> readFromFile() {
 		try {
-			return AsyncFile.open(executorService, PATH, new OpenOption[]{READ})
+			return AsyncFile.open(executorService, PATH, set(READ))
 					.read()
 					.whenResult(buf -> System.out.println(buf.getString(UTF_8)));
 		} catch (IOException e) {

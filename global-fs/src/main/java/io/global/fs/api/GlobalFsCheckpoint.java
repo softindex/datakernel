@@ -29,6 +29,8 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 	private static final byte[] ZERO_STATE = new byte[0];
 
 	private final String filename;
+	// private final long timestamp;
+	// private final long revision;
 	private final long position;
 
 	@Nullable

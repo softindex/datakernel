@@ -20,30 +20,31 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
-import static io.datakernel.util.FileUtils.escapeGlob;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.remotefs.RemoteFsUtils.KNOWN_ERRORS;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -53,7 +54,11 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class RemoteFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
 
-	public static final RemoteFsException UNEXPECTED_END_OF_STREAM = new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream");
+	public static final StacklessException INVALID_MESSAGE = new StacklessException(RemoteFsClient.class, "Invalid or unexpected message received");
+	public static final StacklessException TOO_MUCH_DATA = new StacklessException(RemoteFsClient.class, "Received more bytes than expected");
+	public static final StacklessException UNEXPECTED_END_OF_STREAM = new StacklessException(RemoteFsClient.class, "Unexpected end of stream");
+	public static final StacklessException UNKNOWN_SERVER_ERROR = new StacklessException(RemoteFsClient.class, "Unknown server error occured");
+
 	private static final ByteBufSerializer<FsResponse, FsCommand> SERIALIZER =
 			ofJsonCodec(RemoteFsResponses.CODEC, RemoteFsCommands.CODEC);
 
@@ -97,126 +102,143 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset, long revision) {
 		checkNotNull(filename, "fileName");
 
 		return connect(address)
 				.thenCompose(messaging ->
-						messaging.send(new Upload(filename, offset))
-								.thenApply($ -> messaging.sendBinaryStream()
-										.withAcknowledgement(ack -> ack
-												.thenCompose($2 -> messaging.receive())
-												.thenCompose(msg -> {
-													messaging.close();
-													if (msg instanceof UploadFinished) {
-														return Promise.complete();
-													}
-													if (msg instanceof ServerError) {
-														return Promise.ofException(new RemoteFsException(RemoteFsClient.class, ((ServerError) msg).getMessage()));
-													}
-													if (msg != null) {
-														return Promise.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
-													}
-													return Promise.ofException(new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream for: " + filename));
-												})
-												.whenException(e -> {
-													messaging.close(e);
-													logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
-												})
-												.whenComplete(uploadFinishPromise.recordStats())))
+						messaging.send(new Upload(filename, offset, revision))
+								.thenCompose($ -> messaging.receive())
+								.thenCompose(msg -> {
+									if (!(msg instanceof UploadAck)) {
+										return handleInvalidResponse(msg);
+									}
+									if (!((UploadAck) msg).isOk()) {
+										return Promise.of(ChannelConsumers.<ByteBuf>recycling());
+									}
+									return Promise.of(messaging.sendBinaryStream()
+											.withAcknowledgement(ack -> ack
+													.thenCompose($2 -> messaging.receive())
+													.thenCompose(msg2 -> {
+														messaging.close();
+														return msg2 instanceof UploadFinished ?
+																Promise.complete() :
+																handleInvalidResponse(msg2);
+													})
+													.whenException(e -> {
+														messaging.close(e);
+														logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
+													})
+													.whenComplete(uploadFinishPromise.recordStats())));
+								})
 								.whenException(e -> {
 									messaging.close(e);
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 								}))
-				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
+				.whenComplete(toLogger(logger, "upload", filename, this))
 				.whenComplete(uploadStartPromise.recordStats());
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		checkNotNull(filename, "fileName");
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+		checkNotNull(name, "fileName");
 
 		return connect(address)
 				.thenCompose(messaging ->
-						messaging.send(new Download(filename, offset, length))
+						messaging.send(new Download(name, offset, length))
 								.thenCompose($ -> messaging.receive())
 								.thenCompose(msg -> {
-									if (msg instanceof DownloadSize) {
-										long receivingSize = ((DownloadSize) msg).getSize();
+									if (!(msg instanceof DownloadSize)) {
+										return handleInvalidResponse(msg);
+									}
+									long receivingSize = ((DownloadSize) msg).getSize();
 
-										logger.trace("download size for file {} is {}: {}", filename, receivingSize, this);
+									logger.trace("download size for file {} is {}: {}", name, receivingSize, this);
 
-										long[] size = {0};
-										return Promise.of(messaging.receiveBinaryStream()
-												.peek(buf -> size[0] += buf.readRemaining())
-												.withEndOfStream(eos -> eos
-														.thenCompose($ -> messaging.sendEndOfStream())
-														.thenCompose(result -> size[0] == receivingSize ?
-																Promise.of(result) :
-																Promise.ofException(new RemoteFsException(RemoteFsClient.class,
-																		"Invalid stream size for file " + filename +
-																				" (offset " + offset + ", length " + length + ")," +
-																				" expected: " + receivingSize +
-																				" actual: " + size[0])))
-														.whenComplete(downloadFinishPromise.recordStats())
-														.whenResult($1 -> messaging.close())));
-									}
-									if (msg instanceof ServerError) {
-										return Promise.ofException(new RemoteFsException(RemoteFsClient.class, ((ServerError) msg).getMessage()));
-									}
-									if (msg != null) {
-										return Promise.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
-									}
-									logger.warn(this + ": Received unexpected end of stream");
-									return Promise.ofException(new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream for: " + filename));
+									long[] size = {0};
+									return Promise.of(messaging.receiveBinaryStream()
+											.peek(buf -> size[0] += buf.readRemaining())
+											.withEndOfStream(eos -> eos
+													.thenCompose($ -> messaging.sendEndOfStream())
+													.thenCompose(result -> {
+														if (size[0] == receivingSize) {
+															return Promise.of(result);
+														}
+														logger.error("invalid stream size for file " + name +
+																" (offset " + offset + ", length " + length + ")," +
+																" expected: " + receivingSize +
+																" actual: " + size[0]);
+														return Promise.ofException(size[0] < receivingSize ? UNEXPECTED_END_OF_STREAM : TOO_MUCH_DATA);
+													})
+													.whenComplete(downloadFinishPromise.recordStats())
+													.whenResult($1 -> messaging.close())));
 								})
 								.whenException(e -> {
 									messaging.close(e);
-									logger.warn("Error trying to download file " + filename + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
+									logger.warn("error trying to download file " + name + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 								}))
-				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
+				.whenComplete(toLogger(logger, "download", name, offset, length, this))
 				.whenComplete(downloadStartPromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
-		checkNotNull(changes, "changes");
-
-		return simpleCommand(new Move(changes), MoveFinished.class, $ -> (Void) null)
-				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
+	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+		return simpleCommand(new Move(name, target, targetRevision, removeRevision), MoveFinished.class, $ -> (Void) null)
+				.whenComplete(toLogger(logger, "move", name, target, targetRevision, removeRevision, this))
 				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
-		checkNotNull(changes, "changes");
-
-		return simpleCommand(new Copy(changes), CopyFinished.class, $ -> (Void) null)
-				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
+	public Promise<Void> copy(String name, String target, long targetRevision) {
+		return simpleCommand(new Copy(name, target, targetRevision), CopyFinished.class, $ -> (Void) null)
+				.whenComplete(toLogger(logger, "copy", name, target, targetRevision, this))
 				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		checkNotNull(glob, "glob");
-
-		return simpleCommand(new Delete(glob), DeleteFinished.class, $ -> (Void) null)
-				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
+	public Promise<Void> delete(String name, long revision) {
+		return simpleCommand(new Delete(name, revision), DeleteFinished.class, $ -> (Void) null)
+				.whenComplete(toLogger(logger, "delete", name, revision, this))
 				.whenComplete(deletePromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> delete(String filename) {
-		return deleteBulk(escapeGlob(filename));
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		checkNotNull(glob, "glob");
+
+		return simpleCommand(new RemoteFsCommands.List(glob, true), ListFinished.class, ListFinished::getFiles)
+				.whenComplete(toLogger(logger, "listEntities", glob, this))
+				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		checkNotNull(glob, "glob");
 
-		return simpleCommand(new RemoteFsCommands.List(glob), ListFinished.class, ListFinished::getFiles)
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
+		return simpleCommand(new RemoteFsCommands.List(glob, false), ListFinished.class, ListFinished::getFiles)
+				.whenComplete(toLogger(logger, "list", glob, this))
 				.whenComplete(listPromise.recordStats());
+	}
+
+	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
+		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+				.thenApply(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
+				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
+				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
+				.whenComplete(connectPromise.recordStats());
+	}
+
+	private <T> Promise<T> handleInvalidResponse(@Nullable FsResponse msg) {
+		if (msg == null) {
+			logger.warn(this + ": Received unexpected end of stream");
+			return Promise.ofException(UNEXPECTED_END_OF_STREAM);
+		}
+		if (msg instanceof ServerError) {
+			int code = ((ServerError) msg).getCode();
+			Throwable error = code >= 1 && code <= KNOWN_ERRORS.length ? KNOWN_ERRORS[code - 1] : UNKNOWN_SERVER_ERROR;
+			return Promise.ofException(error);
+		}
+		return Promise.ofException(INVALID_MESSAGE);
 	}
 
 	private <T, R extends FsResponse> Promise<T> simpleCommand(FsCommand command, Class<R> responseType, Function<R, T> answerExtractor) {
@@ -226,29 +248,15 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								.thenCompose($ -> messaging.receive())
 								.thenCompose(msg -> {
 									messaging.close();
-									if (msg == null) {
-										return Promise.ofException(UNEXPECTED_END_OF_STREAM);
-									}
-									if (msg.getClass() == responseType) {
+									if (msg != null && msg.getClass() == responseType) {
 										return Promise.of(answerExtractor.apply(responseType.cast(msg)));
 									}
-									if (msg instanceof ServerError) {
-										return Promise.ofException(new RemoteFsException(RemoteFsClient.class, ((ServerError) msg).getMessage()));
-									}
-									return Promise.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
+									return handleInvalidResponse(msg);
 								})
 								.whenException(e -> {
 									messaging.close(e);
 									logger.warn("Error while processing command " + command + " (" + e + ") : " + this);
 								}));
-	}
-
-	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
-		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
-				.thenApply(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
-				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
-				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
-				.whenComplete(connectPromise.recordStats());
 	}
 
 	@NotNull

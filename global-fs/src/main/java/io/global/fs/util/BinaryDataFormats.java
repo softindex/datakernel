@@ -32,12 +32,12 @@ public final class BinaryDataFormats {
 	}
 
 	public static final CodecFactory REGISTRY = createGlobal()
-
 			.with(FileMetadata.class, registry ->
-					tuple(FileMetadata::new,
-							FileMetadata::getFilename, registry.get(String.class),
+					tuple(FileMetadata::parse,
+							FileMetadata::getName, registry.get(String.class),
 							FileMetadata::getSize, registry.get(long.class),
-							FileMetadata::getTimestamp, registry.get(long.class)))
+							FileMetadata::getTimestamp, registry.get(long.class),
+							FileMetadata::getRevision, registry.get(long.class)))
 
 			.with(GlobalFsCheckpoint.class, registry ->
 					tuple(GlobalFsCheckpoint::parse,

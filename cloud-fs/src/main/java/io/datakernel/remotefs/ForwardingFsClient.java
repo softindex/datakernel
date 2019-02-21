@@ -20,9 +20,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public abstract class ForwardingFsClient implements FsClient {
 	private final FsClient peer;
@@ -32,33 +35,68 @@ public abstract class ForwardingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		return peer.upload(filename, offset);
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+		return peer.upload(name, offset);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		return peer.download(filename, offset, length);
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name) {
+		return peer.upload(name);
 	}
 
 	@Override
-	public Promise<Void> copy(String filename, String newFilename) {
-		return peer.copy(filename, newFilename);
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+		return peer.upload(name, offset, revision);
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String newFilename) {
-		return peer.move(filename, newFilename);
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+		return peer.download(name, offset, length);
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return peer.moveBulk(changes);
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset) {
+		return peer.download(name, offset);
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return peer.copyBulk(changes);
+	public Promise<ChannelSupplier<ByteBuf>> download(String name) {
+		return peer.download(name);
+	}
+
+	@Override
+	public Promise<Void> delete(String name) {
+		return peer.delete(name);
+	}
+
+	@Override
+	public Promise<Void> delete(String name, long revision) {
+		return peer.delete(name, revision);
+	}
+
+	@Override
+	public Promise<Void> copy(String name, String target) {
+		return peer.copy(name, target);
+	}
+
+	@Override
+	public Promise<Void> copy(String name, String target, long targetRevision) {
+		return peer.copy(name, target, targetRevision);
+	}
+
+	@Override
+	public Promise<Void> move(String name, String target) {
+		return peer.move(name, target);
+	}
+
+	@Override
+	public Promise<Void> move(String filename, String target, long targetRevision, long removeRevision) {
+		return peer.move(filename, target, targetRevision, removeRevision);
+	}
+
+	@Override
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		return peer.listEntities(glob);
 	}
 
 	@Override
@@ -67,12 +105,47 @@ public abstract class ForwardingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		return peer.deleteBulk(glob);
+	public Promise<@Nullable FileMetadata> getMetadata(String name) {
+		return peer.getMetadata(name);
 	}
 
 	@Override
-	public Promise<Void> delete(String filename) {
-		return peer.delete(filename);
+	public Promise<Void> ping() {
+		return peer.ping();
+	}
+
+	@Override
+	public FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from, Function<String, Optional<String>> globInto) {
+		return peer.transform(into, from, globInto);
+	}
+
+	@Override
+	public FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from) {
+		return peer.transform(into, from);
+	}
+
+	@Override
+	public FsClient addingPrefix(String prefix) {
+		return peer.addingPrefix(prefix);
+	}
+
+	@Override
+	public FsClient subfolder(String folder) {
+		return peer.subfolder(folder);
+	}
+
+	@Override
+	public FsClient strippingPrefix(String prefix) {
+		return peer.strippingPrefix(prefix);
+	}
+
+	@Override
+	public FsClient filter(Predicate<String> predicate) {
+		return peer.filter(predicate);
+	}
+
+	@Override
+	public FsClient mount(String mountpoint, FsClient client) {
+		return peer.mount(mountpoint, client);
 	}
 }

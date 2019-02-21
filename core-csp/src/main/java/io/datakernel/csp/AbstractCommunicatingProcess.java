@@ -18,7 +18,7 @@ package io.datakernel.csp;
 
 import io.datakernel.async.*;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,7 +35,7 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  * Process can be cancelled or closed manually.
  */
 public abstract class AbstractCommunicatingProcess implements AsyncProcess {
-	public static final ConstantException ASYNC_PROCESS_IS_COMPLETE = new ConstantException(AbstractCommunicatingProcess.class, "AsyncProcess is complete");
+	public static final StacklessException ASYNC_PROCESS_IS_COMPLETE = new StacklessException(AbstractCommunicatingProcess.class, "AsyncProcess is complete");
 
 	private boolean processStarted;
 	private boolean processComplete;

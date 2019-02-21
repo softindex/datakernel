@@ -18,7 +18,6 @@ import java.util.List;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
@@ -30,7 +29,7 @@ public class MultilogImplTest {
 	public void testConsumer() {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		Multilog<String> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
+				LocalFsClient.create(eventloop, temporaryFolder.getRoot().toPath()),
 				BinarySerializers.UTF8_SERIALIZER,
 				NAME_PARTITION_REMAINDER_SEQ);
 		String testPartition = "testPartition";

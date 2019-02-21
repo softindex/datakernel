@@ -26,21 +26,40 @@ import java.util.List;
 import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class RemoteFsResponses {
-	public static final StructuredCodec<FileMetadata> FILE_META_CODEC = StructuredCodecs.tuple(FileMetadata::new,
-			FileMetadata::getFilename, STRING_CODEC,
+	public static final StructuredCodec<FileMetadata> FILE_META_CODEC = StructuredCodecs.tuple(FileMetadata::parse,
+			FileMetadata::getName, STRING_CODEC,
 			FileMetadata::getSize, LONG_CODEC,
-			FileMetadata::getTimestamp, LONG_CODEC);
+			FileMetadata::getTimestamp, LONG_CODEC,
+			FileMetadata::getRevision, LONG_CODEC);
 
 	static final StructuredCodec<FsResponse> CODEC = CodecSubtype.<FsResponse>create()
+			.with(UploadAck.class, object(UploadAck::new, "ok", UploadAck::isOk, BOOLEAN_CODEC))
 			.with(UploadFinished.class, object(UploadFinished::new))
 			.with(DownloadSize.class, object(DownloadSize::new, "size", DownloadSize::getSize, LONG_CODEC))
 			.with(MoveFinished.class, object(MoveFinished::new))
 			.with(CopyFinished.class, object(CopyFinished::new))
 			.with(DeleteFinished.class, object(DeleteFinished::new))
 			.with(ListFinished.class, object(ListFinished::new, "files", ListFinished::getFiles, ofList(FILE_META_CODEC)))
-			.with(ServerError.class, object(ServerError::new, "message", ServerError::getMessage, STRING_CODEC));
+			.with(ServerError.class, object(ServerError::new, "code", ServerError::getCode, INT_CODEC));
 
 	public static abstract class FsResponse {
+	}
+
+	public static class UploadAck extends FsResponse {
+		private final boolean ok;
+
+		public UploadAck(boolean ok) {
+			this.ok = ok;
+		}
+
+		public boolean isOk() {
+			return ok;
+		}
+
+		@Override
+		public String toString() {
+			return "UploadAck{od=" + ok + '}';
+		}
 	}
 
 	public static class UploadFinished extends FsResponse {
@@ -115,19 +134,19 @@ public final class RemoteFsResponses {
 	}
 
 	public static class ServerError extends FsResponse {
-		private final String message;
+		private final int code;
 
-		public ServerError(String message) {
-			this.message = message;
+		public ServerError(int code) {
+			this.code = code;
 		}
 
-		public String getMessage() {
-			return message;
+		public int getCode() {
+			return code;
 		}
 
 		@Override
 		public String toString() {
-			return "ServerError{message=" + message + '}';
+			return "ServerError{code=" + code + '}';
 		}
 	}
 }

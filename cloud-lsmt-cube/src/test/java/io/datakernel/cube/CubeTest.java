@@ -74,7 +74,7 @@ public final class CubeTest {
 
 	@Before
 	public void setUp() throws Exception {
-		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
+		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
 		chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		cube = newCube(executor, classLoader, chunkStorage);
 	}
@@ -425,7 +425,7 @@ public final class CubeTest {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Executor executor = newSingleThreadExecutor();
 
-		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
+		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
@@ -440,7 +440,7 @@ public final class CubeTest {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Executor executor = newSingleThreadExecutor();
 
-		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
+		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 

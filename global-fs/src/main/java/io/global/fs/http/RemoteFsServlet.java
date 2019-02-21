@@ -22,6 +22,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -30,16 +31,15 @@ import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.http.MediaTypes.JSON;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_CODEC;
 import static io.global.fs.api.FsCommand.*;
-import static io.global.fs.util.HttpDataFormats.httpDownload;
-import static io.global.fs.util.HttpDataFormats.httpUpload;
+import static io.global.fs.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsServlet implements WithMiddleware {
 	static final StructuredCodec<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_CODEC);
-	static final StructuredCodec<FileMetadata> NULLABLE_FILE_META_CODEC = FILE_META_CODEC.nullable();
+	static final StructuredCodec<@Nullable FileMetadata> NULLABLE_FILE_META_CODEC = FILE_META_CODEC.nullable();
 
 	private final MiddlewareServlet servlet;
 
@@ -53,17 +53,21 @@ public final class RemoteFsServlet implements WithMiddleware {
 
 	private MiddlewareServlet servlet(FsClient client) {
 		return MiddlewareServlet.create()
-				.with(GET, "/" + LIST, request ->
-						client.list(request.getQueryParameter("glob", "**"))
-								.thenApply(list -> HttpResponse.ok200()
-										.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON)))))
+				.with(GET, "/" + LIST, request -> {
+					String glob = request.getQueryParameter("glob", "**");
+					return (request.getQueryParameterOrNull("tombstones") != null ? client.listEntities(glob) : client.list(glob))
+							.thenApplyEx(errorHandler(list ->
+									HttpResponse.ok200()
+											.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
+											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
+				})
 				.with(GET, "/" + GET_METADATA + "/:name*", request -> {
 					try {
 						return client.getMetadata(request.getPathParameter("name"))
-								.thenApply(meta -> HttpResponse.ok200()
-										.withBody(toJson(NULLABLE_FILE_META_CODEC, meta).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
+								.thenApplyEx(errorHandler(meta ->
+										HttpResponse.ok200()
+												.withBody(toJson(NULLABLE_FILE_META_CODEC, meta).getBytes(UTF_8))
+												.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -76,34 +80,35 @@ public final class RemoteFsServlet implements WithMiddleware {
 								.thenCompose(meta ->
 										meta != null ?
 												httpDownload(request, (offset, limit) -> client.download(name, offset, limit), name, meta.getSize()) :
-												Promise.ofException(HttpException.ofCode(404, "File '" + name + "' not found")));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
-				.with(POST, "/" + DELETE, request -> {
-					try {
-						return client.deleteBulk(request.getQueryParameter("glob"))
-								.thenApply($ -> HttpResponse.ok200());
+												Promise.ofException(FILE_NOT_FOUND));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.with(POST, "/" + DELETE + "/:name*", request -> {
 					try {
-						String name = request.getPathParameter("name");
-						return client.delete(name)
-								.thenApply($ -> HttpResponse.ok200());
+						return client.delete(request.getPathParameter("name"), parseRevision(request))
+								.thenApplyEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + COPY, request -> request.getPostParameters()
-						.thenCompose(postParameters -> client.copyBulk(postParameters)
-								.thenApply($ -> HttpResponse.ok200())))
-				.with(POST, "/" + MOVE, request -> request.getPostParameters()
-						.thenCompose(postParameters -> client.moveBulk(postParameters)
-								.thenApply($ -> HttpResponse.ok200())));
+				.with(POST, "/" + COPY, request -> {
+					try {
+						return client.copy(request.getQueryParameter("name"), request.getQueryParameter("target"), parseRevision(request))
+								.thenApplyEx(errorHandler());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(POST, "/" + MOVE, request -> {
+					try {
+						return client.move(request.getQueryParameter("name"), request.getQueryParameter("target"), parseRevision(request), parseRevision(request, "tombstone"))
+								.thenApplyEx(errorHandler());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				});
 	}
 
 	@Override

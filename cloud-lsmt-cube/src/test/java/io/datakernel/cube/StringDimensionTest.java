@@ -63,7 +63,7 @@ public class StringDimensionTest {
 		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("key1", ofString())
 				.withDimension("key2", ofInt())

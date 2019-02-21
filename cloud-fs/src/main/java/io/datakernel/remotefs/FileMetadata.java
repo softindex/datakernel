@@ -16,32 +16,71 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.exception.ParseException;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * This is a POJO for holding name, size and timestamp of some file
  */
 public final class FileMetadata {
-	private final String filename;
+	public static final Comparator<FileMetadata> COMPARATOR =
+			Comparator.comparingLong(FileMetadata::getRevision)
+					.thenComparing((a, b) -> a.isTombstone() == b.isTombstone() ? 0 : a.isTombstone() ? 1 : -1)
+					.thenComparing(FileMetadata::getSize)
+					.thenComparing(FileMetadata::getTimestamp);
+
+	private final String name;
 	private final long size;
 	private final long timestamp;
+	private final long revision;
 
-	public FileMetadata(String filename, long size, long timestamp) {
-		this.filename = checkNotNull(filename, "name");
+	private FileMetadata(String name, long size, long timestamp, long revision) {
+		this.name = name;
 		this.size = size;
 		this.timestamp = timestamp;
+		this.revision = revision;
 	}
 
-	public String getFilename() {
-		return filename;
+	public static FileMetadata of(String name, long size, long timestamp, long revision) {
+		checkNotNull(name, "name");
+		checkArgument(size >= 0, "size >= 0");
+		return new FileMetadata(name, size, timestamp, revision);
+	}
+
+	public static FileMetadata parse(String name, long size, long timestamp, long revision) throws ParseException {
+		if (name == null) {
+			throw new ParseException(FileMetadata.class, "Name is null");
+		}
+		if (size < -1) {
+			throw new ParseException(FileMetadata.class, "Size is less than zero and not -1");
+		}
+		return new FileMetadata(name, size, timestamp, revision);
+	}
+
+	public static FileMetadata tombstone(String name, long timestamp, long revision) {
+		return new FileMetadata(name, -1, timestamp, revision);
+	}
+
+	public FileMetadata withName(String name) {
+		return new FileMetadata(name, size, timestamp, revision);
+	}
+
+	public FileMetadata asTombstone() {
+		return new FileMetadata(name, -1, timestamp, revision);
+	}
+
+	public boolean isTombstone() {
+		return size == -1;
+	}
+
+	public String getName() {
+		return name;
 	}
 
 	public long getSize() {
@@ -52,13 +91,13 @@ public final class FileMetadata {
 		return timestamp;
 	}
 
-	public boolean equalsIgnoringTimestamp(FileMetadata other) {
-		return filename.equals(other.filename) && size == other.size;
+	public long getRevision() {
+		return revision;
 	}
 
 	@Override
 	public String toString() {
-		return filename + "(size=" + size + ", timestamp=" + timestamp + ')';
+		return name + "(size=" + size + ", timestamp=" + timestamp + ", revision=" + revision + ')';
 	}
 
 	@Override
@@ -68,36 +107,27 @@ public final class FileMetadata {
 
 		FileMetadata that = (FileMetadata) o;
 
-		return size == that.size && timestamp == that.timestamp && filename.equals(that.filename);
+		return size == that.size && timestamp == that.timestamp && revision == that.revision && name.equals(that.name);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * (31 * filename.hashCode() + (int) (size ^ (size >>> 32))) + (int) (timestamp ^ (timestamp >>> 32));
+		return 29791 * name.hashCode()
+				+ 961 * ((int) (size ^ (size >>> 32)))
+				+ 31 * ((int) (timestamp ^ (timestamp >>> 32)))
+				+ (int) (revision ^ (revision >>> 32));
 	}
 
 	@Nullable
 	public static FileMetadata getMoreCompleteFile(@Nullable FileMetadata first, @Nullable FileMetadata second) {
-		if (first == null) {
-			return second;
-		}
-		if (second == null) {
-			return first;
-		}
-		if (first.size > second.size) {
-			return first;
-		}
-		if (second.size > first.size) {
-			return second;
-		}
-		return second.timestamp > first.timestamp ? second : first;
+		return first == null ? second : second == null ? first : COMPARATOR.compare(first, second) < 0 ? first : second;
 	}
 
 	public static List<FileMetadata> flatten(Stream<List<FileMetadata>> streamOfLists) {
 		Map<String, FileMetadata> map = new HashMap<>();
 		streamOfLists
 				.flatMap(List::stream)
-				.forEach(meta -> map.compute(meta.getFilename(), ($, existing) -> getMoreCompleteFile(existing, meta)));
+				.forEach(meta -> map.compute(meta.getName(), ($, existing) -> getMoreCompleteFile(existing, meta)));
 		return new ArrayList<>(map.values());
 	}
 }

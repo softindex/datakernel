@@ -103,7 +103,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 		return storage.list(getGlobFor(receiver))
 				.thenCompose(files -> reduce(toList(), 1,
 						asPromises(files.stream().map(meta -> AsyncSupplier.cast(() ->
-								storage.download(meta.getFilename())
+								storage.download(meta.getName())
 										.thenComposeEx(LOAD_SHARED_KEY))))))
 				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
 	}

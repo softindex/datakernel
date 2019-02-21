@@ -19,8 +19,6 @@ package io.datakernel.remotefs;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 
-import java.util.Map;
-
 import static io.datakernel.codec.StructuredCodecs.*;
 
 @SuppressWarnings("WeakerAccess")
@@ -28,60 +26,74 @@ public final class RemoteFsCommands {
 
 	static final StructuredCodec<FsCommand> CODEC = CodecSubtype.<FsCommand>create()
 			.with(Upload.class, object(Upload::new,
-					"fileName", Upload::getFileName, STRING_CODEC,
-					"offset", Upload::getOffset, LONG_CODEC))
+					"name", Upload::getName, STRING_CODEC,
+					"offset", Upload::getOffset, LONG_CODEC,
+					"targetRevision", Upload::getRevision, LONG_CODEC))
 			.with(Download.class, object(Download::new,
-					"filePath", Download::getFileName, STRING_CODEC,
+					"name", Download::getName, STRING_CODEC,
 					"offset", Download::getOffset, LONG_CODEC,
 					"length", Download::getLength, LONG_CODEC))
 			.with(Move.class, object(Move::new,
-					"changes", Move::getChanges, ofMap(STRING_CODEC, STRING_CODEC)))
+					"name", Move::getName, STRING_CODEC,
+					"target", Move::getTarget, STRING_CODEC,
+					"targetRevision", Move::getTargetRevision, LONG_CODEC,
+					"removeRevision", Move::getRemoveRevision, LONG_CODEC))
 			.with(Copy.class, object(Copy::new,
-					"changes", Copy::getChanges, ofMap(STRING_CODEC, STRING_CODEC)))
-			.with(List.class, object(List::new,
-					"glob", List::getGlob, STRING_CODEC))
+					"name", Copy::getName, STRING_CODEC,
+					"target", Copy::getTarget, STRING_CODEC,
+					"targetRevision", Copy::getRevision, LONG_CODEC))
 			.with(Delete.class, object(Delete::new,
-					"glob", Delete::getGlob, STRING_CODEC));
+					"name", Delete::getName, STRING_CODEC,
+					"targetRevision", Delete::getRevision, LONG_CODEC))
+			.with(List.class, object(List::new,
+					"glob", List::getGlob, STRING_CODEC,
+					"tombstones", List::needTombstones, BOOLEAN_CODEC));
 
 	public static abstract class FsCommand {
 	}
 
 	public static final class Upload extends FsCommand {
-		private final String fileName;
+		private final String name;
 		private final long offset;
+		private final long revision;
 
-		public Upload(String fileName, long offset) {
-			this.fileName = fileName;
+		public Upload(String name, long offset, long revision) {
+			this.name = name;
 			this.offset = offset;
+			this.revision = revision;
 		}
 
-		public String getFileName() {
-			return fileName;
+		public String getName() {
+			return name;
 		}
 
 		public long getOffset() {
 			return offset;
 		}
 
+		public long getRevision() {
+			return revision;
+		}
+
 		@Override
 		public String toString() {
-			return "Upload{fileName='" + fileName + "'}";
+			return "Upload{name='" + name + "', revision=" + revision + '}';
 		}
 	}
 
 	public static final class Download extends FsCommand {
-		private final String fileName;
+		private final String name;
 		private final long offset;
 		private final long length;
 
-		public Download(String fileName, long offset, long length) {
-			this.fileName = fileName;
+		public Download(String name, long offset, long length) {
+			this.name = name;
 			this.offset = offset;
 			this.length = length;
 		}
 
-		public String getFileName() {
-			return fileName;
+		public String getName() {
+			return name;
 		}
 
 		public long getOffset() {
@@ -94,103 +106,117 @@ public final class RemoteFsCommands {
 
 		@Override
 		public String toString() {
-			return "Download{fileName='" + fileName + "', offset=" + offset + ", length=" + length + '}';
+			return "Download{name='" + name + "', offset=" + offset + ", length=" + length + '}';
 		}
 	}
 
 	public static final class Move extends FsCommand {
-		private Map<String, String> changes;
+		private final String name;
+		private final String target;
+		private final long targetRevision;
+		private final long removeRevision;
 
-		public Move() {
+		public Move(String name, String target, long targetRevision, long removeRevision) {
+			this.name = name;
+			this.target = target;
+			this.targetRevision = targetRevision;
+			this.removeRevision = removeRevision;
 		}
 
-		public Move(Map<String, String> changes) {
-			this.changes = changes;
+		public String getName() {
+			return name;
 		}
 
-		public Map<String, String> getChanges() {
-			return changes;
+		public String getTarget() {
+			return target;
 		}
 
-		public void setChanges(Map<String, String> changes) {
-			this.changes = changes;
+		public long getTargetRevision() {
+			return targetRevision;
+		}
+
+		public long getRemoveRevision() {
+			return removeRevision;
 		}
 
 		@Override
 		public String toString() {
-			return "Move{changes=" + changes + '}';
+			return "Move{name=" + name + ", target=" + target + ", targetRevision=" + targetRevision + '}';
 		}
 	}
 
 	public static final class Copy extends FsCommand {
-		private Map<String, String> changes;
+		private final String name;
+		private final String target;
+		private final long revision;
 
-		public Copy() {
+		public Copy(String name, String target, long revision) {
+			this.name = name;
+			this.target = target;
+			this.revision = revision;
 		}
 
-		public Copy(Map<String, String> changes) {
-			this.changes = changes;
+		public String getName() {
+			return name;
 		}
 
-		public Map<String, String> getChanges() {
-			return changes;
+		public String getTarget() {
+			return target;
 		}
 
-		public void setChanges(Map<String, String> changes) {
-			this.changes = changes;
+		public long getRevision() {
+			return revision;
 		}
 
 		@Override
 		public String toString() {
-			return "Copy{changes=" + changes + '}';
+			return "Copy{name=" + name + ", target=" + target + ", revision=" + revision + '}';
+		}
+	}
+
+	public static final class Delete extends FsCommand {
+		private final String name;
+		private final long revision;
+
+		public Delete(String name, long revision) {
+			this.name = name;
+			this.revision = revision;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public long getRevision() {
+			return revision;
+		}
+
+		@Override
+		public String toString() {
+			return "Delete{name='" + name + "', revision=" + revision + '}';
 		}
 	}
 
 	public static final class List extends FsCommand {
 		private String glob;
+		private final boolean tombstones;
 
-		public List() {
-		}
-
-		public List(String glob) {
+		public List(String glob, boolean tombstones) {
 			this.glob = glob;
+			this.tombstones = tombstones;
 		}
 
 		public String getGlob() {
 			return glob;
 		}
 
-		public void setGlob(String glob) {
-			this.glob = glob;
+		public boolean needTombstones() {
+			return tombstones;
 		}
 
 		@Override
 		public String toString() {
 			return "List{glob='" + glob + "'}";
-		}
-	}
-
-	public static final class Delete extends FsCommand {
-		private String glob;
-
-		public Delete() {
-		}
-
-		public Delete(String glob) {
-			this.glob = glob;
-		}
-
-		public String getGlob() {
-			return glob;
-		}
-
-		public void setGlob(String glob) {
-			this.glob = glob;
-		}
-
-		@Override
-		public String toString() {
-			return "Delete{glob='" + glob + "'}";
 		}
 	}
 }

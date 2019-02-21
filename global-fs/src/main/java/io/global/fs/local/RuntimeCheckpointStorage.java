@@ -18,7 +18,7 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.util.FileUtils;
+import io.datakernel.remotefs.RemoteFsUtils;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -47,7 +47,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 
 	@Override
 	public Promise<List<String>> listMetaCheckpoints(String glob) {
-		Predicate<String> pred = FileUtils.getGlobStringPredicate(glob);
+		Predicate<String> pred = RemoteFsUtils.getGlobStringPredicate(glob);
 		return Promise.of(storage.entrySet()
 				.stream()
 				.filter(e -> pred.test(e.getKey()))

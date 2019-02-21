@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ConstantException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.Hash;
 import io.global.common.PrivKey;
@@ -39,7 +39,7 @@ import static io.global.db.util.BinaryDataFormats.REGISTRY;
 public final class GlobalDbGateway implements DbClient {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalDbGateway.class);
 
-	private static final ConstantException DB_ITEM_SIG = new ConstantException(GlobalDbGateway.class, "Received key-value pair signature is not verified");
+	private static final StacklessException DB_ITEM_SIG = new StacklessException(GlobalDbGateway.class, "Received key-value pair signature is not verified");
 
 	private static final StructuredCodec<DbItem> DB_ITEM_CODEC = REGISTRY.get(DbItem.class);
 

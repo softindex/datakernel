@@ -91,7 +91,7 @@ public final class GlobalDbTest {
 		Path dir = temporaryFolder.newFolder().toPath();
 		System.out.println("DIR: " + dir);
 
-		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, dir);
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir);
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
 		storageFactory = $ -> new RuntimeDbStorageStub();

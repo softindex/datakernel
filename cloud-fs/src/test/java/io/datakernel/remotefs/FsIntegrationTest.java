@@ -38,19 +38,18 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.remotefs.FsClient.BAD_PATH;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -82,7 +81,7 @@ public final class FsIntegrationTest {
 	public void setup() throws IOException {
 		executor = newCachedThreadPool();
 
-		storage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
+		storage = temporaryFolder.newFolder("server_storage").toPath();
 		server = RemoteFsServer.create(Eventloop.getCurrentEventloop(), executor, storage).withListenAddress(address);
 		server.listen();
 		client = RemoteFsClient.create(Eventloop.getCurrentEventloop(), address);
@@ -133,25 +132,11 @@ public final class FsIntegrationTest {
 	}
 
 	@Test
-	public void testUploadExistingFile() throws IOException {
-		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
-
-		Throwable exception = awaitException(upload(resultFile, CONTENT)
-				.thenCompose($ -> upload(resultFile, CONTENT))
-				.whenComplete(($, e) -> server.close()));
-
-		assertThat(exception, instanceOf(RemoteFsException.class));
-		assertThat(exception.getMessage(), containsString("FileAlreadyExistsException"));
-		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
-	}
-
-	@Test
 	public void testUploadServerFail() {
 		Throwable exception = awaitException(upload("../../nonlocal/../file.txt", CONTENT)
 				.whenComplete(($, e) -> server.close()));
 
-		assertThat(exception, instanceOf(RemoteFsException.class));
-		assertTrue(Pattern.compile("Path .*? goes outside of the storage directory").matcher(exception.getMessage()).find());
+		assertSame(BAD_PATH, exception);
 	}
 
 	@Test
@@ -212,7 +197,7 @@ public final class FsIntegrationTest {
 				.streamTo(ChannelConsumer.of($ -> Promise.complete()))
 				.whenComplete(($, e) -> server.close()));
 
-		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("File not found"));
 	}
 
@@ -241,7 +226,7 @@ public final class FsIntegrationTest {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		await(client.deleteBulk(file)
+		await(client.delete(file)
 				.whenComplete(($, e) -> server.close()));
 
 		assertFalse(Files.exists(storage.resolve(file)));
@@ -251,7 +236,7 @@ public final class FsIntegrationTest {
 	public void testDeleteMissingFile() {
 		String file = "no_file.txt";
 
-		await(client.deleteBulk(file)
+		await(client.delete(file)
 				.whenComplete(($, e) -> server.close()));
 	}
 
@@ -272,7 +257,7 @@ public final class FsIntegrationTest {
 				.whenComplete(($, e) -> server.close()));
 
 		assertEquals(expected, metadataList.stream()
-				.map(FileMetadata::getFilename)
+				.map(FileMetadata::getName)
 				.collect(toSet()));
 	}
 
@@ -301,12 +286,12 @@ public final class FsIntegrationTest {
 		expected2.add("subsubfolder/first file.txt");
 
 		Tuple2<List<FileMetadata>, List<FileMetadata>> tuple = await(
-				Promises.toTuple(client.subfolder("subfolder1").list("**"), client.subfolder("subfolder2").list("**"))
+				Promises.toTuple(client.subfolder("subfolder1").listEntities("**"), client.subfolder("subfolder2").listEntities("**"))
 						.whenComplete(($, e) -> server.close())
 		);
 
-		assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getFilename).collect(toSet()));
-		assertEquals(expected2, tuple.getValue2().stream().map(FileMetadata::getFilename).collect(toSet()));
+		assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getName).collect(toSet()));
+		assertEquals(expected2, tuple.getValue2().stream().map(FileMetadata::getName).collect(toSet()));
 	}
 
 	private Promise<Void> upload(String resultFile, byte[] bytes) {

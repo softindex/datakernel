@@ -97,7 +97,7 @@ public final class CrdtExample {
 	}
 
 	private static CrdtStorageFileSystem<String, LWWSet<String>> createClient(Eventloop eventloop, ExecutorService executor, int n) {
-		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS/crdt_" + n));
+		FsClient storage = LocalFsClient.create(eventloop, Paths.get("/tmp/TESTS/crdt_" + n));
 		return CrdtStorageFileSystem.create(eventloop, storage, LWWSet::merge, SERIALIZER);
 	}
 }

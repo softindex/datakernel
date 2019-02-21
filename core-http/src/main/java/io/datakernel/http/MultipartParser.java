@@ -89,16 +89,17 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 		return getFilenameFromHeader(headerFrame.getHeaders().get("content-disposition"))
 				.thenCompose(filename -> {
 					MultipartFrame[] last = {null};
-					return frames.until(f -> {
-						boolean res = !f.isData() && getFilenameFromHeader(f.getHeaders().get("content-disposition"))
-								.thenApplyEx((x, e) -> x)
-								.materialize()
-								.getResult() != null;
-						if (res) {
-							last[0] = f;
-						}
-						return res;
-					})
+					return frames
+							.until(f -> {
+								boolean res = !f.isData() && getFilenameFromHeader(f.getHeaders().get("content-disposition"))
+										.thenApplyEx((x, e) -> x)
+										.materialize()
+										.getResult() != null; // ignoring any exceptions in this hack
+								if (res) {
+									last[0] = f;
+								}
+								return res;
+							})
 							.filter(MultipartFrame::isData)
 							.map(MultipartFrame::getData)
 							.streamTo(consumerFunction.apply(filename))

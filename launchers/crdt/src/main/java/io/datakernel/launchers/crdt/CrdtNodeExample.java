@@ -59,7 +59,7 @@ public final class CrdtNodeExample {
 		@Provides
 		@Singleton
 		FsClient provideFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
-			return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "crdt.local.path"));
+			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}
 	}
 

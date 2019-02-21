@@ -38,11 +38,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.remotefs.FsClient.LENGTH_TOO_BIG;
+import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
 public final class TestPartialRemoteFs {
@@ -131,8 +131,7 @@ public final class TestPartialRemoteFs {
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, e) -> server.close()));
 
-		assertThat(exception, instanceOf(RemoteFsException.class));
-		assertThat(exception.getMessage(), containsString("Boundaries exceed file size"));
+		assertSame(LENGTH_TOO_BIG, exception);
 	}
 
 	@Test
@@ -141,8 +140,7 @@ public final class TestPartialRemoteFs {
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, e) -> server.close()));
 
-		assertThat(exception, instanceOf(RemoteFsException.class));
-		assertThat(exception.getMessage(), containsString("Offset exceeds file size"));
+		assertSame(OFFSET_TOO_BIG, exception);
 	}
 
 	@Test

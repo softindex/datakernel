@@ -113,7 +113,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	@Override
 	public Promise<List<String>> listMetaCheckpoints(String glob) {
 		return storage.list(glob)
-				.thenApply(list -> list.stream().map(FileMetadata::getFilename).collect(toList()))
+				.thenApply(list -> list.stream().map(FileMetadata::getName).collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
 	}
 

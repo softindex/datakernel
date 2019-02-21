@@ -60,7 +60,6 @@ import static io.datakernel.cube.TestUtils.runProcessLogs;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
@@ -83,7 +82,7 @@ public class CubeIntegrationTest {
 		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -115,7 +114,7 @@ public class CubeIntegrationTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+				LocalFsClient.create(eventloop, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 
@@ -135,11 +134,11 @@ public class CubeIntegrationTest {
 				StreamConsumer.ofPromise(multilog.write("partitionA"))));
 		Files.list(logsDir).forEach(System.out::println);
 
-//		AsynchronousFileChannel channel = AsynchronousFileChannel.open(Files.list(logsDir).findFirst().get(),
-//				EnumSet.of(StandardOpenOption.WRITE), executor);
-//		channel.truncate(13);
-//		channel.write(ByteBuffer.wrap(new byte[]{123}), 0).get();
-//		channel.close();
+		//		AsynchronousFileChannel channel = AsynchronousFileChannel.open(Files.list(logsDir).findFirst().get(),
+		//				EnumSet.of(StandardOpenOption.WRITE), executor);
+		//		channel.truncate(13);
+		//		channel.write(ByteBuffer.wrap(new byte[]{123}), 0).get();
+		//		channel.close();
 
 		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
 

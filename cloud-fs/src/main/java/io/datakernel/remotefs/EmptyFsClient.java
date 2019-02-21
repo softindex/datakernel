@@ -23,7 +23,6 @@ import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -34,37 +33,31 @@ public final class EmptyFsClient implements FsClient {
 	public static final EmptyFsClient INSTANCE = new EmptyFsClient();
 
 	private EmptyFsClient() {
-		// throw new AssertionError("nope.");
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
 		return Promise.of(ChannelConsumers.recycling());
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
 		return Promise.ofException(FILE_NOT_FOUND);
 	}
 
 	@Override
-	public Promise<Void> moveBulk(Map<String, String> changes) {
+	public Promise<Void> move(String filename, String target, long targetRevision, long removeRevision) {
 		return Promise.complete();
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String newFilename) {
+	public Promise<Void> copy(String name, String target, long targetRevision) {
 		return Promise.complete();
 	}
 
 	@Override
-	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return Promise.complete();
-	}
-
-	@Override
-	public Promise<Void> copy(String filename, String newFilename) {
-		return Promise.complete();
+	public Promise<List<FileMetadata>> listEntities(String glob) {
+		return Promise.of(emptyList());
 	}
 
 	@Override
@@ -73,12 +66,7 @@ public final class EmptyFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> deleteBulk(String glob) {
-		return Promise.complete();
-	}
-
-	@Override
-	public Promise<Void> delete(String filename) {
+	public Promise<Void> delete(String name, long revision) {
 		return Promise.complete();
 	}
 

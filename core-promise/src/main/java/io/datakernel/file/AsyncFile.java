@@ -31,14 +31,14 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.async.Promise.ofBlockingRunnable;
+import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
-import static java.util.Arrays.asList;
 
 /**
  * Represents a file with asynchronous capabilities.
@@ -66,12 +66,12 @@ public final class AsyncFile {
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static AsyncFile open(Executor executor, Path path, OpenOption[] openOptions) throws IOException {
+	public static AsyncFile open(Executor executor, Path path, Set<OpenOption> openOptions) throws IOException {
 		FileChannel channel = doOpenChannel(path, openOptions);
 		return new AsyncFile(executor, channel, path, null);
 	}
 
-	public static AsyncFile open(Executor executor, Path path, OpenOption[] openOptions, Object mutexLock) throws IOException {
+	public static AsyncFile open(Executor executor, Path path, Set<OpenOption> openOptions, Object mutexLock) throws IOException {
 		FileChannel channel = doOpenChannel(path, openOptions);
 		return new AsyncFile(executor, channel, path, mutexLock);
 	}
@@ -83,18 +83,18 @@ public final class AsyncFile {
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static Promise<AsyncFile> openAsync(Executor executor, Path path, OpenOption[] openOptions) {
+	public static Promise<AsyncFile> openAsync(Executor executor, Path path, Set<OpenOption> openOptions) {
 		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
-	public static Promise<AsyncFile> openAsync(Executor executor, Path path, OpenOption[] openOptions, Object mutexLock) {
+	public static Promise<AsyncFile> openAsync(Executor executor, Path path, Set<OpenOption> openOptions, Object mutexLock) {
 		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
 	}
 
-	private static FileChannel doOpenChannel(Path path, OpenOption[] openOptions) throws IOException {
-		return FileChannel.open(path, new HashSet<>(asList(openOptions)));
+	private static FileChannel doOpenChannel(Path path, Set<OpenOption> openOptions) throws IOException {
+		return FileChannel.open(path, openOptions);
 	}
 
 	/**
@@ -183,10 +183,10 @@ public final class AsyncFile {
 	 * @param dir      the directory to create
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Promise<Void> createDirectories(Executor executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Promise<Void> createDirectories(Executor executor, Path dir, FileAttribute... attrs) {
 		return ofBlockingRunnable(executor, () -> {
 			try {
-				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+				Files.createDirectories(dir, attrs);
 			} catch (IOException e) {
 				throw new UncheckedException(e);
 			}
@@ -199,7 +199,7 @@ public final class AsyncFile {
 	 * @param path the path of the file to read
 	 */
 	public static Promise<ByteBuf> readFile(Executor executor, Path path) {
-		return openAsync(executor, path, new OpenOption[]{READ})
+		return openAsync(executor, path, set(READ))
 				.thenCompose(file -> file.read()
 						.thenCompose(buf -> file.close()
 								.whenException($ -> buf.recycle())
@@ -215,14 +215,18 @@ public final class AsyncFile {
 	 * @param buf  the buffer from which bytes are to be transferred byteBuffer
 	 */
 	public static Promise<Void> writeNewFile(Executor executor, Path path, ByteBuf buf) {
-		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
+		return openAsync(executor, path, set(WRITE, CREATE_NEW))
 				.thenCompose(file -> file.write(buf)
-						.thenCompose($ -> file.close()
-								.whenException($2 -> buf.recycle())));
+						.thenCompose($ -> file.close()))
+				.whenException($ -> buf.recycle());
 	}
 
 	public Executor getExecutor() {
 		return executor;
+	}
+
+	public Path getPath() {
+		return path;
 	}
 
 	public FileChannel getChannel() {
@@ -427,14 +431,13 @@ public final class AsyncFile {
 	}
 
 	private <T> Promise<T> sanitize(Promise<T> promise) {
-		return promise
-				.thenComposeEx((result, e) -> {
-					if (!isOpen()) {
-						tryRecycle(result);
-						return Promise.ofException(FILE_CLOSED);
-					}
-					return Promise.of(result, e);
-				});
+		return promise.thenComposeEx((result, e) -> {
+			if (!isOpen()) {
+				tryRecycle(result);
+				return Promise.ofException(FILE_CLOSED);
+			}
+			return Promise.of(result, e);
+		});
 	}
 
 	@Override

@@ -175,14 +175,14 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 
 					Stream<FileMetadata> stream = f.files.stream();
 					(timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
-							.forEach(meta -> ChannelSupplier.ofPromise(client.download(meta.getFilename()))
+							.forEach(meta -> ChannelSupplier.ofPromise(client.download(meta.getName()))
 									.transformWith(ChannelDeserializer.create(serializer))
 									.transformWith(StreamMapper.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
 									.streamTo(reducer.newInput()));
 
 					stream = f.tombstones.stream();
 					(timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
-							.forEach(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getFilename()))
+							.forEach(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getName()))
 									.transformWith(ChannelDeserializer.create(serializer.getKeySerializer()))
 									.transformWith(StreamMapper.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
 									.streamTo(reducer.newInput()));
@@ -228,7 +228,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 				.thenCompose(list ->
 						Promises.all(list.stream()
 								.filter(meta -> meta.getTimestamp() > barrier)
-								.map(meta -> ChannelSupplier.ofPromise(client.download(meta.getFilename()))
+								.map(meta -> ChannelSupplier.ofPromise(client.download(meta.getName()))
 										.toCollector(ByteBufQueue.collector())
 										.whenResult(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
 										.toVoid())))
@@ -236,7 +236,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 				.thenCompose(list -> {
 					String name = namingStrategy.apply("bin");
 					List<String> files = list.stream()
-							.map(FileMetadata::getFilename)
+							.map(FileMetadata::getName)
 							.filter(fileName -> !blacklist.contains(fileName))
 							.collect(toList());
 					String dump = String.join("\n", files);
@@ -252,7 +252,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 							.thenCompose(producer -> producer
 									.transformWith(ChannelSerializer.create(serializer))
 									.streamTo(ChannelConsumer.ofPromise(client.upload(name))))
-							.thenCompose($ -> tombstoneFolderClient.deleteBulk("*"))
+							.thenCompose($ -> tombstoneFolderClient.delete("*"))
 							.thenCompose($ -> consolidationFolderClient.delete(metafile))
 							.thenCompose($ -> Promises.all(files.stream().map(client::delete)));
 				})

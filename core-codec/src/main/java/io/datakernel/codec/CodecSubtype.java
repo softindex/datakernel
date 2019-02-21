@@ -62,7 +62,6 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 		});
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public T decode(StructuredInput in) throws ParseException {
 		return in.readObject($ -> {

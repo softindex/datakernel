@@ -107,7 +107,7 @@ public final class GlobalFsTest {
 		dir = temporaryFolder.newFolder().toPath();
 		System.out.println("DIR: " + dir);
 
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, dir);
+		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir);
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
 		Map<RawServerId, GlobalFsNode> nodes = new HashMap<>();
