@@ -21,9 +21,8 @@ $ # or
 $ mvn exec:java@ByteBufQueueExample
 ```
 
-To run the examples in IDE, you need to clone DataKernel and import Maven projects. Then go to 
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
 ```
-
 datakernel
 └── examples
     └── bytebuf
@@ -39,9 +38,10 @@ datakernel
                                  or
                                 └── ByteBufQueueExample.java
 ```
-and set up working directory properly: 
-**Run -> Edit configurations -> [Run/Debug Configurations -> [Templates -> Application] -> [Working directory -> 
-$MODULE_WORKING_DIR$]]** (for IntelliJ IDEA).
+and set up working directory properly. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||**.
+Then run `main()` of the chosen example.
 
 If you run the **ByteBuf Example**, you'll receive the following output:
 

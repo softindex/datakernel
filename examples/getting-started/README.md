@@ -25,7 +25,7 @@ $ cd examples/getting-started
 $ mvn exec:java@HelloWorld
 ```
 
-Alternatively you can simply open your favorite IDE and clone DataKernel project. Then open: 
+Alternatively you can simply open your favorite IDE, clone DataKernel and import Maven projects. Then open: 
 ```
 datakernel
 └── examples
@@ -38,7 +38,10 @@ datakernel
                             └── examples
                                 └── HelloWorld.java
 ```
-and run `HelloWorld.main()`.
+and set up working directory properly. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||**.
+Then run `HelloWorld.main()`. 
 
 ## 2. Step-by-step guide
 

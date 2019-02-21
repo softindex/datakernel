@@ -39,4 +39,47 @@ $ mvn exec:java@GlobalOTDemoApp
 ```
 Note that it is important to execute commands in the given order.
 
-After you enter the commands, open your browser and go to [localhost:8899](localhost:8899). Enjoy!
+To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── global-launchers
+    └── src
+        └── main
+            └── java
+                └── io
+                    └── global
+                        └── launchers
+                            └── discovery
+                                └── DiscoveryServiceLauncher.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||**.
+Then run `main()` of the launcher.
+Repeat for:
+```
+datakernel
+└── global-launchers
+    └── src
+        └── main
+            └── java
+                └── io
+                    └── global
+                        └── launchers
+                            └── GlobalNodesLauncher.java      
+# and
+datakernel
+└── examples
+    └── global-ot-demo
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── global
+                            └── ot
+                                └── demo
+                                    └── client
+                                        └── GlobalOTDemoApp.java
+```
+
+After start all of the needed classes, open your browser and go to [localhost:8899](localhost:8899). Enjoy!

@@ -5,7 +5,7 @@ manages a service which displays "Hello World!" message.
 3. [Worker Pool Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/WorkerPoolModuleExample.java) - 
 creating a Worker Pool with 4 workers.
 
-To run the examples, you should execute these lines in the console in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ``` 
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
@@ -17,6 +17,28 @@ $ mvn exec:java@ServiceGraphModuleExample
 $ #or
 $ mvn exec:java@WorkerPoolModuleExample
 ```
+
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── boot
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── ConfigModuleExample.java
+                                 or
+                                └── ServiceGraphModuleExample.java
+                                 or
+                                └── WorkerPoolModuleExample.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||**.
+Then run `main()` of the chosen example.
 
 If you run the **Config Module Example**, you will see the following output:
 ```

@@ -11,7 +11,9 @@ Most Datakernel modules, including HTTP, are based on Eventloop. Since Eventloop
 capacities of modern multi-core processors if we run only one HTTP-server/Eventloop. If we want to load all cores of 
 processor, we should use worker servers and load-balancer to distribute requests between those servers.
 
-In this tutorial we will build architecture which is suitable for 4-core processors.
+In this tutorial we will build architecture which is suitable for 4-core processors:
+
+<img src="http://datakernel.io/static/images/http-helloworld-architecture.png">
 
 Actually, it's not a simple task to implement load balancer, worker servers and run them properly. But there are good 
 news: Boot module already supports worker pools, so we can easily write down HTTP-server with similar architecture in a 
@@ -35,7 +37,7 @@ few lines of code.
 
 ## 1. Working Example
 
-To run the complete example, enter next commands:
+If you want to run the complete example in console, enter next commands:
 ```
 $ git clone https://github.com/softindex/datakernel
 $ cd datakernel
@@ -43,6 +45,8 @@ $ mvn clean install -DskipTests
 $ cd examples/http-helloworld
 $ mvn exec:java@HttpHelloWorldLauncher
 ```
+
+If you want
 
 Then, go to [testing](#testing) section.
 
@@ -280,8 +284,10 @@ public class HttpHelloWorldLauncher extends Launcher {
 
 Congratulations! You've just created a simple HTTP-server. Enter the command below to compile and run it:
 ```
-$ mvn exec:java@HttpHelloWorldLauncher
+$ mvn clean compile exec:java@HttpHelloWorldLauncher
 ```
+Or if you use IDE, simply run `HttpHelloWorldLauncher.main()`.
+
 You will see the following output:
 ```
 "Server is running"

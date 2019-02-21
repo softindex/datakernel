@@ -23,7 +23,7 @@ import io.datakernel.stream.StreamSupplier;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
- * Example of creating the custom StreamProducer.
+ * Example of creating the custom StreamSupplier.
  * This producer just streams all numbers from 0 to number specified in constructor.
  */
 public class SupplierExample {

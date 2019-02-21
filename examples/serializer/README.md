@@ -7,7 +7,7 @@ example of serialization and deserialization of an object with fixed size fields
 4. [Generics And Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) - 
 example of using generics and interfaces with serializers and deserializers.
 
-To run the examples, you should execute these lines in the console in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
@@ -21,6 +21,33 @@ $ mvn exec:java@FixedSizeFieldsSerializationExample
 $ # or
 $ mvn exec:java@GenericsAndInterfacesSerializationExample
 ```
+
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── serializer
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── ComplexObjectSerializationExample.java
+                                 or
+                                └── FixedSizeFieldsSerializationExample.java
+                                 or
+                                └── GenericsAndInterfacesSerializationExample.java
+                                 or
+                                └── SimpleObjectSerializationExample.java
+                                
+```
+and set up working directory properly. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||**.
+Then run `main()` of the chosen example.
+
+
 In all of these examples method `serializeAndDeserialized()` is utilized but with different arguments and configurations.
  
 If you run the **Simple Object Serialization Example**, you'll get the following output:

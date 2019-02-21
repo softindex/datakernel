@@ -40,6 +40,7 @@ $ cd datakernel
 $ mvn clean install -DskipTests
 $ cd examples/remote-key-value-storage
 ```
+Or if you prefer working in IDE, clone DataKernel locally and import Maven projects.
 
 Then, go to [testing](#testing) section.
 
@@ -418,17 +419,52 @@ $ mvn clean package
 ```
 ## Testing
 
-Firstly, launch server:
+Firstly, launch server.
+In console:
 ```
 $ mvn exec:java@RpcServerLauncher
 ```
+In IDE:
+```
+datakernel
+└── examples
+    └── remote-key-value-storage
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── RpcServerLauncher.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||**.
+Then run `main()` of the example.
 
 Then make a "put" request:
-
+In console:
 ```
 $ mvn exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
 ```
-
+In IDE:
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── remote-key-value-storage
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └──RpcClientLauncher.java
+```
+and set up program arguments. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Program arguments -> 
+--put key1 value1||**.
+Then run `main()` of the client launcher.
 You should see the following output:
 
 ```
@@ -438,10 +474,28 @@ previous value: null
 
 Finally, make a "get" request:
 
+In console:
 ```
 $ mvn exec:java@RpcClientLauncher -Dexec.args="--get key1"
-
 ```
+
+In IDE:
+```
+datakernel
+└── examples
+    └── remote-key-value-storage
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └──RpcClientLauncher.java
+```
+and set up program arguments. For IntelliJ IDEA:
+**Run -> Edit configurations -> |Run/Debug Configurations -> |Program arguments -> 
+--get key1||**.
+Then run `main()` of the client launcher.
 
 You should see the following output:
 

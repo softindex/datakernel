@@ -1,6 +1,6 @@
 ## Examples overview
 
-### Table of content
+### Table of contents
 1. [Purpose of the examples](#purpose-of-the-examples)
 2. [Basic modules](#basic-modules)
     * Bytebuf
@@ -60,10 +60,10 @@ $ mvn clean install -DskipTests
 These commands are repeated in each of the examples' instructions just to make sure that everything will work correctly. 
 Yet if you've entered the commands once, you can omit these three lines from now on. 
 
-To run the examples in IDE, you need to clone DataKernel, import Maven projects and then properly set up working 
-directory: 
-**Run -> Edit configurations -> [Run/Debug Configurations -> [Templates -> Application] -> [Working directory -> 
-$MODULE_WORKING_DIR$]]** (for IntelliJ IDEA).
+To run the examples in an IDE, you need to clone DataKernel, import Maven projects and then properly set up working 
+directory. 
+For IntelliJ IDEA: `Run -> Edit configurations -> [Run/Debug Configurations -> [Templates -> Application] -> [Working directory -> 
+$MODULE_WORKING_DIR$]]`.
 
 ### Basic modules
 If you haven't checked out [Hello World](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 
@@ -97,7 +97,7 @@ create channels, ByteBufs parsers and handle Communication Sequential Processes.
 
 * [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams) - includes 6 examples 
 of simple datastreams use cases. Pay attention to `NetworkDemoServer` and `NetworkDemoClients` examples - they illustrate 
-the core principles of the streams.
+how streams can be combined with channels.
 
 Also, 
 * [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - see how to boot your projects and 
@@ -143,6 +143,7 @@ replicated data type) algorithms manage merging two replicas with conflicting st
 * [Global-OT editor](https://github.com/softindex/datakernel/tree/master/examples/global-ot-editor)
 * [Global-OT demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
 * [Global-OT chat](https://github.com/softindex/datakernel/tree/master/examples/global-ot-chat)
+* [Remote-FS](https://github.com/softindex/datakernel/tree/master/examples/remotefs)
 * [Global-FS demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
 * [Global-FS CLI](https://github.com/softindex/datakernel/tree/master/examples/global-fs-cli)
 * [Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)

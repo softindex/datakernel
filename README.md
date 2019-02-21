@@ -64,7 +64,7 @@ utilize Eventloop and support SSL.
 
 ### [CSP](https://github.com/softindex/datakernel/tree/master/core-csp)
 
-CSP stands for Communicating Sequential Processes. This module provides ASYNCHRONOUS sequential communication between 
+CSP stands for Communicating Sequential Processes. This module provides asynchronous sequential communication between 
 processes via channels similarly to the Go language.
 
 [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp)
