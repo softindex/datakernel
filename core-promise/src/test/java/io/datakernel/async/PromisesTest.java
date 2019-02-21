@@ -17,8 +17,10 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.*;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -26,9 +28,11 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.Promise.of;
+import static io.datakernel.async.Promise.ofException;
 import static io.datakernel.async.Promises.*;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -36,8 +40,7 @@ import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.fail;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class PromisesTest {
@@ -266,6 +269,110 @@ public final class PromisesTest {
 				.sorted(Comparator.naturalOrder())
 				.map(n ->
 						() -> getStage(n).toVoid())));
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeMethodWithZeroParam() {
+		Promise<?> some = some(100);
+		assertEquals(some.getClass(), CompleteExceptionallyPromise.class);
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeMethodWithOneParamAndGetOne() {
+		Integer result = 100;
+		Promise<List<Integer>> some = some(Promise.of(result), 1);
+		Integer gotResult = some.materialize().getResult().get(0);
+		assertEquals(result, gotResult);
+	}
+
+	@SuppressWarnings("all")
+	@Test(expected = IndexOutOfBoundsException.class)
+	public void testSomeMethodWithOneParamAndGetNone() {
+		Integer value = 100;
+		Promise<List<Integer>> some = some(Promise.of(value), 0);
+		Integer gotResult = some.materialize().getResult().get(0);
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeMethodWithTwoParamAndGetTwo() {
+		Integer result1 = 100;
+		Integer result2 = 101;
+		Promise<List<Integer>> resultPromise = some(Promise.of(result1), Promise.of(result2), 2);
+
+		resultPromise.whenResult(list -> assertEquals(2, list.size()))
+				.whenResult(list -> {
+					Integer gotResult1 = list.get(0);
+					Integer gotResult2 = list.get(1);
+					assertTrue(result1 == gotResult1 || result1 == gotResult2);
+					assertTrue(result2 == gotResult1 || result2 == gotResult2);
+				});
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeMethodWithTwoParamAndGetOne() {
+		Integer result = 100;
+		Promise<List<Integer>> some = some(Promise.of(result), Promise.of(result), 1);
+		List<Integer> list = some.materialize().getResult();
+
+		assertEquals(1, list.size());
+		Integer gotResult1 = list.get(0);
+		assertTrue(result == gotResult1);
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeWithManyParamsAndGetAhalfOfThem() {
+		List<Promise<Integer>> params = Stream.generate(() -> of(0)).limit(10).collect(Collectors.toList());
+
+		Promise<List<Integer>> promiseResult = some(params, params.size() / 2);
+		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeWithManyParamsAndGetNone() {
+		List<Promise<Integer>> params = Stream.generate(() -> of(0)).limit(10).collect(Collectors.toList());
+
+		Promise<List<Integer>> promiseResult = some(params, 0);
+		promiseResult.whenResult(result -> assertEquals(0, result.size()));
+	}
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeWithManyParamsWithDelayAndGetAhalfOfThem() {
+		List<Promise<Integer>> params = Stream.generate(() -> delay(of(0), 1000)).limit(10)
+				.collect(Collectors.toList());
+
+		Promise<List<Integer>> promiseResult = some(params, params.size() / 2);
+		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
+	}
+
+
+	@SuppressWarnings("all")
+	@Test
+	public void testSomeTheWholeAreFailed() {
+		List<CompleteExceptionallyPromise<Object>> params = Stream.
+				generate(() -> ofException(new RuntimeException()))
+				.limit(10)
+				.collect(Collectors.toList());
+
+		Promise<List<Object>> result = some(params, params.size() / 2);
+		assertTrue(result.isException());
+	}
+
+	@Test
+	public void testSomeNotEnoughCompleteResult() {
+		List<Promise<?>> params = asList(of(10),
+				delay(ofException(new RuntimeException()), 10000),
+				of(100),
+				ofException(new RuntimeException()));
+
+		Promise<List<Object>> result = some(params, 3);
+		result.whenException(e -> assertTrue(true));
 	}
 
 	private Promise<Integer> getStage(Integer number) {

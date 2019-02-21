@@ -28,18 +28,14 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Array;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.CollectionUtils.asIterator;
-import static io.datakernel.util.CollectionUtils.transformIterator;
+import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -356,6 +352,130 @@ public final class Promises {
 		}
 		return resultPromise.errors != 0 ? resultPromise : any();
 	}
+
+	/**
+	 * Returns a {@link CompleteExceptionallyPromise} with {@link StacklessException},
+	 * since this method doesn't accept any {@code Promise}s
+	 *
+	 * @see #some(Iterator, int)
+	 */
+	@Contract(pure = true)
+	@NotNull
+	public static Promise<?> some(int number) {
+		if (number == 0) return Promise.of(emptyList());
+
+		return Promise.ofException(new StacklessException(Promises.class,
+				"There are no promises to be complete"));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<List<T>> some(@NotNull Promise<? extends T> promise, int number) {
+		if (number == 0) return (Promise<List<T>>) some(number);
+		if (number > 1) return Promise.ofException(new StacklessException(Promises.class,
+				"There are not enough promises to be complete"));
+
+		return promise.thenApply(Collections::singletonList);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<List<T>> some(@NotNull Promise<? extends T> promise1,
+									  		@NotNull Promise<? extends T> promise2,
+									 	 	int number) {
+		if (number == 0) return (Promise<List<T>>) some(number);
+		if (number == 1) return any(promise1, promise2).thenApply(Collections::singletonList);
+
+		return some(asIterator(promise1, promise2), number);
+	}
+
+
+	@SuppressWarnings("unchecked")
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<List<T>> some(@NotNull List<? extends Promise<? extends T>> promises, int number) {
+		return some(promises.iterator(), number);
+	}
+
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<List<T>> some(@NotNull Stream<? extends Promise<? extends T>> promises, int number) {
+		return some(promises.iterator(), number);
+	}
+
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<List<T>> some(@NotNull Iterable<? extends Promise<? extends T>> promises, int number) {
+		return some(promises.iterator(), number);
+	}
+
+	/**
+	 * Returns {@see Promise} which will have the array of first complete {@see Promise},
+	 * the size of array will be the {@param number} if there will be passed the appropriate
+	 * amount of {@param promises}. In case the lower amount {@param promises} then {@param number} of
+	 * the return array will consist of the same {@param promises} which will be complete.
+	 *
+	 * Provided the number is less or equal '0', the result will be the {@see Promise}
+	 * and result of it is {@see CompleteExceptionallyPromise}
+	 *
+	 * The result in the same order isn`t guaranteed
+	 *
+	 * @param number - amount first complete {@see Promise}
+	 * @return {@see Promise} which has the array of values from completed {@param promises}
+	 */
+	@SuppressWarnings("unchecked")
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<List<T>> some(@NotNull Iterator<? extends Promise<? extends T>> promises, int number) {
+		if (number == 0) return (Promise<List<T>>) some(number);
+		if (!promises.hasNext()) return (Promise<List<T>>) some(number);
+
+		PromiseSome<T> resultPromise = new PromiseSome<>(number);
+		someImpl(resultPromise, promises, number);
+		return resultPromise.isEnoughForTheResult() ? resultPromise : (Promise<List<T>>) some(number);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T> void someImpl(PromiseSome<T> resultPromise, @NotNull Iterator<? extends Promise<? extends T>> promises, int number) {
+		while (promises.hasNext() && resultPromise.activePromises < number - resultPromise.resultArray.size()) {
+			Promise<? extends T> promise = promises.next();
+			if (promise.isException()) continue;
+			if (promise.isResult()) {
+				resultPromise.accept((T) promise.materialize(), null);
+
+				if (resultPromise.isFull()) {
+					resultPromise.complete(resultPromise.resultArray);
+					return;
+				}
+				continue;
+			}
+
+			resultPromise.activePromises++;
+			promise.whenComplete((result, e) -> {
+				if (e == null) {
+					resultPromise.resultArray.add(result);
+					if (resultPromise.isFull()) {
+						resultPromise.complete(resultPromise.resultArray);
+						return;
+					}
+				}
+
+				resultPromise.activePromises--;
+				someImpl(resultPromise, promises, number);
+			});
+		}
+
+		if (!resultPromise.isEnoughForTheResult()) {
+			StacklessException exception = new StacklessException(Promises.class,
+					"There are not enough promises to be complete");
+			resultPromise.completeExceptionally(exception);
+		}
+	}
+
 
 	/**
 	 * Returns a successfully completed {@code Promise}
@@ -1256,6 +1376,8 @@ public final class Promises {
 				tryCompleteExceptionally(e);
 			}
 		}
+
+
 	}
 
 	private static final class PromiseAny<T> extends NextPromise<T, T> {
@@ -1270,6 +1392,32 @@ public final class Promises {
 					completeExceptionally(e);
 				}
 			}
+		}
+	}
+
+	private static final class PromiseSome<T> extends NextPromise<T, List<T>> {
+		List<T> resultArray;
+		int expectedSize;
+		int activePromises;
+
+		PromiseSome(int expectedSize) {
+			this.expectedSize = expectedSize;
+			resultArray = new ArrayList<>(expectedSize);
+		}
+
+		@Override
+		public void accept(@Nullable T result, @Nullable Throwable e) {
+			if (e == null) {
+				resultArray.add(result);
+			}
+		}
+
+		boolean isFull() {
+			return resultArray.size() == expectedSize;
+		}
+
+		boolean isEnoughForTheResult() {
+			return activePromises + resultArray.size() >= expectedSize;
 		}
 	}
 
@@ -1333,6 +1481,7 @@ public final class Promises {
 			}
 		}
 	}
+
 	// endregion
 
 	private static final class AccumulatorRef<T> {
