@@ -36,7 +36,7 @@ class MessageForm extends React.Component {
 
   render() {
     return (
-      <form onSubmit={this.onSubmit}>
+      <form className={this.props.classes.form} onSubmit={this.onSubmit}>
         <Paper className={this.props.classes.root} elevation={2}>
           <InputBase
             inputProps={{

@@ -23,6 +23,9 @@ const messageFormStyles = theme => {
     },
     inputText: {
       color: theme.palette.common.black
+    },
+    form: {
+      padding: `0px ${theme.spacing.unit * 2}px`
     }
   }
 };

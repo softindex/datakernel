@@ -15,8 +15,10 @@ import Grow from '@material-ui/core/Grow';
 class Messages extends React.Component {
   wrapper = React.createRef();
 
-  componentDidUpdate() {
-    this.wrapper.current.scrollTop = this.wrapper.current.scrollHeight;
+  componentDidUpdate(prevProps) {
+    if (this.props.messages.length !== prevProps.messages.length) {
+      this.wrapper.current.scrollTop = this.wrapper.current.scrollHeight;
+    }
   }
 
   render() {
@@ -55,44 +57,42 @@ class Messages extends React.Component {
 
 function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
   return (
-    <div className={classes.rowWrapper}>
-      <div
-        className={classNames(classes.messageRow, {
-          [classes.messageRowRightAlign]: drawSide === 'right',
+    <div
+      className={classNames(classes.messageRow, {
+        [classes.messageRowRightAlign]: drawSide === 'right',
+      })}
+    >
+      <Paper
+        elevation={0}
+        className={classNames(classes.message, {
+          [classes.messageFromOther]: drawSide === 'right',
+          [classes.messageMedium]: shape === 'medium',
         })}
       >
-        <Paper
-          elevation={0}
-          className={classNames(classes.message, {
-            [classes.messageFromOther]: drawSide === 'right',
-            [classes.messageMedium]: shape === 'medium',
-          })}
+        <Typography
+          color="textSecondary"
+          variant="subtitle2"
         >
-          <Typography
-            color="textSecondary"
-            variant="subtitle2"
-          >
-            {author}
-          </Typography>
-          <Typography
-            color="textPrimary"
-            variant="h6"
-            gutterBottom
-          >
-            {text}
-          </Typography>
-          <Typography
-            color="textSecondary"
-            variant="caption">
-            {time}
-          </Typography>
-        </Paper>
-        {drawSide === 'left' && (
-          <div className={classes.statusWrapper}>
-            {loaded ? <DoneAllIcon/> : <DoneIcon/>}
-          </div>
-        )}
-      </div>
+          {author}
+        </Typography>
+        <Typography
+          color="textPrimary"
+          variant="h6"
+          gutterBottom
+        >
+          {text}
+        </Typography>
+        <Typography
+          color="textSecondary"
+          variant="caption">
+          {time}
+        </Typography>
+      </Paper>
+      {drawSide === 'left' && (
+        <div className={classes.statusWrapper}>
+          {loaded ? <DoneAllIcon/> : <DoneIcon/>}
+        </div>
+      )}
     </div>
   );
 }

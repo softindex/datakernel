@@ -1,16 +1,14 @@
 import React from 'react';
-import Messages from '../Messages/Messages';
-import MessageForm from '../MessageForm/MessageForm';
-import {withStyles} from '@material-ui/core';
-import LoginDialog from '../LoginDialog/LoginDialog';
-import appStyles from './AppStyles';
-import AppBar from '@material-ui/core/AppBar';
-import Toolbar from '@material-ui/core/Toolbar';
-import Typography from '@material-ui/core/Typography';
-import TimelineIcon from '@material-ui/icons/Timeline';
-import IconButton from '@material-ui/core/IconButton';
-import connectService from '../../common/connectService';
 import ChatContext from '../../modules/chat/ChatContext';
+import {withStyles} from '@material-ui/core';
+import appStyles from './AppStyles';
+import theme from '../theme/themeConfig';
+import {MuiThemeProvider} from '@material-ui/core/styles';
+import CssBaseline from '@material-ui/core/CssBaseline';
+import CommitsGraph from '../CommitsGraph/CommitsGraph';
+import Header from '../Header/Header';
+import Chat from '../Chat/Chat';
+import connectService from '../../common/connectService';
 
 class App extends React.Component {
   state = {
@@ -21,7 +19,8 @@ class App extends React.Component {
     this.props.chatService.init();
   }
 
-  toggleGraph() {
+  toggleGraph = () => {
+    console.log(this.state.isGraphOpen)
     this.setState({
       isGraphOpen: !this.state.isGraphOpen
     });
@@ -29,27 +28,16 @@ class App extends React.Component {
 
   render() {
     return (
-      <>
-        <AppBar position="absolute" color="default">
-          <Toolbar>
-            <Typography variant="h6" color="inherit">
-              Global OT Chat
-            </Typography>
-            <div className={this.props.classes.grow}/>
-            <IconButton
-              onClick={this.toggleGraph}
-              color="inherit"
-            >
-              <TimelineIcon/>
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-        <div className={this.props.classes.root}>
-          <Messages/>
-          <MessageForm/>
-          <LoginDialog/>
-        </div>
-      </>
+      <MuiThemeProvider theme={theme}>
+        <CssBaseline/>
+        <ChatContext.Provider value={this.props.chatService}>
+          <Header onGraphToggle={this.toggleGraph}/>
+          <div className={this.props.classes.root}>
+            <Chat/>
+            {this.state.isGraphOpen && <CommitsGraph/>}
+          </div>
+        </ChatContext.Provider>
+      </MuiThemeProvider>
     );
   }
 }

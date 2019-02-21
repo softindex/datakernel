@@ -7,7 +7,7 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 import connectService from '../../common/connectService';
-import AccountContext from "../../modules/account/AccountContext";
+import AccountContext from '../../modules/account/AccountContext';
 
 class LoginDialog extends React.Component {
   state = {
@@ -28,33 +28,31 @@ class LoginDialog extends React.Component {
   render() {
     return (
       <Dialog
-        open={!this.props.authorized}
+        open={Boolean(this.props.isOpen)}
         onClose={this.handleClose}
         aria-labelledby="form-dialog-title"
       >
-        <form onSubmit={this.onSubmit}>
-          <DialogTitle id="form-dialog-title">Login</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Enter your username to start chat
-            </DialogContentText>
-            <TextField
-              required={true}
-              autoFocus
-              margin="normal"
-              label="Login"
-              type="text"
-              fullWidth
-              variant="outlined"
-              onChange={this.handleChange}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button type="submit" color="primary">
-              Enter
-            </Button>
-          </DialogActions>
-        </form>
+        <DialogTitle id="form-dialog-title">Login</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Enter your username to start chat
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="normal"
+            id="name"
+            label="Login"
+            type="email"
+            fullWidth
+            variant="outlined"
+            onChange={this.handleChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={this.onSubmit} color="primary">
+            Enter
+          </Button>
+        </DialogActions>
       </Dialog>
     )
   }

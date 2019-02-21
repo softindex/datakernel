@@ -7,7 +7,8 @@ class ChatService extends Service {
   constructor(chatOTStateManager) {
     super({
       messages: [],
-      ready: false
+      ready: false,
+      commitsGraph: null
     });
     this._chatOTStateManager = chatOTStateManager;
     this._interval = null;
@@ -17,7 +18,20 @@ class ChatService extends Service {
     await this._chatOTStateManager.checkout();
     this.setState({
       messages: this._getMessagesFromStateManager(),
-      ready: true
+      ready: true,
+      commitsGraph: `digraph G {
+          start -> a0;
+          a0 -> a1;
+          a1 -> a2;
+          a2 -> a3;
+          a3 -> a4;
+          a4 -> a6;
+          a6 -> a7;
+          a7 -> a8;
+          a8 -> a9;
+          a9 -> a10;
+          a10 -> a11;
+        }`
     });
 
     let fetching = false;
@@ -48,8 +62,21 @@ class ChatService extends Service {
       messages: [...this.state.messages, {
         author,
         content,
+        loaded: false,
         timestamp,
-        loaded: false
+        commitsGraph: `digraph G {
+          start -> a0;
+          a0 -> a1;
+          a1 -> a2;
+          a2 -> a3;
+          a3 -> a4;
+          a4 -> a6;
+          a6 -> a7;
+          a7 -> a8;
+          a8 -> a9;
+          a9 -> a10;
+          a10 -> a11;
+        }`
       }]
     });
 

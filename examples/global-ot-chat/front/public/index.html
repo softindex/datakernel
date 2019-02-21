@@ -10,11 +10,45 @@
     <meta name="theme-color" content="#000000" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500|Roboto" rel="stylesheet">
+    <style type="text/css">
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-button {
+        width: 0px;
+        height: 0px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #e1e1e1;
+        border: 0px none #ffffff;
+        border-radius: 50px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #ffffff;
+      }
+      ::-webkit-scrollbar-thumb:active {
+        background: #000000;
+      }
+      ::-webkit-scrollbar-track {
+        background: #666666;
+        border: 6px none #ffffff;
+        border-radius: 0px;
+      }
+      ::-webkit-scrollbar-track:hover {
+        background: #666666;
+      }
+      ::-webkit-scrollbar-track:active {
+        background: #333333;
+      }
+      ::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+    </style>
     <title>GlobalOT Chat Example</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-
   </body>
 </html>

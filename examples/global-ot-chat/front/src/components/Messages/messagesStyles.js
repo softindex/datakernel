@@ -4,21 +4,24 @@ const messageFormStyles = theme => {
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'flex-end',
-      flexGrow: 1
+      flexGrow: 1,
+      width: '100%'
     },
     messageRow: {
       display: 'flex',
       flexDirection: 'row',
       width: '100%',
       margin: '0 auto',
-      maxWidth: '900px'
+      maxWidth: '900px',
+      padding: `0 ${theme.spacing.unit * 3}px`
     },
     messageRowRightAlign: {
       justifyContent: 'flex-end'
     },
     wrapper: {
-      width: '100vw',
+      width: '100%',
       overflowY: 'auto',
+      paddingTop: theme.spacing.unit * 2
     },
     message: {
       display: 'flex',
@@ -35,11 +38,6 @@ const messageFormStyles = theme => {
     messageMedium: {
       borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`
     },
-    rowWrapper: {
-      display: 'flex',
-      width: '100vw',
-      margin: '0 auto'
-    },
     statusWrapper: {
       marginLeft: theme.spacing.unit,
       color: theme.palette.grey[100]
@@ -54,7 +52,8 @@ const messageFormStyles = theme => {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center'
-    }
+    },
+    headerPadding: theme.mixins.toolbar
   }
 };
 
