@@ -73,7 +73,7 @@
 									<transformers>
 										<transformer
 												implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-											<mainClass>io.global.ot.editor.client.GlobalEditorDemoApp</mainClass>
+											<mainClass>io.global.ot.editor.server.GlobalEditorLauncher</mainClass>
 										</transformer>
 									</transformers>
 									<filters>
