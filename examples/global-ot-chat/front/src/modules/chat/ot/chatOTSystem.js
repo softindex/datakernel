@@ -18,7 +18,7 @@ const chatOTSystem = new OTSystemBuilder()
     }
   })
   .withTransformFunction(ChatOTOperation, ChatOTOperation, (operationLeft, operationRight) => {
-    return TransformResult.of(operationRight, operationLeft);
+    return TransformResult.of([operationRight], [operationLeft]);
   })
   .build();
 
