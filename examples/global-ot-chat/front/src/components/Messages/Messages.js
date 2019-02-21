@@ -39,7 +39,7 @@ class Messages extends React.Component {
                 key={index}
                 text={message.content}
                 author={message.author}
-                time={new Date(message.timestamp).toDateString()}
+                time={new Date(message.timestamp).toLocaleString()}
                 loaded={message.loaded}
                 classes={this.props.classes}
                 drawSide={(message.author === this.props.login) ? 'left' : 'right'}
