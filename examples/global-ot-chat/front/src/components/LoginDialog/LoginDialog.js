@@ -33,7 +33,7 @@ class LoginDialog extends React.Component {
         aria-labelledby="form-dialog-title"
       >
         <form onSubmit={this.onSubmit}>
-          <DialogTitle id="form-dialog-title">Subscribe</DialogTitle>
+          <DialogTitle id="form-dialog-title">Login</DialogTitle>
           <DialogContent>
             <DialogContentText>
               Enter your username to start chat
