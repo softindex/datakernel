@@ -6,6 +6,7 @@ import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.OTNodeImpl;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -38,6 +39,7 @@ import static org.junit.Assert.assertEquals;
 public class OTNodeHttpClientTest {
 	private static final StructuredCodec<TestOp> diffCodec = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();
+	private static final OTSystem<TestOp> OT_SYSTEM = createTestOp();
 
 	private OTNodeHttpClient<CommitId, TestOp> client;
 	private OTRepositoryStub<CommitId, TestOp> repository;
@@ -56,7 +58,7 @@ public class OTNodeHttpClientTest {
 			g.add(getCommitId(2), getCommitId(3), add(-12));
 			g.add(getCommitId(3), getCommitId(4), set(4, 5));
 		});
-		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), createTestOp(), repository);
+		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), OT_SYSTEM, repository);
 		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(algorithms);
 		OTNodeServlet<CommitId, TestOp, OTCommit<CommitId, TestOp>> servlet = OTNodeServlet.forGlobalNode(node, diffCodec, adapter);
 		client = OTNodeHttpClient.forGlobalNode(servlet::serve, "http://localhost/", diffCodec);
@@ -67,7 +69,7 @@ public class OTNodeHttpClientTest {
 		FetchData<CommitId, TestOp> fetchData = await(client.fetch(getCommitId(2)));
 		assertEquals(getCommitId(4), fetchData.getCommitId());
 		assertEquals(5, fetchData.getLevel());
-		assertEquals(asList(add(-12), set(4, 5)), fetchData.getDiffs());
+		assertEquals(OT_SYSTEM.squash(asList(add(-12), set(4, 5))), fetchData.getDiffs());
 	}
 
 	@Test
@@ -75,7 +77,7 @@ public class OTNodeHttpClientTest {
 		FetchData<CommitId, TestOp> checkoutData = await(client.checkout());
 		assertEquals(getCommitId(4), checkoutData.getCommitId());
 		assertEquals(5, checkoutData.getLevel());
-		assertEquals(asList(add(1), set(-12, 34), add(-12), set(4, 5)), checkoutData.getDiffs());
+		assertEquals(OT_SYSTEM.squash(asList(add(1), set(-12, 34), add(-12), set(4, 5))), checkoutData.getDiffs());
 	}
 
 	@Test
