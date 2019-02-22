@@ -21,6 +21,10 @@ class InsertOperation {
   isEqual(insertOperation) {
     return insertOperation.position === this.position && insertOperation.content === this.content;
   }
+
+  isEmpty() {
+    return this.content.length === 0;
+  }
 }
 
 export default InsertOperation;

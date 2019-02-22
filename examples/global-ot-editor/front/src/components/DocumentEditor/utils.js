@@ -1,84 +1,95 @@
-import InsertOperation from "./operations/InsertOperation";
-import DeleteOperation from "./operations/DeleteOperation";
+export function getDifference(oldHtmlValue, nextHtmlValue, caretPosition) {
+  const lengthAfterCaret = nextHtmlValue.length - caretPosition;
+  const oldCaretPosition = oldHtmlValue.length - lengthAfterCaret;
 
-export function getStringDifference(str1, str2, caretPosition) {
-  const lengthAfterCaret = str2.length - caretPosition;
-  const oldCaretPosition = str1.length - lengthAfterCaret;
-
-  // console.log(str1, str2, caretPosition);
-  if (str1 === str2) {
-    return [];
+  if (oldHtmlValue === nextHtmlValue) {
+    return null;
   }
 
-  if (str1.slice(oldCaretPosition) !== str2.slice(caretPosition)) {
-    return getStringDifference(str1, str2, str2.length);
+  // Detect replace and move caret to end of line
+  if (oldHtmlValue.slice(oldCaretPosition) !== nextHtmlValue.slice(caretPosition)) {
+    return getDifference(oldHtmlValue, nextHtmlValue, nextHtmlValue.length);
   }
 
   let i;
   for (i = 0; i < oldCaretPosition; i++) {
-    if (str1[i] !== str2[i]) {
+    if (oldHtmlValue[i] !== nextHtmlValue[i]) {
       break;
     }
   }
 
   if (i === oldCaretPosition) {
-    if (str2.length > str1.length) {
-      return [
-        {
-          type: "insert",
-          start: oldCaretPosition,
-          length: str2.length - str1.length
-        }
-      ];
+    if (nextHtmlValue.length > oldHtmlValue.length) {
+      const length = nextHtmlValue.length - oldHtmlValue.length;
+      const addedHtml = nextHtmlValue.slice(oldCaretPosition, oldCaretPosition + length);
+      return {
+        operation: 'insert',
+        position: getPositionInText(oldHtmlValue, oldCaretPosition),
+        content: htmlToText(addedHtml)
+      };
     } else {
-      return [
-        {
-          type: "delete",
-          start: caretPosition,
-          length: str1.length - str2.length
-        }
-      ];
+      const deletedLength = oldHtmlValue.length - nextHtmlValue.length;
+      const deletedHtml = oldHtmlValue.slice(
+        caretPosition,
+        caretPosition + deletedLength
+      );
+      return {
+        operation: 'delete',
+        position: getPositionInText(nextHtmlValue, caretPosition),
+        content: htmlToText(deletedHtml)
+      };
     }
   } else {
     for (i = 0; i < caretPosition; i++) {
-      if (str1[i] !== str2[i]) {
+      if (oldHtmlValue[i] !== nextHtmlValue[i]) {
         break;
       }
     }
+
     if (i === caretPosition) {
-      return [
-        {
-          type: "delete",
-          start: caretPosition,
-          length: str1.length - str2.length
-        }
-      ];
+      const deletedLength = oldHtmlValue.length - nextHtmlValue.length;
+      const deletedHtml = oldHtmlValue.slice(
+        caretPosition,
+        caretPosition + deletedLength
+      );
+      return {
+        operation: 'delete',
+        position: getPositionInText(nextHtmlValue, caretPosition),
+        content: htmlToText(deletedHtml)
+      };
     }
-    return [
-      {
-        type: "delete",
-        start: i,
-        length: oldCaretPosition - i
-      },
-      {
-        type: "insert",
-        start: i,
-        length: caretPosition - i
-      }
-    ];
+    const deletedLength = oldCaretPosition - i;
+    const addedLength = caretPosition - i;
+    const deletedHtml = oldHtmlValue.slice(
+      i,
+      i + deletedLength
+    );
+    const addedHtml = nextHtmlValue.slice(i, i + addedLength);
+
+    const position = getPositionInText(oldHtmlValue, i);
+    return {
+      operation: 'replace',
+      position,
+      oldContent: htmlToText(deletedHtml),
+      newContent: htmlToText(addedHtml)
+    };
   }
 }
 
+function getPositionInText(html, htmlPosition) {
+  return htmlToText(html.slice(0, htmlPosition)).length;
+}
+
 export function htmlToText(htmlText) {
-  const div = document.createElement("div");
+  const div = document.createElement('div');
   div.innerHTML = htmlText;
-  return div.innerText;
+  return div.innerText === undefined ? htmlText : div.innerText;
 }
 
 export function getPositionInHtml(node, textPosition) {
   const html = getNodeHtml(node);
   const splittedHtml = html.match(/&(#\d+|[^;#&]+);|./g) || [];
-  return splittedHtml.slice(0, textPosition).join("").length;
+  return splittedHtml.slice(0, textPosition).join('').length;
 }
 
 export function getNodeHtml(domNode) {
@@ -86,36 +97,11 @@ export function getNodeHtml(domNode) {
     return domNode.outerHTML;
   }
 
-  const div = document.createElement("div");
+  const div = document.createElement('div');
   div.appendChild(domNode.cloneNode());
   return div.innerHTML;
 }
 
 export function getNodeLength(domNode) {
   return getNodeHtml(domNode).length;
-}
-
-export function createOperations(diffs, oldHtmlValue, nextHtmlValue) {
-  return diffs.map(diff => {
-    const positionInText = htmlToText(nextHtmlValue.slice(0, diff.start))
-      .length;
-    switch (diff.type) {
-      case "insert":
-        const content = htmlToText(
-          nextHtmlValue.slice(diff.start, diff.start + diff.length)
-        );
-        return new InsertOperation(positionInText, content);
-      case "delete":
-        const deletedHtml = oldHtmlValue.slice(
-          diff.start,
-          diff.start + diff.length
-        );
-        return new DeleteOperation(
-          positionInText,
-          htmlToText(deletedHtml)
-        );
-      default:
-        throw new Error("Unknown operation");
-    }
-  });
 }

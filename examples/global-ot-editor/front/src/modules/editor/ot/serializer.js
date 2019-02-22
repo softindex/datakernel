@@ -1,5 +1,5 @@
-import DeleteOperation from '../components/DocumentEditor/operations/DeleteOperation';
-import InsertOperation from '../components/DocumentEditor/operations/InsertOperation';
+import DeleteOperation from './operations/DeleteOperation';
+import InsertOperation from './operations/InsertOperation';
 
 const serializer = {
   serialize(value) {

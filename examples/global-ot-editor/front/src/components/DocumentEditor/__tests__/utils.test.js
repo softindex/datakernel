@@ -1,179 +1,132 @@
-import { getStringDifference, simplifyOperations } from "../utils";
+import {getDifference} from '../utils';
 
-describe("utils.getStringDifference", () => {
-  describe("Nothing to do", () => {
-    it("", () => {
-      const result = getStringDifference("", "", 0);
-      expect(result).toEqual([]);
+describe('utils.getDifference', () => {
+  describe('Nothing to do', () => {
+    it('Nothing to do with empty strings', () => {
+      const result = getDifference('', '', 0);
+      expect(result).toEqual(null);
     });
 
-    it("", () => {
-      const result = getStringDifference("ab", "ab", 1);
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("Insert operation", () => {
-    it("Inserted one symbol", () => {
-      const result = getStringDifference("", "a", 1);
-      expect(result).toEqual([
-        {
-          type: "insert",
-          start: 0,
-          length: 1
-        }
-      ]);
-    });
-
-    it("Inserted two symbols", () => {
-      const result = getStringDifference("", "ab", 2);
-      expect(result).toEqual([
-        {
-          type: "insert",
-          start: 0,
-          length: 2
-        }
-      ]);
-    });
-
-    it("Inserted one symbol at the end", () => {
-      const result = getStringDifference("aa", "aaa", 3);
-      expect(result).toEqual([
-        {
-          type: "insert",
-          start: 2,
-          length: 1
-        }
-      ]);
-    });
-
-    it("Inserted one symbol at the beginning", () => {
-      const result = getStringDifference("aa", "aaa", 1);
-      expect(result).toEqual([
-        {
-          type: "insert",
-          start: 0,
-          length: 1
-        }
-      ]);
-    });
-
-    it("Inserted one symbol in the middle", () => {
-      const result = getStringDifference("aa", "aaa", 2);
-      expect(result).toEqual([
-        {
-          type: "insert",
-          start: 1,
-          length: 1
-        }
-      ]);
-    });
-  });
-  /////////Delete operations
-  describe("Delete operation", () => {
-    it("Deleting single symbol", () => {
-      const result = getStringDifference("a", "", 0);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 0,
-          length: 1
-        }
-      ]);
-    });
-
-    it("Deleting two last symbols", () => {
-      const result = getStringDifference("aaa", "a", 1);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 1,
-          length: 2
-        }
-      ]);
-    });
-
-    it("Deleting first symbol", () => {
-      const result = getStringDifference("aaa", "aa", 0);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 0,
-          length: 1
-        }
-      ]);
-    });
-
-    it("Deleting middle one symbol", () => {
-      const result = getStringDifference("aaa", "aa", 1);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 1,
-          length: 1
-        }
-      ]);
+    it('Nothing to do with not empty strings', () => {
+      const result = getDifference('ab', 'ab', 1);
+      expect(result).toEqual(null);
     });
   });
 
-  describe("Replace operation", () => {
-    it("", () => {
-      const result = getStringDifference("a", "b", 1);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 0,
-          length: 1
-        },
-        {
-          type: "insert",
-          start: 0,
-          length: 1
-        }
-      ]);
+  describe('Insert operation', () => {
+    it('Inserted one symbol', () => {
+      const result = getDifference('', 'a', 1);
+      expect(result).toEqual({
+        operation: 'insert',
+        position: 0,
+        content: 'a'
+      });
     });
 
-    it("", () => {
-      const result = getStringDifference("a", "ba", 2);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 0,
-          length: 1
-        },
-        {
-          type: "insert",
-          start: 0,
-          length: 2
-        }
-      ]);
+    it('Inserted two symbols', () => {
+      const result = getDifference('', 'ab', 2);
+      expect(result).toEqual({
+        operation: 'insert',
+        position: 0,
+        content: 'ab'
+      });
     });
 
-    it("", () => {
-      const result = getStringDifference("aaa", "abaa", 3);
-      expect(result).toEqual([
-        {
-          type: "delete",
-          start: 1,
-          length: 1
-        },
-        {
-          type: "insert",
-          start: 1,
-          length: 2
-        }
-      ]);
+    it('Inserted one symbol at the end', () => {
+      const result = getDifference('aa', 'aaa', 3);
+      expect(result).toEqual({
+        operation: 'insert',
+        position: 2,
+        content: 'a'
+      });
+    });
+
+    it('Inserted one symbol at the beginning', () => {
+      const result = getDifference('aa', 'aaa', 1);
+      expect(result).toEqual({
+        operation: 'insert',
+        position: 0,
+        content: 'a'
+      });
+    });
+
+    it('Inserted one symbol in the middle', () => {
+      const result = getDifference('aa', 'aaa', 2);
+      expect(result).toEqual({
+        operation: 'insert',
+        position: 1,
+        content: 'a'
+      });
     });
   });
-});
 
-it("test", () => {
-  const result = getStringDifference("a", "a\n\n", 2);
-  expect(result).toEqual([
-    {
-      type: "insert",
-      start: 1,
-      length: 2
-    }
-  ]);
+  describe('Delete operation', () => {
+    it('Deleting single symbol', () => {
+      const result = getDifference('a', '', 0);
+      expect(result).toEqual({
+        operation: 'delete',
+        position: 0,
+        content: 'a'
+      });
+    });
+
+    it('Deleting two last symbols', () => {
+      const result = getDifference('aaa', 'a', 1);
+      expect(result).toEqual({
+        operation: 'delete',
+        position: 1,
+        content: 'aa'
+      });
+    });
+
+    it('Deleting first symbol', () => {
+      const result = getDifference('aaa', 'aa', 0);
+      expect(result).toEqual({
+        operation: 'delete',
+        position: 0,
+        content: 'a'
+      });
+    });
+
+    it('Deleting middle one symbol', () => {
+      const result = getDifference('aaa', 'aa', 1);
+      expect(result).toEqual({
+        operation: 'delete',
+        position: 1,
+        content: 'a'
+      });
+    });
+  });
+
+  describe('Replace operation', () => {
+    it('Replace one symbol', () => {
+      const result = getDifference('a', 'b', 1);
+      expect(result).toEqual({
+          operation: 'replace',
+          position: 0,
+          oldContent: 'a',
+          newContent: 'b'
+        });
+    });
+
+    it('Replace if last symbols equals', () => {
+      const result = getDifference('a', 'ba', 2);
+      expect(result).toEqual({
+          operation: 'replace',
+          position: 0,
+          oldContent: 'a',
+          newContent: 'ba'
+        });
+    });
+
+    it('Replace if first and last symbols equals', () => {
+      const result = getDifference('aaa', 'abaa', 3);
+      expect(result).toEqual({
+          operation: 'replace',
+          position: 1,
+          oldContent: 'a',
+          newContent: 'ba'
+        });
+    });
+  });
 });

@@ -16,8 +16,12 @@ class DeleteOperation {
     return new InsertOperation(this.position, this.content);
   }
 
-  isEquals(deleteOperation) {
+  isEqual(deleteOperation) {
     return deleteOperation.position === this.position && deleteOperation.content === this.content;
+  }
+
+  isEmpty() {
+    return this.content.length === 0;
   }
 }
 

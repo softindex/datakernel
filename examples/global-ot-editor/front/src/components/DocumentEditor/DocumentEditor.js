@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  getStringDifference,
+  getDifference,
   htmlToText,
   getNodeLength,
   getPositionInHtml,
@@ -10,29 +10,18 @@ import "./styles/index.css";
 
 class TextArea extends React.Component {
   componentDidMount() {
-    this.renderOTState(
-      this.applyChanges(this.props.value.changes, this.props.value.initValue)
-    );
+    this.renderState(this.props.value);
   }
 
   componentWillReceiveProps(nextProps) {
-    const nextOtState = this.applyChanges(
-      nextProps.value.changes,
-      nextProps.value.initValue
-    );
+    const nextOtState = nextProps.value;
     if (nextOtState !== htmlToText(this.domElement.innerHTML)) {
-      this.renderOTState(nextOtState);
+      this.renderState(nextOtState);
     }
   }
 
-  renderOTState(otState) {
+  renderState(otState) {
     this.domElement.innerHTML = this.prevHtml = otState.replace("\n", "<br/>");
-  }
-
-  applyChanges(operations, value) {
-    return operations.reduce((accumulator, operation) => {
-      return operation.apply(accumulator);
-    }, value);
   }
 
   getSiblingsNodesLength(htmlElement) {
@@ -68,15 +57,25 @@ class TextArea extends React.Component {
   }
 
   inputHandler(e) {
-    let pos = this.getCaretPosition();
-    const diffs = getStringDifference(this.prevHtml, e.target.innerHTML, pos);
-    const ops = createOperations(diffs, this.prevHtml, e.target.innerHTML);
+    const pos = this.getCaretPosition();
+    const difference = getDifference(this.prevHtml, e.target.innerHTML, pos);
+    if (!difference) {
+      return;
+    }
+
     this.prevHtml = e.target.innerHTML;
-    const value = {
-      initValue: this.props.value.initValue,
-      changes: [...this.props.value.changes, ...ops]
-    };
-    this.props.onChange(value);
+
+    switch (difference.operation) {
+      case 'insert':
+        this.props.onInsert(difference.position, difference.content);
+        break;
+      case 'delete':
+        this.props.onDelete(difference.position, difference.content);
+        break;
+      case 'replace':
+        this.props.onReplace(difference.position, difference.oldContent, difference.newContent);
+        break;
+    }
   }
 
   render() {

@@ -1,56 +1,40 @@
 import React, {Component} from 'react';
 import DocumentEditor from '../DocumentEditor/DocumentEditor';
+import connectService from '../../common/connectService';
+import EditorContext from '../../modules/editor/EditorContext';
 import './App.css';
-import {ClientOTNode, OTStateManager} from 'ot-core';
-import serializer from '../../ot/serializer';
-import editorOTSystem from '../../ot/editorOTSystem';
-
-const otNode = ClientOTNode.createWithJsonKey({
-  url: '/node',
-  serializer
-});
-const otStateManager = new OTStateManager(() => '', otNode, editorOTSystem);
 
 class App extends Component {
-  state = {
-    initialized: false
+  onInsert = (position, content) => {
+    this.props.editorService.insert(position, content);
   };
 
-  componentDidMount() {
-    this.init();
-  }
+  onDelete = (position, content) => {
+    this.props.editorService.delete(position, content);
+  };
 
-  async init() {
-    try {
-      await otStateManager.checkout();
-      this.setState({
-        initialized: true
-      });
-    } catch (e) {
-      setTimeout(() => this.init(), 1000);
-    }
-  }
-
-  onChange = ({initValue, changes}) => {
-    if (initValue !== otStateManager.getState()) {
-      return;
-    }
-    otStateManager.add(changes);
-    otStateManager.sync();
+  onReplace = (position, oldContent, newContent) => {
+    this.props.editorService.replace(position, oldContent, newContent);
   };
 
   render() {
-    if (!this.state.initialized) {
+    if (!this.props.ready) {
       return 'Loading...';
     }
 
     return (
       <DocumentEditor
-        value={{initValue: otStateManager.getState(), changes: []}}
-        onChange={this.onChange}
+        value={this.props.content}
+        onInsert={this.onInsert}
+        onDelete={this.onDelete}
+        onReplace={this.onReplace}
       />
     );
   }
 }
 
-export default App;
+export default connectService(EditorContext, (({content, ready}, editorService) => ({
+  content,
+  ready,
+  editorService
+})))(App);

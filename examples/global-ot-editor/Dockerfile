@@ -14,7 +14,7 @@ RUN git clone --depth 1 https://github.com/softindex/datakernel \
 # app-server layer
 COPY src src
 COPY pom.xml ./
-RUN mvn package -Pexport
+RUN mvn package -Pexport -DskipTests
 
 
 
