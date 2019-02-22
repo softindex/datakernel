@@ -1,7 +1,5 @@
 1. [RPC Example](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcExample.java) - 
 shows a "Hello World" RPC client and and server interaction.
-2. [RPC Benchmark](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcBenchmark.java) - 
-RPC benchmarks.
 
 To run the example in console, you should execute these lines in appropriate folder:
 ```
@@ -26,8 +24,8 @@ datakernel
                                 └── RpcExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the example.
 
 In the "Hello World" client and server **RPC Example** client sends to server a request which contains word "World". When server 

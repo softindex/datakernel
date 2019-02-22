@@ -27,15 +27,15 @@ datakernel
                                 └── HelloWorldLauncher.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the example.
 
 ### HTTP
 1. [HTTP Server Scratch](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpServerScratch.java) - 
 an example of setting up a simple HTTP server utilizing `Launcher`.
 2. [HTTP Simple Server](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpSimpleServer.java) - 
-an example of setting up a simple HTTP server utilizing `HttpServerLauncher`
+an example of setting up a simple HTTP server utilizing `HttpServerLauncher`.
 
 To run the examples in console, you should execute these lines in appropriate folder:
 ```
@@ -64,11 +64,11 @@ datakernel
                                 └── HttpSimpleServer.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
-When you start on of the examples, open your browser and go to [localhost:25565](localhost:25565). 
+When you start on of the examples, open your browser and go to [localhost:25565](http://localhost:25565). 
 You will see the following content:
 ```
 "Hello from HTTP server" 
@@ -93,7 +93,7 @@ Launcher launcher = new Launcher() {
 When creating launchers, you can override these methods:
 * `onStart()` - will be executed first;
 * `run()` - is your application main method, all logic must be in it;
-* `onStop()` - method is executed when your application stops.
+* `onStop()` - executed when your application stops.
 
 **getModules()** is used to provide Modules with dependencies:
 * `ServiceGraphModule` will start components of your application in the right order.

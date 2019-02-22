@@ -34,8 +34,8 @@ datakernel
                                 └── MultiEchoServerExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 This will start your echo server.
@@ -67,13 +67,15 @@ SimpleServer server = SimpleServer.create(socket ->
 server.listen();
 ```
 
-You can connect to your server from telnet with command `telnet localhost 9922` or by launching your TcpClient example:
-In console:
+You can connect to your server from telnet with command `telnet localhost 9922` or by launching your TcpClient example 
+either in console:
 ```
 $ cd datakernel/examples/net
 $ mvn exec:java@TcpClientExample
 ```
-In IDE: run `main()` of
+or in an IDE: 
+
+run `main()` of
 ```
 datakernel
 └── examples
@@ -113,8 +115,8 @@ datakernel
                                 └── PingPongSocketConnection.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an implementation of `AsyncTcpSocket` 

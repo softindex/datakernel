@@ -10,6 +10,7 @@ import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.datakernel.ot.OTNode.FetchData;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -52,6 +53,7 @@ public class OTNodeServletTest {
 	private static final StructuredCodec<TestOp> DIFF_CODEC = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();
 	private static final StructuredCodec<FetchData<CommitId, TestOp>> FETCH_DATA_CODEC = getFetchDataCodec(REVISION_CODEC, DIFF_CODEC);
+	private static final OTSystem<TestOp> OT_SYSTEM = createTestOp();
 
 	private OTRepositoryAdapter<TestOp> adapter;
 	private OTRepositoryStub<CommitId, TestOp> repository;
@@ -69,7 +71,7 @@ public class OTNodeServletTest {
 			g.add(getCommitId(2), getCommitId(3), add(-12));
 			g.add(getCommitId(3), getCommitId(4), set(4, 5));
 		});
-		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), createTestOp(), repository);
+		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), OT_SYSTEM, repository);
 		OTNode<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = algorithms.getOtNode();
 		servlet = OTNodeServlet.forGlobalNode(node, DIFF_CODEC, adapter);
 	}
@@ -83,7 +85,7 @@ public class OTNodeServletTest {
 
 		FetchData<CommitId, TestOp> checkoutData = fromJson(FETCH_DATA_CODEC, bodyString);
 		assertEquals(getCommitId(4), checkoutData.getCommitId());
-		assertEquals(asList(add(1), set(-12, 34), add(-12), set(4, 5)), checkoutData.getDiffs());
+		assertEquals(OT_SYSTEM.squash(asList(add(1), set(-12, 34), add(-12), set(4, 5))), checkoutData.getDiffs());
 		assertEquals(5, checkoutData.getLevel());
 	}
 
@@ -98,7 +100,7 @@ public class OTNodeServletTest {
 
 		FetchData<CommitId, TestOp> fetchData = fromJson(FETCH_DATA_CODEC, bodyString);
 		assertEquals(getCommitId(4), fetchData.getCommitId());
-		assertEquals(asList(add(-12), set(4, 5)), fetchData.getDiffs());
+		assertEquals(OT_SYSTEM.squash(asList(add(-12), set(4, 5))), fetchData.getDiffs());
 		assertEquals(5, fetchData.getLevel());
 	}
 

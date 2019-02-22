@@ -80,7 +80,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			}
 			name = remoteName;
 			reader = ChannelSupplier.of(() ->
-					Promise.ofCallable(executor, () -> {
+					Promise.ofBlockingCallable(executor, () -> {
 						ByteBuf buffer = ByteBufPool.allocate(4096);
 						int bytes = System.in.read(buffer.array());
 						if (bytes == -1) {

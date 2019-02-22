@@ -39,8 +39,8 @@ datakernel
                                 └── HelloWorld.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `HelloWorld.main()`. 
 
 ## 2. Step-by-step guide
@@ -48,7 +48,7 @@ Then run `HelloWorld.main()`.
 Firstly, create a folder for application and build an appropriate project structure:
 
 ```
-helloworld
+getting-started
 └── pom.xml
 └── src
     └── main
@@ -59,15 +59,15 @@ helloworld
                         └── HelloWorld.java
 ```
 
-You can create this project structure manually or simply use the commands below:
+You can create this project structure manually or use the commands below:
 
 ```
-$ mkdir -p helloworld/src/main/java/io/datakernel/examples
-$ touch helloworld/pom.xml
-$ touch helloworld/src/main/java/io/datakernel/examples/HelloWorld.java
+$ mkdir -p getting-started/src/main/java/io/datakernel/examples
+$ touch getting-started/pom.xml
+$ touch getting-started/src/main/java/io/datakernel/examples/HelloWorld.java
 ```
 
-Add a maven dependency to use DataKernel in your project, as shown below:
+Add a maven dependency to use DataKernel in your project as shown below:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -137,15 +137,22 @@ public class HelloWorld {
 }
 ```
 
-Finally, enter the commands below in console to compile and run this app:
+Finally, to compile and run the program in console enter these lines:
 ```
-$ cd helloworld
-$ mvn exec:java@HelloWorld
+$ cd getting-started
+$ mvn clean compile exec:java@HelloWorld
 ```
-... and receive a `Hello World` message proceeded by Eventloop. Congratulations, you've just created your first DataKernel application!
+To run it in IDE, simply run `HelloWorld.main()`.
 
-##What's next?
-To make DataKernel more developer-friendly, we created dozens examples of different scales, representing most of the 
-framework's capabilities. 
-Depending on your objectives, you can either explore [core components examples](https://github.com/softindex/datakernel/tree/master/examples#core-examples) 
-or go directly to [advanced integrated examples](https://github.com/softindex/datakernel/tree/master/examples#integrated-examples).
+You will receive a `Hello World` message proceeded by Eventloop. Congratulations, you've just created your first 
+DataKernel application!
+
+## What's next?
+To make DataKernel more developer-friendly, we've created dozens of [examples](https://github.com/softindex/datakernel/tree/master/examples) 
+of different scales, representing most of the framework's capabilities. 
+
+Depending on your objectives, you can explore [basic modules examples](https://github.com/softindex/datakernel/tree/master/examples#basic-modules), 
+[simple web applications examples](https://github.com/softindex/datakernel/tree/master/examples#simple-web-applications) 
+or go directly to [advanced web applications examples](https://github.com/softindex/datakernel/tree/master/examples#simple-web-applications). 
+If you would like to explore Global technologies (Global-FS, Global-OT, Global-DB), please take a look at 
+[global web applications examples](https://github.com/softindex/datakernel/tree/master/examples#global-web-applications). 

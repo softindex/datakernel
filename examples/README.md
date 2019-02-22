@@ -88,23 +88,23 @@ serialize and deserialize objects extremely fast. In the examples you can learn 
 different complexity.
 
 * [Codec example](https://github.com/softindex/datakernel/tree/master/examples/codec) - create efficient 
-custom codecs with Codec module.
+custom codec to encode/decode object to JSON, ByteBuf, Map and List.
 
-DataKernel provides efficient communications between suppliers and consumers (for example, client and server) with 
+DataKernel provides efficient communications between suppliers and consumers (e.g. client and server) with 
 special channels and streams: 
 * [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp) - the examples demonstrate how to 
-create channels, ByteBufs parsers and handle Communication Sequential Processes.
+create channels for communications, ByteBufs parsers and handle Communication Sequential Processes.
 
 * [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams) - includes 6 examples 
-of simple datastreams use cases. Pay attention to `NetworkDemoServer` and `NetworkDemoClients` examples - they illustrate 
-how streams can be combined with channels.
+of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#datasteams-and-csp-compatibility-example) - 
+they illustrate how Datastreams can be combined with CSP to create inter-server streams.
 
 Also, 
-* [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - see how to boot your projects and 
-work with configs with Boot module. 
+* [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - shows how to boot your projects 
+and work with configs with Boot module. 
 
 * [Launchers example - Hello World](https://github.com/softindex/datakernel/tree/master/examples/launchers#hello-world) - 
-demonstrates one of the simplest launcher's usages.
+demonstrates one of the simplest launchers' usages.
 
 
 ### Simple web applications
@@ -114,18 +114,18 @@ applications, ranging from basic HTTP client and server to multithreaded example
     a detailed tutorial on how to create a simple but scalable HTTP server with multiple Worker Servers. This example 
     also demonstrates the core principles of single-threaded Eventloop module.
     
-* [Launchers and HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/launchers#http) - these 
+* [Launchers for HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/launchers#http) - these 
 examples will show you how to use launchers while developing web applications.
 
-* [UIKernel example](https://github.com/softindex/datakernel/tree/master/examples/codegen) - see how to integrate JS front-end 
-with DataKernel.
+* [UIKernel example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration) - see how to 
+integrate JS front-end with DataKernel.
 
 
 ### Advanced web applications
 * [Net examples](https://github.com/softindex/datakernel/tree/master/examples/net) - show how to create TCP echo servers 
 and clients from scratch in a few steps.
 
-* [Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop) - even though Eventloop 
+* [Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop) - although Eventloop 
 is one of the basic modules of DataKernel and is **not** bound to web applications, these examples demonstrate how 
 eventloops can be utilized with Net module for developing servers.
 
@@ -136,7 +136,7 @@ procedure call module.
     RPC and Boot modules.
 
 * [CRDT example](https://github.com/softindex/datakernel/tree/master/examples/crdt) - demonstrates how CRDT (conflict-free 
-replicated data type) algorithms manage merging two replicas with conflicting states.
+replicated data type) algorithms manage merging of two replicas with conflicting states.
 
 
 ### Global web applications

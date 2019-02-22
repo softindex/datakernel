@@ -3,7 +3,7 @@ dynamically creates a class that implements a specified interface.
 2. [Expressions Example](https://github.com/softindex/datakernel/blob/master/examples/codegen/src/main/java/io/datakernel/examples/ExpressionsExample.java) - 
 dynamically creates a class with method `sayHello()` which is described using expression.
 
-To run the examples in console, you should execute these three lines in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
@@ -30,8 +30,8 @@ datakernel
                                 └── ExpressionExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 If you run **Dynamic Class Creation Example**, you will receive the following output:

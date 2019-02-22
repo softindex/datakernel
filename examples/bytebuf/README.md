@@ -8,7 +8,7 @@ represents how to work with ByteBufPool.
 3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample.java) - 
 shows how queues of ByteBufs are created and processed.
 
-To run the examples in console, you should execute these three lines in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
@@ -39,8 +39,8 @@ datakernel
                                 └── ByteBufQueueExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 If you run the **ByteBuf Example**, you'll receive the following output:

@@ -191,7 +191,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					List<FileMetadata> list = new ArrayList<>();
 					walkFiles(glob, (meta, $) -> list.add(meta));
@@ -203,7 +203,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> moveBulk(Map<String, String> changes) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					synchronized (this) {
 						changes.forEach((filename, newFilename) -> {
@@ -221,7 +221,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> move(String filename, String targetName) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					synchronized (this) {
 						doMove(filename, targetName);
@@ -273,7 +273,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> copyBulk(Map<String, String> changes) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					synchronized (this) {
 						changes.forEach((filename, copyName) -> {
@@ -291,7 +291,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> copy(String filename, String copyName) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					synchronized (this) {
 						doCopy(filename, copyName);
@@ -332,7 +332,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> deleteBulk(String glob) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					synchronized (this) {
 						try {
@@ -351,7 +351,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> delete(String filename) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					synchronized (this) {
 						try {
@@ -372,7 +372,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String filename) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					Path file = resolve(filename);
 					return Files.isRegularFile(file) ? getFileMeta(file) : null;
@@ -423,7 +423,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private Promise<Path> ensureDirectory(String filePath) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					Path path = resolve(filePath);
 					Files.createDirectories(path.getParent());

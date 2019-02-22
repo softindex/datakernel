@@ -30,8 +30,8 @@ datakernel
                                 └── PromisesExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 If you run **Promises Example**, you'll receive the following output:
@@ -44,7 +44,7 @@ This is iteration #4
 This is iteration #5
 ```
 In this example we created a repetitive Promise which continues iterations until one of the Promises completes with an 
-exception `Promise.ofException(new Exception("Breaking the loop"))`.
+exception, in our case `Promise.ofException(new Exception("Breaking the loop"))`.
 ```java
 Promises.repeat(() -> {
 	System.out.println("This is iteration #" + ++counter);
@@ -109,8 +109,8 @@ This is test file
 This is the 3rd line in file
 ```
 
-In this example Promise's `AsyncFile` is utilized along with several methods associated with the class, such as:
+In this example Promise's `AsyncFile` (represents a file with asynchronous capabilities) is utilized, along with 
+several methods associated with the class, such as:
 * open()
 * write()
 * read()
-`AsyncFile` represents a file with asynchronous capabilities.

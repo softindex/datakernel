@@ -36,8 +36,8 @@ datakernel
                                 └── FileDownloadExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of `ServerSetupExample`, `FileUploadExample` and `FileDownloadExample` in that order.
 
 In the example we upload file "example.txt" to server and then download it back as "download_example.txt".

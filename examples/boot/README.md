@@ -3,7 +3,7 @@ supplies config to your application and controls it.
 2. [Service Graph Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/ServiceGraphModuleExample.java) - 
 manages a service which displays "Hello World!" message.
 3. [Worker Pool Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/WorkerPoolModuleExample.java) - 
-creating a Worker Pool with 4 workers.
+creates a Worker Pool with 4 workers.
 
 To run the examples in console, you should execute these lines in appropriate folder:
 ``` 
@@ -36,8 +36,8 @@ datakernel
                                 └── WorkerPoolModuleExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 If you run the **Config Module Example**, you will see the following output:
@@ -61,7 +61,7 @@ initialization of `ConfigModule`, such as:
 
 If you run the **Service Graph Module Example**, you will see a `Hello World` output. This output is conducted via eventloop 
 which was provided by `ServiceGraphModule`. `ServiceGraphModule` builds dependency graph of Service objects based on 
-Guice's object graph. When  method `startFuture()` is called, our eventloop starts running and we get an output message. 
+Guice's object graph. When  method `startFuture()` is called, our eventloop starts running and we get the output message. 
 
 
 If you run the **Worker Pool Module Example**, you will see the following output:

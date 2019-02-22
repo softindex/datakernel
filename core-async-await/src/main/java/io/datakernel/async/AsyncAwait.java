@@ -3,7 +3,9 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -11,26 +13,12 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class AsyncAwait {
 	private AsyncAwait() {}
 
-	private static volatile Supplier<ExecutorService> DEFAULT_EXECUTOR = Executors::newCachedThreadPool;
-
-	private static final ThreadLocal<ExecutorService> EXECUTOR = new ThreadLocal<ExecutorService>() {
-		@Override
-		protected ExecutorService initialValue() {
-			return DEFAULT_EXECUTOR.get();
-		}
-	};
-
 	private static final ThreadLocal<Eventloop> EVENTLOOP = new ThreadLocal<>();
-
-	public static void setDefaultExecutor(@NotNull ExecutorService executorService) {
-		DEFAULT_EXECUTOR = () -> executorService;
-	}
 
 	@NotNull
 	private static <R> Promise<R> asyncImpl(@NotNull Callable<R> callable) {
-		ExecutorService executor = EXECUTOR.get();
 		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(
 				() -> {
 					EVENTLOOP.set(currentEventloop);
 					try {
