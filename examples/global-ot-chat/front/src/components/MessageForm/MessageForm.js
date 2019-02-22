@@ -1,7 +1,6 @@
 import React from 'react';
 import connectService from '../../common/connectService';
 import ChatContext from '../../modules/chat/ChatContext';
-import AccountContext from '../../modules/account/AccountContext';
 import Paper from '@material-ui/core/Paper';
 import SendIcon from '@material-ui/icons/Send';
 import messageFormStyles from './messageFormStyles';
@@ -27,7 +26,6 @@ class MessageForm extends React.Component {
     if (!this.state.message) {
       return;
     }
-
     this.props.sendMessage(this.props.login, this.state.message);
     this.setState({
       message: ''
@@ -67,9 +65,5 @@ export default withStyles(messageFormStyles)(
     async sendMessage(login, message) {
       await chatService.sendMessage(login, message);
     }
-  }))(
-    connectService(AccountContext, ({login}) => ({login}))(
-      MessageForm
-    )
-  )
+  }))(MessageForm)
 );

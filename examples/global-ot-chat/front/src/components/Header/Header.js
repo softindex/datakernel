@@ -6,6 +6,8 @@ import Typography from '@material-ui/core/Typography';
 import TimelineIcon from '@material-ui/icons/Timeline';
 import IconButton from '@material-ui/core/IconButton';
 import headerStyles from './headerStyles';
+import connectService from "../../common/connectService";
+import ChatContext from "../../modules/chat/ChatContext";
 
 class Header extends React.Component {
   render() {
@@ -17,8 +19,10 @@ class Header extends React.Component {
           </Typography>
           <div className={this.props.classes.grow}/>
           <IconButton
-            onClick={this.props.onGraphToggle}
             color="inherit"
+            onClick={this.props.onGraphToggle}
+            disabled={!this.props.ready}
+            className={this.props.classes.graphTriggerButton}
           >
             <TimelineIcon/>
           </IconButton>
@@ -28,4 +32,8 @@ class Header extends React.Component {
   }
 }
 
-export default withStyles(headerStyles)(Header);
+export default withStyles(headerStyles)(
+  connectService(ChatContext, ({ready}) => ({ready}))(
+    Header
+  )
+);

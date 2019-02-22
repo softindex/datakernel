@@ -12,13 +12,15 @@ import theme from "./components/theme/themeConfig";
 import CssBaseline from '@material-ui/core/CssBaseline';
 import ChatContext from './modules/chat/ChatContext';
 import AccountContext from './modules/account/AccountContext';
+import GraphModel from './models/GraphModel';
 
 const chatOTNode = ClientOTNode.createWithJsonKey({
   url: '/node',
   serializer
 });
+const graphModel = new GraphModel();
 const chatOTStateManager = new OTStateManager(() => new Set(), chatOTNode, chatOTSystem);
-const chatService = new ChatService(chatOTStateManager);
+const chatService = new ChatService(chatOTStateManager, graphModel);
 const accountService = new AccountService();
 
 ReactDOM.render((

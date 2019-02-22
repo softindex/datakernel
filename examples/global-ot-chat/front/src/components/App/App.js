@@ -20,11 +20,10 @@ class App extends React.Component {
   }
 
   toggleGraph = () => {
-    console.log(this.state.isGraphOpen)
     this.setState({
       isGraphOpen: !this.state.isGraphOpen
     });
-  }
+  };
 
   render() {
     return (

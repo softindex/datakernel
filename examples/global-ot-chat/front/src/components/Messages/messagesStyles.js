@@ -33,7 +33,8 @@ const messageFormStyles = theme => {
     },
     messageFromOther: {
       backgroundColor: theme.palette.grey[100],
-      color: theme.palette.grey[100]
+      color: theme.palette.grey[100],
+      borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
     },
     messageMedium: {
       borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`

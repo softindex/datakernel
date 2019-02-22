@@ -4,7 +4,7 @@ import ChatOTOperation from './ot/ChatOTOperation';
 const FETCH_TIMEOUT = 500;
 
 class ChatService extends Service {
-  constructor(chatOTStateManager) {
+  constructor(chatOTStateManager, graphModel) {
     super({
       messages: [],
       ready: false,
@@ -12,26 +12,17 @@ class ChatService extends Service {
     });
     this._chatOTStateManager = chatOTStateManager;
     this._interval = null;
+    this._graphModel = graphModel;
   }
 
   async init() {
     await this._chatOTStateManager.checkout();
+    const revision = this._chatOTStateManager.getRevision();
+    const commitsGraph = await this._graphModel.getGraph(revision);
     this.setState({
       messages: this._getMessagesFromStateManager(),
       ready: true,
-      commitsGraph: `digraph G {
-          start -> a0;
-          a0 -> a1;
-          a1 -> a2;
-          a2 -> a3;
-          a3 -> a4;
-          a4 -> a6;
-          a6 -> a7;
-          a7 -> a8;
-          a8 -> a9;
-          a9 -> a10;
-          a10 -> a11;
-        }`
+      commitsGraph
     });
 
     let fetching = false;
@@ -63,20 +54,7 @@ class ChatService extends Service {
         author,
         content,
         loaded: false,
-        timestamp,
-        commitsGraph: `digraph G {
-          start -> a0;
-          a0 -> a1;
-          a1 -> a2;
-          a2 -> a3;
-          a3 -> a4;
-          a4 -> a6;
-          a6 -> a7;
-          a7 -> a8;
-          a8 -> a9;
-          a9 -> a10;
-          a10 -> a11;
-        }`
+        timestamp
       }]
     });
 
@@ -84,10 +62,14 @@ class ChatService extends Service {
   }
 
   async fetch() {
+    const revision = this._chatOTStateManager.getRevision();
     await this._chatOTStateManager.sync();
+    const commitsGraph = await this._graphModel.getGraph(this._chatOTStateManager.getRevision());
+    if (this._chatOTStateManager.getRevision() === revision) return;
 
     this.setState({
-      messages: this._getMessagesFromStateManager()
+      messages: this._getMessagesFromStateManager(),
+      commitsGraph
     });
   }
 
