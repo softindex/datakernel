@@ -46,7 +46,23 @@ $ cd examples/http-helloworld
 $ mvn exec:java@HttpHelloWorldLauncher
 ```
 
-If you want
+To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── http-helloworld
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── HttpHelloWorldLauncher.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Run `main()` of the launcher.
 
 Then, go to [testing](#testing) section.
 
@@ -286,7 +302,7 @@ Congratulations! You've just created a simple HTTP-server. Enter the command bel
 ```
 $ mvn clean compile exec:java@HttpHelloWorldLauncher
 ```
-Or if you use IDE, simply run `HttpHelloWorldLauncher.main()`.
+Or if you use an IDE, simply run `HttpHelloWorldLauncher.main()`.
 
 You will see the following output:
 ```

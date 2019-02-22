@@ -53,8 +53,8 @@ datakernel
                                 └── DiscoveryServiceLauncher.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the launcher.
 Repeat for:
 ```
@@ -82,4 +82,4 @@ datakernel
                                         └── GlobalOTDemoApp.java
 ```
 
-After start all of the needed classes, open your browser and go to [localhost:8899](localhost:8899). Enjoy!
+After you've started all of the needed classes, open your browser and go to [localhost:8899](http://localhost:8899). Enjoy!

@@ -24,8 +24,8 @@ datakernel
                                 └── StructuredCodecsExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the example.
 
 You will receive the following output:

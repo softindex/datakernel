@@ -24,7 +24,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
  * Example of creating the custom StreamSupplier.
- * This producer just streams all numbers from 0 to number specified in constructor.
+ * This supplier just streams all numbers from 0 to number specified in constructor.
  */
 public class SupplierExample {
 	public static void main(String[] args) {

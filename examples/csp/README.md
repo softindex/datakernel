@@ -5,7 +5,7 @@ basic interactions between CSP `ChannelSupplier` and `ChannelConsumers`.
 3. [Channel File Example](https://github.com/softindex/datakernel/blob/master/examples/csp/src/main/java/io/datakernel/examples/ChannelFileExample.java) - 
 represents working with files utilizing CSP `ChannelFileReader` and `ChannelFileWriter`.
 4. [Communicating Process Example](https://github.com/softindex/datakernel/blob/master/examples/csp/src/main/java/io/datakernel/examples/CommunicatingProcessExample.java) - 
-represents communication between `ChannelSupplier` and `ChannelConsumer` utilizing `Communicating Sequential Process`.
+represents communication between `ChannelSupplier` and `ChannelConsumer` utilizing `AbstractCommunicatingProcess`.
 
 To run the examples in console, you should enter these commands in appropriate folder:
 ```
@@ -42,8 +42,8 @@ datakernel
                                 └── CommunicatingProcessExample.java
 ```
 and set up working directory properly. For IntelliJ IDEA:
-**Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||**.
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
 Then run `main()` of the chosen example.
 
 **ByteBufs Parser Example** shows how to process bytes with CSP and ByteBuf modules and produces a `Hello` message.
@@ -62,7 +62,7 @@ public class ByteBufsParserExample {
 			}
 			return bufs.takeExactSize(5).asString(UTF_8);
 		};
-		//BinaryChannelSupplier processes our "Hello" message. When parser receives a result, it is printed.
+		//BinaryChannelSupplier processes our "Hello" message. When parse completes, the result of parsing is printed
 		BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)).parse(parser)
 				.whenResult(System.out::println);
 	}
@@ -72,8 +72,6 @@ public class ByteBufsParserExample {
 **Channel Example** shows interaction between suppliers and consumers:
 ```java
 private static void supplierOfValues() {
-	//passing Supplier five Strings which are streamed to Consumer and then printed in accordance to 
-	//ofConsumer() setup.
 	//ChannelSupplier.of() defines what data will be provided and .streamTo() - to what ChannelConsumer
 	//ChannelConsumer.ofConsumer() defines consumer behaviour when it receives data
 	//streamTo() streams all supplier's data to consumer
@@ -129,9 +127,9 @@ Three
 6
 ```
 
-**Channel File Example** demonstrates how to work with files in asynchronous approach using Promises and CSP builtin 
-consumers and suppliers. This example writes two lines to the file with `ChannelFileWriter` and then reads and prints them 
-out utilizing `ChannelFileReader`. If you run the example, you'll see the content of the created file:
+**Channel File Example** demonstrates how to work with files in asynchronous approach using Promises and CSP built-in 
+consumers and suppliers. This example writes two lines to the file with `ChannelFileWriter`, and then reads and prints 
+them out utilizing `ChannelFileReader`. If you run the example, you'll see the content of the created file:
 ```
 Hello, this is example file
 This is the second line of file
@@ -148,7 +146,8 @@ SEE(3)
 YOU(3)
 ```
 In this example ChannelSupplier represents an input and ChannelConsumer - output. `doProcess()` represents the main 
-process of the example. In order to transform a ChannelSupplier with described process, the following lines are executed: 
+process of the example. In order to transform a ChannelSupplier with described process and print out the result, the 
+following lines are executed: 
 
 ```java
 CommunicatingProcessExample process = new CommunicatingProcessExample();
