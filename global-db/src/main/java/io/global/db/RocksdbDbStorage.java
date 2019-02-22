@@ -27,7 +27,7 @@ public class RocksdbDbStorage implements DbStorage {
 	}
 
 	public Promise<Void> flush() {
-		return Promise.ofRunnable(executor, () -> {
+		return Promise.ofBlockingRunnable(executor, () -> {
 			try {
 				db.flush(flushOptions);
 			} catch (RocksDBException e) {
@@ -72,12 +72,12 @@ public class RocksdbDbStorage implements DbStorage {
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
-		return Promise.of(ChannelConsumer.<SignedData<DbItem>>of(signedDbItem -> Promise.ofRunnable(executor, () -> doPut(signedDbItem)))
+		return Promise.of(ChannelConsumer.<SignedData<DbItem>>of(signedDbItem -> Promise.ofBlockingRunnable(executor, () -> doPut(signedDbItem)))
 				.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
 	}
 
 	private Promise<RocksIterator> iterator() {
-		return Promise.ofCallable(executor, () -> {
+		return Promise.ofBlockingCallable(executor, () -> {
 			RocksIterator iterator = db.newIterator();
 			iterator.seekToFirst();
 			return iterator;
@@ -88,7 +88,7 @@ public class RocksdbDbStorage implements DbStorage {
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
 		return iterator().thenApply(iterator ->
 				ChannelSupplier.of(() ->
-						Promise.ofCallable(executor, () -> {
+						Promise.ofBlockingCallable(executor, () -> {
 							while (iterator.isValid()) {
 								byte[] key = iterator.key();
 								SignedData<DbItem> signedDbItem = doGet(key);
@@ -105,7 +105,7 @@ public class RocksdbDbStorage implements DbStorage {
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download() {
 		return iterator().thenApply(iterator ->
 				ChannelSupplier.of(() ->
-						Promise.ofCallable(executor, () -> {
+						Promise.ofBlockingCallable(executor, () -> {
 							if (!iterator.isValid()) {
 								return null;
 							}
@@ -119,7 +119,7 @@ public class RocksdbDbStorage implements DbStorage {
 	public Promise<ChannelConsumer<SignedData<byte[]>>> remove() {
 		return Promise.of(
 				ChannelConsumer.of(
-						(SignedData<byte[]> key) -> Promise.ofRunnable(executor,
+						(SignedData<byte[]> key) -> Promise.ofBlockingRunnable(executor,
 								() -> {
 									try {
 										db.delete(key.getValue());
@@ -132,17 +132,17 @@ public class RocksdbDbStorage implements DbStorage {
 
 	@Override
 	public Promise<SignedData<DbItem>> get(byte[] key) {
-		return Promise.ofCallable(executor, () -> doGet(key));
+		return Promise.ofBlockingCallable(executor, () -> doGet(key));
 	}
 
 	@Override
 	public Promise<Void> put(SignedData<DbItem> item) {
-		return Promise.ofRunnable(executor, () -> doPut(item));
+		return Promise.ofBlockingRunnable(executor, () -> doPut(item));
 	}
 
 	@Override
 	public Promise<Void> remove(SignedData<byte[]> key) {
-		return Promise.ofRunnable(executor,
+		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					try {
 						db.delete(key.getValue());

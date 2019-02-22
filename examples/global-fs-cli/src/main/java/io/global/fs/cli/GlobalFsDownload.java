@@ -74,7 +74,7 @@ public final class GlobalFsDownload implements Callable<Void> {
 		} else if (localFile.equals("-")) {
 			info("Downloading " + file + " to standard output ...");
 			writer = ChannelConsumer.of(buffer ->
-					Promise.ofRunnable(executor, () ->
+					Promise.ofBlockingRunnable(executor, () ->
 							System.out.write(buffer.array(), buffer.head(), buffer.readRemaining())));
 		} else {
 			info("Downloading " + file + " as " + localFile + " ...");

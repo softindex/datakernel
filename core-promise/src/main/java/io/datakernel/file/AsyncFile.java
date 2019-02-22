@@ -34,7 +34,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.Promise.ofRunnable;
+import static io.datakernel.async.Promise.ofBlockingRunnable;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
@@ -84,12 +84,12 @@ public final class AsyncFile {
 	 * @param openOptions options specifying how the file is opened
 	 */
 	public static Promise<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions) {
-		return Promise.ofCallable(executor, () -> doOpenChannel(path, openOptions))
+		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
 	public static Promise<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) {
-		return Promise.ofCallable(executor, () -> doOpenChannel(path, openOptions))
+		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
 	}
 
@@ -103,7 +103,7 @@ public final class AsyncFile {
 	 * @param path the path of the file to open or create
 	 */
 	public static Promise<Void> delete(ExecutorService executor, Path path) {
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.delete(path);
 			} catch (IOException e) {
@@ -120,7 +120,7 @@ public final class AsyncFile {
 	 * @return file size if given path is a regular file and <code>null</code> if it is a directory or it does not exist
 	 */
 	public static Promise<Long> size(ExecutorService executor, Path path) {
-		return Promise.ofCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : null);
+		return Promise.ofBlockingCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : null);
 	}
 
 	/**
@@ -132,7 +132,7 @@ public final class AsyncFile {
 	 * @param options  options specifying how the move should be done
 	 */
 	public static Promise<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.move(source, target, options);
 			} catch (IOException e) {
@@ -150,7 +150,7 @@ public final class AsyncFile {
 	 * @param options  options specifying how the move should be done
 	 */
 	public static Promise<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.copy(source, target, options);
 			} catch (IOException e) {
@@ -167,7 +167,7 @@ public final class AsyncFile {
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
 	public static Promise<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			} catch (IOException e) {
@@ -184,7 +184,7 @@ public final class AsyncFile {
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
 	public static Promise<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			} catch (IOException e) {
@@ -234,7 +234,7 @@ public final class AsyncFile {
 	}
 
 	public Promise<Void> seek(long position) {
-		return sanitize(ofRunnable(executor, () -> {
+		return sanitize(ofBlockingRunnable(executor, () -> {
 			try {
 				channel.position(position);
 			} catch (IOException e) {
@@ -244,7 +244,7 @@ public final class AsyncFile {
 	}
 
 	public Promise<Long> tell() {
-		return sanitize(Promise.ofCallable(executor, channel::position));
+		return sanitize(Promise.ofBlockingCallable(executor, channel::position));
 	}
 
 	/**
@@ -254,7 +254,7 @@ public final class AsyncFile {
 	 * @param buf byte buffer to be written
 	 */
 	public Promise<Void> write(ByteBuf buf) {
-		return sanitize(ofRunnable(executor, () -> {
+		return sanitize(ofBlockingRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				try {
 					int writtenBytes;
@@ -280,7 +280,7 @@ public final class AsyncFile {
 	 * @param buf      byte buffer to be written
 	 */
 	public Promise<Void> write(ByteBuf buf, long position) {
-		return sanitize(ofRunnable(executor, () -> {
+		return sanitize(ofBlockingRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int writtenBytes = 0;
 				long pos = position;
@@ -337,7 +337,7 @@ public final class AsyncFile {
 	 *                 must be non-negative
 	 */
 	public Promise<Void> read(ByteBuf buf, long position) {
-		return sanitize(ofRunnable(executor, () -> {
+		return sanitize(ofBlockingRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int readBytes = 0;
 				long pos = position;
@@ -362,7 +362,7 @@ public final class AsyncFile {
 	 */
 	public Promise<Void> forceAndClose(boolean forceMetadata) {
 		if (!isOpen()) return Promise.ofException(FILE_CLOSED);
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				channel.force(forceMetadata);
 				channel.close();
@@ -377,7 +377,7 @@ public final class AsyncFile {
 	 */
 	public Promise<Void> close() {
 		if (!isOpen()) return Promise.ofException(FILE_CLOSED);
-		return ofRunnable(executor, () -> {
+		return ofBlockingRunnable(executor, () -> {
 			try {
 				channel.close();
 			} catch (IOException e) {
@@ -394,7 +394,7 @@ public final class AsyncFile {
 	 * @param size the new size, a non-negative byte count
 	 */
 	public Promise<Void> truncate(long size) {
-		return sanitize(ofRunnable(executor, () -> {
+		return sanitize(ofBlockingRunnable(executor, () -> {
 			try {
 				channel.truncate(size);
 			} catch (IOException e) {
@@ -413,7 +413,7 @@ public final class AsyncFile {
 	 *                 only needs to force content changes to be written
 	 */
 	public Promise<Void> force(boolean metaData) {
-		return sanitize(ofRunnable(executor, () -> {
+		return sanitize(ofBlockingRunnable(executor, () -> {
 			try {
 				channel.force(metaData);
 			} catch (IOException e) {

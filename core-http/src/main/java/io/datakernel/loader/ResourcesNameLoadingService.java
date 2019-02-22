@@ -51,7 +51,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		return Promise.ofCallable(executorService,
+		return Promise.ofBlockingCallable(executorService,
 				() -> {
 					Set<String> fileNames = new HashSet<>();
 					InputStream in = checkNotNull(loader.getResourceAsStream(resourcePath));
