@@ -28,31 +28,33 @@ class LoginDialog extends React.Component {
   render() {
     return (
       <Dialog
-        open={Boolean(this.props.isOpen)}
+        open={!this.props.authorized}
         onClose={this.handleClose}
         aria-labelledby="form-dialog-title"
       >
-        <DialogTitle id="form-dialog-title">Login</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Enter your username to start chat
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="normal"
-            id="name"
-            label="Login"
-            type="email"
-            fullWidth
-            variant="outlined"
-            onChange={this.handleChange}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={this.onSubmit} color="primary">
-            Enter
-          </Button>
-        </DialogActions>
+        <form onSubmit={this.onSubmit}>
+          <DialogTitle id="form-dialog-title">Login</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Enter your username to start chat
+            </DialogContentText>
+            <TextField
+              required={true}
+              autoFocus
+              margin="normal"
+              label="Login"
+              type="text"
+              fullWidth
+              variant="outlined"
+              onChange={this.handleChange}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button type="submit" color="primary">
+              Enter
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     )
   }

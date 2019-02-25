@@ -8,11 +8,11 @@ import chatOTSystem from './modules/chat/ot/chatOTSystem';
 import serializer from './modules/chat/ot/serializer';
 import AccountService from './modules/account/AccountService';
 import {MuiThemeProvider} from '@material-ui/core/styles';
-import theme from "./components/theme/themeConfig";
+import theme from "./components/themeConfig";
 import CssBaseline from '@material-ui/core/CssBaseline';
 import ChatContext from './modules/chat/ChatContext';
 import AccountContext from './modules/account/AccountContext';
-import GraphModel from './models/GraphModel';
+import GraphModel from './modules/chat/GraphModel';
 
 const chatOTNode = ClientOTNode.createWithJsonKey({
   url: '/node',

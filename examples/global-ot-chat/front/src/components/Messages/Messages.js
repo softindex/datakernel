@@ -1,6 +1,7 @@
 import React from 'react';
 import connectService from '../../common/connectService';
 import ChatContext from '../../modules/chat/ChatContext';
+import AccountContext from '../../modules/account/AccountContext';
 import {withStyles} from '@material-ui/core';
 import messagesStyles from './messagesStyles';
 import Typography from '@material-ui/core/Typography';
@@ -98,6 +99,8 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
 
 export default withStyles(messagesStyles)(
   connectService(ChatContext, ({messages, ready}) => ({messages, ready}))(
-    Messages
+    connectService(AccountContext, ({login}) => ({login}))(
+      Messages
+    )
   )
 );

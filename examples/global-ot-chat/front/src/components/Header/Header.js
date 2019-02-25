@@ -9,27 +9,25 @@ import headerStyles from './headerStyles';
 import connectService from "../../common/connectService";
 import ChatContext from "../../modules/chat/ChatContext";
 
-class Header extends React.Component {
-  render() {
-    return (
-      <AppBar position="absolute" color="primary">
-        <Toolbar>
-          <Typography variant="h6" color="inherit">
-            Global OT Chat
-          </Typography>
-          <div className={this.props.classes.grow}/>
-          <IconButton
-            color="inherit"
-            onClick={this.props.onGraphToggle}
-            disabled={!this.props.ready}
-            className={this.props.classes.graphTriggerButton}
-          >
-            <TimelineIcon/>
-          </IconButton>
-        </Toolbar>
-      </AppBar>
-    );
-  }
+function Header({onGraphToggle, ready, classes}) {
+  return (
+    <AppBar position="absolute" color="primary">
+      <Toolbar>
+        <Typography variant="h6" color="inherit">
+          Global OT Chat
+        </Typography>
+        <div className={classes.grow}/>
+        <IconButton
+          color="inherit"
+          onClick={onGraphToggle}
+          disabled={!ready}
+          className={classes.graphTriggerButton}
+        >
+          <TimelineIcon/>
+        </IconButton>
+      </Toolbar>
+    </AppBar>
+  );
 }
 
 export default withStyles(headerStyles)(

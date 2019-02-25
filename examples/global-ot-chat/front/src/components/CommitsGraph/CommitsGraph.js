@@ -33,21 +33,22 @@ class CommitsGraph extends React.Component {
   }
 
   render() {
-    if (this.props.commitsGraph) {
-      return (
-        <div className={this.props.classes.column}>
-          <div className={this.props.classes.headerPadding}/>
-          <Paper className={this.props.classes.root} elevation={1}>
-            <div ref={this.graph}/>
-          </Paper>
-        </div>
-      )
+    if (!this.props.commitsGraph) {
+      return null;
     }
-    return null;
+
+    return (
+      <div className={this.props.classes.column}>
+        <div className={this.props.classes.headerPadding}/>
+        <Paper className={this.props.classes.root} elevation={1}>
+          <div ref={this.graph}/>
+        </Paper>
+      </div>
+    );
   }
 }
 
-export default withStyles(commitsGraphStyles)(connectService(ChatContext, ({commitsGraph}) => ({
-  commitsGraph
-}))(CommitsGraph));
+export default withStyles(commitsGraphStyles)(
+  connectService(ChatContext, ({commitsGraph}) => ({commitsGraph}))(CommitsGraph)
+);
 

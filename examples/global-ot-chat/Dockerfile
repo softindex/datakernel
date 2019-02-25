@@ -46,9 +46,6 @@ RUN npm run build
 FROM openjdk:8-jre-alpine
 WORKDIR /app
 
-# properties layer
-COPY *.properties ./
-
 COPY --from=build-java /build/target/chat-client.jar ./
 COPY --from=build-js /build/build ./front/build
 
