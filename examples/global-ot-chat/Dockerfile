@@ -20,16 +20,9 @@ RUN mvn package -Pexport
 
 FROM node:11-alpine as build-js
 WORKDIR /build
-ARG SSH_KEY
 
 # tool layer
-RUN apk --update add --no-cache git openssh
-
-# ssh key layer
-RUN mkdir ~/.ssh/ \
- && echo "${SSH_KEY}" > ~/.ssh/id_rsa \
- && chmod 600 ~/.ssh/id_rsa \
- && ssh-keyscan -t rsa git.adkernel.com > ~/.ssh/known_hosts
+RUN apk --update add --no-cache git
 
 # npm deps layer
 COPY front/package.json ./
