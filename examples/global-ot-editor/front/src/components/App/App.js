@@ -32,7 +32,7 @@ class App extends Component {
           onDelete={this.onDelete}
           onReplace={this.onReplace}
         />
-        <CommitsGraph test={'test'}/>
+        <CommitsGraph/>
       </div>
     );
   }

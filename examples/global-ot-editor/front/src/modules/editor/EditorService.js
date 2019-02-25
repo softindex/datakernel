@@ -27,13 +27,10 @@ class EditorService extends Service {
       throw e;
     }
 
-    const revision = this._editorOTStateManager.getRevision();
-    const commitsGraph = await this._graphModel.getGraph(revision);
 
     this.setState({
       content: this._editorOTStateManager.getState(),
-      ready: true,
-      commitsGraph
+      ready: true
     });
 
     // Synchronization

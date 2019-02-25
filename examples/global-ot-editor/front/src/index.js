@@ -10,7 +10,6 @@ import EditorContext from './modules/editor/EditorContext';
 import GraphModel from './modules/GraphModel';
 
 const graphModel = new GraphModel;
-
 const otNode = ClientOTNode.createWithJsonKey({
   url: '/node',
   serializer
