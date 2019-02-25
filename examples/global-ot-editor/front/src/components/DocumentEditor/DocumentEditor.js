@@ -1,69 +1,13 @@
-import React from "react";
-import {
-  getDifference,
-  htmlToText,
-  getNodeLength,
-  getPositionInHtml,
-  createOperations
-} from "./utils";
-import "./styles/index.css";
+import _ from 'lodash';
+import React from 'react';
+import {getDifference} from './utils';
 
 class TextArea extends React.Component {
-  componentDidMount() {
-    this.renderState(this.props.value);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    const nextOtState = nextProps.value;
-    if (nextOtState !== htmlToText(this.domElement.innerHTML)) {
-      this.renderState(nextOtState);
-    }
-  }
-
-  renderState(otState) {
-    this.domElement.innerHTML = this.prevHtml = otState.replace("\n", "<br/>");
-  }
-
-  getSiblingsNodesLength(htmlElement) {
-    if (htmlElement === this.domElement) {
-      return 0;
-    }
-    var length = htmlElement.tagName ? 2 + htmlElement.tagName.length : 0;
-    for (var i = 0; i < htmlElement.parentElement.childNodes.length; i++) {
-      var a = htmlElement.parentElement.childNodes[i];
-      if (a === htmlElement) {
-        break;
-      }
-      length += getNodeLength(a);
-    }
-    return length + this.getSiblingsNodesLength(htmlElement.parentElement);
-  }
-
-  getCaretPosition() {
-    var selection = window.getSelection();
-    const node = selection.anchorNode;
-    var offset = selection.getRangeAt(0).endOffset;
-    let pos = 0;
-    if (node.nodeType === window.Node.TEXT_NODE) {
-      pos = getPositionInHtml(node, offset);
-    } else {
-      for (let i = 0; i < offset; i++) {
-        const currentNode = node.childNodes[i];
-        pos += getNodeLength(currentNode);
-      }
-    }
-
-    return pos + this.getSiblingsNodesLength(node);
-  }
-
-  inputHandler(e) {
-    const pos = this.getCaretPosition();
-    const difference = getDifference(this.prevHtml, e.target.innerHTML, pos);
+  onChange = (event) => {
+    const difference = getDifference(this.props.value, event.target.value, event.target.selectionEnd);
     if (!difference) {
       return;
     }
-
-    this.prevHtml = e.target.innerHTML;
 
     switch (difference.operation) {
       case 'insert':
@@ -75,24 +19,19 @@ class TextArea extends React.Component {
       case 'replace':
         this.props.onReplace(difference.position, difference.oldContent, difference.newContent);
         break;
+      default:
+        throw new Error('Unsupported operation');
     }
-  }
+  };
 
   render() {
     return (
-      <div className="document-editor">
-        <div className="wrapper">
-          <div
-            className="document-form"
-            ref={ref => {
-              this.domElement = ref;
-            }}
-            contentEditable={true}
-            onInput={this.inputHandler.bind(this)}
-          />
-        </div>
-      </div>
+      <textarea
+        {..._.omit(this.props, ['onInsert', 'onDelete', 'onReplace'])}
+        onChange={this.onChange}
+      />
     );
   }
 }
+
 export default TextArea;

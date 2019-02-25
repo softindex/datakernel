@@ -23,12 +23,15 @@ class App extends Component {
     }
 
     return (
-      <DocumentEditor
-        value={this.props.content}
-        onInsert={this.onInsert}
-        onDelete={this.onDelete}
-        onReplace={this.onReplace}
-      />
+      <div className="wrapper">
+        <DocumentEditor
+          className="document-editor"
+          value={this.props.content}
+          onInsert={this.onInsert}
+          onDelete={this.onDelete}
+          onReplace={this.onReplace}
+        />
+      </div>
     );
   }
 }

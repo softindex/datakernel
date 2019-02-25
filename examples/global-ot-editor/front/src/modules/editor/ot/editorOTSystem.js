@@ -10,8 +10,7 @@ const editorOTSystem = new OTSystemBuilder()
     }
 
     if (
-      left.position === right.position
-      && left.content < right.content
+      (left.position === right.position && left.content < right.content)
       || left.position < right.position
     ) {
       return TransformResult.of([new InsertOperation(right.position + left.content.length, right.content)], [left]);
