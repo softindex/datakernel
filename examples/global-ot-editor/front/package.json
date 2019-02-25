@@ -5,7 +5,8 @@
   "dependencies": {
     "react": "^16.8.2",
     "react-dom": "^16.8.2",
-    "react-scripts": "2.1.5"
+    "react-scripts": "2.1.5",
+    "ot-core": "https://github.com/softindex/ot-core.git#v0.1.0"
   },
   "scripts": {
     "start": "react-scripts start",

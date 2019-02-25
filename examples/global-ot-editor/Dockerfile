@@ -20,25 +20,18 @@ RUN mvn package -Pexport -DskipTests
 
 FROM node:11-alpine as build-js
 WORKDIR /build
-ARG SSH_KEY
 
 # tool layer
-RUN apk --update add --no-cache git openssh
-
-# ssh key layer
-RUN mkdir ~/.ssh/ \
- && echo "${SSH_KEY}" > ~/.ssh/id_rsa \
- && chmod 600 ~/.ssh/id_rsa \
- && ssh-keyscan -t rsa git.adkernel.com > ~/.ssh/known_hosts
+RUN apk --update add --no-cache git
 
 # npm deps layer
 COPY front/package.json ./
-#RUN npm i
+RUN npm i
 
 # front-end layer
 COPY front/public ./public
 COPY front/src ./src
-#RUN npm run build
+RUN npm run build
 
 
 
@@ -49,7 +42,7 @@ WORKDIR /app
 COPY *.properties ./
 
 COPY --from=build-java /build/target/editor-client.jar ./
-#COPY --from=build-js /build/build ./front/build
+COPY --from=build-js /build/build ./front/build
 
 EXPOSE 8080
 
