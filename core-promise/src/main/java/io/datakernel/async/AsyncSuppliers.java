@@ -32,80 +32,59 @@ public final class AsyncSuppliers {
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> AsyncSupplier<T> resubscribe(@NotNull AsyncSupplier<? extends T> actual) {
+	public static <T> AsyncSupplier<T> subscribe(@NotNull AsyncSupplier<T> actual) {
 		return new AsyncSupplier<T>() {
-			SettablePromise<T> runningPromise;
+			boolean isRunning;
 			@Nullable
-			SettablePromise<T> subscribePromise;
+			SettablePromise<T> subscribedPromise;
 
 			@NotNull
 			@Override
 			public Promise<T> get() {
-				if (runningPromise == null) {
-					assert subscribePromise == null;
-					runningPromise = new SettablePromise<>();
-					runningPromise.whenComplete((result, e) -> {
-						runningPromise = subscribePromise;
-						if (runningPromise == null) return;
-						subscribePromise = null;
-						actual.get().async().whenComplete(runningPromise::set);
+				if (!isRunning) {
+					assert subscribedPromise == null;
+					SettablePromise<T> result = subscribedPromise = new SettablePromise<>();
+					processSubscribedPromise();
+					return result;
+				}
+				if (subscribedPromise == null) {
+					subscribedPromise = new SettablePromise<>();
+				}
+				return subscribedPromise;
+			}
+
+			private void processSubscribedPromise() {
+				while (this.subscribedPromise != null) {
+					SettablePromise<T> subscribedPromise = this.subscribedPromise;
+					this.subscribedPromise = null;
+					isRunning = true;
+					Promise<? extends T> promise = actual.get();
+					if (promise.isComplete()) {
+						promise.whenComplete(subscribedPromise::set);
+						isRunning = false;
+						continue;
+					}
+					promise.whenComplete((result, e) -> {
+						subscribedPromise.set(result, e);
+						isRunning = false;
+						processSubscribedPromise();
 					});
-					actual.get().async().whenComplete(runningPromise::set);
-					return runningPromise;
+					break;
 				}
-				if (subscribePromise == null) {
-					subscribePromise = new SettablePromise<>();
-				}
-				return subscribePromise;
 			}
 		};
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> AsyncSupplier<T> buffered(@NotNull AsyncSupplier<? extends T> actual) {
-		return buffered(1, Integer.MAX_VALUE, actual);
+	public static <T> AsyncSupplier<T> buffer(@NotNull AsyncSupplier<T> actual) {
+		return buffer(1, Integer.MAX_VALUE, actual);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> AsyncSupplier<T> buffered(int maxParallelCalls, int maxBufferedCalls, @NotNull AsyncSupplier<? extends T> actual) {
-		return new AsyncSupplier<T>() {
-			private int pendingCalls;
-			private final ArrayDeque<SettablePromise<T>> deque = new ArrayDeque<>();
-
-			@SuppressWarnings("ConstantConditions")
-			private void processQueue() {
-				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
-					SettablePromise<T> resultPromise = deque.pollFirst();
-					pendingCalls++;
-					actual.get().async().whenComplete((value, e) -> {
-						pendingCalls--;
-						processQueue();
-						resultPromise.set(value, e);
-					});
-				}
-			}
-
-			@NotNull
-			@SuppressWarnings("unchecked")
-			@Override
-			public Promise<T> get() {
-				if (pendingCalls <= maxParallelCalls) {
-					pendingCalls++;
-					return (Promise<T>) actual.get().async().whenComplete((value, e) -> {
-						pendingCalls--;
-						processQueue();
-					});
-				}
-				if (deque.size() > maxBufferedCalls) {
-					return Promise.ofException(new RejectedExecutionException());
-				}
-				SettablePromise<T> result = new SettablePromise<>();
-				deque.addLast(result);
-				return result;
-			}
-		};
+	public static <T> AsyncSupplier<T> buffer(int maxParallelCalls, int maxBufferedCalls, @NotNull AsyncSupplier<T> actual) {
+		return actual.withExecutor(AsyncExecutors.buffered(maxParallelCalls, maxBufferedCalls));
 	}
 
 	@Contract(pure = true)

@@ -1,15 +1,213 @@
-Very simple implementation (less then 100 lines of code!) of interserver stream:
+### Datastreams
+1. [Simple Supplier](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/SupplierExample.java) - 
+shows how to create a simple Supplier and stream some data to Consumer.
+2. [Simple Consumer](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/ConsumerExample.java) - 
+shows how to create a simple custom Consumer.
+3. [Custom Transformer](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/TransformerExample.java) - 
+shows how to create a custom StreamTransformer, which takes strings and transforms them to their length if it is less than MAX_LENGTH.
+4. [Builtin Stream Nodes Example](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/BuiltinStreamNodesExample.java) - 
+demonstrates some of builtin Stream possibilities, such as filtering, sharding and mapping.
+
+To run the examples in console, you should execute these lines in the appropriate folder:
+```
+$ git clone https://github.com/softindex/datakernel.git
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/datastreams
+$ mvn exec:java@SupplierExample
+$ # or
+$ mvn exec:java@ConsumerExample
+$ # or
+$ mvn exec:java@TransformerExample
+$ # or
+$ mvn exec:java@BuiltinStreamNodesExample
+```
+To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── datastreams
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── SupplierExample.java
+                                 or
+                                └── ConsumerExample.java 
+                                 or
+                                └── TransformerExample.java 
+                                 or
+                                └── BuitinStreamNodesExample.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the chosen example.
+
+If you run **SupplierExample**, you'll see the following output:
+```
+Consumer received: [0, 1, 2, 3, 4]
+```
+
+Let's have a look at the implementation:
+```java
+public static void main(String[] args) {
+	//creating an eventloop for streams operations
+	Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+	//creating a supplier of some numbers
+	StreamSupplier<Integer> supplier = StreamSupplier.of(0, 1, 2, 3, 4);
+	//creating a consumer for our supplier
+	StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+
+        //streaming supplier's numbers to consumer
+	supplier.streamTo(consumer);
+
+        //when stream completes, the streamed data is printed out
+	consumer.getResult().whenResult(result -> System.out.println("Consumer received: " + result));
+	eventloop.run();
+	}
+```
+<br>
+
+If you run **ConsumerExample**, you'll see the following output:
+```
+received: 1
+received: 2
+received: 3
+End of stream received
+```
+`ConsumerExample` extends `AbstractStreamConsumer` and just prints out received data. The stream process is managed with 
+overridden methods `onStarted()`, `onEndOfStream()` and `onError()` 
+
+<br>
+
+**TransformerExample** shows how to create a custom `StreamTransformer` which takes strings from input stream and 
+transforms them to their length if it is less than defined MAX_LENGTH. If you run the example, you'll receive the 
+following output:
+```
+[8, 9]
+```
+This is the result of transforming `StreamSupplier.of("testdata", "testdata1", "testdata1000").`
+
+<br>
+
+Finally, **BuiltinStreamNodesExample** demonstrates some simple examples of utilizing built-in datastream nodes. If you 
+run the example, you'll receive the following output:
+```
+[1 times ten = 10, 2 times ten = 20, 3 times ten = 30, 4 times ten = 40, 5 times ten = 50, 6 times ten = 60, 7 times ten = 70, 8 times ten = 80, 9 times ten = 90, 10 times ten = 100]
+third: [2, 5, 8]
+second: [1, 4, 7, 10]
+first: [3, 6, 9]
+[1, 3, 5, 7, 9]
+```
+The first line is a result of `StreamMapper`:
+```java
+private static void mapper() {
+	//creating a supplier of 10 numbers
+	StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        
+	//creating a mapper for the numbers
+	StreamMapper<Integer, String> simpleMap = StreamMapper.create(x -> x + " times ten = " + x * 10);
+        
+	//creating a consumer which converts received values to list
+	StreamConsumerToList<String> consumer = StreamConsumerToList.create();
+        
+	//applying the mapper to supplier and streaming the result to consumer
+	supplier.transformWith(simpleMap).streamTo(consumer);
+        
+	//when consumer completes receiving values, the result is printed out
+	consumer.getResult().whenResult(System.out::println);
+}
+```
+
+The next three lines of the output are results of utilizing `StreamSharder`:
+```java
+private static void sharder() {
+	
+	//creating a supplier of 10 numbers
+	StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        //creating a sharder of three parts for three consumers
+	StreamSharder<Integer> sharder = StreamSharder.create(new HashSharder<>(3));
+
+	//creating 3 consumers which convert received values to list
+	StreamConsumerToList<Integer> first = StreamConsumerToList.create();
+	StreamConsumerToList<Integer> second = StreamConsumerToList.create();
+	StreamConsumerToList<Integer> third = StreamConsumerToList.create();
+
+        //streaming supplier's numbers to sharder
+	supplier.streamTo(sharder.getInput());
+	
+        //streaming sharder's shareded supplier's numbers to consumers
+	sharder.newOutput().streamTo(first);
+	sharder.newOutput().streamTo(second);
+	sharder.newOutput().streamTo(third);
+
+
+	//when consumers complete receiving values, the result is printed out
+	first.getResult().whenResult(x -> System.out.println("first: " + x));
+	second.getResult().whenResult(x -> System.out.println("second: " + x));
+	third.getResult().whenResult(x -> System.out.println("third: " + x));
+```
+
+The last line of the output is a result of utilizing `StreamFilter`:
+```java
+private static void filter() {
+		
+	//creating a supplier of 10 numbers
+	StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+	//creating a filter which selects only odd numbers
+	StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
+
+        //creating a consumer which converts received values to list
+	StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+
+        //applying filter to supplier's numbers and streaming the result to consumer
+	supplier.transformWith(filter).streamTo(consumer);
+
+   	//when consumer completes receiving values, the result is printed out
+	consumer.getResult().whenResult(System.out::println);
+}
+```
+
+### Datasteams and CSP compatibility example
+Very simple implementation (less then 100 lines of code!) of inter-server stream:
 1. [Network Demo Server](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/NetworkDemoServer.java)
 2. [Network Demo Client](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/NetworkDemoClient.java)
 
-To run the examples, you should execute these lines in the console in appropriate folder in the order given here:
+To run the example in console, you should execute these lines in appropriate folder in the order given here:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/datastreams
-$ mvn clean compile exec:java@NetworkDemoServer
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/datastreams
+$ mvn exec:java@NetworkDemoServer
 $ # and then
-$ mvn clean compile exec:java@NetworkDemoClient
+$ mvn exec:java@NetworkDemoClient
 ```
+
+To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── datastreams
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── NetworkDemoServer.java
+                                 then
+                                └── NetworkDemoClient.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of NetworkDemoServer and NetworkDemoClient in that order.
 
 Example's stream graph is illustrated in the picture below:
 <img src="http://www.plantuml.com/plantuml/png/dPH1RiCW44Ntd694Dl72aT83LBb3J-3QqmJLPYmO9qghtBrGspME0uwwPHwVp_-2W-N2SDVKmZAPueWWtz2SqS1cB-5R0A1cnLUGhQ6gAn6KPYk3TOj65RNwGk0JDdvCy7vbl8DqrQy2UN67WaQ-aFaCCOCbghDN8ei3_s6eYV4LJgVtzE_nbetInvc1akeQInwK1y3HK42jB4jnMmRmCWzWDFTlM_V9bTIq7Kzk1ablqADWgS4JNHw7FLqXcdUOuZBrcn3RiDCCylmLjj4wCv6OZNkZBMT29CUmspc1TCHUOuNeVIJoTxT8JVlzJnRZj9ub8U_QURhB_cO1FnXF6YlT_cMTXEQ9frvSc7kI6nscdsMyWX4OTLOURIOExfRkx_e1">
@@ -65,28 +263,6 @@ public static void main(String[] args) {
 Please note that this example is very simple. Big graphs can span over numerous servers and process a lot of data in 
 various ways.
 
-Here are some other examples of creating stream nodes:
 
-1. [Simple Supplier](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/SupplierExample.java) - 
-shows how to create a simple Supplier and stream some data to Consumer.
-2. [Simple Consumer](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/ConsumerExample.java) - 
-shows how to create a simple custom Consumer.
-3. [Custom Transformer](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/TransformerExample.java) - 
-shows how to create a custom StreamTransformer, which takes strings and transforms them to their length if it is less than MAX_LENGTH.
-4. [Builtin Stream Nodes Example](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/BuiltinStreamNodesExample.java) - 
-demonstrates some of builtin Stream possibilities, such as filtering, sharding and mapping.
-
-To run the examples, you should execute these lines in the console in the appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/datastreams
-$ mvn clean compile exec:java@SupplierExample
-$ # or
-$ mvn clean compile exec:java@ConsumerExample
-$ # or
-$ mvn clean compile exec:java@TransformerExample
-$ # or
-$ mvn clean compile exec:java@BuiltinStreamNodesExample
-```
 
 

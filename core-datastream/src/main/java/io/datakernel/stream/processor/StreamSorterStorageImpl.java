@@ -158,7 +158,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 */
 	@Override
 	public Promise<Void> cleanup(List<Integer> partitionsToDelete) {
-		return Promise.ofCallable(executorService, () -> {
+		return Promise.ofBlockingCallable(executorService, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
 				Path path1 = partitionPath(partitionToDelete);
 				try {

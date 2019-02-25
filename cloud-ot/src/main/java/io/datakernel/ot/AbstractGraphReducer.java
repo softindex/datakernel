@@ -4,17 +4,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
-import static io.datakernel.ot.GraphVisitor.Status.BREAK;
-import static io.datakernel.ot.GraphVisitor.Status.CONTINUE;
+import static io.datakernel.ot.GraphReducer.*;
 import static java.util.Collections.singletonMap;
 
 public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K, D, R> {
-	private Promise<R> result;
 	private final DiffsReducer<A, D> diffsReducer;
 	private final Map<K, Map<K, A>> accumulators = new HashMap<>();
 	private final Map<K, OTCommit<K, D>> headCommits = new HashMap<>();
@@ -24,8 +19,8 @@ public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K
 	}
 
 	@Override
-	public void onStart(@NotNull Collection<OTCommit<K, D>> headCommits) {
-		for (OTCommit<K, D> headCommit : headCommits) {
+	public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
+		for (OTCommit<K, D> headCommit : queue) {
 			this.headCommits.put(headCommit.getId(), headCommit);
 			this.accumulators.put(headCommit.getId(), new HashMap<>(singletonMap(headCommit.getId(), diffsReducer.initialValue())));
 		}
@@ -37,12 +32,11 @@ public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K
 
 	@NotNull
 	@Override
-	public final Promise<Status> onCommit(@NotNull OTCommit<K, D> commit) {
+	public final Promise<R> onCommit(@NotNull OTCommit<K, D> commit) {
 		return tryGetResult(commit, accumulators, headCommits)
 				.thenCompose(maybeResult -> {
 					if (maybeResult.isPresent()) {
-						result = Promise.of(maybeResult.get());
-						return Promise.of(BREAK);
+						return Promise.of(maybeResult.get());
 					}
 
 					Map<K, A> toHeads = accumulators.remove(commit.getId());
@@ -57,13 +51,7 @@ public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K
 							parentToHeads.put(head, combinedAccumulatedDiffs);
 						}
 					}
-					return Promise.of(CONTINUE);
+					return Promise.of(resume());
 				});
-	}
-
-	@NotNull
-	@Override
-	public Promise<R> onFinish() {
-		return result != null ? result : Promise.ofException(new StacklessException(OTAlgorithms.class, "Incomplete graph"));
 	}
 }

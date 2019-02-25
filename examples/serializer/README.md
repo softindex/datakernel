@@ -1,24 +1,53 @@
 1. [Simple Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/SimpleObjectSerializationExample.java) - 
 serialization and deserialization of a simple object.
 2. [Complex Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/ComplexObjectSerializationExample.java) - 
-serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
+serialization and deserialization of a more complex object which contains nullable fields, map, list and a two-dimensional array.
 3. [Fixed Size Fields Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/FixedSizeFieldsSerializationExample.java) - 
 example of serialization and deserialization of an object with fixed size fields.
 4. [Generics And Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) - 
 example of using generics and interfaces with serializers and deserializers.
 
-To run the examples, you should execute these lines in the console in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/serializer
-$ mvn clean compile exec:java@SimpleObjectSerializationExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/serializer
+$ mvn exec:java@SimpleObjectSerializationExample
 $ # or
-$ mvn clean compile exec:java@ComplexObjectSerializationExample
+$ mvn exec:java@ComplexObjectSerializationExample
 $ # or
-$ mvn clean compile exec:java@FixedSizeFieldsSerializationExample
+$ mvn exec:java@FixedSizeFieldsSerializationExample
 $ # or
-$ mvn clean compile exec:java@GenericsAndInterfacesSerializationExample
+$ mvn exec:java@GenericsAndInterfacesSerializationExample
 ```
+
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── serializer
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── ComplexObjectSerializationExample.java
+                                 or
+                                └── FixedSizeFieldsSerializationExample.java
+                                 or
+                                └── GenericsAndInterfacesSerializationExample.java
+                                 or
+                                └── SimpleObjectSerializationExample.java
+                                
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the chosen example.
+
+
 In all of these examples method `serializeAndDeserialized()` is utilized but with different arguments and configurations.
  
 If you run the **Simple Object Serialization Example**, you'll get the following output:
@@ -30,8 +59,8 @@ abc abc
 40 40
 123 123
 ```
-The first column represents values of *test object 1*, while the second one shows values of *test object 2*, which was 
-created with the help of serialization and deserialization of the *test object 1*:
+The first column represents values of *testData1*, while the second one shows values of *testData2*, which was 
+created with the help of serialization and deserialization of the *testData1*:
 ```java
 // Create a test object
 TestDataSimple testData1 = new TestDataSimple(10, "abc");
@@ -43,8 +72,10 @@ testData1.setMultiple(40, "123");
 TestDataSimple testData2 = serializeAndDeserialize(TestDataSimple.class, testData1);
 ```
 
-The same logic is for output of other examples. **Complex Object Serialization Example** is an example of serialization 
-and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array:
+The same logic is for outputs of other examples. 
+
+**Complex Object Serialization Example** is an example of serialization and deserialization of a more complex object, 
+which contains nullable fields, map, list and a two-dimensional array:
 ```
 null null
 abc abc
@@ -68,7 +99,7 @@ If you run **Fixed Size Fields Serialization Example**, you'll get the following
 [abc, null, 123, superfluous] [abc, null, 123]
 [1, 2, 3, 4] [1, 2, 3, 4]
 ```
-As you can see in the first line, test object 2 differs from test object 1. This is because `@SerializeFixedSize` 
+As you can see in the first line, `dataObject2` differs from `dataObject1`. This is because `@SerializeFixedSize` 
 annotation  was set at value `3` for the String array. Thus, "superfluous" was removed from the array while serialization:
 
 ```java

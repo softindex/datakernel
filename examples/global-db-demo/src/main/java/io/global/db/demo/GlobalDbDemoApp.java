@@ -186,7 +186,7 @@ public final class GlobalDbDemoApp extends Launcher {
 						.thenCompose($ -> alice.upload("test_table"))
 						.thenCompose(ChannelSupplier.ofIterable(dbItems)::streamTo)
 						.whenException(Throwable::printStackTrace)
-						.whenResult($ -> System.out.println("Data items has been uploaded to database\nDownloading back..."))
+						.whenResult($ -> System.out.println("Data items have been uploaded to database\nDownloading back..."))
 						.thenCompose($ -> alice.download("test_table"))
 						.thenCompose(supplier -> supplier.streamTo(ChannelConsumer.ofConsumer(DB_ITEM_CONSUMER)))
 						.whenComplete(($, e) -> shutdown())

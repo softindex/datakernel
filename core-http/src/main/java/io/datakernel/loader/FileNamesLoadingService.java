@@ -39,7 +39,7 @@ public class FileNamesLoadingService implements EventloopService {
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		return Promise.ofCallable(executorService,
+		return Promise.ofBlockingCallable(executorService,
 				() -> {
 					Set<String> names = new HashSet<>();
 					try (Stream<Path> pathStream = Files.walk(path)) {

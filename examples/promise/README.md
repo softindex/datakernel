@@ -3,14 +3,36 @@ some basic functionality of Promises.
 2. [Async File Example](https://github.com/softindex/datakernel/blob/master/examples/promise/src/main/java/io/datakernel/examples/AsyncFileExample.java) - 
 an example of asynchronous work with a text file using Promise.
 
-To run the examples, you should execute these lines in the console in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/promise
-$ mvn clean compile exec:java@PromisesExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/promise
+$ mvn exec:java@PromisesExample
 $ # or
-$ mvn clean compile exec:java@AsyncFileExample
+$ mvn exec:java@AsyncFileExample
 ```
+
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── promise
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── AsyncFileExample.java
+                                 or
+                                └── PromisesExample.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the chosen example.
 
 If you run **Promises Example**, you'll receive the following output:
 ```
@@ -22,7 +44,7 @@ This is iteration #4
 This is iteration #5
 ```
 In this example we created a repetitive Promise which continues iterations until one of the Promises completes with an 
-exception `Promise.ofException(new Exception("Breaking the loop"))`.
+exception, in our case `Promise.ofException(new Exception("Breaking the loop"))`.
 ```java
 Promises.repeat(() -> {
 	System.out.println("This is iteration #" + ++counter);
@@ -87,8 +109,8 @@ This is test file
 This is the 3rd line in file
 ```
 
-In this example Promise's `AsyncFile` is utilized along with several methods associated with the class, such as:
+In this example Promise's `AsyncFile` (represents a file with asynchronous capabilities) is utilized, along with 
+several methods associated with the class, such as:
 * open()
 * write()
 * read()
-`AsyncFile` represents a file with asynchronous capabilities.

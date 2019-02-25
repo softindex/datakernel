@@ -1,23 +1,47 @@
-1. [ByteBuf Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufExample) - 
+1. [ByteBuf Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufExample.java) - 
 represents some basic ByteBuf possibilities, such as: 
     * wrapping data in ByteBuf for writing/reading, 
     * slicing particular parts out of data,
     * conversions.
-2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample) - 
+2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample.java) - 
 represents how to work with ByteBufPool.
-3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample) - 
+3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample.java) - 
 shows how queues of ByteBufs are created and processed.
 
-To run the examples, you should execute these three lines in the console in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/bytebuf
-$ mvn clean compile exec:java@ByteBufExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/bytebuf
+$ mvn exec:java@ByteBufExample
 $ # or
-$ mvn clean compile exec:java@ByteBufPoolExample
+$ mvn exec:java@ByteBufPoolExample
 $ # or
-$ mvn clean compile exec:java@ByteBufQueueExample
+$ mvn exec:java@ByteBufQueueExample
 ```
+
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── bytebuf
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── ByteBufExample.java
+                                 or
+                                └── ByteBufPoolExample.java
+                                 or
+                                └── ByteBufQueueExample.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the chosen example.
 
 If you run the **ByteBuf Example**, you'll receive the following output:
 

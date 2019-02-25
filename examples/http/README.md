@@ -11,26 +11,74 @@ an example of processing requests with parameter.
 6. [Static Servlet Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/StaticServletExample.java) - 
 an example of `StaticServlet` utilizing.
 
-To run the examples, you should execute these lines in the console in appropriate folder:
+To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/http
-$ mvn clean compile exec:java@HttpServerExample
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/http
+$ mvn exec:java@HttpServerExample
 $ # or
-$ mvn clean compile exec:java@HttpMultithreadedServerExample
+$ mvn exec:java@HttpMultithreadedServerExample
 $ # or
-$ mvn clean compile exec:java@MiddlewareServletExample
+$ mvn exec:java@MiddlewareServletExample
 $ # or
-$ mvn clean compile exec:java@RequestParametrExample
+$ mvn exec:java@RequestParametrExample
 $ # or
-$ mvn clean compile exec:java@StaticServletExample
-```
-To check how **HTTP Server Example** or **HTTP Multithreaded Server Example** works, you should start your client:
-```
-$ mvn clean compile exec:java@HttpClientExample
+$ mvn exec:java@StaticServletExample
 ```
 
-If you connected to the multithreaded server, you'll receive a message representing which worker processed your request:
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── http
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── HttpServerExample.java
+                                 or
+                                └── HttpMultithreadedServerExample.java
+                                 or
+                                └── MiddlewareServletExample.java                                 
+                                 or
+                                └── RequestParametrExample.java                                 
+                                 or
+                                └── StaticServletExample.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the chosen example.
+
+To check how **HTTP Server Example** or **HTTP Multithreaded Server Example** works, you should start your client 
+either in console:
+```
+$ mvn exec:java@HttpClientExample
+```
+or in an IDE:
+```
+datakernel
+└── examples
+    └── http
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── HttpClientExample.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the chosen example.
+
+
+If you connect to the multithreaded server, you'll receive a message representing which worker processed your request:
 ```
 "Hello from worker server #..." 
 ```
@@ -56,4 +104,3 @@ utilized with `postParameters.get()`.
 
 **Static Servlet Example** shows how to set up and utilize `StaticServlet`. Method `StaticServlet.create()` returns a 
 new `StaticServlet`. 
-

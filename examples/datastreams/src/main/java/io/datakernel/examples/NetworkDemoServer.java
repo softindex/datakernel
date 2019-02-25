@@ -34,8 +34,8 @@ import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 
 /**
- * Demonstrates server ("Server #2" from the picture) which receives some data from clients
- * computes it somehow and sends back the result.
+ * Demonstrates server ("Server #2" from the picture) which receives some data from clients,
+ * computes it in a certain way and sends back the result.
  */
 public final class NetworkDemoServer {
 

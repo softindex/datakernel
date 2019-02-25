@@ -52,6 +52,7 @@ import java.util.stream.Collectors;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.stream.StreamSupplierTransformer.identity;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
@@ -77,7 +78,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
-	private final AggregationChunkStorage aggregationChunkStorage;
+	private final AggregationChunkStorage<Object> aggregationChunkStorage;
 	private Path temporarySortDir;
 
 	private final AggregationStructure structure;
@@ -225,7 +226,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	public <T, C, K extends Comparable> Promise<AggregationDiff> consume(StreamSupplier<T> supplier,
 			Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
-		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
+		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(),
+				getMeasureTypes().keySet()));
 
 		logger.info("Started consuming data in aggregation {}. Keys: {} Measures: {}", this, keyFields.keySet(), measureFields.keySet());
 
@@ -319,7 +321,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		List<String> measures = getMeasures().stream().filter(chunkFields::contains).collect(toList());
 		Class<Object> resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
-		StreamSupplier<Object> consolidatedSupplier = consolidatedSupplier(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(), chunksToConsolidate, classLoader);
+		StreamSupplier<Object> consolidatedSupplier = consolidatedSupplier(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(),
+				chunksToConsolidate, classLoader);
 		AggregationChunker chunker = AggregationChunker.create(
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
@@ -473,13 +476,12 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 
 	private <T> StreamSupplier<T> chunkReaderWithFilter(AggregationPredicate where, AggregationChunk chunk,
 			Class<T> chunkRecordClass, DefiningClassLoader queryClassLoader) {
-		StreamSupplier<T> supplier = aggregationChunkStorage.readStream(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader);
-		if (where != AggregationPredicates.alwaysTrue()) {
-			return supplier
-					.transformWith(StreamFilter.create(
-							createPredicate(chunkRecordClass, where, queryClassLoader)));
-		}
-		return supplier;
+		return StreamSupplier.ofPromise(
+				aggregationChunkStorage.read(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader))
+				.transformWith(where != AggregationPredicates.alwaysTrue() ?
+						StreamFilter.create(
+								createPredicate(chunkRecordClass, where, queryClassLoader)) :
+						identity());
 	}
 
 	private <T> Predicate<T> createPredicate(Class<T> chunkRecordClass,

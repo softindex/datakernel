@@ -11,7 +11,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.exceptions.OTException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,18 +20,18 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.async.Promises.toList;
-import static io.datakernel.ot.GraphVisitor.Status.*;
+import static io.datakernel.ot.GraphReducer.resume;
+import static io.datakernel.ot.GraphReducer.skip;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.util.Collections.reverseOrder;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
+	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
@@ -79,65 +78,45 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return OTNodeImpl.create(this, commitToObject, objectToCommit);
 	}
 
-	public Promise<Void> visit(Set<K> heads, GraphVisitor<K, D> visitor) {
-		return reduce(heads, new GraphReducer<K, D, Void>() {
-			@Override
-			public void onStart(@NotNull Collection<OTCommit<K, D>> heads) {
-				visitor.onStart(heads);
-			}
-
-			@NotNull
-			@Override
-			public Promise<Status> onCommit(@NotNull OTCommit<K, D> commit) {
-				return visitor.onCommit(commit);
-			}
-
-			@NotNull
-			@Override
-			public Promise<Void> onFinish() {
-				return Promise.of(null);
-			}
-		});
-	}
-
 	public <R> Promise<R> reduce(Set<K> heads, GraphReducer<K, D, R> reducer) {
 		return toList(heads.stream().map(repository::loadCommit))
 				.thenCompose(headCommits -> {
-					reducer.onStart(headCommits);
 					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
 					queue.addAll(headCommits);
+					reducer.onStart(unmodifiableCollection(queue));
 					return Promise.ofCallback(cb -> walkGraphImpl(reducer, queue, new HashSet<>(heads), cb));
 				});
 	}
 
 	private <R> void walkGraphImpl(GraphReducer<K, D, R> reducer, PriorityQueue<OTCommit<K, D>> queue,
 			Set<K> visited, SettablePromise<R> cb) {
-		if (queue.isEmpty()) {
-			reducer.onFinish()
-					.whenComplete(cb::set);
+		OTCommit<K, D> commit = queue.peek();
+		if (commit == null) {
+			cb.setException(GRAPH_EXHAUSTED);
 			return;
 		}
-		OTCommit<K, D> commit = queue.poll();
 		reducer.onCommit(commit)
-				.whenResult(status -> {
-					if (status == BREAK) {
-						reducer.onFinish()
-								.whenComplete(cb::set);
-					} else if (status == CONTINUE) {
+				.whenResult(maybeResult -> {
+					OTCommit<K, D> polledCommit = queue.poll();
+					assert polledCommit == commit;
+					if (maybeResult == resume()) {
 						toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
 								.whenResult(parentCommits -> {
 									queue.addAll(parentCommits);
 									walkGraphImpl(reducer, queue, visited, cb);
 								})
 								.whenException(cb::setException);
-					} else if (status == SKIP_COMMIT) {
+					} else if (maybeResult == skip()) {
 						walkGraphImpl(reducer, queue, visited, cb);
+					} else {
+						cb.set(maybeResult);
 					}
 				})
 				.whenException(cb::setException);
 	}
 
 	public static final class FindResult<K, A> {
+		@NotNull
 		private final K commit;
 		private final Set<K> commitParents;
 		private final long commitLevel;
@@ -145,7 +124,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		private final long childLevel;
 		private final A accumulatedDiffs;
 
-		private FindResult(@Nullable K commit, Set<K> commitParents, long commitLevel, K child, long childLevel, A accumulatedDiffs) {
+		private FindResult(@NotNull K commit, Set<K> commitParents, long commitLevel, K child, long childLevel, A accumulatedDiffs) {
 			this.commit = commit;
 			this.commitParents = commitParents;
 			this.commitLevel = commitLevel;
@@ -154,6 +133,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			this.accumulatedDiffs = accumulatedDiffs;
 		}
 
+		@NotNull
 		public K getCommit() {
 			return commit;
 		}
@@ -163,7 +143,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		public Long getChildLevel() {
-			return checkNotNull(childLevel);
+			return childLevel;
 		}
 
 		public Set<K> getCommitParents() {
@@ -171,7 +151,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		public long getCommitLevel() {
-			return checkNotNull(commitLevel);
+			return commitLevel;
 		}
 
 		public A getAccumulatedDiffs() {
@@ -247,35 +227,25 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public Promise<Set<K>> findCut(Set<K> startNodes,
-			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
-		return toList(startNodes.stream().map(repository::loadCommit))
-				.thenCompose(commits -> {
-					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
-					queue.addAll(commits);
-					return findCutImpl(queue, new HashSet<>(startNodes), matchPredicate);
+			Predicate<Collection<OTCommit<K, D>>> matchPredicate) {
+		return reduce(startNodes,
+				new GraphReducer<K, D, Set<K>>() {
+					private Collection<OTCommit<K, D>> queue;
+
+					@Override
+					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
+						this.queue = queue;
+					}
+
+					@Override
+					public @NotNull Promise<Set<K>> onCommit(@NotNull OTCommit<K, D> commit) {
+						if (matchPredicate.test(queue)) {
+							return Promise.of(queue.stream().map(OTCommit::getId).collect(toSet()));
+						}
+						return Promise.of(resume());
+					}
 				})
 				.whenComplete(findCut.recordStats());
-	}
-
-	private Promise<Set<K>> findCutImpl(PriorityQueue<OTCommit<K, D>> queue, Set<K> visited,
-			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
-		if (queue.isEmpty()) {
-			return Promise.ofException(new NoSuchElementException());
-		}
-
-		Set<OTCommit<K, D>> commits = new HashSet<>(queue);
-		if (matchPredicate.test(commits)) {
-			return Promise.of(commits.stream().map(OTCommit::getId).collect(toSet()));
-		}
-
-		OTCommit<K, D> commit = queue.poll();
-		assert commit != null;
-		return toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
-				.async()
-				.thenCompose(parentCommits -> {
-					queue.addAll(parentCommits);
-					return findCutImpl(queue, visited, matchPredicate);
-				});
 	}
 
 	public Promise<K> findAnyCommonParent(Set<K> startCut) {
@@ -306,30 +276,22 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		if (startNodes.size() == 1) return Promise.of(startNodes);
 		return reduce(startNodes,
 				new GraphReducer<K, D, Set<K>>() {
-					Promise<Set<K>> result;
 					long minLevel;
 					Set<K> nodes = new HashSet<>(startNodes);
 
 					@Override
-					public void onStart(@NotNull Collection<OTCommit<K, D>> heads) {
-						minLevel = heads.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
+					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
+						minLevel = queue.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
 					}
 
 					@NotNull
 					@Override
-					public Promise<Status> onCommit(@NotNull OTCommit<K, D> commit) {
+					public Promise<Set<K>> onCommit(@NotNull OTCommit<K, D> commit) {
 						nodes.removeAll(commit.getParentIds());
 						if (commit.getLevel() <= minLevel) {
-							result = Promise.of(nodes);
-							return Promise.of(BREAK);
+							return Promise.of(nodes);
 						}
-						return Promise.of(CONTINUE);
-					}
-
-					@NotNull
-					@Override
-					public Promise<Set<K>> onFinish() {
-						return result != null ? result : Promise.ofException(new StacklessException(OTAlgorithms.class, "Incomplete graph"));
+						return Promise.of(resume());
 					}
 				})
 				.whenComplete(toLogger(logger, thisMethod(), startNodes));
@@ -442,23 +404,21 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private class LoadGraphReducer implements GraphReducer<K, D, OTLoadedGraph<K, D>> {
-		private Promise<OTLoadedGraph<K, D>> result;
 		private final OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(otSystem);
 		private final Map<K, Set<K>> head2roots = new HashMap<>();
 		private final Map<K, Set<K>> root2heads = new HashMap<>();
 
 		@Override
-		public void onStart(@NotNull Collection<OTCommit<K, D>> headCommits) {
-			for (OTCommit<K, D> headCommit : headCommits) {
+		public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
+			for (OTCommit<K, D> headCommit : queue) {
 				K head = headCommit.getId();
 				head2roots.put(head, set(head));
 				root2heads.put(head, set(head));
 			}
 		}
 
-		@NotNull
 		@Override
-		public Promise<Status> onCommit(@NotNull OTCommit<K, D> commit) {
+		public @NotNull Promise<OTLoadedGraph<K, D>> onCommit(@NotNull OTCommit<K, D> commit) {
 			K node = commit.getId();
 			Map<K, List<D>> parents = commit.getParents();
 
@@ -481,16 +441,9 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			if (head2roots.keySet()
 					.stream()
 					.anyMatch(head -> head2roots.get(head).equals(root2heads.keySet()))) {
-				result = Promise.of(graph);
-				return Promise.of(BREAK);
+				return Promise.of(graph);
 			}
-			return Promise.of(CONTINUE);
-		}
-
-		@NotNull
-		@Override
-		public Promise<OTLoadedGraph<K, D>> onFinish() {
-			return result != null ? result : Promise.ofException(new StacklessException(OTAlgorithms.class, "Incomplete graph"));
+			return Promise.of(resume());
 		}
 	}
 
@@ -500,13 +453,17 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads, OTLoadedGraph<K, D> graph) {
-		return visit(heads,
+		return reduce(heads,
 				commit -> {
 					if (graph.hasVisited(commit.getId())) {
-						return Promise.of(SKIP_COMMIT);
+						return Promise.of(skip());
 					}
 					graph.addNode(commit);
-					return commit.isRoot() ? Promise.of(BREAK) : Promise.of(CONTINUE);
+					return Promise.of(resume());
+				})
+				.thenComposeEx((v, e) -> {
+					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
+					return Promise.of(v, e);
 				})
 				.thenApply($ -> graph)
 				.whenComplete(toLogger(logger, thisMethod(), heads, graph));

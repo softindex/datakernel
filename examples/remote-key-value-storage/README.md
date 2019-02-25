@@ -3,7 +3,7 @@ In this guide we will create a remote key-value storage using [RPC module](https
 App will have 2 basic operations: "put" and "get".
 
 ## Introduction
-During writing distributed application the common concern is what protocol to use for communication. There are two main 
+When writing distributed application the common concern is what protocol to use for communication. There are two main 
 options:
 
 * HTTP/REST
@@ -36,8 +36,11 @@ fast serialzers and custom optimized communication protocol, which allows to gre
 To download the complete example, enter next commands:
 ```
 $ git clone https://github.com/softindex/datakernel
-$ cd datakernel/examples/remote-key-value-storage
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/remote-key-value-storage
 ```
+Or if you prefer working in IDE, clone DataKernel locally and import Maven projects.
 
 Then, go to [testing](#testing) section.
 
@@ -416,17 +419,53 @@ $ mvn clean package
 ```
 ## Testing
 
-Firstly, launch server:
+Firstly, launch server.
+In console:
 ```
-$ mvn clean compile exec:java@RpcServerLauncher
+$ mvn exec:java@RpcServerLauncher
 ```
+In IDE:
+```
+datakernel
+└── examples
+    └── remote-key-value-storage
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── RpcServerLauncher.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Then run `main()` of the example.
 
-Then make a "put" request:
+Then make a "put" request.
 
+In console:
 ```
-$ mvn clean compile exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
+$ mvn exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
 ```
-
+In an IDE:
+To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── remote-key-value-storage
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └──RpcClientLauncher.java
+```
+and set up program arguments. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Program arguments -> 
+--put key1 value1||`.
+Then run `main()` of the client launcher.
 You should see the following output:
 
 ```
@@ -434,12 +473,30 @@ put request was made successfully
 previous value: null
 ```
 
-Finally, make a "get" request:
+Finally, make a "get" request.
 
+In console:
 ```
-$ mvn clean compile exec:java@RpcClientLauncher -Dexec.args="--get key1"
+$ mvn exec:java@RpcClientLauncher -Dexec.args="--get key1"
+```
 
+In an IDE:
 ```
+datakernel
+└── examples
+    └── remote-key-value-storage
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └──RpcClientLauncher.java
+```
+and set up program arguments. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Program arguments -> 
+--get key1||`.
+Then run `main()` of the client launcher.
 
 You should see the following output:
 
@@ -447,3 +504,5 @@ You should see the following output:
 get request was made successfully
 value: value1
 ```
+
+Congratulations, you've just created a remote key-value storage with RPC communication protocol!

@@ -145,7 +145,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	public Promise<Long> createCommitId() {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(true);
@@ -182,7 +182,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@Override
 	public Promise<Void> push(Collection<OTCommit<Long, D>> commits) {
 		if (commits.isEmpty()) return Promise.complete();
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
@@ -246,7 +246,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<Set<Long>> getHeads() {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement ps = connection.prepareStatement(
@@ -267,7 +267,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<Optional<List<D>>> loadSnapshot(Long revisionId) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement ps = connection.prepareStatement(
@@ -289,7 +289,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<OTCommit<Long, D>> loadCommit(Long revisionId) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						Map<Long, List<D>> parentDiffs = new HashMap<>();
@@ -338,7 +338,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<Void> saveSnapshot(Long revisionId, List<D> diffs) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						String snapshot = toJson(otSystem.squash(diffs));
@@ -359,7 +359,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<Void> cleanup(Long minId) {
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
@@ -388,7 +388,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@Override
 	public Promise<Void> backup(OTCommit<Long, D> commit, List<D> snapshot) {
 		checkNotNull(tableBackup, "Cannot backup when backup table is null");
-		return Promise.ofCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement statement = connection.prepareStatement(

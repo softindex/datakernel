@@ -261,7 +261,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		while (true) {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
-			Promise.ofRunnable(executor, task)
+			Promise.ofBlockingRunnable(executor, task)
 					.whenResult($ -> {
 						if (!isOpen()) return;
 						try {

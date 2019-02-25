@@ -2,13 +2,22 @@
 In this guide we will create simple but scalable "Hello World" HTTP server.
 
 ## Introduction
-DataKernel uses event-driven programming model. The key component of Datakernel Framework is Eventloop which polls various sources of events and calls corresponding event handlers without blocking the main thread. Eventloop is based on Asynchronous I/O (Java NIO) and runs in single thread, which allows to significantly improve performance and avoid common multithreading concerns, such as synchronization, race conditions, etc.
+DataKernel uses event-driven programming model. The key component of Datakernel Framework is Eventloop which polls 
+various sources of events and calls corresponding event handlers without blocking the main thread. Eventloop is based 
+on Asynchronous I/O (Java NIO) and runs in single thread, which allows to significantly improve performance and avoid 
+common multithreading concerns, such as synchronization, race conditions, etc.
 
-Most Datakernel modules, including HTTP, are based on Eventloop. Since Eventloop is single-threaded, we cannot use all capacities of modern multi-core processors if we run only one HTTP-server/Eventloop. If we want to load all cores of processor, we should use worker servers and load-balancer to distribute requests between those servers.
+Most Datakernel modules, including HTTP, are based on Eventloop. Since Eventloop is single-threaded, we cannot use all 
+capacities of modern multi-core processors if we run only one HTTP-server/Eventloop. If we want to load all cores of 
+processor, we should use worker servers and load-balancer to distribute requests between those servers.
 
-In this tutorial we will build architecture which is suitable for 4-core processors.
+In this tutorial we will build architecture which is suitable for 4-core processors:
 
-Actually, it's not a simple task to implement load balancer, worker servers and run them properly. But there are good news: Boot module already supports worker pools, so we can easily write down HTTP-server with similar architecture in a few lines of code.
+<img src="http://datakernel.io/static/images/http-helloworld-architecture.png">
+
+Actually, it's not a simple task to implement load balancer, worker servers and run them properly. But there are good 
+news: Boot module already supports worker pools, so we can easily write down HTTP-server with similar architecture in a 
+few lines of code.
 
 ## What you will need:
 
@@ -28,12 +37,32 @@ Actually, it's not a simple task to implement load balancer, worker servers and 
 
 ## 1. Working Example
 
-To run the complete example, enter next commands:
+If you want to run the complete example in console, enter next commands:
 ```
 $ git clone https://github.com/softindex/datakernel
-$ cd datakernel/examples/http-helloworld
-$ mvn clean complile exec:java@HttpHelloWorldLauncher
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/http-helloworld
+$ mvn exec:java@HttpHelloWorldLauncher
 ```
+
+To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
+```
+datakernel
+└── examples
+    └── http-helloworld
+        └── src
+            └── main
+                └── java
+                    └── io
+                        └── datakernel
+                            └── examples
+                                └── HttpHelloWorldLauncher.java
+```
+and set up working directory properly. For IntelliJ IDEA:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+Run `main()` of the launcher.
 
 Then, go to [testing](#testing) section.
 
@@ -55,7 +84,9 @@ http-helloworld
                         └── SimpleServlet.java
 ```
 
-Next, configure your pom.xml file. We will need the following dependencies: datakernel-http, datakernel-boot and some logger (Note: we don't need to specify eventloop, because it is already a transitive dependency of both datakernel-boot and datakernel-http modules). So your pom.xml should look as follows:
+Next, configure your pom.xml file. We will need the following dependencies: datakernel-http, datakernel-boot and some 
+logger (Note: we don't need to specify datakernel-eventloop, because it is already a transitive dependency of both 
+datakernel-boot and datakernel-http modules). So your pom.xml should look as follows:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -120,7 +151,7 @@ Next, configure your pom.xml file. We will need the following dependencies: data
 </project>
 ```
 
-Write down a SimpleServlet which will return the web-page with appropriate content
+Write down a SimpleServlet which will return the web-page that shows a worker id and a response message:
 ```java
 public class SimpleServlet implements AsyncServlet {
 	//an identifier for worker
@@ -142,24 +173,26 @@ public class SimpleServlet implements AsyncServlet {
 }
 ```
 
-Let's now consider a Boot Module that will enable us to easily implement multi-worker HTTP-server.
+Let's now consider Boot module which enables us to easily implement multi-worker HTTP-server.
 
-Boot module consists of three main parts:
+Boot module includes three main parts:
 
-* Service Graph
-* Configs
-* Launcher
+* **Service Graph**
+* **Configs**
+* **Launcher**
 
-Service Graph uses dependency tree, built by Google Guice to run services in a proper order. Service Graph considers all 
-dependencies from Guice, determines which of them can be treated as services and then starts those services in a proper way. You just need to extend AbstractModule and write down the dependencies of your app, Service Graph will do the rest of work for you.
+**Service Graph** uses dependency tree built by Google Guice to run services in a proper order. Service Graph considers all 
+dependencies from Guice, determines which of them can be treated as services and then starts those services in a proper 
+way. You just need to extend AbstractModule and write down the dependencies of your app, Service Graph will do the rest 
+of work.
 
-Configs are a useful extension for properties file. Main features:
+**Configs** are a useful extension for properties file. Main features:
 
 * using a set of standard converters
 * specifying default value for property
 * saving all properties that were used into file
 
-A typical usage of configs looks as this:
+A typical usage of configs looks like this:
 
 ```java
 int port = config.get(ofInteger(), "port", 5577);
@@ -168,7 +201,7 @@ int port = config.get(ofInteger(), "port", 5577);
 
 where `ofInteger()` is a converter, `port` is a property key and `5577` is a default value.
 
-So let's extend SimpleModule and write down all the dependencies needed for multi-worker HTTP-server:
+So let's extend AbstractModule and write down all the dependencies needed for multi-worker HTTP-server:
 ```java
 public class HttpHelloWorldModule extends AbstractModule {
 	@Provides
@@ -208,14 +241,14 @@ public class HttpHelloWorldModule extends AbstractModule {
 }
 ```
 
-Add configs to configs.properties:
+Now add configs to configs.properties:
 ```properties
 port=5577
-workers=2
+workers=4
 message=Hello from config!
 ```
 
-The last but not least part of Boot Module is Launcher.
+The last but not least part of Boot Module is **Launcher**.
 
 Launcher integrates all components together and manages application lifecycle, which consist of the following phases:
 
@@ -224,7 +257,11 @@ Launcher integrates all components together and manages application lifecycle, w
 * run
 * stop (stopping services, mostly done by Service Graph)
 
-We should extend Launcher, pass Promise and Guice modules as arguments to superclass constructor and override method run() to finish our HTTP-server. In run() we will call awaitShutdown() to enable application stop properly after interruption is made (similarly to Ctrl+C in unix-like systems).
+We should extend Launcher and override several method:
+* getModules() - supplies all the needed modules for our application, including our HttpHelloWorldModule
+* onStart() - this method is executed when application starts running and loads port configs
+* run() - prints some introductory messages, then awaitShutdown() method is called to enable application stop properly 
+after interruption is made (for example, Ctrl+C in unix-like systems).
 
 ```java
 public class HttpHelloWorldLauncher extends Launcher {
@@ -261,10 +298,12 @@ public class HttpHelloWorldLauncher extends Launcher {
 }
 ```
 
-Congratulations! We've just created a simple HTTP-server. Enter the command below to compile and run it:
+Congratulations! You've just created a simple HTTP-server. Enter the command below to compile and run it:
 ```
 $ mvn clean compile exec:java@HttpHelloWorldLauncher
 ```
+Or if you use an IDE, simply run `HttpHelloWorldLauncher.main()`.
+
 You will see the following output:
 ```
 "Server is running"
@@ -284,4 +323,4 @@ You should see content like this:
 ```
 "Worker #0. Message: Hello from config!"
 ```
-If you make this HTTP request several times, worker id will be different, which means load-balancing perfectly works.
+If you make this HTTP request several times, worker id will be different, which means load-balancing is working.

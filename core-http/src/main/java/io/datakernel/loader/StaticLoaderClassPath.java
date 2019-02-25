@@ -31,7 +31,7 @@ class StaticLoaderClassPath implements StaticLoader {
 			return Promise.ofException(HttpException.notFound404());
 		}
 
-	    return Promise.ofCallable(executorService, () -> ByteBuf.wrapForReading(loadResource(file)))
+	    return Promise.ofBlockingCallable(executorService, () -> ByteBuf.wrapForReading(loadResource(file)))
                 .thenComposeEx((buf, e) ->
 		                Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
     }

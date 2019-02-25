@@ -26,7 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Poor implementation of echo server at is looping infinitely while trying to data from socket
+ * Poor implementation of echo server that is looping infinitely while trying to receive data from socket
  */
 public class BusyWaitEventloopEchoServer {
 	public static final InetSocketAddress ADDRESS = new InetSocketAddress(22233);

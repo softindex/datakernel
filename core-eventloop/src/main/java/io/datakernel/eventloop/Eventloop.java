@@ -45,9 +45,7 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -108,6 +106,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private final AtomicInteger externalTasksCount = new AtomicInteger(0);
 
+	private int loop;
+	private int tick;
+
+	/**
+	 * Current time, cached to avoid System.currentTimeMillis() system calls, and to facilitate unit testing.
+	 * It is being refreshed with each event loop execution.
+	 */
+	private long timestamp;
+
 	@NotNull
 	private final CurrentTimeProvider timeProvider;
 
@@ -117,7 +124,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@Nullable
 	private Selector selector;
 
+	@Nullable
 	private SelectorProvider selectorProvider;
+
+	public static final ExecutorService DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
+
+	@NotNull
+	private ExecutorService defaultExecutor = DEFAULT_EXECUTOR;
 
 	/**
 	 * The thread where eventloop is running.
@@ -133,19 +146,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private String threadName;
 	private int threadPriority;
 
+	@Nullable
 	private FatalErrorHandler fatalErrorHandler;
 
 	private volatile boolean keepAlive;
 	private volatile boolean breakEventloop;
-
-	private int loop;
-	private int tick;
-
-	/**
-	 * Current time, cached to avoid System.currentTimeMillis() system calls, and to facilitate unit testing.
-	 * It is being refreshed with each event loop execution.
-	 */
-	private long timestamp;
 
 	private Duration idleInterval = DEFAULT_IDLE_INTERVAL;
 
@@ -173,12 +178,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return create(CurrentTimeProviderSystem.instance());
 	}
 
-	public static Eventloop create(CurrentTimeProvider currentTimeProvider) {
+	public static Eventloop create(@NotNull CurrentTimeProvider currentTimeProvider) {
 		return new Eventloop(currentTimeProvider);
 	}
 
 	@NotNull
-	public Eventloop withThreadName(String threadName) {
+	public Eventloop withThreadName(@Nullable String threadName) {
 		this.threadName = threadName;
 		return this;
 	}
@@ -191,25 +196,31 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@NotNull
-	public Eventloop withInspector(EventloopInspector inspector) {
+	public Eventloop withExecutor(@NotNull ExecutorService executor) {
+		this.defaultExecutor = executor;
+		return this;
+	}
+
+	@NotNull
+	public Eventloop withInspector(@Nullable EventloopInspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
 
 	@NotNull
-	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
+	public Eventloop withFatalErrorHandler(@Nullable FatalErrorHandler fatalErrorHandler) {
 		this.fatalErrorHandler = fatalErrorHandler;
 		return this;
 	}
 
 	@NotNull
-	public Eventloop withSelectorProvider(SelectorProvider selectorProvider) {
+	public Eventloop withSelectorProvider(@Nullable SelectorProvider selectorProvider) {
 		this.selectorProvider = selectorProvider;
 		return this;
 	}
 
 	@NotNull
-	public Eventloop withIdleInterval(Duration idleInterval) {
+	public Eventloop withIdleInterval(@NotNull Duration idleInterval) {
 		this.idleInterval = idleInterval;
 		return this;
 	}
@@ -222,7 +233,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// endregion
 
-	@SuppressWarnings("WeakerAccess")
 	@Nullable
 	public Selector getSelector() {
 		return selector;
@@ -240,6 +250,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		Eventloop eventloop = CURRENT_EVENTLOOP.get();
 		if (eventloop != null) return eventloop;
 		throw new IllegalStateException(NO_CURRENT_EVENTLOOP_ERROR);
+	}
+
+	@NotNull
+	public ExecutorService getDefaultExecutor() {
+		return defaultExecutor;
 	}
 
 	private void openSelector() {

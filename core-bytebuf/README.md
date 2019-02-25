@@ -19,6 +19,9 @@ read it. ByteBuf also has `slice()` operation and inner ref counts.
 Allows to reuse ByteBufs, and as a result reduces Java Garbage Collector load. To make utilizing of ByteBufPool more 
 convenient, there are debugging and monitoring tools for allocated ByteBufs, including their stack traces.
 
+To get a ByteBuf from the pool, use `BytebufPool.allocate(int size)`. A buffer of rounded up to the nearest power of 2 
+size will be allocated (e.g. if `size` is 29, a ByteBuf of 32 bytes will be allocated).
+
 To return ByteBuf to the ByteBufPool, use `ByteBuf.recycle()`. This recycle is recommended but not required - if you 
 forget to do so, you will only give Garbage Collector a little more work to do. 
 

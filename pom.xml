@@ -27,6 +27,7 @@
 		<module>core-serializer</module>
 		<module>core-codec</module>
 		<module>core-promise</module>
+		<module>core-async-await</module>
 		<module>core-csp</module>
 		<module>core-net</module>
 		<module>core-datastream</module>

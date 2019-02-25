@@ -43,7 +43,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.resubscribe;
+import static io.datakernel.async.AsyncSuppliers.subscribe;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.firstSuccessful;
@@ -723,7 +723,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			private final AsyncSupplier<Void> updateHeads = reuse(this::doUpdateHeads);
 			private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
 			private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
-			private final AsyncSupplier<Void> filterHeads = resubscribe(this::doFilterHeads);
+			private final AsyncSupplier<Void> filterHeads = subscribe(this::doFilterHeads);
 			private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
 			private final AsyncSupplier<Void> push = reuse(this::doPush);
 			private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);

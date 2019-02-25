@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.cube.Utils.chunksInDiffs;
+import static io.datakernel.ot.OTAlgorithms.GRAPH_EXHAUSTED;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -111,6 +112,10 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 				.thenCompose(algorithms::excludeParents)
 				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentInstant().minus(freezeTimeout)))
 				.thenCompose(this::cleanupFrozenCut)
+				.thenComposeEx((v, e) -> {
+					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
+					return Promise.of(v, e);
+				})
 				.whenComplete(promiseCleanup.recordStats())
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
@@ -167,11 +172,9 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	private void doFindSnapshot(Set<K> heads, int skipSnapshots, SettablePromise<Optional<K>> cb) {
 		algorithms.findParent(heads, DiffsReducer.toVoid(),
-				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
-						Promise.of(false) :
-						commit.getSnapshotHint() == Boolean.TRUE ?
-								Promise.of(true) :
-								repository.hasSnapshot(commit.getId()))
+				commit -> commit.getSnapshotHint() != null ?
+						Promise.of(commit.getSnapshotHint()) :
+						repository.hasSnapshot(commit.getId()))
 				.whenResult(findResult -> {
 					if (skipSnapshots <= 0) {
 						cb.set(Optional.of(findResult.getCommit()));

@@ -71,7 +71,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 						.thenApply(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
 								fetchData.getLevel(),
-								concat(checkoutData.getDiffs(), fetchData.getDiffs())
+								algorithms.getOtSystem().squash(concat(checkoutData.getDiffs(), fetchData.getDiffs()))
 						))
 				)
 				.whenComplete(toLogger(logger, thisMethod()));
@@ -89,7 +89,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 				.thenApply(findResult -> new FetchData<>(
 						findResult.getChild(),
 						findResult.getChildLevel(),
-						findResult.getAccumulatedDiffs()
+						algorithms.getOtSystem().squash(findResult.getAccumulatedDiffs())
 				))
 				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}

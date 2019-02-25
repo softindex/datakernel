@@ -39,8 +39,8 @@ In order to optimise `Promise`s, there are several implementations of `Promise` 
 * `Promise` - root interface which represents *Promises* behaviour.
 * `AbstractPromise`, `NextPromise` - helper classes which enable creating chains of stateless *Promises*. You can treat 
 these chains as pipes which pass values through, but don't store them. 
-* `MaterializedPromise` - an interface which has `getResult()` and `getException()` methods. This allows to materialize 
-intermediate stateless `Promise`s and get their values.
+* `MaterializedPromise` - an interface which has `getResult()` and `getException()` methods and a special container for 
+result. This allows to materialize intermediate stateless `Promise`s and get their values when they will be completed.
 * `SettablePromise` - a class which can be used as a root for chain of `Promise`s. Allows to wrap operations in `Promise`s, 
 can be completed manually.
 * `CompleteExceptionallyPromise` - a `Promise` which was completed with an Exception.
