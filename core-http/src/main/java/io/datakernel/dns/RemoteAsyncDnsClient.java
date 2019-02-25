@@ -52,6 +52,7 @@ import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
 
+	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
 	private static final int DNS_SERVER_PORT = 53;
 	public static final InetSocketAddress GOOGLE_PUBLIC_DNS = new InetSocketAddress("8.8.8.8", DNS_SERVER_PORT);
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress("192.168.0.1", DNS_SERVER_PORT);
@@ -61,7 +62,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 
 	private DatagramSocketSettings datagramSocketSettings = DatagramSocketSettings.create();
 	private InetSocketAddress dnsServerAddress = GOOGLE_PUBLIC_DNS;
-	private Duration timeout = Duration.ofSeconds(3);
+	private Duration timeout = DEFAULT_TIMEOUT;
 
 	@Nullable
 	private AsyncUdpSocket socket;

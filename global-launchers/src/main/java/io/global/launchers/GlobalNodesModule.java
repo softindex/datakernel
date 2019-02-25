@@ -22,6 +22,10 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
+import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.DnsCache;
+import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.*;
@@ -50,6 +54,9 @@ import io.global.ot.stub.CommitStorageStub;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.dns.RemoteAsyncDnsClient.DEFAULT_TIMEOUT;
+import static io.datakernel.dns.RemoteAsyncDnsClient.GOOGLE_PUBLIC_DNS;
+import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
 import static io.datakernel.launchers.initializers.Initializers.*;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static io.global.launchers.db.Initializers.ofLocalGlobalDbNode;
@@ -94,8 +101,18 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	IAsyncHttpClient provide(Eventloop eventloop) {
-		return AsyncHttpClient.create(eventloop);
+	IAsyncHttpClient provide(Eventloop eventloop, AsyncDnsClient dnsClient) {
+		return AsyncHttpClient.create(eventloop)
+				.withDnsClient(dnsClient);
+	}
+
+	@Provides
+	@Singleton
+	AsyncDnsClient provideDnsClient(Eventloop eventloop, Config config) {
+		RemoteAsyncDnsClient remoteDnsClient = RemoteAsyncDnsClient.create(eventloop)
+				.withDnsServerAddress(config.get(ofInetSocketAddress(), "dns.serverAddress", GOOGLE_PUBLIC_DNS))
+				.withTimeout(config.get(ofDuration(), "dns.timeout", DEFAULT_TIMEOUT));
+		return CachedAsyncDnsClient.create(eventloop, remoteDnsClient, config.get(ofDnsCache(eventloop), "dns.cache", DnsCache.create(eventloop)));
 	}
 
 	@Provides

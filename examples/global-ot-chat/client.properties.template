@@ -1,6 +1,4 @@
 http.listenAddresses=
 resources.path=
 node.address=
-sync.interval
-merge.schedule.value=
-merge.schedule.type=
+push.delay=
