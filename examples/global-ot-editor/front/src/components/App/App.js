@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import DocumentEditor from '../DocumentEditor/DocumentEditor';
 import connectService from '../../common/connectService';
 import EditorContext from '../../modules/editor/EditorContext';
+import CommitsGraph from '../CommitsGraph/CommitsGraph';
 import './App.css';
 
 class App extends Component {
@@ -31,6 +32,7 @@ class App extends Component {
           onDelete={this.onDelete}
           onReplace={this.onReplace}
         />
+        <CommitsGraph test={'test'}/>
       </div>
     );
   }

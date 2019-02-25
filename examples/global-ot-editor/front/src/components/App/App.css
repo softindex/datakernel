@@ -5,8 +5,12 @@ body {
 }
 
 .wrapper {
+  display: flex;
+  flex-direction: row;
   margin: 0 auto;
-  width: 500px;
+  padding: 16px;
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 .document-editor {

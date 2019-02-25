@@ -6,7 +6,7 @@ const RETRY_CHECKOUT_TIMEOUT = 500;
 const SYNC_INTERVAL = 500;
 
 class EditorService extends Service {
-  constructor(editorOTStateManager) {
+  constructor(editorOTStateManager, graphModel) {
     super({
       content: '',
       ready: false
@@ -15,6 +15,7 @@ class EditorService extends Service {
     this._editorOTStateManager = editorOTStateManager;
     this._reconnectTimeout = null;
     this._syncInterval = null;
+    this._graphModel = graphModel;
   }
 
   async init() {
@@ -26,9 +27,13 @@ class EditorService extends Service {
       throw e;
     }
 
+    const revision = this._editorOTStateManager.getRevision();
+    const commitsGraph = await this._graphModel.getGraph(revision);
+
     this.setState({
       content: this._editorOTStateManager.getState(),
-      ready: true
+      ready: true,
+      commitsGraph
     });
 
     // Synchronization
@@ -46,9 +51,11 @@ class EditorService extends Service {
         syncing = false;
       }
 
-      if (this.state.content !== this._editorOTStateManager.getState()) {
+      const revision = this._editorOTStateManager.getRevision();
+      const commitsGraph = await this._graphModel.getGraph(revision);
+      if (revision === this._editorOTStateManager.getRevision()) {
         this.setState({
-          content: this._editorOTStateManager.getState(),
+          commitsGraph
         });
       }
     }, SYNC_INTERVAL);
@@ -78,10 +85,10 @@ class EditorService extends Service {
     ]);
   }
 
-  _applyOperations(operations) {
+  async _applyOperations(operations) {
     this._editorOTStateManager.add(operations);
     this.setState({
-       content: this._editorOTStateManager.getState()
+      content: this._editorOTStateManager.getState()
     });
   }
 }
