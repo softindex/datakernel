@@ -5,7 +5,8 @@ const messageFormStyles = theme => {
       flexDirection: 'column',
       justifyContent: 'flex-end',
       flexGrow: 1,
-      width: '100%'
+      width: '100%',
+      height: 'calc(100% - 145px)'
     },
     messageRow: {
       display: 'flex',
