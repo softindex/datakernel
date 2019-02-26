@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.eventloop.selector.changer.OptimizedSelectedKeysSet;
+import io.datakernel.eventloop.selector.changer.SelectorSetChanger;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
@@ -356,6 +358,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		ensureSelector();
 		assert selector != null;
 		breakEventloop = false;
+		boolean setWasOptimized = SelectorSetChanger.tryToOptimize(selector);
 
 		long timeAfterSelectorSelect = 0;
 		long timeAfterBusinessLogic = 0;
@@ -381,8 +384,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			timeAfterSelectorSelect = refreshTimestampAndGet();
-
-			int keys = processSelectedKeys(selector.selectedKeys());
+			int keys = setWasOptimized ?
+					optimizedProcessSelectedKeys((OptimizedSelectedKeysSet) selector.selectedKeys()) :
+					processSelectedKeys(selector.selectedKeys());
 			int concurrentTasks = executeConcurrentTasks();
 			int scheduledTasks = executeScheduledTasks();
 			int backgroundTasks = executeBackgroundTasks();
@@ -493,6 +497,59 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		return keys;
 	}
+
+	private int optimizedProcessSelectedKeys(@NotNull OptimizedSelectedKeysSet selectedKeys) {
+		long startTimestamp = timestamp;
+		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
+
+		int invalidKeys = 0, acceptKeys = 0, connectKeys = 0, readKeys = 0, writeKeys = 0;
+
+		for (int i = 0; i < selectedKeys.size(); i++) {
+			SelectionKey key = selectedKeys.get(i);
+			if (!key.isValid()) {
+				invalidKeys++;
+				continue;
+			}
+
+			if (sw != null) {
+				sw.reset();
+				sw.start();
+			}
+
+			if (key.isAcceptable()) {
+				onAccept(key);
+				acceptKeys++;
+			} else if (key.isConnectable()) {
+				onConnect(key);
+				connectKeys++;
+			} else {
+				if (key.isReadable()) {
+					onRead(key);
+					readKeys++;
+				}
+				if (key.isValid()) {
+					if (key.isWritable()) {
+						onWrite(key);
+						writeKeys++;
+					}
+				} else {
+					invalidKeys++;
+				}
+			}
+			if (sw != null && inspector != null) inspector.onUpdateSelectedKeyDuration(sw);
+		}
+		selectedKeys.clear();
+		int keys = acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
+
+		if (keys != 0) {
+			long loopTime = refreshTimestampAndGet() - startTimestamp;
+			if (inspector != null)
+				inspector.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		}
+
+		return keys;
+	}
+
 
 	private void executeTask(@Async.Execute Runnable task) {
 		task.run();
