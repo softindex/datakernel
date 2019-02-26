@@ -29,6 +29,7 @@ COPY front/package.json ./
 RUN npm i
 
 # front-end layer
+COPY front/config-overrides.js ./
 COPY front/public ./public
 COPY front/src ./src
 RUN npm run build

@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "ot-core": "https://github.com/softindex/ot-core.git#v0.1.0",
     "react": "^16.8.2",
+    "react-app-rewire-workbox": "^2.0.1",
     "react-dom": "^16.8.2",
-    "react-scripts": "2.1.5",
-    "ot-core": "https://github.com/softindex/ot-core.git#v0.1.0"
+    "react-scripts": "2.1.5"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -22,5 +23,8 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "devDependencies": {
+    "react-app-rewired": "^2.1.0"
+  }
 }
