@@ -4,7 +4,6 @@ import io.datakernel.async.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -32,7 +31,6 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 		return new OTNodeImpl<>(algorithms, commitToObject, objectToCommit);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <K, D> OTNodeImpl<K, D, OTCommit<K, D>> create(OTAlgorithms<K, D> algorithms) {
 		return new OTNodeImpl<>(algorithms, commit -> commit, object -> object);
 	}
@@ -47,6 +45,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	public Promise<K> push(C commit) {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
+				.thenCompose($ -> algorithms.merge())
 				.thenApply($ -> otCommit.getId());
 	}
 
@@ -79,8 +78,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
-		return algorithms.merge()
-				.thenApply(Collections::singleton)
+		return repository.getHeads()
 				.thenCompose(heads -> algorithms.findParent(
 						heads,
 						DiffsReducer.toList(),
