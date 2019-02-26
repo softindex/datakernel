@@ -16,24 +16,44 @@
 
 package io.global.ot.editor.operations;
 
-import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.exception.ParseException;
 import io.global.ot.api.CommitId;
 
 import java.util.function.Function;
 
-import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.common.CryptoUtils.toHexString;
+import static io.global.ot.editor.operations.DeleteOperation.DELETE_CODEC;
+import static io.global.ot.editor.operations.InsertOperation.INSERT_CODEC;
 
 public final class Utils {
 	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
-	public static final StructuredCodec<EditorOperation> OPERATION_CODEC = CodecSubtype.<EditorOperation>create()
-			.with(InsertOperation.class, "Insert", object(InsertOperation::new,
-					"pos", InsertOperation::getPosition, INT_CODEC,
-					"content", InsertOperation::getContent, STRING_CODEC))
-			.with(DeleteOperation.class, "Delete", object(DeleteOperation::new,
-					"pos", DeleteOperation::getPosition, INT_CODEC,
-					"content", DeleteOperation::getContent, STRING_CODEC));
+	public static final StructuredCodec<EditorOperation> OPERATION_CODEC = StructuredCodec.ofObject(
+			in -> {
+				in.readKey("type");
+				String type = in.readString();
+				in.readKey("value");
+				switch (type) {
+					case "Insert":
+						return INSERT_CODEC.decode(in);
+					case "Delete":
+						return DELETE_CODEC.decode(in);
+					default:
+						throw new ParseException("Either Insert or Delete is expected");
+				}
+			}, (out, item) -> {
+				out.writeKey("type");
+				if (item instanceof InsertOperation) {
+					out.writeString("Insert");
+					out.writeKey("value", INSERT_CODEC, (InsertOperation) item);
+				} else if (item instanceof DeleteOperation) {
+					out.writeString("Delete");
+					out.writeKey("value", DELETE_CODEC, (DeleteOperation) item);
+				} else {
+					throw new IllegalArgumentException("Item should be either InsertOperation or DeleteOperation");
+				}
+			}
+	);
 
 	private Utils() {
 		throw new AssertionError();

@@ -76,7 +76,7 @@ public final class GlobalEditorModule extends AbstractModule {
 	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Editor Example");
 	private static final MyRepositoryId<EditorOperation> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, OPERATION_CODEC);
 	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
-	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("src/main/resources/static");
+	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("front/build");
 	private static final Duration DEFAULT_PUSH_DELAY_DURATION = Duration.ZERO;
 
 	@Provides
