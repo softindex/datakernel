@@ -1,6 +1,7 @@
 import Service from '../../common/Service';
 import ChatOTOperation from './ot/ChatOTOperation';
 
+const RETRY_CHECKOUT_TIMEOUT = 1000;
 const FETCH_TIMEOUT = 500;
 
 class ChatService extends Service {
@@ -12,11 +13,21 @@ class ChatService extends Service {
     });
     this._chatOTStateManager = chatOTStateManager;
     this._interval = null;
+    this._reconnectTimeout = null;
     this._graphModel = graphModel;
   }
 
   async init() {
-    await this._chatOTStateManager.checkout();
+    // Get initial state
+    try {
+      await this._chatOTStateManager.checkout();
+    } catch (err) {
+      console.error(err);
+      await this._reconnectDelay();
+      await this.init();
+      return;
+    }
+
     this.setState({
       messages: this._getMessagesFromStateManager(),
       ready: true
@@ -39,6 +50,7 @@ class ChatService extends Service {
 
   stop() {
     clearInterval(this._interval);
+    clearTimeout(this._reconnectTimeout);
   }
 
   async sendMessage(author, content) {
@@ -81,6 +93,12 @@ class ChatService extends Service {
         loaded: true
       }))
       .sort((left, right) => left.timestamp - right.timestamp);
+  }
+
+  _reconnectDelay() {
+    return new Promise(resolve => {
+      this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
+    });
   }
 }
 
