@@ -2,7 +2,7 @@ import Service from '../../common/Service';
 import DeleteOperation from './ot/operations/DeleteOperation';
 import InsertOperation from './ot/operations/InsertOperation';
 
-const RETRY_CHECKOUT_TIMEOUT = 500;
+const RETRY_CHECKOUT_TIMEOUT = 1000;
 const SYNC_INTERVAL = 500;
 
 class EditorService extends Service {
@@ -22,11 +22,12 @@ class EditorService extends Service {
     // Get initial state
     try {
       await this._editorOTStateManager.checkout();
-    } catch (e) {
-      this._reconnectTimeout = setTimeout(() => this.init(), RETRY_CHECKOUT_TIMEOUT);
-      throw e;
+    } catch (err) {
+      console.error(err);
+      await this._reconnectDelay();
+      await this.init();
+      return;
     }
-
 
     this.setState({
       content: this._editorOTStateManager.getState(),
@@ -90,6 +91,12 @@ class EditorService extends Service {
     this._editorOTStateManager.add(operations);
     this.setState({
       content: this._editorOTStateManager.getState()
+    });
+  }
+
+  _reconnectDelay() {
+    return new Promise(resolve => {
+      this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
     });
   }
 }
