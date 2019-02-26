@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "lodash.throttle": "^4.1.1",
     "ot-core": "https://github.com/softindex/ot-core.git#v0.1.0",
     "react": "^16.8.2",
     "react-app-rewire-workbox": "^2.0.1",

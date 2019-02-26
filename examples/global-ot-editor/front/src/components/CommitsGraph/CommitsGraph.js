@@ -2,8 +2,10 @@ import React from 'react';
 import connectService from '../../common/connectService';
 import EditorContext from '../../modules/editor/EditorContext';
 import './CommitsGraph.css';
+import throttle from 'lodash.throttle';
 
 const Viz = window.Viz;
+const THROTTLE_RENDER_GRAPH = 500;
 
 class CommitsGraph extends React.Component {
   graph = React.createRef();
@@ -16,7 +18,7 @@ class CommitsGraph extends React.Component {
     this.renderGraph();
   }
 
-  renderGraph() {
+  renderGraph = throttle(() => {
     let viz = new Viz();
 
     viz.renderSVGElement(this.props.commitsGraph)
@@ -28,7 +30,7 @@ class CommitsGraph extends React.Component {
         viz = new Viz();
         console.error(error);
       });
-  }
+  }, THROTTLE_RENDER_GRAPH);
 
   render() {
     if (!this.props.commitsGraph) {
