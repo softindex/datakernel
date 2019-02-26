@@ -12,7 +12,7 @@ import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
-	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
+	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTRepository<K, D> repository;
@@ -38,7 +38,8 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	@Override
 	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.createCommit(parent, diffs, level)
-				.thenApply(commitToObject);
+				.thenApply(commitToObject)
+				.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level));
 	}
 
 	@Override
@@ -46,7 +47,8 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
 				.thenCompose($ -> algorithms.merge())
-				.thenApply($ -> otCommit.getId());
+				.thenApply($ -> otCommit.getId())
+				.whenComplete(toLogger(logger, thisMethod(), commit));
 	}
 
 	@Override

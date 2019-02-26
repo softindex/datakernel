@@ -6,13 +6,19 @@ import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTLoadedGraph;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Function;
 
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTGraphServlet<K, D> implements AsyncServlet {
+	private static final Logger logger = LoggerFactory.getLogger(OTGraphServlet.class);
+
 	@NotNull
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTLoadedGraph<K, D> graph;
@@ -40,6 +46,7 @@ public final class OTGraphServlet<K, D> implements AsyncServlet {
 						.thenCompose(heads -> algorithms.loadGraph(heads, graph))
 						.thenApply(graph -> HttpResponse.ok200()
 								.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
-								.withBody(graph.toGraphViz(currentCommit).getBytes(UTF_8))));
+								.withBody(graph.toGraphViz(currentCommit).getBytes(UTF_8))))
+				.whenComplete(toLogger(logger, thisMethod(), request, this));
 	}
 }
