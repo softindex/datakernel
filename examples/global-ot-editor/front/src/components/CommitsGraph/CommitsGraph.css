@@ -10,5 +10,6 @@
   background-color: #fff;
   overflow-y: scroll;
   box-sizing: border-box;
+  max-width: 50%;
   height: 100%;
 }

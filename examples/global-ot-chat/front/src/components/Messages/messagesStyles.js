@@ -30,6 +30,7 @@ const messageFormStyles = theme => {
       padding: theme.spacing.unit * 2,
       backgroundColor: theme.palette.grey[200],
       marginBottom: theme.spacing.unit,
+      wordBreak: 'break-all',
       borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
     },
     messageFromOther: {
