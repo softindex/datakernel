@@ -69,7 +69,10 @@ public class CommitStorageStub implements CommitStorage {
 	public Promise<Boolean> saveCommit(CommitId commitId, RawCommit rawCommit) {
 		RawCommit old = commits.put(commitId, rawCommit);
 		if (old != null) return Promise.of(false);
-		if (rawCommit.getParents().isEmpty()) return Promise.of(true);
+		if (rawCommit.getParents().isEmpty()) {
+			pendingCompleteCommits.add(commitId);
+			return Promise.of(true);
+		}
 		for (CommitId parentId : rawCommit.getParents()) {
 			parentToChildren.computeIfAbsent(parentId, $ -> new HashSet<>()).add(commitId);
 		}
@@ -115,18 +118,20 @@ public class CommitStorageStub implements CommitStorage {
 
 	@Override
 	public Promise<Void> markCompleteCommits() {
-		while (!pendingCompleteCommits.isEmpty()) {
-			for (CommitId completeCommitId : new ArrayList<>(pendingCompleteCommits)) {
-				assert pendingCompleteCommits.contains(completeCommitId);
-				pendingCompleteCommits.remove(completeCommitId);
+		List<CommitId> commitIds = new ArrayList<>(pendingCompleteCommits);
+		pendingCompleteCommits.clear();
+		while (!commitIds.isEmpty()) {
+			List<CommitId> nextOnes = new ArrayList<>();
+			for (CommitId completeCommitId : commitIds) {
 				for (CommitId childId : parentToChildren.getOrDefault(completeCommitId, emptySet())) {
 					Integer newCount = incompleteParentsCount.computeIfPresent(childId, ($, incompleteCount) -> incompleteCount - 1);
 					if (newCount != null && newCount == 0) {
-						pendingCompleteCommits.add(childId);
+						nextOnes.add(childId);
 						incompleteParentsCount.remove(childId);
 					}
 				}
 			}
+			commitIds = nextOnes;
 		}
 		return Promise.complete();
 	}

@@ -21,7 +21,7 @@ import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
 import io.datakernel.stream.processor.LoggingRule.LoggerConfig;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
@@ -40,17 +40,24 @@ import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.stub.CommitStorageStub;
 import io.global.ot.util.FailingGlobalOTNode;
 import org.jetbrains.annotations.Nullable;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
@@ -61,8 +68,12 @@ import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("unused")
-@RunWith(DatakernelRunner.class)
+@RunWith(Parameterized.class)
+@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public class GlobalOTNodeImplTest {
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
 	private static final InMemoryAnnouncementStorage ANNOUNCEMENT_STORAGE = new InMemoryAnnouncementStorage();
 	private static final InMemorySharedKeyStorage SHARED_KEY_STORAGE = new InMemorySharedKeyStorage();
 	private static final KeyPair KEYS = KeyPair.generate();
@@ -84,18 +95,51 @@ public class GlobalOTNodeImplTest {
 	private GlobalOTNode intermediateNode;
 	private static byte COMMIT_ID;
 
+	@Parameter()
+	public Function<Path, CommitStorage> storageFn;
+
+	@Parameters(name = "{0}")
+	public static Collection<Object[]> getParameters() {
+		return Arrays.asList(
+				new Object[]{(Function<Path, CommitStorage>) path -> new CommitStorageStub()
+				},
+				new Object[]{(Function<Path, CommitStorage>) path -> {
+					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
+							getCurrentEventloop(),
+							path.resolve("rocksDb").toString());
+					await(rocksDb.start());
+					return rocksDb;
+				}
+				}
+		);
+	}
+
 	private void initializeMasters(Integer numberOfMasters) {
 		clearDiscovery();
 		IntStream.rangeClosed(1, numberOfMasters).boxed().forEach(id -> {
-			CommitStorageStub storage = new CommitStorageStub();
-			GlobalOTNodeImpl master = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(),
-					new RawServerId("master" + id),
-					discoveryService,
-					storage,
-					createFactory())
-					.withLatencyMargin(Duration.ZERO);
-			master.now = now;
-			masters.put(id, new Tuple2<>(storage, master));
+			try {
+				String folder = "master" + id;
+				CommitStorage storage;
+				Path resolved = temporaryFolder.getRoot().toPath().resolve(folder);
+				if (Files.exists(resolved)) {
+					CommitStorage oldStorage = masters.get(id).getValue1();
+					if (oldStorage instanceof CommitStorageRocksDb) {
+						await(((CommitStorageRocksDb) oldStorage).stop());
+					}
+					deleteFolder(resolved);
+				}
+				storage = storageFn.apply(temporaryFolder.newFolder(folder).toPath());
+				GlobalOTNodeImpl master = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(),
+						new RawServerId(folder),
+						discoveryService,
+						storage,
+						createFactory())
+						.withLatencyMargin(Duration.ZERO);
+				master.now = now;
+				masters.put(id, new Tuple2<>(storage, master));
+			} catch (IOException e) {
+				throw new AssertionError(e);
+			}
 		});
 		AnnounceData announceData = new AnnounceData(now.currentTimeMillis(), masters.keySet().stream()
 				.map(id -> new RawServerId("master" + id))
@@ -110,12 +154,12 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Before
-	public void initialize() {
+	public void initialize() throws IOException {
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), ANNOUNCEMENT_STORAGE, SHARED_KEY_STORAGE);
 		masters.clear();
 		turnedOffNodes.clear();
 		COMMIT_ID = 1;
-		intermediateStorage = new CommitStorageStub();
+		intermediateStorage = storageFn.apply(temporaryFolder.newFolder("intermediate").toPath());
 		intermediateNode = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(),
 				new RawServerId("intermediate"),
 				discoveryService,
@@ -364,7 +408,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	@LoggerConfig(value = "WARN") // too many logs
 	public void testSyncRandomNumberOfMasters() {
-		initializeMasters(RANDOM.nextInt(20) + 10);
+		initializeMasters(RANDOM.nextInt(5) + 1);
 
 		// will propagate commits to one master (Promises.firstSuccessfull())
 		addCommits(null, 5, intermediateNode);
@@ -393,6 +437,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	public void testCatchupMasters() {
 		initializeMasters(2);
+		masters.forEach((integer, tuple) -> ((GlobalOTNodeImpl) tuple.getValue2()).now = () -> 10);
 		CommitStorage firstMasterStorage = getMasterStorage(1);
 		CommitStorage secondMasterStorage = getMasterStorage(2);
 		GlobalOTNode firstMaster = getMasterNode(1);
@@ -420,7 +465,8 @@ public class GlobalOTNodeImplTest {
 	@Test
 	@LoggerConfig(value = "WARN") // too many logs
 	public void testCatchupRandomNumberOfMasters() {
-		initializeMasters(RANDOM.nextInt(20) + 10);
+		initializeMasters(RANDOM.nextInt(5) + 1);
+		masters.forEach((integer, tuple) -> ((GlobalOTNodeImpl) tuple.getValue2()).now = () -> 10);
 
 		// will propagate commits to one master (Promises.firstSuccessfull())
 		addCommits(null, 5, intermediateNode);
@@ -472,7 +518,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	@LoggerConfig(value = "WARN") // too many logs
 	public void testPushRandomNumberOfMasters() {
-		initializeMasters(RANDOM.nextInt(20) + 10);
+		initializeMasters(RANDOM.nextInt(5) + 1);
 
 		// will propagate commits to one master (Promises.firstSuccessfull())
 		addCommits(null, 5, intermediateNode);
@@ -496,7 +542,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	@LoggerConfig(value = "WARN") // too many logs
 	public void testPushIntermediateToMasters() {
-		initializeMasters(RANDOM.nextInt(20) + 10);
+		initializeMasters(RANDOM.nextInt(5) + 1);
 
 		// ensuring pub key
 		((GlobalOTNodeImpl) intermediateNode).ensureRepository(REPO_ID);
@@ -662,8 +708,8 @@ public class GlobalOTNodeImplTest {
 		for (int i = 0; i < numberOfSnapshots; i++) {
 			snapshots.add(createSnapshot());
 		}
-		await(Promises.all(snapshots.stream()
-				.map(snapshot -> globalOTNode.saveSnapshot(REPO_ID, snapshot))));
+		await(Promises.sequence(snapshots.stream()
+				.map(snapshot -> () -> globalOTNode.saveSnapshot(REPO_ID, snapshot))));
 	}
 
 	private SignedData<RawSnapshot> createSnapshot() {
@@ -867,6 +913,18 @@ public class GlobalOTNodeImplTest {
 	public void clearDiscovery() {
 		ANNOUNCEMENT_STORAGE.clear();
 		SHARED_KEY_STORAGE.clear();
+	}
+
+	public static void deleteFolder(Path folder) throws IOException {
+		List<Path> contents = Files.list(folder).collect(toList());
+		for (Path content : contents) {
+			if (Files.isDirectory(content)) {
+				deleteFolder(content);
+			} else {
+				Files.delete(content);
+			}
+		}
+		Files.delete(folder);
 	}
 	// endregion
 }

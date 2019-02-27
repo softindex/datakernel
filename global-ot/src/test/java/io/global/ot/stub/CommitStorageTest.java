@@ -1,20 +1,33 @@
 package io.global.ot.stub;
 
 import io.datakernel.async.Promise;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
 import io.global.common.Hash;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RawCommit;
 import io.global.ot.server.CommitStorage;
+import io.global.ot.server.CommitStorageRocksDb;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptySet;
@@ -23,11 +36,40 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
-public class CommitStorageStubTest {
+@RunWith(Parameterized.class)
+@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
+public class CommitStorageTest {
 	public static final SimKey SIM_KEY = SimKey.generate();
 	public static final byte[] DATA = {1};
-	CommitStorage storage = new CommitStorageStub();
+
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Parameter()
+	public Function<Path, CommitStorage> storageFn;
+
+	private CommitStorage storage;
+
+	@Parameters(name = "{0}")
+	public static Collection<Object[]> getParameters() {
+		return Arrays.asList(
+				new Object[]{(Function<Path, CommitStorage>) path -> new CommitStorageStub()
+				},
+				new Object[]{(Function<Path, CommitStorage>) path -> {
+					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
+							getCurrentEventloop(),
+							path.resolve("rocksDb").toString());
+					await(rocksDb.start());
+					return rocksDb;
+				}
+				}
+		);
+	}
+
+	@Before
+	public void setUp() throws Exception {
+		storage = storageFn.apply(temporaryFolder.newFolder().toPath());
+	}
 
 	@Test
 	public void testSaveRootCommit() {
@@ -78,6 +120,28 @@ public class CommitStorageStubTest {
 		Boolean isThirdCommitComplete = await(storage.isCompleteCommit(getCommitId(3)));
 
 		assertTrue(isFirstCommitComplete && isSecondCommitComplete && isThirdCommitComplete);
+	}
+
+	@Test
+	public void testMarkCompleteCommitsCompletedWithRoot() {
+		Boolean saved1 = await(saveCommit(2, set(1), 2));
+		Boolean saved2 = await(saveCommit(3, set(2), 3));
+		Boolean saved3 = await(saveCommit(4, set(3), 4));
+		assertTrue(saved1 && saved2 && saved3);
+
+		assertFalse(await(storage.isCompleteCommit(getCommitId(2))));
+		assertFalse(await(storage.isCompleteCommit(getCommitId(3))));
+		assertFalse(await(storage.isCompleteCommit(getCommitId(4))));
+
+		// saving root
+		assertTrue(await(saveCommit(1, emptySet(), 1)));
+
+		await(storage.markCompleteCommits());
+
+		assertTrue(await(storage.isCompleteCommit(getCommitId(1))));
+		assertTrue(await(storage.isCompleteCommit(getCommitId(2))));
+		assertTrue(await(storage.isCompleteCommit(getCommitId(3))));
+		assertTrue(await(storage.isCompleteCommit(getCommitId(4))));
 	}
 
 	private Promise<Boolean> saveCommit(int id, Set<Integer> parents, long level) {
