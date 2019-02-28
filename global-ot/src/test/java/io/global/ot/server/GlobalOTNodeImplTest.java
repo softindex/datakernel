@@ -555,6 +555,9 @@ public class GlobalOTNodeImplTest {
 				RawCommitHead.of(REPO_ID, getCommitId(2), now.currentTimeMillis()), PRIV_KEY);
 		intermediateStorage.updateHeads(REPO_ID, set(signedHead), emptySet());
 
+		// wait for previous saves to complete
+		await();
+
 		// Assume pushed new commits
 		await(((GlobalOTNodeImpl) intermediateNode).push());
 

@@ -74,8 +74,8 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalOTNodeImpl provide(Eventloop eventloop, DiscoveryService discoveryService, NodeFactory<GlobalOTNode> factory, Config config) {
-		return GlobalOTNodeImpl.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, new CommitStorageStub(), factory)
+	GlobalOTNodeImpl provide(Eventloop eventloop, DiscoveryService discoveryService, NodeFactory<GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+		return GlobalOTNodeImpl.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, commitStorage, factory)
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
 	}
 
