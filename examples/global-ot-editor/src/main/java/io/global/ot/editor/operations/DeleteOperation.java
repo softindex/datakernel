@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.ot.editor.operations.InsertOperation.insert;
+import static io.global.ot.editor.operations.Utils.limit;
 
 public class DeleteOperation implements EditorOperation {
 	public static final StructuredCodec<DeleteOperation> DELETE_CODEC = object(DeleteOperation::new,
@@ -72,6 +73,6 @@ public class DeleteOperation implements EditorOperation {
 
 	@Override
 	public String toString() {
-		return "Del@" + position + '[' + content + ']';
+		return "Del@" + position + '[' + limit(content, 10) + ']';
 	}
 }

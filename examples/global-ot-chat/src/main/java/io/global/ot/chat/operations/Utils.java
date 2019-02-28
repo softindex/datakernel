@@ -27,9 +27,16 @@ import static io.global.common.CryptoUtils.toHexString;
 import static java.util.Collections.singletonList;
 
 public final class Utils {
+	public static final int CONTENT_MAX_LENGTH = 10;
 	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
-	public static final Function<ChatOperation, String> DIFF_TO_STRING = op -> (op.isTombstone() ? "-" : "+") +
-			'[' + op.getAuthor() + ':' + op.getContent() + ']';
+	public static final Function<ChatOperation, String> DIFF_TO_STRING = op -> {
+		String author = op.getAuthor();
+		String allContent = op.getContent();
+		String content = allContent.length() > CONTENT_MAX_LENGTH ?
+				(allContent.substring(0, CONTENT_MAX_LENGTH) + "...") :
+				allContent;
+		return (op.isTombstone() ? "-" : "+") + '[' + author + ':' + content + ']';
+	};
 
 	private Utils() {
 		throw new AssertionError();

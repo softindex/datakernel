@@ -58,4 +58,11 @@ public final class Utils {
 	private Utils() {
 		throw new AssertionError();
 	}
+
+	public static String limit(String initial, int limit) {
+		int length = initial.length();
+		return length > limit ?
+				(initial.substring(0, limit) + "...") :
+				initial;
+	}
 }
