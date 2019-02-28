@@ -39,7 +39,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
@@ -66,7 +66,7 @@ public final class CubeTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	private final DefiningClassLoader classLoader = create();
-	private final ExecutorService executor = newSingleThreadExecutor();
+	private final Executor executor = newSingleThreadExecutor();
 
 
 	private AggregationChunkStorage<Long> chunkStorage;
@@ -79,7 +79,7 @@ public final class CubeTest {
 		cube = newCube(executor, classLoader, chunkStorage);
 	}
 
-	private static Cube newCube(ExecutorService executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {
+	private static Cube newCube(Executor executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {
 		return Cube.create(Eventloop.getCurrentEventloop(), executor, classLoader, chunkStorage)
 				.withDimension("key1", ofInt())
 				.withDimension("key2", ofInt())
@@ -89,7 +89,7 @@ public final class CubeTest {
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 	}
 
-	private static Cube newSophisticatedCube(ExecutorService executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {
+	private static Cube newSophisticatedCube(Executor executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {
 		return Cube.create(Eventloop.getCurrentEventloop(), executor, classLoader, chunkStorage)
 				.withDimension("key1", ofInt())
 				.withDimension("key2", ofInt())
@@ -130,7 +130,7 @@ public final class CubeTest {
 		assertEquals(expected, list);
 	}
 
-	private RemoteFsServer startServer(ExecutorService executor, Path serverStorage) throws IOException {
+	private RemoteFsServer startServer(Executor executor, Path serverStorage) throws IOException {
 		RemoteFsServer fileServer = RemoteFsServer.create(Eventloop.getCurrentEventloop(), executor, serverStorage)
 				.withListenPort(LISTEN_PORT);
 		fileServer.listen();
@@ -423,7 +423,7 @@ public final class CubeTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownDimensions() throws IOException {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		ExecutorService executor = newSingleThreadExecutor();
+		Executor executor = newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
@@ -438,7 +438,7 @@ public final class CubeTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownMeasure() throws IOException {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		ExecutorService executor = newSingleThreadExecutor();
+		Executor executor = newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);

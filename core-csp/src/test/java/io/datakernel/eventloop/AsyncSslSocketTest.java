@@ -40,7 +40,7 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
@@ -75,7 +75,7 @@ public final class AsyncSslSocketTest {
 			.andThen(ByteBuf::asArray)
 			.andThen(ByteBufStrings::decodeAscii);
 
-	private ExecutorService executor;
+	private Executor executor;
 	private SSLContext sslContext;
 	private StringBuilder sentData;
 

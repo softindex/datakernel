@@ -38,7 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
@@ -61,7 +61,7 @@ public final class TestRemoteFsClusterClient {
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 
-	private ExecutorService executor;
+	private Executor executor;
 	private List<RemoteFsServer> servers;
 	private Path clientStorage;
 	private RemoteFsClusterClient client;

@@ -35,7 +35,7 @@ import org.junit.runner.RunWith;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
@@ -97,12 +97,12 @@ public class CustomFieldsTest {
 
 	@Test
 	public void test() throws Exception {
-		ExecutorService executorService = Executors.newCachedThreadPool();
+		Executor executor = Executors.newCachedThreadPool();
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executorService, path));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, path));
 
 		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.withKey("siteId", FieldTypes.ofInt())
@@ -113,7 +113,7 @@ public class CustomFieldsTest {
 				.withMeasure("uniqueUserIds", union(ofLong()))
 				.withMeasure("estimatedUniqueUserIdCount", hyperLogLog(1024));
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
+		Aggregation aggregation = Aggregation.create(eventloop, executor, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
 		StreamSupplier<EventRecord> supplier = StreamSupplier.of(

@@ -36,7 +36,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -69,7 +69,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		addHandlers();
 	}
 
-	public static RemoteFsServer create(Eventloop eventloop, ExecutorService executor, Path storage) {
+	public static RemoteFsServer create(Eventloop eventloop, Executor executor, Path storage) {
 		return new RemoteFsServer(eventloop, LocalFsClient.create(eventloop, executor, storage));
 	}
 

@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
@@ -77,7 +77,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	// SSL
 	private SSLContext sslContext;
-	private ExecutorService sslExecutor;
+	private Executor sslExecutor;
 
 	@Nullable
 	private AsyncTcpSocketImpl.Inspector socketInspector;
@@ -232,7 +232,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withSslEnabled(@NotNull SSLContext sslContext, @NotNull ExecutorService sslExecutor) {
+	public AsyncHttpClient withSslEnabled(@NotNull SSLContext sslContext, @NotNull Executor sslExecutor) {
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 		return this;

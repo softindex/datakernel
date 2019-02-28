@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
@@ -55,7 +55,7 @@ public class CubeCleanerControllerTest {
 	public void setUp() throws Exception {
 		DataSource dataSource = dataSource("test.properties");
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
-		ExecutorService executor = Executors.newCachedThreadPool();
+		Executor executor = Executors.newCachedThreadPool();
 
 		eventloop = Eventloop.getCurrentEventloop();
 

@@ -37,7 +37,7 @@ import org.junit.runner.RunWith;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.AggregationPredicates.and;
@@ -60,7 +60,7 @@ public class StringDimensionTest {
 	public void testQuery() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		ExecutorService executor = Executors.newCachedThreadPool();
+		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));

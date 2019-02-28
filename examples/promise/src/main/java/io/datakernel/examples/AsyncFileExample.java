@@ -78,8 +78,10 @@ public class AsyncFileExample {
 		Promises.sequence(
 				() -> writeToFile(),
 				() -> readFromFile().toVoid())
-				.whenException(e -> {
-					System.out.println("Something went wrong : " + e);
+				.whenComplete(($, e) -> {
+					if (e != null) {
+						System.out.println("Something went wrong : " + e);
+					}
 					cleanup();
 				});
 

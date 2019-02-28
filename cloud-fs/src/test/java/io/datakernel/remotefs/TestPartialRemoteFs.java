@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -57,7 +57,7 @@ public final class TestPartialRemoteFs {
 
 	private RemoteFsServer server;
 	private RemoteFsClient client;
-	private ExecutorService executor;
+	private Executor executor;
 
 	private Path serverStorage;
 	private Path clientStorage;

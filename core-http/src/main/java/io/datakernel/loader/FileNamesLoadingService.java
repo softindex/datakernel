@@ -10,23 +10,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.stream.Stream;
 
 public class FileNamesLoadingService implements EventloopService {
 	private final Eventloop eventloop;
-	private final ExecutorService executorService;
+	private final Executor executorService;
 	private final Path path;
 
 	private Set<String> fileNames;
 
-	private FileNamesLoadingService(Eventloop eventloop, ExecutorService executorService, Path path) {
+	private FileNamesLoadingService(Eventloop eventloop, Executor executorService, Path path) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.path = path;
 	}
 
-	public static FileNamesLoadingService create(Eventloop eventloop, ExecutorService executorService, Path path) {
+	public static FileNamesLoadingService create(Eventloop eventloop, Executor executorService, Path path) {
 		return new FileNamesLoadingService(eventloop, executorService, path);
 	}
 

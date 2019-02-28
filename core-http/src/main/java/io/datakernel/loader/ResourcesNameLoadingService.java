@@ -12,34 +12,34 @@ import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public class ResourcesNameLoadingService implements EventloopService {
 	private final Eventloop eventloop;
 	private final ClassLoader loader;
-	private final ExecutorService executorService;
+	private final Executor executor;
 
 	private Set<String> names;
 	private String resourcePath;
 
-	private ResourcesNameLoadingService(Eventloop eventloop, ExecutorService executorService, ClassLoader loader,
+	private ResourcesNameLoadingService(Eventloop eventloop, Executor executor, ClassLoader loader,
 			String resourcePath) {
 		this.eventloop = eventloop;
-		this.executorService = executorService;
+		this.executor = executor;
 		this.loader = loader;
 		this.resourcePath = resourcePath;
 	}
 
-	public static ResourcesNameLoadingService create(Eventloop eventloop, ExecutorService executorService,
+	public static ResourcesNameLoadingService create(Eventloop eventloop, Executor executor,
 			ClassLoader classLoader, String resourcePath) {
-		return new ResourcesNameLoadingService(eventloop, executorService, classLoader, resourcePath);
+		return new ResourcesNameLoadingService(eventloop, executor, classLoader, resourcePath);
 	}
 
-	public static ResourcesNameLoadingService createRoot(Eventloop eventloop, ExecutorService executorService,
+	public static ResourcesNameLoadingService createRoot(Eventloop eventloop, Executor executor,
 			ClassLoader classLoader) {
-		return new ResourcesNameLoadingService(eventloop, executorService, classLoader, "");
+		return new ResourcesNameLoadingService(eventloop, executor, classLoader, "");
 	}
 
 	@NotNull
@@ -51,7 +51,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		return Promise.ofBlockingCallable(executorService,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					Set<String> fileNames = new HashSet<>();
 					InputStream in = checkNotNull(loader.getResourceAsStream(resourcePath));

@@ -10,16 +10,16 @@ import io.global.db.api.DbStorage;
 import io.global.db.util.Utils;
 import org.rocksdb.*;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 public class RocksdbDbStorage implements DbStorage {
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final RocksDB db;
 
 	private final FlushOptions flushOptions;
 	private final WriteOptions writeOptions;
 
-	public RocksdbDbStorage(ExecutorService executor, RocksDB db) {
+	public RocksdbDbStorage(Executor executor, RocksDB db) {
 		this.executor = executor;
 		this.db = db;
 		flushOptions = new FlushOptions();

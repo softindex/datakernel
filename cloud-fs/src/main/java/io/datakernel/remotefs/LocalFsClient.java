@@ -45,7 +45,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.util.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -64,7 +64,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
 
 	private final Eventloop eventloop;
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final Path storageDir;
 
 	private MemSize readerBufferSize = MemSize.kilobytes(256);
@@ -85,7 +85,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	//endregion
 
 	// region creators
-	private LocalFsClient(Eventloop eventloop, ExecutorService executor, Path storageDir) {
+	private LocalFsClient(Eventloop eventloop, Executor executor, Path storageDir) {
 		this.eventloop = checkNotNull(eventloop, "eventloop");
 		this.executor = checkNotNull(executor, "executor");
 		this.storageDir = checkNotNull(storageDir, "storageDir");
@@ -97,7 +97,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 	}
 
-	public static LocalFsClient create(Eventloop eventloop, ExecutorService executor, Path storageDir) {
+	public static LocalFsClient create(Eventloop eventloop, Executor executor, Path storageDir) {
 		return new LocalFsClient(eventloop, executor, storageDir);
 	}
 

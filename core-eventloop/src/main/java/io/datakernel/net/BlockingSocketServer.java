@@ -24,7 +24,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
 public final class BlockingSocketServer {
@@ -34,7 +34,7 @@ public final class BlockingSocketServer {
 
 	private static final Logger logger = LoggerFactory.getLogger(BlockingSocketServer.class);
 	private ThreadFactory acceptThreadFactory;
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final AcceptHandler acceptHandler;
 	private ServerSocketSettings serverSocketSettings;
 	private SocketSettings socketSettings;
@@ -43,12 +43,12 @@ public final class BlockingSocketServer {
 	private final List<ServerSocket> serverSockets = new ArrayList<>();
 	private final Map<ServerSocket, Thread> acceptThreads = new HashMap<>();
 
-	private BlockingSocketServer(ExecutorService executor, AcceptHandler acceptHandler) {
+	private BlockingSocketServer(Executor executor, AcceptHandler acceptHandler) {
 		this.executor = executor;
 		this.acceptHandler = acceptHandler;
 	}
 
-	private static BlockingSocketServer create(ExecutorService executor, AcceptHandler acceptHandler) {
+	private static BlockingSocketServer create(Executor executor, AcceptHandler acceptHandler) {
 		return new BlockingSocketServer(executor, acceptHandler);
 	}
 

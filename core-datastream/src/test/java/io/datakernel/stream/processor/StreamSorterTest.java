@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
@@ -54,7 +54,7 @@ public final class StreamSorterTest {
 		StreamSupplier<Integer> source1 = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7);
 		//		StreamSupplier<Integer> source2 = StreamSupplier.of(111);
 
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.getRoot().toPath())
 				.withWriteBlockSize(MemSize.of(64));
 
@@ -84,7 +84,7 @@ public final class StreamSorterTest {
 	public void test() throws Exception {
 		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(storage, Function.identity(), Integer::compareTo, true, 2);
 
@@ -100,7 +100,7 @@ public final class StreamSorterTest {
 	public void testErrorOnConsumer() throws IOException {
 		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
@@ -127,7 +127,7 @@ public final class StreamSorterTest {
 
 	@Test
 	public void testErrorOnSupplier() throws IOException {
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 		ExpectedException exception = new ExpectedException();
 
 		StreamSupplier<Integer> source = StreamSupplier.concat(

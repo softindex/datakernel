@@ -29,7 +29,7 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
 import java.io.File;
 import java.security.SecureRandom;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -47,7 +47,7 @@ public class TestHttpsServer {
 
 	public static void main(String[] args) throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
+		Executor executor = newCachedThreadPool();
 
 		AsyncServlet bobServlet = request -> Promise.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 

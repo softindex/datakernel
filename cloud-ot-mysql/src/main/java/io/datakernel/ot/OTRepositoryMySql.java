@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
@@ -57,7 +57,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	public static final String DEFAULT_BACKUP_TABLE = "ot_revisions_backup";
 
 	private final Eventloop eventloop;
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final OTSystem<D> otSystem;
 
 	private final DataSource dataSource;
@@ -80,7 +80,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRepositoryMySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, StructuredCodec<List<D>> diffsCodec,
+	private OTRepositoryMySql(Eventloop eventloop, Executor executor, OTSystem<D> otSystem, StructuredCodec<List<D>> diffsCodec,
 			DataSource dataSource) {
 		this.eventloop = eventloop;
 		this.executor = executor;
@@ -89,7 +89,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		this.diffsCodec = diffsCodec;
 	}
 
-	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffCodec) {
+	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, Executor executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffCodec) {
 		StructuredCodec<List<D>> listCodec = indent(ofList(diffCodec), "\t");
 		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listCodec, dataSource);
 	}

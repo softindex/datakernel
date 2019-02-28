@@ -32,7 +32,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashSet;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.async.Promise.ofBlockingRunnable;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -46,13 +46,13 @@ import static java.util.Arrays.asList;
  */
 public final class AsyncFile {
 	public static final CloseException FILE_CLOSED = new CloseException(AsyncFile.class, "File has been closed");
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final FileChannel channel;
 
 	private final Path path;
 	private final Object mutexLock;
 
-	private AsyncFile(ExecutorService executor, FileChannel channel, Path path, @Nullable Object mutexLock) {
+	private AsyncFile(Executor executor, FileChannel channel, Path path, @Nullable Object mutexLock) {
 		this.executor = checkNotNull(executor);
 		this.channel = checkNotNull(channel);
 		this.path = checkNotNull(path);
@@ -66,12 +66,12 @@ public final class AsyncFile {
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static AsyncFile open(ExecutorService executor, Path path, OpenOption[] openOptions) throws IOException {
+	public static AsyncFile open(Executor executor, Path path, OpenOption[] openOptions) throws IOException {
 		FileChannel channel = doOpenChannel(path, openOptions);
 		return new AsyncFile(executor, channel, path, null);
 	}
 
-	public static AsyncFile open(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) throws IOException {
+	public static AsyncFile open(Executor executor, Path path, OpenOption[] openOptions, Object mutexLock) throws IOException {
 		FileChannel channel = doOpenChannel(path, openOptions);
 		return new AsyncFile(executor, channel, path, mutexLock);
 	}
@@ -83,12 +83,12 @@ public final class AsyncFile {
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static Promise<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions) {
+	public static Promise<AsyncFile> openAsync(Executor executor, Path path, OpenOption[] openOptions) {
 		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
-	public static Promise<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) {
+	public static Promise<AsyncFile> openAsync(Executor executor, Path path, OpenOption[] openOptions, Object mutexLock) {
 		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
 	}
@@ -102,7 +102,7 @@ public final class AsyncFile {
 	 *
 	 * @param path the path of the file to open or create
 	 */
-	public static Promise<Void> delete(ExecutorService executor, Path path) {
+	public static Promise<Void> delete(Executor executor, Path path) {
 		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.delete(path);
@@ -119,7 +119,7 @@ public final class AsyncFile {
 	 * @param path     the path of the file to check
 	 * @return file size if given path is a regular file and <code>null</code> if it is a directory or it does not exist
 	 */
-	public static Promise<Long> size(ExecutorService executor, Path path) {
+	public static Promise<Long> size(Executor executor, Path path) {
 		return Promise.ofBlockingCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : null);
 	}
 
@@ -131,7 +131,7 @@ public final class AsyncFile {
 	 * @param target   the path to the target file (may be associated with a different provider to the source path)
 	 * @param options  options specifying how the move should be done
 	 */
-	public static Promise<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
+	public static Promise<Void> move(Executor executor, Path source, Path target, CopyOption... options) {
 		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.move(source, target, options);
@@ -149,7 +149,7 @@ public final class AsyncFile {
 	 * @param target   the path to the target file (may be associated with a different provider to the source path)
 	 * @param options  options specifying how the move should be done
 	 */
-	public static Promise<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
+	public static Promise<Void> copy(Executor executor, Path source, Path target, CopyOption... options) {
 		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.copy(source, target, options);
@@ -166,7 +166,7 @@ public final class AsyncFile {
 	 * @param dir      the directory to create
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Promise<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Promise<Void> createDirectory(Executor executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
 		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
@@ -183,7 +183,7 @@ public final class AsyncFile {
 	 * @param dir      the directory to create
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Promise<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Promise<Void> createDirectories(Executor executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
 		return ofBlockingRunnable(executor, () -> {
 			try {
 				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
@@ -198,7 +198,7 @@ public final class AsyncFile {
 	 *
 	 * @param path the path of the file to read
 	 */
-	public static Promise<ByteBuf> readFile(ExecutorService executor, Path path) {
+	public static Promise<ByteBuf> readFile(Executor executor, Path path) {
 		return openAsync(executor, path, new OpenOption[]{READ})
 				.thenCompose(file -> file.read()
 						.thenCompose(buf -> file.close()
@@ -214,14 +214,14 @@ public final class AsyncFile {
 	 * @param path the path of the file to create and write
 	 * @param buf  the buffer from which bytes are to be transferred byteBuffer
 	 */
-	public static Promise<Void> writeNewFile(ExecutorService executor, Path path, ByteBuf buf) {
+	public static Promise<Void> writeNewFile(Executor executor, Path path, ByteBuf buf) {
 		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
 				.thenCompose(file -> file.write(buf)
 						.thenCompose($ -> file.close()
 								.whenException($2 -> buf.recycle())));
 	}
 
-	public ExecutorService getExecutor() {
+	public Executor getExecutor() {
 		return executor;
 	}
 

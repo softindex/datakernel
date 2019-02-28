@@ -46,7 +46,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
@@ -80,7 +80,7 @@ public class CubeIntegrationTest {
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		ExecutorService executor = Executors.newCachedThreadPool();
+		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));

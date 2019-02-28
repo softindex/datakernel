@@ -130,7 +130,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public static final ExecutorService DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
 
 	@NotNull
-	private ExecutorService defaultExecutor = DEFAULT_EXECUTOR;
+	private Executor defaultExecutor = DEFAULT_EXECUTOR;
 
 	/**
 	 * The thread where eventloop is running.
@@ -196,7 +196,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@NotNull
-	public Eventloop withExecutor(@NotNull ExecutorService executor) {
+	public Eventloop withExecutor(@NotNull Executor executor) {
 		this.defaultExecutor = executor;
 		return this;
 	}
@@ -253,7 +253,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@NotNull
-	public ExecutorService getDefaultExecutor() {
+	public Executor getDefaultExecutor() {
 		return defaultExecutor;
 	}
 

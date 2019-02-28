@@ -7,14 +7,14 @@ import io.datakernel.http.HttpException;
 
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 class SimpleStaticLoaderAsync implements StaticLoader {
-	private final ExecutorService executorService;
+	private final Executor executor;
 	private final Path root;
 
-	public SimpleStaticLoaderAsync(ExecutorService executorService, Path root) {
-		this.executorService = executorService;
+	public SimpleStaticLoaderAsync(Executor executor, Path root) {
+		this.executor = executor;
 		this.root = root;
 	}
 
@@ -26,7 +26,7 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 			return Promise.ofException(HttpException.notFound404());
 		}
 
-		return AsyncFile.readFile(executorService, file)
+		return AsyncFile.readFile(executor, file)
 				.thenComposeEx((buf, e) -> {
 					if (e instanceof NoSuchFileException) {
 						return Promise.ofException(HttpException.notFound404());

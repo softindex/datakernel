@@ -53,7 +53,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
@@ -78,7 +78,7 @@ public final class GlobalFsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private ExecutorService executor = Executors.newSingleThreadExecutor();
+	private Executor executor = Executors.newSingleThreadExecutor();
 
 	private DiscoveryService discoveryService;
 

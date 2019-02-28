@@ -44,12 +44,12 @@ import org.jetbrains.annotations.NotNull;
 import org.rocksdb.*;
 
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.function.BinaryOperator;
 
 public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final RocksDB db;
 	private final BinaryOperator<S> combiner;
 	private final BinarySerializer<K> keySerializer;
@@ -77,7 +77,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	private CrdtStorageRocksDB(Eventloop eventloop, ExecutorService executor, RocksDB db, BinaryOperator<S> combiner,
+	private CrdtStorageRocksDB(Eventloop eventloop, Executor executor, RocksDB db, BinaryOperator<S> combiner,
 			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		this.eventloop = eventloop;
 		this.executor = executor;
@@ -89,12 +89,12 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 		writeOptions = new WriteOptions().setDisableWAL(true);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
+	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(Eventloop eventloop, Executor executor, RocksDB db,
 			BinaryOperator<S> combiner, CrdtDataSerializer<K, S> serializer) {
 		return new CrdtStorageRocksDB<>(eventloop, executor, db, combiner, serializer.getKeySerializer(), serializer.getStateSerializer());
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
+	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(Eventloop eventloop, Executor executor, RocksDB db,
 			BinaryOperator<S> combiner, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtStorageRocksDB<>(eventloop, executor, db, combiner, keySerializer, stateSerializer);
 	}

@@ -32,7 +32,7 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
@@ -49,7 +49,7 @@ public final class CheckpointStorageTest {
 
 	@Before
 	public void setUp() throws IOException {
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 		Path path = temporaryFolder.newFolder().toPath();
 
 		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, path));

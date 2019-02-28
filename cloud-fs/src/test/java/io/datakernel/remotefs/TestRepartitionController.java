@@ -36,7 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
@@ -63,7 +63,7 @@ public final class TestRepartitionController {
 	public void setup() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 		servers = new ArrayList<>(CLIENT_SERVER_PAIRS);
 
 		Map<Object, FsClient> clients = new HashMap<>(CLIENT_SERVER_PAIRS);

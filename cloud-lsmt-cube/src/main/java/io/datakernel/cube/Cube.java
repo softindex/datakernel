@@ -59,7 +59,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -92,7 +92,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
 
 	private final Eventloop eventloop;
-	private final ExecutorService executorService;
+	private final Executor executor;
 	private final DefiningClassLoader classLoader;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private Path temporarySortDir;
@@ -157,21 +157,21 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	private long queryErrors;
 	private Throwable queryLastError;
 
-	Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	Cube(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
 		 AggregationChunkStorage aggregationChunkStorage) {
 		this.eventloop = eventloop;
-		this.executorService = executorService;
+		this.executor = executor;
 		this.classLoader = classLoader;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 	}
 
-	public static Cube create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	public static Cube create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
 							  AggregationChunkStorage aggregationChunkStorage) {
 		checkArgument(eventloop != null, "Cannot create Cube with Eventloop that is null");
-		checkArgument(executorService != null, "Cannot create Cube with ExecutorService that is null");
+		checkArgument(executor != null, "Cannot create Cube with Executor that is null");
 		checkArgument(classLoader != null, "Cannot create Cube with ClassLoader that is null");
 		checkArgument(aggregationChunkStorage != null, "Cannot create Cube with AggregationChunkStorage that is null");
-		return new Cube(eventloop, executorService, classLoader, aggregationChunkStorage);
+		return new Cube(eventloop, executor, classLoader, aggregationChunkStorage);
 	}
 
 	public Cube withAttribute(String attribute, AttributeResolver resolver) {
@@ -358,7 +358,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				}))
 				.withPartitioningKey(config.partitioningKey);
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
+		Aggregation aggregation = Aggregation.create(eventloop, executor, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporarySortDir)
 				.withChunkSize(config.chunkSize != 0 ? config.chunkSize : aggregationsChunkSize)
 				.withReducerBufferSize(config.reducerBufferSize != 0 ? config.reducerBufferSize : aggregationsReducerBufferSize)

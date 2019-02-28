@@ -38,7 +38,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
@@ -83,7 +83,7 @@ public final class TestCachedFsClient {
 		Files.write(serverTestFile, testTxtContent.getBytes(UTF_8));
 
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Executor executor = Executors.newSingleThreadExecutor();
 
 		main = LocalFsClient.create(eventloop, executor, serverStorage);
 		cache = LocalFsClient.create(eventloop, executor, cacheStorage);

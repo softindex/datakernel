@@ -34,7 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -56,7 +56,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 
 	private static final AtomicInteger PARTITION = new AtomicInteger();
 
-	private final ExecutorService executorService;
+	private final Executor executor;
 	private final BinarySerializer<T> serializer;
 	private final Path path;
 
@@ -66,9 +66,9 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private int compressionLevel = 0;
 
 	// region creators
-	private StreamSorterStorageImpl(ExecutorService executorService, BinarySerializer<T> serializer,
+	private StreamSorterStorageImpl(Executor executor, BinarySerializer<T> serializer,
 			Path path) {
-		this.executorService = executorService;
+		this.executor = executor;
 		this.serializer = serializer;
 		this.path = path;
 	}
@@ -76,11 +76,11 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	/**
 	 * Creates a new storage
 	 *
-	 * @param executorService executor service for running tasks in new thread
-	 * @param serializer      for serialization to bytes
-	 * @param path            path in which will store received data
+	 * @param executor   executor for running tasks in new thread
+	 * @param serializer for serialization to bytes
+	 * @param path       path in which will store received data
 	 */
-	public static <T> StreamSorterStorageImpl<T> create(ExecutorService executorService,
+	public static <T> StreamSorterStorageImpl<T> create(Executor executor,
 			BinarySerializer<T> serializer, Path path) {
 		checkArgument(!path.getFileName().toString().contains("%d"), "Filename should not contain '%d'");
 		try {
@@ -88,7 +88,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		return new StreamSorterStorageImpl<>(executorService, serializer, path);
+		return new StreamSorterStorageImpl<>(executor, serializer, path);
 	}
 
 	public StreamSorterStorageImpl<T> withFilePattern(String filePattern) {
@@ -126,7 +126,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executorService, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
+		return AsyncFile.openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
 				.thenApply(file -> StreamConsumer.<T>ofSupplier(
 						supplier -> supplier
 								.transformWith(ChannelSerializer.create(serializer))
@@ -146,7 +146,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
+		return AsyncFile.openAsync(executor, path, new OpenOption[]{READ})
 				.thenApply(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
 						.transformWith(ChannelLZ4Decompressor.create())
 						.transformWith(ChannelDeserializer.create(serializer))
@@ -158,7 +158,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 */
 	@Override
 	public Promise<Void> cleanup(List<Integer> partitionsToDelete) {
-		return Promise.ofBlockingCallable(executorService, () -> {
+		return Promise.ofBlockingCallable(executor, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
 				Path path1 = partitionPath(partitionToDelete);
 				try {

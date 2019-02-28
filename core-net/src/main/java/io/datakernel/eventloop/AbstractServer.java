@@ -40,7 +40,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
@@ -83,7 +83,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	// ssl
 	private SSLContext sslContext;
-	private ExecutorService sslExecutor;
+	private Executor sslExecutor;
 	protected List<InetSocketAddress> sslListenAddresses = new ArrayList<>();
 
 	private boolean running = false;
@@ -142,22 +142,22 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService sslExecutor, List<InetSocketAddress> addresses) {
+	public final S withSslListenAddresses(SSLContext sslContext, Executor sslExecutor, List<InetSocketAddress> addresses) {
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 		this.sslListenAddresses = addresses;
 		return (S) this;
 	}
 
-	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService sslExecutor, InetSocketAddress... addresses) {
+	public final S withSslListenAddresses(SSLContext sslContext, Executor sslExecutor, InetSocketAddress... addresses) {
 		return withSslListenAddresses(sslContext, sslExecutor, asList(addresses));
 	}
 
-	public final S withSslListenAddress(SSLContext sslContext, ExecutorService sslExecutor, InetSocketAddress address) {
+	public final S withSslListenAddress(SSLContext sslContext, Executor sslExecutor, InetSocketAddress address) {
 		return withSslListenAddresses(sslContext, sslExecutor, singletonList(address));
 	}
 
-	public final S withSslListenPort(SSLContext sslContext, ExecutorService sslExecutor, int port) {
+	public final S withSslListenPort(SSLContext sslContext, Executor sslExecutor, int port) {
 		return withSslListenAddress(sslContext, sslExecutor, new InetSocketAddress(port));
 	}
 

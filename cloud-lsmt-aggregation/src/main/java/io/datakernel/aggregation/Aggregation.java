@@ -44,7 +44,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -76,7 +76,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	public static final int DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE = 1000;
 
 	private final Eventloop eventloop;
-	private final ExecutorService executorService;
+	private final Executor executor;
 	private final DefiningClassLoader classLoader;
 	private final AggregationChunkStorage<Object> aggregationChunkStorage;
 	private Path temporarySortDir;
@@ -100,11 +100,11 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private int consolidations;
 	private Throwable consolidationLastError;
 
-	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	private Aggregation(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
 			AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure,
 			AggregationState state) {
 		this.eventloop = eventloop;
-		this.executorService = executorService;
+		this.executor = executor;
 		this.classLoader = classLoader;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.structure = structure;
@@ -120,13 +120,14 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * Consolidated chunks become available for removal in 10 minutes from consolidation.
 	 *
 	 * @param eventloop               event loop, in which the aggregation is to run
+	 * @param executor                executor, that is used for asynchronous work with files
 	 * @param classLoader             class loader for defining dynamic classes
 	 * @param aggregationChunkStorage storage for data chunks
 	 */
-	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	public static Aggregation create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
 			AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
 		checkArgument(structure != null, "Cannot create Aggregation with AggregationStructure that is null");
-		return new Aggregation(eventloop, executorService, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
+		return new Aggregation(eventloop, executor, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 
 	public Aggregation withChunkSize(int chunkSize) {
@@ -296,7 +297,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		Path sortDir = (temporarySortDir != null) ? temporarySortDir : createSortDir();
 		StreamSupplier<T> stream = unsortedStream
 				.transformWith(StreamSorter.create(
-						StreamSorterStorageImpl.create(executorService, binarySerializer, sortDir),
+						StreamSorterStorageImpl.create(executor, binarySerializer, sortDir),
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 
 		stream.getEndOfStream()

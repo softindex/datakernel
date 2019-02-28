@@ -41,7 +41,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.BinaryOperator;
 
@@ -83,7 +83,7 @@ public class CrdtStorageAPITest {
 	@FunctionalInterface
 	private interface ICrdtClientFactory<K extends Comparable<K>, S> {
 
-		CrdtStorage<K, S> create(ExecutorService executor, Path testFolder, BinaryOperator<S> combiner) throws Exception;
+		CrdtStorage<K, S> create(Executor executor, Path testFolder, BinaryOperator<S> combiner) throws Exception;
 	}
 
 	@Parameters(name = "{0}")

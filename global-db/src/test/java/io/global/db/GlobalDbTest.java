@@ -44,7 +44,7 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
@@ -68,7 +68,7 @@ public final class GlobalDbTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private ExecutorService executor = Executors.newSingleThreadExecutor();
+	private Executor executor = Executors.newSingleThreadExecutor();
 
 	private DiscoveryService discoveryService;
 

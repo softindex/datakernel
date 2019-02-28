@@ -40,7 +40,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -64,7 +64,7 @@ public final class TestLocalFsClient {
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	private ExecutorService executor = Executors.newSingleThreadExecutor();
+	private Executor executor = Executors.newSingleThreadExecutor();
 	private Path storagePath;
 	private Path clientPath;
 

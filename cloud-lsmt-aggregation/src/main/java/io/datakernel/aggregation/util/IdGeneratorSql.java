@@ -13,7 +13,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.Preconditions.checkState;
@@ -21,7 +21,7 @@ import static io.datakernel.util.Preconditions.checkState;
 public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBeanEx {
 
 	private final Eventloop eventloop;
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final DataSource dataSource;
 
 	private final SqlAtomicSequence sequence;
@@ -35,14 +35,14 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 
 	private final AsyncSupplier<Void> reserveId = reuse(this::doReserveId).transformWith(promiseCreateId::wrapper);
 
-	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource, SqlAtomicSequence sequence) {
+	private IdGeneratorSql(Eventloop eventloop, Executor executor, DataSource dataSource, SqlAtomicSequence sequence) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.dataSource = dataSource;
 		this.sequence = sequence;
 	}
 
-	public static IdGeneratorSql create(Eventloop eventloop, ExecutorService executor, DataSource dataSource,
+	public static IdGeneratorSql create(Eventloop eventloop, Executor executor, DataSource dataSource,
 	                                    SqlAtomicSequence sequence) {
 		return new IdGeneratorSql(eventloop, executor, dataSource, sequence);
 	}

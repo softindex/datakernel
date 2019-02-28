@@ -43,7 +43,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -76,7 +76,7 @@ public final class FsIntegrationTest {
 	private Path storage;
 	private RemoteFsServer server;
 	private FsClient client;
-	private ExecutorService executor;
+	private Executor executor;
 
 	@Before
 	public void setup() throws IOException {

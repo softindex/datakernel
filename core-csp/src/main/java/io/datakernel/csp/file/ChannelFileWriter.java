@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static java.nio.file.StandardOpenOption.*;
 
@@ -51,7 +51,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 		this.asyncFile = asyncFile;
 	}
 
-	public static ChannelFileWriter create(ExecutorService executor, Path path) throws IOException {
+	public static ChannelFileWriter create(Executor executor, Path path) throws IOException {
 		return create(AsyncFile.open(executor, path, CREATE_OPTIONS));
 	}
 

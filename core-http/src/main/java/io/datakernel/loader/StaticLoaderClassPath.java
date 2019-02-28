@@ -10,14 +10,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.NoSuchFileException;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 class StaticLoaderClassPath implements StaticLoader {
-	private final ExecutorService executorService;
+	private final Executor executor;
 	private final ClassLoader classLoader;
 
-	public StaticLoaderClassPath(ExecutorService executorService, @Nullable Class<?> classLoader) {
-		this.executorService = executorService;
+	public StaticLoaderClassPath(Executor executor, @Nullable Class<?> classLoader) {
+		this.executor = executor;
 		this.classLoader = classLoader == null ?
 				Thread.currentThread().getContextClassLoader() :
 				classLoader.getClassLoader();
@@ -31,7 +31,7 @@ class StaticLoaderClassPath implements StaticLoader {
 			return Promise.ofException(HttpException.notFound404());
 		}
 
-	    return Promise.ofBlockingCallable(executorService, () -> ByteBuf.wrapForReading(loadResource(file)))
+		return Promise.ofBlockingCallable(executor, () -> ByteBuf.wrapForReading(loadResource(file)))
                 .thenComposeEx((buf, e) ->
 		                Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
     }

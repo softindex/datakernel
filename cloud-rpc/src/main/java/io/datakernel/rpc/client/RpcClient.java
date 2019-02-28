@@ -51,7 +51,7 @@ import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.util.Preconditions.*;
@@ -88,7 +88,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	// SSL
 	private SSLContext sslContext;
-	private ExecutorService sslExecutor;
+	private Executor sslExecutor;
 
 	private RpcStrategy strategy = new NoServersStrategy();
 	private List<InetSocketAddress> addresses = new ArrayList<>();
@@ -244,7 +244,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return this;
 	}
 
-	public RpcClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
+	public RpcClient withSslEnabled(SSLContext sslContext, Executor sslExecutor) {
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 		return this;
