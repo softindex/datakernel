@@ -22,29 +22,24 @@ $ # or
 $ mvn exec:java@CommunicatingProcessExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── csp
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── ByteBufsParserExample.java
-                                 or
-                                └── ChannelExample.java
-                                 or
-                                └── ChannelFileExample.java
-                                 or
-                                └── CommunicatingProcessExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open one of the classes:
+* `ByteBufsParserExample`
+* `ChannelExample`
+* `ChannelFileExample`
+* `CommunicatingProcessExample`
+
+which are located at **datakernel -> examples -> csp** and run `main()` of the chosen example.
+
 
 **ByteBufs Parser Example** shows how to process bytes with CSP and ByteBuf modules and produces a `Hello` message.
 

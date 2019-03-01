@@ -5,24 +5,24 @@
 2. [Basic modules](#basic-modules)
     * Bytebuf
     * Promise 
-    * Eventloop
     * Codegen
     * Serializer
     * Codec
     * CSP
     * Datastream
     * Boot
+    * Launchers ("Hello World" example)
 3. [Simple web applications](#simple-web-applications)
     * HTTP
         * HTTP "Hello World"
-    * Launchers (HTTP examples)
+    * Launchers (examples for HTTP)
     * UIKernel integration
 4. [Advanced web applications](#advanced-web-applications)
     * Net
+    * Eventloop (examples for Net)
     * RPC
         * Remote key-value storage
     * CRDT
-    * Launchers (advanced example)
 5. [Global applications](#global-web-applications) 
     * Global-OT editor
     * Global-OT demo
@@ -90,7 +90,7 @@ different complexity.
 * [Codec example](https://github.com/softindex/datakernel/tree/master/examples/codec) - create efficient 
 custom codec to encode/decode object to JSON, ByteBuf, Map and List.
 
-DataKernel provides efficient communications between suppliers and consumers (e.g. client and server) with 
+DataKernel provides efficient communications between suppliers and consumers (for example, client and server) with 
 special channels and streams: 
 * [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp) - the examples demonstrate how to 
 create channels for communications, ByteBufs parsers and handle Communication Sequential Processes.

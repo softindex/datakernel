@@ -5,7 +5,7 @@ approach.
 
 CSP features:
 * High performance and throughput speed
-* Optimized for working with medium-sized objects (e.g. ByteBufs) 
+* Optimized for working with medium-sized objects (like ByteBufs) 
 * CSP has a reach DSL, which provides a simple programming model
 * Has an async back pressure management
 

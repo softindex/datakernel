@@ -14,25 +14,21 @@ $ # or
 $ mvn exec:java@AsyncFileExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── promise
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── AsyncFileExample.java
-                                 or
-                                └── PromisesExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open one of the classes:
+* `PromisesExample`
+* `AsyncFileExample`
+
+which are located at **datakernel -> examples -> promise** and run `main()` of the chosen example.
 
 If you run **Promises Example**, you'll receive the following output:
 ```

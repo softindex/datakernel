@@ -10,23 +10,17 @@ $ cd examples/crdt
 $ mvn exec:java@CrdtExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── crdt
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── CrdtExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the example.
+
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its `main()` method.
 
 In this example, we have two replicas - independent nodes which store different information.
 

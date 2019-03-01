@@ -18,27 +18,22 @@ $ # then
 $ mvn exec:java@FileDownloadExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── remotefs
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── ServerSetupExample.java
-                                 then
-                                └── FileUploadExample.java 
-                                 then
-                                └── FileDownloadExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of `ServerSetupExample`, `FileUploadExample` and `FileDownloadExample` in that order.
+
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+First, open `ServerSetupExample` class which is located at **datakernel -> examples -> remotefs**, and run its `main()` 
+method.
+
+Then open `FileUploadExample` class which is located in the same folder, and run its `main()` method. 
+
+Finally, open `FileDownloadExample` class which is located in the same folder, and also run its `main()` method.
 
 In the example we upload file "example.txt" to server and then download it back as "download_example.txt".
 

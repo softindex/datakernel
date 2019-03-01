@@ -9,28 +9,21 @@ $ mvn clean install -DskipTests
 $ cd examples/rpc
 $ mvn exec:java@RpcExample
 ```
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
-To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── rpc
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── RpcExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the example.
 
-In the "Hello World" client and server **RPC Example** client sends to server a request which contains word "World". When server 
-receives it, it sends a respond which contains word "Hello ". If everything completes successfully, we get the following 
-output:
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open `RpcExample` class which is located at **datakernel -> examples -> rpc** and run its `main()` method.
+
+In the "Hello World" client and server **RPC Example** client sends a request which contains word "World" to server. When 
+server receives it, it sends a respond which contains word "Hello ". If everything completes successfully, we get the 
+following output:
 ```
 Got result: Hello World
 ```

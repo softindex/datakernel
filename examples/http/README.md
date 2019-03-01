@@ -28,54 +28,31 @@ $ # or
 $ mvn exec:java@StaticServletExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── http
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── HttpServerExample.java
-                                 or
-                                └── HttpMultithreadedServerExample.java
-                                 or
-                                └── MiddlewareServletExample.java                                 
-                                 or
-                                └── RequestParametrExample.java                                 
-                                 or
-                                └── StaticServletExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open one of the classes:
+* `HttpServerExample`
+* `HttpMultithreadedExample`
+* `MiddlewareServletExample`
+* `RequestParametrExample`
+* `StaticServletExample`
+
+which are located at **datakernel -> examples -> http** and run `main()` of the chosen example.
 
 To check how **HTTP Server Example** or **HTTP Multithreaded Server Example** works, you should start your client 
 either in console:
 ```
 $ mvn exec:java@HttpClientExample
 ```
-or in an IDE:
-```
-datakernel
-└── examples
-    └── http
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── HttpClientExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
-`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
+or in an IDE, by opening `HttpClientExample` class which is located at the same folder and running its `main()` method.
 
 
 If you connect to the multithreaded server, you'll receive a message representing which worker processed your request:

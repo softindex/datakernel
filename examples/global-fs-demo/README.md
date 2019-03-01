@@ -17,47 +17,24 @@ $ mvn exec:java@GlobalFsDemoApp
 ```
 Note that it is important to execute commands in the given order.
 
-To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── global-launchers
-    └── src
-        └── main
-            └── java
-                └── io
-                    └── global
-                        └── launchers
-                            └── discovery
-                                └── DiscoveryServiceLauncher.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the launcher.
-Repeat for:
-```
-datakernel
-└── global-launchers
-    └── src
-        └── main
-            └── java
-                └── io
-                    └── global
-                        └── launchers
-                            └── GlobalNodesLauncher.java      
-# and
-└── examples
-    └── global-fs-demo
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── global
-                            └── fs
-                                └── demo
-                                    └── GlobalFsDemoApp.java
-```
 
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers** and run its `main()` 
+method.
+
+Next, open `GlobalNodesLauncher` class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
+run its `main()` method.
+
+Finally, open `GlobalFsDemoApp` class, which is located at **datakernel -> examples -> global-fs-demo** and also run its 
+`main()` method.
 
 After everything is launched, you will see file upload to Global-FS Master node and information about the 
 upload announced to `Discovery service`. After successful upload, the file will be downloaded from Global node to local 

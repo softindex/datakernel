@@ -22,31 +22,26 @@ $ # or
 $ mvn exec:java@GenericsAndInterfacesSerializationExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── serializer
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── ComplexObjectSerializationExample.java
-                                 or
-                                └── FixedSizeFieldsSerializationExample.java
-                                 or
-                                └── GenericsAndInterfacesSerializationExample.java
-                                 or
-                                └── SimpleObjectSerializationExample.java
-                                
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
 
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open one of the classes:
+
+* `ComplexObjectSerializationExample`
+* `FixedSizeFieldsSerializationExample`
+* `GenericsAndInterfacesSerializationExample`
+* `SimpleObjectSerializationExample`                                
+
+which are located at **datakernel -> examples -> serializer** and run `main()` of the chosen example.
+
+<br>
 
 In all of these examples method `serializeAndDeserialized()` is utilized but with different arguments and configurations.
  
@@ -72,7 +67,7 @@ testData1.setMultiple(40, "123");
 TestDataSimple testData2 = serializeAndDeserialize(TestDataSimple.class, testData1);
 ```
 
-The same logic is for outputs of other examples. 
+The same two-column logic is applied for outputs of other examples. 
 
 **Complex Object Serialization Example** is an example of serialization and deserialization of a more complex object, 
 which contains nullable fields, map, list and a two-dimensional array:
@@ -105,6 +100,7 @@ annotation  was set at value `3` for the String array. Thus, "superfluous" was r
 ```java
 public static class TestDataFixedSize {
 	@Serialize(order = 0)
+	//the annotation for fixed size
 	@SerializeFixedSize(3)
 	@SerializeNullable(path = {0})
 	public String[] strings;

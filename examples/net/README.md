@@ -18,25 +18,21 @@ $ # or
 $ mvn exec:java@MultiEchoServerExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── net
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── TcpEchoServerExample.java
-                                 or
-                                └── MultiEchoServerExample.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open one of the classes:
+* `TcpEchoServerExample`
+* `MultiEchoServerExample`
+
+which are located at **datakernel -> examples -> net** and run `main()` of the chosen example.
 
 This will start your echo server.
 Both of the servers utilize `SimpleServer` as their basis. `SimpleServer` is an implementation of 
@@ -73,24 +69,12 @@ either in console:
 $ cd datakernel/examples/net
 $ mvn exec:java@TcpClientExample
 ```
-or in an IDE: 
-
-run `main()` of
-```
-datakernel
-└── examples
-    └── net
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── TcpClientExample.java
-```
+or in an IDE, by opening `TcpClientExample` class which is located at the same folder and running its `main()` method.
 
 Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
 feel free to run multiple **TCP Client**s and check out how it works. 
+
+<br>
 
 To run **Ping Pong Socket Connection** example in console enter these lines in appropriate folder:
 ```
@@ -100,24 +84,17 @@ $ mvn clean install -DskipTests
 $ cd examples/net
 $ mvn exec:java@PingPongSocketConnection
 ```
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
-To run the example in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── net
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── PingPongSocketConnection.java
-```
-and set up working directory properly. For IntelliJ IDEA:
+In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of the chosen example.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open `PingPongSocketConnection`, which is located at **datakernel -> examples -> net** and run its `main()` method.
 
 Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an implementation of `AsyncTcpSocket` 
 interface which describes asynchronous read and write operations.

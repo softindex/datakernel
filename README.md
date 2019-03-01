@@ -24,7 +24,7 @@ with built-in support of **distributed data storage and processing**.
 
 DataKernel is an actively used production-ready technology. It has a full **JMX monitoring** coverage of all of the 
 components and also an **automatic bootstrap of applications' components graph**. It also has a high-performance embedded HTTP 
-server for developing of full-stack web applications with **support of React.js front-end and minimalistic Dependency Injection.**
+server for developing of full-stack web applications **with support of React.js front-end** and **minimalistic Dependency Injection.**
 
 The essential components of DataKernel form the basis of diverse high-load applications processing billions of requests 
 daily: ad-serving solutions, online analytics and web crawlers that perform content indexing on a large scale.
@@ -32,7 +32,7 @@ daily: ad-serving solutions, online analytics and web crawlers that perform cont
 ## Getting started
 
 You can start with ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 5-minute guide, which 
-shows how to create a simple “Hello World” application using Eventloop - one the core components of DataKernel framework.
+shows how to create a simple “Hello World” application using Eventloop - one of the core components of DataKernel framework.
 
 Also, check out [examples module](https://github.com/softindex/datakernel/tree/master/examples), which includes examples 
 for most of the DataKernel components and use cases of their combinations.
@@ -71,7 +71,7 @@ processes via channels similarly to the Go language.
 
 ### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
 
-Promise module resembles JavaScript Promise and is alternative to Java's `CompletionStage`. It allows to organize 
+Promise module resembles JavaScript Promise and is an alternative to Java's `CompletionStage`. It allows to organize 
 asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. They have a 
 minimalistic and extremely fast single-threaded implementation with minimal overhead and memory consumption.
 
