@@ -210,6 +210,14 @@ public class Utils {
 		return true;
 	}
 
+	public static boolean arrayStartsWith(byte[] array, byte[] prefix) {
+		if (array.length < prefix.length) return false;
+		for (int i = 0; i < prefix.length; i++) {
+			if (array[i] != prefix[i]) return false;
+		}
+		return true;
+	}
+
 	private static byte[] loadResource(InputStream stream) throws IOException {
 		// reading file as resource
 		try {

@@ -27,6 +27,7 @@ import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.util.Utils.arrayStartsWith;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
 
@@ -378,12 +379,8 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 				tnx.getIterator(ro, column.handle)
 		) {
 			for (iterator.seek(prefixBytes); iterator.isValid(); iterator.next()) {
-				// break if stepped out of prefix
 				byte[] keyBytes = iterator.key();
-				if (keyBytes.length < prefixBytes.length) break;
-				for (int i = 0; i < prefixBytes.length; i++) {
-					if (keyBytes[i] != prefixBytes[i]) break;
-				}
+				if (!arrayStartsWith(keyBytes, prefixBytes)) break;
 
 				result.put(keyMapper.apply(decode(column.keyCodec, keyBytes)), decode(column.valueCodec, iterator.value()));
 			}
