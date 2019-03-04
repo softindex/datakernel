@@ -118,7 +118,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		checkState(isValid());
 		return sequence(
 				pendingCommit == null ? Promise::complete : this::push,
-				this::pull, this::commit, this::push, this::pull)
+				this::pull, this::commit, this::push)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 

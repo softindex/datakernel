@@ -4,6 +4,7 @@ import io.datakernel.async.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -46,7 +47,6 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	public Promise<K> push(C commit) {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
-				.thenCompose($ -> algorithms.merge())
 				.thenApply($ -> otCommit.getId())
 				.whenComplete(toLogger(logger, thisMethod(), commit));
 	}
@@ -80,7 +80,8 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
-		return repository.getHeads()
+		return algorithms.merge()
+				.thenApply(Collections::singleton)
 				.thenCompose(heads -> algorithms.findParent(
 						heads,
 						DiffsReducer.toList(),

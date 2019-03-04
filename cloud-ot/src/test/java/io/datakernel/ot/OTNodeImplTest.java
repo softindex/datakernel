@@ -74,7 +74,7 @@ public class OTNodeImplTest {
 		});
 
 		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0));
-		assertFetchData(3, 4, 6, fetchData1);
+		assertFetchData(6, 5, 15, fetchData1);
 
 		resetRepo(g -> {
 			g.add(0, 1, add(1));
@@ -86,7 +86,7 @@ public class OTNodeImplTest {
 		});
 
 		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1));
-		assertFetchData(3, 4, 5, fetchData2);
+		assertFetchData(6, 5, 14, fetchData2);
 
 		resetRepo(g -> {
 			g.add(0, 1, add(1));
@@ -98,7 +98,7 @@ public class OTNodeImplTest {
 		});
 
 		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4));
-		assertFetchData(5, 3, 5, fetchData3);
+		assertFetchData(6, 5, 11, fetchData3);
 	}
 
 	@Test
@@ -196,21 +196,19 @@ public class OTNodeImplTest {
 		});
 
 		FetchData<Integer, TestOp> fetchData = await(node.checkout());
-		// fetches first head (in branch 1)
-		assertFetchData(3, 4, 6, fetchData);
+		assertFetchData(6, 5, 15, fetchData);
 
-		// Additional snapshot in branch 1 (with level 2)
-		REPOSITORY.saveSnapshot(1, singletonList(add(1)));
+		// Additional snapshot in branch1
+		REPOSITORY.saveSnapshot(4, singletonList(add(4)));
 
 		FetchData<Integer, TestOp> fetchData2 = await(node.checkout());
-		assertFetchData(3, 4, 6, fetchData2);
+		assertFetchData(6, 5, 15, fetchData2);
 
-		// Additional snapshot in branch 2 (with level 3)
-		REPOSITORY.saveSnapshot(5, singletonList(add(9)));
+		// Additional snapshot in branch2
+		REPOSITORY.saveSnapshot(1, singletonList(add(1)));
 
 		FetchData<Integer, TestOp> fetchData3 = await(node.checkout());
-		// As snapshot in branch 2 has higher level, it will be found first, so head will be taken from branch 2
-		assertFetchData(5, 3, 9, fetchData3);
+		assertFetchData(6, 5, 15, fetchData3);
 
 	}
 
