@@ -17,14 +17,12 @@
 package io.global.common.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 public interface AnnouncementStorage {
-	StacklessException NO_ANNOUNCEMENT = new StacklessException(AnnouncementStorage.class, "No announcement found for key");
-
 	Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData);
 
-	Promise<SignedData<AnnounceData>> load(PubKey space);
+	Promise<@Nullable SignedData<AnnounceData>> load(PubKey space);
 }

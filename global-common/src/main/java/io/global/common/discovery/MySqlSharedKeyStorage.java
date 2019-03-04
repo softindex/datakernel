@@ -110,7 +110,7 @@ public class MySqlSharedKeyStorage implements SharedKeyStorage {
 							if (resultSet.next()) {
 								return decode(SHARED_SIM_KEY_CODEC, resultSet.getBytes(1));
 							} else {
-								throw NO_SHARED_KEY;
+								return null;
 							}
 						}
 					}

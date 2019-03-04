@@ -22,11 +22,12 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 import static io.datakernel.remotefs.RemoteFsUtils.escapeGlob;
-import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
+import static java.util.stream.Collectors.toList;
 
 /**
  * This component handles one of the GlobalFS nodes.
@@ -36,18 +37,22 @@ public interface GlobalFsNode {
 	StacklessException UPLOADING_TO_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Trying to upload to a file which was deleted");
 	StacklessException FILE_ALREADY_EXISTS = new StacklessException(GlobalFsNode.class, "File already exists");
 
-	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
+	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset, long revision);
 
 	Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit);
 
-	Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob);
+	Promise<List<SignedData<GlobalFsCheckpoint>>> listEntities(PubKey space, String glob);
 
-	default Promise<SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
-		return list(space, escapeGlob(filename))
-				.thenCompose(res ->
-						res.size() == 1 ?
-								Promise.of(res.get(0)) :
-								Promise.ofException(NO_CHECKPOINT));
+	default Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob) {
+		return listEntities(space, glob)
+				.thenApply(list -> list.stream()
+						.filter(signedCheckpoint -> !signedCheckpoint.getValue().isTombstone())
+						.collect(toList()));
+	}
+
+	default Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
+		return listEntities(space, escapeGlob(filename))
+				.thenApply(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
 	Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone);

@@ -27,12 +27,9 @@ import java.util.Collection;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.global.common.BinaryDataFormats.REGISTRY;
-import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunnerFactory.class)
@@ -99,8 +96,7 @@ public class SharedKeyStorageTest {
 
 	@Test
 	public void testLoadEmpty() {
-		Throwable e = awaitException(storage.load(KeyPair.generate().getPubKey(), Hash.sha1(new byte[0])));
-		assertEquals(NO_SHARED_KEY, e);
+		assertNull(await(storage.load(KeyPair.generate().getPubKey(), Hash.sha1(new byte[0]))));
 	}
 
 	@Test

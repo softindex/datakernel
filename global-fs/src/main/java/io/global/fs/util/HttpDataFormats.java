@@ -22,7 +22,9 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.http.*;
 import io.datakernel.util.Tuple1;
 
@@ -40,6 +42,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class HttpDataFormats {
 	public static final ParseException INVALID_RANGE_FORMAT = new ParseException(HttpDataFormats.class, "Invalid range format");
 	public static final ParseException RANGE_OUT_OF_BOUNDS = new ParseException(HttpDataFormats.class, "Specified range is out of bounds");
+
+	public static final StacklessException REVISION_NOT_HIGH_ENOUGH = new StacklessException(HttpDataFormats.class, "Revision is not high enough");
 
 	public static final StructuredCodec<Tuple1<Integer>> ERROR_CODE_CODEC = object(Tuple1::new, "errorCode", Tuple1::getValue1, INT_CODEC);
 
@@ -73,7 +77,14 @@ public final class HttpDataFormats {
 				boundary = boundary.substring(1, boundary.length() - 1);
 			}
 			return MultipartParser.create(boundary)
-					.splitByFiles(bodyStream, name -> ChannelConsumer.ofPromise(uploader.upload(name, offset, revision)))
+					.splitByFiles(bodyStream, name ->
+							ChannelConsumer.ofPromise(uploader.upload(name, offset, revision)
+									.thenCompose(consumer -> {
+										if (!(consumer instanceof RecyclingChannelConsumer)) {
+											return Promise.of(consumer);
+										}
+										return Promise.ofException(REVISION_NOT_HIGH_ENOUGH);
+									})))
 					.thenApplyEx(errorHandler());
 		} catch (ParseException e) {
 			return Promise.ofException(e);
@@ -167,7 +178,7 @@ public final class HttpDataFormats {
 	public static long parseOffset(HttpRequest request) throws ParseException {
 		String param = request.getQueryParameterOrNull("offset");
 		try {
-			return param == null ? -1 : Long.parseLong(param);
+			return param == null ? 0 : Long.parseLong(param);
 		} catch (NumberFormatException e) {
 			throw new ParseException(HttpDataFormats.class, "Failed to parse offset", e);
 		}

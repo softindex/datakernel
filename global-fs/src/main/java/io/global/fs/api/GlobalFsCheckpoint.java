@@ -24,14 +24,14 @@ import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.Arrays;
+import java.util.Comparator;
 
-public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> {
+public final class GlobalFsCheckpoint {
 	private static final byte[] ZERO_STATE = new byte[0];
 
 	private final String filename;
-	// private final long timestamp;
-	// private final long revision;
 	private final long position;
+	private final long revision;
 
 	@Nullable
 	private final SHA256Digest digest;
@@ -39,41 +39,32 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 	@Nullable
 	private final Hash simKeyHash;
 
-	private GlobalFsCheckpoint(String filename, long position, @Nullable SHA256Digest digest, @Nullable Hash simKeyHash) {
+	private GlobalFsCheckpoint(String filename, long position, long revision, @Nullable SHA256Digest digest, @Nullable Hash simKeyHash) {
 		this.filename = filename;
 		this.position = position;
+		this.revision = revision;
 		this.digest = digest;
 		this.simKeyHash = simKeyHash;
 	}
 
-	public static GlobalFsCheckpoint parse(String filename, long position, byte[] digestState, @Nullable Hash simKeyHash) {
+	public static GlobalFsCheckpoint parse(String filename, long position, long revision, byte[] digestState, @Nullable Hash simKeyHash) {
 		return digestState.length == 0 ?
-				createTombstone(filename) :
-				new GlobalFsCheckpoint(filename, position, CryptoUtils.ofSha256PackedState(digestState, position), simKeyHash);
+				new GlobalFsCheckpoint(filename, 0, revision, null, null) :
+				new GlobalFsCheckpoint(filename, position, revision, CryptoUtils.ofSha256PackedState(digestState, position), simKeyHash);
 	}
 
-	public static GlobalFsCheckpoint of(String filename, long position, SHA256Digest digest, @Nullable Hash simKeyHash) {
-		return new GlobalFsCheckpoint(filename, position, digest, simKeyHash);
+	public static GlobalFsCheckpoint of(String filename, long position, long revision, SHA256Digest digest, @Nullable Hash simKeyHash) {
+		return new GlobalFsCheckpoint(filename, position, revision, digest, simKeyHash);
 	}
 
-	public static GlobalFsCheckpoint createTombstone(String filename) {
-		return new GlobalFsCheckpoint(filename, 0, null, null);
+	public static GlobalFsCheckpoint createTombstone(String filename, long revision) {
+		return new GlobalFsCheckpoint(filename, 0, revision, null, null);
 	}
 
-	@Override
-	public int compareTo(@Nullable GlobalFsCheckpoint other) {
-		// existing file is better than non-existing
-		// but tombstone is better than existing
-		return other == null ?
-				1 :
-				other.isTombstone() ?
-						isTombstone() ?
-								0 :
-								-1 :
-						isTombstone() ?
-								1 :
-								Long.compare(position, other.position);
-	}
+	public static final Comparator<GlobalFsCheckpoint> COMPARATOR =
+			Comparator.comparingLong(GlobalFsCheckpoint::getRevision)
+					.thenComparing((a, b) -> a.isTombstone() == b.isTombstone() ? 0 : a.isTombstone() ? 1 : -1)
+					.thenComparing(GlobalFsCheckpoint::getPosition);
 
 	public boolean isTombstone() {
 		return digest == null;
@@ -85,6 +76,10 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 
 	public long getPosition() {
 		return position;
+	}
+
+	public long getRevision() {
+		return revision;
 	}
 
 	public SHA256Digest getDigest() {
@@ -107,7 +102,7 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 	}
 
 	public GlobalFsCheckpoint toTombstone() {
-		return createTombstone(filename);
+		return createTombstone(filename, revision);
 	}
 
 	public enum CheckpointVerificationResult {
@@ -195,6 +190,6 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 	@Override
 	public String toString() {
 		return "GlobalFsCheckpoint{filename='" + filename + '\'' + ", position=" + position +
-				", digest=@" + Integer.toHexString((digest != null ? Arrays.hashCode(digest.getEncodedState()) : 0)) + '}';
+				", revision=" + revision + ", digest=@" + Integer.toHexString((digest != null ? Arrays.hashCode(digest.getEncodedState()) : 0)) + '}';
 	}
 }

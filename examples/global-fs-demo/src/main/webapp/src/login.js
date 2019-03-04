@@ -1,5 +1,5 @@
 const $ = require('jquery');
-const cookies = require('js-cookie');
+const elliptic = require('elliptic');
 
 const repos = JSON.parse(localStorage.getItem('repos') || '{}');
 const repoList = $('#repos');
@@ -29,16 +29,22 @@ pubkey.val(localStorage.getItem('pubkeyField') || '');
 pubkey.on('input', () => localStorage.setItem('pubkeyField', pubkey.val()));
 
 $('#generate').click(() => {
-  $.ajax('/genKeyPair')
-    .then(keys => {
-      repos[keys[1]] = keys[0];
-      localStorage.setItem('repos', JSON.stringify(repos));
-      pubkey.val(keys[1]);
-      updateRepos();
-    })
+  const [pk, sk] = generateKeyPair();
+  repos[pk] = sk;
+  localStorage.setItem('repos', JSON.stringify(repos));
+  pubkey.val(pk);
+  updateRepos();
 });
 
 $('#go').click(() => {
   localStorage.setItem('space', pubkey.val());
   location.pathname = '/view';
 });
+
+const ec = new elliptic.ec('secp256k1');
+
+function generateKeyPair() {
+  const key = ec.genKeyPair();
+  const point = key.getPublic();
+  return [`${point.getX().toString('hex')}:${point.getY().toString('hex')}`, key.getPrivate().toString('hex')]
+}

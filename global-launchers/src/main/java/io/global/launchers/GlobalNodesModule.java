@@ -158,7 +158,8 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	FsClient provide(Eventloop eventloop, ExecutorService executor, Config config) {
-		return LocalFsClient.create(eventloop, config.get(ofPath(), "fs.storage"));
+		return LocalFsClient.create(eventloop, config.get(ofPath(), "fs.storage"))
+				.withRevisions();
 	}
 
 	@Provides

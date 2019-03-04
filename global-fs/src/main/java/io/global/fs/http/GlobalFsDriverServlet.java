@@ -19,14 +19,14 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.global.fs.util.HttpDataFormats.httpDownload;
-import static io.global.fs.util.HttpDataFormats.httpUpload;
+import static io.global.fs.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class GlobalFsDriverServlet implements WithMiddleware {
 	private static final StructuredCodec<GlobalFsCheckpoint> CHECKPOINT_CODEC = tuple(GlobalFsCheckpoint::of,
 			GlobalFsCheckpoint::getFilename, STRING_CODEC,
 			GlobalFsCheckpoint::getPosition, LONG_CODEC,
+			GlobalFsCheckpoint::getRevision, LONG_CODEC,
 			GlobalFsCheckpoint::getDigestOrNull, (STRING_CODEC.transform($ -> {
 				throw new UnsupportedOperationException();
 			}, digest -> {
@@ -38,7 +38,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				return CryptoUtils.toHexString(hash);
 			})),
 			GlobalFsCheckpoint::getSimKeyHash, STRING_CODEC.transform(Hash::fromString, Hash::asString).nullable());
-	private static final StructuredCodec<GlobalFsCheckpoint> NULLABLE_CHECKPOINT_CODEC = CHECKPOINT_CODEC.nullable();
+	private static final StructuredCodec<@Nullable GlobalFsCheckpoint> NULLABLE_CHECKPOINT_CODEC = CHECKPOINT_CODEC.nullable();
 	private static final StructuredCodec<List<GlobalFsCheckpoint>> LIST_CODEC = ofList(CHECKPOINT_CODEC);
 
 
@@ -81,15 +81,14 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						SimKey simKey = getSimKey(request);
-						return httpUpload(request,
-								(name, offset, revision) -> driver.upload(keys, name, offset, simKey, revision));
+						return httpUpload(request, (name, offset, revision) -> driver.upload(keys, name, offset, revision, simKey));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.with("/list/:space", request -> {
 					try {
-						return driver.list(PubKey.fromString(request.getPathParameter("space")), request.getQueryParameter("glob", "**"))
+						return driver.listEntities(PubKey.fromString(request.getPathParameter("space")), request.getQueryParameter("glob", "**"))
 								.thenApply(list -> HttpResponse.ok200()
 										.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
@@ -99,7 +98,6 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				})
 				.with("/getMetadata/:space/:name*", request -> {
 					try {
-						//noinspection ConstantConditions - checkpoint codec is nullable so its ok
 						return driver.getMetadata(PubKey.fromString(request.getPathParameter("space")), request.getPathParameter("name"))
 								.thenApply(list -> HttpResponse.ok200()
 										.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
@@ -108,20 +106,11 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/delete", request -> {
-					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
-						return driver.delete(keys, request.getQueryParameter("glob"))
-								.thenApply($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
 				.with(POST, "/delete/:name*", request -> {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						String name = request.getPathParameter("name");
-						return driver.delete(keys, name)
+						return driver.delete(keys, name, parseRevision(request))
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);

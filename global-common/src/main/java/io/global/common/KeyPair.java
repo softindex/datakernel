@@ -20,7 +20,7 @@ import org.spongycastle.crypto.AsymmetricCipherKeyPair;
 import org.spongycastle.crypto.params.ECPrivateKeyParameters;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 
-public class KeyPair {
+public final class KeyPair {
 	private final PrivKey privKey;
 	private final PubKey pubKey;
 

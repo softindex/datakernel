@@ -30,6 +30,7 @@ import io.global.common.api.AnnouncementStorage;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.SharedKeyStorage;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,6 @@ import java.util.List;
 
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 
 public final class LocalDiscoveryService implements DiscoveryService, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalDiscoveryService.class);
@@ -67,13 +67,13 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
 		return announcementStorage.load(space)
 				.thenComposeEx((signedAnnounceData, e) -> {
-					if (e == null) {
-						if (signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
-							logger.info("rejected as outdated: {} : {}", announceData, this);
-							return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
-						}
-					} else if (e != NO_ANNOUNCEMENT) {
+					if (e != null) {
 						return Promise.ofException(e);
+					}
+					if (signedAnnounceData != null
+							&& signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
+						logger.info("rejected as outdated: {} : {}", announceData, this);
+						return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
 					}
 					return announcementStorage.store(space, announceData);
 				})
@@ -81,7 +81,7 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	}
 
 	@Override
-	public Promise<SignedData<AnnounceData>> find(PubKey space) {
+	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return announcementStorage.load(space)
 				.whenComplete(toLogger(logger, TRACE, "find", space, this));
 	}

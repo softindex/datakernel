@@ -24,10 +24,12 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,47 +52,46 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 
 	private final FsClient storage;
 
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+
 	public RemoteFsCheckpointStorage(FsClient storage) {
 		this.storage = storage;
 	}
 
 	private Promise<ByteBuf> download(String filename) {
 		return storage.download(filename)
-				.thenComposeEx((supplier, e) -> {
-					if (e != null) {
-						return Promise.ofException(e == FILE_NOT_FOUND ? NO_CHECKPOINT : e);
-					}
-					return supplier.toCollector(ByteBufQueue.collector());
-				});
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()));
 	}
 
 	@Override
 	public Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> signedCheckpoint) {
 		GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
 		if (checkpoint.isTombstone()) {
-			return storage.delete(filename)
-					.thenCompose($ -> storage.upload(filename, 0))
-					.thenCompose(ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, signedCheckpoint))::streamTo);
+			return ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, signedCheckpoint))
+					.streamTo(storage.upload(filename, 0, now.currentTimeMillis()));
 		}
-		long pos = checkpoint.getPosition();
-		return load(filename, pos)
-				.thenComposeEx((existing, e) -> {
-					if (e == null) {
-						return signedCheckpoint.equals(existing) ?
-								Promise.complete() :
-								Promise.ofException(OVERRIDING);
+		return load(filename, checkpoint.getPosition())
+				.thenCompose(existing -> {
+					if (existing == null) {
+						return ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, signedCheckpoint))
+								.streamTo(storage.append(filename));
 					}
-					return storage.getMetadata(filename)
-							.thenCompose(m -> storage.upload(filename, m != null ? m.getSize() : 0))
-							.thenCompose(ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, signedCheckpoint))::streamTo);
+					return signedCheckpoint.equals(existing) ?
+							Promise.complete() :
+							Promise.ofException(OVERRIDING);
 				})
 				.whenComplete(toLogger(logger, TRACE, "store", filename, signedCheckpoint, this));
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
+	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		return download(filename)
-				.thenCompose(buf -> {
+				.thenComposeEx((buf, e) -> {
+					if (e != null) {
+						return e == FILE_NOT_FOUND ?
+								Promise.of(null) :
+								Promise.ofException(e);
+					}
 					try {
 						while (buf.canRead()) {
 							try {
@@ -98,11 +99,11 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 								if (checkpoint.getValue().getPosition() == position) {
 									return Promise.of(checkpoint);
 								}
-							} catch (ParseException e) {
-								return Promise.ofException(e);
+							} catch (ParseException e2) {
+								return Promise.ofException(e2);
 							}
 						}
-						return Promise.ofException(NO_CHECKPOINT);
+						return Promise.of(null);
 					} finally {
 						buf.recycle();
 					}
@@ -118,9 +119,14 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
+	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
 		return download(filename)
-				.thenCompose(buf -> {
+				.thenComposeEx((buf, e) -> {
+					if (e != null) {
+						return e == FILE_NOT_FOUND ?
+								Promise.of(null) :
+								Promise.ofException(e);
+					}
 					try {
 						SignedData<GlobalFsCheckpoint> max = null;
 						while (buf.canRead()) {
@@ -129,11 +135,11 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 								if (max == null || checkpoint.getValue().getPosition() > max.getValue().getPosition()) {
 									max = checkpoint;
 								}
-							} catch (ParseException e) {
-								return Promise.ofException(e);
+							} catch (ParseException e2) {
+								return Promise.ofException(e2);
 							}
 						}
-						return max != null ? Promise.of(max) : Promise.ofException(NO_CHECKPOINT);
+						return Promise.of(max);
 					} finally {
 						buf.recycle();
 					}
@@ -144,7 +150,12 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	@Override
 	public Promise<long[]> loadIndex(String filename) {
 		return download(filename)
-				.thenCompose(buf -> {
+				.thenComposeEx((buf, e) -> {
+					if (e != null) {
+						return e == FILE_NOT_FOUND ?
+								Promise.of(new long[0]) :
+								Promise.ofException(e);
+					}
 					try {
 						long[] array = new long[32];
 						int size = 0;
@@ -155,8 +166,8 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 									array = Arrays.copyOf(array, size * 2);
 								}
 								array[size++] = checkpoint.getValue().getPosition();
-							} catch (ParseException e) {
-								return Promise.ofException(e);
+							} catch (ParseException e2) {
+								return Promise.ofException(e2);
 							}
 						}
 						return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
@@ -168,9 +179,15 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<Void> drop(String filename) {
-		return storage.delete(filename)
-				.whenComplete(toLogger(logger, TRACE, "drop", filename, this));
+	public Promise<Void> drop(String filename, long revision) {
+		return loadMetaCheckpoint(filename)
+				.thenCompose(meta -> {
+					if (meta != null && meta.getValue().getRevision() < revision) {
+						return storage.truncate(filename, now.currentTimeMillis());
+					}
+					return Promise.complete();
+				})
+				.whenComplete(toLogger(logger, TRACE, "drop", filename, revision, this));
 	}
 
 	@Override

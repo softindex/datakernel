@@ -52,7 +52,7 @@ public final class CheckpointStorageTest {
 		Executor executor = Executors.newSingleThreadExecutor();
 		Path path = temporaryFolder.newFolder().toPath();
 
-		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), path));
+		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), path).withRevisions());
 	}
 
 	@Test
@@ -76,9 +76,9 @@ public final class CheckpointStorageTest {
 
 		String filename = "test.txt";
 
-		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1, null), keys.getPrivKey())));
-		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2, null), keys.getPrivKey())));
-		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3, null), keys.getPrivKey())));
+		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, 1, digest1, null), keys.getPrivKey())));
+		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, 1, digest2, null), keys.getPrivKey())));
+		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, 1, digest3, null), keys.getPrivKey())));
 
 		long[] positions = await(storage.loadIndex("test.txt"));
 		assertArrayEquals(new long[]{123, 321, 567}, positions);

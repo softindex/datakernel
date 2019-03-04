@@ -78,7 +78,7 @@ public class RocksDbAnnouncementStorage implements AnnouncementStorage {
 					byte[] valueBytes = db.get(keyBytes);
 
 					if (valueBytes == null) {
-						throw new UncheckedException(NO_ANNOUNCEMENT);
+						return null;
 					} else {
 						return decode(ANNOUNCEMENT_CODEC, valueBytes);
 					}

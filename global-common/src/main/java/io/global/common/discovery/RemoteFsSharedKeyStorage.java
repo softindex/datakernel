@@ -16,7 +16,6 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -24,20 +23,22 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyStorage;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
-import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.reduce;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
@@ -54,6 +55,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 			REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
 
 	private final FsClient storage;
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	public RemoteFsSharedKeyStorage(FsClient storage) {
 		this.storage = storage;
@@ -70,29 +72,33 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	@Override
 	public Promise<Void> store(PubKey receiver, SignedData<SharedSimKey> signedSharedSimKey) {
 		String file = getFilenameFor(receiver, signedSharedSimKey.getValue().getHash());
-		return storage.delete(file)
-				.thenCompose($ -> storage.upload(file, 0))
+		return storage.upload(file, 0, now.currentTimeMillis())
 				.thenCompose(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo)
 				.whenComplete(toLogger(logger, TRACE, "store", receiver, signedSharedSimKey, this));
 	}
 
-	private static final BiFunction<ChannelSupplier<ByteBuf>, Throwable, Promise<SignedData<SharedSimKey>>> LOAD_SHARED_KEY =
-			(supplier, e) ->
-					e != null ?
-							Promise.ofException(e == FILE_NOT_FOUND ? NO_SHARED_KEY : e) :
-							supplier.toCollector(ByteBufQueue.collector())
-									.thenCompose(buf -> {
-										try {
-											return Promise.of(decode(SHARED_KEY_CODEC, buf.slice()));
-										} catch (ParseException e1) {
-											return Promise.ofException(e1);
-										} finally {
-											buf.recycle();
-										}
-									});
+	private static final BiFunction<ChannelSupplier<ByteBuf>, Throwable, Promise<@Nullable SignedData<SharedSimKey>>> LOAD_SHARED_KEY =
+			(supplier, e) -> {
+				if (e == FILE_NOT_FOUND) {
+					return Promise.of(null);
+				}
+				if (e != null) {
+					return Promise.ofException(e);
+				}
+				return supplier.toCollector(ByteBufQueue.collector())
+						.thenCompose(buf -> {
+							try {
+								return Promise.of(decode(SHARED_KEY_CODEC, buf.slice()));
+							} catch (ParseException e2) {
+								return Promise.ofException(e2);
+							} finally {
+								buf.recycle();
+							}
+						});
+			};
 
 	@Override
-	public Promise<SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
+	public Promise<@Nullable SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
 		return storage.download(getFilenameFor(receiver, hash))
 				.thenComposeEx(LOAD_SHARED_KEY)
 				.whenComplete(toLogger(logger, TRACE, "load", receiver, hash, this));
@@ -101,10 +107,10 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver) {
 		return storage.list(getGlobFor(receiver))
-				.thenCompose(files -> reduce(toList(), 1,
-						asPromises(files.stream().map(meta -> AsyncSupplier.cast(() ->
-								storage.download(meta.getName())
-										.thenComposeEx(LOAD_SHARED_KEY))))))
+				.thenCompose(files -> reduce(toList(), 1, files.stream()
+						.map(meta -> storage.download(meta.getName()).thenComposeEx(LOAD_SHARED_KEY))
+						.iterator()))
+				.thenApply(list -> list.stream().filter(Objects::nonNull).collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
 	}
 

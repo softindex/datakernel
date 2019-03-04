@@ -22,11 +22,13 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,8 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 
 	private final FsClient storage;
 
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+
 	public RemoteFsAnnouncementStorage(FsClient storage) {
 		this.storage = storage;
 	}
@@ -55,24 +59,28 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 	@Override
 	public Promise<Void> store(PubKey space, SignedData<AnnounceData> signedAnnounceData) {
 		String file = getFilenameFor(space);
-		return storage.delete(file)
-				.thenCompose($ -> storage.upload(file, 0))
+		return storage.upload(file, 0, now.currentTimeMillis())
 				.thenCompose(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
 				.whenComplete(toLogger(logger, TRACE, "store", signedAnnounceData, this));
 	}
 
 	@Override
-	public Promise<SignedData<AnnounceData>> load(PubKey space) {
+	public Promise<@Nullable SignedData<AnnounceData>> load(PubKey space) {
 		return storage.download(getFilenameFor(space))
-				.thenComposeEx((supplier, e) ->
-						e != null ?
-								Promise.ofException(e == FILE_NOT_FOUND ? NO_ANNOUNCEMENT : e) :
-								supplier.toCollector(ByteBufQueue.collector()))
+				.thenComposeEx((supplier, e) -> {
+					if (e == null) {
+						return supplier.toCollector(ByteBufQueue.collector());
+					}
+					return e == FILE_NOT_FOUND ? Promise.of(null) : Promise.ofException(e);
+				})
 				.thenCompose(buf -> {
+					if (buf == null || !buf.canRead()) {
+						return Promise.of(null);
+					}
 					try {
 						return Promise.of(decode(ANNOUNCEMENT_CODEC, buf.slice()));
-					} catch (ParseException e1) {
-						return Promise.ofException(e1);
+					} catch (ParseException e2) {
+						return Promise.ofException(e2);
 					} finally {
 						buf.recycle();
 					}

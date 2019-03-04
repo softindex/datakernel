@@ -28,12 +28,11 @@ import java.util.Collection;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
-import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunnerFactory.class)
@@ -102,8 +101,7 @@ public class AnnouncementStorageTest {
 
 	@Test
 	public void testLoadEmpty() {
-		Throwable e = awaitException(storage.load(KeyPair.generate().getPubKey()));
-		assertEquals(NO_ANNOUNCEMENT, e);
+		assertNull(await(storage.load(KeyPair.generate().getPubKey())));
 	}
 
 	@Test

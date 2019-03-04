@@ -43,6 +43,7 @@ public final class BinaryDataFormats {
 					tuple(GlobalFsCheckpoint::parse,
 							GlobalFsCheckpoint::getFilename, registry.get(String.class),
 							GlobalFsCheckpoint::getPosition, registry.get(long.class),
+							GlobalFsCheckpoint::getRevision, registry.get(long.class),
 							GlobalFsCheckpoint::getDigestState, registry.get(byte[].class),
 							GlobalFsCheckpoint::getSimKeyHash, registry.get(Hash.class).nullable()));
 

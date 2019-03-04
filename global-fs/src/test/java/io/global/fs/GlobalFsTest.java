@@ -19,7 +19,6 @@ package io.global.fs;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -33,8 +32,6 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.http.GlobalFsNodeServlet;
-import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.LocalGlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
@@ -62,7 +59,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -77,8 +73,6 @@ public final class GlobalFsTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-	private Executor executor = Executors.newSingleThreadExecutor();
 
 	private DiscoveryService discoveryService;
 
@@ -107,7 +101,7 @@ public final class GlobalFsTest {
 		dir = temporaryFolder.newFolder().toPath();
 		System.out.println("DIR: " + dir);
 
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir);
+		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
 		Map<RawServerId, GlobalFsNode> nodes = new HashMap<>();
@@ -116,8 +110,9 @@ public final class GlobalFsTest {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
-				StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
-				return HttpGlobalFsNode.create(serverId.getServerIdString(), client);
+				// StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
+				// return HttpGlobalFsNode.create(serverId.getServerIdString(), client);
+				return node;
 			}
 		};
 		firstClient = clientFactory.create(FIRST_ID);
@@ -249,6 +244,9 @@ public final class GlobalFsTest {
 		// upload to master through second node
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(secondAliceAdapter.upload(FILENAME))));
 
+		System.out.println(await(secondAliceAdapter.listEntities("**")));
+		System.out.println(await(firstAliceAdapter.listEntities("**")));
+
 		// download from first
 		byte[] res = await(await(firstAliceAdapter.download(FILENAME)).toCollector(ByteBufQueue.collector())).asArray();
 		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), res);
@@ -366,8 +364,8 @@ public final class GlobalFsTest {
 	public void downloadOnlyCheckpoint() {
 		// downloading 0 bytes at the checkpoint position should return only a one frame with that checkpoint
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT))
-				.transformWith(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.of(4), GlobalFsTest.FILENAME, 0, new SHA256Digest(), null))
-				.streamTo(await(firstClient.upload(alice.getPubKey(), GlobalFsTest.FILENAME, -1))));
+				.transformWith(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.of(4), GlobalFsTest.FILENAME, 0, 0, new SHA256Digest(), null))
+				.streamTo(await(firstClient.upload(alice.getPubKey(), GlobalFsTest.FILENAME, 0, 0))));
 
 		List<DataFrame> list = await(await(firstClient.download(alice.getPubKey(), GlobalFsTest.FILENAME, 4, 0)).toList());
 		assertEquals(1, list.size());
@@ -427,12 +425,15 @@ public final class GlobalFsTest {
 
 		// uploading one string of bytes to first node
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
+		System.out.println(await(firstAliceAdapter.listEntities("**")));
 
 		// deleting the file on second node
 		await(secondAliceAdapter.delete(FILENAME));
+		System.out.println(await(secondAliceAdapter.listEntities("**")));
 
 		// make second node catch up
 		await(rawFirstClient.catchUp());
+		System.out.println(await(firstAliceAdapter.listEntities("**")));
 
 		// uploading on the first node again
 		Throwable e = awaitException(firstAliceAdapter.upload(FILENAME));
@@ -483,7 +484,6 @@ public final class GlobalFsTest {
 	@Ignore // TODO anton: fix this too
 	public void encryption() {
 		SimKey key1 = SimKey.generate();
-		SimKey key2 = SimKey.generate();
 
 		String filename = FILENAME;
 		String data = "some plain ASCII data to be uploaded and encrypted";
@@ -498,7 +498,8 @@ public final class GlobalFsTest {
 		assertEquals(data.substring(12, 12 + 32), res);
 
 
-		assertSame(NO_SHARED_KEY, awaitException(firstAliceAdapter.download(filename)));
+		// TODO anton: this whole test is broken for now
+		// assertSame(NO_SHARED_KEY, awaitException(firstAliceAdapter.download(filename)));
 
 		// share "someone else's" file key with ourselves
 		await(discoveryService.shareKey(alice.getPubKey(),

@@ -22,8 +22,11 @@ import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyStorage;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+
+import static java.util.Collections.emptyList;
 
 public class InMemorySharedKeyStorage implements SharedKeyStorage {
 	private final Map<PubKey, List<SignedData<SharedSimKey>>> keys = new HashMap<>();
@@ -35,22 +38,19 @@ public class InMemorySharedKeyStorage implements SharedKeyStorage {
 	}
 
 	@Override
-	public Promise<SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
+	public Promise<@Nullable SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
 		return loadAll(receiver)
 				.thenCompose(signedDataList -> {
 					Optional<SignedData<SharedSimKey>> maybeKey = signedDataList.stream()
 							.filter(signedData -> signedData.getValue().getHash().equals(hash))
 							.findFirst();
-					return maybeKey.isPresent() ? Promise.of(maybeKey.get()) : Promise.ofException(NO_SHARED_KEY);
+					return Promise.of(maybeKey.orElse(null));
 				});
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver) {
-		List<SignedData<SharedSimKey>> signedDataList = keys.get(receiver);
-		return signedDataList != null ?
-				Promise.of(signedDataList) :
-				Promise.ofException(NO_SHARED_KEY);
+		return Promise.of(keys.getOrDefault(receiver, emptyList()));
 	}
 
 	public void clear() {

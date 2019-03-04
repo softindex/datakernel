@@ -86,7 +86,7 @@ public class RocksDbSharedKeyStorage implements SharedKeyStorage {
 					byte[] valueBytes = db.get(keyBytes);
 
 					if (valueBytes == null) {
-						throw new UncheckedException(NO_SHARED_KEY);
+						return null;
 					} else {
 						return decode(SHARED_SIM_KEY_CODEC, valueBytes);
 					}

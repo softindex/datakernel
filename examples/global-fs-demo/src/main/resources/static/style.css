@@ -81,7 +81,7 @@ label {
   margin: 5px
 }
 
-#reposContainer {
+.center {
   text-align: center;
 }
 
@@ -106,7 +106,7 @@ label {
   text-decoration: underline;
 }
 
-#pubkeyField {
+.wide-field {
   font-family: monospace;
   border-color: #eee;
   width: 1000px;

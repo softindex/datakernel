@@ -31,18 +31,18 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
-import static io.global.fs.util.HttpDataFormats.parseOffset;
-import static io.global.fs.util.HttpDataFormats.parseRange;
+import static io.global.fs.util.HttpDataFormats.*;
 
 public final class GlobalFsNodeServlet implements WithMiddleware {
 	static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
+	static final StructuredCodec<@Nullable SignedData<GlobalFsCheckpoint>> NULLABLE_SIGNED_CHECKPOINT_CODEC = SIGNED_CHECKPOINT_CODEC.nullable();
 
 	private final MiddlewareServlet servlet;
 
@@ -61,17 +61,11 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						String path = request.getPathParameter("path");
 						long offset = parseOffset(request);
+						long revision = parseRevision(request);
 						ChannelSupplier<ByteBuf> body = request.getBodyStream();
-						return node.getMetadata(space, path)
-								.thenComposeEx((meta, e) -> {
-									boolean newFile = e == NO_CHECKPOINT;
-									if (e == null || newFile) {
-										return node.upload(space, path, offset)
-												.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
-												.thenApply($ -> newFile ? HttpResponse.ok201() : HttpResponse.ok200());
-									}
-									return Promise.ofException(e);
-								});
+						return node.upload(space, path, offset, revision)
+								.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
+								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -92,13 +86,11 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 				.with(GET, "/" + LIST + "/:space/:name", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
-						return node.list(space, request.getQueryParameter("glob"))
-								.thenApply(list -> HttpResponse.ok200()
-										.withBodyStream(
-												ChannelSupplier.ofStream(list
-														.stream()
-														.map(meta ->
-																encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
+						return node.listEntities(space, request.getQueryParameter("glob"))
+								.thenApply(list ->
+										HttpResponse.ok200()
+												.withBodyStream(ChannelSupplier.ofStream(list.stream()
+														.map(meta -> encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -107,38 +99,30 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						return node.getMetadata(space, request.getPathParameter("path"))
-								.thenComposeEx((meta, e) -> {
-									if (e == null) {
-										return Promise.of(HttpResponse.ok200()
-												.withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
-									}
-									if (e == NO_CHECKPOINT) {
-										return Promise.of(HttpResponse.ofCode(404));
-									}
-									return Promise.ofException(e);
-								});
+								.thenCompose(meta ->
+										Promise.of(HttpResponse.ok200()
+												.withBody(encode(NULLABLE_SIGNED_CHECKPOINT_CODEC, meta))));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + DELETE + "/:space", request -> request.getBody().thenCompose(body -> {
-					try {
-						PubKey space = PubKey.fromString(request.getPathParameter("space"));
-						SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.slice());
-						return node.delete(space, checkpoint)
-								.thenApply(list -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}));
-		// .with(POST, "/" + COPY + "/:space/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
-		// 		node.copy(parseNamespace(request), request.getPostParameters())
-		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))
-		// .with(POST, "/" + MOVE + "/:space/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
-		// 		node.move(parseNamespace(request), request.getPostParameters())
-		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))));
+				.with(POST, "/" + DELETE + "/:space", request ->
+						request.getBody()
+								.thenCompose(body -> {
+									try {
+										PubKey space = PubKey.fromString(request.getPathParameter("space"));
+										SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.getArray());
+										return node.delete(space, checkpoint)
+												.whenException(e -> {
+													e.printStackTrace();
+												})
+												.thenApply($ -> HttpResponse.ok200());
+									} catch (ParseException e) {
+										return Promise.<HttpResponse>ofException(e);
+									} finally {
+										body.recycle();
+									}
+								}));
 	}
 
 	@Override

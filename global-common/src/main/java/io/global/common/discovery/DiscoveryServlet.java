@@ -40,6 +40,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 
 	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
+	static final StructuredCodec<SignedData<SharedSimKey>> NULLABLE_SIGNED_SHARED_SIM_KEY = SIGNED_SHARED_SIM_KEY.nullable();
 	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
 
 	private DiscoveryServlet(DiscoveryService discoveryService) {
@@ -93,11 +94,9 @@ public final class DiscoveryServlet implements WithMiddleware {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 						Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
 						return discoveryService.getSharedKey(receiver, simKeyHash)
-								.thenComposeEx((signedSharedKey, e) ->
-										e == null ?
-												Promise.of(HttpResponse.ok200()
-														.withBody(encode(SIGNED_SHARED_SIM_KEY, signedSharedKey))) :
-												Promise.ofException(HttpException.notFound404()));
+								.thenApply(signedSharedKey ->
+										HttpResponse.ok200()
+												.withBody(encode(NULLABLE_SIGNED_SHARED_SIM_KEY, signedSharedKey)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

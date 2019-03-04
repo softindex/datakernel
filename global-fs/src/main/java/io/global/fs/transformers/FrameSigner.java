@@ -42,6 +42,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	private final String filename;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 	private final PrivKey privateKey;
+	private final long revision;
 	private final SHA256Digest digest;
 
 	@Nullable
@@ -50,18 +51,19 @@ public final class FrameSigner extends ByteBufsToFrames {
 	private boolean lastPostedCheckpoint = false;
 
 	private FrameSigner(PrivKey privateKey, CheckpointPosStrategy checkpointPosStrategy,
-			String filename, long offset, SHA256Digest digest, @Nullable Hash simKeyHash) {
+			String filename, long offset, long revision, SHA256Digest digest, @Nullable Hash simKeyHash) {
 		super(offset);
 		this.filename = filename;
 		this.checkpointPosStrategy = checkpointPosStrategy;
 		this.privateKey = privateKey;
+		this.revision = revision;
 		this.digest = digest;
 		this.simKeyHash = simKeyHash;
 	}
 
 	public static FrameSigner create(PrivKey privateKey, CheckpointPosStrategy checkpointPosStrategy,
-			String filename, long offset, SHA256Digest digest, @Nullable Hash simKeyHash) {
-		return new FrameSigner(privateKey, checkpointPosStrategy, filename, offset, digest, simKeyHash);
+			String filename, long offset, long revision, @Nullable SHA256Digest digest, @Nullable Hash simKeyHash) {
+		return new FrameSigner(privateKey, checkpointPosStrategy, filename, offset, revision, digest != null ? digest : new SHA256Digest(), simKeyHash);
 	}
 
 	@Override
@@ -76,7 +78,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	@Override
 	protected Promise<Void> postCheckpoint() {
 		nextCheckpoint = checkpointPosStrategy.nextPosition(nextCheckpoint);
-		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(filename, position, new SHA256Digest(digest), simKeyHash);
+		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(filename, position, revision, new SHA256Digest(digest), simKeyHash);
 		lastPostedCheckpoint = true;
 		return send(DataFrame.of(SignedData.sign(CHECKPOINT_CODEC, checkpoint, privateKey)));
 	}

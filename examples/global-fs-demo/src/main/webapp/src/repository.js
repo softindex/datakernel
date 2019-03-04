@@ -1,4 +1,5 @@
 const $ = require('jquery');
+const hash = require('hash.js');
 const prettyByte = require('pretty-byte');
 const cookies = require('js-cookie');
 
@@ -28,6 +29,17 @@ if (privKey) {
   $('#upload-panel').hide();
   cookies.remove('Sim-Key');
 }
+
+const extended = $('#extended').hide();
+
+$('#extend').change(e => {
+  console.log(e.target.checked);
+  if (e.target.checked) {
+    extended.show();
+  } else {
+    extended.hide();
+  }
+});
 
 function good(msg) {
   status
@@ -62,9 +74,8 @@ function updateKeys() {
   let guard = false;
   keySelect
     .append('<option value="_#new#_">&lt;generate new&gt;</option>')
-    .val(localStorage.getItem('selectedKey') || '_#new#_')
+    .val(localStorage.getItem('selectedKey') || '_#none#_')
     .change(() => {
-      console.log('change called ' + keySelect.val());
       if (guard) {
         return;
       }
@@ -72,6 +83,7 @@ function updateKeys() {
       if (selected === '_#none#_') {
         localStorage.removeItem('selectedKey');
         cookies.remove('Sim-Key');
+        return
       }
       if (selected !== '_#new#_') {
         localStorage.setItem('selectedKey', selected);
@@ -88,19 +100,24 @@ function updateKeys() {
       if (!name) {
         return;
       }
-      $.ajax(`/genSimKey`)
-        .then(data => {
-          good('New key generated and stored as \'' + name + '\'');
-          keys[data[1]] = {name, key: data[0]};
-          localStorage.setItem('selectedKey', data[1]);
-          localStorage.setItem('keys', JSON.stringify(keys));
-          cookies.set('Sim-Key', data[0]);
-          guard = true;
-          updateKeys();
-          keySelect.val(data[1]);
-          guard = false;
-        }, response => bad('Key generation failed', response));
+      const [key, hash] = generateSimKey();
+      good('New key generated and stored as \'' + name + '\'');
+      keys[hash] = {name, key};
+      localStorage.setItem('selectedKey', hash);
+      localStorage.setItem('keys', JSON.stringify(keys));
+      cookies.set('Sim-Key', key);
+      guard = true;
+      updateKeys();
+      keySelect.val(hash);
+      guard = false;
     });
+}
+
+function generateSimKey() {
+  const array = window.crypto.getRandomValues(new Uint8Array(16));
+  const key = Array.from(array).map(b => b.toString(16).padStart(2, "0")).join("");
+  const hash = hash.sha1().update(array).digest('hex');
+  return [key, hash];
 }
 
 function updateView(keepBars) {
@@ -122,7 +139,7 @@ function updateView(keepBars) {
       const folderSet = {};
       const folders = [];
       const files = [];
-      for (const [name, size, sha256, encryptionKeyHash] of res) {
+      for (const [name, size, revision, sha256, encryptionKeyHash] of res) {
         if (sha256 === null || !name.startsWith(folder)) {
           continue;
         }
@@ -170,7 +187,7 @@ function updateView(keepBars) {
         const panel = $('<div class="file-panel"></div>');
         const del = $('<div class="control">delete</div>')
           .click(() =>
-            $.ajax(`/delete/${f.name}`, {method: 'POST'})
+            $.ajax(`/delete/${f.name}?revision=${new Date().getTime()}`, {method: 'POST'})
               .then(() => {
                 updateView();
                 good('Deletion succeeded');
@@ -230,12 +247,12 @@ $('#upload').click(() => {
   const off = parseInt(offset.val());
   const start = parseInt(from.val());
   const limit = parseInt(to.val());
-  if (files.length !== 1 && (off > 0 || start !== 0 || limit !== -1)) {
-    bad('Cannot upload multiple files partially (remote offset is not -1 or 0, offset is not 0 and/or limit is not -1)');
+  if (files.length !== 1 && (off !== 0 || start !== 0 || limit !== -1)) {
+    bad('Cannot upload multiple files partially (remote offset is 0, offset is not 0 and/or limit is not -1)');
     return;
   }
-  if (off < -1) {
-    bad('Remote offset value cannot be less than -1');
+  if (off < 0) {
+    bad('Remote offset value cannot be less than 0');
     return;
   }
   if (start < 0) {
@@ -280,7 +297,7 @@ $('#upload').click(() => {
       check();
     };
     xhr.upload.addEventListener('progress', e => bar.set(e.loaded / e.total * 100));
-    xhr.open('POST', `/upload${(off !== -1 ? `?offset=${off}` : '')}`, true);
+    xhr.open('POST', `/upload?revision=${new Date().getTime()}${(off !== 0 ? `&offset=${off}` : '')}`, true);
     const fd = new FormData();
     fd.append('file', start <= 0 && limit === -1 ? file : file.slice(start, limit === -1 ? file.size : start + limit), filename);
     xhr.send(fd);

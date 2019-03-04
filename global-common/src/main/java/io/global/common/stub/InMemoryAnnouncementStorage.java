@@ -36,10 +36,7 @@ public class InMemoryAnnouncementStorage implements AnnouncementStorage {
 
 	@Override
 	public Promise<SignedData<AnnounceData>> load(PubKey space) {
-		SignedData<AnnounceData> signedData = announcements.get(space);
-		return signedData != null ?
-				Promise.of(signedData) :
-				Promise.ofException(NO_ANNOUNCEMENT);
+		return Promise.of(announcements.get(space));
 	}
 
 	public void clear() {

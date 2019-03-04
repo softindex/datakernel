@@ -40,9 +40,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	@Override
 	public Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
-		return checkpoints != null ?
-				Promise.of(checkpoints.get(position)) :
-				Promise.ofException(NO_CHECKPOINT);
+		return Promise.of(checkpoints != null ? checkpoints.get(position) : null);
 	}
 
 	@Override
@@ -63,16 +61,13 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	@Override
 	public Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
-		if (checkpoints != null) {
-			Optional<SignedData<GlobalFsCheckpoint>> maybeCheckpoint = checkpoints.entrySet()
-					.stream()
-					.max(Comparator.comparingLong(Map.Entry::getKey))
-					.map(Map.Entry::getValue);
-			if (maybeCheckpoint.isPresent()) {
-				return Promise.of(maybeCheckpoint.get());
-			}
-		}
-		return Promise.ofException(NO_CHECKPOINT);
+		return Promise.of(checkpoints != null ?
+				checkpoints.entrySet()
+						.stream()
+						.max(Comparator.comparingLong(Map.Entry::getKey))
+						.map(Map.Entry::getValue)
+						.orElse(null) :
+				null);
 	}
 
 	@Override
@@ -95,8 +90,11 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<Void> drop(String filename) {
-		storage.remove(filename);
+	public Promise<Void> drop(String filename, long revision) {
+		SignedData<GlobalFsCheckpoint> meta = loadMetaCheckpoint(filename).materialize().getResult();
+		if (meta != null && meta.getValue().getRevision() < revision) {
+			storage.remove(filename);
+		}
 		return Promise.complete();
 	}
 }

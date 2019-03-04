@@ -20,11 +20,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 public interface DiscoveryService extends SharedKeyManager {
 	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
 
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 
-	Promise<SignedData<AnnounceData>> find(PubKey space);
+	Promise<@Nullable SignedData<AnnounceData>> find(PubKey space);
 }

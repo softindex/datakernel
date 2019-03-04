@@ -24,8 +24,6 @@ import org.spongycastle.crypto.CryptoException;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
-
 public final class PrivateKeyStorage {
 	private final Map<Hash, SimKey> keyMap = new HashMap<>();
 	private final Map<PubKey, PrivKey> keys;
@@ -53,7 +51,7 @@ public final class PrivateKeyStorage {
 		return keys.get(pubKey);
 	}
 
-	public Promise<SimKey> getKey(PubKey receiver, @Nullable Hash simKeyHash) {
+	public Promise<@Nullable SimKey> getKey(PubKey receiver, @Nullable Hash simKeyHash) {
 		if (simKeyHash == null) {
 			return Promise.of(null);
 		}
@@ -69,7 +67,7 @@ public final class PrivateKeyStorage {
 					SharedSimKey sharedSimKey = signedSharedSimKey.getValue();
 					PrivKey privKey = keys.get(receiver);
 					if (privKey == null) {
-						return Promise.ofException(NO_SHARED_KEY);
+						return Promise.of(null);
 					}
 					try {
 						SimKey newKey = sharedSimKey.decryptSimKey(privKey);

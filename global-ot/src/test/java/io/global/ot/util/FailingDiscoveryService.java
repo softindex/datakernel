@@ -7,6 +7,7 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.ConnectException;
 import java.util.List;
@@ -20,7 +21,7 @@ public class FailingDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<SignedData<AnnounceData>> find(PubKey space) {
+	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return Promise.ofException(ERROR);
 	}
 

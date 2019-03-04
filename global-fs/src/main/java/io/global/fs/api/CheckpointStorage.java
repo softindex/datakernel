@@ -19,22 +19,22 @@ package io.global.fs.api;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 public interface CheckpointStorage {
-	StacklessException NO_CHECKPOINT = new StacklessException(CheckpointStorage.class, "No checkpoint found");
 	StacklessException OVERRIDING = new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint with different one");
 
 	Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint);
 
-	Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position);
+	Promise<@Nullable SignedData<GlobalFsCheckpoint>> load(String filename, long position);
 
 	Promise<List<String>> listMetaCheckpoints(String glob);
 
-	Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename);
+	Promise<@Nullable SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename);
 
 	Promise<long[]> loadIndex(String filename);
 
-	Promise<Void> drop(String filename);
+	Promise<Void> drop(String filename, long revision);
 }

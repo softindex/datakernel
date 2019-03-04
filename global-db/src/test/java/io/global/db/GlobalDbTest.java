@@ -49,16 +49,16 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.db.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
 public final class GlobalDbTest {
@@ -251,7 +251,7 @@ public final class GlobalDbTest {
 		pks.forget(Hash.sha1(key1.getBytes()));
 		pks.changeCurrentSimKey(key2);
 
-		assertSame(NO_SHARED_KEY, awaitException(await(firstAliceAdapter.download("test")).toList()));
+		assertEquals(emptyList(), await(await(firstAliceAdapter.download("test")).toList()));
 
 		await(discoveryService.shareKey(alice.getPubKey(),
 				SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())));

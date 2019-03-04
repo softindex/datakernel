@@ -25,6 +25,7 @@ import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
+import io.global.fs.api.GlobalFsCheckpoint;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,11 +39,10 @@ import static java.util.stream.Collectors.toList;
 public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsAdapter.class);
 
-	public static final StacklessException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new StacklessException(GlobalFsAdapter.class, "Trying to upload at offset greater than known file size");
 	public static final StacklessException UPK_UPLOAD = new StacklessException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
 	public static final StacklessException UPK_DELETE = new StacklessException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");
 
-	private final GlobalFsDriver gateway;
+	private final GlobalFsDriver driver;
 	private final PubKey space;
 
 	@Nullable
@@ -51,8 +51,8 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	@Nullable
 	private SimKey currentSimKey = null;
 
-	public GlobalFsAdapter(GlobalFsDriver gateway, PubKey space, @Nullable PrivKey privKey) {
-		this.gateway = gateway;
+	public GlobalFsAdapter(GlobalFsDriver driver, PubKey space, @Nullable PrivKey privKey) {
+		this.driver = driver;
 		this.space = space;
 		this.privKey = privKey;
 	}
@@ -69,44 +69,53 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
 		return privKey != null ?
-				gateway.upload(new KeyPair(privKey, space), name, offset, currentSimKey) :
+				driver.upload(new KeyPair(privKey, space), name, offset, revision, currentSimKey) :
 				Promise.ofException(UPK_UPLOAD);
 	}
 
 	@Override
 	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long limit) {
-		return gateway.download(space, name, offset, limit)
+		return driver.download(space, name, offset, limit)
 				.thenApply(supplier -> supplier
 						.transformWith(CipherTransformer.create(currentSimKey, CryptoUtils.nonceFromString(name), offset)));
 	}
 
+	private FileMetadata fromCheckpoint(GlobalFsCheckpoint checkpoint) {
+		return checkpoint.isTombstone() ?
+				FileMetadata.tombstone(checkpoint.getFilename(), 0, checkpoint.getRevision()) :
+				FileMetadata.of(checkpoint.getFilename(), checkpoint.getPosition(), 0, checkpoint.getRevision());
+	}
+
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
-		return gateway.list(space, glob)
+		return driver.listEntities(space, glob)
 				.thenApply(res -> res.stream()
-						.map(checkpoint -> FileMetadata.of(
-								checkpoint.getFilename(),
-								checkpoint.isTombstone() ? -1 : checkpoint.getPosition(),
-								0,
-								0)) // TODO anton: globalfs timestamps and revisions
+						.map(this::fromCheckpoint)
+						.collect(toList()))
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+	}
+
+
+	@Override
+	public Promise<List<FileMetadata>> list(String glob) {
+		return driver.list(space, glob)
+				.thenApply(res -> res.stream()
+						.map(this::fromCheckpoint)
 						.collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
-		return gateway.getMetadata(space, name)
-				.thenApply(checkpoint ->
-						checkpoint != null ?
-								FileMetadata.of(checkpoint.getFilename(), checkpoint.isTombstone() ? -1 : checkpoint.getPosition(), 0, 0) :
-								null)
+		return driver.getMetadata(space, name)
+				.thenApply(checkpoint -> checkpoint != null ? fromCheckpoint(checkpoint) : null)
 				.whenComplete(toLogger(logger, TRACE, "getMetadata", name, this));
 	}
 
 	@Override
 	public Promise<Void> delete(String name, long revision) {
 		return privKey != null ?
-				gateway.delete(new KeyPair(privKey, space), name) :
+				driver.delete(new KeyPair(privKey, space), name, revision) :
 				Promise.ofException(UPK_DELETE);
 	}
 

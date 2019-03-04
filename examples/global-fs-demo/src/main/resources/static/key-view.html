@@ -15,18 +15,27 @@
   <label for="file">Upload files: </label>
   <input type="file" id="file" multiple>
   <br>
-  <label for="prefix">prefix:</label>
-  <input type="text" id="prefix" placeholder="directory prefix">
-  <label for="offset">remote offset:</label>
-  <input type="number" id="offset" value="-1">
-  <label for="from">source start:</label>
-  <input type="number" id="from" value="0">
-  <label for="to">source limit:</label>
-  <input type="number" id="to" value="-1">
-  <br>
-  <button id="upload">Upload</button>
   <label for="key">encryption key:</label>
   <select id="key"></select>
+  <button id="upload">Upload</button>
+  <br>
+  <label for="extend">extended upload settings</label>
+  <input id="extend" type="checkbox">
+  <table id="extended">
+    <tr>
+      <td>prefix for the uploaded files (can be used to create dirs):</td>
+      <td><input type="text" id="prefix" placeholder="directory prefix"></td>
+    </tr>
+    <tr>
+      <td>select a range of bytes from the file to be uploaded:</td>
+      <td><input type="number" id="from" value="0"></td>
+      <td><input type="number" id="to" value="-1"></td>
+    </tr>
+    <tr>
+      <td>select remote offset to which the bytes will be appended:</td>
+      <td><input type="number" id="offset" value="0"></td>
+    </tr>
+  </table>
 </div>
 <div id="bars"></div>
 <div id="status"></div>

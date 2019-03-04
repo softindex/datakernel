@@ -62,7 +62,7 @@ public final class GlobalDbGateway implements DbClient {
 		return simKeyHash != null ?
 				driver.getPrivateKeyStorage()
 						.getKey(owner, simKeyHash)
-						.thenApply(simKey -> DbItem.decrypt(item, simKey)) :
+						.thenApply(simKey -> simKey != null ? DbItem.decrypt(item, simKey) : item) :
 				Promise.of(item);
 	}
 

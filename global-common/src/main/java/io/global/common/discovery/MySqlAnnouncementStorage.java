@@ -89,7 +89,7 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 							if (resultSet.next()) {
 								return fromJson(ANNOUNCEMENT_CODEC, resultSet.getString(1));
 							} else {
-								throw NO_ANNOUNCEMENT;
+								return null;
 							}
 						}
 					}

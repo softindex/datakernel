@@ -51,7 +51,7 @@ public final class DiscoveryHttpTest {
 
 	@Test
 	public void test() throws IOException, CryptoException {
-		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath()).withRevisions();
 		DiscoveryServlet servlet = DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
 
 		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), servlet::serve);
