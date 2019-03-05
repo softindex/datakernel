@@ -85,6 +85,7 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
+		((OTNodeImpl) node).lastPushed = null;
 		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1));
 		assertFetchData(6, 5, 14, fetchData2);
 
@@ -97,6 +98,7 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
+		((OTNodeImpl) node).lastPushed = null;
 		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4));
 		assertFetchData(6, 5, 11, fetchData3);
 	}
