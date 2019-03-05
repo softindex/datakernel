@@ -10,7 +10,7 @@ options:
 * RPC
 
 While HTTP is more popular and well-specified, it has some overhead. When performance is a significant aspect of application, 
-you should use something faster than HTTP. And for this purpose Datakernel Framework has an RPC module which is based on 
+you should use something faster than HTTP. And for this purpose DataKernel framework has an RPC module which is based on 
 fast serialzers and custom optimized communication protocol, which allows to greatly improve application performance.
 
 ## What you will need:
@@ -33,14 +33,21 @@ fast serialzers and custom optimized communication protocol, which allows to gre
 
 ## 1. Working Example
 
-To download the complete example, enter next commands:
+To download the complete example, enter next commands in your console:
 ```
 $ git clone https://github.com/softindex/datakernel
 $ cd datakernel
 $ mvn clean install -DskipTests
 $ cd examples/remote-key-value-storage
 ```
-Or if you prefer working in IDE, clone DataKernel locally and import Maven projects.
+Or if you prefer working in IDE, clone DataKernel locally and import it as a Maven project. Then you should set up 
+default working directory of run configurations in your IDE so that the example can work correctly. In accordance to 
+DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way: `Run -> Edit configurations -> |Run/Debug Configurations -> 
+|Templates -> Application| -> |Working directory -> $MODULE_WORKING_DIR$||`.
+                                                                                            
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then, go to [testing](#testing) section.
 
@@ -235,8 +242,8 @@ public class KeyValueStore {
 ```
 
 
-Now, let's write down a guice module for RPC server using Datakernel Boot, that will handle "get" and "put" requests 
-(Note: if you are not familiar with Datakernel Boot, please take a look at [Hello World HTTP Server Tutorial](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld))
+Now, let's write down a guice module for RPC server using DataKernel Boot, that will handle "get" and "put" requests 
+(Note: if you are not familiar with DataKernel Boot, please take a look at [Hello World HTTP Server Tutorial](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld))
 
 ```java
 public class RpcServerModule extends AbstractModule {
@@ -419,53 +426,27 @@ $ mvn clean package
 ```
 ## Testing
 
-Firstly, launch server.
+**First, launch server.**
+
 In console:
 ```
 $ mvn exec:java@RpcServerLauncher
 ```
-In IDE:
-```
-datakernel
-└── examples
-    └── remote-key-value-storage
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └── RpcServerLauncher.java
-```
-and set up working directory properly. For IntelliJ IDEA:
-`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||`.
-Then run `main()` of the example.
 
-Then make a "put" request.
+In IDE: open `RpcServerLauncher` class, which is located at **datakernel -> examples -> remote-key-value-storage** 
+and run its `main()` method.
+
+**Then make a "put" request.**
 
 In console:
 ```
 $ mvn exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
 ```
-In an IDE:
-To run the examples in an IDE, you need to clone DataKernel locally and import Maven projects. Then go to 
-```
-datakernel
-└── examples
-    └── remote-key-value-storage
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └──RpcClientLauncher.java
-```
-and set up program arguments. For IntelliJ IDEA:
-`Run -> Edit configurations -> |Run/Debug Configurations -> |Program arguments -> 
---put key1 value1||`.
-Then run `main()` of the client launcher.
+
+In IDE: open `RpcClientLauncher` class, which is located at **datakernel -> examples -> remote-key-value-storage** 
+and set up program arguments to `--put key1 value1`. For IntelliJ IDEA: `Run -> Edit configurations -> 
+|Run/Debug Configurations -> |Program arguments -> --put key1 value1||`. Then run launcher's `main()` method.
+
 You should see the following output:
 
 ```
@@ -473,30 +454,16 @@ put request was made successfully
 previous value: null
 ```
 
-Finally, make a "get" request.
+**Finally, make a "get" request.**
 
 In console:
 ```
 $ mvn exec:java@RpcClientLauncher -Dexec.args="--get key1"
 ```
 
-In an IDE:
-```
-datakernel
-└── examples
-    └── remote-key-value-storage
-        └── src
-            └── main
-                └── java
-                    └── io
-                        └── datakernel
-                            └── examples
-                                └──RpcClientLauncher.java
-```
-and set up program arguments. For IntelliJ IDEA:
-`Run -> Edit configurations -> |Run/Debug Configurations -> |Program arguments -> 
---get key1||`.
-Then run `main()` of the client launcher.
+In IDE: open `RpcClientLauncher` class again, and set up program arguments to `--get key1`. For IntelliJ IDEA: `Run -> 
+Edit configurations -> |Run/Debug Configurations -> |Program arguments -> --get key1||`. Then run `main()` method of the 
+client launcher.
 
 You should see the following output:
 

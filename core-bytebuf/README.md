@@ -25,6 +25,8 @@ size will be allocated (for example, if `size` is 29, a ByteBuf of 32 bytes will
 To return ByteBuf to the ByteBufPool, use `ByteBuf.recycle()`. This recycle is recommended but not required - if you 
 forget to do so, you will only give Garbage Collector a little more work to do. 
 
+You can explore an example of ByteBuf pool usage [here](https://github.com/softindex/datakernel/tree/master/examples/bytebuf#bytebuf-pool-example)
+
 ### ByteBufQueue
 `ByteBufQueue` class provides effective management of multiple ByteBufs. It creates an optimized queue of several 
 ByteBufs with FIFO rules. You can simply manage your queue with the following methods:
@@ -35,6 +37,10 @@ ByteBuf has enough bytes. Otherwise returns a ByteBuf of exact size which contai
 if latter contains more bytes than `size`. Otherwise creates a new ByteBuf of the `size`.
 * *takeAtMost(int size)* - creates and returns ByteBufSlice that contains needed amount of bytes from queue's first ByteBuf
 if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes from first ByteBuf in queue.
+
+You can explore an example of ByteBuf pool usage [here](https://github.com/softindex/datakernel/tree/master/examples/bytebuf#bytebuf-queue-example)
+
+<br>
 
 The module also contains utility classes to manage resizing of underlying byte buffer, `String` conversions, etc.
 

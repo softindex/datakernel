@@ -1,6 +1,6 @@
 ## Launchers
 
-### Hello world
+### Hello World
 1. ["Hello World" Launcher](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HelloWorldLauncher.java) - 
 a simple "Hello World" launcher.
 
@@ -23,15 +23,15 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open one `HelloWorldLauncher` class, which is located at **datakernel -> examples -> launchers** and run its 
-`main()` method.
+Then open *HelloWorldLauncher* class, which is located at **datakernel -> examples -> launchers** and run its `main()` 
+method.
 
 
 ### HTTP
 1. [HTTP Server Scratch](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpServerScratch.java) - 
-an example of setting up a simple HTTP server utilizing `Launcher`.
+an example of setting up a simple HTTP server utilizing *Launcher*.
 2. [HTTP Simple Server](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpSimpleServer.java) - 
-an example of setting up a simple HTTP server utilizing `HttpServerLauncher`.
+an example of setting up a simple HTTP server utilizing *HttpServerLauncher*.
 
 To run the examples in console, you should execute these lines in appropriate folder:
 ```
@@ -55,17 +55,17 @@ $MODULE_WORKING_DIR$||`.
 Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open one of the classes:
-* `HttpServerScratch`
-* `HttpSimpleServer`
+* *HttpServerScratch*
+* *HttpSimpleServer*
 
-which are located at **datakernel -> examples -> launchers** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> launchers** and run *main()* of the chosen example.
 
 When you start on of the examples, open your browser and go to [localhost:25565](http://localhost:25565). 
 You will see the following content:
 ```
 "Hello from HTTP server" 
 ```
-If you run **"Hello World" Launcher** example, you will see `Hello World!` message right in your console.
+If you run **"Hello World" Launcher** example, you will see *Hello World!* message right in your console.
 
 Let's have a closer look at "Hello World" Launcher example and initialization of the launcher itself:
 ```java
@@ -83,22 +83,22 @@ Launcher launcher = new Launcher() {
 ```
 
 When creating launchers, you can override these methods:
-* `onStart()` - will be executed first;
-* `run()` - is your application main method, all logic must be in it;
-* `onStop()` - executed when your application stops.
+* *onStart()* - will be executed first;
+* *run()* - is your application main method, all logic must be in it;
+* *onStop()* - executed when your application stops.
 
 **getModules()** is used to provide Modules with dependencies:
-* `ServiceGraphModule` will start components of your application in the right order.
-* `ConfigModule` will provide Config to your components.
-* `SimpleModule` will provide `AsyncHttpServer` along with needed `Eventloop` and `AsyncServlet`.
+* *ServiceGraphModule* will start components of your application in the right order.
+* *ConfigModule* will provide Config to your components.
+* *SimpleModule* will provide *AsyncHttpServer* along with needed *Eventloop* and *AsyncServlet*.
 
-In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends `Launcher`. It also 
-overrides `getModules()` and `run()` methods.
+In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends *Launcher*. It also 
+overrides *getModules()* and *run()* methods.
 
-**HTTP Simple Server** shows how simply an HTTP server can be created utilizing `HttpServerLauncher`. When using predefined 
+**HTTP Simple Server** shows how simply an HTTP server can be created utilizing *HttpServerLauncher*. When using predefined 
 launchers, you should override the following methods:
-* `getBusinessLogicModules()` - to specify the actual logic of your application
-* `getOverrideModules()` - to override default modules.
+* *getBusinessLogicModules()* - to specify the actual logic of your application
+* *getOverrideModules()* - to override default modules.
 In the example we are overriding default port with our own and providing servlet that will handle each connection:
 ```java
 @Override

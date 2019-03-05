@@ -1,22 +1,22 @@
 ## Promise
 
 `Promise` is an efficient replacement of default Java `CompletionStage` interface and resembles JavaScript `Promise`, 
-representing partial and possibly asynchronous computations of a large one. These `Promise`s are faster and better 
+representing partial and possibly asynchronous computations of a large one. DataKernel *promises* are faster and better 
 optimized, with minimal overhead, memory consumption and Garbage Collector load: 
 
-* Compared to JavaScript, intermediate `Promise`s are stateless.
-* Since these `Promise`s work in single thread of `Eventloop`, they are much more efficient comparing to 
+* Compared to JavaScript, intermediate *promises* are stateless.
+* Since DataKernel *promises* work in single thread of `Eventloop`, they are much more efficient comparing to 
 multithreaded Java's `CompletableFuture` overhead.
 * `Promise` has simple and orthogonal API, which is more applicable in practice than `CompletionStage` API. 
-* This module includes a comprehensive set of libraries to work with `Promise`s, their combiners and provide function 
+* This module includes a comprehensive set of libraries to work with *promises*, their combiners and provide function 
 compositions.
 
 [`Promise` interface](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/async/Promise.java) 
-represents methods which you can use to create chains of `Promise`s.
+represents methods which you can use to create chains of *promises*.
 
 Promise will succeed (or fail) at some unspecified time and you should chain method calls that will be executed 
-in both cases. These methods basically convert one `Promise` into another, passing intermediate results without storing 
-them. If you need to get a result of your `Promise`, you should first materialize it.
+in both cases. These methods basically convert one `Promise` into another, **passing intermediate results without storing 
+them**. If you need to get a result of your `Promise`, you should first **materialize** it.
 
 In order to optimise `Promise`s, there are several implementations of `Promise` interface:
 
@@ -36,7 +36,7 @@ In order to optimise `Promise`s, there are several implementations of `Promise` 
                                 CompleteResultPromise_| |_CompleteNullPromise
 ```
 
-* `Promise` - root interface which represents *Promises* behaviour.
+* `Promise` - root interface which represents *promises* behaviour.
 * `AbstractPromise`, `NextPromise` - helper classes which enable creating chains of stateless *Promises*. You can treat 
 these chains as pipes which pass values through, but don't store them. 
 * `MaterializedPromise` - an interface which has `getResult()` and `getException()` methods and a special container for 

@@ -41,6 +41,7 @@ which are located at **datakernel -> examples -> bytebuf** and run `main()` of t
 
 <br>
 
+###ByteBuf example
 If you run the **ByteBuf Example**, you'll receive the following output:
 
 ```
@@ -105,8 +106,8 @@ buffer.put((byte) 3);
 //converting ByteBuffer to ByteBuf
 byteBuf.ofWriteByteBuffer(buffer);
 ```
- <br>
 
+###ByteBuf pool example
 If you run the **ByteBuf Pool Example**, you'll receive the following output:
 ```
 Length of array of allocated ByteBuf: 128
@@ -199,6 +200,7 @@ public class ByteBufPoolExample {
 }
 ```
 
+###ByteBuf queue example
 If you run the **ByteBuf Queue Example**, you'll receive the following output:
 ```
 bufs:2 bytes:7

@@ -27,8 +27,8 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers** and run its `main()` 
-method.
+First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
+and run its `main()` method.
 
 Next, open `GlobalNodesLauncher` class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
 run its `main()` method.

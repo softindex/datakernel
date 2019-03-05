@@ -23,7 +23,7 @@
     * RPC
         * Remote key-value storage
     * CRDT
-5. [Global applications](#global-web-applications) 
+5. [Global web applications](#global-web-applications) 
     * Global-OT editor
     * Global-OT demo
     * Global-OT chat
@@ -57,20 +57,24 @@ And then install DataKernel locally:
 $ cd datakernel
 $ mvn clean install -DskipTests
 ```
-These commands are repeated in each of the examples' instructions just to make sure that everything will work correctly. 
-Yet if you've entered the commands once, you can omit these three lines from now on. 
 
-To run the examples in an IDE, you need to clone DataKernel, import Maven projects and then properly set up working 
-directory. 
-For IntelliJ IDEA: `Run -> Edit configurations -> [Run/Debug Configurations -> [Templates -> Application] -> [Working directory -> 
-$MODULE_WORKING_DIR$]]`.
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In accordance 
+to DataKernel module structure, the working directory should be set to the module folder.
+In IntelliJ IDEA you can do it in the following way: `Run -> Edit configurations -> [Run/Debug Configurations -> 
+[Templates -> Application] -> [Working directory -> $MODULE_WORKING_DIR$]]`.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+These instructions are repeated in each of the examples' description just to make sure that everything will work 
+correctly. Yet if you've followed the instructions once, you can omit them from now on. 
 
 ### Basic modules
 If you haven't checked out [Hello World](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 
 getting-started example yet, you can start with it. This simple 5-minutes tutorial represents how to create a basic 
 application in DataKernel-like way.
 
-You may continue with some basic modules, most of them contain several simple examples:
+Then you may continue with some basic modules:
 * [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf) - ByteBuf provides efficient 
 and recyclable byte buffers. The examples will show you how to create and utilize them for different purposes.
 
@@ -96,8 +100,8 @@ special channels and streams:
 create channels for communications, ByteBufs parsers and handle Communication Sequential Processes.
 
 * [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams) - includes 6 examples 
-of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#datasteams-and-csp-compatibility-example) - 
-they illustrate how Datastreams can be combined with CSP to create inter-server streams.
+of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#datasteams-and-csp-compatibility-example)  
+which illustrate how Datastreams can be combined with CSP to create inter-server streams.
 
 Also, 
 * [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - shows how to boot your projects 
@@ -129,15 +133,14 @@ and clients from scratch in a few steps.
 is one of the basic modules of DataKernel and is **not** bound to web applications, these examples demonstrate how 
 eventloops can be utilized with Net module for developing servers.
 
-* [RPC example](https://github.com/softindex/datakernel/tree/master/examples/rpc) - a simple example of utilizing remote 
-procedure call module.
+* [RPC example](https://github.com/softindex/datakernel/tree/master/examples/rpc) - a simple example of utilizing Remote 
+Procedure Call module.
     * [Remote key-value storage](https://github.com/softindex/datakernel/tree/master/examples/remote-key-value-storage) - 
     with this detailed guide you can create a remote key-value storage with basic operations "put" and "get" utilizing 
     RPC and Boot modules.
 
 * [CRDT example](https://github.com/softindex/datakernel/tree/master/examples/crdt) - demonstrates how CRDT (conflict-free 
 replicated data type) algorithms manage merging of two replicas with conflicting states.
-
 
 ### Global web applications
 * [Global-OT editor](https://github.com/softindex/datakernel/tree/master/examples/global-ot-editor)

@@ -12,7 +12,7 @@ $ mvn exec:java@StructuredCodecsExample
 ```
 
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:

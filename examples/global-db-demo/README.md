@@ -26,16 +26,17 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers** and run its `main()` 
-method.
+First, open *DiscoveryServiceLauncher* class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
+and run its `main()` method.
 
-Next, open `GlobalNodesLauncher` class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
+Next, open *GlobalNodesLauncher* class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
 run its `main()` method.
 
-Finally, open `GlobalDbDemoApp` class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
+Finally, open *GlobalDbDemoApp* class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
 `main()` method.
 
-After you start all of the needed classes, you'll receive the following output:
+After you start all of the needed classes, the upload of 10 data items to database and their download back will begin; 
+you'll receive the following output:
 ```
 Data items have been uploaded to database
 Downloading back...

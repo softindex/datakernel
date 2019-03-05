@@ -39,12 +39,12 @@ This is iteration #3
 This is iteration #4
 This is iteration #5
 ```
-In this example we created a repetitive Promise which continues iterations until one of the Promises completes with an 
-exception, in our case `Promise.ofException(new Exception("Breaking the loop"))`.
+In this example iterations repeat until one of them returns a *promise* which was completed with an exception:
 ```java
 Promises.repeat(() -> {
 	System.out.println("This is iteration #" + ++counter);
 	if (counter == 5) {
+		//returns a promise of exception, which will stop further iterations
 		return Promise.ofException(new Exception("Breaking the loop"));
 	}
 	return Promise.complete();
@@ -60,7 +60,8 @@ This is iteration #3
 This is iteration #4
 This is iteration #5
 ```
-Here we created a `Promise` with a condition (like a simple `for` loop with condition):
+Here `Promises` *loop* was utilized, which resembles Java *for* loop, but has async capabilities, which are provided by 
+`Promise`:
 ```java
 Promises.loop(0, i -> i < 5, i -> {
 	System.out.println("This is iteration #" + ++i);
@@ -74,12 +75,11 @@ Collecting group of Promises to list of Promises' results:
 Size of collected list: 6
 List: [1, 2, 3, 4, 5, 6]
 ```
-Here a `Promises.toList()` method is utilized:
+Here `Promises` *toList* method is utilized:
 ```java
 Promises.toList(Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
-    //waits for completion of toList()
+    //waits for completion of toList() and then prints it out
 	.whenResult(list -> System.out.println("Size of collected list: " + list.size() + "\nList: " + list));
-
 ```
 
 And the final output is:
@@ -88,7 +88,7 @@ Collecting group of Promises to array of Promises' results:
 Size of collected array: 6
 Array: [1, 2, 3, 4, 5, 6]
 ```
-Here a `Promises.toArray()` method is utilized:
+Here `Promises` *toArray* method is utilized, which reduces *promises* to array of provided data type (in this case, *Integers*):
 ```java
 Promises.toArray(Integer.class, Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
     //waits for completion of toArray()
@@ -107,6 +107,6 @@ This is the 3rd line in file
 
 In this example Promise's `AsyncFile` (represents a file with asynchronous capabilities) is utilized, along with 
 several methods associated with the class, such as:
-* open()
-* write()
-* read()
+* open() - opens file synchronously.
+* write() - writes all bytes of provided ByteBuf into file asynchronously.
+* read() - reads all bytes from file into a ByteBuf asynchronously.

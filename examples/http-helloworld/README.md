@@ -2,12 +2,12 @@
 In this guide we will create simple but scalable "Hello World" HTTP server.
 
 ## Introduction
-DataKernel uses event-driven programming model. The key component of Datakernel Framework is Eventloop which polls 
+DataKernel uses event-driven programming model. The key component of DataKernel framework is Eventloop which polls 
 various sources of events and calls corresponding event handlers without blocking the main thread. Eventloop is based 
 on Asynchronous I/O (Java NIO) and runs in single thread, which allows to significantly improve performance and avoid 
 common multithreading concerns, such as synchronization, race conditions, etc.
 
-Most Datakernel modules, including HTTP, are based on Eventloop. Since Eventloop is single-threaded, we cannot use all 
+Most DataKernel modules, including HTTP, are based on Eventloop. Since Eventloop is single-threaded, we cannot use all 
 capacities of modern multi-core processors if we run only one HTTP-server/Eventloop. If we want to load all cores of 
 processor, we should use worker servers and load-balancer to distribute requests between those servers.
 

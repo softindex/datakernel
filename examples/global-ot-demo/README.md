@@ -23,7 +23,7 @@ There are two values which help to work with the repository:
 All of the pushed commits are represented in commit graph. Each commit is represented by hashcode of the operation and
 each edge on the graph represents applied operations. 
 
-To run Global-OT demo application, you should enter these commands in your console in appropriate folder:
+To run Global-OT demo application in your console, you should enter these commands in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
@@ -49,8 +49,8 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers** and run its `main()` 
-method.
+First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
+and run its `main()` method.
 
 Next, open `GlobalNodesLauncher` class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
 run its `main()` method.
