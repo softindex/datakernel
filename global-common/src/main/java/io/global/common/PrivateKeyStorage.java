@@ -64,6 +64,9 @@ public final class PrivateKeyStorage {
 		}
 		return discoveryService.getSharedKey(receiver, simKeyHash)
 				.thenCompose(signedSharedSimKey -> {
+					if (signedSharedSimKey == null) {
+						return Promise.of(null);
+					}
 					SharedSimKey sharedSimKey = signedSharedSimKey.getValue();
 					PrivKey privKey = keys.get(receiver);
 					if (privKey == null) {

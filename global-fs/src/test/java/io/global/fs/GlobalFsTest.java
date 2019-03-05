@@ -59,7 +59,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
@@ -435,10 +434,8 @@ public final class GlobalFsTest {
 		await(rawFirstClient.catchUp());
 		System.out.println(await(firstAliceAdapter.listEntities("**")));
 
-		// uploading on the first node again
-		Throwable e = awaitException(firstAliceAdapter.upload(FILENAME));
-
-		assertSame(UPLOADING_TO_TOMBSTONE, e);
+		// and check if it is now deleted on the first node
+		assertTrue(await(firstAliceAdapter.getMetadata(FILENAME)).isTombstone());
 	}
 
 	@Test

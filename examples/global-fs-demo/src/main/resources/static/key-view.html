@@ -12,16 +12,17 @@
 </div>
 <br>
 <div id="upload-panel">
-  <label for="file">Upload files: </label>
   <input type="file" id="file" multiple>
+  <button id="upload">Upload</button>
   <br>
   <label for="key">encryption key:</label>
   <select id="key"></select>
-  <button id="upload">Upload</button>
   <br>
   <label for="extend">extended upload settings</label>
   <input id="extend" type="checkbox">
-  <table id="extended">
+  <label for="tombstones">list tombstones</label>
+  <input id="tombstones" type="checkbox">
+  <table id="extended" class="box">
     <tr>
       <td>prefix for the uploaded files (can be used to create dirs):</td>
       <td><input type="text" id="prefix" placeholder="directory prefix"></td>

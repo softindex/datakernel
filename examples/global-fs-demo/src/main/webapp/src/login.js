@@ -9,7 +9,7 @@ function updateRepos() {
   for (const pk of Object.keys(repos)) {
     repoList.append($('<div class="box knownPK"></div>')
       .append(`<div style="margin: auto">${pk}</div>`)
-      .append($('<div class="control">forget</div>')
+      .append($('<div class="control pointer">forget</div>')
         .click(() => {
           delete repos[pk];
           localStorage.setItem('repos', JSON.stringify(repos));

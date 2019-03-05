@@ -39,6 +39,11 @@ label {
   margin: 4px 2px 2px;
 }
 
+.entry .tombstone {
+  color: #333333;
+  margin: 4px 2px 2px;
+}
+
 .entry .file-panel {
   display: flex;
   justify-content: space-between;
@@ -60,8 +65,11 @@ label {
   width: fit-content;
 }
 
-.control {
+.pointer {
   cursor: pointer;
+}
+
+.control {
   user-select: none;
   display: inline;
   padding: 2px;
@@ -110,7 +118,7 @@ label {
   font-family: monospace;
   border-color: #eee;
   width: 1000px;
-  font-size: 1em;
+  font-size: 0.8em;
   text-align: center
 }
 
@@ -185,4 +193,8 @@ label {
 #prefix {
   margin: 2px;
   width: 150px;
+}
+
+.discovery-result {
+  font-family: monospace;
 }

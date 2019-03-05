@@ -41,7 +41,6 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 	private static final StructuredCodec<@Nullable GlobalFsCheckpoint> NULLABLE_CHECKPOINT_CODEC = CHECKPOINT_CODEC.nullable();
 	private static final StructuredCodec<List<GlobalFsCheckpoint>> LIST_CODEC = ofList(CHECKPOINT_CODEC);
 
-
 	private final MiddlewareServlet servlet;
 
 	public GlobalFsDriverServlet(GlobalFsDriver driver) {

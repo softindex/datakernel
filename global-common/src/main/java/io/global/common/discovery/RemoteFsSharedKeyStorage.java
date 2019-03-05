@@ -16,6 +16,7 @@
 
 package io.global.common.discovery;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.reduce;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
@@ -107,9 +109,9 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver) {
 		return storage.list(getGlobFor(receiver))
-				.thenCompose(files -> reduce(toList(), 1, files.stream()
-						.map(meta -> storage.download(meta.getName()).thenComposeEx(LOAD_SHARED_KEY))
-						.iterator()))
+				.thenCompose(files -> reduce(toList(), 1, asPromises(files.stream()
+						.map(meta -> AsyncSupplier.cast(() -> storage.download(meta.getName()).thenComposeEx(LOAD_SHARED_KEY)))
+						.collect(toList()))))
 				.thenApply(list -> list.stream().filter(Objects::nonNull).collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
 	}

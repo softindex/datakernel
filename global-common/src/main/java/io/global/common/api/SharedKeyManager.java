@@ -21,13 +21,14 @@ import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 public interface SharedKeyManager {
 	Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey);
 
-	Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash);
+	Promise<@Nullable SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash);
 
 	Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver);
 }

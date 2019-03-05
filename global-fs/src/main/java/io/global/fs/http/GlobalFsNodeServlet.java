@@ -113,9 +113,6 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 										PubKey space = PubKey.fromString(request.getPathParameter("space"));
 										SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.getArray());
 										return node.delete(space, checkpoint)
-												.whenException(e -> {
-													e.printStackTrace();
-												})
 												.thenApply($ -> HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.<HttpResponse>ofException(e);

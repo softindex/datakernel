@@ -68,11 +68,13 @@ public final class DiscoveryServlet implements WithMiddleware {
 				.with(HttpMethod.GET, "/" + FIND + "/:owner", request -> {
 					try {
 						return discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
-								.thenComposeEx((data, e) ->
-										e == null ?
-												Promise.of(HttpResponse.ok200()
-														.withBody(encode(SIGNED_ANNOUNCE, data))) :
-												Promise.ofException(HttpException.notFound404()));
+								.thenComposeEx((data, e) -> {
+									if (e != null || data == null) {
+										return Promise.<HttpResponse>ofException(HttpException.notFound404());
+									}
+									return Promise.of(HttpResponse.ok200()
+											.withBody(encode(SIGNED_ANNOUNCE, data)));
+								});
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

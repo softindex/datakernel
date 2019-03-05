@@ -343,7 +343,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 			}
 			return discoveryService.find(space)
 					.thenApplyEx((announceData, e) -> {
-						if (e == null) {
+						if (e == null && announceData != null) {
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());

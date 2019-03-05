@@ -30,16 +30,37 @@ if (privKey) {
   cookies.remove('Sim-Key');
 }
 
-const extended = $('#extended').hide();
+const extended = $('#extended');
 
-$('#extend').change(e => {
-  console.log(e.target.checked);
-  if (e.target.checked) {
-    extended.show();
-  } else {
-    extended.hide();
-  }
-});
+if (localStorage.getItem('extendedUpload') !== 'true') {
+  extended.hide();
+}
+
+$('#extend')
+  .prop('checked', localStorage.getItem('extendedUpload') === 'true')
+  .change(e => {
+    if (e.target.checked) {
+      extended.show();
+      localStorage.setItem('extendedUpload', 'true');
+    } else {
+      extended.hide();
+      localStorage.removeItem('extendedUpload');
+    }
+  });
+
+let listTombstones = localStorage.getItem('showTombstones') === 'true';
+
+$('#tombstones')
+  .prop('checked', listTombstones)
+  .change(e => {
+    if (e.target.checked) {
+      localStorage.setItem('showTombstones', 'true');
+    } else {
+      localStorage.removeItem('showTombstones');
+    }
+    listTombstones = e.target.checked;
+    updateView();
+  });
 
 function good(msg) {
   status
@@ -116,8 +137,9 @@ function updateKeys() {
 function generateSimKey() {
   const array = window.crypto.getRandomValues(new Uint8Array(16));
   const key = Array.from(array).map(b => b.toString(16).padStart(2, "0")).join("");
-  const hash = hash.sha1().update(array).digest('hex');
-  return [key, hash];
+  // const hash = require('hash.js'); - hash.js is a dependency of elliptic btw
+  const h = hash.sha1().update(array).digest('hex');
+  return [key, h];
 }
 
 function updateView(keepBars) {
@@ -140,13 +162,13 @@ function updateView(keepBars) {
       const folders = [];
       const files = [];
       for (const [name, size, revision, sha256, encryptionKeyHash] of res) {
-        if (sha256 === null || !name.startsWith(folder)) {
+        if ((!listTombstones && sha256 == null) || !name.startsWith(folder)) {
           continue;
         }
         const localName = name.substring(folder.length);
         const idx = localName.indexOf('/');
         if (idx === -1) {
-          files.push({name, localName, size, sha256, encryptionKeyHash});
+          files.push({name, localName, size, revision, sha256, encryptionKeyHash});
           continue;
         }
         const localFolderName = localName.substring(0, idx);
@@ -169,7 +191,7 @@ function updateView(keepBars) {
       for (const f of folders) {
         const box = $('<div class="box entry"></div>');
         const panel = $('<div class="file-panel"></div>');
-        const del = $('<div class="control">delete</div>')
+        const del = $('<div class="control pointer">delete</div>')
           .click(() =>
             $.ajax(`/delete?glob=${f.name}/**`, {method: 'POST'})
               .then(() => {
@@ -185,21 +207,25 @@ function updateView(keepBars) {
       for (const f of files) {
         const box = $('<div class="box entry"></div>');
         const panel = $('<div class="file-panel"></div>');
-        const del = $('<div class="control">delete</div>')
-          .click(() =>
-            $.ajax(`/delete/${f.name}?revision=${new Date().getTime()}`, {method: 'POST'})
-              .then(() => {
-                updateView();
-                good('Deletion succeeded');
-              }, response => bad('Deletion failed', response)));
 
         if (f.encryptionKeyHash) {
           const data = keys[f.encryptionKeyHash];
           panel.append(`<div class="encrypted" title="SHA1: ${f.encryptionKeyHash}">encrypted${data ? `: ${data.name}` : ''}</div>`);
         }
-        panel.append(`<div class="size" title="${f.size.toString().replace(/\\\\B(?=(\\\\d{3})+(?!\\\\d))/g, " ")} bytes">${f.size === 0 ? '0 b' : prettyByte(f.size)}</div>`);
-        panel.append(del);
-        box.append(`<a href="/download/${space}/${f.name}" title="SHA256: ${f.sha256}">${f.localName}</a>`);
+        if (f.sha256) {
+          panel.append(`<div class="size" title="${f.size.toString().replace(/\\\\B(?=(\\\\d{3})+(?!\\\\d))/g, " ")} bytes">${f.size === 0 ? '0 b' : prettyByte(f.size)}</div>`);
+          panel.append($('<div class="control pointer">delete</div>')
+            .click(() =>
+              $.ajax(`/delete/${f.name}?revision=${new Date().getTime()}`, {method: 'POST'})
+                .then(() => {
+                  updateView();
+                  good('Deletion succeeded');
+                }, response => bad('Deletion failed', response))));
+          box.append(`<a href="/download/${space}/${f.name}" title="SHA256: ${f.sha256}">${f.localName}</a>`);
+        } else {
+          panel.append(`<div class="control">tombstone (rev: ${f.revision})</div>`);
+          box.append(`<div class="tombstone">${f.localName}</div>`)
+        }
         box.append(panel);
         list.append(box);
       }
@@ -211,7 +237,7 @@ function createProgressBar(filename) {
   const border = $(`<div class="border"></div>`);
   const bar = $('<div class="bar"></div>');
   const percentage = $('<div class="percentage">0%</div>');
-  const cancel = $('<div class="control">cancel</div>');
+  const cancel = $('<div class="control pointer">cancel</div>');
   const status = $('<div class="status"></div>');
   status.html(filename);
   border.append(bar);

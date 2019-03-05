@@ -97,7 +97,8 @@ public class DiscoveryServiceLauncher extends Launcher {
 					@Provides
 					@Singleton
 					FsClient fsClient(Eventloop eventloop, ExecutorService executor, Config config) {
-						return LocalFsClient.create(eventloop, config.get(ofPath(), "discovery.storage"));
+						return LocalFsClient.create(eventloop, config.get(ofPath(), "discovery.storage"))
+								.withRevisions();
 					}
 
 					@Provides

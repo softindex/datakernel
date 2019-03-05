@@ -112,7 +112,7 @@ public final class GlobalFsDriver {
 					if (!Objects.equals(checkpoint.getSimKeyHash(), key != null ? Hash.sha1(key.getBytes()) : null)) {
 						return Promise.ofException(FILE_APPEND_WITH_OTHER_KEY);
 					}
-					return doUpload(keys, filename, offset, revision, skip, key, checkpoint.getDigest());
+					return doUpload(keys, filename, offset, revision, skip, key, checkpoint.isTombstone() ? null : checkpoint.getDigest());
 				})
 				.whenComplete(toLogger(logger, INFO, INFO, "upload", filename, offset, revision, key, this));
 	}

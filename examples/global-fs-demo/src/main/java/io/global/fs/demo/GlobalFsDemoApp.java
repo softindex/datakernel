@@ -4,7 +4,6 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -17,9 +16,11 @@ import io.datakernel.loader.StaticLoaders;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.Tuple2;
 import io.datakernel.util.guice.OptionalDependency;
-import io.global.common.*;
+import io.global.common.api.DiscoveryService;
+import io.global.common.discovery.DiscoveryServiceDriver;
+import io.global.common.discovery.DiscoveryServiceDriverServlet;
+import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsDriverServlet;
@@ -30,8 +31,6 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.http.HttpMethod.GET;
@@ -43,25 +42,6 @@ import static java.util.Arrays.asList;
 public final class GlobalFsDemoApp extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
-
-
-	private static final StructuredCodec<PubKey> PUB_KEY_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
-	private static final StructuredCodec<PrivKey> PRIV_KEY_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
-	private static final StructuredCodec<SimKey> SIM_KEY_CODEC = STRING_CODEC.transform(SimKey::fromString, SimKey::asString);
-
-	private static final StructuredCodec<Hash> HASH_CODEC = STRING_CODEC.transform(Hash::fromString, Hash::asString);
-
-	private static final StructuredCodec<KeyPair> KEY_PAIR_CODEC =
-			tuple(KeyPair::new,
-					KeyPair::getPrivKey, PRIV_KEY_CODEC,
-					KeyPair::getPubKey, PUB_KEY_CODEC);
-
-	private static final StructuredCodec<Tuple2<SimKey, Hash>> SIM_KEY_AND_HASH_CODEC =
-			tuple(Tuple2::new,
-					Tuple2::getValue1, SIM_KEY_CODEC,
-					Tuple2::getValue2, HASH_CODEC);
-
-	private static final HttpHeaderValue CONTENT_TYPE_JSON = HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON));
 
 	@Inject
 	AsyncHttpServer server;
@@ -110,9 +90,16 @@ public final class GlobalFsDemoApp extends Launcher {
 
 					@Provides
 					@Singleton
-					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, StaticLoader resourceLoader) {
+					DiscoveryService provideDiscovery(IAsyncHttpClient httpClient, Config config) {
+						return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "app.discovery"), httpClient);
+					}
+
+					@Provides
+					@Singleton
+					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, DiscoveryServiceDriver discoveryDriver, StaticLoader resourceLoader) {
 						return MiddlewareServlet.create()
 								.with("", new GlobalFsDriverServlet(driver))
+								.with("/discovery", new DiscoveryServiceDriverServlet(discoveryDriver))
 								.with(GET, "/", SingleResourceStaticServlet.create(eventloop, resourceLoader, "index.html"))
 								.with(GET, "/view", SingleResourceStaticServlet.create(eventloop, resourceLoader, "key-view.html"))
 								.with(GET, "/announce", SingleResourceStaticServlet.create(eventloop, resourceLoader, "announcement.html"))
@@ -123,6 +110,12 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Singleton
 					GlobalFsDriver provide(GlobalFsNode node, Config config) {
 						return GlobalFsDriver.create(node, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
+					}
+
+					@Provides
+					@Singleton
+					DiscoveryServiceDriver provide(DiscoveryService discoveryService) {
+						return DiscoveryServiceDriver.create(discoveryService);
 					}
 
 					@Provides
