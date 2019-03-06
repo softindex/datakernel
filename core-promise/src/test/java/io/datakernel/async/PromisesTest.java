@@ -237,14 +237,14 @@ public final class PromisesTest {
 
 	@Test
 	public void testLoop() {
-		Promises.loop(0, i -> i < 5, i -> Promise.of(i + 1)
+		Promises.loop(0, AsyncPredicate.of(i -> i < 5), i -> Promise.of(i + 1)
 				.whenResult(counter::set));
 		assertEquals(5, counter.get());
 	}
 
 	@Test
 	public void testLoopAsync() {
-		await(Promises.loop(0, i -> i < 5, i ->
+		await(Promises.loop(0, AsyncPredicate.of(i -> i < 5), i ->
 				Promises.delay(Promise.of(i + 1), 10)
 						.whenResult(counter::set)
 						.whenResult(System.out::println)));

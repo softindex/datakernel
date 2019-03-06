@@ -60,6 +60,7 @@ public class OTNodeImplTest {
 		assertFetchData(6, 7, 15, fetchData2);
 	}
 
+/*
 	@Test
 	public void testFetch2BranchesGraph() {
 		REPOSITORY.revisionIdSupplier = () -> 6; // id of merge commit
@@ -102,6 +103,7 @@ public class OTNodeImplTest {
 		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4));
 		assertFetchData(6, 5, 11, fetchData3);
 	}
+*/
 
 	@Test
 	public void testFetchSplittingGraph() {
@@ -185,6 +187,7 @@ public class OTNodeImplTest {
 		assertFetchData(6, 7, 21, fetchData);
 	}
 
+/*
 	@Test
 	public void testCheckout2BranchesGraph() {
 		REPOSITORY.revisionIdSupplier = () -> 6; // id of merge commit
@@ -213,6 +216,7 @@ public class OTNodeImplTest {
 		assertFetchData(6, 5, 15, fetchData3);
 
 	}
+*/
 
 	private static void assertFetchData(Integer expectedId, long expectedLevel, Integer expectedState, FetchData<Integer, TestOp> fetchData) {
 		assertEquals(expectedId, fetchData.getCommitId());

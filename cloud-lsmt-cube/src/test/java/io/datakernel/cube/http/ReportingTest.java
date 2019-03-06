@@ -322,7 +322,7 @@ public final class ReportingTest {
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),

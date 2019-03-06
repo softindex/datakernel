@@ -77,7 +77,7 @@ public final class OTSystemTest {
 
 		TestOpState state = new TestOpState();
 		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), system, repository);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), state);
+		OTStateManager<String, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), state);
 
 		await(stateManager.checkout());
 
@@ -132,7 +132,7 @@ public final class OTSystemTest {
 		});
 
 		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), otSource);
-		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
+		pullAndThenMergeAndPush(otSource, algorithms, OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
 	}
 
 	@Test
@@ -148,7 +148,7 @@ public final class OTSystemTest {
 		});
 
 		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), otSource);
-		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
+		pullAndThenMergeAndPush(otSource, algorithms, OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
 	}
 
 	private void pullAndThenMergeAndPush(OTRepositoryStub<String, TestOp> otSource, OTAlgorithms<String, TestOp> algorithms, OTStateManager<String, TestOp> stateManager) {

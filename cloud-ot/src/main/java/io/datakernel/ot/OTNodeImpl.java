@@ -1,42 +1,31 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.time.CurrentTimeProvider;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.subscribe;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
-import static java.util.Comparator.comparingLong;
+import static java.util.Collections.singleton;
 
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
-
-	public static final Duration DEFAULT_MERGE_DELAY = Duration.ofMinutes(1);
+	public static final Duration DEFAULT_POLL_INTERVAL = Duration.ofMillis(1000L);
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTRepository<K, D> repository;
 	private final Function<OTCommit<K, D>, C> commitToObject;
 	private final Function<C, OTCommit<K, D>> objectToCommit;
-	private final AsyncSupplier<Set<K>> tryMerge = subscribe(this::tryMerge);
 
-	@Nullable
-	K lastPushed; // visible for testing
-	private long mergeDelay = DEFAULT_MERGE_DELAY.toMillis();
-	private long mergeConflictTimestamp;
-
-	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+	private Duration pollInterval = DEFAULT_POLL_INTERVAL;
 
 	private OTNodeImpl(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K, D>> objectToCommit) {
 		this.algorithms = algorithms;
@@ -54,8 +43,8 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 		return new OTNodeImpl<>(algorithms, commit -> commit, object -> object);
 	}
 
-	public OTNodeImpl<K, D, C> withMergeDelay(Duration mergeDelay) {
-		this.mergeDelay = mergeDelay.toMillis();
+	public OTNodeImpl<K, D, C> withPollInterval(Duration pollInterval) {
+		this.pollInterval = pollInterval;
 		return this;
 	}
 
@@ -67,19 +56,18 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	}
 
 	@Override
-	public Promise<K> push(C commit) {
+	public Promise<FetchData<K, D>> push(C commit) {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
-				.thenApply($ -> {
-					lastPushed = otCommit.getId();
-					return lastPushed;
-				})
+				.thenCompose($ -> algorithms.merge())
+				.thenCompose(mergedHead ->
+						doFetch(singleton(mergedHead), otCommit.getId()))
 				.whenComplete(toLogger(logger, thisMethod(), commit));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
-		@SuppressWarnings("unchecked") List<D>[] cachedSnapshot = new List[]{null};
+		@SuppressWarnings("unchecked") List<D>[] cachedSnapshotRef = new List[]{null};
 		return repository.getHeads()
 				.thenCompose(heads -> algorithms.findParent(
 						heads,
@@ -87,13 +75,13 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 						commit -> commit.getSnapshotHint() == Boolean.FALSE ?
 								Promise.of(false) :
 								repository.loadSnapshot(commit.getId())
-										.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null)
+										.thenApply(maybeSnapshot -> (cachedSnapshotRef[0] = maybeSnapshot.orElse(null)) != null)
 				))
 				.thenCompose(findResult -> Promise.of(
 						new FetchData<>(
 								findResult.getChild(),
 								findResult.getChildLevel(),
-								concat(cachedSnapshot[0], findResult.getAccumulatedDiffs()))))
+								concat(cachedSnapshotRef[0], findResult.getAccumulatedDiffs()))))
 				.thenCompose(checkoutData -> fetch(checkoutData.getCommitId())
 						.thenApply(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
@@ -106,56 +94,37 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
-		return tryMerge.get()
-				.thenCompose(heads -> algorithms.findParent(
-						heads,
-						DiffsReducer.toList(),
-						commit -> Promise.of(commit.getId().equals(currentCommitId))
-				))
+		return repository.getHeads()
+				.thenCompose(heads -> doFetch(heads, currentCommitId));
+	}
+
+	@Override
+	public Promise<FetchData<K, D>> poll(K currentCommitId) {
+		Duration[] pollIntervalRef = new Duration[]{Duration.ZERO};
+		return repository.getHeads()
+				.thenCompose(initialHeads ->
+						Promises.until(initialHeads,
+								heads -> repository.pollHeads(heads)
+										.whenResult(newHeads ->
+												pollIntervalRef[0] = Objects.equals(heads, newHeads) ?
+														pollInterval :
+														Duration.ZERO),
+								heads -> heads.contains(currentCommitId) ?
+										Promises.delay(Promise.of(false), pollIntervalRef[0]) :
+										Promise.of(true)))
+				.thenCompose(heads -> doFetch(heads, currentCommitId));
+	}
+
+	public Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
+		return algorithms.findParent(
+				heads,
+				DiffsReducer.toList(),
+				commit -> Promise.of(commit.getId().equals(currentCommitId)))
 				.thenApply(findResult -> new FetchData<>(
 						findResult.getChild(),
 						findResult.getChildLevel(),
 						algorithms.getOtSystem().squash(findResult.getAccumulatedDiffs())
 				))
 				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
-	}
-
-	public Promise<Set<K>> tryMerge() {
-		return repository.getHeads()
-				.thenCompose(heads -> {
-					if (heads.size() == 1) {
-						mergeConflictTimestamp = 0;
-						return Promise.of(heads);
-					}
-
-					if (mergeConflictTimestamp != 0 && now.currentTimeMillis() > mergeConflictTimestamp + mergeDelay) {
-						return doMerge(heads);
-					}
-					return Promises.toList(heads.stream().map(repository::loadCommit))
-							.thenCompose(commits -> {
-								K earliestCommit = commits.stream()
-										.min(comparingLong(OTCommit::getTimestamp))
-										.map(OTCommit::getId)
-										.orElse(null);
-
-								if (earliestCommit == null || lastPushed == null || lastPushed.equals(earliestCommit)) {
-									return doMerge(heads);
-								}
-
-								if (mergeConflictTimestamp == 0) {
-									mergeConflictTimestamp = now.currentTimeMillis();
-								}
-								return Promise.of(heads);
-							});
-				});
-	}
-
-	private Promise<Set<K>> doMerge(Set<K> heads) {
-		return algorithms.merge(heads)
-				.whenResult(mergeCommit -> {
-					lastPushed = mergeCommit;
-					mergeConflictTimestamp = 0;
-				})
-				.thenApply(Collections::singleton);
 	}
 }

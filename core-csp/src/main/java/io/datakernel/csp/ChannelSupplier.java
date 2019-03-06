@@ -58,6 +58,32 @@ public interface ChannelSupplier<T> extends Cancellable {
 	Promise<T> get();
 
 	/**
+	 * @see #of(AsyncSupplier, Cancellable)
+	 */
+	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier) {
+		return of(supplier, null);
+	}
+
+	/**
+	 * Wraps {@link AsyncSupplier} in ChannelSupplier, when {@code get()}
+	 * is called, {@code AsyncSupplier}'s {@code get()} will be executed.
+	 *
+	 * @param supplier    an {@code AsyncSupplier} to be wrapped in ChannelSupplier
+	 * @param cancellable a {@code Cancellable} which will be set
+	 *                    for the ChannelSupplier wrapper
+	 * @param <T>         data type wrapped in {@code AsyncSupplier} and ChannelSupplier
+	 * @return ChannelSupplier which wraps {@code AsyncSupplier}
+	 */
+	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier, @Nullable Cancellable cancellable) {
+		return new AbstractChannelSupplier<T>(cancellable) {
+			@Override
+			protected Promise<T> doGet() {
+				return supplier.get();
+			}
+		};
+	}
+
+	/**
 	 * Returns a ChannelSupplier received from {@link ChannelQueue}.
 	 */
 	static <T> ChannelSupplier<T> ofConsumer(Consumer<ChannelConsumer<T>> consumer, ChannelQueue<T> queue) {
@@ -69,33 +95,8 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * Wraps provided default {@link Supplier} to ChannelSupplier.
 	 */
 	static <T> ChannelSupplier<T> ofSupplier(Supplier<? extends Promise<T>> supplier) {
-		return of(AsyncSupplier.of(supplier));
-	}
-
-	/**
-	 * @see #of(AsyncSupplier, Cancellable)
-	 */
-	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier) {
-		return of(supplier, null);
-	}
-
-	/**
-	 * Wraps {@link AsyncSupplier} in ChannelSupplier, when {@code get()}
-	 * is called, {@code AsyncSupplier}'s {@code get()} will be executed.
-	 *
-	 * @param supplier an {@code AsyncSupplier} to be wrapped in ChannelSupplier
-	 * @param cancellable a {@code Cancellable} which will be set
-	 *                       for the ChannelSupplier wrapper
-	 * @param <T> data type wrapped in {@code AsyncSupplier} and ChannelSupplier
-	 * @return ChannelSupplier which wraps {@code AsyncSupplier}
-	 */
-	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier, @Nullable Cancellable cancellable) {
-		return new AbstractChannelSupplier<T>(cancellable) {
-			@Override
-			protected Promise<T> doGet() {
-				return supplier.get();
-			}
-		};
+		//noinspection NullableProblems
+		return of(supplier::get);
 	}
 
 	/**
@@ -241,7 +242,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * Transforms this ChannelSupplier with the provided {@code fn}.
 	 *
 	 * @param <R> returned result after transformation
-	 * @param fn {@link ChannelSupplierTransformer} applied to the ChannelSupplier
+	 * @param fn  {@link ChannelSupplierTransformer} applied to the ChannelSupplier
 	 */
 	default <R> R transformWith(ChannelSupplierTransformer<T, R> fn) {
 		return fn.transform(this);
@@ -332,7 +333,6 @@ public interface ChannelSupplier<T> extends Cancellable {
 			}
 		};
 	}
-
 
 	/**
 	 * Creates and returns a new {@link AbstractChannelSupplier}

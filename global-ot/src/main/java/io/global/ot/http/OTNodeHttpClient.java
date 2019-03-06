@@ -19,7 +19,6 @@ import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpRequest.get;
 import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.http.UrlBuilder.urlEncode;
-import static io.datakernel.ot.OTNode.getFetchDataCodec;
 import static io.global.ot.api.OTNodeCommand.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -34,7 +33,7 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 		this.httpClient = httpClient;
 		this.url = url.endsWith("/") ? url : url + '/';
 		this.revisionCodec = revisionCodec;
-		this.fetchDataCodec = getFetchDataCodec(revisionCodec, diffCodec);
+		this.fetchDataCodec = FetchData.codec(revisionCodec, diffCodec);
 	}
 
 	public static <K, D> OTNodeHttpClient<K, D> create(IAsyncHttpClient httpClient, String url, StructuredCodec<K> revisionCodec, StructuredCodec<D> diffCodec) {
@@ -57,11 +56,11 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 	}
 
 	@Override
-	public Promise<K> push(byte[] commit) {
+	public Promise<FetchData<K, D>> push(byte[] commit) {
 		return httpClient.request(post(url + PUSH)
 				.withBody(commit))
 				.thenCompose(response -> response.getBody()
-						.thenCompose(body -> processResult(response, body, revisionCodec)));
+						.thenCompose(body -> processResult(response, body, fetchDataCodec)));
 	}
 
 	@Override

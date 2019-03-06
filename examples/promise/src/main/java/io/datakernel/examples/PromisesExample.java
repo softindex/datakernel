@@ -16,6 +16,7 @@
 
 package io.datakernel.examples;
 
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 
@@ -38,7 +39,7 @@ public class PromisesExample {
 
 	private static void loop() {
 		System.out.println("Looping with condition:");
-		Promises.loop(0, i -> i < 5, i -> {
+		Promises.loop(0, AsyncPredicate.of(i -> i < 5), i -> {
 			System.out.println("This is iteration #" + ++i);
 			return Promise.of(i);
 		});

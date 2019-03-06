@@ -47,17 +47,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@Nullable
 	private Throwable exception = PROMISE_NOT_SET;
 
-	/**
-	 * Returns a {@code SettablePromise} created from
-	 * {@code Promise} after it completes.
-	 */
-	@NotNull
-	public static <T> SettablePromise<T> ofPromise(@NotNull Promise<T> promise) {
-		SettablePromise<T> result = new SettablePromise<>();
-		promise.whenComplete(result::set);
-		return result;
-	}
-
 	@Override
 	public boolean isComplete() {
 		return exception != PROMISE_NOT_SET;

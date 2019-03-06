@@ -32,7 +32,6 @@ import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.http.HttpRequest.get;
 import static io.datakernel.http.HttpRequest.post;
-import static io.datakernel.ot.OTNode.getFetchDataCodec;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.common.CryptoUtils.sha256;
@@ -52,7 +51,7 @@ public class OTNodeServletTest {
 	private static final StructuredCodec<CommitId> REVISION_CODEC = REGISTRY.get(CommitId.class);
 	private static final StructuredCodec<TestOp> DIFF_CODEC = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();
-	private static final StructuredCodec<FetchData<CommitId, TestOp>> FETCH_DATA_CODEC = getFetchDataCodec(REVISION_CODEC, DIFF_CODEC);
+	private static final StructuredCodec<FetchData<CommitId, TestOp>> FETCH_DATA_CODEC = FetchData.codec(REVISION_CODEC, DIFF_CODEC);
 	private static final OTSystem<TestOp> OT_SYSTEM = createTestOp();
 
 	private OTRepositoryAdapter<TestOp> adapter;
@@ -136,7 +135,8 @@ public class OTNodeServletTest {
 
 		ByteBuf body = await(response.getBody());
 		String bodyString = body.asString(UTF_8);
-		CommitId commitId = fromJson(REVISION_CODEC, bodyString);
+		FetchData<CommitId, TestOp> fetchData = fromJson(FETCH_DATA_CODEC, bodyString);
+		CommitId commitId = fetchData.getCommitId();
 		assertEquals(adapter.parseRawBytes(bytes).getId(), commitId);
 
 		Set<CommitId> heads = await(repository.getHeads());

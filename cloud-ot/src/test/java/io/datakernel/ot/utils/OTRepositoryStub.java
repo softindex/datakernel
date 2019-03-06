@@ -4,6 +4,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTCommitFactory;
 import io.datakernel.ot.OTRepository;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
@@ -85,6 +86,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
 	public Promise<Set<K>> getHeads() {
 		return Promise.of(doGetHeads());

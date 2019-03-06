@@ -61,6 +61,7 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 		);
 	}
 
+	@NotNull
 	@Override
 	public Promise<Set<CommitId>> getHeads() {
 		return driver.getHeads(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds));

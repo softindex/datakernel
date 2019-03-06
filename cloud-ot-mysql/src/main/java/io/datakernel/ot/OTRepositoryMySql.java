@@ -244,6 +244,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.whenComplete(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
 	}
 
+	@NotNull
 	@Override
 	public Promise<Set<Long>> getHeads() {
 		return Promise.ofBlockingCallable(executor,

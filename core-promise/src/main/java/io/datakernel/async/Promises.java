@@ -67,15 +67,22 @@ public final class Promises {
 		if (promise.isComplete()) return promise;
 		if (delay <= 0) return Promise.ofException(TIMEOUT_EXCEPTION);
 		return promise.then(new NextPromise<T, T>() {
-			@NotNull ScheduledRunnable schedule = getCurrentEventloop().delay(delay, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
+			@Nullable ScheduledRunnable schedule = getCurrentEventloop()
+					.delay(delay,
+							() -> {
+								schedule = null;
+								tryCompleteExceptionally(TIMEOUT_EXCEPTION);
+							});
 
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
-				if (e == null) {
+				if (schedule != null) {
 					schedule.cancel();
+					schedule = null;
+				}
+				if (e == null) {
 					tryComplete(result);
 				} else {
-					schedule.cancel();
 					tryCompleteExceptionally(e);
 				}
 			}
@@ -102,6 +109,7 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> delay(@NotNull Promise<T> promise, long delayMillis) {
+		if (delayMillis <= 0) return promise;
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb -> getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb::set)));
 	}
@@ -401,6 +409,7 @@ public final class Promises {
 	 */
 	@Contract(pure = true)
 	@NotNull
+	@SuppressWarnings("unchecked")
 	public static <T> Promise<List<T>> toList(@NotNull List<? extends Promise<? extends T>> promises) {
 		int size = promises.size();
 		if (size == 0) return Promise.of(Collections.emptyList());
@@ -426,7 +435,7 @@ public final class Promises {
 				}
 			});
 		}
-		return resultPromise.countdown != 0 ? resultPromise : Promise.of(asList(resultPromise.accumulator));
+		return resultPromise.countdown != 0 ? resultPromise : Promise.of(((List<T>) asList(resultPromise.accumulator)));
 	}
 
 	/**
@@ -583,7 +592,8 @@ public final class Promises {
 			@NotNull Promise<? extends T5> promise5,
 			@NotNull Promise<? extends T6> promise6) {
 		return toList(promise1, promise2, promise3, promise4, promise5, promise6)
-				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)));
+				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4),
+						(T6) list.get(5)));
 	}
 
 	@Contract(pure = true)
@@ -681,14 +691,6 @@ public final class Promises {
 	@SafeVarargs
 	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void>... promises) {
 		return sequence(asList(promises));
-	}
-
-	/**
-	 * @see Promises#sequence(AsyncSupplier, AsyncSupplier)
-	 */
-	@NotNull
-	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void> promise1, @NotNull AsyncSupplier<Void> promise2, @NotNull AsyncSupplier<Void> promise3) {
-		return promise1.get().thenCompose($ -> sequence(promise2, promise3));
 	}
 
 	/**
@@ -865,10 +867,113 @@ public final class Promises {
 	private static void repeatImpl(@NotNull Supplier<Promise<Void>> supplier, @NotNull SettablePromise<Void> cb) {
 		while (true) {
 			Promise<Void> promise = supplier.get();
-			if (!promise.isResult()) {
-				promise.whenComplete(($, e) -> {
+			if (promise.isResult()) {continue;}
+			promise.whenComplete(($, e) -> {
+				if (e == null) {
+					repeatImpl(supplier, cb);
+				} else {
+					cb.setException(e);
+				}
+			});
+			return;
+		}
+	}
+
+	/**
+	 * Repeats provided {@link Function} until can pass {@link Predicate} test.
+	 * Resembles a simple Java {@code for()} loop but with async capabilities.
+	 *
+	 * @param seed          start value
+	 * @param loopCondition a boolean function which checks if this loop can continue
+	 * @param next          a function applied to the seed, returns {@code Promise}
+	 * @return {@link SettablePromise} with {@code null} result if it was
+	 * completed successfully, otherwise returns a {@code SettablePromise}
+	 * with an exception. In both situations returned {@code Promise}
+	 * is a marker of completion of the loop.
+	 */
+
+	private static <T> Promise<Void> loop(@Nullable T seed, @NotNull Predicate<T> loopCondition, @NotNull Function<T, Promise<T>> next) {
+		return until(seed, next, (Predicate<T>) v -> !loopCondition.test(v)).toVoid();
+	}
+
+	public static <T> Promise<Void> loop(@Nullable T seed, @NotNull AsyncPredicate<T> loopCondition, @NotNull Function<T, Promise<T>> next) {
+		if (loopCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
+			return loop(seed, ((AsyncPredicates.AsyncPredicateWrapper<T>) loopCondition).getPredicate(), next);
+		}
+		return until(seed, next, (AsyncPredicate<T>) v -> loopCondition.test(v).thenApply(b -> !b)).toVoid();
+	}
+
+	private static Promise<Void> loop(@NotNull Predicate<Void> loopCondition, @NotNull AsyncSupplier<Void> action) {
+		return until(null, $ -> action.get(), loopCondition.negate()).toVoid();
+	}
+
+	public static Promise<Void> loop(@NotNull AsyncPredicate<Void> loopCondition, @NotNull AsyncSupplier<Void> action) {
+		if (loopCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
+			return loop(((AsyncPredicates.AsyncPredicateWrapper<Void>) loopCondition).getPredicate(), action);
+		}
+		return until(null, $ -> action.get(), loopCondition.negate()).toVoid();
+	}
+
+	private static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
+		if (breakCondition.test(seed)) return Promise.of(seed);
+		SettablePromise<T> cb = new SettablePromise<>();
+		loopImpl(seed, next, breakCondition, cb);
+		return cb;
+	}
+
+	public static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull AsyncPredicate<T> breakCondition) {
+		if (breakCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
+			return until(seed, next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
+		}
+		return breakCondition.test(seed)
+				.thenComposeEx((b, e) -> {
 					if (e == null) {
-						repeatImpl(supplier, cb);
+						if (!b) {
+							SettablePromise<T> cb = new SettablePromise<>();
+							loopImpl(seed, next, breakCondition, cb);
+							return cb;
+						} else {
+							return Promise.of(seed);
+						}
+					} else {
+						return Promise.ofException(e);
+					}
+				});
+	}
+
+	private static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull Predicate<T> breakCondition) {
+		SettablePromise<T> cb = new SettablePromise<>();
+		loopImpl(null, $ -> next.get(), breakCondition, cb);
+		return cb;
+	}
+
+	public static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull AsyncPredicate<T> breakCondition) {
+		if (breakCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
+			return until(next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
+		}
+		SettablePromise<T> cb = new SettablePromise<>();
+		loopImpl(null, $ -> next.get(), breakCondition, cb);
+		return cb;
+	}
+
+	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
+			@NotNull Predicate<T> breakCondition, @NotNull SettablePromise<T> cb) {
+		while (true) {
+			Promise<T> promise = next.apply(value);
+			if (promise.isResult()) {
+				value = promise.materialize().getResult();
+				if (breakCondition.test(value)) {
+					cb.set(value);
+					break;
+				}
+			} else {
+				promise.whenComplete((newValue, e) -> {
+					if (e == null) {
+						if (breakCondition.test(newValue)) {
+							cb.set(newValue);
+						} else {
+							loopImpl(newValue, next, breakCondition, cb);
+						}
 					} else {
 						cb.setException(e);
 					}
@@ -878,51 +983,49 @@ public final class Promises {
 		}
 	}
 
-	/**
-	 * Repeats provided {@link Function} until can pass {@link Predicate} test.
-	 * Resembles a simple Java {@code for()} loop but with async capabilities.
-	 *
-	 * @param seed start value
-	 * @param test a boolean function which checks if this loop can continue
-	 * @param next a function applied to the seed, returns {@code Promise}
-	 * @return {@link SettablePromise} with {@code null} result if it was
-	 * completed successfully, otherwise returns a {@code SettablePromise}
-	 * with an exception. In both situations returned {@code Promise}
-	 * is a marker of completion of the loop.
-	 */
-	@NotNull
-	public static <T> Promise<Void> loop(@Nullable T seed, @NotNull Predicate<T> test, @NotNull Function<T, Promise<T>> next) {
-		if (!test.test(seed)) return Promise.complete();
-		SettablePromise<Void> cb = new SettablePromise<>();
-		loopImpl(seed, test, next, cb);
-		return cb;
-	}
-
-	/**
-	 * @see #loop(Object, Predicate, Function)
-	 */
-	@NotNull
-	public static Promise<Void> loop(@NotNull Predicate<Void> test, @NotNull Function<Void, Promise<Void>> next) {
-		return loop(null, test, next);
-	}
-
-	private static <T> void loopImpl(@Nullable T seed, @NotNull Predicate<T> test, @NotNull Function<T, Promise<T>> next, @NotNull SettablePromise<Void> cb) {
+	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
+			@NotNull AsyncPredicate<T> breakCondition, @NotNull SettablePromise<T> cb) {
 		while (true) {
-			Promise<T> promise = next.apply(seed);
+			Promise<T> promise = next.apply(value);
 			if (promise.isResult()) {
-				seed = promise.materialize().getResult();
-				if (!test.test(seed)) {
-					cb.set(null);
-					break;
+				value = promise.materialize().getResult();
+				Promise<Boolean> breakPromise = breakCondition.test(value);
+				if (promise.isResult()) {
+					if (breakPromise.materialize().getResult()) {
+						cb.set(value);
+						break;
+					} else {
+						continue;
+					}
 				}
-			} else {
-				promise.whenComplete((newSeed, e) -> {
+				@Nullable T finalValue = value;
+				breakPromise.whenComplete((b, e) -> {
 					if (e == null) {
-						if (test.test(newSeed)) {
-							loopImpl(newSeed, test, next, cb);
+						if (b) {
+							cb.set(finalValue);
 						} else {
-							cb.set(null);
+							loopImpl(finalValue, next, breakCondition, cb);
 						}
+					} else {
+						cb.setException(e);
+					}
+				});
+				break;
+			} else {
+				promise.whenComplete((newValue, e) -> {
+					if (e == null) {
+						breakCondition.test(newValue)
+								.whenComplete((b, e2) -> {
+									if (e2 == null) {
+										if (b) {
+											cb.set(newValue);
+										} else {
+											loopImpl(newValue, next, breakCondition, cb);
+										}
+									} else {
+										cb.setException(e2);
+									}
+								});
 					} else {
 						cb.setException(e);
 					}
@@ -975,13 +1078,13 @@ public final class Promises {
 	 * This method is universal and allows to implement app-specific logic.
 	 *
 	 * @param collector mutable reduction operation that accumulates input
-	 *                     elements into a mutable result container
-	 * @param maxCalls 	max amount of concurrently running {@code Promise}s
-	 * @param promises	{@code Iterable} of {@code Promise}s
-	 * @param <T>		type of input elements for this operation
-	 * @param <A>		mutable accumulation type of the operation
-	 * @param <R>		the result type of the operation
-	 * @return			a {@code Promise} which wraps the accumulated result
+	 *                  elements into a mutable result container
+	 * @param maxCalls  max amount of concurrently running {@code Promise}s
+	 * @param promises  {@code Iterable} of {@code Promise}s
+	 * @param <T>       type of input elements for this operation
+	 * @param <A>       mutable accumulation type of the operation
+	 * @param <R>       the result type of the operation
+	 * @return a {@code Promise} which wraps the accumulated result
 	 * of the reduction. If one of the {@code promises} completed exceptionally,
 	 * a {@code Promise} with an exception will be returned.
 	 */
@@ -991,20 +1094,19 @@ public final class Promises {
 	}
 
 	/**
-	 * @param promises 	  {@code Iterable} of {@code Promise}s
+	 * @param promises    {@code Iterable} of {@code Promise}s
 	 * @param accumulator supplier of the result
-	 * @param maxCalls	  max amount of concurrently running {@code Promise}s
-	 * @param consumer	  a {@link BiConsumer} which folds a result of each of the
-	 *                       completed {@code promises} into accumulator
-	 * @param finisher	  a {@link Function} which performs the final transformation
-	 *                       from the intermediate accumulations
-	 * @param <T>		  type of input elements for this operation
-	 * @param <A>		  mutable accumulation type of the operation
-	 * @param <R>		  result type of the reduction operation
-	 * @return			  a {@code Promise} which wraps the accumulated result of the
+	 * @param maxCalls    max amount of concurrently running {@code Promise}s
+	 * @param consumer    a {@link BiConsumer} which folds a result of each of the
+	 *                    completed {@code promises} into accumulator
+	 * @param finisher    a {@link Function} which performs the final transformation
+	 *                    from the intermediate accumulations
+	 * @param <T>         type of input elements for this operation
+	 * @param <A>         mutable accumulation type of the operation
+	 * @param <R>         result type of the reduction operation
+	 * @return a {@code Promise} which wraps the accumulated result of the
 	 * reduction. If one of the {@code promises} completed exceptionally, a {@code Promise}
 	 * with an exception will be returned.
-	 *
 	 * @see #reduce(Collector, int, Iterator)
 	 */
 	public static <T, A, R> Promise<R> reduce(@NotNull Iterator<Promise<T>> promises, int maxCalls,
@@ -1061,13 +1163,13 @@ public final class Promises {
 	 * The main feature of this method is that you can set up {@code consumer}
 	 * for different use cases, for example:
 	 * <ul>
-	 *     <li> If one of the {@code promises} completes exceptionally, reduction
-	 *     will stop without waiting for all of the {@code promises} to be completed.
-	 *     A {@code Promise} with exception will be returned.
-	 *     <li> If one of the {@code promises} finishes with needed result, reduction
-	 *     will stop without waiting for all of the {@code promises} to be completed.
-	 *     <li> If a needed result accumulates before all of the {@code promises} run,
-	 *     reduction will stop without waiting for all of the {@code promises} to be completed.
+	 * <li> If one of the {@code promises} completes exceptionally, reduction
+	 * will stop without waiting for all of the {@code promises} to be completed.
+	 * A {@code Promise} with exception will be returned.
+	 * <li> If one of the {@code promises} finishes with needed result, reduction
+	 * will stop without waiting for all of the {@code promises} to be completed.
+	 * <li> If a needed result accumulates before all of the {@code promises} run,
+	 * reduction will stop without waiting for all of the {@code promises} to be completed.
 	 * </ul>
 	 * <p>
 	 * To implement the use cases, you need to set up the provided {@code consumer}'s
@@ -1080,20 +1182,20 @@ public final class Promises {
 	 * {@code Try}'s result or exception is returned
 	 * .
 	 *
-	 * @param promises 		{@code Iterable} of {@code Promise}s
-	 * @param maxCalls 		{@link ToIntFunction} which calculates max amount of concurrently
-	 *                         running {@code Promise}s based on the {@code accumulator} value
-	 * @param accumulator   mutable supplier of the result
-	 * @param consumer 		a {@link BiConsumer} which folds a result of each of the completed
-	 *                         {@code promises} into accumulator for further processing
-	 * @param finisher      a {@link Function} which performs the final transformation
-	 *                         from the intermediate accumulations
-	 * @param recycler		processes results of those {@code promises} which were
-	 *                         completed after result of the reduction was returned
-	 * @param <T>		    type of input elements for this operation
-	 * @param <A>		    mutable accumulation type of the operation
-	 * @param <R>		    result type of the reduction operation
-	 * @return				a {@code Promise} which wraps accumulated result or exception.
+	 * @param promises    {@code Iterable} of {@code Promise}s
+	 * @param maxCalls    {@link ToIntFunction} which calculates max amount of concurrently
+	 *                    running {@code Promise}s based on the {@code accumulator} value
+	 * @param accumulator mutable supplier of the result
+	 * @param consumer    a {@link BiConsumer} which folds a result of each of the completed
+	 *                    {@code promises} into accumulator for further processing
+	 * @param finisher    a {@link Function} which performs the final transformation
+	 *                    from the intermediate accumulations
+	 * @param recycler    processes results of those {@code promises} which were
+	 *                    completed after result of the reduction was returned
+	 * @param <T>         type of input elements for this operation
+	 * @param <A>         mutable accumulation type of the operation
+	 * @param <R>         result type of the reduction operation
+	 * @return a {@code Promise} which wraps accumulated result or exception.
 	 */
 	public static <T, A, R> Promise<R> reduceEx(@NotNull Iterator<Promise<T>> promises, @NotNull ToIntFunction<A> maxCalls,
 			A accumulator,
@@ -1207,22 +1309,23 @@ public final class Promises {
 	}
 
 	private static final class PromiseToList<T> extends NextPromise<T, List<T>> {
-		T[] accumulator;
+		Object[] accumulator;
 		int countdown;
 
 		private PromiseToList(@NotNull T[] accumulator) {
 			this.accumulator = accumulator;
 		}
 
+		@SuppressWarnings("unchecked")
 		void processComplete(@Nullable T result, int i) {
 			if (isComplete()) {
 				return;
 			}
 			accumulator[i] = result;
 			if (--countdown == 0) {
-				T[] accumulator = this.accumulator;
+				Object[] accumulator = this.accumulator;
 				this.accumulator = null;
-				complete(Arrays.asList(accumulator));
+				complete((List<T>) asList(accumulator));
 			}
 		}
 

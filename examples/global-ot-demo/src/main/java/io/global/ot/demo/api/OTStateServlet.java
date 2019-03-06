@@ -100,10 +100,10 @@ public final class OTStateServlet implements WithMiddleware {
 								.thenApply(graph -> {
 									String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
 									Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(
-											manager.getRevision(),
+											manager.getCommitId(),
 											((OperationState) manager.getState()).getCounter(),
 											status,
-											graph.toGraphViz(manager.getRevision())
+											graph.toGraphViz(manager.getCommitId())
 									);
 									return okJson().withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8));
 								});

@@ -48,9 +48,9 @@ public final class DelayedPushNode<D> implements OTNode<CommitId, D, OTCommit<Co
 	}
 
 	@Override
-	public Promise<CommitId> push(OTCommit<CommitId, D> commit) {
+	public Promise<FetchData<CommitId, D>> push(OTCommit<CommitId, D> commit) {
 		if (delay != 0) {
-			SettablePromise<CommitId> promise = new SettablePromise<>();
+			SettablePromise<FetchData<CommitId, D>> promise = new SettablePromise<>();
 			Eventloop.getCurrentEventloop().delay(delay, () -> node.push(commit).whenComplete(promise::set));
 			return promise;
 		} else {

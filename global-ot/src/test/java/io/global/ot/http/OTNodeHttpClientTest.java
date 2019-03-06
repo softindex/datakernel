@@ -100,7 +100,8 @@ public class OTNodeHttpClientTest {
 		long level = 6;
 
 		byte[] commit = await(client.createCommit(parent, diffs, level));
-		CommitId commitId = await(client.push(commit));
+		FetchData<CommitId, TestOp> fetchData = await(client.push(commit));
+		CommitId commitId = fetchData.getCommitId();
 		assertEquals(adapter.parseRawBytes(commit).getId(), commitId);
 
 		Set<CommitId> heads = await(repository.getHeads());

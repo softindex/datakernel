@@ -27,7 +27,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
@@ -123,13 +126,6 @@ public interface ChannelConsumer<T> extends Cancellable {
 	}
 
 	/**
-	 * Wraps Java's {@link Consumer} in {@code ChannelConsumer}.
-	 */
-	static <T> ChannelConsumer<T> ofConsumer(@NotNull Consumer<T> consumer) {
-		return of(AsyncConsumer.of(consumer));
-	}
-
-	/**
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
 	 * @see ChannelConsumer#of(AsyncConsumer, Cancellable)
@@ -141,9 +137,9 @@ public interface ChannelConsumer<T> extends Cancellable {
 	/**
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
-	 * @param consumer AsyncConsumer to be wrapped
+	 * @param consumer    AsyncConsumer to be wrapped
 	 * @param cancellable a Cancellable, which will be set to the returned ChannelConsumer
-	 * @param <T> type of data to be consumed
+	 * @param <T>         type of data to be consumed
 	 * @return AbstractChannelConsumer which wraps AsyncConsumer
 	 */
 	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable Cancellable cancellable) {
@@ -161,11 +157,18 @@ public interface ChannelConsumer<T> extends Cancellable {
 	}
 
 	/**
+	 * Wraps Java's {@link Consumer} in {@code ChannelConsumer}.
+	 */
+	static <T> ChannelConsumer<T> ofConsumer(@NotNull Consumer<T> consumer) {
+		return of(AsyncConsumer.of(consumer));
+	}
+
+	/**
 	 * Creates a consumer which always returns Promise
 	 * of exception when accepts values.
 	 *
-	 * @param e an exception which is wrapped in returned
-	 *             Promise when {@code accept()} is called
+	 * @param e   an exception which is wrapped in returned
+	 *            Promise when {@code accept()} is called
 	 * @param <T> type of data to be consumed
 	 * @return an AbstractChannelConsumer which always
 	 * returns Promise of exception when accepts values
@@ -204,7 +207,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * with an exception.
 	 *
 	 * @param promise Promise of {@code ChannelConsumer}
-	 * @param <T> type of data to be consumed
+	 * @param <T>     type of data to be consumed
 	 * @return ChannelConsumer b
 	 */
 	static <T> ChannelConsumer<T> ofPromise(Promise<? extends ChannelConsumer<T>> promise) {
@@ -273,11 +276,10 @@ public interface ChannelConsumer<T> extends Cancellable {
 						.thenCompose($ -> socket.write(null)));
 	}
 
-
 	/**
 	 * Transforms current {@code ChannelConsumer} with provided {@link ChannelConsumerTransformer}.
 	 *
-	 * @param fn transformer of the {@code ChannelConsumer}
+	 * @param fn  transformer of the {@code ChannelConsumer}
 	 * @param <R> result value after transformation
 	 * @return result of transformation applied to the current {@code ChannelConsumer}
 	 */
@@ -337,7 +339,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * and the result of the {@code fn} will be accepted by current ChannelConsumer.
 	 * If provide {@code value} is {@code null}, {@code fn} won't be applied.
 	 *
-	 * @param fn {@link Function} to be applied to the value of {@code apply(T value)}
+	 * @param fn  {@link Function} to be applied to the value of {@code apply(T value)}
 	 * @param <V> type of data accepted and returned by the {@code fn} and accepted by ChannelConsumer
 	 * @return a wrapper ChannelConsumer
 	 */
@@ -368,7 +370,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * asynchronously. If provided {@code value} is {@code null}, {@code fn} won't
 	 * be applied.
 	 *
-	 * @param fn {@link Function} to be applied to the value of {@code apply(T value)}
+	 * @param fn  {@link Function} to be applied to the value of {@code apply(T value)}
 	 * @param <V> type of data accepted by the {@code fn} and ChannelConsumer
 	 * @return a wrapper ChannelConsumer
 	 */
@@ -413,7 +415,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * and then materialized.
 	 *
 	 * @param fn a function applied to the {@code SettablePromise} which is then
-	 *              materialized and returned
+	 *           materialized and returned
 	 * @return a wrapper ChannelConsumer
 	 */
 	default ChannelConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {

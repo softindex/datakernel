@@ -4,6 +4,7 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
@@ -29,7 +30,13 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 		return push(singletonList(commit));
 	}
 
+	@NotNull
 	Promise<Set<K>> getHeads();
+
+	@NotNull
+	default Promise<Set<K>> pollHeads(Set<K> heads) {
+		return getHeads();
+	}
 
 	Promise<OTCommit<K, D>> loadCommit(K revisionId);
 
@@ -86,6 +93,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 						writeRedundancy);
 			}
 
+			@NotNull
 			@Override
 			public Promise<Set<K>> getHeads() {
 				return Promises.toList(repositories.values().stream()

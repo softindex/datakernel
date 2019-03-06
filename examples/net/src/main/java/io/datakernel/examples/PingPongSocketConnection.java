@@ -16,6 +16,7 @@
 
 package io.datakernel.examples;
 
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -44,14 +45,15 @@ public class PingPongSocketConnection {
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		SimpleServer server = SimpleServer.create(socket -> {
-			BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
-			repeat(() ->
-					bufsSupplier.parse(PARSER)
-							.whenResult(System.out::println)
-							.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG))))
-					.whenComplete(($, e) -> socket.close());
-		})
+		SimpleServer server = SimpleServer.create(
+				socket -> {
+					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
+					repeat(() ->
+							bufsSupplier.parse(PARSER)
+									.whenResult(System.out::println)
+									.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG))))
+							.whenComplete(($, e) -> socket.close());
+				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce();
 
@@ -60,7 +62,7 @@ public class PingPongSocketConnection {
 		AsyncTcpSocketImpl.connect(ADDRESS)
 				.whenResult(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
-					loop(0, i -> i < ITERATIONS,
+					loop(0, AsyncPredicate.of(i -> i < ITERATIONS),
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.thenCompose($ -> bufsSupplier.parse(PARSER)
 											.whenResult(System.out::println)

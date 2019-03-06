@@ -96,12 +96,12 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 	Promise<Boolean> process() {
 		return Promise.complete()
 				.thenCompose($ -> stateManager.sync())
-				.thenApply($ -> stateManager.getRevision())
+				.thenApply($ -> stateManager.getCommitId())
 				.thenCompose(predicate::test)
 				.thenCompose(ok -> {
 					if (!ok) return Promise.of(false);
 
-					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
+					logger.info("Pull to commit: {}, start log processing", stateManager.getCommitId());
 
 					List<AsyncSupplier<LogDiff<CubeDiff>>> tasks = logProcessors.stream()
 							.map(logProcessor -> AsyncSupplier.cast(logProcessor::processLog))

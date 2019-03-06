@@ -22,6 +22,14 @@ import java.util.function.Predicate;
 public interface AsyncPredicate<T> {
 	Promise<Boolean> test(T t);
 
+	static <T> AsyncPredicate<T> cast(AsyncPredicate<T> predicate) {
+		return predicate;
+	}
+
+	static <T> AsyncPredicate<T> of(Predicate<T> predicate) {
+		return new AsyncPredicates.AsyncPredicateWrapper<>(predicate);
+	}
+
 	default AsyncPredicate<T> negate() {
 		return t -> test(t).thenApply(b -> !b);
 	}
@@ -32,10 +40,6 @@ public interface AsyncPredicate<T> {
 
 	default AsyncPredicate<T> or(AsyncPredicate<? super T> other) {
 		return t -> test(t).combine(other.test(t), (b1, b2) -> b1 || b2);
-	}
-
-	static <T> AsyncPredicate<T> of(Predicate<T> predicate) {
-		return t -> Promise.of(predicate.test(t));
 	}
 
 	static <T> AsyncPredicate<T> alwaysTrue() {

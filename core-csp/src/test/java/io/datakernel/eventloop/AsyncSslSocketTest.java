@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -234,7 +235,7 @@ public final class AsyncSslSocketTest {
 		sentData.append(String.join("", Collections.nCopies(1000, TEST_STRING)));
 
 		return socket.write(largeBuf)
-				.thenCompose($ -> Promises.loop(1000, i -> i != 0,
+				.thenCompose($ -> Promises.loop(1000, AsyncPredicate.of(i -> i != 0),
 						i -> socket.write(wrapAscii(TEST_STRING))
 								.async()
 								.thenApply($2 -> i - 1)));

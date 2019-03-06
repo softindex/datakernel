@@ -24,7 +24,6 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.http.MediaTypes.PLAIN_TEXT;
-import static io.datakernel.ot.OTNode.getFetchDataCodec;
 import static io.global.ot.api.OTNodeCommand.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -40,7 +39,7 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 			Function<C, byte[]> commitToBytes, ParserFunction<byte[], C> bytesToCommit) {
 		this.servlet = getServlet(node);
 		this.revisionCodec = revisionCodec;
-		this.fetchDataCodec = getFetchDataCodec(revisionCodec, diffCodec);
+		this.fetchDataCodec = FetchData.codec(revisionCodec, diffCodec);
 		this.commitToBytes = commitToBytes;
 		this.bytesToCommit = bytesToCommit;
 	}
@@ -87,7 +86,7 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 							try {
 								C commit = bytesToCommit.parse(body.getArray());
 								return node.push(commit)
-										.thenApply(commitId -> jsonResponse(revisionCodec, commitId));
+										.thenApply(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
 							} finally {

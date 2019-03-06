@@ -41,10 +41,8 @@ public interface AsyncSupplier<T> {
 	@NotNull
 	Promise<T> get();
 
-	@SuppressWarnings("NullableProblems")
-	@NotNull
-	static <T> AsyncSupplier<T> of(@NotNull Supplier<? extends Promise<T>> supplier) {
-		return supplier::get;
+	static <T> AsyncSupplier<T> of(@NotNull Supplier<? extends T> supplier) {
+		return () -> Promise.of(supplier.get());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -54,10 +52,6 @@ public interface AsyncSupplier<T> {
 
 	static <T> AsyncSupplier<T> ofValue(@Nullable T value) {
 		return () -> Promise.of(value);
-	}
-
-	static <T> AsyncSupplier<T> ofSupplier(@NotNull Supplier<? extends T> supplier) {
-		return () -> Promise.of(supplier.get());
 	}
 
 	static <T> AsyncSupplier<T> ofIterator(@NotNull Iterator<? extends T> iterator) {
@@ -110,7 +104,7 @@ public interface AsyncSupplier<T> {
 	 * Ensures that supplied {@code Promise} will complete asynchronously.
 	 *
 	 * @return {@link AsyncSupplier} of {@code Promise}s
-	 * 			that will be completed asynchronously
+	 * that will be completed asynchronously
 	 * @see Promise#async()
 	 */
 	@Contract(pure = true)

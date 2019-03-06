@@ -3,14 +3,12 @@ package io.datakernel.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 
+import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
 public interface OTNode<K, D, C> {
-	Promise<C> createCommit(K parent, List<? extends D> diffs, long level);
-
-	Promise<K> push(C commit);
 
 	final class FetchData<K, D> {
 		private final K commitId;
@@ -34,16 +32,25 @@ public interface OTNode<K, D, C> {
 		public List<D> getDiffs() {
 			return diffs;
 		}
+
+		public static <K, D> StructuredCodec<FetchData<K, D>> codec(StructuredCodec<K> revisionCodec, StructuredCodec<D> diffCodec) {
+			return object(FetchData::new,
+					"id", FetchData::getCommitId, revisionCodec,
+					"level", FetchData::getLevel, LONG_CODEC,
+					"diffs", FetchData::getDiffs, ofList(diffCodec));
+		}
 	}
 
 	Promise<FetchData<K, D>> checkout();
 
 	Promise<FetchData<K, D>> fetch(K currentCommitId);
 
-	static <K, D> StructuredCodec<FetchData<K, D>> getFetchDataCodec(StructuredCodec<K> revisionCodec, StructuredCodec<D> diffCodec) {
-		return object(OTNode.FetchData::new,
-				"id", OTNode.FetchData::getCommitId, revisionCodec,
-				"level", OTNode.FetchData::getLevel, LONG_CODEC,
-				"diffs", OTNode.FetchData::getDiffs, ofList(diffCodec));
+	default Promise<FetchData<K, D>> poll(K currentCommitId) {
+		return fetch(currentCommitId);
 	}
+
+	Promise<C> createCommit(K parent, List<? extends D> diffs, long level);
+
+	Promise<FetchData<K, D>> push(C commit);
+
 }
