@@ -12,14 +12,20 @@ import org.jetbrains.annotations.Nullable;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Executor;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public class RocksDbAnnouncementStorage implements AnnouncementStorage {
+	private static final Logger logger = LoggerFactory.getLogger(RocksDbAnnouncementStorage.class);
+
 	private static final StructuredCodec<PubKey> PUB_KEY_CODEC = REGISTRY.get(PubKey.class);
 	private static final StructuredCodec<SignedData<AnnounceData>> ANNOUNCEMENT_CODEC = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 
@@ -50,29 +56,33 @@ public class RocksDbAnnouncementStorage implements AnnouncementStorage {
 
 	@Override
 	public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
-		return Promise.ofBlockingRunnable(executor, () -> {
-			try {
-				byte[] keyBytes = encodeAsArray(PUB_KEY_CODEC, space);
-				byte[] valueBytes = encodeAsArray(ANNOUNCEMENT_CODEC, announceData);
+		return Promise.ofBlockingRunnable(executor,
+				() -> {
+					try {
+						byte[] keyBytes = encodeAsArray(PUB_KEY_CODEC, space);
+						byte[] valueBytes = encodeAsArray(ANNOUNCEMENT_CODEC, announceData);
 
-				db.put(writeOptions, keyBytes, valueBytes);
-			} catch (RocksDBException e) {
-				throw new UncheckedException(e);
-			}
-		});
+						db.put(writeOptions, keyBytes, valueBytes);
+					} catch (RocksDBException e) {
+						throw new UncheckedException(e);
+					}
+				})
+				.whenComplete(toLogger(logger, thisMethod(), space, announceData));
 	}
 
 	@Override
 	public Promise<SignedData<AnnounceData>> load(PubKey space) {
-		return Promise.ofBlockingCallable(executor, () -> {
-			byte[] keyBytes = encodeAsArray(PUB_KEY_CODEC, space);
-			byte[] valueBytes = db.get(keyBytes);
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					byte[] keyBytes = encodeAsArray(PUB_KEY_CODEC, space);
+					byte[] valueBytes = db.get(keyBytes);
 
-			if (valueBytes == null) {
-				throw new UncheckedException(NO_ANNOUNCEMENT);
-			} else {
-				return decode(ANNOUNCEMENT_CODEC, valueBytes);
-			}
-		});
+					if (valueBytes == null) {
+						throw new UncheckedException(NO_ANNOUNCEMENT);
+					} else {
+						return decode(ANNOUNCEMENT_CODEC, valueBytes);
+					}
+				})
+				.whenComplete(toLogger(logger, thisMethod(), space));
 	}
 }
