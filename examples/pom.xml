@@ -31,7 +31,6 @@
 		<module>global-ot-common</module>
 		<module>global-fs-demo</module>
 		<module>global-db-demo</module>
-		<module>global-fs-cli</module>
 		<module>http</module>
 		<module>http-helloworld</module>
 		<module>launchers</module>

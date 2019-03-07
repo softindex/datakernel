@@ -35,14 +35,12 @@ public final class GlobalFs {
 	static boolean loggingEnabled = true;
 	static Preferences keyStorage = Preferences.userRoot().node("globalfs/keys");
 
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	static void info(String msg) {
 		if (loggingEnabled) {
 			System.err.println("\033[36m" + msg + "\033[0m");
 		}
 	}
 
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	static void err(String msg) {
 		if (loggingEnabled) {
 			System.err.println("\033[95m" + msg + "\033[0m");
@@ -67,7 +65,6 @@ public final class GlobalFs {
 					return privKey;
 				})
 				.registerConverter(MemSize.class, StringFormatUtils::parseMemSize)
-
 				.parseWithHandlers(new RunLast(), new DefaultExceptionHandler<List<Object>>().andExit(1), args.length == 0 ? new String[]{"-h"} : args);
 
 		try {

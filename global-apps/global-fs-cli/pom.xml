@@ -5,9 +5,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>io.datakernel</groupId>
-		<artifactId>datakernel-examples</artifactId>
+		<artifactId>global-apps</artifactId>
 		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
+		<relativePath>../../examples/pom.xml</relativePath>
 	</parent>
 
 	<artifactId>global-fs-cli</artifactId>

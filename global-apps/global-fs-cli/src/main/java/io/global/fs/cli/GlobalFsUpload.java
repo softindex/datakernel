@@ -19,7 +19,6 @@ package io.global.fs.cli;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.eventloop.Eventloop;
@@ -55,11 +54,14 @@ public final class GlobalFsUpload implements Callable<Void> {
 			description = "Number of bytes between checkpoints. Allows suffixes")
 	private MemSize checkpointInterval;
 
-	@Option(names = {"--offset"}, defaultValue = "-1", description = "Offset in bytes from which to start uploading the file. Allows suffixes.")
+	@Option(names = {"--offset"}, defaultValue = "0", description = "Offset in bytes from which to start uploading the file. Allows suffixes.")
 	private long offset;
 
-	@Option(names = {"-r", "--remote-name"}, paramLabel = "<remote name>", description = "How to name the file in Global-FS")
+	@Option(names = {"-n", "--name"}, paramLabel = "<name>", description = "How to name the file in Global-FS")
 	private String remoteName;
+
+	@Option(names = {"-r", "--revision"}, paramLabel = "<revision>", description = "Set custom revision to try to upload")
+	private long revision;
 
 	@Override
 	public Void call() throws Exception {
@@ -103,7 +105,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			}
 		}
 
-		reader.streamTo(ChannelConsumer.ofPromise(gateway.upload(name, offset)))
+		reader.streamTo(gateway.upload(name, offset, revision))
 				.whenComplete(($, e) -> {
 					if (e == null) {
 						info(name + " upload finished");
