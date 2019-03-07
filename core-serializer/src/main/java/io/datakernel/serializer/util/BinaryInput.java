@@ -20,6 +20,10 @@ import org.jetbrains.annotations.Nullable;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * Provides methods for reading primitives
+ * and Strings from byte arrays
+ */
 public final class BinaryInput {
 	private final byte[] array;
 	private int pos;

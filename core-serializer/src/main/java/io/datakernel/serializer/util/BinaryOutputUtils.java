@@ -18,6 +18,10 @@ package io.datakernel.serializer.util;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Provides methods for writing primitives
+ * and Strings to byte arrays
+ */
 public final class BinaryOutputUtils {
 	private BinaryOutputUtils() {
 	}

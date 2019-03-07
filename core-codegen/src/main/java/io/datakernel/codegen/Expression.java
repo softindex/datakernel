@@ -31,7 +31,7 @@ public interface Expression {
 	Type type(Context ctx);
 
 	/**
-	 * Processes data ana returns their type
+	 * Processes data and returns its type
 	 *
 	 * @param ctx information about a dynamic class
 	 * @return type of the processes data

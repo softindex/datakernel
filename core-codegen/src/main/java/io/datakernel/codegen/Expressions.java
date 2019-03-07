@@ -29,7 +29,7 @@ import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.getType;
 
 /**
- * Defines list of possibilities for creating the dynamic object
+ * Defines list of possibilities for creating dynamic objects
  */
 public final class Expressions {
 	private Expressions() {
@@ -50,7 +50,7 @@ public final class Expressions {
 	}
 
 	/**
-	 * Return new variable which will process expression
+	 * Returns a new variable which will process expression
 	 *
 	 * @param expression expression which will be processed when variable will be used
 	 * @return new instance of the Expression
@@ -68,10 +68,10 @@ public final class Expressions {
 	}
 
 	/**
-	 * Sets the value from argument 'from' in argument 'to'
+	 * Sets the value from the argument 'from' to the argument 'to'
 	 *
 	 * @param to   variable which will be changed
-	 * @param from variable which will change
+	 * @param from variable which changes
 	 * @return new instance of the Expression
 	 */
 	public static Expression set(StoreDef to, Expression from) {
@@ -101,7 +101,7 @@ public final class Expressions {
 	}
 
 	/**
-	 * Returns the property from owner
+	 * Returns the property from {@code owner}
 	 *
 	 * @param owner owner of the property
 	 * @param property name of the property which will be returned
@@ -112,7 +112,7 @@ public final class Expressions {
 	}
 
 	/**
-	 * Returns the static field from class
+	 * Returns the static field from {@code owner}
 	 *
 	 * @param owner owner of the field
 	 * @param field name of the static field which will be returned
@@ -123,7 +123,7 @@ public final class Expressions {
 	}
 
 	/**
-	 * Sets value to the property in owner
+	 * Sets value to the property in {@code owner}
 	 *
 	 * @param owner owner of the property
 	 * @param property name of property which will be changed
@@ -381,7 +381,7 @@ public final class Expressions {
 	}
 
 	/**
-	 * Returns a hash code which calculated from properties
+	 * Returns a hash code which was calculated from the {@code properties}
 	 *
 	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
@@ -391,7 +391,7 @@ public final class Expressions {
 	}
 
 	/**
-	 * Returns a hash code which calculated from properties
+	 * Returns a hash code which was calculated from the {@code properties}
 	 *
 	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
@@ -463,7 +463,8 @@ public final class Expressions {
 	}
 
 	/**
-	 * Calls method which defines static in the class
+	 * Returns a new {@link ExpressionCall expression call}
+	 * which allows to use static methods from other classes
 	 *
 	 * @param owner      owner of the method
 	 * @param methodName name of the method in the class

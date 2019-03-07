@@ -25,6 +25,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Represents a serializer and deserializer of a particular class to byte arrays
+ */
 public interface SerializerGen {
 
 	final class VersionsCollector {
@@ -58,14 +61,35 @@ public interface SerializerGen {
 
 	boolean isInline();
 
+	/**
+	 * Returns the raw type of object which will be serialized
+	 *
+	 * @return type of object which will be serialized
+	 */
 	Class<?> getRawType();
 
 	void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
+	/**
+	 * Serializes provided {@link Expression} {@code value} to byte array
+	 *
+	 * @param byteArray byte array to which the value will be serialized
+	 * @param off an offset in the byte array
+	 * @param value the value to be serialized to byte array
+	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
+	 * @return serialized to byte array value
+	 */
 	Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
 	void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
+	/**
+	 * Deserializes object of {@code targetType} from byte array
+	 *
+	 * @param targetType target type which is used to deserialize byte array
+	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
+	 * @return deserialized {@code Expression} object of provided targetType
+	 */
 	Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
 }
