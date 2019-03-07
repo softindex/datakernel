@@ -29,7 +29,7 @@ Then open one of the classes:
 * `DynamicClassCreationExample`
 * `ExpressionsExample`
 
-which are located at **datakernel -> examples -> codegen** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> codegen** and run *main()* of the chosen example.
 
 If you run **Dynamic Class Creation Example**, you will receive the following output:
 ```

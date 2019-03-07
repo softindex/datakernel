@@ -28,7 +28,7 @@ Then open one of the classes:
 * `PromisesExample`
 * `AsyncFileExample`
 
-which are located at **datakernel -> examples -> promise** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> promise** and run *main()* of the chosen example.
 
 If you run **Promises Example**, you'll receive the following output:
 ```
@@ -107,6 +107,6 @@ This is the 3rd line in file
 
 In this example Promise's `AsyncFile` (represents a file with asynchronous capabilities) is utilized, along with 
 several methods associated with the class, such as:
-* open() - opens file synchronously.
-* write() - writes all bytes of provided ByteBuf into file asynchronously.
-* read() - reads all bytes from file into a ByteBuf asynchronously.
+* *open()* - opens file synchronously.
+* *write()* - writes all bytes of provided ByteBuf into file asynchronously.
+* *read()* - reads all bytes from file into a ByteBuf asynchronously.

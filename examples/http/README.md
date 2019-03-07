@@ -45,14 +45,14 @@ Then open one of the classes:
 * `RequestParametrExample`
 * `StaticServletExample`
 
-which are located at **datakernel -> examples -> http** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> http** and run *main()* of the chosen example.
 
 To check how **HTTP Server Example** or **HTTP Multithreaded Server Example** works, you should start your client 
 either in console:
 ```
 $ mvn exec:java@HttpClientExample
 ```
-or in an IDE, by opening `HttpClientExample` class which is located at the same folder and running its `main()` method.
+or in an IDE, by opening `HttpClientExample` class which is located at the same folder and running its *main()* method.
 
 
 If you connect to the multithreaded server, you'll receive a message representing which worker processed your request:

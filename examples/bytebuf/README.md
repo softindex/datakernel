@@ -37,7 +37,7 @@ Then open one of the classes:
 * `ByteBufPoolExample`
 * `ByteBufQueueExample`
 
-which are located at **datakernel -> examples -> bytebuf** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> bytebuf** and run *main()* of the chosen example.
 
 <br>
 

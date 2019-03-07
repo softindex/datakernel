@@ -39,7 +39,7 @@ Then open one of the classes:
 * `TransformerExample`
 * `BuiltinStreamNodesExample`
 
-which are located at **datakernel -> examples -> datastreams** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> datastreams** and run *main()* of the chosen example.
 
 If you run **SupplierExample**, you'll see the following output:
 ```
@@ -202,7 +202,7 @@ datakernel
 and set up working directory properly. For IntelliJ IDEA:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
-Then run `main()` of NetworkDemoServer and NetworkDemoClient in that order.
+Then run *main()* of NetworkDemoServer and NetworkDemoClient in that order.
 
 Example's stream graph is illustrated in the picture below:
 <img src="http://www.plantuml.com/plantuml/png/dPH1RiCW44Ntd694Dl72aT83LBb3J-3QqmJLPYmO9qghtBrGspME0uwwPHwVp_-2W-N2SDVKmZAPueWWtz2SqS1cB-5R0A1cnLUGhQ6gAn6KPYk3TOj65RNwGk0JDdvCy7vbl8DqrQy2UN67WaQ-aFaCCOCbghDN8ei3_s6eYV4LJgVtzE_nbetInvc1akeQInwK1y3HK42jB4jnMmRmCWzWDFTlM_V9bTIq7Kzk1ablqADWgS4JNHw7FLqXcdUOuZBrcn3RiDCCylmLjj4wCv6OZNkZBMT29CUmspc1TCHUOuNeVIJoTxT8JVlzJnRZj9ub8U_QURhB_cO1FnXF6YlT_cMTXEQ9frvSc7kI6nscdsMyWX4OTLOURIOExfRkx_e1">

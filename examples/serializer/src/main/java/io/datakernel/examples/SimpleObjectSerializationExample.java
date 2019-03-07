@@ -22,8 +22,8 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
 /**
- * Example 1
- * Example of serialization and deserialization of a simple object (no null fields, generics or complex objects, such as maps or arrays, as fields).
+ * Example of serialization and deserialization of a simple object with no {@code null}
+ * fields, generics or complex objects (such as maps or arrays) as fields.
  */
 public class SimpleObjectSerializationExample {
 

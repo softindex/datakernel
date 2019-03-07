@@ -1,9 +1,18 @@
-1. [CRDT example](https://github.com/softindex/datakernel/blob/master/examples/crdt/src/main/java/io/datakernel/examples/CrdtExample.java) - 
+[CRDT example](https://github.com/softindex/datakernel/blob/master/examples/crdt/src/main/java/io/datakernel/examples/CrdtExample.java) - 
 an example of conflict-free merging of two modified replicas.
 
-To run the example in console, you should execute these lines in appropriate folder:
+You can run the example in 2 steps:
+
+#### 1. Clone DataKernel project locally 
+You can do it either in console:
 ```
 $ git clone https://github.com/softindex/datakernel.git
+```
+Or with IDE tools.
+
+#### 2. Run `CrdtExample`
+To run the example in console, you should execute these lines in appropriate folder:
+```
 $ cd datakernel
 $ mvn clean install -DskipTests
 $ cd examples/crdt
@@ -20,8 +29,9 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its `main()` method.
+Then open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its *main()* method.
 
+#### Explanation
 In this example, we have two replicas - independent nodes which store different information.
 
 First replica stores:

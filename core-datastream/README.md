@@ -9,67 +9,25 @@ DataStream is:
 * Asynchronous with extremely efficient congestion control, to handle natural imbalance in speed of data sources
 * Composable stream operations (mappers, reducers, filters, sorters, mergers/splitters, compression, serialization)
 * Stream-based network and file I/O on top of Eventloop module
-* Compatibility with [CSP module](https://github.com/softindex/datakernel/tree/master/core-csp).
+* Compatibility with [CSP module](https://github.com/softindex/datakernel/tree/master/core-csp)
+
+
+Datastream has a lot in common with [CSP](https://github.com/softindex/datakernel/tree/master/core-csp) module. 
+Although they both were designed for I/O processing, there are several important distinctions:
+
+| | Datastream | CSP |
+| --- | --- | --- |
+| **Overhead:** | Extremely low: stream can be started with 1 virtual call, short-circuit evaluation optimizes performance | No short-circuit evaluation, overhead is higher |
+| **Throughput speed:** | Extremely fast | Fast, but slower than Datastream |
+| **Optimized for:** | Small pieces of data | Medium-sized objects, ByteBufs |
+| **Programming model:** | More complicated | Simple and convenient |
+
+To provide maximum efficiency, our framework widely utilizes combinations of CSP and Datastream. For this purpose, 
+`ChannelSupplier`, `ChannelConsumer`, `StreamSupplier` and `StreamConsumer` have `transformWith()` methods and special 
+Transformer interfaces. Using them, you can seamlessly transform channels into other channels or datastreams and vice 
+versa, creating chains of such transformations.
 
 ### You can explore Datastream examples [here](https://github.com/softindex/datakernel/tree/master/examples/datastreams)
-
-
-## Stream Primitives
-
-There are dozens of builtin primitives which you can simply wire to each other.
-
-Here is a list of them with short descriptions:
-
-### Suppliers:
-  * StreamSupplier.idle() - returns supplier which does nothing - neither sends any data nor closes itself.
-  * StreamSupplier.closing() - returns supplier which closes itself immediately after binding.
-  * StreamSupplier.closingWithError() - closes itseslf with given error after binding.
-  * StreamSupplier.of() - sends given values and then closes.
-  * StreamSupplier.ofIterator() - sends values from given iterator.
-  * StreamSupplier.ofIterable() - sends values from given iterable.
-  * StreamSupplier.ofStream() - sends values from stream iterator.
-  * StreamSupplier.ofSupplier() - produces items from a given lambda.
-  * StreamSupplier.ofChannelSupplier() - 
-  * StreamSupplier.withLateBinding() - 
-  * StreamSupplier.ofPromise() - a wrapper which unwraps supplier from a CompletionStage (starts sending data 
-  from supplier from promise when promise is completed).
-  * StreamSupplier.withEndOfStream() - returns end of stream wrapper when stream closes.
-  * StreamSupplier.concat() - wrapper which 
-  concatenates given suppliers.
-
-
-### Consumers:
-  * StreamConsumer.idle() - does nothing, when wired supplier finishes, it sets consumer's status as finished too.
-  * StreamConsumer.skip() - 
-  * StreamConsumer.of() - deprecated.
-  * StreamConsumer.ofSupplier() -
-  * StreamConsumer.ofChannelConsumer() - 
-  * StreamConsumer.ofPromise() - 
-  * StreamConsumer.withLateBinding() - 
-  * StreamConsumer.closingWithError() - closes itself with given error.
-  * StreamConsumer.withAcknowledgement() - 
-  * StreamConsumer.asSerialConsumer() - consumer which allows to non-blockingly read data from file.
-
-### Transformers:
-  * StreamBuffer - 
-  * StreamDecorator -  allows to apply function before sending data to the destination.
-  * StreamFilter - passes through only those items which matched given predicate.
-  * StreamJoin - complicated transfomer which joins more than one supplier into one consumer with strategies and mapping 
-  functions.
-  * StreamLateBinder - stores a data receiver from consumer produce request if it is not wired and when it is actually 
-  wired request his new supplier to produce into that stored receiver.
-  * StreamMap - smarter version of StreamFunction which can transform one item into various number of other items 
-  (equivalent of the flatMap operation).
-  * StreamMapSplitter - 
-  * StreamMerger - Merges streams sorted by keys and streams their sorted union.
-  * StreamReducer - Performs aggregative functions on the elements from input streams sorted by keys. Searches key of 
-  item with key function, selects elements with some key, reduces it and streams the results sorted by key.
-  * StreamReducers - static utility methods pertaining, contains primary ready for use reducers.
-  * StreamReducerSimple - Performs a reduction on the elements of input streams using the key function.
-  * StreamSharder - Divides input stream into groups with some key function, and sends obtained streams to consumers.
-  * StreamSorter - Receives data and saves it, and on end of stream sorts it and streams to the destination.
-  * StreamSplitter - Sends received items into multiple consumers at once.
-  * StreamUnion - Unions all input streams and streams their items in order of receiving them to the destination.
 
 ## Benchmark
 

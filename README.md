@@ -34,8 +34,11 @@ daily: ad-serving solutions, online analytics and web crawlers that perform cont
 You can start with ["Hello World!"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 5-minute guide, which 
 shows how to create a simple “Hello World” application using Eventloop - one of the core components of DataKernel framework.
 
+If you are interested in developing web-applications with JavaScript front-end, explore
+[UIKernel integration](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration) example.
+
 Also, check out [examples module](https://github.com/softindex/datakernel/tree/master/examples), which includes examples 
-for most of the DataKernel components and use cases of their combinations.
+for most of the DataKernel components along with use cases of their combinations.
 
 ## Core components 
 

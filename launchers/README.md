@@ -1,10 +1,10 @@
 ## Launchers
 
 This module provides you with launchers for commonly-used solutions:
-* HTTP server launcher
-* RPC server launcher
-* CRDT node launcher
-* FS launchers
+* [HTTP](https://github.com/softindex/datakernel/tree/master/core-http) server launcher
+* [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc) server launcher
+* [CRDT](https://github.com/softindex/datakernel/tree/master/cloud-crdt) node launcher
+* [FS](https://github.com/softindex/datakernel/tree/master/cloud-fs) launchers
 
 If you want to create your own application, you should either extend one of proposed launchers or use it as a reference 
 for your custom launcher.

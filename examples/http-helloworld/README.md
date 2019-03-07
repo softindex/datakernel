@@ -57,7 +57,7 @@ $MODULE_WORKING_DIR$||`.
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open `HttpHelloWorldLauncher` class, which is located at **datakernel -> examples -> http-helloworld** and run its 
-`main()` method.
+*main()* method.
 
 Then, go to [testing](#testing) section.
 

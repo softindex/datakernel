@@ -4,7 +4,7 @@ Boot module enables booting complex applications and services according to their
 
 * Configuration: easy-to-use and flexible configs managing
 * Service Graph: services manager to efficiently start/stop services, with respect to their dependencies
-* Worker Pool: simply create worker pools for your applications and set the amount of workers.
+* Worker Pool: simply create worker pools for your applications and set the amount of workers
 * Guice integration: extension of [Google Guice](https://github.com/google/guice) Dependency Injection Framework to 
 simplify work with service graph
 * Launcher: utility to facilitate app launching using configs, service graph and guice

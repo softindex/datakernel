@@ -35,7 +35,7 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `HelloWorld` class, which is located at **datakernel -> examples -> getting-started** and run its `main()` 
+Then open `HelloWorld` class, which is located at **datakernel -> examples -> getting-started** and run its *main()* 
 method.
 
 ## 2. Step-by-step guide

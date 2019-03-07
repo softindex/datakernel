@@ -28,12 +28,12 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-First, open `ServerSetupExample` class which is located at **datakernel -> examples -> remotefs**, and run its `main()` 
+First, open `ServerSetupExample` class which is located at **datakernel -> examples -> remotefs**, and run its *main()* 
 method.
 
-Then open `FileUploadExample` class which is located in the same folder, and run its `main()` method. 
+Then open `FileUploadExample` class which is located in the same folder, and run its *main()* method. 
 
-Finally, open `FileDownloadExample` class which is located in the same folder, and also run its `main()` method.
+Finally, open `FileDownloadExample` class which is located in the same folder, and also run its *main()* method.
 
 In the example we upload file "example.txt" to server and then download it back as "download_example.txt".
 

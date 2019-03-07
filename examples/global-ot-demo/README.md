@@ -20,42 +20,65 @@ There are two values which help to work with the repository:
 * `Remote state` - shows remote value of the counter. 
 * `Uncommitted operations` - represents operations which were `Add`ed but not committed yet.
 
-All of the pushed commits are represented in commit graph. Each commit is represented by hashcode of the operation and
+All of the pushed commits are displayed in commit graph. Each commit is represented by hashcode of the operation and
 each edge on the graph represents applied operations. 
 
-To run Global-OT demo application in your console, you should enter these commands in appropriate folder:
+You can run this application in **5 steps**:
+
+#### 1. Clone DataKernel project
+You can clone the project either in console:
 ```
 $ git clone https://github.com/softindex/datakernel.git
+```
+Or with IDE tools.
+
+#### 2. Set up the project
+
+If you'd like to run the example in console, you need to install DataKernel:
+```
 $ cd datakernel
 $ mvn clean install -DskipTests
-$ cd global-launchers
-$ mvn exec:java@DiscoveryServiceLauncher
-$ # in another console
-$ cd datakernel/global-launchers
-$ mvn exec:java@GlobalNodesLauncher
-$ # in another console
-$ cd datakernel/examples/global-ot-demo
-$ mvn exec:java@GlobalOTDemoApp
 ```
-Note that it is important to execute commands in the given order.
 
-To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the example can work correctly. In 
-accordance to DataKernel module structure, the working directory should be set to the module folder. 
+To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
+work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
 
-Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+Then build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-First, open `DiscoveryServiceLauncher` class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
-and run its `main()` method.
+#### 3. Run Global Launchers
 
-Next, open `GlobalNodesLauncher` class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
-run its `main()` method.
+In console:
+```
+$ cd datakernel/global-launchers
+$ mvn exec:java@DiscoveryServiceLauncher
+$ # in another console
+$ cd datakernel/global-launchers
+$ mvn exec:java@GlobalNodesLauncher
+```
+In an IDE:
 
-Finally, open `GlobalOTDemoApp` class, which is located at **datakernel -> examples -> global-ot-demo** and also run its 
-`main()` method.
+First, open *DiscoveryServiceLauncher* class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
+and run its *main()* method.
+
+Next, open *GlobalNodesLauncher* class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
+run its *main()* method.
+
+#### 4. Run Global-OT demo app
+Note: **Do not terminate Launchers**.
+
+To run the app in console enter these commands:
+```
+$ cd datakernel/examples/global-ot-demo
+$ mvn exec:java@GlobalOTDemoApp
+```
+In IDE:
+Open *GlobalOTDemoApp* class, which is located at **datakernel -> examples -> global-ot-demo** and run its 
+*main()* method.
+
+#### 5. Open your favourite browser
 
 After you've started all of the needed classes, open your browser and go to [localhost:8899](http://localhost:8899). Enjoy!

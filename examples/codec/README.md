@@ -21,7 +21,7 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `StructuredCodecsExample` class, which is located at **datakernel -> examples -> codec** and run its `main()` 
+Then open `StructuredCodecsExample` class, which is located at **datakernel -> examples -> codec** and run its *main()* 
 method.
 
 You will receive the following output:

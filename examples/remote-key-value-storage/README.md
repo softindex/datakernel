@@ -434,7 +434,7 @@ $ mvn exec:java@RpcServerLauncher
 ```
 
 In IDE: open `RpcServerLauncher` class, which is located at **datakernel -> examples -> remote-key-value-storage** 
-and run its `main()` method.
+and run its *main()* method.
 
 **Then make a "put" request.**
 
@@ -445,7 +445,7 @@ $ mvn exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
 
 In IDE: open `RpcClientLauncher` class, which is located at **datakernel -> examples -> remote-key-value-storage** 
 and set up program arguments to `--put key1 value1`. For IntelliJ IDEA: `Run -> Edit configurations -> 
-|Run/Debug Configurations -> |Program arguments -> --put key1 value1||`. Then run launcher's `main()` method.
+|Run/Debug Configurations -> |Program arguments -> --put key1 value1||`. Then run launcher's *main()* method.
 
 You should see the following output:
 
@@ -462,7 +462,7 @@ $ mvn exec:java@RpcClientLauncher -Dexec.args="--get key1"
 ```
 
 In IDE: open `RpcClientLauncher` class again, and set up program arguments to `--get key1`. For IntelliJ IDEA: `Run -> 
-Edit configurations -> |Run/Debug Configurations -> |Program arguments -> --get key1||`. Then run `main()` method of the 
+Edit configurations -> |Run/Debug Configurations -> |Program arguments -> --get key1||`. Then run *main()* method of the 
 client launcher.
 
 You should see the following output:

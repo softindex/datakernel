@@ -23,7 +23,7 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open *HelloWorldLauncher* class, which is located at **datakernel -> examples -> launchers** and run its `main()` 
+Then open *HelloWorldLauncher* class, which is located at **datakernel -> examples -> launchers** and run its *main()* 
 method.
 
 

@@ -1,40 +1,62 @@
-## Global-DB Demo Application
+[Global-DB Demo Application](https://github.com/softindex/datakernel/blob/master/examples/global-db-demo/src/main/java/io/global/db/demo/GlobalDbDemoApp.java)
 Global-DB demo application shows an example of uploading and downloading data within the network.
-To run the demo application, you should enter the following commands:
+You can run the demo application in **4 steps**:
 
+#### 1. Clone DataKernel project
+You can clone the project either in console:
 ```
 $ git clone https://github.com/softindex/datakernel.git
+```
+Or with IDE tools.
+
+#### 2. Set up the project
+
+If you'd like to run the example in console, you need to install DataKernel:
+```
 $ cd datakernel
 $ mvn clean install -DskipTests
-$ cd global-launchers
-$ mvn exec:java@DiscoveryServiceLauncher
-$ # in another console
-$ cd datakernel/global-launchers
-$ mvn exec:java@GlobalNodesLauncher
-$ # in another console
-$ cd datakernel/examples/global-db-demo
-$ mvn exec:java@GlobalDbDemoApp
 ```
 
-To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the example can work correctly. In 
-accordance to DataKernel module structure, the working directory should be set to the module folder. 
+To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
+work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
 
-Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+Then build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+#### 3. Run Global Launchers
+
+In console:
+```
+$ cd datakernel/global-launchers
+$ mvn exec:java@DiscoveryServiceLauncher
+$ # in another console
+$ cd datakernel/global-launchers
+$ mvn exec:java@GlobalNodesLauncher
+```
+In an IDE:
 
 First, open *DiscoveryServiceLauncher* class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
-and run its `main()` method.
+and run its *main()* method.
 
 Next, open *GlobalNodesLauncher* class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
-run its `main()` method.
+run its *main()* method.
 
-Finally, open *GlobalDbDemoApp* class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
-`main()` method.
+#### 4. Run Global-DB demo app
+Note: **Do not terminate Launchers**.
 
+To run the app in console enter these commands:
+```
+$ cd datakernel/examples/global-db-demo
+$ mvn exec:java@GlobalDbDemoApp
+```
+In IDE:
+Open *GlobalDbDemoApp* class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
+*main()* method.
+
+#### Explanation
 After you start all of the needed classes, the upload of 10 data items to database and their download back will begin; 
 you'll receive the following output:
 ```

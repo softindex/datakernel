@@ -32,7 +32,7 @@ Then open one of the classes:
 * `TcpEchoServerExample`
 * `MultiEchoServerExample`
 
-which are located at **datakernel -> examples -> net** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> net** and run *main()* of the chosen example.
 
 This will start your echo server.
 Both of the servers utilize `SimpleServer` as their basis. `SimpleServer` is an implementation of 
@@ -69,7 +69,7 @@ either in console:
 $ cd datakernel/examples/net
 $ mvn exec:java@TcpClientExample
 ```
-or in an IDE, by opening `TcpClientExample` class which is located at the same folder and running its `main()` method.
+or in an IDE, by opening `TcpClientExample` class which is located at the same folder and running its *main()* method.
 
 Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
 feel free to run multiple **TCP Client**s and check out how it works. 
@@ -94,7 +94,7 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `PingPongSocketConnection`, which is located at **datakernel -> examples -> net** and run its `main()` method.
+Then open `PingPongSocketConnection`, which is located at **datakernel -> examples -> net** and run its *main()* method.
 
 Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an implementation of `AsyncTcpSocket` 
 interface which describes asynchronous read and write operations.

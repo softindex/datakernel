@@ -36,14 +36,14 @@ ChannelSupplier<T> -> ChannelConsumer<T> -> [Queue] -> ChannelSupplier<T> -> Cha
 asynchronously read/write binary data from/to files*
 
 CSP has a lot in common with [Datastream](https://github.com/softindex/datakernel/tree/master/core-datastream) module. 
-Even though they both were designed for I/O processing, there are several important distinctions:
+Although they both were designed for I/O processing, there are several important distinctions:
 
 | | Datastream | CSP |
 | --- | --- | --- |
-| **Overhead** | Extremely low: stream can be started with 1 virtual call, short-circuit evaluation optimizes performance | No short-circuit evaluation, overhead is higher |
-| **Throughput speed** | Extremely fast | Fast, but slower than Datastream |
-| **Optimized for** | Small pieces of data | Medium-sized objects, ByteBufs |
-| **Programming model** | More complicated | Simple and convenient |
+| **Overhead:** | Extremely low: stream can be started with 1 virtual call, short-circuit evaluation optimizes performance | No short-circuit evaluation, overhead is higher |
+| **Throughput speed:** | Extremely fast | Fast, but slower than Datastream |
+| **Optimized for:** | Small pieces of data | Medium-sized objects, ByteBufs |
+| **Programming model:** | More complicated | Simple and convenient |
 
 To provide maximum efficiency, our framework widely utilizes combinations of CSP and Datastream. For this purpose, 
 `ChannelSupplier`, `ChannelConsumer`, `StreamSupplier` and `StreamConsumer` have `transformWith()` methods and special 

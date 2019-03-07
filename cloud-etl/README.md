@@ -6,4 +6,4 @@ data with its distributed worker servers and then commits partially processed re
 [OT](https://github.com/softindex/datakernel/tree/master/cloud-ot). These commits are continuously merged into a single 
 coherent result using merge and conflict resolution strategies provided by OT. 
 
-* ETL is used as a part of [LSMT Database](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-db).
+* ETL is used as a part of [LSMT OLAP Cube](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-cube).

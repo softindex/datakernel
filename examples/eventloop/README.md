@@ -28,7 +28,7 @@ Then open one of the classes:
 * `BusyWaitEventloopEchoServer`
 * `SelectorEventloopEchoServer`
 
-which are located at **datakernel -> examples -> eventloop** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> eventloop** and run *main()* of the chosen example.
 
 After you launch any of the servers, enter this command in console:
 ```

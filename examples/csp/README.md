@@ -38,7 +38,7 @@ Then open one of the classes:
 * `ChannelFileExample`
 * `CommunicatingProcessExample`
 
-which are located at **datakernel -> examples -> csp** and run `main()` of the chosen example.
+which are located at **datakernel -> examples -> csp** and run *main()* of the chosen example.
 
 
 **ByteBufs Parser Example** shows how to process bytes with CSP and ByteBuf modules and produces a `Hello` message.

@@ -19,7 +19,7 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `RpcExample` class which is located at **datakernel -> examples -> rpc** and run its `main()` method.
+Then open `RpcExample` class which is located at **datakernel -> examples -> rpc** and run its *main()* method.
 
 In the "Hello World" client and server **RPC Example** client sends a request which contains word "World" to server. When 
 server receives it, it sends a respond which contains word "Hello ". If everything completes successfully, we get the 

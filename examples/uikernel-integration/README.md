@@ -1,18 +1,21 @@
-[UIKernel Integration Example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration/src/main/java/io/datakernel/examples)-
+[UIKernel Integration Example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration/src/main/java/io/datakernel/examples) -
 an integration of UIKernel.io frontend JS library with DataKernel modules.
 
-To run the example you should first clone the project from GitHub repository:
+You can launch this example in **5 steps**:
+
+#### 1. Clone the project from GitHub repository:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
 $ mvn clean install -DskipTests
 ```
 
-And install npm:
+#### 2. Install npm:
 ```
 $ sudo apt install npm
 ```
-Then enter:
+
+#### 3. Enter the following commands:
 ```
 $ cd datakernel/examples/uikernel-integration
 $ sudo npm i
@@ -23,18 +26,20 @@ If the commands won't work, try to enter this command after `sudo npm i`:
 $ npm run-script postintall 
 ```
 
-Then you should start `UIKernelWebAppLauncher`. In console:
+#### 4. Start `UIKernelWebAppLauncher` 
+In console:
 ```
 $ cd datakernel/examples/uikernel-integration
 $ mvn exec:java@UIKernelWebAppLauncher 
 ```
-In IDE: set up default working directory of run configurations in your IDE so that the example can work correctly. 
-In accordance to DataKernel module structure, the working directory should be set to the module folder. In IntelliJ IDEA 
-you can do it in the following way: `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> 
-Application| -> |Working directory -> $MODULE_WORKING_DIR$||`.
+In IDE: open cloned project in IDE. Next, set up default working directory of run configurations in your IDE, so that 
+the example can work correctly. In accordance to DataKernel module structure, the working directory should be set to the 
+module folder. In IntelliJ IDEA you can do it in the following way: `Run -> Edit configurations -> 
+|Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA). Then open `UIKernelWebAppLauncher` 
-class, which is located at **datakernel -> examples -> uikernel-integration** and run its `main()` method.
+class, which is located at **datakernel -> examples -> uikernel-integration** and run its *main()* method.
 
-Now open your browser and go to [localhost:8080](http://localhost:8080). You will see an editable users grid table with 
+#### 5. Open your favourite browser
+Open your browser and go to [localhost:8080](http://localhost:8080). You will see an editable users grid table with 
 some pre-defined information. This grid supports searching by name, age and gender as well as ability to add new people.
