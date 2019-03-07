@@ -16,6 +16,7 @@
 
 package io.datakernel.cube.attributes;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -91,7 +92,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		if (reloadPeriod == 0) return Promise.complete();
 		long reloadTimestamp = eventloop.currentTimeMillis();
 		return reload(timestamp)
@@ -101,12 +102,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 					timestamp = reloadTimestamp;
 					scheduleReload(reloadPeriod);
 				})
-				.toVoid();
+				.toVoid()
+				.materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		if (scheduledRunnable != null) scheduledRunnable.cancel();
 		return Promise.complete();
 	}

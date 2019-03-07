@@ -225,14 +225,14 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		scheduleTask();
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		if (scheduledTask != null) {
 			scheduledTask.cancel();
 		}

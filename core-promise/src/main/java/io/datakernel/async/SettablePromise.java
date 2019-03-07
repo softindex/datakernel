@@ -38,7 +38,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  *
  * @param <T> result type
  */
-public final class SettablePromise<T> extends AbstractPromise<T> implements MaterializedPromise<T> {
+public final class SettablePromise<T> extends AbstractPromise<T> implements MaterializedPromise<T>, SettableCallback<T> {
 	private static final Throwable PROMISE_NOT_SET = new StacklessException(SettablePromise.class, "Promise has not been completed yet");
 
 	@Nullable
@@ -67,19 +67,12 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 * completes it. {@code AssertionError} is thrown when you
 	 * try to set result for an already completed {@code Promise}.
 	 */
+	@Override
 	public void set(@Nullable T result) {
 		assert !isComplete();
 		this.result = result;
 		this.exception = null;
 		complete(result);
-	}
-
-	public void set(@Nullable T result, @Nullable Throwable e) {
-		if (e == null) {
-			set(result);
-		} else {
-			setException(e);
-		}
 	}
 
 	/**
@@ -89,72 +82,12 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 *
 	 * @param e exception
 	 */
+	@Override
 	public void setException(@NotNull Throwable e) {
 		assert !isComplete();
 		result = null;
 		exception = e;
 		completeExceptionally(e);
-	}
-
-	/**
-	 * Tries to set provided {@code result} for this
-	 * {@code SettablePromise} if it is not completed yet.
-	 */
-	public void trySet(@Nullable T result) {
-		if (isComplete()) {
-			return;
-		}
-		set(result);
-	}
-
-	/**
-	 * Tries to set result or exception for this {@code SettablePromise}
-	 * if it not completed yet. Otherwise does nothing.
-	 */
-	public void trySet(@Nullable T result, @Nullable Throwable e) {
-		if (isComplete()) {
-			return;
-		}
-		if (e == null) {
-			trySet(result);
-		} else {
-			trySetException(e);
-		}
-	}
-
-	/**
-	 * Tries to set provided {@code e} exception for this
-	 * {@code SettablePromise} if it is not completed yet.
-	 */
-	public void trySetException(@NotNull Throwable e) {
-		if (isComplete()) {
-			return;
-		}
-		setException(e);
-	}
-
-	public void post(@Nullable T result) {
-		getCurrentEventloop().post(() -> set(result));
-	}
-
-	public void postException(@NotNull Throwable e) {
-		getCurrentEventloop().post(() -> setException(e));
-	}
-
-	public void post(@Nullable T result, @Nullable Throwable e) {
-		getCurrentEventloop().post(() -> set(result, e));
-	}
-
-	public void tryPost(@Nullable T result) {
-		getCurrentEventloop().post(() -> trySet(result));
-	}
-
-	public void tryPostException(@NotNull Throwable e) {
-		getCurrentEventloop().post(() -> trySetException(e));
-	}
-
-	public void tryPost(@Nullable T result, @Nullable Throwable e) {
-		getCurrentEventloop().post(() -> trySet(result, e));
 	}
 
 	@Override

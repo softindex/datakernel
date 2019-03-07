@@ -16,9 +16,7 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.*;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -111,9 +109,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private RpcSender requestSender;
 
 	@Nullable
-	private SettablePromise<Void> startPromise;
+	private SettableCallback<Void> startCallback;
 	@Nullable
-	private SettablePromise<Void> stopPromise;
+	private SettableCallback<Void> stopCallback;
 	private boolean running;
 
 	private final RpcClientConnectionPool pool = address -> connections.get(address);
@@ -279,66 +277,65 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkNotNull(messageTypes, "Message types must be specified");
 		checkState(!running, "Already running");
 
-		SettablePromise<Void> promise = new SettablePromise<>();
-		running = true;
-		startPromise = promise;
-		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
+		return Promise.ofCallback(cb -> {
+			running = true;
+			startCallback = cb;
 
-		if (forceStart) {
-			startPromise.set(null);
-			RpcSender sender = strategy.createSender(pool);
-			requestSender = sender != null ? sender : new NoSenderAvailable();
-			startPromise = null;
-		} else {
-			if (connectTimeoutMillis != 0) {
-				eventloop.delayBackground(connectTimeoutMillis, () -> {
-					if (running && startPromise != null) {
-						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
-								connectTimeoutMillis / 1000.0);
-						startPromise.setException(new InterruptedException(errorMsg));
-						running = false;
-						startPromise = null;
-					}
-				});
+			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
+
+			if (forceStart) {
+				startCallback.set(null);
+				RpcSender sender = strategy.createSender(pool);
+				requestSender = sender != null ? sender : new NoSenderAvailable();
+				startCallback = null;
+			} else {
+				if (connectTimeoutMillis != 0) {
+					eventloop.delayBackground(connectTimeoutMillis, () -> {
+						if (running && startCallback != null) {
+							String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
+									connectTimeoutMillis / 1000.0);
+							startCallback.setException(new InterruptedException(errorMsg));
+							running = false;
+							startCallback = null;
+						}
+					});
+				}
 			}
-		}
 
-		for (InetSocketAddress address : addresses) {
-			connect(address);
-		}
-
-		return promise;
+			for (InetSocketAddress address : addresses) {
+				connect(address);
+			}
+		});
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		if (!running) return Promise.complete();
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
-		SettablePromise<Void> promise = new SettablePromise<>();
+		return Promise.ofCallback(cb -> {
+			running = false;
 
-		running = false;
-		if (startPromise != null) {
-			startPromise.setException(new InterruptedException("Start aborted"));
-			startPromise = null;
-		}
-
-		if (connections.size() == 0) {
-			promise.set(null);
-		} else {
-			stopPromise = promise;
-			for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
-				connection.close();
+			if (startCallback != null) {
+				startCallback.setException(new InterruptedException("Start aborted"));
+				startCallback = null;
 			}
-		}
 
-		return promise;
+			if (connections.size() == 0) {
+				cb.set(null);
+			} else {
+				stopCallback = cb;
+				for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
+					connection.close();
+				}
+			}
+		});
 	}
 
 	private void connect(InetSocketAddress address) {
@@ -367,9 +364,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					connectsStatsPerAddress.get(address).successfulConnects++;
 
 					logger.info("Connection to {} established", address);
-					if (startPromise != null && !(requestSender instanceof NoSenderAvailable)) {
-						SettablePromise<Void> startPromise = this.startPromise;
-						this.startPromise = null;
+					if (startCallback != null && !(requestSender instanceof NoSenderAvailable)) {
+						SettableCallback<Void> startPromise = this.startCallback;
+						this.startCallback = null;
 						eventloop.postLater(() -> startPromise.set(null));
 					}
 				})
@@ -411,10 +408,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 		connections.remove(address);
 
-		if (stopPromise != null && connections.size() == 0) {
+		if (stopCallback != null && connections.size() == 0) {
 			eventloop.post(() -> {
-				stopPromise.set(null);
-				stopPromise = null;
+				stopCallback.set(null);
+				stopCallback = null;
 			});
 		}
 

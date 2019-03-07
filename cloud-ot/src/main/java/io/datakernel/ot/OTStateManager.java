@@ -16,11 +16,8 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncExecutors;
-import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.*;
 import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
-import io.datakernel.async.Promise;
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
@@ -107,17 +104,18 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		return checkout()
-				.whenResult($ -> poll());
+				.whenResult($ -> poll())
+				.materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		poll = null;
 		return isValid() ?
-				sync().whenComplete(($, e) -> invalidateInternalState()) :
+				sync().whenComplete(($, e) -> invalidateInternalState()).materialize() :
 				Promise.complete();
 	}
 

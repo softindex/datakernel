@@ -449,9 +449,8 @@ public interface ChannelConsumer<T> extends Cancellable {
 	/**
 	 * Returns a MaterializedPromise as a marker of completion.
 	 */
-	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> cb) {
-		SettablePromise<Void> result = new SettablePromise<>();
-		cb.accept(ack -> ack.whenComplete(result::set));
-		return result;
+	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
+		return Promise.ofCallback(cb ->
+				fn.accept(ack -> ack.whenComplete(cb::set)));
 	}
 }

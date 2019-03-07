@@ -16,6 +16,7 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
@@ -399,13 +400,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
-		return AsyncFile.createDirectories(executor, storageDir, null);
+	public MaterializedPromise<Void> start() {
+		return AsyncFile.createDirectories(executor, storageDir, null).materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		return Promise.complete();
 	}
 

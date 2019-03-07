@@ -1,9 +1,6 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -89,7 +86,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private <R> void walkGraphImpl(GraphReducer<K, D, R> reducer, PriorityQueue<OTCommit<K, D>> queue,
-			Set<K> visited, SettablePromise<R> cb) {
+			Set<K> visited, SettableCallback<R> cb) {
 		OTCommit<K, D> commit = queue.peek();
 		if (commit == null) {
 			cb.setException(GRAPH_EXHAUSTED);

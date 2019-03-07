@@ -16,10 +16,7 @@
 
 package io.global.db;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -258,13 +255,13 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		return ensureNamespace(space).push();
 	}
 
-	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
+	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpImpl));
 
 	public Promise<Void> catchUp() {
 		return catchUpImpl.get();
 	}
 
-	private void catchUpIteration(SettablePromise<Void> cb) {
+	private void catchUpImpl(SettableCallback<Void> cb) {
 		long started = now.currentTimeMillis();
 		Promise<Void> fetchPromise = fetch();
 		if (fetchPromise.isResult()) {
@@ -276,7 +273,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 					.whenResult($ -> {
 						long timestampEnd = now.currentTimeMillis();
 						if (timestampEnd - started > latencyMargin.toMillis()) {
-							catchUpIteration(cb);
+							catchUpImpl(cb);
 						} else {
 							cb.set(null);
 						}

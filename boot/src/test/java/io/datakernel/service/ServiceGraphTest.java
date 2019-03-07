@@ -19,6 +19,7 @@ package io.datakernel.service;
 import com.google.inject.*;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -73,7 +74,7 @@ public class ServiceGraphTest {
 			return new EventloopServiceEmpty(eventloop) {
 				@NotNull
 				@Override
-				public Promise<Void> start() {
+				public MaterializedPromise<Void> start() {
 					return Promise.ofException(INTERRUPTED);
 				}
 			};
@@ -107,13 +108,13 @@ public class ServiceGraphTest {
 
 		@NotNull
 		@Override
-		public Promise<Void> start() {
+		public MaterializedPromise<Void> start() {
 			return Promise.complete();
 		}
 
 		@NotNull
 		@Override
-		public Promise<Void> stop() {
+		public MaterializedPromise<Void> stop() {
 			return Promise.complete();
 		}
 

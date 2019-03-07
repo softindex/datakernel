@@ -2,14 +2,12 @@ package io.datakernel.ot;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.async.Promises;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.stream.processor.DatakernelRunner;
-import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,7 +56,10 @@ public class OTStateManagerTest {
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
-				return super.fetch(currentCommitId).thenCompose(fetchData -> scheduledResult(getCurrentEventloop(), 100, fetchData));
+				return super.fetch(currentCommitId).thenCompose(fetchData -> {
+					getCurrentEventloop();
+					return Promises.delay(Promise.of(fetchData), (long) 100);
+				});
 			}
 		};
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
@@ -319,12 +320,6 @@ public class OTStateManagerTest {
 			alreadyFailed = true;
 			return Promise.ofException(FAILED);
 		}
-	}
-
-	private static <T> Promise<T> scheduledResult(Eventloop eventloop, long delta, @Nullable T result) {
-		SettablePromise<T> promise = new SettablePromise<>();
-		eventloop.delay(delta, () -> promise.set(result));
-		return promise;
 	}
 
 	private void initializeRepository(OTRepository<Integer, TestOp> repository, OTStateManager<Integer, TestOp> stateManager) {

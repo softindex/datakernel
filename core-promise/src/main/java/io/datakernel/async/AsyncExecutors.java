@@ -91,12 +91,12 @@ public class AsyncExecutors {
 			private void processBuffer() {
 				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
 					AsyncSupplier<Object> supplier = (AsyncSupplier<Object>) deque.pollFirst();
-					SettablePromise<Object> settablePromise = (SettablePromise<Object>) deque.pollFirst();
+					SettableCallback<Object> cb = (SettableCallback<Object>) deque.pollFirst();
 					pendingCalls++;
 					supplier.get().whenComplete((result, e) -> {
 						pendingCalls--;
 						processBuffer();
-						settablePromise.set(result, e);
+						cb.set(result, e);
 					});
 				}
 			}
@@ -134,7 +134,7 @@ public class AsyncExecutors {
 	}
 
 	private static <T> void retryImpl(@NotNull AsyncSupplier<? extends T> supplier, @NotNull RetryPolicy retryPolicy,
-			int retryCount, long _retryTimestamp, @NotNull SettablePromise<T> cb) {
+			int retryCount, long _retryTimestamp, @NotNull SettableCallback<T> cb) {
 		supplier.get()
 				.async()
 				.whenComplete((value, e) -> {

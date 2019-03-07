@@ -1,10 +1,7 @@
 package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.RemoteFsChunkStorage;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.*;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -167,10 +164,10 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	Promise<Optional<K>> findSnapshot(Set<K> heads, int skipSnapshots) {
-		return Promise.ofCallback(cb -> doFindSnapshot(heads, skipSnapshots, cb));
+		return Promise.ofCallback(cb -> findSnapshotImpl(heads, skipSnapshots, cb));
 	}
 
-	private void doFindSnapshot(Set<K> heads, int skipSnapshots, SettablePromise<Optional<K>> cb) {
+	private void findSnapshotImpl(Set<K> heads, int skipSnapshots, SettableCallback<Optional<K>> cb) {
 		algorithms.findParent(heads, DiffsReducer.toVoid(),
 				commit -> commit.getSnapshotHint() != null ?
 						Promise.of(commit.getSnapshotHint()) :
@@ -179,7 +176,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 					if (skipSnapshots <= 0) {
 						cb.set(Optional.of(findResult.getCommit()));
 					} else {
-						doFindSnapshot(findResult.getCommitParents(), skipSnapshots - 1, cb);
+						findSnapshotImpl(findResult.getCommitParents(), skipSnapshots - 1, cb);
 					}
 				})
 				.whenException(cb::setException);

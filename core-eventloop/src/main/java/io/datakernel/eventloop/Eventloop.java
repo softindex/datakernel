@@ -682,22 +682,22 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
-		ConnectCallback callback = (ConnectCallback) key.attachment();
+		ConnectCallback cb = (ConnectCallback) key.attachment();
 		SocketChannel channel = (SocketChannel) key.channel();
 		boolean connected;
 		try {
 			connected = channel.finishConnect();
 		} catch (IOException e) {
 			closeChannel(channel, key);
-			callback.onException(e);
+			cb.onException(e);
 			return;
 		}
 
 		try {
 			if (connected) {
-				callback.onConnect(channel);
+				cb.onConnect(channel);
 			} else {
-				callback.onException(NOT_CONNECTED);
+				cb.onException(NOT_CONNECTED);
 			}
 		} catch (Throwable e) {
 			recordFatalError(e, channel);

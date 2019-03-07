@@ -18,7 +18,6 @@ package io.datakernel.dns;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -102,15 +101,14 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 					return cacheResult.getResponseAsPromise();
 				}
 
-				SettablePromise<DnsResponse> promise = new SettablePromise<>();
 				other.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
-				eventloop.execute(() ->
-						CachedAsyncDnsClient.this.resolve(query)
-								.whenComplete((result, e) -> {
-									other.execute(() -> promise.set(result, e));
-									other.completeExternalTask();
-								}));
-				return promise;
+				return Promise.ofCallback(cb ->
+								eventloop.execute(() ->
+										CachedAsyncDnsClient.this.resolve(query)
+												.whenComplete((result, e) -> {
+													other.execute(() -> cb.set(result, e));
+													other.completeExternalTask();
+												})));
 			}
 
 			@Override
@@ -185,6 +183,5 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
-
 
 }

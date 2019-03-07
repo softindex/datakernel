@@ -464,10 +464,9 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
-	static MaterializedPromise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> cb) {
-		SettablePromise<Void> result = new SettablePromise<>();
-		cb.accept(endOfStream -> endOfStream.whenComplete(result::set));
-		return result;
+	static MaterializedPromise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
+		return Promise.ofCallback(cb ->
+				fn.accept(endOfStream -> endOfStream.whenComplete(cb::set)));
 	}
 
 }

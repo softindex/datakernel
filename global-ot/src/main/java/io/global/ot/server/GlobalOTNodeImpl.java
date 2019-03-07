@@ -130,13 +130,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		return Promise.complete();
 	}
 
@@ -219,12 +219,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	private Promise<RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> required, Set<CommitId> existing) {
-		return Promise.ofCallback(cb -> getNextStreamEntry(repositoryId, queue, skipCommits, required, existing, cb));
+		return Promise.ofCallback(cb -> getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb));
 	}
 
-	private void getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
+	private void getNextStreamEntryImpl(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> required, Set<CommitId> existing,
-			SettablePromise<RawCommitEntry> cb) {
+			SettableCallback<RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;
@@ -256,7 +256,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						cb.set(entry);
 						return;
 					}
-					getNextStreamEntry(repositoryId, queue, skipCommits, required, existing, cb);
+					getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb);
 				})
 				.whenException(cb::setException);
 	}
@@ -289,13 +289,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 												required.add(headId);
 											}
 										})))
-						.thenCompose($ -> Promise.ofCallback((SettablePromise<Set<CommitId>> cb) ->
+						.thenCompose($ -> Promise.ofCallback((SettableCallback<Set<CommitId>> cb) ->
 								findMissingParents(queue, new HashSet<>(), cb)))
 						.whenResult(required::addAll)
 						.thenApply($ -> new HeadsInfo(existing, required)));
 	}
 
-	private void findMissingParents(PriorityQueue<RawCommitEntry> queue, Set<CommitId> missingParents, SettablePromise<Set<CommitId>> cb) {
+	private void findMissingParents(PriorityQueue<RawCommitEntry> queue, Set<CommitId> missingParents, SettableCallback<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null) {
 			cb.set(missingParents);
@@ -468,7 +468,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
 			Set<CommitId> resultHeads,
-			SettablePromise<Set<CommitId>> cb) {
+			SettableCallback<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null || entry.commit.getLevel() < minLevel) {
 			cb.set(resultHeads);
@@ -530,14 +530,14 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				.whenComplete(toLogger(logger, "getPullRequests", repositoryId, this));
 	}
 
-	private final AsyncSupplier<Void> catchUp = reuse(() -> Promise.ofCallback(this::doCatchUp));
+	private final AsyncSupplier<Void> catchUp = reuse(() -> Promise.ofCallback(this::catchUpImpl));
 
 	public Promise<Void> catchUp() {
 		return catchUp.get()
 				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
-	private void doCatchUp(SettablePromise<Void> cb) {
+	private void catchUpImpl(SettableCallback<Void> cb) {
 		long timestampBegin = now.currentTimeMillis();
 		Promise<Void> fetchPromise = fetch();
 		if (fetchPromise.isResult()) {
@@ -549,7 +549,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					.whenResult($ -> {
 						long timestampEnd = now.currentTimeMillis();
 						if (timestampEnd - timestampBegin > latencyMargin.toMillis()) {
-							doCatchUp(cb);
+							catchUpImpl(cb);
 						} else {
 							cb.set(null);
 						}

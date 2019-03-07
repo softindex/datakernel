@@ -17,6 +17,7 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.util.Recyclable;
 import org.jetbrains.annotations.NotNull;
@@ -47,12 +48,10 @@ public final class ChannelConsumers {
 	 */
 	public static <T> Promise<Void> acceptAll(ChannelConsumer<T> output, Iterator<? extends T> it) {
 		if (!it.hasNext()) return Promise.complete();
-		SettablePromise<Void> result = new SettablePromise<>();
-		acceptAllImpl(output, it, result);
-		return result;
+		return Promise.ofCallback(cb -> acceptAllImpl(output, it, cb));
 	}
 
-	private static <T> void acceptAllImpl(ChannelConsumer<T> output, Iterator<? extends T> it, SettablePromise<Void> cb) {
+	private static <T> void acceptAllImpl(ChannelConsumer<T> output, Iterator<? extends T> it, SettableCallback<Void> cb) {
 		while (it.hasNext()) {
 			Promise<Void> accept = output.accept(it.next());
 			if (accept.isResult()) continue;

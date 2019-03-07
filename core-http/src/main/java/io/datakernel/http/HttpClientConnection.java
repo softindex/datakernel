@@ -81,7 +81,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  */
 final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
-	private SettablePromise<HttpResponse> callback;
+	private SettablePromise<HttpResponse> promise;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	@Nullable
@@ -102,10 +102,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(@NotNull Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, (flags & KEEP_ALIVE) != 0, e);
-		if (callback != null) {
-			SettablePromise<HttpResponse> cb = this.callback;
-			this.callback = null;
-			cb.setException(e);
+		if (promise != null) {
+			SettablePromise<HttpResponse> promise = this.promise;
+			this.promise = null;
+			promise.setException(e);
 		}
 	}
 
@@ -172,9 +172,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.bodySupplier = bodySupplier;
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
-		SettablePromise<HttpResponse> cb = this.callback;
-		this.callback = null;
-		cb.set(response);
+		SettablePromise<HttpResponse> promise = this.promise;
+		this.promise = null;
+		promise.set(response);
 
 		if ((response.flags & HttpMessage.ACCESSED_BODY_STREAM) == 0) {
 			if (bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
@@ -230,8 +230,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param request request for sending
 	 */
 	public Promise<HttpResponse> send(HttpRequest request) {
-		SettablePromise<HttpResponse> callback = new SettablePromise<>();
-		this.callback = callback;
+		SettablePromise<HttpResponse> promise = new SettablePromise<>();
+		this.promise = promise;
 		assert pool == null;
 		(pool = client.poolReadWrite).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
@@ -256,7 +256,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				closeWithError(e);
 			}
 		}
-		return callback;
+		return promise;
 	}
 
 	/**
@@ -265,7 +265,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onClosed() {
-		assert callback == null;
+		assert promise == null;
 		if (pool == client.poolKeepAlive) {
 			AddressLinkedList addresses = client.addresses.get(remoteAddress);
 			addresses.removeNode(this);
@@ -289,7 +289,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public String toString() {
 		return "HttpClientConnection{" +
-				"callback=" + callback +
+				"promise=" + promise +
 				", response=" + response +
 				", httpClient=" + client +
 				", keepAlive=" + (pool == client.poolKeepAlive) +

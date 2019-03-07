@@ -16,6 +16,7 @@
 
 package io.datakernel.crdt.local;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtStorage;
@@ -137,13 +138,13 @@ public final class CrdtStorageTreeMap<K extends Comparable<K>, S> implements Crd
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		return Promise.complete();
 	}
 

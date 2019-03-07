@@ -3,7 +3,7 @@ package io.datakernel.async;
 class Utils {
 	private Utils() {}
 
-	static <T> void forEachRemainingImpl(AsyncSupplier<T> promises, AsyncConsumer<T> consumer, SettablePromise<Void> cb) {
+	static <T> void forEachRemainingImpl(AsyncSupplier<T> promises, AsyncConsumer<T> consumer, SettableCallback<Void> cb) {
 		promises.get()
 				.whenComplete((v, e) -> {
 					if (cb.isComplete()) return;

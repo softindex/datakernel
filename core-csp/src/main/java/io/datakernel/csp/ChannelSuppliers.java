@@ -18,21 +18,18 @@ package io.datakernel.csp;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
-import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -70,7 +67,7 @@ public final class ChannelSuppliers {
 	 * {@code promise} of exception will be returned.
 	 *
 	 * @param iterator an iterator of ChannelSuppliers
-	 * @param <T> type of data wrapped in the ChannelSuppliers
+	 * @param <T>      type of data wrapped in the ChannelSuppliers
 	 * @return a ChannelSupplier of {@code <T>}
 	 */
 	public static <T> ChannelSupplier<T> concat(Iterator<? extends ChannelSupplier<? extends T>> iterator) {
@@ -121,27 +118,26 @@ public final class ChannelSuppliers {
 	 * {@code accumulator} accepted values, a promise of {@code exception} will be
 	 * returned and the process will stop.
 	 *
-	 * @param supplier 		a {@code ChannelSupplier} which provides data to be collected
-	 * @param initialValue  a value which will accumulate the results of accumulator
-	 * @param accumulator 	a {@link BiConsumer} which may perform some operations over provided
-	 *                         by supplier data and accumulates the result to the initialValue
-	 * @param finisher 		a {@link Function} which performs the final transformation of the
-	 *                         accumulated value
-	 * @param <T>			a data type provided by the {@code supplier}
-	 * @param <A>			an intermediate accumulation data type
-	 * @param <R>			a data type of final result of {@code finisher}
+	 * @param supplier     a {@code ChannelSupplier} which provides data to be collected
+	 * @param initialValue a value which will accumulate the results of accumulator
+	 * @param accumulator  a {@link BiConsumer} which may perform some operations over provided
+	 *                     by supplier data and accumulates the result to the initialValue
+	 * @param finisher     a {@link Function} which performs the final transformation of the
+	 *                     accumulated value
+	 * @param <T>          a data type provided by the {@code supplier}
+	 * @param <A>          an intermediate accumulation data type
+	 * @param <R>          a data type of final result of {@code finisher}
 	 * @return a promise of accumulated result, transformed by the {@code finisher}
 	 */
 	public static <T, A, R> Promise<R> collect(ChannelSupplier<T> supplier,
 			A initialValue, BiConsumer<A, T> accumulator, Function<A, R> finisher) {
-		SettablePromise<R> cb = new SettablePromise<>();
-		toCollectorImpl(supplier, initialValue, accumulator, finisher, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				toCollectorImpl(supplier, initialValue, accumulator, finisher, cb));
 	}
 
 	private static <T, A, R> void toCollectorImpl(ChannelSupplier<T> supplier,
 			A accumulatedValue, BiConsumer<A, T> accumulator, Function<A, R> finisher,
-			SettablePromise<R> cb) {
+			SettableCallback<R> cb) {
 		Promise<T> promise;
 		while (true) {
 			promise = supplier.get();
@@ -192,17 +188,16 @@ public final class ChannelSuppliers {
 	 *
 	 * @param supplier a supplier which provides some data
 	 * @param consumer a consumer which accepts the provided by supplier data
-	 * @param <T> a data type of values passed from the supplier to consumer
+	 * @param <T>      a data type of values passed from the supplier to consumer
 	 * @return a promise of {@code null} as a marker of completion of stream,
 	 * or promise of exception, if there was an exception while streaming
 	 */
 	public static <T> MaterializedPromise<Void> streamTo(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer) {
-		SettablePromise<Void> cb = new SettablePromise<>();
-		streamToImpl(supplier, consumer, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				streamToImpl(supplier, consumer, cb));
 	}
 
-	private static <T> void streamToImpl(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer, SettablePromise<Void> result) {
+	private static <T> void streamToImpl(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer, SettableCallback<Void> cb) {
 		Promise<T> supplierPromise;
 		while (true) {
 			supplierPromise = supplier.get();
@@ -213,10 +208,10 @@ public final class ChannelSuppliers {
 			if (consumerPromise.isResult()) continue;
 			consumerPromise.whenComplete(($, e) -> {
 				if (e == null) {
-					streamToImpl(supplier, consumer, result);
+					streamToImpl(supplier, consumer, cb);
 				} else {
 					supplier.close(e);
-					result.trySetException(e);
+					cb.trySetException(e);
 				}
 			});
 			return;
@@ -228,18 +223,18 @@ public final class ChannelSuppliers {
 								.whenComplete(($, e2) -> {
 									if (e2 == null) {
 										if (item != null) {
-											streamToImpl(supplier, consumer, result);
+											streamToImpl(supplier, consumer, cb);
 										} else {
-											result.trySet(null);
+											cb.trySet(null);
 										}
 									} else {
 										supplier.close(e2);
-										result.trySetException(e2);
+										cb.trySetException(e2);
 									}
 								});
 					} else {
 						consumer.close(e1);
-						result.trySetException(e1);
+						cb.trySetException(e1);
 					}
 				});
 	}
@@ -269,12 +264,10 @@ public final class ChannelSuppliers {
 			@Override
 			protected Promise<V> doGet() {
 				if (iterator.hasNext()) return Promise.of(iterator.next());
-				SettablePromise<V> cb = new SettablePromise<>();
-				next(cb);
-				return cb;
+				return Promise.ofCallback(this::next);
 			}
 
-			private void next(SettablePromise<V> cb) {
+			private void next(SettableCallback<V> cb) {
 				if (!endOfStream) {
 					supplier.get()
 							.whenComplete((item, e) -> {

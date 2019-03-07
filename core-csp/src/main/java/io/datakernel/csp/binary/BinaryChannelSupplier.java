@@ -129,12 +129,10 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 				return Promise.of(result);
 			}
 		}
-		SettablePromise<T> cb = new SettablePromise<>();
-		doParse(parser, cb);
-		return cb;
+		return Promise.ofCallback(cb -> doParse(parser, cb));
 	}
 
-	private <T> void doParse(ByteBufsParser<T> parser, SettablePromise<T> cb) {
+	private <T> void doParse(ByteBufsParser<T> parser, SettableCallback<T> cb) {
 		needMoreData()
 				.whenComplete(($, e) -> {
 					if (e == null) {

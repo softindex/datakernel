@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 
 import java.io.IOException;
@@ -38,5 +39,5 @@ public interface EventloopServer {
 	 * Closes the server. Any open channels will be closed.
 	 *
 	 */
-	Promise<Void> close();
+	MaterializedPromise<Void> close();
 }

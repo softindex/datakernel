@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.dns.AsyncDnsClient;
@@ -48,7 +49,7 @@ import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
-@SuppressWarnings({"WeakerAccess", "unused"})
+@SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final Duration DEFAULT_KEEP_ALIVE_MILLIS = Duration.ofSeconds(30);
@@ -408,7 +409,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return Promise.complete();
 	}
@@ -425,7 +426,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		SettablePromise<Void> promise = new SettablePromise<>();
 

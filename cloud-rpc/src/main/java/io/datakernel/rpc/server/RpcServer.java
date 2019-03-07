@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -88,7 +88,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private BinarySerializer<RpcMessage> serializer;
 
-	private SettablePromise<Void> closePromise;
+	private SettableCallback<Void> closeCallback;
 
 	// region JMX vars
 	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
@@ -203,16 +203,16 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected void onClose(SettablePromise<Void> promise) {
+	protected void onClose(SettableCallback<Void> cb) {
 		if (connections.size() == 0) {
 			logger.info("RpcServer is closing. Active connections count: 0.");
-			promise.set(null);
+			cb.set(null);
 		} else {
 			logger.info("RpcServer is closing. Active connections count: " + connections.size());
 			for (RpcServerConnection connection : new ArrayList<>(connections)) {
 				connection.close();
 			}
-			closePromise = promise;
+			closeCallback = cb;
 		}
 	}
 
@@ -232,12 +232,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			logger.info("Client disconnected on {}", connection);
 		connections.remove(connection);
 
-		if (closePromise != null) {
+		if (closeCallback != null) {
 			logger.info("RpcServer is closing. One more connection was closed. " +
 					"Active connections count: " + connections.size());
 
 			if (connections.size() == 0) {
-				closePromise.set(null);
+				closeCallback.set(null);
 			}
 		}
 	}

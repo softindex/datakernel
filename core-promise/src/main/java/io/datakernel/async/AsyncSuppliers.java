@@ -55,7 +55,7 @@ public final class AsyncSuppliers {
 				}
 			}
 
-			private void getImpl(Promise<T> promise, SettablePromise<T> cb) {
+			private void getImpl(Promise<T> promise, SettableCallback<T> cb) {
 				promise.whenComplete((v, e) -> {
 					if (e == null) {
 						cb.set(v);

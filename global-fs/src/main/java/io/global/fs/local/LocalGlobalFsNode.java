@@ -315,14 +315,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
-	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
+	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpImpl));
 
 	public Promise<Void> catchUp() {
 		return catchUpImpl.get()
 				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
-	private void catchUpIteration(SettablePromise<Void> cb) {
+	private void catchUpImpl(SettableCallback<Void> cb) {
 		long started = now.currentTimeMillis();
 		fetch()
 				.whenResult(didAnything -> {
@@ -330,7 +330,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
 						cb.set(null);
 					} else {
-						catchUpIteration(cb);
+						catchUpImpl(cb);
 					}
 				})
 				.whenException(cb::setException);

@@ -18,6 +18,7 @@ package io.datakernel.launchers.crdt;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.local.CrdtStorageFileSystem;
 import io.datakernel.crdt.local.CrdtStorageTreeMap;
@@ -84,13 +85,13 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
-		return restore().thenCompose($ -> localFiles.consolidate());
+	public MaterializedPromise<Void> start() {
+		return restore().thenCompose($ -> localFiles.consolidate()).materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
-		return backup();
+	public MaterializedPromise<Void> stop() {
+		return backup().materialize();
 	}
 }

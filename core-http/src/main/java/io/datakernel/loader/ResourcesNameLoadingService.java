@@ -1,5 +1,6 @@
 package io.datakernel.loader;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -50,7 +51,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					Set<String> fileNames = new HashSet<>();
@@ -66,12 +67,13 @@ public class ResourcesNameLoadingService implements EventloopService {
 					}
 				})
 				.whenResult(strings -> names = strings)
-				.toVoid();
+				.toVoid()
+				.materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		return Promise.complete();
 	}
 

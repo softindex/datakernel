@@ -1,5 +1,6 @@
 package io.global.ot.util;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -36,7 +37,7 @@ public final class Bootstrap<D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		return driver.getHeads(myRepositoryId.getRepositoryId())
 				.thenCompose(heads -> {
 					if (!heads.isEmpty()) return Promise.complete();
@@ -45,12 +46,13 @@ public final class Bootstrap<D> implements EventloopService {
 					return driver.push(myRepositoryId, rootCommit)
 							.thenCompose($ -> driver.updateHeads(myRepositoryId, singleton(rootCommit.getId()), emptySet()))
 							.thenCompose($ -> driver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()));
-				});
+				})
+				.materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
+	public MaterializedPromise<Void> stop() {
 		return Promise.complete();
 	}
 

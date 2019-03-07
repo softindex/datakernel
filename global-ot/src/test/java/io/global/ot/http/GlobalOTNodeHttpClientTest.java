@@ -126,7 +126,7 @@ public class GlobalOTNodeHttpClientTest {
 	}
 
 	@Test
-	public void loadSnpashot() {
+	public void loadSnapshot() {
 		doTest(client.loadSnapshot(repository, rootCommitId), repository, rootCommitId);
 	}
 

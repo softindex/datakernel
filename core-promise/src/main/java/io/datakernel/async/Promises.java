@@ -111,7 +111,8 @@ public final class Promises {
 	public static <T> Promise<T> delay(@NotNull Promise<T> promise, long delayMillis) {
 		if (delayMillis <= 0) return promise;
 		MaterializedPromise<T> materializedPromise = promise.materialize();
-		return Promise.ofCallback(cb -> getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb::set)));
+		return Promise.ofCallback(cb ->
+				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb::set)));
 	}
 
 	/**
@@ -132,7 +133,8 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, long timestamp) {
 		MaterializedPromise<T> materializedPromise = promise.materialize();
-		return Promise.ofCallback(cb -> getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb::set)));
+		return Promise.ofCallback(cb ->
+				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb::set)));
 	}
 
 	/**
@@ -718,12 +720,11 @@ public final class Promises {
 	 */
 	@NotNull
 	public static Promise<Void> sequence(@NotNull Iterator<? extends Promise<Void>> promises) {
-		SettablePromise<Void> cb = new SettablePromise<>();
-		sequenceImpl(promises, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				sequenceImpl(promises, cb));
 	}
 
-	private static void sequenceImpl(@NotNull Iterator<? extends Promise<Void>> promises, @NotNull SettablePromise<Void> cb) {
+	private static void sequenceImpl(@NotNull Iterator<? extends Promise<Void>> promises, @NotNull SettableCallback<Void> cb) {
 		while (promises.hasNext()) {
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;
@@ -812,14 +813,13 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<T> first(@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			@NotNull Iterator<? extends Promise<? extends T>> promises) {
-		SettablePromise<T> cb = new SettablePromise<>();
-		firstImpl(promises, predicate, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				firstImpl(promises, predicate, cb));
 	}
 
 	private static <T> void firstImpl(Iterator<? extends Promise<? extends T>> promises,
 			@NotNull BiPredicate<? super T, ? super Throwable> predicate,
-			@NotNull SettablePromise<T> cb) {
+			@NotNull SettableCallback<T> cb) {
 		if (!promises.hasNext()) {
 			cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
 			return;
@@ -859,12 +859,11 @@ public final class Promises {
 	 */
 	@NotNull
 	public static Promise<Void> repeat(@NotNull Supplier<Promise<Void>> supplier) {
-		SettablePromise<Void> cb = new SettablePromise<>();
-		repeatImpl(supplier, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				repeatImpl(supplier, cb));
 	}
 
-	private static void repeatImpl(@NotNull Supplier<Promise<Void>> supplier, @NotNull SettablePromise<Void> cb) {
+	private static void repeatImpl(@NotNull Supplier<Promise<Void>> supplier, @NotNull SettableCallback<Void> cb) {
 		while (true) {
 			Promise<Void> promise = supplier.get();
 			if (promise.isResult()) {continue;}
@@ -916,9 +915,8 @@ public final class Promises {
 
 	private static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
 		if (breakCondition.test(seed)) return Promise.of(seed);
-		SettablePromise<T> cb = new SettablePromise<>();
-		loopImpl(seed, next, breakCondition, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				loopImpl(seed, next, breakCondition, cb));
 	}
 
 	public static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull AsyncPredicate<T> breakCondition) {
@@ -929,9 +927,8 @@ public final class Promises {
 				.thenComposeEx((b, e) -> {
 					if (e == null) {
 						if (!b) {
-							SettablePromise<T> cb = new SettablePromise<>();
-							loopImpl(seed, next, breakCondition, cb);
-							return cb;
+							return Promise.ofCallback(cb ->
+									loopImpl(seed, next, breakCondition, cb));
 						} else {
 							return Promise.of(seed);
 						}
@@ -942,22 +939,20 @@ public final class Promises {
 	}
 
 	private static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull Predicate<T> breakCondition) {
-		SettablePromise<T> cb = new SettablePromise<>();
-		loopImpl(null, $ -> next.get(), breakCondition, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				loopImpl(null, $ -> next.get(), breakCondition, cb));
 	}
 
 	public static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull AsyncPredicate<T> breakCondition) {
 		if (breakCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
 			return until(next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
 		}
-		SettablePromise<T> cb = new SettablePromise<>();
-		loopImpl(null, $ -> next.get(), breakCondition, cb);
-		return cb;
+		return Promise.ofCallback(cb ->
+				loopImpl(null, $ -> next.get(), breakCondition, cb));
 	}
 
 	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
-			@NotNull Predicate<T> breakCondition, @NotNull SettablePromise<T> cb) {
+			@NotNull Predicate<T> breakCondition, @NotNull SettableCallback<T> cb) {
 		while (true) {
 			Promise<T> promise = next.apply(value);
 			if (promise.isResult()) {
@@ -984,7 +979,7 @@ public final class Promises {
 	}
 
 	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
-			@NotNull AsyncPredicate<T> breakCondition, @NotNull SettablePromise<T> cb) {
+			@NotNull AsyncPredicate<T> breakCondition, @NotNull SettableCallback<T> cb) {
 		while (true) {
 			Promise<T> promise = next.apply(value);
 			if (promise.isResult()) {
@@ -1120,7 +1115,7 @@ public final class Promises {
 
 	private static <T, A, R> void reduceImpl(Iterator<Promise<T>> promises, int maxCalls, int[] calls,
 			A accumulator, BiConsumer<A, T> consumer, Function<A, R> finisher,
-			SettablePromise<R> cb) {
+			SettableCallback<R> cb) {
 		while (promises.hasNext() && calls[0] < maxCalls) {
 			assert !cb.isComplete();
 			Promise<T> promise = promises.next();
@@ -1209,7 +1204,7 @@ public final class Promises {
 
 	private static <T, A, R> void reduceExImpl(Iterator<Promise<T>> promises, ToIntFunction<A> maxCalls, int[] calls,
 			A accumulator, BiFunction<A, Try<T>, Try<R>> consumer, Function<A, @NotNull Try<R>> finisher, @Nullable Consumer<T> recycler,
-			SettablePromise<R> cb) {
+			SettableCallback<R> cb) {
 		while (promises.hasNext() && calls[0] < maxCalls.applyAsInt(accumulator)) {
 			assert !cb.isComplete();
 			Promise<T> promise = promises.next();

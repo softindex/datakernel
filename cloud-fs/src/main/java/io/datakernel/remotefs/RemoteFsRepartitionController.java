@@ -16,8 +16,8 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.*;
+import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -68,7 +68,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	private int failedFiles = 0;
 
 	@Nullable
-	private Promise<Void> repartitionPromise;
+	private SettableCallback<Void> closeCallback;
 
 	private final PromiseStats repartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats singleFileRepartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
@@ -120,9 +120,16 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@NotNull
 	public Promise<Void> repartition() {
+		return repartition.get();
+	}
+
+	private final AsyncSupplierWithStatus<Void> repartition = new AsyncSupplierWithStatus<>(AsyncSuppliers.reuse(this::doRepartition));
+
+	@NotNull
+	private Promise<Void> doRepartition() {
 		checkState(eventloop.inEventloopThread(), "Should be called from eventloop thread");
 
-		repartitionPromise = localStorage.list(glob)
+		return localStorage.list(glob)
 				.thenCompose(list -> {
 					allFiles = list.size();
 					return Promises.sequence( // just handling all local files sequentially
@@ -136,9 +143,6 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 														} else {
 															failedFiles++;
 														}
-														if (repartitionPromise == null) {
-															return Promise.ofException(new Exception("forced stop"));
-														}
 														return Promise.complete();
 													})));
 				})
@@ -149,10 +153,11 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					} else {
 						logger.info("repartition finished, {} files ensured, {} errored", ensuredFiles, failedFiles);
 					}
-					repartitionPromise = null;
+					if (closeCallback != null) {
+						closeCallback.set($, e);
+					}
 					return Promise.complete();
 				});
-		return repartitionPromise;
 	}
 
 	private Stream<FileMetadata> filterNot(Stream<FileMetadata> stream, String glob) {
@@ -204,10 +209,10 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 									return Promise.of(Try.of(null)); // just skip it here
 								}
 								// upload file to this partition
-								return getAcknowledgement(cb ->
+								return getAcknowledgement(fn ->
 										splitter.addOutput()
 												.set(ChannelConsumer.ofPromise(clients.get(partitionId).upload(name))
-														.withAcknowledgement(cb)))
+														.withAcknowledgement(fn)))
 										.whenException(e -> {
 											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');
 											cluster.markDead(partitionId, e);
@@ -271,19 +276,16 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
+	public MaterializedPromise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
-		Promise<Void> repartitionPromise = this.repartitionPromise;
-		if (repartitionPromise != null) {
-			this.repartitionPromise = null;
-			return repartitionPromise;
-		}
-		return Promise.complete();
+	public MaterializedPromise<Void> stop() {
+		return repartition.isRunning() ?
+				Promise.ofCallback(cb -> this.closeCallback = cb) :
+				Promise.complete();
 	}
 
 	// region JMX
@@ -292,14 +294,9 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		repartition();
 	}
 
-	@JmxOperation(description = "stop repartitioning")
-	public void stopRepartition() {
-		repartitionPromise = null;
-	}
-
 	@JmxAttribute
 	public boolean isRepartitioning() {
-		return repartitionPromise != null;
+		return repartition.isRunning();
 	}
 
 	@JmxAttribute

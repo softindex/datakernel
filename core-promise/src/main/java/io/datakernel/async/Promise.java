@@ -78,7 +78,7 @@ public interface Promise<T> {
 	 * that is accepted by a provided {@link Consumer}
 	 */
 	@NotNull
-	static <T> Promise<T> ofCallback(@NotNull Consumer<SettablePromise<T>> callbackConsumer) {
+	static <T> MaterializedPromise<T> ofCallback(@NotNull Consumer<@NotNull SettableCallback<T>> callbackConsumer) {
 		SettablePromise<T> cb = new SettablePromise<>();
 		try {
 			callbackConsumer.accept(cb);

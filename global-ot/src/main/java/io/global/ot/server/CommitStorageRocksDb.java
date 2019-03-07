@@ -1,5 +1,6 @@
 package io.global.ot.server;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.eventloop.Eventloop;
@@ -39,7 +40,8 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	private static final StructuredCodec<RepoID> REPO_ID_CODEC = REGISTRY.get(RepoID.class);
 	private static final StructuredCodec<Tuple2<RepoID, CommitId>> REPO_COMMIT_CODEC = REGISTRY.get(new TypeT<Tuple2<RepoID, CommitId>>() {});
 	private static final StructuredCodec<Tuple2<CommitId, CommitId>> COMMIT_COMMIT_CODEC = REGISTRY.get(new TypeT<Tuple2<CommitId, CommitId>>() {});
-	private static final StructuredCodec<Tuple2<RepoID, SignedData<RawPullRequest>>> REPO_PULL_REQUESTS_CODEC = REGISTRY.get(new TypeT<Tuple2<RepoID, SignedData<RawPullRequest>>>() {});
+	private static final StructuredCodec<Tuple2<RepoID, SignedData<RawPullRequest>>> REPO_PULL_REQUESTS_CODEC = REGISTRY.get(new TypeT<Tuple2<RepoID,
+			SignedData<RawPullRequest>>>() {});
 	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
 	private static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_HEAD_CODEC = REGISTRY.get(new TypeT<SignedData<RawCommitHead>>() {});
 	private static final byte EMPTY = 0;
@@ -98,34 +100,38 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 
 	@NotNull
 	@Override
-	public Promise<Void> start() {
-		return Promise.ofBlockingRunnable(executor, () -> {
-			try {
-				initDb();
-			} catch (RocksDBException e) {
-				throw new UncheckedException(e);
-			}
-		});
+	public MaterializedPromise<Void> start() {
+		return Promise.ofBlockingRunnable(executor,
+				() -> {
+					try {
+						initDb();
+					} catch (RocksDBException e) {
+						throw new UncheckedException(e);
+					}
+				})
+				.materialize();
 	}
 
 	@NotNull
 	@Override
-	public Promise<Void> stop() {
-		return Promise.ofBlockingRunnable(executor, () -> {
-			try {
-				db.flush(flushOptions, commits.handle);
-				db.flush(flushOptions, snapshots.handle);
-				db.flush(flushOptions, heads.handle);
-				db.flush(flushOptions, pullRequests.handle);
-				db.flush(flushOptions, incompleteParentsCount.handle);
-				db.flush(flushOptions, parentToChildren.handle);
-				db.flush(flushOptions, pendingCommits.handle);
-			} catch (RocksDBException e) {
-				throw new UncheckedException(e);
-			}
+	public MaterializedPromise<Void> stop() {
+		return Promise.ofBlockingRunnable(executor,
+				() -> {
+					try {
+						db.flush(flushOptions, commits.handle);
+						db.flush(flushOptions, snapshots.handle);
+						db.flush(flushOptions, heads.handle);
+						db.flush(flushOptions, pullRequests.handle);
+						db.flush(flushOptions, incompleteParentsCount.handle);
+						db.flush(flushOptions, parentToChildren.handle);
+						db.flush(flushOptions, pendingCommits.handle);
+					} catch (RocksDBException e) {
+						throw new UncheckedException(e);
+					}
 
-			db.close();
-		});
+					db.close();
+				})
+				.materialize();
 	}
 
 	private void initDb() throws RocksDBException {

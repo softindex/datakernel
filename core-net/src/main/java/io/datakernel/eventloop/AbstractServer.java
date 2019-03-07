@@ -16,8 +16,9 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.eventloop.AsyncTcpSocketImpl.Inspector;
 import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
@@ -195,8 +196,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void onListen() {
 	}
 
-	protected void onClose(SettablePromise<Void> promise) {
-		promise.set(null);
+	protected void onClose(SettableCallback<Void> cb) {
+		cb.set(null);
 	}
 
 	protected void onAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
@@ -238,21 +239,20 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public final Promise<Void> close() {
+	public final MaterializedPromise<Void> close() {
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Promise.complete();
 		running = false;
 		closeServerSocketChannels();
-		SettablePromise<Void> promise = new SettablePromise<>();
-		onClose(promise);
-		promise.whenComplete(($, e) -> {
-			if (e == null) {
-				logger.info("Server closed: {}", this);
-			} else {
-				logger.error("Server closed exceptionally: " + this, e);
-			}
-		});
-		return promise;
+		return Promise.ofCallback(this::onClose)
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						logger.info("Server closed: {}", this);
+					} else {
+						logger.error("Server closed exceptionally: " + this, e);
+					}
+				})
+				.materialize();
 	}
 
 	public final Future<?> closeFuture() {
