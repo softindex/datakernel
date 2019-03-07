@@ -119,7 +119,7 @@ public class CubeCleanerControllerTest {
 		await(repository.saveSnapshot(id4, emptyList()));                      // 4S
 
 		Long id5 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofCommit(id5, id4, emptyList(), id4))); // 5N
+		await(repository.pushAndUpdateHead(OTCommit.ofCommit(id5, id4, emptyList(), id4))); // 5N
 	}
 
 }

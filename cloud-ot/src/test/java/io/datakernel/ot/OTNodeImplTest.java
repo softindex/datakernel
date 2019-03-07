@@ -20,7 +20,7 @@ import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.singleton;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -60,11 +60,8 @@ public class OTNodeImplTest {
 		assertFetchData(6, 7, 15, fetchData2);
 	}
 
-/*
 	@Test
 	public void testFetch2BranchesGraph() {
-		REPOSITORY.revisionIdSupplier = () -> 6; // id of merge commit
-
 		resetRepo(g -> {
 			g.add(0, 1, add(1));
 			g.add(1, 2, add(2));
@@ -75,7 +72,7 @@ public class OTNodeImplTest {
 		});
 
 		FetchData<Integer, TestOp> fetchData1 = await(node.fetch(0));
-		assertFetchData(6, 5, 15, fetchData1);
+		assertFetchData(3, 4, 6, fetchData1);
 
 		resetRepo(g -> {
 			g.add(0, 1, add(1));
@@ -86,9 +83,8 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
-		((OTNodeImpl) node).lastPushed = null;
 		FetchData<Integer, TestOp> fetchData2 = await(node.fetch(1));
-		assertFetchData(6, 5, 14, fetchData2);
+		assertFetchData(3, 4, 5, fetchData2);
 
 		resetRepo(g -> {
 			g.add(0, 1, add(1));
@@ -99,11 +95,9 @@ public class OTNodeImplTest {
 			g.add(4, 5, add(5));
 		});
 
-		((OTNodeImpl) node).lastPushed = null;
 		FetchData<Integer, TestOp> fetchData3 = await(node.fetch(4));
-		assertFetchData(6, 5, 11, fetchData3);
+		assertFetchData(5, 3, 5, fetchData3);
 	}
-*/
 
 	@Test
 	public void testFetchSplittingGraph() {
@@ -228,7 +222,9 @@ public class OTNodeImplTest {
 
 	private void resetRepo(Consumer<OTGraphBuilder<Integer, TestOp>> builder) {
 		// Initializing repo
-		await(REPOSITORY.push(ofRoot(0)), ((OTRepository<Integer, TestOp>) REPOSITORY).saveSnapshot(0, emptyList()));
+		REPOSITORY.reset();
+		REPOSITORY.doPushAndUpdateHeads(singleton(ofRoot(0)));
+		await(REPOSITORY.saveSnapshot(0, emptyList()));
 
 		if (builder != null) {
 			REPOSITORY.setGraph(builder);

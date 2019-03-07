@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
@@ -22,6 +21,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	private OTCommitFactory<K, D> commitFactory;
 
 	public final Map<K, OTCommit<K, D>> commits = new LinkedHashMap<>();
+	public final Set<K> heads = new HashSet<>();
 	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();
 
 	private OTRepositoryStub(Supplier<K> revisionIdSupplier) {
@@ -51,7 +51,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	public void setGraph(Consumer<OTGraphBuilder<K, D>> builder) {
 		commits.clear();
 		List<OTCommit<K, D>> commits = Utils.commits(builder);
-		doPush(commits);
+		doPushAndUpdateHeads(commits);
 		for (OTCommit<K, D> commit : commits) {
 			if (commit.getLevel() == 1L) {
 				doSaveSnapshot(commit.getId(), emptyList());
@@ -65,7 +65,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 				.max()
 				.orElse(0L);
 		List<OTCommit<K, D>> commits = Utils.commits(builder, false, initialLevel);
-		doPush(commits);
+		doPushAndUpdateHeads(commits);
 	}
 
 	public Promise<K> createCommitId() {
@@ -88,8 +88,16 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	@NotNull
 	@Override
+	public Promise<Void> updateHeads(Set<K> newHeads, Set<K> excludedHeads) {
+		heads.addAll(newHeads);
+		heads.removeAll(excludedHeads);
+		return Promise.complete();
+	}
+
+	@NotNull
+	@Override
 	public Promise<Set<K>> getHeads() {
-		return Promise.of(doGetHeads());
+		return Promise.of(new HashSet<>(heads));
 	}
 
 	public K doCreateCommitId() {
@@ -120,17 +128,30 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 		commits.put(commit.getId(), commit);
 	}
 
+	public void doPushAndUpdateHead(OTCommit<K, D> commit) {
+		commits.put(commit.getId(), commit);
+		heads.add(commit.getId());
+		heads.removeAll(commit.getParentIds());
+	}
+
 	public void doPush(Collection<OTCommit<K, D>> commits) {
 		for (OTCommit<K, D> commit : commits) {
 			doPush(commit);
 		}
 	}
 
-	public Set<K> doGetHeads() {
-		return difference(commits.keySet(),
-				commits.values().stream()
-						.flatMap(commit -> commit.getParents().keySet().stream())
-						.collect(toSet()));
+	public void doPushAndUpdateHeads(Collection<OTCommit<K, D>> commits) {
+		for (OTCommit<K, D> commit : commits) {
+			doPush(commit);
+		}
+		Set<K> parents = commits.stream()
+				.flatMap(commit -> commit.getParents().keySet().stream())
+				.collect(toSet());
+		Set<K> heads = commits.stream()
+				.map(OTCommit::getId)
+				.filter(id -> !parents.contains(id))
+				.collect(toSet());
+		updateHeads(heads, parents);
 	}
 
 	public OTCommit<K, D> doLoadCommit(K revisionId) {
@@ -153,6 +174,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	public void reset() {
 		commits.clear();
+		heads.clear();
 		snapshots.clear();
 	}
 

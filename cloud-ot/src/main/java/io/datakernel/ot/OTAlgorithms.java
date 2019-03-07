@@ -198,6 +198,21 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
+	public Promise<K> mergeAndUpdateHeads() {
+		return repository.getHeads()
+				.thenCompose(this::mergeAndUpdateHeads);
+	}
+
+	public Promise<K> mergeAndUpdateHeads(Set<K> heads) {
+		return merge(heads)
+				.thenCompose(mergeId -> {
+					Set<K> mergeHead = singleton(mergeId);
+					return repository.updateHeads(mergeHead, difference(heads, mergeHead))
+							.thenApply($ -> mergeId);
+				})
+				.whenComplete(toLogger(logger, thisMethod()));
+	}
+
 	static class Tuple<K, D> {
 		final Map<K, List<D>> mergeDiffs;
 		final long parentsMaxLevel;

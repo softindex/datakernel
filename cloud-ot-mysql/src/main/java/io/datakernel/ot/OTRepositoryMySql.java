@@ -39,14 +39,14 @@ import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.codec.json.JsonUtils.indent;
-import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.SqlUtils.execute;
 import static io.datakernel.util.Utils.loadResource;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -77,6 +77,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseGetHeads = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseIsSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseUpdateHeads = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
@@ -187,17 +188,13 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
 
-						Set<Long> commitIds = commits.stream().map(OTCommit::getId).collect(toSet());
-						Set<Long> commitsParentIds = commits.stream().flatMap(commit -> commit.getParents().keySet().stream()).collect(toSet());
-						Set<Long> headCommitIds = difference(commitIds, commitsParentIds);
-
 						try (PreparedStatement ps = connection.prepareStatement(
 								sql("INSERT IGNORE INTO {revisions}(`id`) VALUES " +
-										Stream.generate(() -> "(?)").limit(commitIds.size())
+										Stream.generate(() -> "(?)").limit(commits.size())
 												.collect(joining(", "))))) {
 							int pos = 1;
-							for (Long id : commitIds) {
-								ps.setLong(pos++, id);
+							for (OTCommit<Long, D> commit : commits) {
+								ps.setLong(pos++, commit.getId());
 							}
 							ps.executeUpdate();
 						}
@@ -215,23 +212,9 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 							}
 
 							try (PreparedStatement ps = connection.prepareStatement(
-									sql("UPDATE {revisions} SET `level`=?, `type`=? WHERE `id`=?"))) {
+									sql("UPDATE {revisions} SET `level` = ? WHERE `id` = ?"))) {
 								ps.setLong(1, commit.getLevel());
-								ps.setString(2, headCommitIds.contains(commit.getId()) ? "HEAD" : "INNER");
-								ps.setLong(3, commit.getId());
-								ps.executeUpdate();
-							}
-						}
-
-						if (!commitsParentIds.isEmpty()) {
-							try (PreparedStatement ps = connection.prepareStatement(
-									sql("UPDATE {revisions} SET `type`='INNER' WHERE `id` IN " +
-											Stream.generate(() -> "?").limit(commitsParentIds.size())
-													.collect(joining(", ", "(", ")"))))) {
-								int pos = 1;
-								for (Long id : commitsParentIds) {
-									ps.setLong(pos++, id);
-								}
+								ps.setLong(2, commit.getId());
 								ps.executeUpdate();
 							}
 						}
@@ -242,6 +225,25 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				})
 				.whenComplete(promisePush.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
+	}
+
+	@NotNull
+	@Override
+	public Promise<Void> updateHeads(Set<Long> newHeads, Set<Long> excludedHeads) {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						connection.setAutoCommit(false);
+
+						updateRevisions(newHeads, connection, "HEAD");
+						updateRevisions(excludedHeads, connection, "INNER");
+
+						connection.commit();
+					}
+					return (Void) null;
+				})
+				.whenComplete(promiseUpdateHeads.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), newHeads, excludedHeads));
 	}
 
 	@NotNull
@@ -409,6 +411,19 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
+	}
+
+	private void updateRevisions(Collection<Long> heads, Connection connection, String type) throws SQLException {
+		if (heads.isEmpty()) return;
+		try (PreparedStatement ps = connection.prepareStatement(
+				sql("UPDATE {revisions} SET `type`=\"" + type + "\" WHERE `id` IN " + Stream.generate(() -> "?").limit(heads.size())
+						.collect(joining(", ", "(", ")"))))) {
+			int pos = 1;
+			for (Long id : heads) {
+				ps.setLong(pos++, id);
+			}
+			ps.executeUpdate();
+		}
 	}
 
 	@JmxAttribute

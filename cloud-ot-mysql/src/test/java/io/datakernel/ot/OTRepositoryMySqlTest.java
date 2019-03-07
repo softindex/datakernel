@@ -98,7 +98,7 @@ public class OTRepositoryMySqlTest {
 	@Test
 	public void testRootHeads() {
 		Long id = await(repository.createCommitId());
-		await(repository.push(ofRoot(id)));
+		await(repository.pushAndUpdateHead(ofRoot(id)));
 
 		Set<Long> heads = await(repository.getHeads());
 		assertEquals(1, heads.size());
@@ -108,11 +108,11 @@ public class OTRepositoryMySqlTest {
 	@Test
 	public void testReplaceHead() {
 		Long rootId = await(repository.createCommitId());
-		await(repository.push(ofRoot(rootId)));
+		await(repository.pushAndUpdateHead(ofRoot(rootId)));
 
 		Long id = await(repository.createCommitId());
 
-		await(repository.push(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id)));
+		await(repository.pushAndUpdateHead(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id)));
 
 		Set<Long> heads = await(repository.getHeads());
 		assertEquals(1, heads.size());
@@ -131,7 +131,7 @@ public class OTRepositoryMySqlTest {
 		 */
 
 		await(repository
-				.push(commits(asLong(g -> {
+				.pushAndUpdateHeads(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
 					g.add(1, 4, add(1));
@@ -141,7 +141,7 @@ public class OTRepositoryMySqlTest {
 		assertEquals(3, heads.size());
 		assertEquals(set(2L, 3L, 4L), heads);
 
-		Long mergeId = await(algorithms.merge());
+		Long mergeId = await(algorithms.mergeAndUpdateHeads());
 
 		Set<Long> headsAfterMerge = await(repository.getHeads());
 		assertEquals(1, headsAfterMerge.size());
@@ -215,7 +215,7 @@ public class OTRepositoryMySqlTest {
 	@Test
 	public void testForkMerge() {
 		await(repository
-				.push(commits(asLong(g -> {
+				.pushAndUpdateHeads(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
 					g.add(3, 4, add(1));
@@ -225,14 +225,14 @@ public class OTRepositoryMySqlTest {
 					g.add(6, 8, add(1));
 				}))));
 
-		await(algorithms.merge());
+		await(algorithms.mergeAndUpdateHeads());
 		//		assertEquals(searchSurface, rootNodesFuture.get());
 	}
 
 	@Test
 	public void testFindRootNodes() {
 		await(repository
-				.push(commits(asLong(g -> {
+				.pushAndUpdateHeads(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
 					g.add(2, 4, add(1));
@@ -250,7 +250,7 @@ public class OTRepositoryMySqlTest {
 	@Test
 	public void testFindRootNodes2() {
 		await(repository
-				.push(commits(asLong(g -> {
+				.pushAndUpdateHeads(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
 					g.add(3, 4, add(1));
@@ -264,7 +264,7 @@ public class OTRepositoryMySqlTest {
 	@Test
 	public void testFindParentCandidatesSurface() {
 		await(repository
-				.push(commits(asLong(g -> {
+				.pushAndUpdateHeads(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
 					g.add(2, 4, add(1));
@@ -286,7 +286,7 @@ public class OTRepositoryMySqlTest {
 	@Test
 	public void testSingleCacheCheckpointNode() {
 		await(repository
-				.push(commits(asLong(g -> {
+				.pushAndUpdateHeads(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
 					g.add(3, 4, add(1));

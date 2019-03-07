@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
@@ -59,9 +59,14 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	public Promise<FetchData<K, D>> push(C commit) {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
-				.thenCompose($ -> algorithms.merge())
-				.thenCompose(mergedHead ->
-						doFetch(singleton(mergedHead), otCommit.getId()))
+				.thenCompose($ -> repository.getHeads())
+				.thenCompose(initalHeads -> algorithms.excludeParents(union(initalHeads, singleton(otCommit.getId())))
+						.thenCompose(algorithms::merge)
+						.thenCompose(mergeHead -> {
+							Set<K> mergeHeadSet = singleton(mergeHead);
+							return repository.updateHeads(mergeHeadSet, difference(initalHeads, mergeHeadSet))
+									.thenCompose($ -> doFetch(mergeHeadSet, otCommit.getId()));
+						}))
 				.whenComplete(toLogger(logger, thisMethod(), commit));
 	}
 

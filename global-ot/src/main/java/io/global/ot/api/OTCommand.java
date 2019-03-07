@@ -21,6 +21,7 @@ import io.datakernel.http.HttpPathPart;
 public enum OTCommand implements HttpPathPart {
 	LIST("list"),
 	SAVE("save"),
+	UPDATE_HEADS("updateHeads"),
 	LOAD_COMMIT("loadCommit"),
 	GET_HEADS("getHeads"),
 	GET_HEADS_INFO("getHeadsInfo"),

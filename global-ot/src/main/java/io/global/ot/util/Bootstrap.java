@@ -9,8 +9,7 @@ import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import org.jetbrains.annotations.NotNull;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
+import static java.util.Collections.*;
 
 /**
  * Utility class that initializes repository with root commit and snapshot for this commit. If repository has already
@@ -44,6 +43,7 @@ public final class Bootstrap<D> implements EventloopService {
 
 					OTCommit<CommitId, D> rootCommit = driver.createCommit(myRepositoryId, emptyMap(), 1);
 					return driver.push(myRepositoryId, rootCommit)
+							.thenCompose($ -> driver.updateHeads(myRepositoryId, singleton(rootCommit.getId()), emptySet()))
 							.thenCompose($ -> driver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()));
 				});
 	}

@@ -30,6 +30,7 @@ import io.global.common.SignedData;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
+import io.global.ot.api.GlobalOTNode.Heads;
 import org.jetbrains.annotations.NotNull;
 import org.spongycastle.crypto.CryptoException;
 
@@ -37,7 +38,6 @@ import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
@@ -145,7 +145,7 @@ public final class OTDriver {
 		if (commits.isEmpty()) {
 			return Promise.complete();
 		}
-		Map<CommitId, RawCommit> rawCommits = new LinkedHashMap<>();
+		Map<CommitId, RawCommit> rawCommits = new HashMap<>();
 
 		for (OTCommit<CommitId, D> commit : commits) {
 			try {
@@ -155,18 +155,17 @@ public final class OTDriver {
 			}
 		}
 
-		OTCommit<CommitId, D> lastCommit = getLast(commits);
-		return service.save(
-				myRepositoryId.getRepositoryId(),
-				rawCommits,
-				singleton(SignedData.sign(
+		return service.save(myRepositoryId.getRepositoryId(), rawCommits);
+	}
+
+	public <D> Promise<Void> updateHeads(MyRepositoryId<D> myRepositoryId, Set<CommitId> newHeads, Set<CommitId> oldHeads) {
+		Set<SignedData<RawCommitHead>> signedHeads = newHeads.stream()
+				.map(commitId -> SignedData.sign(
 						COMMIT_HEAD_CODEC,
-						RawCommitHead.of(
-								myRepositoryId.getRepositoryId(),
-								lastCommit.getId(),
-								lastCommit.getTimestamp()),
+						RawCommitHead.of(myRepositoryId.getRepositoryId(), commitId, now.currentTimeMillis()),
 						myRepositoryId.getPrivKey()))
-		);
+				.collect(toSet());
+		return service.updateHeads(myRepositoryId.getRepositoryId(), new Heads(signedHeads, oldHeads));
 	}
 
 	public Promise<Set<CommitId>> getHeads(RepoID repositoryId) {

@@ -32,8 +32,6 @@ import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 import java.util.Base64;
-import java.util.Map;
-import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
@@ -64,28 +62,6 @@ public class HttpDataFormats {
 	public static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_JSON = ofBinaryCodec(SIGNED_SHARED_KEY_CODEC);
 	public static final StructuredCodec<RawCommit> COMMIT_JSON = ofBinaryCodec(COMMIT_CODEC);
 	public static final StructuredCodec<CommitId> COMMIT_ID_JSON = ofBinaryCodec(COMMIT_ID_CODEC);
-
-	public static final class SaveTuple {
-		public final Map<CommitId, RawCommit> commits;
-		public final Set<SignedData<RawCommitHead>> heads;
-
-		public SaveTuple(Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
-			this.commits = commits;
-			this.heads = heads;
-		}
-
-		public Map<CommitId, RawCommit> getCommits() {
-			return commits;
-		}
-
-		public Set<SignedData<RawCommitHead>> getHeads() {
-			return heads;
-		}
-	}
-
-	public static final StructuredCodec<SaveTuple> SAVE_JSON = object(SaveTuple::new,
-			"commits", SaveTuple::getCommits, ofMap(COMMIT_ID_JSON, COMMIT_JSON),
-			"heads", SaveTuple::getHeads, ofSet(SIGNED_COMMIT_HEAD_JSON));
 
 	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = object(HeadsInfo::new,
 			"existing", HeadsInfo::getExisting, ofSet(COMMIT_ID_JSON),

@@ -28,7 +28,7 @@ public class OTLoadedGraphTest {
 	public void setUp() {
 		repository = OTRepositoryStub.create();
 		algorithms = OTAlgorithms.create(getCurrentEventloop(), createTestOp(), repository);
-		await(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()));
+		await(repository.pushAndUpdateHead(ofRoot(0)), repository.saveSnapshot(0, emptyList()));
 	}
 
 	@Test

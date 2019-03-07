@@ -44,9 +44,9 @@ public class OTAlgorithmsTest {
 	public void testCheckOutNoSnapshot() {
 		REPOSITORY.revisionIdSupplier = () -> RANDOM.nextInt(1000) + 1;
 		Integer id1 = await(REPOSITORY.createCommitId());
-		await(REPOSITORY.push(OTCommit.ofRoot(id1)));
+		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofRoot(id1)));
 		Integer id2 = await(REPOSITORY.createCommitId());
-		await(REPOSITORY.push(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
+		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
 
 		Throwable exception = awaitException(algorithms.checkout(id2));
 		assertSame(GRAPH_EXHAUSTED, exception);
@@ -56,9 +56,9 @@ public class OTAlgorithmsTest {
 	public void testFindParentNoSnapshot() {
 		REPOSITORY.revisionIdSupplier = () -> RANDOM.nextInt(1000) + 1;
 		Integer id1 = await(REPOSITORY.createCommitId());
-		await(REPOSITORY.push(OTCommit.ofRoot(id1)));
+		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofRoot(id1)));
 		Integer id2 = await(REPOSITORY.createCommitId());
-		await(REPOSITORY.push(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
+		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
 
 		Throwable exception = awaitException(algorithms.findParent(singleton(id2), DiffsReducer.toVoid(),
 				commit -> commit.getSnapshotHint() != null ?

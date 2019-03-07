@@ -29,16 +29,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static java.util.Collections.*;
+import static java.util.Collections.emptySet;
 
 public interface GlobalOTNode extends SharedKeyManager {
 	Promise<Set<String>> list(PubKey pubKey);
 
-	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);
+	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits);
 
-	default Promise<Void> save(RepoID repositoryId, RawCommit rawCommit, SignedData<RawCommitHead> rawHead) {
-		return save(repositoryId, singletonMap(rawHead.getValue().commitId, rawCommit), singleton(rawHead));
+	Promise<Void> updateHeads(RepoID repositoryId, Heads heads);
+
+	default Promise<Void> saveAndUpdateHeads(RepoID repositoryId, Map<CommitId, RawCommit> commits, Heads heads) {
+		return save(repositoryId, commits)
+				.thenCompose($ -> updateHeads(repositoryId, heads));
 	}
+
+	;
 
 	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
 

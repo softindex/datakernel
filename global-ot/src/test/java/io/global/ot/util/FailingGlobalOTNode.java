@@ -40,7 +40,12 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
+	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits) {
+		return Promise.ofException(ERROR);
+	}
+
+	@Override
+	public Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
 		return Promise.ofException(ERROR);
 	}
 

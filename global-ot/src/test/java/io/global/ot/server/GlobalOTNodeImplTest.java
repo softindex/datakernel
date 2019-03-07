@@ -36,6 +36,7 @@ import io.global.common.stub.InMemoryAnnouncementStorage;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
+import io.global.ot.api.GlobalOTNode.Heads;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.stub.CommitStorageStub;
 import io.global.ot.util.FailingGlobalOTNode;
@@ -58,8 +59,7 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -742,16 +742,22 @@ public class GlobalOTNodeImplTest {
 		long parentLevel = parent == null ? 0 : getParentsMaxLevel(storage, set(parentId));
 
 		Set<CommitEntry> entries = new LinkedHashSet<>();
-		Set<Integer> parents = parent == null ? emptySet() : set(parentId);
+		Set<Integer> originalParent = parent == null ? emptySet() : set(parentId);
+		Set<Integer> parents = new HashSet<>(originalParent);
 		for (int i = 0; i < numberOfCommits; i++) {
 			CommitEntry commitEntry = createCommitEntry(parents, parentLevel + i, i == numberOfCommits - 1);
 			entries.add(commitEntry);
-			parents = singleton((int) COMMIT_ID - 1);
+			int id = (int) COMMIT_ID - 1;
+			parents = singleton(id);
 		}
 		Map<CommitId, RawCommit> commits = entries.stream().collect(toMap(CommitEntry::getCommitId, CommitEntry::getCommit));
 		Set<SignedData<RawCommitHead>> heads = entries.stream().filter(CommitEntry::hasHead).map(CommitEntry::getHead).collect(toSet());
 
-		await(node.save(REPO_ID, commits, heads));
+		await(node.saveAndUpdateHeads(REPO_ID,
+				commits,
+				new Heads(heads, originalParent.stream()
+						.map(GlobalOTNodeImplTest::getCommitId)
+						.collect(toSet()))));
 	}
 
 	private void addSingleCommit(Set<Integer> parents, GlobalOTNode node, long level) {
@@ -762,7 +768,11 @@ public class GlobalOTNodeImplTest {
 		CommitEntry commitEntry = createCommitEntry(parents, parentLevel, true);
 
 		assert commitEntry.getHead() != null;
-		await(node.save(REPO_ID, commitEntry.getCommit(), commitEntry.getHead()));
+		await(node.saveAndUpdateHeads(REPO_ID,
+				map(commitEntry.getCommitId(), commitEntry.getCommit()),
+				new Heads(singleton(commitEntry.getHead()), parents.stream()
+						.map(GlobalOTNodeImplTest::getCommitId)
+						.collect(toSet()))));
 	}
 
 	private void addSingleCommit(Set<Integer> parents, GlobalOTNode node) {

@@ -77,7 +77,7 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncFullHistory() {
 		for (int i = 1; i <= 5; i++) {
-			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPushAndUpdateHead(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
 
 		assertEquals(0, testOpState.getValue());
@@ -90,7 +90,7 @@ public class OTStateManagerTest {
 	public void testApplyDiffBeforeSync() {
 		repository.revisionIdSupplier = () -> 11;
 		for (int i = 1; i <= 10; i++) {
-			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPushAndUpdateHead(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
 
 		assertEquals(0, testOpState.getValue());
@@ -104,7 +104,7 @@ public class OTStateManagerTest {
 	@Test
 	public void testMultipleSyncs() {
 		for (int i = 1; i <= 20; i++) {
-			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPushAndUpdateHead(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 5 || i == 15) {
 				await(stateManager.sync());
 			}
@@ -194,7 +194,7 @@ public class OTStateManagerTest {
 		assertEquals(FAILED, exception);
 		assertEquals((Integer) 0, stateManager.getCommitId());
 		assertFalse(stateManager.hasPendingCommits());
-//		assertTrue(stateManager.hasWorkingDiffs());
+		assertTrue(stateManager.hasWorkingDiffs());
 
 		// new ops added in the meantime
 		stateManager.add(add(100));
@@ -328,7 +328,7 @@ public class OTStateManagerTest {
 	}
 
 	private void initializeRepository(OTRepository<Integer, TestOp> repository, OTStateManager<Integer, TestOp> stateManager) {
-		await(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()));
+		await(repository.pushAndUpdateHead(ofRoot(0)), repository.saveSnapshot(0, emptyList()));
 		await(stateManager.checkout());
 	}
 

@@ -43,8 +43,8 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.subscribe;
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.AsyncSuppliers.subscribe;
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.*;
@@ -157,23 +157,24 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	}
 
 	@Override
-	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits, Set<SignedData<RawCommitHead>> newHeads) {
-		return commitStorage.getHeads(repositoryId)
-				.thenCompose(thisHeads -> Promises.reduce(CollectorsEx.toAny(), 1,
-						asPromises(newCommits.entrySet().stream().map(entry -> AsyncSupplier.cast(() ->
-								commitStorage.saveCommit(entry.getKey(), entry.getValue())
-						))))
-						.thenCompose(savedAny -> {
-							Set<CommitId> excludedHeads = new HashSet<>();
-							for (RawCommit commit : newCommits.values()) {
-								excludedHeads.addAll(intersection(thisHeads.keySet(), commit.getParents()));
-							}
-							return updateHeads(repositoryId, new Heads(newHeads, excludedHeads))
-									.thenComposeEx(($, e) -> (savedAny || !newHeads.isEmpty()) ?
-											toMaster(repositoryId, node -> node.save(repositoryId, newCommits, newHeads)) :
-											Promise.complete());
-						}))
-				.whenComplete(toLogger(logger, "save", repositoryId, newCommits, newHeads, this));
+	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits) {
+		return Promises.reduce(CollectorsEx.toAny(), 1,
+				asPromises(newCommits.entrySet().stream().map(entry -> AsyncSupplier.cast(() ->
+						commitStorage.saveCommit(entry.getKey(), entry.getValue())
+				))))
+				.thenCompose(savedAny -> savedAny ?
+						toMaster(repositoryId, node -> node.save(repositoryId, newCommits)) :
+						Promise.complete())
+				.whenComplete(toLogger(logger, "save", repositoryId, newCommits, this));
+	}
+
+	@Override
+	public Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
+		return commitStorage.updateHeads(repositoryId, heads.newHeads, heads.excludedHeads)
+				.whenResult($ -> {
+					if (!heads.newHeads.isEmpty()) ensureRepository(repositoryId).filterHeads();
+				})
+				.thenCompose($ -> toMaster(repositoryId, master -> master.updateHeads(repositoryId, heads)));
 	}
 
 	@Override
@@ -394,13 +395,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 										.thenCompose($ -> commitStorage.markCompleteCommits())
 										.thenCompose($ -> updateHeads(repositoryId, new Heads(addedHeads, excludedHeads))))
 				);
-	}
-
-	private Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
-		return commitStorage.updateHeads(repositoryId, heads.newHeads, heads.excludedHeads)
-				.whenResult($ -> {
-					if (!heads.newHeads.isEmpty()) ensureRepository(repositoryId).filterHeads();
-				});
 	}
 
 	@Override

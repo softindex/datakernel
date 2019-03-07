@@ -31,9 +31,11 @@ import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
+import io.global.ot.api.GlobalOTNode.Heads;
 import io.global.ot.util.HttpDataFormats;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
@@ -83,8 +85,19 @@ public final class RawServerServlet implements WithMiddleware {
 				})
 				.with(POST, "/" + SAVE + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
 					try {
-						SaveTuple saveTuple = fromJson(SAVE_JSON, body.getString(UTF_8));
-						return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
+						Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), body.getString(UTF_8));
+						return node.save(urlDecodeRepositoryId(req), commits)
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
+				}))
+				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
+					try {
+						Heads heads = fromJson(HEADS_DELTA_JSON, body.getString(UTF_8));
+						return node.updateHeads(urlDecodeRepositoryId(req), heads)
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);

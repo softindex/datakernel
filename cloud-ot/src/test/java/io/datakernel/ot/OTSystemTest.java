@@ -85,7 +85,7 @@ public final class OTSystemTest {
 		System.out.println(stateManager);
 		System.out.println();
 
-		await(algorithms.merge());
+		await(algorithms.mergeAndUpdateHeads());
 
 		System.out.println(await(repository.loadCommit("m")));
 		System.out.println(stateManager);

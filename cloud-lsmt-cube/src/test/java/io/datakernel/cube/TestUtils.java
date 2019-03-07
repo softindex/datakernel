@@ -41,7 +41,7 @@ public final class TestUtils {
 			throw new AssertionError(e);
 		}
 		Long id = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofRoot(id)));
+		await(repository.pushAndUpdateHead(OTCommit.ofRoot(id)));
 		await(repository.saveSnapshot(id, emptyList()));
 	}
 

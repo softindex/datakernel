@@ -80,10 +80,18 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
+	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits) {
 		return httpClient.request(
 				request(POST, SAVE, apiQuery(repositoryId))
-						.initialize(withJson(SAVE_JSON, new SaveTuple(commits, heads))))
+						.initialize(withJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), commits)))
+				.thenCompose(GlobalOTNodeHttpClient::processResult);
+	}
+
+	@Override
+	public Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
+		return httpClient.request(
+				request(POST, UPDATE_HEADS, apiQuery(repositoryId))
+						.initialize(withJson(HEADS_DELTA_JSON, heads)))
 				.thenCompose(GlobalOTNodeHttpClient::processResult);
 	}
 
