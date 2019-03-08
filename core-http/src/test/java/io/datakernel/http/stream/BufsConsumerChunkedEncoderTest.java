@@ -90,6 +90,6 @@ public final class BufsConsumerChunkedEncoderTest {
 
 	private void doTest() {
 		chunkedEncoder.getInput().set(ChannelSupplier.ofIterable(list));
-		await(chunkedEncoder.getProcessResult());
+		await(chunkedEncoder.getProcessCompletion());
 	}
 }

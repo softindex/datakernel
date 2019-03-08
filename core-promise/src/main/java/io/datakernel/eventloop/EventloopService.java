@@ -31,10 +31,10 @@ public interface EventloopService {
 	 * Callback completes immediately if the component is already running.
 	 */
 	@NotNull
-	MaterializedPromise<Void> start();
+	MaterializedPromise<?> start();
 
 	@NotNull
-	default CompletableFuture<Void> startFuture() {
+	default CompletableFuture<?> startFuture() {
 		return getEventloop().submit(cb -> start().whenComplete(cb));
 	}
 
@@ -43,10 +43,10 @@ public interface EventloopService {
 	 * Callback completes immediately if the component is not running / already stopped.
 	 */
 	@NotNull
-	MaterializedPromise<Void> stop();
+	MaterializedPromise<?> stop();
 
 	@NotNull
-	default CompletableFuture<Void> stopFuture() {
+	default CompletableFuture<?> stopFuture() {
 		return getEventloop().submit(cb -> stop().whenComplete(cb));
 	}
 }

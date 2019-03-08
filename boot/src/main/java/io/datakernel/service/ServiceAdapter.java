@@ -26,7 +26,7 @@ import java.util.concurrent.Executor;
  * @param <V> type of service from which you need create ConcurrentService
  */
 public interface ServiceAdapter<V> {
-	CompletableFuture<Void> start(V instance, Executor executor);
+	CompletableFuture<?> start(V instance, Executor executor);
 
-	CompletableFuture<Void> stop(V instance, Executor executor);
+	CompletableFuture<?> stop(V instance, Executor executor);
 }

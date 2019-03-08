@@ -89,7 +89,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			this.input = input;
 			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

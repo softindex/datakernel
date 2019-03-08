@@ -239,7 +239,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public final MaterializedPromise<Void> close() {
+	public final MaterializedPromise<?> close() {
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Promise.complete();
 		running = false;

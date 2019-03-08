@@ -204,7 +204,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 
 								return ChannelSuppliers.concat(prefix, splitter.addOutput().getSupplier())
 										.withEndOfStream(eos -> eos
-												.both(splitter.getProcessResult())
+												.both(splitter.getProcessCompletion())
 												.thenCompose($2 -> {
 													totalCacheSize += toBeCached;
 													return updateCacheStats(fileName);

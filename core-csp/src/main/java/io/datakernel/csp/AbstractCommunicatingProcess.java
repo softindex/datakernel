@@ -39,7 +39,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 	private boolean processStarted;
 	private boolean processComplete;
-	private SettablePromise<Void> processResult = new SettablePromise<>();
+	private SettablePromise<Void> processCompletion = new SettablePromise<>();
 
 	protected void beforeProcess() {
 	}
@@ -63,7 +63,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		if (e == null) {
-			processResult.trySet(null);
+			processCompletion.trySet(null);
 			afterProcess(null);
 		} else {
 			close(e);
@@ -72,8 +72,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> getProcessResult() {
-		return processResult;
+	public MaterializedPromise<Void> getProcessCompletion() {
+		return processCompletion;
 	}
 
 	/**
@@ -92,7 +92,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			beforeProcess();
 			doProcess();
 		}
-		return processResult;
+		return processCompletion;
 	}
 
 	/**
@@ -114,7 +114,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		doClose(e);
-		processResult.trySetException(e);
+		processCompletion.trySetException(e);
 		afterProcess(e);
 	}
 

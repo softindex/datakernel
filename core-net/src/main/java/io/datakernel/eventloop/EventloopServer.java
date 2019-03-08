@@ -39,5 +39,5 @@ public interface EventloopServer {
 	 * Closes the server. Any open channels will be closed.
 	 *
 	 */
-	MaterializedPromise<Void> close();
+	MaterializedPromise<?> close();
 }

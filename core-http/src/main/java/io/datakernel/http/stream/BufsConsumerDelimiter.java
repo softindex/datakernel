@@ -52,7 +52,7 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 			this.input = sanitize(input);
 			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

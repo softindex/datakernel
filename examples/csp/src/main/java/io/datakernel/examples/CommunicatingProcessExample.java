@@ -39,7 +39,7 @@ public class CommunicatingProcessExample extends AbstractCommunicatingProcess im
 		return input -> {
 			this.input = input;
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

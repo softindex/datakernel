@@ -106,7 +106,7 @@ public final class BufsConsumerIntegrationTest {
 	}
 
 	private void doTest(AsyncProcess process1, AsyncProcess process2) {
-		await(Promises.all(process1.getProcessResult(), process2.getProcessResult()));
+		await(Promises.all(process1.getProcessCompletion(), process2.getProcessCompletion()));
 		assertTrue(consumer.executed);
 
 	}

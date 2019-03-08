@@ -36,13 +36,14 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Static utility methods pertaining to ConcurrentService. Creates
  * ConcurrentService from some other type of instances.
  */
+@SuppressWarnings("WeakerAccess")
 public final class ServiceAdapters {
 	private static final Logger logger = getLogger(ServiceAdapters.class);
 
 	private ServiceAdapters() {
 	}
 
-	private static BiConsumer<Void, Throwable> completeFuture(CompletableFuture<?> future) {
+	private static <T> BiConsumer<T, Throwable> completeFuture(CompletableFuture<?> future) {
 		return ($, e) -> {
 			if (e != null) {
 				future.completeExceptionally(e);
@@ -70,8 +71,8 @@ public final class ServiceAdapters {
 		protected abstract void stop(S instance) throws Exception;
 
 		@Override
-		public final CompletableFuture<Void> start(S instance, Executor executor) {
-			CompletableFuture<Void> future = new CompletableFuture<>();
+		public final CompletableFuture<?> start(S instance, Executor executor) {
+			CompletableFuture<?> future = new CompletableFuture<>();
 			(startConcurrently ? executor : (Executor) Runnable::run).execute(() -> {
 				try {
 					start(instance);
@@ -84,8 +85,8 @@ public final class ServiceAdapters {
 		}
 
 		@Override
-		public final CompletableFuture<Void> stop(S instance, Executor executor) {
-			CompletableFuture<Void> future = new CompletableFuture<>();
+		public final CompletableFuture<?> stop(S instance, Executor executor) {
+			CompletableFuture<?> future = new CompletableFuture<>();
 			(stopConcurrently ? executor : (Executor) Runnable::run).execute(() -> {
 				try {
 					stop(instance);
@@ -101,12 +102,12 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Service> forService() {
 		return new ServiceAdapter<Service>() {
 			@Override
-			public CompletableFuture<Void> start(Service instance, Executor executor) {
+			public CompletableFuture<?> start(Service instance, Executor executor) {
 				return instance.start();
 			}
 
 			@Override
-			public CompletableFuture<Void> stop(Service instance, Executor executor) {
+			public CompletableFuture<?> stop(Service instance, Executor executor) {
 				return instance.stop();
 			}
 		};
@@ -115,15 +116,16 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<EventloopService> forEventloopService() {
 		return new ServiceAdapter<EventloopService>() {
 			@Override
-			public CompletableFuture<Void> start(EventloopService instance, Executor executor) {
-				CompletableFuture<Void> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.start().whenComplete(completeFuture(future)));
+			public CompletableFuture<?> start(EventloopService instance, Executor executor) {
+				CompletableFuture<?> future = new CompletableFuture<>();
+				instance.getEventloop().execute(() ->
+						instance.start().whenComplete(completeFuture(future)));
 				return future;
 			}
 
 			@Override
-			public CompletableFuture<Void> stop(EventloopService instance, Executor executor) {
-				CompletableFuture<Void> future = new CompletableFuture<>();
+			public CompletableFuture<?> stop(EventloopService instance, Executor executor) {
+				CompletableFuture<?> future = new CompletableFuture<>();
 				instance.getEventloop().execute(() -> instance.stop().whenComplete(completeFuture(future)));
 				return future;
 			}
@@ -133,8 +135,8 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<EventloopServer> forEventloopServer() {
 		return new ServiceAdapter<EventloopServer>() {
 			@Override
-			public CompletableFuture<Void> start(EventloopServer instance, Executor executor) {
-				CompletableFuture<Void> future = new CompletableFuture<>();
+			public CompletableFuture<?> start(EventloopServer instance, Executor executor) {
+				CompletableFuture<?> future = new CompletableFuture<>();
 				instance.getEventloop().execute(() -> {
 					try {
 						instance.listen();
@@ -147,8 +149,8 @@ public final class ServiceAdapters {
 			}
 
 			@Override
-			public CompletableFuture<Void> stop(EventloopServer instance, Executor executor) {
-				CompletableFuture<Void> future = new CompletableFuture<>();
+			public CompletableFuture<?> stop(EventloopServer instance, Executor executor) {
+				CompletableFuture<?> future = new CompletableFuture<>();
 				instance.getEventloop().execute(() -> instance.close().whenComplete(completeFuture(future)));
 				return future;
 			}
@@ -158,8 +160,8 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Eventloop> forEventloop(ThreadFactory threadFactory) {
 		return new ServiceAdapter<Eventloop>() {
 			@Override
-			public CompletableFuture<Void> start(Eventloop eventloop, Executor executor) {
-				CompletableFuture<Void> future = new CompletableFuture<>();
+			public CompletableFuture<?> start(Eventloop eventloop, Executor executor) {
+				CompletableFuture<?> future = new CompletableFuture<>();
 				threadFactory.newThread(() -> {
 					eventloop.keepAlive(true);
 					future.complete(null);
@@ -169,8 +171,8 @@ public final class ServiceAdapters {
 			}
 
 			@Override
-			public CompletableFuture<Void> stop(Eventloop eventloop, Executor executor) {
-				CompletableFuture<Void> future = new CompletableFuture<>();
+			public CompletableFuture<?> stop(Eventloop eventloop, Executor executor) {
+				CompletableFuture<?> future = new CompletableFuture<>();
 				Thread eventloopThread = eventloop.getEventloopThread();
 				assert eventloopThread != null;
 				eventloop.execute(() -> eventloop.keepAlive(false));
@@ -196,7 +198,8 @@ public final class ServiceAdapters {
 	}
 
 	/**
-	 * Returns factory which transforms blocking Service to asynchronous non-blocking ConcurrentService. It runs blocking operations from other thread from executor.
+	 * Returns factory which transforms blocking Service to asynchronous non-blocking ConcurrentService. It runs blocking operations from other thread from
+	 * executor.
 	 */
 	public static ServiceAdapter<BlockingService> forBlockingService() {
 		return new SimpleServiceAdapter<BlockingService>() {
@@ -323,26 +326,27 @@ public final class ServiceAdapters {
 
 	@FunctionalInterface
 	private interface Action<T> {
-		CompletableFuture<Void> doAction(ServiceAdapter<T> serviceAdapter, T instance, Executor executor);
+		CompletableFuture<?> doAction(ServiceAdapter<T> serviceAdapter, T instance, Executor executor);
 	}
 
 	public static <T> ServiceAdapter<T> combinedAdapter(List<? extends ServiceAdapter<? super T>> startOrder,
-														List<? extends ServiceAdapter<? super T>> stopOrder) {
+			List<? extends ServiceAdapter<? super T>> stopOrder) {
 		return new ServiceAdapter<T>() {
 			@SuppressWarnings("unchecked")
 			private void doAction(T instance, Executor executor,
-								  Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
-								  Action<T> action) {
+					Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<?> future,
+					Action<T> action) {
 				if (iterator.hasNext()) {
-					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor).whenCompleteAsync(($, e) -> {
-						if (e == null) {
-							doAction(instance, executor, iterator, future, action);
-						} else if (e instanceof InterruptedException) {
-							future.completeExceptionally(e);
-						} else if (e instanceof ExecutionException) {
-							future.completeExceptionally(e.getCause());
-						}
-					}, Runnable::run);
+					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor)
+							.whenCompleteAsync(($, e) -> {
+								if (e == null) {
+									doAction(instance, executor, iterator, future, action);
+								} else if (e instanceof InterruptedException) {
+									future.completeExceptionally(e);
+								} else if (e instanceof ExecutionException) {
+									future.completeExceptionally(e.getCause());
+								}
+							}, Runnable::run);
 				} else {
 					future.complete(null);
 				}
@@ -352,7 +356,7 @@ public final class ServiceAdapters {
 			public CompletableFuture<Void> start(T instance, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				doAction(instance, executor, startOrder.iterator(), future,
-					ServiceAdapter::start);
+						ServiceAdapter::start);
 				return future;
 			}
 
@@ -360,7 +364,7 @@ public final class ServiceAdapters {
 			public CompletableFuture<Void> stop(T instance, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				doAction(instance, executor, stopOrder.iterator(), future,
-					ServiceAdapter::stop);
+						ServiceAdapter::stop);
 				return future;
 			}
 		};

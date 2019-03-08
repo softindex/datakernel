@@ -276,7 +276,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			return cache.get(node);
 		}
 
-		CompletionStage<Void> result = waitAll(dependencies)
+		CompletionStage<?> result = waitAll(dependencies)
 				.thenComposeAsync($ -> {
 					Service service = services.get(node);
 					if (service == null) {

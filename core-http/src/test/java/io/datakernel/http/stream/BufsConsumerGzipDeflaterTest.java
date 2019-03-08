@@ -103,7 +103,7 @@ public final class BufsConsumerGzipDeflaterTest {
 
 	private void doTest() {
 		gzip.getInput().set(ChannelSupplier.ofIterable(list));
-		await(gzip.getProcessResult());
+		await(gzip.getProcessCompletion());
 	}
 
 	private byte[] compressWithGzipOutputStream(byte[]... arrays) {

@@ -81,7 +81,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 		return input -> {
 			this.input = sanitize(input);
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

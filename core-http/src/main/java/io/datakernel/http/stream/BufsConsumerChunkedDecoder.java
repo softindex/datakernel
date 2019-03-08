@@ -63,7 +63,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 			this.input = sanitize(input);
 			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

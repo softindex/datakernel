@@ -94,7 +94,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 			this.input = sanitize(input);
 			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

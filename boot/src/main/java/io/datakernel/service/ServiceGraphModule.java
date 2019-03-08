@@ -207,8 +207,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			return null;
 		return new Service() {
 			@Override
-			public CompletableFuture<Void> start() {
-				List<CompletableFuture<Void>> futures = new ArrayList<>();
+			public CompletableFuture<?> start() {
+				List<CompletableFuture<?>> futures = new ArrayList<>();
 				for (Service service : services) {
 					futures.add(service != null ? service.start() : null);
 				}
@@ -216,8 +216,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			}
 
 			@Override
-			public CompletableFuture<Void> stop() {
-				List<CompletableFuture<Void>> futures = new ArrayList<>();
+			public CompletableFuture<?> stop() {
+				List<CompletableFuture<?>> futures = new ArrayList<>();
 				for (Service service : services) {
 					futures.add(service != null ? service.stop() : null);
 				}
@@ -234,12 +234,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return e;
 	}
 
-	private static CompletableFuture<Void> combineFutures(List<CompletableFuture<Void>> futures, Executor executor) {
-		CompletableFuture<Void> resultFuture = new CompletableFuture<>();
+	private static CompletableFuture<?> combineFutures(List<CompletableFuture<?>> futures, Executor executor) {
+		CompletableFuture<?> resultFuture = new CompletableFuture<>();
 		AtomicInteger count = new AtomicInteger(futures.size());
 		AtomicReference<Throwable> exception = new AtomicReference<>();
-		for (CompletableFuture<Void> future : futures) {
-			CompletableFuture<Void> finalFuture = future != null ? future : completedFuture(null);
+		for (CompletableFuture<?> future : futures) {
+			CompletableFuture<?> finalFuture = future != null ? future : completedFuture(null);
 			finalFuture.whenCompleteAsync((o, e) -> {
 				if (e != null) {
 					exception.set(getRootCause(e));
@@ -298,12 +298,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			ServiceAdapter<Object> finalServiceAdapter = (ServiceAdapter<Object>) serviceAdapter;
 			Service asyncService = new Service() {
 				@Override
-				public CompletableFuture<Void> start() {
+				public CompletableFuture<?> start() {
 					return finalServiceAdapter.start(instance, executor);
 				}
 
 				@Override
-				public CompletableFuture<Void> stop() {
+				public CompletableFuture<?> stop() {
 					return finalServiceAdapter.stop(instance, executor);
 				}
 			};
@@ -444,15 +444,15 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 	private class CachedService implements Service {
 		private final Service service;
-		private CompletableFuture<Void> startFuture;
-		private CompletableFuture<Void> stopFuture;
+		private CompletableFuture<?> startFuture;
+		private CompletableFuture<?> stopFuture;
 
 		private CachedService(Service service) {
 			this.service = service;
 		}
 
 		@Override
-		synchronized public CompletableFuture<Void> start() {
+		synchronized public CompletableFuture<?> start() {
 			checkState(stopFuture == null, "Already stopped");
 			if (startFuture == null) {
 				startFuture = service.start();
@@ -461,7 +461,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 
 		@Override
-		synchronized public CompletableFuture<Void> stop() {
+		synchronized public CompletableFuture<?> stop() {
 			checkState(startFuture != null, "Has not been started yet");
 			if (stopFuture == null) {
 				stopFuture = service.stop();

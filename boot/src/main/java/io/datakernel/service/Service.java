@@ -22,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
  * A service which provides non-blocking start and stop operations.
  */
 public interface Service {
-	CompletableFuture<Void> start();
+	CompletableFuture<?> start();
 
-	CompletableFuture<Void> stop();
+	CompletableFuture<?> stop();
 }

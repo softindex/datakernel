@@ -68,7 +68,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
 			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

@@ -219,7 +219,7 @@ public final class BufsConsumerGzipInflaterTest {
 
 	private void doTest(@Nullable Exception expectedException) {
 		gunzip.getInput().set(ChannelSupplier.ofIterable(list));
-		MaterializedPromise<Void> processResult = gunzip.getProcessResult();
+		MaterializedPromise<Void> processResult = gunzip.getProcessCompletion();
 		if (expectedException == null) {
 			await(processResult);
 		} else {

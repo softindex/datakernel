@@ -6,8 +6,8 @@ import org.jetbrains.annotations.NotNull;
 public interface AsyncProcess extends Cancellable {
 	@Contract(pure = true)
 	@NotNull
-	Promise<Void> getProcessResult();
+	MaterializedPromise<Void> getProcessCompletion();
 
 	@NotNull
-	Promise<Void> startProcess();
+	MaterializedPromise<Void> startProcess();
 }

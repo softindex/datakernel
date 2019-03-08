@@ -61,7 +61,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 			checkState(!isProcessStarted(), "Can't configure splitter while it is running");
 			this.input = sanitize(input);
 			tryStart();
-			return getProcessResult();
+			return getProcessCompletion();
 		};
 	}
 

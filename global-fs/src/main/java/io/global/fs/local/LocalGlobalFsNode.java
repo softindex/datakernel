@@ -248,7 +248,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 																					return splitter.addOutput()
 																							.getSupplier()
-																							.withEndOfStream(eos -> eos.both(splitter.getProcessResult()));
+																							.withEndOfStream(eos -> eos.both(splitter.getProcessCompletion()));
 																				})))))))
 				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}

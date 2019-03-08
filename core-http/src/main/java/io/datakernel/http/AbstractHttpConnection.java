@@ -362,7 +362,7 @@ public abstract class AbstractHttpConnection {
 
 		onHeadersReceived(supplier);
 
-		process.getProcessResult()
+		process.getProcessCompletion()
 				.whenComplete(($, e) -> {
 					if (e == null) {
 						flags |= BODY_RECEIVED;
