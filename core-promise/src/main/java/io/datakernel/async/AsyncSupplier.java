@@ -38,7 +38,6 @@ public interface AsyncSupplier<T> {
 	/**
 	 * Gets {@link Promise} of data item asynchronously.
 	 */
-	@NotNull
 	Promise<T> get();
 
 	static <T> AsyncSupplier<T> of(@NotNull Supplier<? extends T> supplier) {

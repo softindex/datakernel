@@ -36,7 +36,6 @@ import io.global.common.stub.InMemoryAnnouncementStorage;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
-import io.global.ot.api.GlobalOTNode.Heads;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.stub.CommitStorageStub;
 import io.global.ot.util.FailingGlobalOTNode;
@@ -241,7 +240,7 @@ public class GlobalOTNodeImplTest {
 		addCommits(3, 3, masterNode);    // Head with id - 12
 
 		HeadsInfo headsInfo = await(intermediateNode.getHeadsInfo(REPO_ID));
-		assertEquals(getCommitIds(5, 9, 12), headsInfo.getRequired());
+		assertEquals(getCommitIds(5, 9, 12), headsInfo.getExisting());
 	}
 
 	@Test
@@ -696,7 +695,6 @@ public class GlobalOTNodeImplTest {
 		assertEquals(signedPullRequest, first(newSnapshotIds));
 	}
 
-
 	// region helpers
 	private CommitStorage getMasterStorage(Integer id) {
 		return masters.get(id).getValue1();
@@ -753,11 +751,7 @@ public class GlobalOTNodeImplTest {
 		Map<CommitId, RawCommit> commits = entries.stream().collect(toMap(CommitEntry::getCommitId, CommitEntry::getCommit));
 		Set<SignedData<RawCommitHead>> heads = entries.stream().filter(CommitEntry::hasHead).map(CommitEntry::getHead).collect(toSet());
 
-		await(node.saveAndUpdateHeads(REPO_ID,
-				commits,
-				new Heads(heads, originalParent.stream()
-						.map(GlobalOTNodeImplTest::getCommitId)
-						.collect(toSet()))));
+		await(node.saveAndUpdateHeads(REPO_ID, commits, heads));
 	}
 
 	private void addSingleCommit(Set<Integer> parents, GlobalOTNode node, long level) {
@@ -770,9 +764,7 @@ public class GlobalOTNodeImplTest {
 		assert commitEntry.getHead() != null;
 		await(node.saveAndUpdateHeads(REPO_ID,
 				map(commitEntry.getCommitId(), commitEntry.getCommit()),
-				new Heads(singleton(commitEntry.getHead()), parents.stream()
-						.map(GlobalOTNodeImplTest::getCommitId)
-						.collect(toSet()))));
+				singleton(commitEntry.getHead())));
 	}
 
 	private void addSingleCommit(Set<Integer> parents, GlobalOTNode node) {
@@ -829,7 +821,8 @@ public class GlobalOTNodeImplTest {
 	}
 
 	private void assertSnapshots(CommitStorage storage, int... ids) {
-		List<Optional<SignedData<RawSnapshot>>> snapshots = await(Promises.toList(IntStream.of(ids).mapToObj(id -> storage.loadSnapshot(REPO_ID, getCommitId(id)))));
+		List<Optional<SignedData<RawSnapshot>>> snapshots = await(Promises.toList(IntStream.of(ids).mapToObj(id -> storage.loadSnapshot(REPO_ID,
+				getCommitId(id)))));
 		Set<CommitId> snapshotIds = snapshots.stream().map(optional -> optional.orElseThrow(AssertionError::new).getValue().getCommitId()).collect(toSet());
 		assertEquals(getCommitIds(ids), snapshotIds);
 

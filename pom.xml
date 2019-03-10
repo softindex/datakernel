@@ -173,6 +173,11 @@
 				<artifactId>hppc</artifactId>
 				<version>0.7.3</version>
 			</dependency>
+			<dependency>
+				<groupId>org.rocksdb</groupId>
+				<artifactId>rocksdbjni</artifactId>
+				<version>5.13.2</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 

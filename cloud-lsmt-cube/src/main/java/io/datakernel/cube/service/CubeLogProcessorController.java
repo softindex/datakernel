@@ -23,7 +23,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncSuppliers.subscribe;
+import static io.datakernel.async.AsyncSuppliers.coalesce;
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -81,7 +81,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 		return this;
 	}
 
-	private final AsyncSupplier<Boolean> processLogs = subscribe(this::doProcessLogs);
+	private final AsyncSupplier<Boolean> processLogs = coalesce(this::doProcessLogs);
 
 	public Promise<Boolean> processLogs() {
 		return processLogs.get();

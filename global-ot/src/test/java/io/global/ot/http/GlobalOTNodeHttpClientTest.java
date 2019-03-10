@@ -27,7 +27,6 @@ import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
-import io.global.ot.api.GlobalOTNode.Heads;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.BeforeClass;
@@ -97,9 +96,7 @@ public class GlobalOTNodeHttpClientTest {
 	@Test
 	public void updateHeads() {
 		Set<SignedData<RawCommitHead>> newHeads = singleton(signedRawCommitHead);
-		Set<CommitId> excludedHeads = singleton(rootCommitId);
-		Heads heads = new Heads(newHeads, excludedHeads);
-		doTest(client.updateHeads(repository, heads), repository, heads);
+		doTest(client.saveHeads(repository, newHeads), repository, newHeads);
 	}
 
 	@Test
@@ -133,7 +130,7 @@ public class GlobalOTNodeHttpClientTest {
 	@Test
 	public void getHeads() {
 		Set<CommitId> commitSet = set(rootCommitId);
-		doTest(client.getHeads(repository, commitSet), repository, commitSet);
+		doTest(client.getHeads(repository), repository);
 	}
 
 	@Test
@@ -212,8 +209,8 @@ public class GlobalOTNodeHttpClientTest {
 			}
 
 			@Override
-			public Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
-				return resultOf(null, repositoryId, heads);
+			public Promise<Void> saveHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads) {
+				return resultOf(null, repositoryId, newHeads);
 			}
 
 			@Override
@@ -305,9 +302,8 @@ public class GlobalOTNodeHttpClientTest {
 			}
 
 			@Override
-			public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
-				return resultOf(new Heads(set(signedRawCommitHead), set(rootCommitId)),
-						repositoryId, remoteHeads);
+			public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
+				return resultOf(set(signedRawCommitHead), repositoryId);
 			}
 
 			@Override

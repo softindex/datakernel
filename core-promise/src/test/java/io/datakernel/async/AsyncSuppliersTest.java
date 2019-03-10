@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.AsyncSuppliers.subscribe;
+import static io.datakernel.async.AsyncSuppliers.coalesce;
 import static io.datakernel.async.TestUtils.await;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
@@ -28,7 +28,7 @@ public class AsyncSuppliersTest {
 
 	@Test
 	public void subscribeNormalUsage() {
-		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
 		Promise<Void> promise1 = subscribe.get();
 
@@ -45,7 +45,7 @@ public class AsyncSuppliersTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfGetAfterFirstPromise() {
-		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
 		Promise<Void>[] nextPromise = new Promise[1];
 		Promise<Void> promise1 = subscribe.get()
@@ -70,7 +70,7 @@ public class AsyncSuppliersTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfGetAfterFirstPromiseRecursive() {
-		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
 		Promise<Void>[] nextPromise = new Promise[3];
 		Promise<Void> promise1 = subscribe.get()
@@ -101,7 +101,7 @@ public class AsyncSuppliersTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfGetAfterLaterPromises() {
-		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
 		Promise<Void>[] nextPromise = new Promise[1];
 		Promise<Void> promise1 = subscribe.get();
@@ -126,7 +126,7 @@ public class AsyncSuppliersTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfGetAfterLaterPromisesRecursive() {
-		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
 		Promise<Void>[] nextPromise = new Promise[3];
 		Promise<Void> promise1 = subscribe.get();
@@ -157,7 +157,7 @@ public class AsyncSuppliersTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeMultipleRecursions() {
-		AsyncSupplier<Void> subscribe = subscribe(() -> Promise.complete().async());
+		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
 		Promise<Void>[] nextPromise1 = new Promise[3];
 		Promise<Void>[] nextPromise2 = new Promise[3];
@@ -202,7 +202,7 @@ public class AsyncSuppliersTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfNotAsync() {
-		AsyncSupplier<Void> subscribe = subscribe(Promise::complete);
+		AsyncSupplier<Void> subscribe = coalesce(Promise::complete);
 
 		Promise<Void>[] nextPromise = new Promise[1];
 		Promise<Void> promise1 = subscribe.get();

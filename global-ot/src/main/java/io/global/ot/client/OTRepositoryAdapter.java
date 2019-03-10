@@ -73,6 +73,12 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 		return driver.getHeads(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds));
 	}
 
+	@NotNull
+	@Override
+	public Promise<Set<CommitId>> pollHeads(Set<CommitId> heads) {
+		return driver.pollHeads(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds));
+	}
+
 	@Override
 	public Promise<OTCommit<CommitId, D>> loadCommit(CommitId revisionId) {
 		return driver.loadCommit(myRepositoryId, originRepositoryIds, revisionId);

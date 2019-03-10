@@ -88,10 +88,10 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
+	public Promise<Void> saveHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads) {
 		return httpClient.request(
 				request(POST, UPDATE_HEADS, apiQuery(repositoryId))
-						.initialize(withJson(HEADS_DELTA_JSON, heads)))
+						.initialize(withJson(ofSet(SIGNED_COMMIT_HEAD_JSON), newHeads)))
 				.thenCompose(GlobalOTNodeHttpClient::processResult);
 	}
 
@@ -193,18 +193,26 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
+	public Promise<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId, Set<CommitId> lastCommitIds) {
 		return httpClient.request(
 				request(GET, GET_HEADS,
 						apiQuery(repositoryId, map(
-								"heads", remoteHeads.stream()
+								"heads", lastCommitIds.stream()
 										.map(HttpDataFormats::urlEncodeCommitId)
 										.collect(joining(","))
 								)
 						)
 				))
 				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, HEADS_DELTA_JSON)));
+						.thenCompose(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
+	}
+
+	@Override
+	public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
+		return httpClient.request(
+				request(GET, GET_HEADS, apiQuery(repositoryId)))
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
 	}
 
 	@Override

@@ -77,12 +77,12 @@ public final class SignedData<T> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SignedData<?> that = (SignedData<?>) o;
-		return value.equals(that.value) && signature.equals(that.signature);
+		return value.equals(that.value);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * value.hashCode() + signature.hashCode();
+		return value.hashCode();
 	}
 
 	@Override

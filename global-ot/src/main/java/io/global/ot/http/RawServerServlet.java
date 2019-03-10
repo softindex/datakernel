@@ -31,7 +31,6 @@ import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.Heads;
 import io.global.ot.util.HttpDataFormats;
 
 import java.util.Arrays;
@@ -96,8 +95,8 @@ public final class RawServerServlet implements WithMiddleware {
 				}))
 				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
 					try {
-						Heads heads = fromJson(HEADS_DELTA_JSON, body.getString(UTF_8));
-						return node.updateHeads(urlDecodeRepositoryId(req), heads)
+						Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), body.getString(UTF_8));
+						return node.saveHeads(urlDecodeRepositoryId(req), heads)
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
@@ -163,11 +162,9 @@ public final class RawServerServlet implements WithMiddleware {
 				})
 				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
 					try {
-						return node.getHeads(
-								urlDecodeRepositoryId(req),
-								req.parseQueryParameter("heads", COMMIT_IDS_PARSER))
+						return node.getHeads(urlDecodeRepositoryId(req))
 								.thenApply(heads -> HttpResponse.ok200()
-										.withBody(toJson(HEADS_DELTA_JSON, heads).getBytes(UTF_8))
+										.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))
 								);
 					} catch (ParseException e) {
 						return Promise.ofException(e);

@@ -45,7 +45,7 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
+	public Promise<Void> saveHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads) {
 		return Promise.ofException(ERROR);
 	}
 
@@ -74,8 +74,14 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 		return Promise.ofException(ERROR);
 	}
 
+
 	@Override
-	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
+	public Promise<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
+		return Promise.ofException(ERROR);
+	}
+
+	@Override
+	public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return Promise.ofException(ERROR);
 	}
 

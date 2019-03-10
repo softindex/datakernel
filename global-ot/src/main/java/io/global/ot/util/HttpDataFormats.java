@@ -26,7 +26,6 @@ import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.Heads;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -66,10 +65,6 @@ public class HttpDataFormats {
 	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = object(HeadsInfo::new,
 			"existing", HeadsInfo::getExisting, ofSet(COMMIT_ID_JSON),
 			"required", HeadsInfo::getRequired, ofSet(COMMIT_ID_JSON));
-
-	public static final StructuredCodec<Heads> HEADS_DELTA_JSON = object(Heads::new,
-			"newHeads", Heads::getNewHeads, ofSet(SIGNED_COMMIT_HEAD_JSON),
-			"excludedHeads", Heads::getExcludedHeads, ofSet(COMMIT_ID_JSON));
 
 	public static String urlEncodeCommitId(CommitId commitId) {
 		return Base64.getUrlEncoder().encodeToString(commitId.toBytes());

@@ -29,21 +29,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static java.util.Collections.emptySet;
-
 public interface GlobalOTNode extends SharedKeyManager {
 	Promise<Set<String>> list(PubKey pubKey);
 
 	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits);
 
-	Promise<Void> updateHeads(RepoID repositoryId, Heads heads);
+	Promise<Void> saveHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads);
 
-	default Promise<Void> saveAndUpdateHeads(RepoID repositoryId, Map<CommitId, RawCommit> commits, Heads heads) {
+	default Promise<Void> saveAndUpdateHeads(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> newHeads) {
 		return save(repositoryId, commits)
-				.thenCompose($ -> updateHeads(repositoryId, heads));
+				.thenCompose($ -> saveHeads(repositoryId, newHeads));
 	}
-
-	;
 
 	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
 
@@ -91,46 +87,11 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 	Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots);
 
-	class Heads {
-		public final Set<SignedData<RawCommitHead>> newHeads;
-		public final Set<CommitId> excludedHeads;
-
-		public Heads(Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
-			this.newHeads = newHeads;
-			this.excludedHeads = excludedHeads;
-		}
-
-		public Set<SignedData<RawCommitHead>> getNewHeads() {
-			return newHeads;
-		}
-
-		public Set<CommitId> getExcludedHeads() {
-			return excludedHeads;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			Heads that = (Heads) o;
-			if (!newHeads.equals(that.newHeads)) return false;
-			return excludedHeads.equals(that.excludedHeads);
-		}
-
-		@Override
-		public int hashCode() {
-			int result = newHeads.hashCode();
-			result = 31 * result + excludedHeads.hashCode();
-			return result;
-		}
+	default Promise<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId, Set<CommitId> lastCommitIds) {
+		return getHeads(repositoryId);
 	}
 
-	Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads);
-
-	default Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
-		return getHeads(repositoryId, emptySet())
-				.thenApply(headsDelta -> headsDelta.newHeads);
-	}
+	Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId);
 
 	Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest);
 

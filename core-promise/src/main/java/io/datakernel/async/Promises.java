@@ -1334,4 +1334,97 @@ public final class Promises {
 		}
 	}
 	// endregion
+
+	private static final class AccumulatorRef<T> {
+		private static final Object EMPTY = new Object();
+		@SuppressWarnings("unchecked")
+		T accumulatedParameters = (T) EMPTY;
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, R> Function<T, Promise<R>> coalesce(@NotNull Function<T, Promise<R>> callFn,
+			@NotNull BinaryOperator<T> accumulator) {
+		return coalesce(
+				callFn,
+				(AccumulatorRef<T> accumulatorRef) -> callFn.apply(accumulatorRef.accumulatedParameters),
+				AccumulatorRef::new,
+				(accumulatorRef, value) -> accumulatorRef.accumulatedParameters =
+						accumulatorRef.accumulatedParameters == AccumulatorRef.EMPTY ?
+								value :
+								accumulator.apply(accumulatorRef.accumulatedParameters, value));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, A, R> Function<T, Promise<R>> coalesce(@NotNull Function<A, Promise<R>> callFn,
+			@NotNull Supplier<A> supplier, @NotNull BiConsumer<A, T> accumulator) {
+		return coalesce(
+				parameter -> {
+					A accumulatedParameter = supplier.get();
+					accumulator.accept(accumulatedParameter, parameter);
+					return callFn.apply(accumulatedParameter);
+				},
+				callFn,
+				supplier, accumulator);
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, A, R> Function<T, Promise<R>> coalesce(
+			@NotNull Function<T, Promise<R>> directCallFn, @NotNull Function<A, Promise<R>> accumulatedCallFn,
+			@NotNull Supplier<A> supplier, @NotNull BiConsumer<A, T> accumulator) {
+		return new Function<T, Promise<R>>() {
+			boolean isRunning;
+			@Nullable
+			SettablePromise<R> promise;
+			@Nullable
+			A parameters;
+
+			@Override
+			public Promise<R> apply(T parameters) {
+				if (!isRunning) {
+					assert promise == null && this.parameters == null;
+					SettablePromise<R> result = new SettablePromise<>();
+					isRunning = true;
+					Promise<? extends R> promise = directCallFn.apply(parameters);
+					promise.whenComplete((v, e) -> {
+						result.set(v, e);
+						isRunning = false;
+						processNext();
+					});
+					return result;
+				}
+				if (promise == null) {
+					promise = new SettablePromise<>();
+					this.parameters = supplier.get();
+				}
+				accumulator.accept(this.parameters, parameters);
+				return promise;
+			}
+
+			void processNext() {
+				while (this.promise != null) {
+					SettableCallback<R> subscribedPromise = this.promise;
+					A accumulatedParameters = this.parameters;
+					this.promise = null;
+					this.parameters = null;
+					isRunning = true;
+					Promise<? extends R> promise = accumulatedCallFn.apply(accumulatedParameters);
+					if (promise.isComplete()) {
+						promise.whenComplete(subscribedPromise::set);
+						isRunning = false;
+						continue;
+					}
+					promise.whenComplete((result, e) -> {
+						subscribedPromise.set(result, e);
+						isRunning = false;
+						processNext();
+					});
+					break;
+				}
+			}
+		};
+	}
+
 }

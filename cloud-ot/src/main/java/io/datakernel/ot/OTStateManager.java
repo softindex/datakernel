@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.subscribe;
+import static io.datakernel.async.AsyncSuppliers.coalesce;
 import static io.datakernel.async.Promises.sequence;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.LogUtils.thisMethod;
@@ -61,7 +61,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Object pendingCommit;
 	private List<D> pendingCommitDiffs;
 
-	private final AsyncSupplierWithStatus<Void> sync = new AsyncSupplierWithStatus<>(subscribe(this::doSync));
+	private final AsyncSupplierWithStatus<Void> sync = new AsyncSupplierWithStatus<>(coalesce(this::doSync));
 
 	@Nullable
 	private AsyncSupplierWithStatus<Void> poll;
