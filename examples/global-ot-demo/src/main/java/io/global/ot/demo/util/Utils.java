@@ -27,7 +27,6 @@ import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
-import io.global.ot.common.ManagerProvider;
 import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
 

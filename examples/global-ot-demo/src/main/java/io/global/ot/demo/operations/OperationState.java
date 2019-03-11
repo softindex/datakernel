@@ -24,10 +24,6 @@ public class OperationState implements OTState<Operation> {
 	public OperationState() {
 	}
 
-	public OperationState(int counter) {
-		this.counter = counter;
-	}
-
 	@Override
 	public void init() {
 		counter = 0;
@@ -36,10 +32,6 @@ public class OperationState implements OTState<Operation> {
 	@Override
 	public void apply(Operation op) {
 		counter = op.apply(counter);
-	}
-
-	public void setCounter(int counter) {
-		this.counter = counter;
 	}
 
 	public int getCounter() {

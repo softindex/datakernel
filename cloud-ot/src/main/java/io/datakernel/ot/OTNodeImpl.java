@@ -100,7 +100,8 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
 		return repository.getHeads()
-				.thenCompose(heads -> doFetch(heads, currentCommitId));
+				.thenCompose(heads -> doFetch(heads, currentCommitId))
+				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}
 
 	@Override
@@ -117,10 +118,11 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 								heads -> heads.contains(currentCommitId) ?
 										Promises.delay(Promise.of(false), pollIntervalRef[0]) :
 										Promise.of(true)))
-				.thenCompose(heads -> doFetch(heads, currentCommitId));
+				.thenCompose(heads -> doFetch(heads, currentCommitId))
+				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}
 
-	public Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
+	private Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
 		return algorithms.findParent(
 				heads,
 				DiffsReducer.toList(),

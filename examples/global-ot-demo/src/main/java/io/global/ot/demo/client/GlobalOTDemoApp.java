@@ -46,9 +46,7 @@ public final class GlobalOTDemoApp extends Launcher {
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new OTClientModule(),
-				new HttpModule(),
-				new OTStateModule()
+				new GlobalOTDemoModule()
 		);
 	}
 

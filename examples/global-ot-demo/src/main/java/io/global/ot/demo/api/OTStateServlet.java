@@ -24,14 +24,11 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
 import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTStateManager;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
-import io.global.ot.common.ManagerProvider;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
-
-import java.time.Duration;
+import io.global.ot.demo.util.ManagerProvider;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -46,30 +43,23 @@ public final class OTStateServlet implements WithMiddleware {
 	private final OTAlgorithms<CommitId, Operation> algorithms;
 	private final MiddlewareServlet servlet;
 
-	private OTStateServlet(ManagerProvider<Operation> provider, OTAlgorithms<CommitId, Operation> algorithms) {
+	private OTStateServlet(ManagerProvider<Operation> provider) {
 		this.provider = provider;
-		this.algorithms = algorithms;
+		this.algorithms = provider.getAlgorithms();
 		this.servlet = getServlet();
 	}
 
-	public static OTStateServlet create(OTAlgorithms<CommitId, Operation> algorithms, Duration syncInterval) {
-		return new OTStateServlet(new ManagerProvider<>(algorithms, OperationState::new, syncInterval), algorithms);
+	public static OTStateServlet create(ManagerProvider<Operation> provider) {
+		return new OTStateServlet(provider);
 	}
 
 	private MiddlewareServlet getServlet() {
 		return MiddlewareServlet.create()
 				.with(GET, "/info", info())
-				.with(POST, "/add", add())
-				.with(GET, "/sync", sync());
+				.with(POST, "/add", add());
 	}
 
 	// region servlets
-	private AsyncServlet sync() {
-		return request -> getManager(provider, request)
-				.thenCompose(OTStateManager::sync)
-				.thenApply($ -> okText());
-	}
-
 	private AsyncServlet add() {
 		return request -> request.getBody()
 				.thenCompose(body -> getManager(provider, request)
@@ -78,7 +68,8 @@ public final class OTStateServlet implements WithMiddleware {
 								try {
 									Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
 									manager.add(operation);
-									return Promise.of(okText());
+									return manager.sync()
+											.thenApply($ -> okText());
 								} catch (ParseException e) {
 									return Promise.<HttpResponse>ofException(e);
 								} finally {

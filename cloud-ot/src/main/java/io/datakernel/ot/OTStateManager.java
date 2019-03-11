@@ -157,7 +157,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 				poll == null ? this::fetch : Promise::complete,
 				this::commit,
 				this::push)
-				.whenResult($ -> poll())
+				.whenComplete(($, e) -> poll())
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
@@ -196,6 +196,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	private void rebase(K originalCommitId, FetchData<K, D> fetchData) {
+		logger.info("Rebasing - {} {}", originalCommitId, fetchData);
 		if (commitId != originalCommitId) return;
 		if (pendingCommit != null) return;
 

@@ -311,6 +311,11 @@ public class OTStateManagerTest {
 		public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
 			return node.fetch(currentCommitId);
 		}
+
+		@Override
+		public Promise<FetchData<Integer, TestOp>> poll(Integer currentCommitId) {
+			return node.poll(currentCommitId);
+		}
 	}
 
 	private <T> Promise<T> failOnce(AsyncSupplier<T> supplier) {

@@ -17,7 +17,8 @@
 package io.global.ot.common;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.global.ot.api.CommitId;
@@ -49,7 +50,9 @@ public final class DelayedPushNode<D> implements OTNode<CommitId, D, OTCommit<Co
 	@Override
 	public Promise<FetchData<CommitId, D>> push(OTCommit<CommitId, D> commit) {
 		if (delay != 0) {
-			return Promises.delay(node.push(commit), delay);
+			SettablePromise<FetchData<CommitId, D>> promise = new SettablePromise<>();
+			Eventloop.getCurrentEventloop().delay(delay, () -> node.push(commit).whenComplete(promise::set));
+			return promise;
 		} else {
 			return node.push(commit);
 		}
@@ -65,4 +68,8 @@ public final class DelayedPushNode<D> implements OTNode<CommitId, D, OTCommit<Co
 		return node.fetch(currentCommitId);
 	}
 
+	@Override
+	public Promise<FetchData<CommitId, D>> poll(CommitId currentCommitId) {
+		return node.poll(currentCommitId);
+	}
 }

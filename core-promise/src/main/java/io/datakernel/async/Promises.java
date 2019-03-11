@@ -985,7 +985,7 @@ public final class Promises {
 			if (promise.isResult()) {
 				value = promise.materialize().getResult();
 				Promise<Boolean> breakPromise = breakCondition.test(value);
-				if (promise.isResult()) {
+				if (breakPromise.isResult()) {
 					if (breakPromise.materialize().getResult()) {
 						cb.set(value);
 						break;
