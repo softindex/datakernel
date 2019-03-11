@@ -46,7 +46,7 @@ public class SharedKeyStorageTest {
 	@Parameter()
 	public Function<Path, SharedKeyStorage> storageFn;
 
-	private MySqlSharedKeyStorage storage;
+	private SharedKeyStorage storage;
 
 	@Parameters(name = "{0}")
 	public static Collection<Object[]> getParameters() {
@@ -75,9 +75,11 @@ public class SharedKeyStorageTest {
 
 	@Before
 	public void before() throws IOException, SQLException {
-		storage = MySqlSharedKeyStorage.create(dataSource("test_sharedKeys.properties"));
-		storage.initialize();
-		storage.truncateTables();
+		storage = storageFn.apply(temporaryFolder.newFolder().toPath());
+		if (storage instanceof MySqlSharedKeyStorage) {
+			((MySqlSharedKeyStorage) storage).initialize();
+			((MySqlSharedKeyStorage) storage).truncateTables();
+		}
 	}
 
 	@Test
