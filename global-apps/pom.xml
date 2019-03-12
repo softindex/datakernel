@@ -16,6 +16,7 @@
 	<name>Global Apps</name>
 
 	<modules>
+		<module>global-fs-app</module>
 		<module>global-fs-cli</module>
 	</modules>
 
