@@ -203,7 +203,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		String tempBackupDir = backupDir + File.separator + backupId + "_tmp";
 
 		return Promises.all(chunkIds.stream().map(chunkId -> client.copy(chunkId + LOG, tempBackupDir + File.separator + chunkId + LOG)))
-				.thenCompose($ -> client.move(tempBackupDir, backupDir + File.separator + backupId))
+				.thenCompose($ -> client.moveDir(tempBackupDir, backupDir + File.separator + backupId))
 				.whenComplete(promiseBackup.recordStats());
 	}
 

@@ -176,15 +176,16 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		partitionIds.add(localPartitionId); // ensure local partition could also be selected
 		List<Object> selected = serverSelector.selectFrom(meta.getName(), partitionIds, replicationCount);
 
-		return getPartitionsWithoutFile(meta, selected)
+		return getPartitionsThatNeedOurFile(meta, selected)
 				.thenCompose(uploadTargets -> {
 					if (uploadTargets == null) { // null return means failure
 						return Promise.of(false);
 					}
 					String name = meta.getName();
+					long revision = meta.getRevision();
 					if (uploadTargets.isEmpty()) { // everybody had the file
 						logger.trace("deleting file {} locally", meta);
-						return localStorage.delete(name) // so we delete the copy which does not belong to local partition
+						return localStorage.delete(name, revision) // so we delete the copy which does not belong to local partition
 								.thenApply($ -> {
 									logger.info("handled file {} (ensured on {})", meta, selected);
 									return true;
@@ -211,7 +212,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								// upload file to this partition
 								return getAcknowledgement(fn ->
 										splitter.addOutput()
-												.set(ChannelConsumer.ofPromise(clients.get(partitionId).upload(name))
+												.set(ChannelConsumer.ofPromise(clients.get(partitionId).upload(name, 0, revision))
 														.withAcknowledgement(fn)))
 										.whenException(e -> {
 											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');
@@ -232,7 +233,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								}
 
 								logger.trace("deleting file {} on {}", meta, localPartitionId);
-								return localStorage.delete(name)
+								return localStorage.delete(name, revision)
 										.thenApply($ -> {
 											logger.info("handled file {} (ensured on {}, uploaded to {})", meta, selected, uploadTargets);
 											return true;
@@ -242,7 +243,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				.whenComplete(toLogger(logger, TRACE, "repartitionFile", meta));
 	}
 
-	private Promise<List<Object>> getPartitionsWithoutFile(FileMetadata fileToUpload, List<Object> selected) {
+	private Promise<List<Object>> getPartitionsThatNeedOurFile(FileMetadata fileToUpload, List<Object> selected) {
 		List<Object> uploadTargets = new ArrayList<>();
 		return Promises.toList(selected.stream()
 				.map(partitionId -> {

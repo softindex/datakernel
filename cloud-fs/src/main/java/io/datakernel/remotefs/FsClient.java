@@ -17,6 +17,7 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -182,6 +183,21 @@ public interface FsClient {
 
 	default Promise<Void> move(String name, String target) {
 		return move(name, target, DEFAULT_REVISION, DEFAULT_REVISION);
+	}
+
+	default Promise<Void> moveDir(String name, String target, long targetRevision, long removeRevision) {
+		String finalName = name.endsWith("/") ? name : name + '/';
+		String finalTarget = target.endsWith("/") ? target : target + '/';
+		return list(finalName + "**")
+				.thenCompose(list -> Promises.all(list.stream()
+						.map(meta -> {
+							String filename = meta.getName();
+							return move(filename, finalTarget + filename.substring(finalName.length()), targetRevision, removeRevision);
+						})));
+	}
+
+	default Promise<Void> moveDir(String name, String target) {
+		return moveDir(name, target, DEFAULT_REVISION, DEFAULT_REVISION);
 	}
 
 	/**

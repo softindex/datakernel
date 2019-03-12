@@ -39,6 +39,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
@@ -58,6 +59,8 @@ public final class TestRepartitionController {
 	private RemoteFsClusterClient cluster;
 	private RemoteFsRepartitionController controller;
 	private EventloopTaskScheduler scheduler;
+
+	private boolean finished = false;
 
 	@Before
 	public void setup() throws IOException {
@@ -114,6 +117,9 @@ public final class TestRepartitionController {
 			servers.get(9).close().whenResult($ -> System.out.println("server_9 closed indeed"));
 			eventloop.delay(200, () -> {
 				try {
+					if (finished) {
+						return;
+					}
 					System.out.println("Starting server_7 again");
 					servers.get(7).listen();
 					System.out.println("Starting server_2 again");
@@ -144,7 +150,7 @@ public final class TestRepartitionController {
 
 		long start2 = System.nanoTime();
 
-		controller.repartition()
+		await(controller.repartition()
 				.whenComplete(assertComplete($ -> {
 					scheduler.stop();
 					double ms = (System.nanoTime() - start2) / 1e6;
@@ -157,9 +163,10 @@ public final class TestRepartitionController {
 							.whenComplete(assertComplete(bytes -> {
 								System.out.println(String.format("%d overall bytes", bytes));
 								System.out.println(String.format("Average speed was %.2f mbit/second", bytes / (1 << 17) * (1000 / ms)));
+								finished = true;
 								servers.forEach(AbstractServer::close);
 							}));
-				}));
+				})));
 	}
 
 	@Test

@@ -46,10 +46,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static io.datakernel.async.Promise.ofBlockingCallable;
 import static io.datakernel.remotefs.RemoteFsUtils.*;
@@ -287,6 +285,33 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				() -> {
 					synchronized (lock) {
 						doMove(resolve(name), resolve(target), targetRevision, removeRevision);
+					}
+					return (Void) null;
+				})
+				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
+				.whenComplete(singleMovePromise.recordStats());
+	}
+
+	@Override
+	public Promise<Void> moveDir(String name, String target, long targetRevision, long removeRevision) {
+		if (defaultRevision == null) {
+			return FsClient.super.moveDir(name, target, targetRevision, removeRevision);
+		} else if (targetRevision != defaultRevision || removeRevision != defaultRevision) {
+			return Promise.ofException(UNSUPPORTED_REVISION);
+		}
+		return ofBlockingCallable(executor,
+				() -> {
+					synchronized (lock) {
+						Path path = resolve(name);
+						Path targetPath = resolve(target);
+						// cannot move directory into existing file or directory
+						if (Files.exists(targetPath)) {
+							throw FILE_EXISTS;
+						}
+						// do nothing if it is not a directory, "it did not match"
+						if (Files.isDirectory(path)) {
+							Files.move(path, targetPath, ATOMIC_MOVE);
+						}
 					}
 					return (Void) null;
 				})
