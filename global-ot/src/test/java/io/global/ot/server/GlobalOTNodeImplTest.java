@@ -17,6 +17,7 @@
 package io.global.ot.server;
 
 import ch.qos.logback.classic.Level;
+import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -38,6 +39,7 @@ import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.stub.CommitStorageStub;
+import io.global.ot.util.FailingDiscoveryService;
 import io.global.ot.util.FailingGlobalOTNode;
 import org.jetbrains.annotations.Nullable;
 import org.junit.*;
@@ -693,6 +695,20 @@ public class GlobalOTNodeImplTest {
 		Set<SignedData<RawPullRequest>> newSnapshotIds = await(masterStorage.getPullRequests(REPO_ID));
 		assertEquals(1, newSnapshotIds.size());
 		assertEquals(signedPullRequest, first(newSnapshotIds));
+	}
+
+	@Test
+	public void testDiscoveryServiceNoAnnounce() throws IOException {
+		FailingDiscoveryService discoveryService = new FailingDiscoveryService() {
+			@Override
+			public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
+				return Promise.of(null);
+			}
+		};
+		GlobalOTNodeImpl node = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(), new RawServerId("test"),
+				discoveryService, storageFn.apply(temporaryFolder.newFolder().toPath()), id -> null);
+
+		await(node.list(PUB_KEY));
 	}
 
 	// region helpers

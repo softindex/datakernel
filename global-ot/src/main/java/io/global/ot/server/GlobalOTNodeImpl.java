@@ -214,14 +214,14 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				.whenComplete(toLogger(logger, TRACE, "download", repositoryId, required, existing, this));
 	}
 
-	private Promise<RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
+	private Promise<@Nullable RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> required, Set<CommitId> existing) {
 		return Promise.ofCallback(cb -> getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb));
 	}
 
 	private void getNextStreamEntryImpl(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> required, Set<CommitId> existing,
-			SettableCallback<RawCommitEntry> cb) {
+			SettableCallback<@Nullable RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;
@@ -493,7 +493,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
-	private void catchUpImpl(SettableCallback<Void> cb) {
+	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
 		long timestampBegin = now.currentTimeMillis();
 		Promise<Void> fetchPromise = fetch();
 		if (fetchPromise.isResult()) {
@@ -614,7 +614,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			}
 			return discoveryService.find(pubKey)
 					.thenApplyEx((announceData, e) -> {
-						if (e == null) {
+						if (e == null && announceData != null) {
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());

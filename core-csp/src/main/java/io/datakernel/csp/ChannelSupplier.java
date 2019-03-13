@@ -296,7 +296,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * based on current ChannelSupplier and when its Promise completes,
 	 * applies provided {@code fn} to the result.
 	 */
-	default <V> ChannelSupplier<V> map(Function<? super T, ? extends V> fn) {
+	default <V> ChannelSupplier<V> map(Function<? super @NotNull T, ? extends V> fn) {
 		return new AbstractChannelSupplier<V>(this) {
 			@Override
 			protected Promise<V> doGet() {
@@ -322,7 +322,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * based on current ChannelSupplier and applies provided {@code fn}
 	 * to its Promise asynchronously.
 	 */
-	default <V> ChannelSupplier<V> mapAsync(Function<? super T, ? extends Promise<V>> fn) {
+	default <V> ChannelSupplier<V> mapAsync(Function<? super @NotNull T, ? extends Promise<V>> fn) {
 		return new AbstractChannelSupplier<V>(this) {
 			@Override
 			protected Promise<V> doGet() {

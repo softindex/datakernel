@@ -27,6 +27,7 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -40,7 +41,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 
 	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
-	static final StructuredCodec<SignedData<SharedSimKey>> NULLABLE_SIGNED_SHARED_SIM_KEY = SIGNED_SHARED_SIM_KEY.nullable();
+	static final StructuredCodec<@Nullable SignedData<SharedSimKey>> NULLABLE_SIGNED_SHARED_SIM_KEY = SIGNED_SHARED_SIM_KEY.nullable();
 	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
 
 	private DiscoveryServlet(DiscoveryService discoveryService) {
