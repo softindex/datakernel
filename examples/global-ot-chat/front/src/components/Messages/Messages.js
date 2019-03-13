@@ -88,11 +88,11 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
           {time}
         </Typography>
       </Paper>
-      {drawSide === 'left' && (
+      {/*drawSide === 'left' && (
         <div className={classes.statusWrapper}>
           {loaded ? <DoneAllIcon/> : <DoneIcon/>}
         </div>
-      )}
+      )*/}
     </div>
   );
 }

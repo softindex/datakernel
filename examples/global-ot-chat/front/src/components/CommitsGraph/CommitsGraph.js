@@ -26,9 +26,8 @@ class CommitsGraph extends React.Component {
         this.graph.current.innerHTML = '';
         this.graph.current.appendChild(element);
       })
-      .catch(error => {
+      .catch(() => {
         viz = new Viz();
-        console.error(error);
       });
   }
 

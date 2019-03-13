@@ -3,7 +3,6 @@ import DeleteOperation from './ot/operations/DeleteOperation';
 import InsertOperation from './ot/operations/InsertOperation';
 
 const RETRY_CHECKOUT_TIMEOUT = 1000;
-const SYNC_INTERVAL = 500;
 
 class EditorService extends Service {
   constructor(editorOTStateManager, graphModel) {
@@ -14,7 +13,6 @@ class EditorService extends Service {
 
     this._editorOTStateManager = editorOTStateManager;
     this._reconnectTimeout = null;
-    this._syncInterval = null;
     this._graphModel = graphModel;
   }
 
@@ -34,38 +32,12 @@ class EditorService extends Service {
       ready: true
     });
 
-    // Synchronization
-    let syncing = false;
-    this._syncInterval = setInterval(async () => {
-      if (syncing) {
-        return;
-      }
-
-      syncing = true;
-
-      try {
-        await this._editorOTStateManager.sync();
-      } finally {
-        syncing = false;
-      }
-
-      this.setState({
-        content: this._editorOTStateManager.getState()
-      });
-
-      const revision = this._editorOTStateManager.getRevision();
-      const commitsGraph = await this._graphModel.getGraph(revision);
-      if (revision === this._editorOTStateManager.getRevision()) {
-        this.setState({
-          commitsGraph
-        });
-      }
-    }, SYNC_INTERVAL);
+    this._editorOTStateManager.addChangeListener(this._onStateChange);
   }
 
   stop() {
     clearTimeout(this._reconnectTimeout);
-    clearInterval(this._syncInterval);
+    this._editorOTStateManager.removeChangeListener(this._onStateChange);
   }
 
   insert(position, content) {
@@ -87,17 +59,38 @@ class EditorService extends Service {
     ]);
   }
 
-  async _applyOperations(operations) {
-    this._editorOTStateManager.add(operations);
+  _onStateChange = async (nextState) => {
     this.setState({
-      content: this._editorOTStateManager.getState()
+      content: nextState
     });
+
+    const revision = this._editorOTStateManager.getRevision();
+    const commitsGraph = await this._graphModel.getGraph(revision);
+    if (revision === this._editorOTStateManager.getRevision()) {
+      this.setState({
+        commitsGraph
+      });
+    }
+  };
+
+  _applyOperations(operations) {
+    this._editorOTStateManager.add(operations);
+    this._sync();
   }
 
   _reconnectDelay() {
     return new Promise(resolve => {
       this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
     });
+  }
+
+  async _sync() {
+    try {
+      await this._editorOTStateManager.sync();
+    } catch (err) {
+      console.error(err);
+      await this._sync();
+    }
   }
 }
 

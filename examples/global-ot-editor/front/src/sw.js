@@ -28,14 +28,6 @@ workbox.routing.registerRoute(
 );
 
 // Cache OTNode API
-workbox.routing.registerRoute(/\/node\/.*$/, workbox.strategies.networkFirst({
-  cacheName: 'api',
-  plugins: [
-    new workbox.expiration.Plugin({
-      maxAgeSeconds: 24 * 60 * 60, // 1 Day
-    }),
-  ],
-}));
 workbox.routing.registerRoute(/\/graph.*$/, workbox.strategies.networkFirst({
   cacheName: 'api',
   plugins: [
