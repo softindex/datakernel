@@ -22,7 +22,8 @@ public enum OTNodeCommand implements HttpPathPart {
 	CHECKOUT("checkout"),
 	CREATE_COMMIT("createCommit"),
 	PUSH("push"),
-	FETCH("fetch");
+	FETCH("fetch"),
+	POLL("poll");
 
 	private final String pathPart;
 

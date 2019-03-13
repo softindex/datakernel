@@ -60,8 +60,17 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 						.thenApply(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
 				.with(GET, "/" + FETCH, request -> {
 					try {
-						K revision = fromJson(revisionCodec, request.getQueryParameter("id"));
-						return node.fetch(revision)
+						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
+						return node.fetch(currentCommitId)
+								.thenApply(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/" + POLL, request -> {
+					try {
+						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
+						return node.poll(currentCommitId)
 								.thenApply(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
