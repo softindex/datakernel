@@ -26,10 +26,7 @@ class ChatService extends Service {
       return;
     }
 
-    this.setState({
-      messages: this._getMessagesFromStateManager(),
-      ready: true
-    });
+    this._onStateChange();
 
     this._chatOTStateManager.addChangeListener(this._onStateChange);
   }
@@ -47,18 +44,20 @@ class ChatService extends Service {
     await this._sync();
   }
 
-  _onStateChange = async () => {
+  _onStateChange = () => {
     this.setState({
-      messages: this._getMessagesFromStateManager()
+      messages: this._getMessagesFromStateManager(),
+      ready: true
     });
 
     const revision = this._chatOTStateManager.getRevision();
-    const commitsGraph = await this._graphModel.getGraph(revision);
-    if (revision === this._chatOTStateManager.getRevision()) {
-      this.setState({
-        commitsGraph
-      });
-    }
+    this._graphModel.getGraph(revision).then(commitsGraph => {
+      if (revision === this._chatOTStateManager.getRevision()) {
+        this.setState({
+          commitsGraph
+        });
+      }
+    });
   };
 
   _getMessagesFromStateManager() {

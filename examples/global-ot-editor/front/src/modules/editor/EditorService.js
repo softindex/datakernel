@@ -27,10 +27,7 @@ class EditorService extends Service {
       return;
     }
 
-    this.setState({
-      content: this._editorOTStateManager.getState(),
-      ready: true
-    });
+    this._onStateChange();
 
     this._editorOTStateManager.addChangeListener(this._onStateChange);
   }
@@ -59,18 +56,20 @@ class EditorService extends Service {
     ]);
   }
 
-  _onStateChange = async (nextState) => {
+  _onStateChange = () => {
     this.setState({
-      content: nextState
+      content: this._editorOTStateManager.getState(),
+      ready: true
     });
 
     const revision = this._editorOTStateManager.getRevision();
-    const commitsGraph = await this._graphModel.getGraph(revision);
-    if (revision === this._editorOTStateManager.getRevision()) {
-      this.setState({
-        commitsGraph
-      });
-    }
+    this._graphModel.getGraph(revision).then(commitsGraph => {
+      if (revision === this._editorOTStateManager.getRevision()) {
+        this.setState({
+          commitsGraph
+        });
+      }
+    });
   };
 
   _applyOperations(operations) {
