@@ -1,12 +1,12 @@
 ## CSP
 
-CSP (stands for Communicating Sequential Process) provides I/O communication between channels and was inspired by Golang 
-approach. 
+CSP (stands for Communicating Sequential Process) 
+provides I/O communication between channels and was inspired by Go language approach. 
 
 CSP features:
 * High performance and throughput speed
-* Optimized for working with medium-sized objects (like ByteBufs) 
-* CSP has a reach DSL, which provides a simple programming model
+* Optimized for working with medium-sized objects (like [ByteBufs](https://github.com/softindex/datakernel/tree/master/core-bytebuf)) 
+* CSP has reach DSL, which provides a simple programming model
 * Has an async back pressure management
 
 CSP communication is conducted with `ChannelSupplier` and `ChannelConsumer`, which provide and accept some data 
@@ -31,6 +31,7 @@ For example, a communication pipe might look as follows:
 ```
 ChannelSupplier<T> -> ChannelConsumer<T> -> [Queue] -> ChannelSupplier<T> -> ChannelConsumer <R>
 ```
+You can see an example of communication process [here](https://github.com/softindex/datakernel/tree/master/examples/csp#4-communicating-process-example)
 
 *`ChannelConsumer` and `ChannelSupplier` have `ChannelFileReader` and `ChannelFileWriter` wrappers optimized to 
 asynchronously read/write binary data from/to files*
@@ -49,6 +50,9 @@ To provide maximum efficiency, our framework widely utilizes combinations of CSP
 `ChannelSupplier`, `ChannelConsumer`, `StreamSupplier` and `StreamConsumer` have `transformWith()` methods and special 
 Transformer interfaces. Using them, you can seamlessly transform channels into other channels or datastreams and vice 
 versa, creating chains of such transformations.
+
+See an example of CSP and Datastreams compatibility 
+[here](https://github.com/softindex/datakernel/tree/master/examples/datastreams#5-datasteams-and-csp-compatibility-example).
 
 
 ### You can explore CSP examples [here](https://github.com/softindex/datakernel/tree/master/examples/csp).

@@ -1,8 +1,8 @@
 ## Global-OT
 
 Global-OT is a technology for developing eventually consistent distributed data storages on the scale of the Internet 
-with transactional semantics and automatic conflict resolution, using OT (operational transformation) algorithms. 
-Global-OT provides developers full application stack, with set of specifications and implementations to build 
+with transactional semantics and automatic conflict resolution, using [OT (operational transformation)](https://en.wikipedia.org/wiki/Operational_transformation) 
+algorithms. Global-OT provides developers full application stack, with set of specifications and implementations to build 
 applications using principles which conceptually resemble Git, but in a more advanced and multi-purpose way. 
 
 ### The main features of Global-OT are:
@@ -23,12 +23,12 @@ applications using principles which conceptually resemble Git, but in a more adv
     * Global-OT framework automatically merges commit graphs of any complexity, using a special algorithm of recursive 
     merging. It splits complex commit graph to atomic OT operations.
     
-### Global-FS network design:
+### Global-OT network design:
 Global-OT has a fully decentralized multi-tier network design:
-1. Client applications layer - all Global-FS applications, such as mobile and desktop applications or even a server.
-2. P2P Global-FS servers layer which can be split in two logical layers:
-    * Master FS-Servers (store original file systems)
-    * Caching FS-Servers (store cache of file systems)
+1. Client applications layer - all Global-OT applications, such as mobile and desktop applications or even a server.
+2. P2P Global-OT servers layer which can be split in two logical layers:
+    * Master OT-Servers (store original file systems)
+    * Caching OT-Servers (store cache of file systems)
 3. P2P Discovery Service layer - has a DNS-like role, stores information about IPs and public keys of the uploaded 
 file systems.
 

@@ -14,9 +14,7 @@ $ cd global-apps/global-fs-cli
 $ mvn package
 ```
 After that, file `target/global-fs-cli-VERSION-jar-with-dependencies.jar` is
-the desired runnable. You can turn it into a command similarly to how it's done
-below:
-
+the desired runnable. You can turn it into a command in the following way:
 ```
 $ cp target/global-fs-cli-*-jar-with-dependencies.jar ~/.local/globalfs.jar
 $ alias globalfs=`java -jar ~/.local/globalfs.jar'
@@ -24,5 +22,5 @@ $ alias globalfs=`java -jar ~/.local/globalfs.jar'
 $ globalfs
 ```
 
-Now you can use Global-FS CLI, all of the commands are explained by the help
+Now you can use Global-FS CLI, all of the commands are explained by the *help*
 interface.

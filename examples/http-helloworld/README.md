@@ -1,5 +1,5 @@
 ## Purpose
-In this guide we will create simple but scalable "Hello World" HTTP server.
+In this guide we will create a simple yet scalable "Hello World" HTTP server.
 
 ## Introduction
 DataKernel uses event-driven programming model. The key component of DataKernel framework is Eventloop which polls 
@@ -236,7 +236,7 @@ public class HttpHelloWorldModule extends AbstractModule {
 }
 ```
 
-Now add configs to configs.properties:
+Now add configs to **configs.properties** file:
 ```properties
 port=5577
 workers=4
@@ -247,15 +247,15 @@ The last but not least part of Boot Module is **Launcher**.
 
 Launcher integrates all components together and manages application lifecycle, which consist of the following phases:
 
-* wire (injecting dependencies, mostly done by Google Guice)
-* start (starting services, mostly done by Service Graph)
-* run
-* stop (stopping services, mostly done by Service Graph)
+* *wire* (injecting dependencies, mostly done by Google Guice)
+* *start* (starting services, mostly done by Service Graph)
+* *run*
+* *stop* (stopping services, mostly done by Service Graph)
 
 We should extend Launcher and override several method:
-* getModules() - supplies all the needed modules for our application, including our HttpHelloWorldModule
-* onStart() - this method is executed when application starts running and loads port configs
-* run() - prints some introductory messages, then awaitShutdown() method is called to enable application stop properly 
+* *getModules()* - supplies all the needed modules for our application, including our HttpHelloWorldModule
+* *onStart()* - this method is executed when application starts running and loads port configs
+* *run()* - prints some introductory messages, then awaitShutdown() method is called to enable application stop properly 
 after interruption is made (for example, Ctrl+C in unix-like systems).
 
 ```java
@@ -297,7 +297,7 @@ Congratulations! You've just created a simple HTTP-server. Enter the command bel
 ```
 $ mvn clean compile exec:java@HttpHelloWorldLauncher
 ```
-Or if you use an IDE, simply run `HttpHelloWorldLauncher.main()`.
+Or if you use an IDE, simply run *HttpHelloWorldLauncher.main()*.
 
 You will see the following output:
 ```
@@ -308,8 +308,7 @@ You will see the following output:
 
 ## Testing 
 
-Launch your favourite browser and go to ["localhost:5577"](localhost:5577) or just enter the following command to the 
-terminal:
+Launch your favourite browser and go to ["localhost:5577"](http://localhost:5577), or just enter the following command in your console:
 ```
 curl localhost:5577
 ```

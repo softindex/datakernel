@@ -3,6 +3,7 @@ implementation of echo server that is looping infinitely while trying to get dat
 2. [Selector Eventloop Echo Server](https://github.com/softindex/datakernel/blob/master/examples/eventloop/src/main/java/io/datakernel/examples/SelectorEventloopEchoServer.java) - 
 implementation of echo server utilizing `NioChannelEventHandler`.
 
+#### Launch 
 To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
@@ -36,13 +37,14 @@ telnet localhost 22233
 ```
 Now you can interact with your echo server.
 
-Both of the examples utilize `eventloop.listen()` as the basis of server processing. This method creates 
+#### Explanation 
+Both of the examples utilize *eventloop.listen()* as the basis of server processing. This method creates 
 `ServerSocketChannel` that listens on `InetSocketAddress`. 
 
 Also, they both utilize ByteBuf module to efficiently wrap incoming and outgoing messages.
 
 But servers have different approaches towards `AcceptCallback` interface implementation. `AcceptCallback` is called when 
-new incoming connection is being accepted. **Busy Wait Eventloop Echo Server** simply uses an infinite `while` loop which 
+new incoming connection is being accepted. `BusyWaitEventloopEchoServer` simply uses an infinite *while* loop which 
 processes all of the connections:
 ```java
 while (true) {
@@ -61,7 +63,7 @@ while (true) {
 }
 ```
 
-**Selector Eventloop Echo Server** implements `NioChannelEventHandler` interface which has `onReadReady()` and 
-`onWriteReady()` methods that respectively read incoming messages from clients and send a response. 
+**Selector Eventloop Echo Server** implements `NioChannelEventHandler` interface which has *onReadReady()* and 
+*onWriteReady()* methods that respectively read incoming messages from clients and send a response. 
 
 

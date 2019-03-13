@@ -23,11 +23,14 @@ Although they both were designed for I/O processing, there are several important
 | **Programming model:** | More complicated | Simple and convenient |
 
 To provide maximum efficiency, our framework widely utilizes combinations of CSP and Datastream. For this purpose, 
-`ChannelSupplier`, `ChannelConsumer`, `StreamSupplier` and `StreamConsumer` have `transformWith()` methods and special 
+`ChannelSupplier`, `ChannelConsumer`, `StreamSupplier` and `StreamConsumer` have *transformWith()* methods and special 
 Transformer interfaces. Using them, you can seamlessly transform channels into other channels or datastreams and vice 
 versa, creating chains of such transformations.
 
-### You can explore Datastream examples [here](https://github.com/softindex/datakernel/tree/master/examples/datastreams)
+See an example of CSP and Datastreams compatibility 
+[here](https://github.com/softindex/datakernel/tree/master/examples/datastreams##5-datasteams-and-csp-compatibility-example).
+
+### You can explore more Datastream examples [here](https://github.com/softindex/datakernel/tree/master/examples/datastreams)
 
 ## Benchmark
 

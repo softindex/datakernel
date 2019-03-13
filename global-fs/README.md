@@ -1,11 +1,11 @@
 ## Global-FS
 
-This module enables creating worldwide storage clouds with implementation of digital signatures and caching technologies,
+This module enables creating worldwide storage clouds with implementation of digital signatures and caching technologies.
 
 The main features of Global-FS are:
 * All data is organized in file systems which have a corresponding pair of public and private keys
 * File systems can be accessed by unique public key
-* Only owner of private key can add files to the file systems
+* Only owner of private key can add files to the corresponding file system
 * Files can optionally be encrypted
 * Files (and even their parts) authenticity can be verified with public key
 
@@ -40,10 +40,11 @@ bytes of data (amount can be configured using FS-Driver). These *checkpoints* ar
 can be signed and identified.
 * Uploaders can optionally encrypt their files with self-generated symmetric encryption key.
 * Uploaders should decide where to upload their data. There are three most possible options:
-    * Upload to their own Global-FS Servers
-    * Reach an agreement with another Global-FS Server owner (e.g. pay for usage of server powers)
-    * Use a free public Global-FS Server
-    * Or create their own option.
+    * upload to their own Global-FS Servers;
+    * reach an agreement with another Global-FS Server owner (for example, pay for usage of server powers);
+    * use a free public Global-FS Server.
+    
+    Or they can create their own option.
     
     The chosen servers become Master servers, a primary source of the data.
 * FS-Driver announces the Discovery Service via FS-Servers that users want to upload some data and which servers are 
@@ -60,7 +61,7 @@ options is used:
     * Local datacenter
     * Physically most closely located server
     * ISP Server
-* If the server contains a requested file system and it is relevant (most recent, the biggest), downloaders get it and the 
+* If the server contains requested file system and it is relevant (most recent, the biggest), downloaders get it and the 
 process completes. But if the data or its more relevant version is located somewhere else, server sends a request to a 
 Discovery Service server.
 * Discovery Service redirects the request to the Master server which has the needed file system and downloading starts.

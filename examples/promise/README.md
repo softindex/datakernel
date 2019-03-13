@@ -1,21 +1,21 @@
 1. [Promises Example](https://github.com/softindex/datakernel/blob/master/examples/promise/src/main/java/io/datakernel/examples/PromisesExample.java) - 
-some basic functionality of Promises.
+some basic functionality of Promises. [Launch](#1-promises-example)
 2. [Async File Example](https://github.com/softindex/datakernel/blob/master/examples/promise/src/main/java/io/datakernel/examples/AsyncFileExample.java) - 
-an example of asynchronous work with a text file using Promise.
+an example of asynchronous work with a text file using Promise. [Launch](#2-async-file-example)
 
-To run the examples in console, you should execute these lines in appropriate folder:
+### 1. Promises Example
+#### Launch
+To run the example in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
 $ mvn clean install -DskipTests
 $ cd examples/promise
 $ mvn exec:java@PromisesExample
-$ # or
-$ mvn exec:java@AsyncFileExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
@@ -24,13 +24,11 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open one of the classes:
-* `PromisesExample`
-* `AsyncFileExample`
+Then open `PromisesExample` class, which is located at **datakernel -> examples -> promise**, and run its *main()* method.
 
-which are located at **datakernel -> examples -> promise** and run *main()* of the chosen example.
+#### Explanation
 
-If you run **Promises Example**, you'll receive the following output:
+When you run **Promises Example**, you'll receive the following output:
 ```
 Repeat until exception:
 This is iteration #1
@@ -95,9 +93,32 @@ Promises.toArray(Integer.class, Promise.of(1), Promise.of(2), Promise.of(3), Pro
     .whenResult(array -> System.out.println("Size of collected array: " + array.length + "\nArray: " + Arrays.toString(array)));
 ```
 
-<br>
+### 2. Async File Example
+#### Launch
+To run the example in console, you should execute these lines in appropriate folder:
+```
+$ git clone https://github.com/softindex/datakernel.git
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/promise
+$ mvn exec:java@AsyncFileExample
+```
 
-If you run **Async File Example**, you'll receive the following output:
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open `AsyncFileExample` class, which is located at **datakernel -> examples -> promise**, and run its *main()* method.
+
+
+#### Explanation
+When you run **Async File Example**, you'll receive the following output:
 
 ```
 Hello

@@ -3,46 +3,39 @@ represents some basic ByteBuf possibilities, such as:
     * wrapping data in ByteBuf for writing/reading, 
     * slicing particular parts out of data,
     * conversions.
+    
+    [Launch](#bytebuf-example)
 2. [ByteBuf Pool Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufPoolExample.java) - 
-represents how to work with ByteBufPool.
+represents how to work with ByteBufPool. [Launch](#bytebuf-pool-example)
 3. [ByteBuf Queue Example](https://github.com/softindex/datakernel/tree/master/examples/bytebuf/src/main/java/io/datakernel/examples/ByteBufQueueExample.java) - 
-shows how queues of ByteBufs are created and processed.
+shows how queues of ByteBufs are created and processed. [Launch](#bytebuf-queue-example)
 
-To run the examples in console, you should execute these lines in appropriate folder:
+### ByteBuf Example
+#### Launch 
+To run the example in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel
 $ mvn clean install -DskipTests
 $ cd examples/bytebuf
 $ mvn exec:java@ByteBufExample
-$ # or
-$ mvn exec:java@ByteBufPoolExample
-$ # or
-$ mvn exec:java@ByteBufQueueExample
 ```
 
-To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
 $MODULE_WORKING_DIR$||`.
 
-Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open one of the classes:
+Then open `ByteBufExample` class, which is located at **datakernel -> examples -> bytebuf** and run its *main()* method.
 
-* `ByteBufExample`
-* `ByteBufPoolExample`
-* `ByteBufQueueExample`
+#### Explanation
 
-which are located at **datakernel -> examples -> bytebuf** and run *main()* of the chosen example.
-
-<br>
-
-###ByteBuf example
-If you run the **ByteBuf Example**, you'll receive the following output:
+When you run the example, you'll receive the following output:
 
 ```
 0
@@ -107,8 +100,31 @@ buffer.put((byte) 3);
 byteBuf.ofWriteByteBuffer(buffer);
 ```
 
-###ByteBuf pool example
-If you run the **ByteBuf Pool Example**, you'll receive the following output:
+### ByteBuf Pool Example
+#### Launch 
+To run the example in console, you should execute these lines in appropriate folder:
+```
+$ git clone https://github.com/softindex/datakernel.git
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/bytebuf
+$ mvn exec:java@ByteBufPoolExample
+```
+
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open `ByteBufPoolExample` class, which is located at **datakernel -> examples -> bytebuf** and run its *main()* method.
+
+#### Explanation
+When you run the example, you'll receive the following output:
 ```
 Length of array of allocated ByteBuf: 128
 Number of ByteBufs in pool before recycling: 0
@@ -200,8 +216,31 @@ public class ByteBufPoolExample {
 }
 ```
 
-###ByteBuf queue example
-If you run the **ByteBuf Queue Example**, you'll receive the following output:
+### ByteBuf Queue Example
+#### Launch 
+To run the example in console, you should execute these lines in appropriate folder:
+```
+$ git clone https://github.com/softindex/datakernel.git
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/bytebuf
+$ mvn exec:java@ByteBufQueueExample
+```
+
+To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the example can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+
+Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open `ByteBufQueueExample` class, which is located at **datakernel -> examples -> bytebuf** and run its *main()* method.
+
+#### Explanation
+When you run the example, you'll receive the following output:
 ```
 bufs:2 bytes:7
 

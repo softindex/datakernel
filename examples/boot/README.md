@@ -1,12 +1,12 @@
 1. [Config Module Example](https://github.com/softindex/datakernel/blob/master/examples/boot/src/main/java/io/datakernel/examples/ConfigModuleExample.java) - 
-supplies config to your application and controls it. Launch instruction is [here](#1-config-module-example)
+supplies config to your application and controls it. [Launch](#1-config-module-example)
 2. [Service Graph Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/ServiceGraphModuleExample.java) - 
-manages a service which displays "Hello World!" message.
+manages a service which displays "Hello World!" message. [Launch](#2-service-graph-module-example)
 3. [Worker Pool Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/WorkerPoolModuleExample.java) - 
-creates a Worker Pool with 4 workers.
+creates a Worker Pool with 4 workers. [Launch](#3-worker-pool-module-example)
 
-#### 1. Config Module Example
-##### Launching
+### 1. Config Module Example
+#### Launching
 To run the examples in console, you should execute these lines in appropriate folder:
 ``` 
 $ git clone https://github.com/softindex/datakernel.git
@@ -27,7 +27,7 @@ Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open `ConfigModuleExample` which is located at **datakernel -> examples -> boot** and run its *main()*.
 
-##### Explanation
+#### Explanation
 You will see the following output:
 ```
 Hello world!
@@ -35,20 +35,19 @@ Hello world!
 /8.8.8.8
 ```
 This data was provided by properties file of the example and supplied by `ConfigModule`. `ConfigModule` looks after 
-usage of configs, so that they are not used in any part of lifecycle except for startup. We created `ConfigModule` in 
+usage of configs, so that they are not used in any part of lifecycle except for startup. `ConfigModule` was created in 
 the following way:
 
 ```java 
 ConfigModule.create(Config.ofProperties(PROPERTIES_FILE))
 ```
-`ofProperties()` returns `Config` - an interface for interacting with configs. There are also some other ways of 
-initialization of `ConfigModule`, such as:
+There are also some other ways of initialization of `ConfigModule`, such as:
 * *ofMap()*
 * *ofConfigs()*
 * *ofValue()*
 
-#### 2. Service Graph Module Example
-##### Launching
+### 2. Service Graph Module Example
+#### Launching
 To run the examples in console, you should execute these lines in appropriate folder:
 ``` 
 $ git clone https://github.com/softindex/datakernel.git
@@ -69,13 +68,13 @@ Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open `ServiceGraphModuleExample` which is located at **datakernel -> examples -> boot** and run its *main()*.
 
-##### Explanation
+#### Explanation
 You will see a `Hello World` output. This output is conducted via Eventloop, which was provided by `ServiceGraphModule`. 
 `ServiceGraphModule` builds dependency graph of Service objects based on Guice's object graph. When  method 
 *startFuture()* is called, our Eventloop starts running and we get the output message. 
 
-#### 3. Worker Pool Module Example
-##### Launching
+### 3. Worker Pool Module Example
+#### Launching
 To run the examples in console, you should execute these lines in appropriate folder:
 ``` 
 $ git clone https://github.com/softindex/datakernel.git
@@ -96,7 +95,7 @@ Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open `WorkerPoolModuleExample` which is located at **datakernel -> examples -> boot** and run its *main()*.
 
-##### Explanation
+#### Explanation
 You will see the following output:
 ```
 Hello from worker #0

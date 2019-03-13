@@ -141,9 +141,13 @@ should look like following:
 </project>
 ```
 
-Since we have two basic operations to implement (put and get), let's first write down classes that will be used for communication between client and server. Specifically,  PutRequest, PutResponse, GetRequest and GetResponse. Instances of these classes will be serialized using fast DataKernel Serializer, but to enable serializer to work, we should provide some meta information about this classes using appropriate annotations. The basic rules are:
+Since we have two basic operations to implement (*put* and *get*), let's first write down classes that will be used for 
+communication between client and server. Specifically,  `PutRequest`, `PutResponse`, `GetRequest` and `GetResponse`. 
+Instances of these classes will be serialized using fast DataKernel Serializer, which requires some meta information 
+about this classes, provided with appropriate annotations. The basic rules are:
 
-* Use `@Serialize` annotation with order number on getter of property. Ordering provides better compatibility in case classes are changed.
+* Use `@Serialize` annotation with order number on getter of property. Ordering provides better compatibility in case 
+classes are changed.
 * Use `@Deserialize` annotation with property name (which should be same as in getter) in constructor.
 * Use `@SerializeNullable` on properties that can have null values.
 
@@ -309,9 +313,9 @@ public class RpcServerLauncher extends Launcher {
 }
 ```
 
-Now, let's write RPC client. In order to create RPC client we should again indicate all the classes that will be used 
+Now, let's write RPC client. In order to create RPC client we should again indicate all of the classes that will be used 
 for communication and specify `RpcStrategy`. There is a whole bunch of strategies in RPC module (such as single-server, 
-first-available, round-robin, sharding and so on) and the nice thing about them ia that all strategies can be combined. For 
+first-available, round-robin, sharding and so on). The nice thing about them is that all strategies can be combined. For 
 example, if you want to dispatch requests between 2 shards, and each shard actually contains main and reserve servers, 
 you can easily tell RPC client to dispatch request in a proper way using the following code:
 
@@ -348,8 +352,8 @@ public class RpcClientModule extends AbstractModule {
 }
 ```
 
-Let's also build RpcClientLauncher. In run() we will consider command line arguments and make appropriate requests to 
-`RpcServer`.
+Let's also build `RpcClientLauncher`. In *run()* we will consider command line arguments and make appropriate requests 
+to `RpcServer`.
 
 ```java
 public class RpcClientLauncher extends Launcher {
@@ -415,10 +419,10 @@ public class RpcClientLauncher extends Launcher {
 
 ```
 
-As you can see, `sendRequest` method returns a `CompletionStage`, at which we could listen for its results asynchronously 
+As you can see, *sendRequest()* method returns a `CompletionStage`, at which we could listen for its results asynchronously 
 with lambdas.
 
-Contratulation! We've finished writing code for this app. Let's now compile it. In order to do it go to project root 
+Congratulation! We've finished writing code for this app. Let's now compile it. In order to do it, go to project root 
 directory and enter the following command:
 
 ```

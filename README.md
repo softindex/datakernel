@@ -7,7 +7,7 @@ and **applications of different scales**: from single-node HTTP-server to large 
 DataKernel framework is **asynchronous, event-driven, lightweight and legacy-free**, featuring modern **high-level abstractions** and **DSLs**. 
 Its asynchronous architecture was **inspired by Node.js**, and efficient multi-threading model makes DataKernel **extremely fast**, which is proven by various benchmarks.
 
-The main concepts of DataKernel are:
+### The main concepts of DataKernel are:
 1. Fully **decentralized and asynchronous** cluster architecture with no centralized Apache ZooKeeper-like consensus algorithms.
 2. Developing **embedded servers and services** that are tailored to specific business application instead of "config file"-configured servers. 
 3. Focus on **function composition and OOP design** to develop complicated services from simple building blocks and strategies.
@@ -54,7 +54,7 @@ on pool's memory consumption and efficiency.
 
 Eventloop resembles Event Loop in Node.js and provides efficient non-blocking network and file I/O for building 
 Node.js-like client/server applications with high performance requirements. Although Eventloop runs in a single thread, 
-multiple Eventloops can run at the same time providing efficient CPU usage.
+multiple Eventloops can run at the same time to provide efficient CPU usage.
 
 [Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop)
 
@@ -91,7 +91,7 @@ some external factors.
 
 ### [Serializer](https://github.com/softindex/datakernel/tree/master/core-serializer)
 
-Extremely fast and space-efficient serializers created using bytecode engineering. Introduces schema-less approach for 
+Extremely fast and space-efficient serializers created with bytecode engineering. Introduces schema-less approach for 
 best performance.
 
 [Serializer examples](https://github.com/softindex/datakernel/tree/master/examples/serializer)  
@@ -107,7 +107,7 @@ of lightweight values.
 
 ### [HTTP](https://github.com/softindex/datakernel/tree/master/core-http)
 
-High-performance asynchronous HTTP client and server. Contains a built-in servlets for request dispatching and static 
+High-performance asynchronous HTTP client and server. Contains built-in servlets for request dispatching and static 
 content loading.  
 
 [HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http)  
@@ -139,7 +139,7 @@ based on Java NIO. Utilizes CSP for fast and reliable file transfer.
 ### [OT](https://github.com/softindex/datakernel/tree/master/cloud-ot)
 
 This module allows to build collaborative software systems based on Git-like approach and with automatic conflict 
-resolution utilizing a special algorithm for operational transformations.
+resolution, utilizing a special algorithm for operational transformations.
 
 ### [OT-MySQL](https://github.com/softindex/datakernel/tree/master/cloud-ot-mysql)
 
@@ -163,8 +163,8 @@ data sets which can span multiple partitions.
 
 ### [CRDT](https://github.com/softindex/datakernel/tree/master/cloud-crdt)
 
-Conflict-free replicated data type (specifically, state-based CRDT) implementation. Contains tools to create 
-collaborative editing applications using CRDT approach merging data that comes from multiple nodes into a single CRDT 
+Conflict-free replicated data type implementation (specifically, state-based CRDT). Contains tools to create 
+collaborative editing applications using CRDT approach to merge data that comes from multiple nodes into a single CRDT 
 structure. 
 
 [CRDT examples](https://github.com/softindex/datakernel/tree/master/examples/crdt)
@@ -181,19 +181,19 @@ Processes logs using operational transformations. Uses OT module to persist logs
 ## Global components
 
 Global components are designed to be used distributively across the whole global network. Global network consists of 
-interconnected nodes (or servers) and discovery services that help route one node with another. To achieve this and 
-preserve data integrity between global nodes, all the components have the following features:
+interconnected nodes (or servers) and discovery services that help to route one node with another. To achieve this and 
+preserve data integrity between global nodes, all of the components have the following features:
 
-* Fault tolerance. This allows you to work with local node in disconnected mode.
+* Fault tolerance. This allows you to work with local node even in disconnected mode.
 * Cryptography. Data transferred between nodes is cryptographically signed, so it cannot be tempered by third parties.
 * Different operating modes. A global node can work in proxy mode (as a router), in caching mode (locally saving data 
 that it downloads/uploads) or in pre-fetching mode (uploading data from master nodes in advance).
 
 ### [Global Common](https://github.com/softindex/datakernel/tree/master/global-common)
 
-A foundation for other global components. Contains a `DiscoveryService` that is like a DNS for other global nodes. This 
-module also contains cryptography tools and some common classes. Cryptography allows nodes to work with non-trusted 
-servers. 
+A foundation for other global components. Contains a `DiscoveryService` that conducts a DNS-like role for other global 
+nodes. This module also contains cryptography tools and some common classes. Cryptography allows nodes to work with 
+non-trusted servers. 
 
 ### [Global-FS](https://github.com/softindex/datakernel/tree/master/global-fs)
 
@@ -206,7 +206,7 @@ distributed and can work with non-trusted servers due to implementation of crypt
 
 ### [Global-OT](https://github.com/softindex/datakernel/tree/master/global-ot)
 
-A framework which extends both OT technology and blockchain technology (representing the data as Git-like graph of 
+A framework which extends both OT and Blockchain technologies (representing the data as Git-like graph of 
 individual immutable content-addressable commits, encrypted and signed with private key of its owner). Global-OT can 
 work with non-trusted servers. 
 
@@ -215,7 +215,7 @@ work with non-trusted servers.
 
 ### [Global-DB](https://github.com/softindex/datakernel/tree/master/global-db)
 
-This module is a variation of Global-FS optimized for storing and synchronization small binary key-value pairs.
+This module is a variation of Global-FS, optimized for storing small binary key-value pairs and their synchronization .
 
 [Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)
 
@@ -224,7 +224,7 @@ This module is a variation of Global-FS optimized for storing and synchronizatio
 ### [Boot](https://github.com/softindex/datakernel/tree/master/boot)
 
 An intelligent way of booting complex applications and services according to their dependencies. Component contains 
-several modules that help to easily configure and launch an application.
+several modules that help to configure and launch an application easier.
 
 [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot)
 
@@ -237,6 +237,6 @@ Contains standard launchers for CRDT, HTTP, FS and RPC modules.
 
 ### [UIKernel](https://github.com/softindex/datakernel/tree/master/uikernel)
 This module represents integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets. 
-Using this module you can build a server application that will be compatible with UIKernel JS library. 
+With this module you can build a server application that will be compatible with UIKernel JS library. 
 
 [UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)

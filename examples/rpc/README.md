@@ -1,6 +1,7 @@
 1. [RPC Example](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcExample.java) - 
 shows a "Hello World" RPC client and and server interaction.
 
+#### Launch
 To run the example in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
@@ -21,6 +22,7 @@ Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open `RpcExample` class which is located at **datakernel -> examples -> rpc** and run its *main()* method.
 
+#### Explanation
 In the "Hello World" client and server **RPC Example** client sends a request which contains word "World" to server. When 
 server receives it, it sends a respond which contains word "Hello ". If everything completes successfully, we get the 
 following output:
@@ -41,5 +43,5 @@ protected void run() {
 	});
 }
 ```
-RPC client and server configurations were defined with `getModules()` method which supplies needed components for application, 
-such as `Eventloop`, `RpcServer` and `RpcClient`.
+RPC client and server configurations were defined with *getModules()* method which supplies needed components for 
+application, such as `Eventloop`, `RpcServer` and `RpcClient`.

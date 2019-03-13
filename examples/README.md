@@ -46,7 +46,7 @@ section, which shows how to utilize core components' modules for this purpose. T
 If you are up to more complicated web applications, there are [Global applications](#global-web-applications) examples - 
 see how to utilize Global components for developing scalable web applications.
 
-Please note, that to run any of the examples in your console, you should first clone the project from Github:
+Please note, that to run any of the examples in your console, you should first clone the project from GitHub:
 
 ```
 $ git clone https://github.com/softindex/datakernel.git
@@ -105,7 +105,7 @@ which illustrate how Datastreams can be combined with CSP to create inter-server
 
 Also, 
 * [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - shows how to boot your projects 
-and work with configs with Boot module. 
+and work with configs using Boot module. 
 
 * [Launchers example - Hello World](https://github.com/softindex/datakernel/tree/master/examples/launchers#hello-world) - 
 demonstrates one of the simplest launchers' usages.
@@ -147,7 +147,7 @@ replicated data type) algorithms manage merging of two replicas with conflicting
 * [Global-OT demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
 * [Global-OT chat](https://github.com/softindex/datakernel/tree/master/examples/global-ot-chat)
 * [Remote-FS](https://github.com/softindex/datakernel/tree/master/examples/remotefs)
-* [Global-FS demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
-* [Global-FS CLI](https://github.com/softindex/datakernel/tree/master/examples/global-fs-cli)
+* [Global-FS demo](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-app)
+* [Global-FS CLI](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-cli)
 * [Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)
 

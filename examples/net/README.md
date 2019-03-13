@@ -1,12 +1,24 @@
+## Net
+
+Echo Servers:
 1. [TCP Echo Server](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/TcpEchoServerExample.java) - 
 shows how to create a simple echo server.
 2. [TCP Multi Echo Server](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/MultiEchoServerExample.java) - 
 shows how to create an echo server which can handle multiple connections.
-3. [TCP Client](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/TcpClientExample.java) - 
-an example of creating a simple TCP client console application.
-4. [TCP Ping Pong Socket Connection](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/PingPongSocketConnection.java) - 
-a console application which sends to a simple server "PING" request and receives a "PONG" response.
 
+[Launch](#echo-servers)
+
+TCP Socket Connection:
+3. [TCP Ping Pong Socket Connection](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/PingPongSocketConnection.java) - 
+a console application which sends to a simple server "PING" request and receives a "PONG" response. [Launch](#tcp-ping-pong-socket-connection)
+
+TCP Client:
+4. [TCP Client](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/TcpClientExample.java) - 
+an example of creating a simple TCP client console application. [Launch](#tcp-client)
+
+
+### Echo Servers
+#### Launch 
 To run the examples in console, you should enter these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
@@ -35,33 +47,6 @@ Then open one of the classes:
 which are located at **datakernel -> examples -> net** and run *main()* of the chosen example.
 
 This will start your echo server.
-Both of the servers utilize `SimpleServer` as their basis. `SimpleServer` is an implementation of 
-`AbstractServer` which is a non-blocking server that works in an eventloop. Let's have a closer look at `SimpleServer` 
-setup from **TCP Echo Server** example:
-
-```java
-//creating an eventloop for our server
-Eventloop eventloop = Eventloop.create().withCurrentThread();
-
-SimpleServer server = SimpleServer.create(socket ->
-            //BinaryChannelSupplier will listen and supply incoming data from the socket
-			BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
-					.parseStream(ByteBufsParser.ofCrlfTerminatedBytes())
-					//peek returns a ChannelSuplier which processes the incoming message
-					.peek(buf -> System.out.println("client:" + buf.getString(UTF_8)))
-					//generates server response
-					.map(buf -> {
-						ByteBuf serverBuf = ByteBufStrings.wrapUtf8("Server> ");
-						return ByteBufPool.append(serverBuf, buf);
-					})
-					//ads '\r' and '\n` to the response
-					.map(buf -> ByteBufPool.append(buf, CRLF))
-					//streams response to our client Consumer
-					.streamTo(ChannelConsumer.ofSocket(socket)))
-			//setting up listen port of the server
-			.withListenPort(PORT);
-server.listen();
-```
 
 You can connect to your server from telnet with command `telnet localhost 9922` or by launching your TcpClient example 
 either in console:
@@ -74,8 +59,46 @@ or in an IDE, by opening `TcpClientExample` class which is located at the same f
 Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
 feel free to run multiple **TCP Client**s and check out how it works. 
 
-<br>
+#### Explanation
+To see how the example works, try to send some messages from TCP Client.
 
+Both of the servers utilize `SimpleServer` as their basis. `SimpleServer` is an implementation of 
+`AbstractServer` which is a non-blocking server that works in an eventloop. Let's have a closer look at `SimpleServer` 
+setup from **TCP Echo Server** example:
+
+```java
+//creating an eventloop for our server
+Eventloop eventloop = Eventloop.create().withCurrentThread();
+
+SimpleServer server = SimpleServer.create(socket ->
+
+    //BinaryChannelSupplier will listen and supply incoming data from the socket
+	BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
+		.parseStream(ByteBufsParser.ofCrlfTerminatedBytes())
+		
+		//peek returns a ChannelSuplier which processes the incoming message
+		.peek(buf -> System.out.println("client:" + buf.getString(UTF_8)))
+		
+		//generates server response
+		.map(buf -> {
+			ByteBuf serverBuf = ByteBufStrings.wrapUtf8("Server> ");
+			return ByteBufPool.append(serverBuf, buf);
+		    })
+		
+		//ads '\r' and '\n` to the response
+		.map(buf -> ByteBufPool.append(buf, CRLF))
+		
+		//streams response to our client Consumer
+		.streamTo(ChannelConsumer.ofSocket(socket)))
+		
+		//setting up listen port of the server
+		.withListenPort(PORT);
+
+server.listen();
+```
+
+### TCP Ping Pong Socket Connection
+#### Launch
 To run **Ping Pong Socket Connection** example in console enter these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
@@ -96,5 +119,9 @@ Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA)
 
 Then open `PingPongSocketConnection`, which is located at **datakernel -> examples -> net** and run its *main()* method.
 
+#### Explanation
 Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an implementation of `AsyncTcpSocket` 
 interface which describes asynchronous read and write operations.
+
+### TCP Client
+This example should be launched after one of the [Echo Servers](#echo-servers) is started.

@@ -1,7 +1,7 @@
 [CRDT example](https://github.com/softindex/datakernel/blob/master/examples/crdt/src/main/java/io/datakernel/examples/CrdtExample.java) - 
 an example of conflict-free merging of two modified replicas.
 
-You can run the example in 2 steps:
+You can run the example in 3 steps:
 
 #### 1. Clone DataKernel project locally 
 You can do it either in console:
@@ -10,18 +10,15 @@ $ git clone https://github.com/softindex/datakernel.git
 ```
 Or with IDE tools.
 
-#### 2. Run `CrdtExample`
-To run the example in console, you should execute these lines in appropriate folder:
+#### 2. Set up the project
+If you'd like to run the example in console, you should install DataKernel:
 ```
 $ cd datakernel
 $ mvn clean install -DskipTests
-$ cd examples/crdt
-$ mvn exec:java@CrdtExample
 ```
 
-To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the example can work correctly. In 
-accordance to DataKernel module structure, the working directory should be set to the module folder. 
+To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
+work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
@@ -29,7 +26,14 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its *main()* method.
+#### 3. Run `CrdtExample`
+To run the example in console, you should execute these lines in appropriate folder:
+```
+$ cd datakernel/examples/crdt
+$ mvn exec:java@CrdtExample
+```
+To run the example in IDE, open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its 
+*main()* method.
 
 #### Explanation
 In this example, we have two replicas - independent nodes which store different information.

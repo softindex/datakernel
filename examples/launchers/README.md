@@ -1,9 +1,17 @@
 ## Launchers
-
-### Hello World
+"Hello World" Launcher
 1. ["Hello World" Launcher](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HelloWorldLauncher.java) - 
-a simple "Hello World" launcher.
+a simple "Hello World" launcher. [Launch](#hello-world)
 
+HTTP Launchers:
+1. [HTTP Server Scratch](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpServerScratch.java) - 
+an example of setting up a simple HTTP server utilizing `Launcher`.
+2. [HTTP Simple Server](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpSimpleServer.java) - 
+an example of setting up a simple HTTP server utilizing `HttpServerLauncher`.
+
+[Launch](#http)
+
+#### "Hello World" 
 To run the example in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel
@@ -27,12 +35,7 @@ Then open *HelloWorldLauncher* class, which is located at **datakernel -> exampl
 method.
 
 
-### HTTP
-1. [HTTP Server Scratch](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpServerScratch.java) - 
-an example of setting up a simple HTTP server utilizing *Launcher*.
-2. [HTTP Simple Server](https://github.com/softindex/datakernel/blob/master/examples/launchers/src/main/java/io/datakernel/examples/HttpSimpleServer.java) - 
-an example of setting up a simple HTTP server utilizing *HttpServerLauncher*.
-
+#### HTTP
 To run the examples in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel

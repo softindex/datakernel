@@ -1,19 +1,23 @@
 1. [Structured Codec Example](https://github.com/softindex/datakernel/blob/master/examples/codec/src/main/java/io/datakernel/examples/StructuredCodecsExample.java) - 
 converting a custom `Person` objects to/from JSON using `JsonUtils` and `BinaryUtils`.
 
-To run the example in console, you should execute these lines in appropriate folder:
-
+You can run the example in 3 steps:
+#### 1. Clone DataKernel project locally 
+You can do it either in console:
 ```
 $ git clone https://github.com/softindex/datakernel.git
+```
+Or with IDE tools.
+
+#### 2. Set up the project
+If you'd like to run the example in console, you should install DataKernel:
+```
 $ cd datakernel
 $ mvn clean install -DskipTests
-$ cd examples/codec
-$ mvn exec:java@StructuredCodecsExample
 ```
 
-To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the example can work correctly. In 
-accordance to DataKernel module structure, the working directory should be set to the module folder. 
+To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
+work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
 `Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
@@ -21,10 +25,21 @@ $MODULE_WORKING_DIR$||`.
 
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-Then open `StructuredCodecsExample` class, which is located at **datakernel -> examples -> codec** and run its *main()* 
-method.
+#### 3. Run `StructuredCodecExample`
 
-You will receive the following output:
+To run the example in console, you should execute these lines in appropriate folder:
+
+```
+$ cd datakernel/examples/codec
+$ mvn exec:java@StructuredCodecsExample
+```
+
+To run the example in an IDE, open `StructuredCodecsExample` class, which is located at **datakernel -> examples -> codec** 
+and run its *main()* method.
+
+#### Explanation
+
+When you run the example, you'll receive the following output:
 ```
 Person before encoding: Person{id=121, name='John', dateOfBirth=1990-03-12}
 Person after encoding: Person{id=121, name='John', dateOfBirth=1990-03-12}
@@ -46,7 +61,7 @@ Map of persons after encoding: {121=Person{id=121, name='John', dateOfBirth=1990
 Maps are equal? : true
 ```
 
-All of the examples represent encoding and decoding objects using Codec module.
+All of the cases represent encoding and decoding objects using Codec module.
 
 * In the first situation `BinaryUtils` were used:
 ```java

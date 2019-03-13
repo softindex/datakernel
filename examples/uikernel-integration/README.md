@@ -23,7 +23,7 @@ $ npm run-script build
 ```
 If the commands won't work, try to enter this command after `sudo npm i`:
 ```
-$ npm run-script postintall 
+$ npm run-script postinstall 
 ```
 
 #### 4. Start `UIKernelWebAppLauncher` 
@@ -42,4 +42,4 @@ class, which is located at **datakernel -> examples -> uikernel-integration** an
 
 #### 5. Open your favourite browser
 Open your browser and go to [localhost:8080](http://localhost:8080). You will see an editable users grid table with 
-some pre-defined information. This grid supports searching by name, age and gender as well as ability to add new people.
+some pre-defined information. This grid supports searching by name, age and gender. You can also add new people.
