@@ -30,7 +30,6 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.db.DbItem;
 import io.global.db.api.GlobalDbNode;
-import io.global.db.api.TableID;
 
 import java.util.List;
 
@@ -52,13 +51,14 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<SignedData<DbItem>>> upload(TableID tableID) {
+	public Promise<ChannelConsumer<SignedData<DbItem>>> upload(PubKey space, String table) {
 		ChannelZeroBuffer<SignedData<DbItem>> buffer = new ChannelZeroBuffer<>();
 		MaterializedPromise<HttpResponse> request = client.request(
 				HttpRequest.post(
 						url + UrlBuilder.relative()
 								.appendPathPart(UPLOAD)
-								.appendPath(tableID.asString())
+								.appendPathPart(space.asString())
+								.appendPathPart(table)
 								.build())
 						.withBodyStream(buffer.getSupplier()
 								.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))))
@@ -69,12 +69,13 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<SignedData<DbItem>>> download(TableID tableID, long timestamp) {
+	public Promise<ChannelSupplier<SignedData<DbItem>>> download(PubKey space, String table, long timestamp) {
 		return client.request(
 				HttpRequest.get(
 						url + UrlBuilder.relative()
 								.appendPathPart(DOWNLOAD)
-								.appendPath(tableID.asString())
+								.appendPathPart(space.asString())
+								.appendPathPart(table)
 								.build()))
 				.then(response1 -> response1.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
@@ -82,12 +83,13 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 	}
 
 	@Override
-	public Promise<SignedData<DbItem>> get(TableID tableID, byte[] key) {
+	public Promise<SignedData<DbItem>> get(PubKey space, String table, byte[] key) {
 		return client.request(
 				HttpRequest.get(
 						url + UrlBuilder.relative()
 								.appendPathPart(GET_ITEM)
-								.appendPath(tableID.asString())
+								.appendPathPart(space.asString())
+								.appendPathPart(table)
 								.build())
 						.withBody(ByteBuf.wrapForReading(key)))
 				.then(response1 -> response1.getCode() != 200 ?
@@ -104,12 +106,13 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 	}
 
 	@Override
-	public Promise<Void> put(TableID tableID, SignedData<DbItem> item) {
+	public Promise<Void> put(PubKey space, String table, SignedData<DbItem> item) {
 		return client.request(
 				HttpRequest.put(
 						url + UrlBuilder.relative()
 								.appendPathPart(PUT_ITEM)
-								.appendPath(tableID.asString())
+								.appendPathPart(space.asString())
+								.appendPathPart(table)
 								.build())
 						.withBody(encode(DB_ITEM_CODEC, item)))
 				.then(response -> response.getCode() != 200 ?
@@ -118,12 +121,12 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 	}
 
 	@Override
-	public Promise<List<String>> list(PubKey owner) {
+	public Promise<List<String>> list(PubKey space) {
 		return client.request(
 				HttpRequest.get(
 						url + UrlBuilder.relative()
 								.appendPathPart(LIST)
-								.appendPath(owner.asString())
+								.appendPath(space.asString())
 								.build()))
 				.then(response1 -> response1.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))

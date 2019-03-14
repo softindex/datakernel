@@ -21,7 +21,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
@@ -31,12 +30,10 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.db.api.DbClient;
 import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
-import io.global.db.api.TableID;
 import io.global.db.http.GlobalDbNodeServlet;
 import io.global.db.http.HttpGlobalDbNode;
 import io.global.db.stub.RuntimeDbStorageStub;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -44,19 +41,17 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.function.Function;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiFunction;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.db.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -77,11 +72,11 @@ public final class GlobalDbTest {
 	private LocalGlobalDbNode rawSecondClient;
 
 	private GlobalDbDriver firstDriver;
-	private DbClient firstAliceAdapter;
-	private DbClient secondAliceAdapter;
+	private GlobalDbAdapter firstAliceAdapter;
+	private GlobalDbAdapter secondAliceAdapter;
 
 	private NodeFactory<GlobalDbNode> nodeFactory;
-	private Function<TableID, DbStorage> storageFactory;
+	private BiFunction<PubKey, String, DbStorage> storageFactory;
 
 	private DbClient cachingAliceGateway;
 
@@ -93,7 +88,7 @@ public final class GlobalDbTest {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
-		storageFactory = $ -> new RuntimeDbStorageStub();
+		storageFactory = ($1, $2) -> new RuntimeDbStorageStub();
 
 		Map<RawServerId, GlobalDbNode> nodes = new HashMap<>();
 
@@ -111,15 +106,15 @@ public final class GlobalDbTest {
 
 		rawSecondClient = (LocalGlobalDbNode) nodes.get(SECOND_ID);
 
-		firstDriver = GlobalDbDriver.create(firstNode, discoveryService, list(alice, bob));
-		GlobalDbDriver secondDriver = GlobalDbDriver.create(secondNode, discoveryService, list(alice, bob));
+		firstDriver = GlobalDbDriver.create(firstNode);
+		GlobalDbDriver secondDriver = GlobalDbDriver.create(secondNode);
 
-		firstAliceAdapter = firstDriver.gatewayFor(alice.getPubKey());
-		secondAliceAdapter = secondDriver.gatewayFor(alice.getPubKey());
+		firstAliceAdapter = firstDriver.adapt(alice);
+		secondAliceAdapter = secondDriver.adapt(alice);
 
 		GlobalDbNode cachingNode = nodeFactory.create(new RawServerId("http://127.0.0.1:1003"));
-		GlobalDbDriver cachingDriver = GlobalDbDriver.create(cachingNode, discoveryService, asList(alice, bob));
-		cachingAliceGateway = cachingDriver.gatewayFor(alice.getPubKey());
+		GlobalDbDriver cachingDriver = GlobalDbDriver.create(cachingNode);
+		cachingAliceGateway = cachingDriver.adapt(alice);
 	}
 
 	private void announce(KeyPair keys, Set<RawServerId> rawServerIds) {
@@ -161,7 +156,7 @@ public final class GlobalDbTest {
 
 	@Test
 	public void separate() {
-		DbClient firstBobAdapter = firstDriver.gatewayFor(bob.getPubKey());
+		DbClient firstBobAdapter = firstDriver.adapt(bob.getPubKey());
 
 		Set<DbItem> content = createContent();
 
@@ -178,8 +173,8 @@ public final class GlobalDbTest {
 
 		RawServerId serverId = new RawServerId("localhost:432");
 		GlobalDbNode other = LocalGlobalDbNode.create(serverId, discoveryService, nodeFactory, storageFactory);
-		GlobalDbDriver otherDriver = GlobalDbDriver.create(other, discoveryService, singletonList(alice));
-		DbClient otherClient = otherDriver.gatewayFor(alice.getPubKey());
+		GlobalDbDriver otherDriver = GlobalDbDriver.create(other);
+		DbClient otherClient = otherDriver.adapt(alice.getPubKey());
 
 		announce(alice, set(FIRST_ID, SECOND_ID));
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
@@ -194,8 +189,8 @@ public final class GlobalDbTest {
 
 		RawServerId serverId = new RawServerId("localhost:432");
 		GlobalDbNode other = LocalGlobalDbNode.create(serverId, discoveryService, nodeFactory, storageFactory);
-		GlobalDbDriver otherDriver = GlobalDbDriver.create(other, discoveryService, singletonList(alice));
-		DbClient otherClient = otherDriver.gatewayFor(alice.getPubKey());
+		GlobalDbDriver otherDriver = GlobalDbDriver.create(other);
+		DbClient otherClient = otherDriver.adapt(alice.getPubKey());
 
 		announce(alice, set(FIRST_ID, SECOND_ID));
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
@@ -233,29 +228,19 @@ public final class GlobalDbTest {
 	}
 
 	@Test
-	@Ignore // TODO anton: this is broken completely, fix the Global DB
-	@IgnoreLeaks("TODO") // TODO anton: fix this
 	public void encryptionAndDriver() {
 		SimKey key1 = SimKey.generate();
-		SimKey key2 = SimKey.generate();
-
-		PrivateKeyStorage pks = firstDriver.getPrivateKeyStorage();
-		pks.changeCurrentSimKey(key1);
 
 		Set<DbItem> content = createContent();
+
+		firstAliceAdapter.setCurrentSimKey(key1);
 
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
 
 		assertEquals(content, await(await(firstAliceAdapter.download("test")).toCollector(toSet())));
 
-		pks.forget(Hash.sha1(key1.getBytes()));
-		pks.changeCurrentSimKey(key2);
+		firstAliceAdapter.setCurrentSimKey(null);
 
 		assertEquals(emptyList(), await(await(firstAliceAdapter.download("test")).toList()));
-
-		await(discoveryService.shareKey(alice.getPubKey(),
-				SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())));
-
-		assertEquals(new HashSet<>(content), await(await(firstAliceAdapter.download("test")).toCollector(toSet())));
 	}
 }

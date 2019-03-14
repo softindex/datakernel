@@ -33,7 +33,9 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
-import io.global.common.*;
+import io.global.common.BinaryDataFormats;
+import io.global.common.KeyPair;
+import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
@@ -55,7 +57,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
@@ -127,7 +128,7 @@ public final class GlobalDbDemoApp extends Launcher {
 
 					@Provides
 					@Singleton
-					DbStorage provideStorage(Config config) {
+					DbStorage provideStorage() {
 						return new RuntimeDbStorageStub();
 					}
 
@@ -139,15 +140,8 @@ public final class GlobalDbDemoApp extends Launcher {
 
 					@Provides
 					@Singleton
-					PrivateKeyStorage providePKS(Config config) {
-						PrivKey alice = config.get(ofPrivKey(), "app.keys.alice");
-						return new PrivateKeyStorage(map(alice.computePubKey(), alice));
-					}
-
-					@Provides
-					@Singleton
-					GlobalDbDriver provide(GlobalDbNode node, PrivateKeyStorage pks) {
-						return GlobalDbDriver.create(node, pks);
+					GlobalDbDriver provide(GlobalDbNode node) {
+						return GlobalDbDriver.create(node);
 					}
 
 					@Provides
@@ -161,7 +155,7 @@ public final class GlobalDbDemoApp extends Launcher {
 					@Singleton
 					@Named("alice")
 					DbClient provideAlice(GlobalDbDriver driver, @Named("alice") KeyPair keys) {
-						return driver.gatewayFor(keys.getPubKey());
+						return driver.adapt(keys);
 					}
 
 					@Provides

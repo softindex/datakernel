@@ -89,7 +89,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	LocalGlobalDbNode provide(Config config, DiscoveryService discoveryService, NodeFactory<GlobalDbNode> factory) {
-		return LocalGlobalDbNode.create(config.get(ofRawServerId(), "db.serverId"), discoveryService, factory, $ -> new RuntimeDbStorageStub())
+		return LocalGlobalDbNode.create(config.get(ofRawServerId(), "db.serverId"), discoveryService, factory, ($1, $2) -> new RuntimeDbStorageStub())
 				.initialize(ofLocalGlobalDbNode(config.getChild("ot")));
 	}
 
@@ -157,7 +157,7 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	FsClient provide(Eventloop eventloop, ExecutorService executor, Config config) {
+	FsClient provide(Eventloop eventloop, Config config) {
 		return LocalFsClient.create(eventloop, config.get(ofPath(), "fs.storage"))
 				.withRevisions();
 	}

@@ -72,6 +72,10 @@ public final class GlobalFsDriver {
 		return new GlobalFsAdapter(this, privKey.computePubKey(), privKey);
 	}
 
+	public GlobalFsAdapter adapt(KeyPair keys) {
+		return new GlobalFsAdapter(this, keys.getPubKey(), keys.getPrivKey());
+	}
+
 	private Promise<ChannelConsumer<ByteBuf>> doUpload(
 			KeyPair keys, String filename, long offset, long revision, long skip,
 			@Nullable SimKey key, @Nullable SHA256Digest startingDigest) {

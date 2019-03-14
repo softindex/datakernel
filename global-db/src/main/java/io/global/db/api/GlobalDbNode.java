@@ -26,21 +26,21 @@ import io.global.db.DbItem;
 import java.util.List;
 
 public interface GlobalDbNode {
-	Promise<ChannelConsumer<SignedData<DbItem>>> upload(TableID repoID);
+	Promise<ChannelConsumer<SignedData<DbItem>>> upload(PubKey space, String table);
 
-	Promise<ChannelSupplier<SignedData<DbItem>>> download(TableID repoID, long timestamp);
+	Promise<ChannelSupplier<SignedData<DbItem>>> download(PubKey space, String table, long timestamp);
 
-	default Promise<ChannelSupplier<SignedData<DbItem>>> download(TableID repoID) {
-		return download(repoID, 0);
+	default Promise<ChannelSupplier<SignedData<DbItem>>> download(PubKey space, String table) {
+		return download(space, table, 0);
 	}
 
 	// have to have quick random access
-	Promise<SignedData<DbItem>> get(TableID repoID, byte[] key);
+	Promise<SignedData<DbItem>> get(PubKey space, String table, byte[] key);
 
 	// could be some optimized single put
-	default Promise<Void> put(TableID repoID, SignedData<DbItem> item) {
-		return ChannelSupplier.of(item).streamTo(ChannelConsumer.ofPromise(upload(repoID)));
+	default Promise<Void> put(PubKey space, String table, SignedData<DbItem> item) {
+		return ChannelSupplier.of(item).streamTo(ChannelConsumer.ofPromise(upload(space, table)));
 	}
 
-	Promise<List<String>> list(PubKey owner);
+	Promise<List<String>> list(PubKey space);
 }

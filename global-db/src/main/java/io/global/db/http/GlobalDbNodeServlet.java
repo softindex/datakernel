@@ -31,7 +31,6 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.db.DbItem;
 import io.global.db.api.GlobalDbNode;
-import io.global.db.api.TableID;
 
 import java.util.List;
 
@@ -56,12 +55,12 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 
 	private GlobalDbNodeServlet(GlobalDbNode node) {
 		servlet = MiddlewareServlet.create()
-				.with(POST, "/" + UPLOAD + "/:space/:repo", request -> {
+				.with(POST, "/" + UPLOAD + "/:space/:table", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
-						TableID tableID = TableID.of(space, request.getPathParameter("repo"));
+						String table = request.getPathParameter("table");
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
-						return node.upload(tableID)
+						return node.upload(space, table)
 								.map(consumer ->
 										BinaryChannelSupplier.of(bodyStream)
 												.parseStream(DB_ITEM_PARSER)
@@ -71,17 +70,17 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + DOWNLOAD + "/:space/:repo", request -> {
+				.with(GET, "/" + DOWNLOAD + "/:space/:table", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
-						TableID tableID = TableID.of(space, request.getPathParameter("repo"));
+						String table = request.getPathParameter("table");
 						long offset;
 						try {
 							offset = Long.parseUnsignedLong(request.getQueryParameter("offset", "0"));
 						} catch (NumberFormatException e) {
 							throw new ParseException(e);
 						}
-						return node.download(tableID, offset)
+						return node.download(space, table, offset)
 								.map(supplier ->
 										HttpResponse.ok200()
 												.withBodyStream(supplier.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))));
@@ -89,11 +88,11 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + GET_ITEM + "/:owner/:repo", request -> request.getBody().then(body -> {
+				.with(GET, "/" + GET_ITEM + "/:space/:table", request -> request.getBody().then(body -> {
 					try {
-						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-						TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
-						return node.get(tableID, body.asArray())
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String table = request.getPathParameter("table");
+						return node.get(space, table, body.asArray())
 								.map(item ->
 										HttpResponse.ok200().withBody(encode(DB_ITEM_CODEC, item)));
 					} catch (ParseException e) {
@@ -102,11 +101,11 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 						body.recycle();
 					}
 				}))
-				.with(PUT, "/" + PUT_ITEM + "/:owner/:repo", request -> request.getBody().then(body -> {
+				.with(PUT, "/" + PUT_ITEM + "/:space/:table", request -> request.getBody().then(body -> {
 					try {
-						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-						TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
-						return node.put(tableID, decode(DB_ITEM_CODEC, body.slice()))
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String table = request.getPathParameter("table");
+						return node.put(space, table, decode(DB_ITEM_CODEC, body.slice()))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
@@ -114,10 +113,10 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 						body.recycle();
 					}
 				}))
-				.with(GET, "/" + LIST + "/:owner", request -> {
+				.with(GET, "/" + LIST + "/:space", request -> {
 					try {
-						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-						return node.list(owner)
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						return node.list(space)
 								.map(list ->
 										HttpResponse.ok200()
 												.withBody(encode(LIST_STRING_CODEC, list)));
