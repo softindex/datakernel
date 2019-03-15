@@ -31,7 +31,7 @@ Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 First, open `ServerSetupExample` class which is located at **datakernel -> examples -> remotefs**, and run its *main()* 
 method.
 
-Then open `FileUploadExample` class which is located in the same folder, and run its *main()* method. 
+Then, open `FileUploadExample` class which is located in the same folder, and run its *main()* method. 
 
 Finally, open `FileDownloadExample` class which is located in the same folder, and also run its *main()* method.
 
@@ -47,36 +47,37 @@ special `RemoteFsServerLauncher` from Launchers module. It allows to setup FS se
  			@Override
  			protected Collection<Module> getOverrideModules() {
  				return asList(
- 						//setting server configurations
- 						ConfigModule.create(Config.create()
- 								.with("remotefs.path", "src/main/resources/server_storage")
- 								.with("remotefs.listenAddresses", "6732")
- 						),
- 						new AbstractModule() {
- 							//creating an eventloop for our server
- 							@Provides
- 							@Singleton
- 							Eventloop eventloop() {
- 								return Eventloop.create()
- 										.withFatalErrorHandler(rethrowOnAnyError())
- 										.withCurrentThread();
- 							}
+ 					//setting server configurations
+ 					ConfigModule.create(Config.create()
+ 						.with("remotefs.path", "src/main/resources/server_storage")
+ 						.with("remotefs.listenAddresses", "6732")
+ 					),
+ 					new AbstractModule() {
+ 						//creating an eventloop for our server
+ 						@Provides
+ 						@Singleton
+ 						Eventloop eventloop() {
+ 							return Eventloop.create()
+ 								.withFatalErrorHandler(rethrowOnAnyError())
+ 								.withCurrentThread();
  						}
+ 					}
  				);
  			}
  		};
+ 		
  		//launch our server, EAGER_SINGLETON_MODE variable is already defined in RemoteFsServerLauncher 
  		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
  	}
  }
 ```
 
-As for file upload and download examples, they have alike implementations. Both of them extend `Launcher` and thus 
-implement `run()` method which defines the main behaviour of the launcher.
+**File upload** and **download** examples have alike implementations. Both of them extend `Launcher` and thus 
+implement *run()* method which defines the main behaviour of the launcher.
 Also, both of the examples utilize CSP module - uploader uses `ChannelFileReader` while downloader uses `ChannelFileWriter`. 
 They allow to asynchronously read/write data from/to files. 
 
-Let's analyze **File Upload Example** `run()` method:
+Let's analyze **File Upload Example** *run()* method:
 
 ```java
 protected void run() throws Exception {
@@ -86,7 +87,7 @@ protected void run() throws Exception {
 		ChannelFileReader producer = null;
 		try {
 			producer = ChannelFileReader.readFile(executor, CLIENT_STORAGE.resolve(FILE_NAME))
-					.withBufferSize(MemSize.kilobytes(16));
+				.withBufferSize(MemSize.kilobytes(16));
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
@@ -95,18 +96,17 @@ protected void run() throws Exception {
 
 		//consumer result here is a marker of successful upload
 		producer.streamTo(consumer)
-			    .whenComplete(($, e) -> {
-					if (e != null) {
-						logger.error("Error while uploading file {}", FILE_NAME, e);
-					} else {
-						logger.info("Client uploaded file {}", FILE_NAME);
-					}
-					shutdown();
-				});
-
+			.whenComplete(($, e) -> {
+				if (e != null) {
+					logger.error("Error while uploading file {}", FILE_NAME, e);
+				} else {
+					logger.info("Client uploaded file {}", FILE_NAME);
+				}
+				shutdown();
+			});
 		});
 		awaitShutdown();
 	}
 ```
 
-**File Upload Example** has a resembling `run()` implementation. 
+**File Upload Example** has a resembling *run()* implementation. 

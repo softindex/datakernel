@@ -18,7 +18,7 @@ Execution of an eventloop will be ended when it has not selected keys and its qu
 * Eventloop can schedule/delay certain tasks for later execution or background execution.
 * Because Eventloop is single-threaded it doesn't have to deal with concurrency overhead.
 
-You can create different Eventloop modifications, utilizing builtin creators:
+You can create different Eventloop modifications, utilizing built-in creators:
 * *withThreadName(String threadName)*
 * *withThreadPriority(int threadPriority)* 
 * *withInspector(@Nullable EventloopInspector inspector)*

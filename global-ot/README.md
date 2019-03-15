@@ -24,6 +24,9 @@ applications using principles which conceptually resemble Git, but in a more adv
     merging. It splits complex commit graph to atomic OT operations.
     
 ### Global-OT network design:
+
+<img src="http://datakernel.io/static/images/globalot-architecture.png">
+
 Global-OT has a fully decentralized multi-tier network design:
 1. Client applications layer - all Global-OT applications, such as mobile and desktop applications or even a server.
 2. P2P Global-OT servers layer which can be split in two logical layers:
@@ -53,4 +56,4 @@ for example:
 * Instant messenger application
 * Global Cloud storage
 
-You can experience how OT works by checking out our [demo Global-OT application](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
+You can experience how OT works by checking out our [demo Global-OT application](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo).

@@ -1,9 +1,9 @@
 [UIKernel Integration Example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration/src/main/java/io/datakernel/examples) -
-an integration of UIKernel.io frontend JS library with DataKernel modules.
+ integration of UIKernel.io frontend JS library with DataKernel modules.
 
 You can launch this example in **5 steps**:
 
-#### 1. Clone the project from GitHub repository:
+#### 1. Clone DataKernel from GitHub repository and install it:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel

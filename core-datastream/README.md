@@ -28,7 +28,7 @@ Transformer interfaces. Using them, you can seamlessly transform channels into o
 versa, creating chains of such transformations.
 
 See an example of CSP and Datastreams compatibility 
-[here](https://github.com/softindex/datakernel/tree/master/examples/datastreams##5-datasteams-and-csp-compatibility-example).
+[here](https://github.com/softindex/datakernel/tree/master/examples/datastreams#5-datasteams-and-csp-compatibility-example).
 
 ### You can explore more Datastream examples [here](https://github.com/softindex/datakernel/tree/master/examples/datastreams)
 

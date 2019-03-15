@@ -35,7 +35,7 @@
 These examples aim to represent core DataKernel technologies and show how they can be used for both common and advanced 
 use cases. 
 
-If you'd like to learn more about the basic modules of DataKernel (Promise, ByteBuf etc.), please go to 
+If you'd like to learn more about basic modules of DataKernel (Promise, ByteBuf etc.), please go to 
 [Basic modules](#basic-modules) section. With these examples you'll understand how DataKernel's building blocks work
 from within and the core principles of their efficient asynchronous performance. 
 
@@ -70,7 +70,7 @@ These instructions are repeated in each of the examples' description just to mak
 correctly. Yet if you've followed the instructions once, you can omit them from now on. 
 
 ### Basic modules
-If you haven't checked out [Hello World](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 
+If you haven't checked out ["Hello World"](https://github.com/softindex/datakernel/tree/master/examples/getting-started) 
 getting-started example yet, you can start with it. This simple 5-minutes tutorial represents how to create a basic 
 application in DataKernel-like way.
 
@@ -100,14 +100,13 @@ special channels and streams:
 create channels for communications, ByteBufs parsers and handle Communication Sequential Processes.
 
 * [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams) - includes 6 examples 
-of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#datasteams-and-csp-compatibility-example)  
-which illustrate how Datastreams can be combined with CSP to create inter-server streams.
+of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#datasteams-and-csp-compatibility-example), which illustrate how Datastreams can be combined with CSP to create inter-server streams.
 
 Also, 
-* [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - shows how to boot your projects 
+* [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - show how to boot your projects 
 and work with configs using Boot module. 
 
-* [Launchers example - Hello World](https://github.com/softindex/datakernel/tree/master/examples/launchers#hello-world) - 
+* [Launchers example - "Hello World"](https://github.com/softindex/datakernel/tree/master/examples/launchers#hello-world) - 
 demonstrates one of the simplest launchers' usages.
 
 

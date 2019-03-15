@@ -16,6 +16,9 @@ ByteBuf supports concurrent processes: while some data is written to the `ByteBu
 read it. ByteBuf also has *slice()* operation and inner ref counts.
 
 ### ByteBufPool
+
+<img src="http://datakernel.io/static/images/bytebuf-pool.png">
+
 Allows to reuse ByteBufs, and as a result reduces Java Garbage Collector load. To make utilizing of ByteBufPool more 
 convenient, there are debugging and monitoring tools for allocated ByteBufs, including their stack traces.
 
@@ -38,11 +41,11 @@ if latter contains more bytes than `size`. Otherwise creates a new ByteBuf of th
 * *takeAtMost(int size)* - creates and returns ByteBufSlice that contains needed amount of bytes from queue's first ByteBuf
 if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes from first ByteBuf in queue.
 
-You can explore an example of ByteBuf pool usage [here](https://github.com/softindex/datakernel/tree/master/examples/bytebuf#bytebuf-queue-example)
+You can explore an example of ByteBuf queue usage [here](https://github.com/softindex/datakernel/tree/master/examples/bytebuf#bytebuf-queue-example)
 
 <br>
 
-The module also contains utility classes to manage resizing of underlying byte buffer, `String` conversions, etc.
+This module also contains utility classes to manage resizing of underlying byte buffer, `String` conversions, etc.
 
 You can wrap your byte array into `ByteBuf` in the following ways:
 

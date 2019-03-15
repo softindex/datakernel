@@ -18,6 +18,9 @@ created
 directly into application) - which means extremely low latencies and high data availability.
 
 ### Global-FS has a multi-tier network topology:
+
+<img src="http://datakernel.io/static/images/globalfs-architecture.png">
+
 1. Client applications layer - all Global-FS applications, such as mobile and desktop applications or even a server.
 2. P2P Global-FS servers layer which can be split in two logical layers:
     * Master FS-Servers (store original file systems)
