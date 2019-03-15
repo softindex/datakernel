@@ -54,12 +54,16 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private final Eventloop eventloop;
 	private SocketChannel channel;
+	@Nullable
 	private ByteBuf readBuf;
 	private boolean readEndOfStream;
+	@Nullable
 	private ByteBuf writeBuf;
 	private boolean writeEndOfStream;
 
+	@Nullable
 	private SettablePromise<ByteBuf> read;
+	@Nullable
 	private SettablePromise<Void> write;
 
 	private SelectionKey key;
@@ -69,7 +73,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private int writeTimeout = NO_TIMEOUT;
 	private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
 
+	@Nullable
 	private ScheduledRunnable scheduledReadTimeout;
+	@Nullable
 	private ScheduledRunnable scheduledWriteTimeout;
 
 	@Nullable
@@ -230,7 +236,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return this;
 	}
 
-	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
+	public AsyncTcpSocketImpl(Eventloop eventloop, @NotNull SocketChannel socketChannel) {
 		this.eventloop = eventloop;
 		this.channel = socketChannel;
 	}
@@ -263,7 +269,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void updateInterests() {
 		if (ops < 0 || channel == null) return;
-		byte newOps = (byte) ((readBuf == null ? SelectionKey.OP_READ : 0) | (writeBuf == null ? 0 : SelectionKey.OP_WRITE));
+		byte newOps = (byte) (((readBuf == null && !readEndOfStream) ? SelectionKey.OP_READ : 0) | (writeBuf == null || writeEndOfStream ? 0 : SelectionKey.OP_WRITE));
 		if (key == null) {
 			ops = newOps;
 			try {
@@ -489,7 +495,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doClose() {
 		eventloop.closeChannel(channel, key);
-		//noinspection AssignmentToNull - null only after close
+		//noinspection ConstantConditions - null only after close
 		channel = null;
 		CONNECTION_COUNT.decrementAndGet();
 	}
