@@ -75,7 +75,7 @@ public class PromiseStats {
 	}
 
 	public <T> Promise<T> monitor(Promise<T> promise) {
-		return promise.whenComplete(recordStats());
+		return promise.acceptEx(recordStats());
 	}
 
 	public <T> BiConsumer<T, Throwable> recordStats() {

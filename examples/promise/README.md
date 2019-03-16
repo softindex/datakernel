@@ -77,7 +77,7 @@ Here `Promises` *toList* method is utilized:
 ```java
 Promises.toList(Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
     //waits for completion of toList() and then prints it out
-	.whenResult(list -> System.out.println("Size of collected list: " + list.size() + "\nList: " + list));
+	.accept(list -> System.out.println("Size of collected list: " + list.size() + "\nList: " + list));
 ```
 
 And the final output is:
@@ -90,7 +90,7 @@ Here `Promises` *toArray* method is utilized, which reduces *promises* to array 
 ```java
 Promises.toArray(Integer.class, Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
     //waits for completion of toArray()
-    .whenResult(array -> System.out.println("Size of collected array: " + array.length + "\nArray: " + Arrays.toString(array)));
+    .accept(array -> System.out.println("Size of collected array: " + array.length + "\nArray: " + Arrays.toString(array)));
 ```
 
 ### 2. Async File Example

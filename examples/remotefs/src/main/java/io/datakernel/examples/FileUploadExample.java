@@ -104,7 +104,7 @@ public class FileUploadExample extends Launcher {
 
 			// consumer result here is a marker of it being successfully uploaded
 			producer.streamTo(consumer)
-					.whenComplete(($, e) -> {
+					.acceptEx(($, e) -> {
 						if (e != null) {
 							logger.error("Error while uploading file {}", FILE_NAME, e);
 						} else {

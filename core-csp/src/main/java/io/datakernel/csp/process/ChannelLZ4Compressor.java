@@ -142,16 +142,16 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 	@Override
 	protected void doProcess() {
 		input.get()
-				.whenResult(buf -> {
+				.accept(buf -> {
 					if (buf != null) {
 						ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.head(), buf.readRemaining());
 						if (inspector != null) inspector.onBuf(buf, outputBuf);
 						buf.recycle();
 						output.accept(outputBuf)
-								.whenResult($ -> doProcess());
+								.accept($ -> doProcess());
 					} else {
 						output.accept(createEndOfStreamBlock(), null)
-								.whenResult($ -> completeProcess());
+								.accept($ -> completeProcess());
 					}
 				});
 	}

@@ -62,14 +62,14 @@ public final class GlobalDbGateway implements DbClient {
 		return simKeyHash != null ?
 				driver.getPrivateKeyStorage()
 						.getKey(owner, simKeyHash)
-						.thenApply(simKey -> simKey != null ? DbItem.decrypt(item, simKey) : item) :
+						.map(simKey -> simKey != null ? DbItem.decrypt(item, simKey) : item) :
 				Promise.of(item);
 	}
 
 	@Override
 	public Promise<ChannelConsumer<DbItem>> upload(String table) {
 		return node.upload(TableID.of(owner, table))
-				.thenApply(consumer ->
+				.map(consumer ->
 						consumer.map(item ->
 								SignedData.sign(DB_ITEM_CODEC, DbItem.encrypt(item, driver.getPrivateKeyStorage().getCurrentSimKey()), privKey)));
 	}
@@ -77,7 +77,7 @@ public final class GlobalDbGateway implements DbClient {
 	@Override
 	public Promise<ChannelSupplier<DbItem>> download(String table, long timestamp) {
 		return node.download(TableID.of(owner, table), timestamp)
-				.thenApply(supplier ->
+				.map(supplier ->
 						(supplier
 								.filter(signedItem -> {
 									if (!signedItem.verify(owner)) {
@@ -95,14 +95,14 @@ public final class GlobalDbGateway implements DbClient {
 	@Override
 	public Promise<ChannelConsumer<byte[]>> remove(String table) {
 		return node.upload(TableID.of(owner, table))
-				.thenApply(consumer ->
+				.map(consumer ->
 						consumer.map(key -> SignedData.sign(DB_ITEM_CODEC, DbItem.ofRemoved(key, currentTimeProvider.currentTimeMillis()), privKey)));
 	}
 
 	@Override
 	public Promise<DbItem> get(String table, byte[] key) {
 		return node.get(TableID.of(owner, table), key)
-				.thenCompose(signedDbItem -> {
+				.then(signedDbItem -> {
 					if (!signedDbItem.verify(owner)) {
 						return Promise.ofException(DB_ITEM_SIG);
 					}

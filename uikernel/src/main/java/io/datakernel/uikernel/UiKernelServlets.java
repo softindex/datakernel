@@ -53,7 +53,7 @@ public class UiKernelServlets {
 		return request -> {
 			try {
 				ReadSettings<K> settings = ReadSettings.from(gson, request);
-				return model.read(settings).thenApply(response ->
+				return model.read(settings).map(response ->
 						createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
 			} catch (ParseException e) {
 				return Promise.ofException((Throwable) e);
@@ -67,7 +67,7 @@ public class UiKernelServlets {
 			try {
 				ReadSettings<K> settings = ReadSettings.from(gson, request);
 				K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
-				return model.read(id, settings).thenApply(obj ->
+				return model.read(id, settings).map(obj ->
 						createResponse(gson.toJson(obj, model.getRecordType())));
 			} catch (ParseException e) {
 				return Promise.ofException((Throwable) e);
@@ -76,11 +76,11 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
-		return request -> request.getBody().thenCompose(body -> {
+		return request -> request.getBody().then(body -> {
 			try {
 				String json = body.asString(UTF_8);
 				R obj = fromJson(gson, json, model.getRecordType());
-				return model.create(obj).thenApply(response ->
+				return model.create(obj).map(response ->
 						createResponse(response.toJson(gson, model.getIdType())));
 			} catch (ParseException e) {
 				return Promise.ofException((Throwable) e);
@@ -89,11 +89,11 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
-		return request -> request.getBody().thenCompose(body -> {
+		return request -> request.getBody().then(body -> {
 			try {
 				String json = body.asString(UTF_8);
 				List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
-				return model.update(list).thenApply(result ->
+				return model.update(list).map(result ->
 						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
 			} catch (ParseException e) {
 				return Promise.ofException((Throwable) e);
@@ -105,7 +105,7 @@ public class UiKernelServlets {
 		return request -> {
 			try {
 				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
-				return model.delete(id).thenApply(response -> {
+				return model.delete(id).map(response -> {
 					HttpResponse res = HttpResponse.ok200();
 					if (response.hasErrors()) {
 						String json = gson.toJson(response.getErrors());

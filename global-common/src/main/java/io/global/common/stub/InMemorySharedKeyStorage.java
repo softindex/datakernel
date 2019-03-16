@@ -40,7 +40,7 @@ public class InMemorySharedKeyStorage implements SharedKeyStorage {
 	@Override
 	public Promise<@Nullable SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
 		return loadAll(receiver)
-				.thenCompose(signedDataList -> {
+				.then(signedDataList -> {
 					Optional<SignedData<SharedSimKey>> maybeKey = signedDataList.stream()
 							.filter(signedData -> signedData.getValue().getHash().equals(hash))
 							.findFirst();

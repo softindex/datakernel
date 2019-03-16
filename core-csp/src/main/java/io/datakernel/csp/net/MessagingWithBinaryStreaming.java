@@ -52,7 +52,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 		this.serializer = serializer;
 		this.bufsSupplier = BinaryChannelSupplier.ofProvidedQueue(bufs,
 				() -> this.socket.read()
-						.thenCompose(buf -> {
+						.then(buf -> {
 							if (buf != null) {
 								bufs.add(buf);
 								return Promise.complete();
@@ -60,7 +60,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 								return Promise.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
-						.whenException(this::close),
+						.acceptEx(Exception.class, this::close),
 				Promise::complete,
 				this);
 	}
@@ -76,7 +76,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	private void prefetch() {
 		if (bufs.isEmpty()) {
 			socket.read()
-					.whenResult(buf -> {
+					.accept(buf -> {
 						if (buf != null) {
 							bufs.add(buf);
 						} else {
@@ -84,15 +84,15 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 							closeIfDone();
 						}
 					})
-					.whenException(this::close);
+					.acceptEx(Exception.class, this::close);
 		}
 	}
 
 	@Override
 	public Promise<I> receive() {
 		return bufsSupplier.parse(serializer)
-				.whenResult($ -> prefetch())
-				.whenException(this::close);
+				.accept($ -> prefetch())
+				.acceptEx(Exception.class, this::close);
 	}
 
 	@Override
@@ -103,18 +103,18 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	@Override
 	public Promise<Void> sendEndOfStream() {
 		return socket.write(null)
-				.whenResult($ -> {
+				.accept($ -> {
 					writeDone = true;
 					closeIfDone();
 				})
-				.whenException(this::close);
+				.acceptEx(Exception.class, this::close);
 	}
 
 	@Override
 	public ChannelConsumer<ByteBuf> sendBinaryStream() {
 		return ChannelConsumer.ofSocket(socket)
 				.withAcknowledgement(ack -> ack
-						.whenResult($ -> {
+						.accept($ -> {
 							writeDone = true;
 							closeIfDone();
 						}));
@@ -124,7 +124,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public ChannelSupplier<ByteBuf> receiveBinaryStream() {
 		return ChannelSuppliers.concat(ChannelSupplier.ofIterator(bufs.asIterator()), ChannelSupplier.ofSocket(socket))
 				.withEndOfStream(eos -> eos
-						.whenResult($ -> {
+						.accept($ -> {
 							readDone = true;
 							closeIfDone();
 						}));

@@ -77,7 +77,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 		return commitFactory != null ?
 				commitFactory.createCommit(parentDiffs, level) :
 				createCommitId()
-						.thenApply(newId -> OTCommit.of(newId, parentDiffs, level));
+						.map(newId -> OTCommit.of(newId, parentDiffs, level));
 	}
 
 	@Override

@@ -81,7 +81,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	@Override
 	protected Promise<Void> doAccept(ByteBuf buf) {
 		return ensureOffset()
-				.thenComposeEx(($, e) -> {
+				.thenEx(($, e) -> {
 					if (isClosed()) {
 						if (buf != null) {
 							buf.recycle();
@@ -97,10 +97,10 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 					}
 					if (buf == null) {
 						return closeFile()
-								.whenComplete(($1, e1) -> close());
+								.acceptEx(($1, e1) -> close());
 					}
 					return asyncFile.write(buf)
-							.thenComposeEx(($2, e2) -> {
+							.thenEx(($2, e2) -> {
 								if (isClosed()) return Promise.ofException(getException());
 								if (e2 != null) {
 									close(e2);
@@ -115,7 +115,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 			return Promise.complete();
 		}
 		return (forceOnClose ? asyncFile.forceAndClose(forceMetadata) : asyncFile.close())
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						logger.trace(this + ": closed file");
 					} else {

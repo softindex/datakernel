@@ -48,6 +48,7 @@
 		<module>global-ot</module>
 		<module>global-fs</module>
 		<module>global-db</module>
+		<module>global-apps</module>
 		<module>common</module>
 		<module>boot</module>
 		<module>uikernel</module>

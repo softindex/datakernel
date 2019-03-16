@@ -320,7 +320,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 			return Promise.ofException(new ParseException(HttpRequest.class, "Invalid request type"));
 		}
 		return getBody(maxSize)
-				.thenApply(body -> {
+				.map(body -> {
 					try {
 						return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining()));
 					} finally {

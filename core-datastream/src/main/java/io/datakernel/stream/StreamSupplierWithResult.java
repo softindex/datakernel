@@ -36,7 +36,7 @@ public final class StreamSupplierWithResult<T, X> {
 
 	public StreamSupplierWithResult<T, X> sanitize() {
 		return new StreamSupplierWithResult<>(supplier,
-				supplier.getEndOfStream().combine(result.whenException(supplier::close), ($, v) -> v).post());
+				supplier.getEndOfStream().combine(result.acceptEx(Exception.class, supplier::close), ($, v) -> v).post());
 	}
 
 	public <T1, X1> StreamSupplierWithResult<T1, X1> transform(
@@ -58,8 +58,8 @@ public final class StreamSupplierWithResult<T, X> {
 	public static <T, X> StreamSupplierWithResult<T, X> ofPromise(Promise<StreamSupplierWithResult<T, X>> promise) {
 		if (promise.isResult()) return promise.materialize().getResult();
 		return of(
-				StreamSupplier.ofPromise(promise.thenApply(StreamSupplierWithResult::getSupplier)),
-				promise.thenCompose(StreamSupplierWithResult::getResult));
+				StreamSupplier.ofPromise(promise.map(StreamSupplierWithResult::getSupplier)),
+				promise.then(StreamSupplierWithResult::getResult));
 	}
 
 	public StreamSupplier<T> getSupplier() {

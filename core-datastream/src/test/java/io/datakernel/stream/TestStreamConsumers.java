@@ -19,7 +19,7 @@ public class TestStreamConsumers {
 			final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 			{
-				consumer.getAcknowledgement().whenComplete(acknowledgement::trySet);
+				consumer.getAcknowledgement().acceptEx(acknowledgement::trySet);
 			}
 
 			@Override

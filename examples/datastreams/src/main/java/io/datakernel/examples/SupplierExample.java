@@ -34,7 +34,7 @@ public class SupplierExample {
 
 		supplier.streamTo(consumer);
 
-		consumer.getResult().whenResult(result -> System.out.println("Consumer received: " + result));
+		consumer.getResult().accept(result -> System.out.println("Consumer received: " + result));
 
 		eventloop.run();
 	}

@@ -39,7 +39,7 @@ public class BuiltinStreamNodesExample {
 
 		supplier.transformWith(filter).streamTo(consumer);
 
-		consumer.getResult().whenResult(System.out::println);
+		consumer.getResult().accept(System.out::println);
 	}
 
 	private static void sharder() {
@@ -57,9 +57,9 @@ public class BuiltinStreamNodesExample {
 
 		supplier.streamTo(sharder.getInput());
 
-		first.getResult().whenResult(x -> System.out.println("first: " + x));
-		second.getResult().whenResult(x -> System.out.println("second: " + x));
-		third.getResult().whenResult(x -> System.out.println("third: " + x));
+		first.getResult().accept(x -> System.out.println("first: " + x));
+		second.getResult().accept(x -> System.out.println("second: " + x));
+		third.getResult().accept(x -> System.out.println("third: " + x));
 	}
 
 	private static void mapper() {
@@ -71,7 +71,7 @@ public class BuiltinStreamNodesExample {
 
 		supplier.transformWith(simpleMap).streamTo(consumer);
 
-		consumer.getResult().whenResult(System.out::println);
+		consumer.getResult().accept(System.out::println);
 	}
 
 	public static void main(String[] args) {

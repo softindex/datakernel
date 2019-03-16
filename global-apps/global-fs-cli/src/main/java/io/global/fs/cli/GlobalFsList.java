@@ -60,7 +60,7 @@ public final class GlobalFsList implements Callable<Void> {
 
 		info("Listing files " + (glob != null ? "with glob '" + glob + "' " : "") + "...");
 		gateway.listEntities(glob != null ? glob : "**")
-				.whenComplete((list, e) -> {
+				.acceptEx((list, e) -> {
 					if (e != null) {
 						err("List " + (glob != null ? '\'' + glob + "' " : "") + "finished with exception " + e);
 						return;

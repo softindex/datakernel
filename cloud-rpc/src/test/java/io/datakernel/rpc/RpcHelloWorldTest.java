@@ -113,7 +113,7 @@ public final class RpcHelloWorldTest {
 				return rpcClient.getEventloop().<HelloResponse>submit(
 						cb -> rpcClient
 								.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(cb))
+								.acceptEx(cb))
 						.get().message;
 			} catch (ExecutionException e) {
 				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
@@ -161,8 +161,8 @@ public final class RpcHelloWorldTest {
 			for (int i = 0; i < requestCount; i++) {
 				String name = "World" + i;
 				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete(($, e) -> latch.countDown())
-						.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
+						.acceptEx(($, e) -> latch.countDown())
+						.acceptEx(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();
 		} finally {
@@ -205,12 +205,12 @@ public final class RpcHelloWorldTest {
 				String name = "world" + i;
 				client1.eventloop.execute(() ->
 						client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(($1, e1) -> latch.countDown())
-								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
+								.acceptEx(($1, e1) -> latch.countDown())
+								.acceptEx(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 				client2.eventloop.execute(() ->
 						client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(($, e) -> latch.countDown())
-								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
+								.acceptEx(($, e) -> latch.countDown())
+								.acceptEx(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();
 		} finally {
@@ -232,7 +232,7 @@ public final class RpcHelloWorldTest {
 				for (int i = 0; i < count; i++) {
 					client.eventloop.execute(() ->
 							client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest("benchmark"), TIMEOUT)
-									.whenComplete(($, e) -> {
+									.acceptEx(($, e) -> {
 										latch.countDown();
 										(e == null ? success : error).incrementAndGet();
 									}));

@@ -253,8 +253,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				aggregate, chunkSize, classLoader);
 
 		return supplier.streamTo(groupReducer)
-				.thenCompose($ -> groupReducer.getResult())
-				.thenApply(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
+				.then($ -> groupReducer.getResult())
+				.map(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
 	}
 
 	public <T> Promise<AggregationDiff> consume(StreamSupplier<T> supplier, Class<T> inputClass) {
@@ -301,7 +301,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 
 		stream.getEndOfStream()
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (temporarySortDir == null) {
 						deleteSortDirSilent(sortDir);
 					}
@@ -329,7 +329,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
 				aggregationChunkStorage, classLoader, chunkSize);
 		return consolidatedSupplier.streamTo(chunker)
-				.thenCompose($ -> chunker.getResult());
+				.then($ -> chunker.getResult());
 	}
 
 	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<Sequence>>> planIndex,
@@ -520,7 +520,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		consolidationStarted = eventloop.currentTimeMillis();
 
 		return doConsolidation(chunks)
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
 						consolidations++;
@@ -529,7 +529,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 						consolidationLastError = e;
 					}
 				})
-				.thenApply(removedChunks -> AggregationDiff.of(new LinkedHashSet<>(removedChunks), new LinkedHashSet<>(chunks)));
+				.map(removedChunks -> AggregationDiff.of(new LinkedHashSet<>(removedChunks), new LinkedHashSet<>(chunks)));
 	}
 
 	private Path createSortDir() {

@@ -47,7 +47,7 @@ public final class StubHttpClient implements IAsyncHttpClient {
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
 		}
-		return servletResult.thenComposeEx((res, e) -> {
+		return servletResult.thenEx((res, e) -> {
 			if (e == null) {
 				return Promise.of(res);
 			} else {

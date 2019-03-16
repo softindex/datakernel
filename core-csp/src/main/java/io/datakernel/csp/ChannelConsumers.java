@@ -18,7 +18,6 @@ package io.datakernel.csp;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.util.Recyclable;
 
 import java.util.Iterator;
@@ -53,7 +52,7 @@ public final class ChannelConsumers {
 		while (it.hasNext()) {
 			Promise<Void> accept = output.accept(it.next());
 			if (accept.isResult()) continue;
-			accept.whenComplete(($, e) -> {
+			accept.acceptEx(($, e) -> {
 				if (e == null) {
 					acceptAllImpl(output, it, cb);
 				} else {

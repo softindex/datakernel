@@ -1,7 +1,10 @@
 package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.RemoteFsChunkStorage;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -106,29 +109,29 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	Promise<Void> doCleanup() {
 		return repository.getHeads()
-				.thenCompose(algorithms::excludeParents)
-				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentInstant().minus(freezeTimeout)))
-				.thenCompose(this::cleanupFrozenCut)
-				.thenComposeEx((v, e) -> {
+				.then(algorithms::excludeParents)
+				.then(heads -> findFrozenCut(heads, eventloop.currentInstant().minus(freezeTimeout)))
+				.then(this::cleanupFrozenCut)
+				.thenEx((v, e) -> {
 					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
 					return Promise.of(v, e);
 				})
-				.whenComplete(promiseCleanup.recordStats())
-				.whenComplete(toLogger(logger, thisMethod()));
+				.acceptEx(promiseCleanup.recordStats())
+				.acceptEx(toLogger(logger, thisMethod()));
 	}
 
 	Promise<Set<K>> findFrozenCut(Set<K> heads, Instant freezeTimestamp) {
 		return algorithms.findCut(heads,
 				commits -> commits.stream().allMatch(commit -> commit.getInstant().compareTo(freezeTimestamp) < 0))
-				.whenComplete(toLogger(logger, thisMethod(), heads, freezeTimestamp));
+				.acceptEx(toLogger(logger, thisMethod(), heads, freezeTimestamp));
 	}
 
 	Promise<Void> cleanupFrozenCut(Set<K> frozenCut) {
 		return Promise.of(frozenCut)
-				.thenCompose(algorithms::findAllCommonParents)
-				.thenCompose(algorithms::findAnyCommonParent)
-				.thenCompose(this::trySaveSnapshotAndCleanupChunks)
-				.whenComplete(toLogger(logger, thisMethod(), frozenCut));
+				.then(algorithms::findAllCommonParents)
+				.then(algorithms::findAnyCommonParent)
+				.then(this::trySaveSnapshotAndCleanupChunks)
+				.acceptEx(toLogger(logger, thisMethod(), frozenCut));
 	}
 
 	static class Tuple<K, D, C> {
@@ -143,15 +146,15 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	Promise<Void> trySaveSnapshotAndCleanupChunks(K checkpointNode) {
 		return Promise.of(checkpointNode)
-				.thenCompose(algorithms::checkout)
-				.thenCompose(checkpointDiffs -> repository.saveSnapshot(checkpointNode, checkpointDiffs)
-						.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
-						.thenCompose(lastSnapshot -> {
+				.then(algorithms::checkout)
+				.then(checkpointDiffs -> repository.saveSnapshot(checkpointNode, checkpointDiffs)
+						.then($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
+						.then(lastSnapshot -> {
 							if (lastSnapshot.isPresent())
 								return Promises.toTuple(Tuple::new,
 										collectRequiredChunks(checkpointNode),
 										repository.loadCommit(lastSnapshot.get()))
-										.thenCompose(tuple ->
+										.then(tuple ->
 												cleanup(lastSnapshot.get(),
 														union(chunksInDiffs(cubeDiffScheme, checkpointDiffs), tuple.collectedChunks),
 														tuple.lastSnapshot.getInstant().minus(chunksCleanupDelay)));
@@ -160,7 +163,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 								return Promise.complete();
 							}
 						}))
-				.whenComplete(toLogger(logger, thisMethod(), checkpointNode));
+				.acceptEx(toLogger(logger, thisMethod(), checkpointNode));
 	}
 
 	Promise<Optional<K>> findSnapshot(Set<K> heads, int skipSnapshots) {
@@ -172,38 +175,38 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 				commit -> commit.getSnapshotHint() != null ?
 						Promise.of(commit.getSnapshotHint()) :
 						repository.hasSnapshot(commit.getId()))
-				.whenResult(findResult -> {
+				.accept(findResult -> {
 					if (skipSnapshots <= 0) {
 						cb.set(Optional.of(findResult.getCommit()));
 					} else {
 						findSnapshotImpl(findResult.getCommitParents(), skipSnapshots - 1, cb);
 					}
 				})
-				.whenException(cb::setException);
+				.acceptEx(Exception.class, cb::setException);
 	}
 
 	private Promise<Set<C>> collectRequiredChunks(K checkpointNode) {
 		return repository.getHeads()
-				.thenCompose(heads ->
+				.then(heads ->
 						algorithms.reduceEdges(heads, checkpointNode,
 								DiffsReducer.of(
 										new HashSet<>(),
 										(Set<C> accumulatedChunks, List<D> diffs) ->
 												union(accumulatedChunks, chunksInDiffs(cubeDiffScheme, diffs)),
 										CollectionUtils::union))
-								.whenComplete(promiseCleanupCollectRequiredChunks.recordStats()))
-				.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()))
-				.whenComplete(transform(Set::size,
+								.acceptEx(promiseCleanupCollectRequiredChunks.recordStats()))
+				.map(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()))
+				.acceptEx(transform(Set::size,
 						toLogger(logger, thisMethod(), checkpointNode)));
 	}
 
 	private Promise<Void> cleanup(K checkpointNode, Set<C> requiredChunks, Instant chunksCleanupTimestamp) {
 		return chunksStorage.checkRequiredChunks(requiredChunks)
-				.thenCompose($ -> repository.cleanup(checkpointNode)
-						.whenComplete(promiseCleanupRepository.recordStats()))
-				.thenCompose($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
-						.whenComplete(promiseCleanupChunks.recordStats()))
-				.whenComplete(logger.isTraceEnabled() ?
+				.then($ -> repository.cleanup(checkpointNode)
+						.acceptEx(promiseCleanupRepository.recordStats()))
+				.then($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
+						.acceptEx(promiseCleanupChunks.recordStats()))
+				.acceptEx(logger.isTraceEnabled() ?
 						toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
 						toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
 	}

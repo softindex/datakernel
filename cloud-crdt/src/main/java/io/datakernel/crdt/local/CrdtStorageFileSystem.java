@@ -159,7 +159,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return client.upload(namingStrategy.apply("bin"))
-				.thenApply(consumer -> StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier -> supplier
+				.map(consumer -> StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
 						.transformWith(ChannelSerializer.create(serializer))
 						.streamTo(consumer))
@@ -169,7 +169,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 	@Override
 	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return Promises.toTuple(FileLists::new, client.list("*"), tombstoneFolderClient.list("*"))
-				.thenApply(f -> {
+				.map(f -> {
 					StreamReducerSimple<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<K, S>> reducer =
 							StreamReducerSimple.create(crd -> crd.key, Comparator.naturalOrder(), new CrdtReducer<>(combiner));
 
@@ -196,7 +196,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return tombstoneFolderClient.upload(namingStrategy.apply("tomb"))
-				.thenApply(consumer -> StreamConsumer.<K>ofSupplier(supplier -> supplier
+				.map(consumer -> StreamConsumer.<K>ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? removeStatsDetailed : removeStats)
 						.transformWith(ChannelSerializer.create(serializer.getKeySerializer()))
 						.streamTo(consumer))
@@ -225,15 +225,15 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 		Set<String> blacklist = new HashSet<>();
 
 		return consolidationFolderClient.list("*")
-				.thenCompose(list ->
+				.then(list ->
 						Promises.all(list.stream()
 								.filter(meta -> meta.getTimestamp() > barrier)
 								.map(meta -> ChannelSupplier.ofPromise(client.download(meta.getName()))
 										.toCollector(ByteBufQueue.collector())
-										.whenResult(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
+										.accept(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
 										.toVoid())))
-				.thenCompose($ -> client.list("*"))
-				.thenCompose(list -> {
+				.then($ -> client.list("*"))
+				.then(list -> {
 					String name = namingStrategy.apply("bin");
 					List<String> files = list.stream()
 							.map(FileMetadata::getName)
@@ -245,18 +245,18 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 
 					String metafile = namingStrategy.apply("dump");
 					return consolidationFolderClient.upload(metafile)
-							.thenCompose(consumer ->
+							.then(consumer ->
 									ChannelSupplier.of(ByteBuf.wrapForReading(dump.getBytes(UTF_8)))
 											.streamTo(consumer))
-							.thenCompose($ -> download())
-							.thenCompose(producer -> producer
+							.then($ -> download())
+							.then(producer -> producer
 									.transformWith(ChannelSerializer.create(serializer))
 									.streamTo(ChannelConsumer.ofPromise(client.upload(name))))
-							.thenCompose($ -> tombstoneFolderClient.delete("*"))
-							.thenCompose($ -> consolidationFolderClient.delete(metafile))
-							.thenCompose($ -> Promises.all(files.stream().map(client::delete)));
+							.then($ -> tombstoneFolderClient.delete("*"))
+							.then($ -> consolidationFolderClient.delete(metafile))
+							.then($ -> Promises.all(files.stream().map(client::delete)));
 				})
-				.whenComplete(consolidationStats.recordStats());
+				.acceptEx(consolidationStats.recordStats());
 	}
 
 	static class CrdtReducingData<K extends Comparable<K>, S> {

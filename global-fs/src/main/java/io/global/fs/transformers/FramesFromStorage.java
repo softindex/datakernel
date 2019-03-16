@@ -38,7 +38,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 	private int nextCheckpointIndex;
 
 	private FramesFromStorage(String fileName, CheckpointStorage checkpointStorage,
-			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
+							  long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
 		super(checkpoints[firstCheckpointIndex]);
 		this.fileName = fileName;
 		this.checkpoints = checkpoints;
@@ -49,7 +49,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 	}
 
 	public static FramesFromStorage create(String fileName, CheckpointStorage checkpointStorage,
-			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
+										   long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
 		return new FramesFromStorage(fileName, checkpointStorage, checkpoints, firstCheckpointIndex, lastCheckpointIndex);
 	}
 
@@ -60,7 +60,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 			nextCheckpoint = checkpoints[++nextCheckpointIndex];
 		}
 		return checkpointStorage.load(fileName, checkpoint)
-				.thenComposeEx((signedCheckpoint, e) -> {
+				.thenEx((signedCheckpoint, e) -> {
 					if (e != null) {
 						// we are loading a checkpoint from a position that was obtained using getCheckpoints,
 						// so somewhere in between the file was corrupted, or CheckpointStorage implementation is broken

@@ -80,7 +80,7 @@ final class FilterFsClient implements FsClient {
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return parent.listEntities(glob)
-				.thenApply(list -> list.stream()
+				.map(list -> list.stream()
 						.filter(meta -> predicate.test(meta.getName()))
 						.collect(toList()));
 	}

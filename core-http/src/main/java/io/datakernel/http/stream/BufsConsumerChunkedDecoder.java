@@ -50,7 +50,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
-	private BufsConsumerChunkedDecoder() {}
+	private BufsConsumerChunkedDecoder() {
+	}
 
 	public static BufsConsumerChunkedDecoder create() {
 		return new BufsConsumerChunkedDecoder();
@@ -120,8 +121,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 					return null;
 				})
-				.whenException(this::close)
-				.whenResult(chunkLength -> {
+				.acceptEx(Exception.class, this::close)
+				.accept(chunkLength -> {
 					if (chunkLength != 0) {
 						consumeCRLF(chunkLength);
 					} else {
@@ -136,17 +137,17 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 		if (chunkLength != 0) {
 			int newChunkLength = chunkLength;
 			output.accept(tempBuf)
-					.thenCompose($ -> input.needMoreData())
-					.whenResult($ -> processData(newChunkLength));
+					.then($ -> input.needMoreData())
+					.accept($ -> processData(newChunkLength));
 			return;
 		}
 		input.parse(assertBytes(CRLF))
-				.whenException(e -> {
+				.acceptEx(Exception.class, e -> {
 					tempBuf.recycle();
 					close(MALFORMED_CHUNK);
 				})
-				.thenCompose($ -> output.accept(tempBuf))
-				.whenResult($ -> processLength());
+				.then($ -> output.accept(tempBuf))
+				.accept($ -> processLength());
 	}
 
 	private void consumeCRLF(int chunkLength) {
@@ -158,9 +159,9 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					}
 					return maybeResult;
 				})
-				.whenResult(ByteBuf::recycle)
-				.whenException(this::close)
-				.whenResult($ -> processData(chunkLength));
+				.accept(ByteBuf::recycle)
+				.acceptEx(Exception.class, this::close)
+				.accept($ -> processData(chunkLength));
 	}
 
 	private void validateLastChunk() {
@@ -173,8 +174,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 				bufs.skip(i + 4);
 
 				input.endOfStream()
-						.thenCompose($ -> output.accept(null))
-						.whenResult($ -> completeProcess());
+						.then($ -> output.accept(null))
+						.accept($ -> completeProcess());
 				return;
 			}
 		}
@@ -182,7 +183,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 		bufs.skip(remainingBytes - 3);
 
 		input.needMoreData()
-				.whenResult($ -> validateLastChunk());
+				.accept($ -> validateLastChunk());
 	}
 
 	@Override

@@ -55,7 +55,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 	@Override
 	protected void doProcess() {
 		onProcessStart()
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						loop();
 					} else {
@@ -66,13 +66,13 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 
 	private void loop() {
 		input.get()
-				.thenCompose(item ->
+				.then(item ->
 						item != null ?
 								onItem(item)
-										.whenResult($ -> loop()) :
+										.accept($ -> loop()) :
 								onProcessFinish()
-										.whenResult($ -> completeProcess()))
-				.whenException(this::close);
+										.accept($ -> completeProcess()))
+				.acceptEx(Exception.class, this::close);
 	}
 
 	@SuppressWarnings("ConstantConditions")

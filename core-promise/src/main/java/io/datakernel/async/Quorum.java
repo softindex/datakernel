@@ -49,7 +49,7 @@ public final class Quorum {
 					running++;
 					functions.next()
 							.apply(t)
-							.whenComplete((res, e) -> {
+							.acceptEx((res, e) -> {
 								if (e != null) {
 									failures.add(e);
 								} else if (successes.size() < requiredSuccesses) {

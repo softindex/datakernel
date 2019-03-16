@@ -51,7 +51,7 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 
 	public Promise<Void> repartition() {
 		return Promises.toTuple(cluster.upload().toTry(), localClient.remove().toTry(), localClient.download().toTry())
-				.thenCompose(all -> {
+				.then(all -> {
 					if (all.getValue1().isSuccess() && all.getValue2().isSuccess() && all.getValue3().isSuccess()) {
 						StreamConsumer<CrdtData<K, S>> cluster = all.getValue1().get();
 						StreamConsumer<K> remover = all.getValue2().get();

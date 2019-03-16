@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettableCallback;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
@@ -77,7 +76,7 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		ByteBuf body = await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(HttpMessage::getBody));
+				.then(HttpMessage::getBody));
 
 		assertEquals(decodeAscii(HELLO_WORLD), body.asString(UTF_8));
 	}
@@ -99,7 +98,7 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		InvalidSizeException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(response -> response.getBody(maxBodySize)));
+				.then(response -> response.getBody(maxBodySize)));
 		assertThat(e.getMessage(), containsString("HTTP body size exceeds load limit " + maxBodySize));
 	}
 
@@ -107,16 +106,16 @@ public final class AsyncHttpClientTest {
 	public void testEmptyLineResponse() throws IOException {
 		SimpleServer.create(socket ->
 				socket.read()
-						.whenResult(ByteBuf::recycle)
-						.thenCompose($ -> socket.write(wrapAscii("\r\n")))
-						.whenComplete(($, e) -> socket.close()))
+						.accept(ByteBuf::recycle)
+						.then($ -> socket.write(wrapAscii("\r\n")))
+						.acceptEx(($, e) -> socket.close()))
 				.withListenPort(PORT)
 				.withAcceptOnce()
 				.listen();
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		UnknownFormatException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(HttpMessage::getBody));
+				.then(HttpMessage::getBody));
 		assertSame(INVALID_RESPONSE, e);
 	}
 
@@ -145,7 +144,7 @@ public final class AsyncHttpClientTest {
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
-				.whenComplete(($, e1) -> {
+				.acceptEx(($, e1) -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));
 

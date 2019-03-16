@@ -77,7 +77,7 @@ public final class GlobalFsDriver {
 			@Nullable SimKey key, @Nullable SHA256Digest startingDigest) {
 		long[] size = {offset + skip};
 		return node.upload(keys.getPubKey(), filename, offset + skip, revision)
-				.thenApply(consumer -> {
+				.map(consumer -> {
 					Hash simKeyHash = key != null ? Hash.sha1(key.getBytes()) : null;
 					return consumer
 							.transformWith(FrameSigner.create(keys.getPrivKey(), checkpointPosStrategy, filename, offset + skip, revision, startingDigest, simKeyHash))
@@ -92,7 +92,7 @@ public final class GlobalFsDriver {
 			return Promise.ofException(BAD_RANGE);
 		}
 		return node.getMetadata(keys.getPubKey(), filename)
-				.thenCompose(signedCheckpoint -> {
+				.then(signedCheckpoint -> {
 					GlobalFsCheckpoint checkpoint;
 					long oldRev;
 					if (signedCheckpoint == null || (oldRev = (checkpoint = signedCheckpoint.getValue()).getRevision()) < revision) {
@@ -114,12 +114,12 @@ public final class GlobalFsDriver {
 					}
 					return doUpload(keys, filename, offset, revision, skip, key, checkpoint.isTombstone() ? null : checkpoint.getDigest());
 				})
-				.whenComplete(toLogger(logger, INFO, INFO, "upload", filename, offset, revision, key, this));
+				.acceptEx(toLogger(logger, INFO, INFO, "upload", filename, offset, revision, key, this));
 	}
 
 	public Promise<ChannelSupplier<ByteBuf>> download(PubKey space, String filename, long offset, long limit) {
 		return node.getMetadata(space, filename)
-				.thenCompose(signedCheckpoint -> {
+				.then(signedCheckpoint -> {
 					if (signedCheckpoint == null) {
 						return Promise.ofException(FILE_NOT_FOUND);
 					}
@@ -128,31 +128,31 @@ public final class GlobalFsDriver {
 						return Promise.ofException(FILE_NOT_FOUND);
 					}
 					return node.download(space, filename, offset, limit)
-							.thenApply(supplier -> supplier.transformWith(FrameVerifier.create(space, filename, offset, limit)));
+							.map(supplier -> supplier.transformWith(FrameVerifier.create(space, filename, offset, limit)));
 				})
-				.whenComplete(toLogger(logger, INFO, INFO, "download", filename, offset, limit, this));
+				.acceptEx(toLogger(logger, INFO, INFO, "download", filename, offset, limit, this));
 	}
 
 	public Promise<List<GlobalFsCheckpoint>> listEntities(PubKey space, String glob) {
 		return node.listEntities(space, glob)
-				.thenApply(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this));
+				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
+				.acceptEx(toLogger(logger, TRACE, "listEntities", glob, this));
 	}
 
 	public Promise<List<GlobalFsCheckpoint>> list(PubKey space, String glob) {
 		return node.list(space, glob)
-				.thenApply(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
+				.acceptEx(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 	public Promise<@Nullable GlobalFsCheckpoint> getMetadata(PubKey space, String filename) {
 		return node.getMetadata(space, filename)
-				.thenCompose(signedCheckpoint -> Promise.of(signedCheckpoint != null ? signedCheckpoint.getValue() : null))
-				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
+				.then(signedCheckpoint -> Promise.of(signedCheckpoint != null ? signedCheckpoint.getValue() : null))
+				.acceptEx(toLogger(logger, TRACE, "getMetadata", filename, this));
 	}
 
 	public Promise<Void> delete(KeyPair keys, String filename, long revision) {
 		return node.delete(keys.getPubKey(), SignedData.sign(CHECKPOINT_CODEC, GlobalFsCheckpoint.createTombstone(filename, revision), keys.getPrivKey()))
-				.whenComplete(toLogger(logger, TRACE, "delete", filename, revision, this));
+				.acceptEx(toLogger(logger, TRACE, "delete", filename, revision, this));
 	}
 }

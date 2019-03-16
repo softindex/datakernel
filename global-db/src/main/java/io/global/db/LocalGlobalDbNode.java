@@ -16,7 +16,10 @@
 
 package io.global.db;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -74,7 +77,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 	// region creators
 	private LocalGlobalDbNode(RawServerId id, DiscoveryService discoveryService,
-			NodeFactory<GlobalDbNode> nodeFactory, Function<TableID, DbStorage> storageFactory) {
+							  NodeFactory<GlobalDbNode> nodeFactory, Function<TableID, DbStorage> storageFactory) {
 		this.id = id;
 		this.discoveryService = discoveryService;
 		this.nodeFactory = nodeFactory;
@@ -82,12 +85,12 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 	}
 
 	public static LocalGlobalDbNode create(RawServerId id, DiscoveryService discoveryService,
-			NodeFactory<GlobalDbNode> nodeFactory, Function<TableID, DbStorage> storageFactory) {
+										   NodeFactory<GlobalDbNode> nodeFactory, Function<TableID, DbStorage> storageFactory) {
 		return new LocalGlobalDbNode(id, discoveryService, nodeFactory, storageFactory);
 	}
 
 	public LocalGlobalDbNode withManagedPubKey(PubKey managedPubKey) {
-		this.managedPubKeys.add(managedPubKey);
+		managedPubKeys.add(managedPubKey);
 		return this;
 	}
 
@@ -115,7 +118,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		PubKey space = tableID.getSpace();
 		Namespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
-				.thenCompose(masters -> {
+				.then(masters -> {
 					Repo repo = ns.ensureRepository(tableID);
 					if (isMasterFor(space)) {
 						return repo.upload();
@@ -123,7 +126,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 					return nSuccessesOrLess(uploadCallNumber, masters
 							.stream()
 							.map(master -> AsyncSupplier.cast(() -> master.upload(tableID))))
-							.thenApply(consumers -> {
+							.map(consumers -> {
 								ChannelZeroBuffer<SignedData<DbItem>> buffer = new ChannelZeroBuffer<>();
 
 								ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.create(buffer.getSupplier())
@@ -133,7 +136,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
 											.withAcknowledgement(ack -> ack
-													.whenComplete(($, e) -> {
+													.acceptEx(($, e) -> {
 														if (e == null) {
 															localCompleted[0] = true;
 														} else {
@@ -147,7 +150,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 								int[] up = {consumers.size()};
 
 								consumers.forEach(output -> splitter.addOutput()
-										.set(output.withAcknowledgement(ack -> ack.whenException(e -> {
+										.set(output.withAcknowledgement(ack -> ack.acceptEx(Exception.class, e -> {
 											if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
 												splitter.close(e);
 											}
@@ -155,7 +158,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 								return buffer.getConsumer()
 										.withAcknowledgement(ack -> ack
-												.thenCompose($ -> {
+												.then($ -> {
 													if (up[0] >= uploadSuccessNumber) {
 														return Promise.complete();
 													}
@@ -172,12 +175,12 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		Namespace ns = ensureNamespace(space);
 		Repo repo = ns.ensureRepository(tableID);
 		return repo.download(timestamp)
-				.thenCompose(supplier -> {
+				.then(supplier -> {
 					if (supplier != null) {
 						return Promise.of(supplier);
 					}
 					return ns.ensureMasterNodes()
-							.thenCompose(masters -> {
+							.then(masters -> {
 								if (isMasterFor(space) || masters.isEmpty()) {
 									return repo.storage.download(timestamp);
 								}
@@ -190,7 +193,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 										.stream()
 										.map(node -> AsyncSupplier.cast(() ->
 												Promises.toTuple(node.download(tableID, timestamp), repo.upload())
-														.thenApply(t -> {
+														.map(t -> {
 															ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.create();
 															ChannelOutput<SignedData<DbItem>> output = splitter.addOutput();
 															splitter.addOutput().set(t.getValue2());
@@ -205,7 +208,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 	public Promise<SignedData<DbItem>> get(TableID tableID, byte[] key) {
 		Namespace ns = ensureNamespace(tableID.getSpace());
 		return ns.ensureMasterNodes()
-				.thenCompose(masters -> {
+				.then(masters -> {
 					Repo repo = ns.ensureRepository(tableID);
 					if (isMasterFor(tableID.getSpace())) {
 						return repo.storage.get(key);
@@ -214,9 +217,9 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 							.map(node -> AsyncSupplier.cast(
 									doesDownloadCaching ?
 											() -> node.get(tableID, key)
-													.thenCompose(item ->
+													.then(item ->
 															repo.storage.put(item)
-																	.thenApply($ -> item)) :
+																	.map($ -> item)) :
 											() -> node.get(tableID, key))));
 				});
 	}
@@ -226,7 +229,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		Namespace ns = ensureNamespace(space);
 		return ns
 				.ensureMasterNodes()
-				.thenCompose(masters -> {
+				.then(masters -> {
 					if (!isMasterFor(space)) {
 						return Promises.firstSuccessful(masters.stream()
 								.map(node -> AsyncSupplier.cast(() -> node.list(space))));
@@ -270,7 +273,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 			cb.setException(fetchPromise.materialize().getException());
 		} else {
 			fetchPromise
-					.whenResult($ -> {
+					.accept($ -> {
 						long timestampEnd = now.currentTimeMillis();
 						if (timestampEnd - started > latencyMargin.toMillis()) {
 							catchUpImpl(cb);
@@ -278,7 +281,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 							cb.set(null);
 						}
 					})
-					.whenException(cb::setException);
+					.acceptEx(Exception.class, cb::setException);
 		}
 	}
 
@@ -307,12 +310,12 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 		Promise<Void> fetch() {
 			return ensureMasterNodes()
-					.thenCompose(masters ->
+					.then(masters ->
 							Promises.all(masters
 									.stream()
 									.map(node -> node
 											.list(space)
-											.thenCompose(tables ->
+											.then(tables ->
 													Promises.all(tables
 															.stream()
 															.map(table ->
@@ -322,7 +325,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 		Promise<Void> push() {
 			return ensureMasterNodes()
-					.thenCompose(masters ->
+					.then(masters ->
 							Promises.all(masters
 									.stream()
 									.map(node ->
@@ -342,7 +345,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 				return Promise.of(getMasterNodes());
 			}
 			return discoveryService.find(space)
-					.thenApplyEx((announceData, e) -> {
+					.mapEx((announceData, e) -> {
 						if (e == null && announceData != null) {
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
@@ -385,9 +388,9 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 			Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
 				return storage.upload()
-						.thenApply(consumer -> consumer
+						.map(consumer -> consumer
 								.withAcknowledgement(ack -> ack
-										.whenResult($ -> cacheTimestamp = now.currentTimeMillis())));
+										.accept($ -> cacheTimestamp = now.currentTimeMillis())));
 			}
 
 			Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
@@ -399,13 +402,13 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 			Promise<Void> fetch(GlobalDbNode node) {
 				long timestamp = now.currentTimeMillis();
 				return Promises.toTuple(node.download(tableID, lastFetchTimestamp), storage.upload())
-						.thenCompose(tuple -> tuple.getValue1().streamTo(tuple.getValue2()))
-						.whenResult($ -> lastFetchTimestamp = timestamp);
+						.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()))
+						.accept($ -> lastFetchTimestamp = timestamp);
 			}
 
 			Promise<Void> push(GlobalDbNode node) {
 				return Promises.toTuple(storage.download(), node.upload(tableID))
-						.thenCompose(tuple -> tuple.getValue1().streamTo(tuple.getValue2()));
+						.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()));
 			}
 		}
 	}

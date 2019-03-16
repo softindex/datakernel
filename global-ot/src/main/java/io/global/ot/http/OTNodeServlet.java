@@ -36,33 +36,33 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 	private final ParserFunction<byte[], C> bytesToCommit;
 
 	private OTNodeServlet(OTNode<K, D, C> node, StructuredCodec<K> revisionCodec, StructuredCodec<D> diffCodec,
-			Function<C, byte[]> commitToBytes, ParserFunction<byte[], C> bytesToCommit) {
-		this.servlet = getServlet(node);
+						  Function<C, byte[]> commitToBytes, ParserFunction<byte[], C> bytesToCommit) {
+		servlet = getServlet(node);
 		this.revisionCodec = revisionCodec;
-		this.fetchDataCodec = FetchData.codec(revisionCodec, diffCodec);
+		fetchDataCodec = FetchData.codec(revisionCodec, diffCodec);
 		this.commitToBytes = commitToBytes;
 		this.bytesToCommit = bytesToCommit;
 	}
 
 	public static <K, D, C> OTNodeServlet<K, D, C> create(OTNode<K, D, C> node, StructuredCodec<K> idCodec, StructuredCodec<D> diffCodec,
-			Function<C, byte[]> commitToBytes, ParserFunction<byte[], C> bytesToCommit) {
+														  Function<C, byte[]> commitToBytes, ParserFunction<byte[], C> bytesToCommit) {
 		return new OTNodeServlet<>(node, idCodec, diffCodec, commitToBytes, bytesToCommit);
 	}
 
 	public static <D> OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> forGlobalNode(OTNode<CommitId, D, OTCommit<CommitId, D>> node,
-			StructuredCodec<D> diffCodec, OTRepositoryAdapter<D> adapter) {
+																					  StructuredCodec<D> diffCodec, OTRepositoryAdapter<D> adapter) {
 		return new OTNodeServlet<>(node, REGISTRY.get(CommitId.class), diffCodec, OTCommit::getSerializedData, adapter::parseRawBytes);
 	}
 
 	private MiddlewareServlet getServlet(OTNode<K, D, C> node) {
 		return MiddlewareServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> node.checkout()
-						.thenApply(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
+						.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
 				.with(GET, "/" + FETCH, request -> {
 					try {
 						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
 						return node.fetch(currentCommitId)
-								.thenApply(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -71,17 +71,17 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 					try {
 						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
 						return node.poll(currentCommitId)
-								.thenApply(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.with(POST, "/" + CREATE_COMMIT, request -> request.getBody()
-						.thenCompose(body -> {
+						.then(body -> {
 							try {
 								FetchData<K, D> fetchData = fromJson(fetchDataCodec, body.getString(UTF_8));
 								return node.createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
-										.thenApply(commit -> HttpResponse.ok200()
+										.map(commit -> HttpResponse.ok200()
 												.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
 												.withBody(commitToBytes.apply(commit)));
 							} catch (ParseException e) {
@@ -91,11 +91,11 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 							}
 						}))
 				.with(POST, "/" + PUSH, request -> request.getBody()
-						.thenCompose(body -> {
+						.then(body -> {
 							try {
 								C commit = bytesToCommit.parse(body.getArray());
 								return node.push(commit)
-										.thenApply(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
 							} finally {

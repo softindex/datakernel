@@ -1,12 +1,14 @@
 package io.datakernel.ot;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-import static io.datakernel.ot.GraphReducer.*;
+import static io.datakernel.ot.GraphReducer.resume;
 import static java.util.Collections.singletonMap;
 
 public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K, D, R> {
@@ -34,7 +36,7 @@ public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K
 	@Override
 	public final Promise<R> onCommit(@NotNull OTCommit<K, D> commit) {
 		return tryGetResult(commit, accumulators, headCommits)
-				.thenCompose(maybeResult -> {
+				.then(maybeResult -> {
 					if (maybeResult.isPresent()) {
 						return Promise.of(maybeResult.get());
 					}

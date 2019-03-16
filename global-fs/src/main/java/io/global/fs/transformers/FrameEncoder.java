@@ -43,6 +43,6 @@ public final class FrameEncoder extends AbstractChannelTransformer<FrameEncoder,
 		ByteBuf header = ByteBufPool.allocate(5 + 1);
 		header.writeVarInt(data.readRemaining() + 1); // + 1 is for that tag byte below
 		header.writeByte((byte) (item.isBuf() ? 0 : 1));
-		return send(header).thenCompose($ -> send(data));
+		return send(header).then($ -> send(data));
 	}
 }

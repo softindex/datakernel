@@ -79,7 +79,7 @@ class StressClient {
 
 				ChannelFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
 						.streamTo(ChannelConsumer.ofPromise(client.upload(fileName)))
-						.whenComplete(($, e) -> {
+						.acceptEx(($, e) -> {
 							if (e == null) {
 								logger.info("Uploaded: " + fileName);
 							} else {
@@ -104,8 +104,8 @@ class StressClient {
 				ChannelFileWriter consumer = ChannelFileWriter.create(executor, downloads.resolve(fileName));
 
 				client.download(fileName, 0)
-						.thenCompose(supplier -> supplier.streamTo(consumer))
-						.whenComplete((supplier, e) -> {
+						.then(supplier -> supplier.streamTo(consumer))
+						.acceptEx((supplier, e) -> {
 							if (e == null) {
 								logger.info("Downloaded: " + fileName);
 							} else {
@@ -125,7 +125,7 @@ class StressClient {
 			int index = rand.nextInt(existingClientFiles.size());
 			String fileName = existingClientFiles.get(index);
 
-			client.delete(fileName).whenComplete(($, e) -> {
+			client.delete(fileName).acceptEx(($, e) -> {
 				if (e == null) {
 					existingClientFiles.remove(fileName);
 					logger.info("Deleted: " + fileName);
@@ -136,7 +136,7 @@ class StressClient {
 		});
 
 		// list file
-		operations.add(() -> client.list("**").whenComplete((strings, e) -> {
+		operations.add(() -> client.list("**").acceptEx((strings, e) -> {
 			if (e == null) {
 				logger.info("Listed: " + strings.size());
 			} else {
@@ -205,7 +205,7 @@ class StressClient {
 
 	void downloadSmallObjects(int i) {
 		String name = "someName" + i;
-		client.download(name, 0).whenComplete((supplier, e) -> {
+		client.download(name, 0).acceptEx((supplier, e) -> {
 			if (e != null) {
 				logger.error("can't download", e);
 			} else {

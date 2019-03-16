@@ -66,7 +66,7 @@ public final class TestCrdtCluster {
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(cluster.upload()))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.acceptEx(($, e) -> servers.forEach(AbstractServer::close)));
 		remoteStorages.forEach((name, storage) -> {
 			System.out.println("Data at '" + name + "' storage:");
 			storage.iterator().forEachRemaining(System.out::println);
@@ -106,9 +106,9 @@ public final class TestCrdtCluster {
 		CrdtStorageCluster<String, String, Set<Integer>> cluster = CrdtStorageCluster.create(eventloop, clients, union);
 
 		await(cluster.download()
-				.thenCompose(supplierWithResult -> supplierWithResult
+				.then(supplierWithResult -> supplierWithResult
 						.streamTo(StreamConsumer.of(localStorage::put))
-						.whenComplete(($, e) -> servers.forEach(AbstractServer::close))));
+						.acceptEx(($, e) -> servers.forEach(AbstractServer::close))));
 
 		System.out.println("Data at 'local' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

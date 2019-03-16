@@ -103,13 +103,13 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return connect()
-				.thenCompose(messaging ->
+				.then(messaging ->
 						messaging.send(CrdtMessages.UPLOAD)
-								.thenApply($ -> {
+								.map($ -> {
 									ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
-													.thenCompose($2 -> messaging.receive())
-													.thenCompose(simpleHandler(UPLOAD_FINISHED)));
+													.then($2 -> messaging.receive())
+													.then(simpleHandler(UPLOAD_FINISHED)));
 									return StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
 													.transformWith(ChannelSerializer.create(serializer))
@@ -121,9 +121,9 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	@Override
 	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return connect()
-				.thenCompose(messaging -> messaging.send(new Download(timestamp))
-						.thenCompose($ -> messaging.receive())
-						.thenCompose(response -> {
+				.then(messaging -> messaging.send(new Download(timestamp))
+						.then($ -> messaging.receive())
+						.then(response -> {
 							if (response == null) {
 								return Promise.ofException(new IllegalStateException("Unexpected end of stream"));
 							}
@@ -135,26 +135,26 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 							}
 							return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + DownloadStarted.class.getSimpleName()));
 						})
-						.thenApply($ ->
+						.map($ ->
 								messaging.receiveBinaryStream()
 										.transformWith(ChannelDeserializer.create(serializer))
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
-												.thenCompose($2 -> messaging.sendEndOfStream())
-												.whenResult($2 -> messaging.close()))
+												.then($2 -> messaging.sendEndOfStream())
+												.accept($2 -> messaging.close()))
 										.withLateBinding()));
 	}
 
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return connect()
-				.thenCompose(messaging ->
+				.then(messaging ->
 						messaging.send(CrdtMessages.REMOVE)
-								.thenApply($ -> {
+								.map($ -> {
 									ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
-													.thenCompose($2 -> messaging.receive())
-													.thenCompose(simpleHandler(REMOVE_FINISHED)));
+													.then($2 -> messaging.receive())
+													.then(simpleHandler(REMOVE_FINISHED)));
 									return StreamConsumer.<K>ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? removeStats : removeStatsDetailed)
 													.transformWith(ChannelSerializer.create(keySerializer))
@@ -166,9 +166,9 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	@Override
 	public Promise<Void> ping() {
 		return connect()
-				.thenCompose(messaging -> messaging.send(PING)
-						.thenCompose($ -> messaging.receive())
-						.thenCompose(simpleHandler(PONG)));
+				.then(messaging -> messaging.send(PING)
+						.then($ -> messaging.receive())
+						.then(simpleHandler(PONG)));
 	}
 
 	@NotNull

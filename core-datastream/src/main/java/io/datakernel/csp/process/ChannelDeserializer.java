@@ -140,7 +140,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 
 		if (isReceiverReady()) {
 			input.get()
-					.whenResult(buf -> {
+					.accept(buf -> {
 						if (buf != null) {
 							queue.add(buf);
 							async.resume();
@@ -152,7 +152,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 							}
 						}
 					})
-					.whenException(this::close);
+					.acceptEx(Exception.class, this::close);
 		} else {
 			async.end();
 		}

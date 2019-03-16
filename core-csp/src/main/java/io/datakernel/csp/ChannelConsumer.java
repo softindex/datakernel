@@ -70,7 +70,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	@NotNull
 	default Promise<Void> accept(@Nullable T item1, @Nullable T item2) {
 		return accept(item1)
-				.thenComposeEx(($, e) -> {
+				.thenEx(($, e) -> {
 					if (e == null) {
 						return accept(item2);
 					} else {
@@ -90,7 +90,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	@SuppressWarnings("unchecked")
 	default Promise<Void> accept(T item1, T item2, T... items) {
 		return accept(item1)
-				.thenComposeEx(($, e) -> {
+				.thenEx(($, e) -> {
 					if (e == null) {
 						return accept(item1);
 					} else {
@@ -99,7 +99,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 						return Promise.ofException(e);
 					}
 				})
-				.thenComposeEx(($, e) -> {
+				.thenEx(($, e) -> {
 					if (e == null) {
 						return accept(item2);
 					} else {
@@ -107,7 +107,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 						return Promise.ofException(e);
 					}
 				})
-				.thenCompose($ -> acceptAll(asIterator(items)));
+				.then($ -> acceptAll(asIterator(items)));
 	}
 
 	/**
@@ -220,7 +220,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected Promise<Void> doAccept(T value) {
 				if (consumer != null) return consumer.accept(value);
-				return materializedPromise.thenComposeEx((consumer, e) -> {
+				return materializedPromise.thenEx((consumer, e) -> {
 					if (e == null) {
 						this.consumer = consumer;
 						return consumer.accept(value);
@@ -234,7 +234,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				materializedPromise.whenResult(supplier -> supplier.close(e));
+				materializedPromise.accept(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -273,7 +273,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	static ChannelConsumer<ByteBuf> ofSocket(AsyncTcpSocket socket) {
 		return ChannelConsumer.of(socket::write, socket)
 				.withAcknowledgement(ack -> ack
-						.thenCompose($ -> socket.write(null)));
+						.then($ -> socket.write(null)));
 	}
 
 	/**
@@ -380,7 +380,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			protected Promise<Void> doAccept(V value) {
 				return value != null ?
 						fn.apply(value)
-								.thenCompose(ChannelConsumer.this::accept) :
+								.then(ChannelConsumer.this::accept) :
 						ChannelConsumer.this.accept(null);
 			}
 		};
@@ -426,7 +426,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			protected Promise<Void> doAccept(@Nullable T value) {
 				if (value != null) {
 					return ChannelConsumer.this.accept(value)
-							.thenComposeEx(($, e) -> {
+							.thenEx(($, e) -> {
 								if (e == null) {
 									return Promise.complete();
 								}
@@ -434,7 +434,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 								return newAcknowledgement;
 							});
 				} else {
-					ChannelConsumer.this.accept(null).whenComplete(acknowledgement::trySet);
+					ChannelConsumer.this.accept(null).acceptEx(acknowledgement::trySet);
 					return newAcknowledgement;
 				}
 			}
@@ -451,6 +451,6 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 */
 	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
 		return Promise.ofCallback(cb ->
-				fn.accept(ack -> ack.whenComplete(cb::set)));
+				fn.accept(ack -> ack.acceptEx(cb::set)));
 	}
 }

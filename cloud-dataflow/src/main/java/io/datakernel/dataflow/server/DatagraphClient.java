@@ -57,27 +57,27 @@ public final class DatagraphClient {
 
 	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
-				.thenCompose(socket -> {
+				.then(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 					DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
 					return messaging.send(commandDownload)
-							.thenApply($ -> messaging.receiveBinaryStream()
+							.map($ -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(serialization.getSerializer(type)))
 									.withEndOfStream(eos -> eos
-											.whenComplete(($1, e1) -> messaging.close()))
+											.acceptEx(($1, e1) -> messaging.close()))
 									.withLateBinding());
 				});
 	}
 
 	public Promise<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
-				.thenCompose(socket -> {
+				.then(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 
 					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 					return messaging.send(commandExecute)
-							.thenCompose($ -> messaging.sendEndOfStream());
+							.then($ -> messaging.sendEndOfStream());
 				});
 	}
 }

@@ -45,7 +45,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
 
 	private DiscoveryServlet(DiscoveryService discoveryService) {
-		this.servlet = servlet(discoveryService);
+		servlet = servlet(discoveryService);
 	}
 
 	public static DiscoveryServlet create(DiscoveryService discoveryService) {
@@ -54,12 +54,12 @@ public final class DiscoveryServlet implements WithMiddleware {
 
 	private MiddlewareServlet servlet(DiscoveryService discoveryService) {
 		return MiddlewareServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", request -> request.getBody().thenCompose(body -> {
+				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", request -> request.getBody().then(body -> {
 					try {
 						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 						SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, body.slice());
 						return discoveryService.announce(owner, announceData)
-								.thenApply($ -> HttpResponse.ok201());
+								.map($ -> HttpResponse.ok201());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -69,7 +69,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 				.with(HttpMethod.GET, "/" + FIND + "/:owner", request -> {
 					try {
 						return discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
-								.thenComposeEx((data, e) -> {
+								.thenEx((data, e) -> {
 									if (e != null || data == null) {
 										return Promise.<HttpResponse>ofException(HttpException.notFound404());
 									}
@@ -80,12 +80,12 @@ public final class DiscoveryServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> request.getBody().thenCompose(body -> {
+				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> request.getBody().then(body -> {
 					try {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 						SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, body.slice());
 						return discoveryService.shareKey(receiver, simKey)
-								.thenApply($ -> HttpResponse.ok201());
+								.map($ -> HttpResponse.ok201());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -97,7 +97,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 						Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
 						return discoveryService.getSharedKey(receiver, simKeyHash)
-								.thenApply(signedSharedKey ->
+								.map(signedSharedKey ->
 										HttpResponse.ok200()
 												.withBody(encode(NULLABLE_SIGNED_SHARED_SIM_KEY, signedSharedKey)));
 					} catch (ParseException e) {
@@ -107,7 +107,7 @@ public final class DiscoveryServlet implements WithMiddleware {
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
 					try {
 						return discoveryService.getSharedKeys(PubKey.fromString(request.getPathParameter("receiver")))
-								.thenApply(signedSharedKeys ->
+								.map(signedSharedKeys ->
 										HttpResponse.ok200()
 												.withBody(encode(LIST_OF_SIGNED_SHARED_SIM_KEYS, signedSharedKeys)));
 					} catch (ParseException e) {

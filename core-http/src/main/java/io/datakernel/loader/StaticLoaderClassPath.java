@@ -32,9 +32,9 @@ class StaticLoaderClassPath implements StaticLoader {
 		}
 
 		return Promise.ofBlockingCallable(executor, () -> ByteBuf.wrapForReading(loadResource(file)))
-                .thenComposeEx((buf, e) ->
-		                Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
-    }
+				.thenEx((buf, e) ->
+						Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
+	}
 
 	private byte[] loadResource(URL file) throws IOException {
 		try (InputStream in = file.openStream()) {

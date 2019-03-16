@@ -107,9 +107,9 @@ public final class CubeTest {
 		StreamConsumerWithResult<T, CubeDiff> consumer = (StreamConsumerWithResult<T, CubeDiff>) cube.consume(item.getClass());
 		return StreamSupplier.concat(StreamSupplier.of(item), StreamSupplier.of(items))
 				.streamTo(consumer.getConsumer())
-				.thenCompose($ -> consumer.getResult())
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.<Long>addedChunks().collect(toSet()))
-						.whenResult($ -> cube.apply(cubeDiff)));
+				.then($ -> consumer.getResult())
+				.then(cubeDiff -> chunkStorage.finish(cubeDiff.<Long>addedChunks().collect(toSet()))
+						.accept($ -> cube.apply(cubeDiff)));
 	}
 
 	@Test
@@ -151,7 +151,7 @@ public final class CubeTest {
 		await(
 				Promises.all(consume(cube, chunkStorage, new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)),
 						consume(cube, chunkStorage, new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-						.whenComplete(($, e) -> remoteFsServer1.close())
+						.acceptEx(($, e) -> remoteFsServer1.close())
 		);
 		RemoteFsServer remoteFsServer2 = startServer(executor, serverStorage);
 
@@ -160,7 +160,7 @@ public final class CubeTest {
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, classLoader)
 				.toList()
-				.whenComplete(($2, e) -> remoteFsServer2.close()));
+				.acceptEx(($2, e) -> remoteFsServer2.close()));
 
 		assertEquals(expected, list);
 	}

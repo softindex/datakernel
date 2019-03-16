@@ -60,20 +60,20 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 	public Promise<Void> store(PubKey space, SignedData<AnnounceData> signedAnnounceData) {
 		String file = getFilenameFor(space);
 		return storage.upload(file, 0, now.currentTimeMillis())
-				.thenCompose(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
-				.whenComplete(toLogger(logger, TRACE, "store", signedAnnounceData, this));
+				.then(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
+				.acceptEx(toLogger(logger, TRACE, "store", signedAnnounceData, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<AnnounceData>> load(PubKey space) {
 		return storage.download(getFilenameFor(space))
-				.thenComposeEx((supplier, e) -> {
+				.thenEx((supplier, e) -> {
 					if (e == null) {
 						return supplier.toCollector(ByteBufQueue.collector());
 					}
 					return e == FILE_NOT_FOUND ? Promise.of(null) : Promise.ofException(e);
 				})
-				.thenCompose(buf -> {
+				.then(buf -> {
 					if (buf == null || !buf.canRead()) {
 						return Promise.of(null);
 					}
@@ -85,7 +85,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "load", space, this));
+				.acceptEx(toLogger(logger, TRACE, "load", space, this));
 	}
 
 	@Override

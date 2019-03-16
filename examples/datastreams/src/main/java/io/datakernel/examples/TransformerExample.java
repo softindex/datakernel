@@ -89,7 +89,7 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 
 		source.transformWith(transformer).streamTo(consumer);
 
-		consumer.getResult().whenResult(System.out::println);
+		consumer.getResult().accept(System.out::println);
 
 		eventloop.run();
 	}

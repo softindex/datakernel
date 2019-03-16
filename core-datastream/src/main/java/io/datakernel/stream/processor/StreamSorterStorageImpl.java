@@ -127,7 +127,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public Promise<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executor, path, set(WRITE, CREATE_NEW, APPEND))
-				.thenApply(file -> StreamConsumer.<T>ofSupplier(
+				.map(file -> StreamConsumer.<T>ofSupplier(
 						supplier -> supplier
 								.transformWith(ChannelSerializer.create(serializer))
 								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
@@ -147,7 +147,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public Promise<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executor, path, set(READ))
-				.thenApply(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
+				.map(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
 						.transformWith(ChannelLZ4Decompressor.create())
 						.transformWith(ChannelDeserializer.create(serializer))
 						.withLateBinding());

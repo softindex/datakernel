@@ -71,7 +71,7 @@ public final class SingleResourceStaticServlet implements AsyncServlet {
 			return Promise.ofException(METHOD_NOT_ALLOWED);
 		}
 		return resourceLoader.getResource(path)
-				.thenApply(buf ->
+				.map(buf ->
 						HttpResponse.ofCode(responseCode)
 								.withBody(buf)
 								.withHeader(CONTENT_TYPE, ofContentType(contentType)));

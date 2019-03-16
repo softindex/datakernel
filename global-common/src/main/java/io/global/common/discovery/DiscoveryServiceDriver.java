@@ -35,7 +35,7 @@ public final class DiscoveryServiceDriver {
 
 	public Promise<@Nullable AnnounceData> find(PubKey space) {
 		return discoveryService.find(space)
-				.thenApply(x -> x != null ? x.getValue() : null);
+				.map(x -> x != null ? x.getValue() : null);
 	}
 
 	public Promise<Void> shareKey(PrivKey sender, PubKey receiver, SimKey key) {
@@ -46,7 +46,7 @@ public final class DiscoveryServiceDriver {
 
 	public Promise<@Nullable SimKey> getSharedKey(KeyPair keys, Hash hash) {
 		return discoveryService.getSharedKey(keys.getPubKey(), hash)
-				.thenApply(signedSharedSimKey -> {
+				.map(signedSharedSimKey -> {
 					if (signedSharedSimKey == null) {
 						return null;
 					}
@@ -60,7 +60,7 @@ public final class DiscoveryServiceDriver {
 
 	public Promise<List<SimKey>> getSharedKeys(KeyPair keys) {
 		return discoveryService.getSharedKeys(keys.getPubKey())
-				.thenApply(list -> list.stream()
+				.map(list -> list.stream()
 						.map(sssk -> {
 							try {
 								return sssk.getValue().decryptSimKey(keys.getPrivKey());

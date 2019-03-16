@@ -44,7 +44,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 	private final MiddlewareServlet servlet;
 
 	private RemoteFsServlet(FsClient client) {
-		this.servlet = servlet(client);
+		servlet = servlet(client);
 	}
 
 	public static RemoteFsServlet create(FsClient client) {
@@ -56,7 +56,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 				.with(GET, "/" + LIST, request -> {
 					String glob = request.getQueryParameter("glob", "**");
 					return (request.getQueryParameterOrNull("tombstones") != null ? client.listEntities(glob) : client.list(glob))
-							.thenApplyEx(errorHandler(list ->
+							.mapEx(errorHandler(list ->
 									HttpResponse.ok200()
 											.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
 											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
@@ -64,7 +64,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 				.with(GET, "/" + GET_METADATA + "/:name*", request -> {
 					try {
 						return client.getMetadata(request.getPathParameter("name"))
-								.thenApplyEx(errorHandler(meta ->
+								.mapEx(errorHandler(meta ->
 										HttpResponse.ok200()
 												.withBody(toJson(NULLABLE_FILE_META_CODEC, meta).getBytes(UTF_8))
 												.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
@@ -77,7 +77,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 					try {
 						String name = request.getPathParameter("name");
 						return client.getMetadata(name)
-								.thenCompose(meta ->
+								.then(meta ->
 										meta != null ?
 												httpDownload(request, (offset, limit) -> client.download(name, offset, limit), name, meta.getSize()) :
 												Promise.ofException(FILE_NOT_FOUND));
@@ -88,7 +88,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 				.with(POST, "/" + DELETE + "/:name*", request -> {
 					try {
 						return client.delete(request.getPathParameter("name"), parseRevision(request))
-								.thenApplyEx(errorHandler());
+								.mapEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -96,7 +96,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 				.with(POST, "/" + COPY, request -> {
 					try {
 						return client.copy(request.getQueryParameter("name"), request.getQueryParameter("target"), parseRevision(request))
-								.thenApplyEx(errorHandler());
+								.mapEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -104,7 +104,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 				.with(POST, "/" + MOVE, request -> {
 					try {
 						return client.move(request.getQueryParameter("name"), request.getQueryParameter("target"), parseRevision(request), parseRevision(request, "tombstone"))
-								.thenApplyEx(errorHandler());
+								.mapEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

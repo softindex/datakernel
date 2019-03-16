@@ -39,13 +39,15 @@ public final class Bootstrap<D> implements EventloopService {
 	@Override
 	public MaterializedPromise<Void> start() {
 		return driver.getHeads(myRepositoryId.getRepositoryId())
-				.thenCompose(heads -> {
-					if (!heads.isEmpty()) return Promise.complete();
+				.then(heads -> {
+					if (!heads.isEmpty()) {
+						return Promise.complete();
+					}
 
 					OTCommit<CommitId, D> rootCommit = driver.createCommit(myRepositoryId, emptyMap(), 1);
 					return driver.push(myRepositoryId, rootCommit)
-							.thenCompose($ -> driver.updateHeads(myRepositoryId, singleton(rootCommit.getId()), emptySet()))
-							.thenCompose($ -> driver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()));
+							.then($ -> driver.updateHeads(myRepositoryId, singleton(rootCommit.getId()), emptySet()))
+							.then($ -> driver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()));
 				})
 				.materialize();
 	}

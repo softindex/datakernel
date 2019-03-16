@@ -157,7 +157,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 							Object id = entry.getKey();
 							return entry.getValue()
 									.ping()
-									.thenApplyEx(($, e) -> {
+									.mapEx(($, e) -> {
 										if (e == null) {
 											markAlive(id);
 										} else {
@@ -166,7 +166,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 										return null;
 									});
 						}))
-				.whenComplete(toLogger(logger, "checkAllPartitions"));
+				.acceptEx(toLogger(logger, "checkAllPartitions"));
 	}
 
 	/**
@@ -181,13 +181,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				deadClients.entrySet().stream()
 						.map(entry -> entry.getValue()
 								.ping()
-								.thenApplyEx(($, e) -> {
+								.mapEx(($, e) -> {
 									if (e == null) {
 										markAlive(entry.getKey());
 									}
 									return null;
 								})))
-				.whenComplete(toLogger(logger, "checkDeadPartitions"));
+				.acceptEx(toLogger(logger, "checkDeadPartitions"));
 	}
 
 	private void markAlive(Object partitionId) {
@@ -267,13 +267,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.map(id -> {
 					FsClient client = aliveClients.get(id);
 					return (revision == null ? client.upload(filename, offset) : client.upload(filename, offset, revision))
-							.thenComposeEx(wrapDeath(id))
-							.thenApply(consumer -> new ConsumerWithId(id,
+							.thenEx(wrapDeath(id))
+							.map(consumer -> new ConsumerWithId(id,
 									consumer.withAcknowledgement(ack ->
-											ack.whenException(e -> markIfDead(id, e)))))
+											ack.acceptEx(Exception.class, e -> markIfDead(id, e)))))
 							.toTry();
 				}))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					List<ConsumerWithId> successes = tries.stream()
 							.filter(Try::isSuccess)
 							.map(Try::get)
@@ -301,8 +301,8 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
 					return Promise.of(consumer.withAcknowledgement(ack -> ack
-							.thenCompose($ -> uploadResults)
-							.thenCompose(ackTries -> {
+							.then($ -> uploadResults)
+							.then(ackTries -> {
 								long successCount = ackTries.stream().filter(Try::isSuccess).count();
 								// check number of uploads only here, so even if there were less connections
 								// than replicationCount, they will still upload
@@ -316,9 +316,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								}
 								return Promise.complete();
 							})
-							.whenComplete(uploadFinishPromise.recordStats())));
+							.acceptEx(uploadFinishPromise.recordStats())));
 				})
-				.whenComplete(uploadStartPromise.recordStats());
+				.acceptEx(uploadStartPromise.recordStats());
 	}
 
 	@Override
@@ -345,11 +345,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						.map(entry -> {
 							Object partitionId = entry.getKey();
 							return entry.getValue().getMetadata(name) //   ↓ use null's as file non-existense indicators
-									.thenApply(res -> res != null ? new Tuple2<>(partitionId, res) : null)
-									.thenComposeEx(wrapDeath(partitionId))
+									.map(res -> res != null ? new Tuple2<>(partitionId, res) : null)
+									.thenEx(wrapDeath(partitionId))
 									.toTry();
 						}))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter succesfull connections
 							.filter(Try::isSuccess)
 							.map(Try::get)
@@ -382,15 +382,15 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								}
 								logger.trace("downloading file {} from {}", name, piwfs.getValue1());
 								return client.download(name, offset, length)
-										.whenException(e -> logger.warn("Failed to connect to server with key " + piwfs.getValue1() + " to download file " + name, e))
-										.thenComposeEx(wrapDeath(piwfs.getValue1()))
-										.thenApply(supplier -> supplier
+										.acceptEx(Exception.class, e -> logger.warn("Failed to connect to server with key " + piwfs.getValue1() + " to download file " + name, e))
+										.thenEx(wrapDeath(piwfs.getValue1()))
+										.map(supplier -> supplier
 												.withEndOfStream(eos -> eos
-														.whenException(e -> markIfDead(piwfs.getValue1(), e))
-														.whenComplete(downloadFinishPromise.recordStats())));
+														.acceptEx(Exception.class, e -> markIfDead(piwfs.getValue1(), e))
+														.acceptEx(downloadFinishPromise.recordStats())));
 							}), Cancellable::cancel);
 				})
-				.whenComplete(downloadStartPromise.recordStats());
+				.acceptEx(downloadStartPromise.recordStats());
 	}
 
 	@Override
@@ -403,8 +403,8 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
 		}
 
-		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().move(name, target, targetRevision, removeRevision).thenComposeEx(wrapDeath(e.getKey()))))
-				.whenComplete(movePromise.recordStats());
+		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().move(name, target, targetRevision, removeRevision).thenEx(wrapDeath(e.getKey()))))
+				.acceptEx(movePromise.recordStats());
 	}
 
 	@Override
@@ -417,8 +417,8 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
 		}
 
-		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().copy(name, target, targetRevision).thenComposeEx(wrapDeath(e.getKey()))))
-				.whenComplete(copyPromise.recordStats());
+		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().copy(name, target, targetRevision).thenEx(wrapDeath(e.getKey()))))
+				.acceptEx(copyPromise.recordStats());
 	}
 
 	@Override
@@ -428,15 +428,15 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(entry -> entry.getValue().delete(name)
-								.thenComposeEx(wrapDeath(entry.getKey()))
+								.thenEx(wrapDeath(entry.getKey()))
 								.toTry()))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					if (tries.stream().anyMatch(Try::isSuccess)) { // connected at least to somebody
 						return Promise.complete();
 					}
 					return ofFailure("Couldn't delete on any partition", tries);
 				})
-				.whenComplete(deletePromise.recordStats());
+				.acceptEx(deletePromise.recordStats());
 	}
 
 	private Promise<List<FileMetadata>> doList(String glob, BiFunction<FsClient, String, Promise<List<FileMetadata>>> list) {
@@ -451,9 +451,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(entry -> list.apply(entry.getValue(), glob)
-								.thenComposeEx(wrapDeath(entry.getKey()))
+								.thenEx(wrapDeath(entry.getKey()))
 								.toTry()))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					// recheck if our list request marked any partitions as dead
 					if (deadClients.size() >= replicationCount) {
 						return ofFailure("There are more dead partitions than replication count(" +
@@ -461,7 +461,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					}
 					return Promise.of(FileMetadata.flatten(tries.stream().filter(Try::isSuccess).map(Try::get)));
 				})
-				.whenComplete(listPromise.recordStats());
+				.acceptEx(listPromise.recordStats());
 	}
 
 	@Override

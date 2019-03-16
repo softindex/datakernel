@@ -73,7 +73,7 @@ public class RocksdbDbStorage implements DbStorage {
 	@Override
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
 		return Promise.of(ChannelConsumer.<SignedData<DbItem>>of(signedDbItem -> Promise.ofBlockingRunnable(executor, () -> doPut(signedDbItem)))
-				.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
+				.withAcknowledgement(ack -> ack.then($ -> flush())));
 	}
 
 	private Promise<RocksIterator> iterator() {
@@ -86,7 +86,7 @@ public class RocksdbDbStorage implements DbStorage {
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
-		return iterator().thenApply(iterator ->
+		return iterator().map(iterator ->
 				ChannelSupplier.of(() ->
 						Promise.ofBlockingCallable(executor, () -> {
 							while (iterator.isValid()) {
@@ -103,7 +103,7 @@ public class RocksdbDbStorage implements DbStorage {
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download() {
-		return iterator().thenApply(iterator ->
+		return iterator().map(iterator ->
 				ChannelSupplier.of(() ->
 						Promise.ofBlockingCallable(executor, () -> {
 							if (!iterator.isValid()) {
@@ -127,7 +127,7 @@ public class RocksdbDbStorage implements DbStorage {
 										throw new UncheckedException(e);
 									}
 								}))
-						.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
+						.withAcknowledgement(ack -> ack.then($ -> flush())));
 	}
 
 	@Override

@@ -158,7 +158,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	private Throwable queryLastError;
 
 	Cube(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
-		 AggregationChunkStorage aggregationChunkStorage) {
+			AggregationChunkStorage aggregationChunkStorage) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.classLoader = classLoader;
@@ -166,7 +166,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public static Cube create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
-							  AggregationChunkStorage aggregationChunkStorage) {
+			AggregationChunkStorage aggregationChunkStorage) {
 		checkArgument(eventloop != null, "Cannot create Cube with Eventloop that is null");
 		checkArgument(executor != null, "Cannot create Cube with Executor that is null");
 		checkArgument(classLoader != null, "Cannot create Cube with ClassLoader that is null");
@@ -460,7 +460,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass,
-															  AggregationPredicate predicate) {
+			AggregationPredicate predicate) {
 		return logStreamConsumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate);
 	}
 
@@ -469,9 +469,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
-															  AggregationPredicate predicate) {
+			AggregationPredicate predicate) {
 		return () -> consume(inputClass, dimensionFields, measureFields, predicate)
-				.transformResult(result -> result.thenApply(Collections::singletonList));
+				.transformResult(result -> result.map(Collections::singletonList));
 	}
 
 	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass) {
@@ -491,7 +491,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	 * @return consumer for streaming data to cube
 	 */
 	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
-															 AggregationPredicate dataPredicate) {
+			AggregationPredicate dataPredicate) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
 		StreamSplitter<T> streamSplitter = StreamSplitter.create();
@@ -522,12 +522,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
 			diffsCollector.addPromise(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
-		return StreamConsumerWithResult.of(streamSplitter.getInput(), diffsCollector.run().get().thenApply(CubeDiff::of));
+		return StreamConsumerWithResult.of(streamSplitter.getInput(), diffsCollector.run().get().map(CubeDiff::of));
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(Map<String, String> dimensionFields,
-																			Map<String, String> measureFields,
-																			AggregationPredicate predicate) {
+			Map<String, String> measureFields,
+			AggregationPredicate predicate) {
 		AggregationPredicate dataPredicate = predicate.simplify();
 		Map<String, AggregationPredicate> aggregationToDataInputFilterPredicate = new HashMap<>();
 		for (Entry<String, AggregationContainer> aggregationContainer : aggregations.entrySet()) {
@@ -556,9 +556,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	static Predicate createFilterPredicate(Class<?> inputClass,
-										   AggregationPredicate predicate,
-										   DefiningClassLoader classLoader,
-										   Map<String, FieldType> keyTypes) {
+			AggregationPredicate predicate,
+			DefiningClassLoader classLoader,
+			Map<String, FieldType> keyTypes) {
 		return ClassBuilder.create(classLoader, Predicate.class)
 				.withMethod("test", boolean.class, singletonList(Object.class),
 						predicate.createPredicateDef(cast(arg(0), inputClass), keyTypes))
@@ -573,12 +573,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	 * @return supplier that streams query results
 	 */
 	public <T> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
-												Class<T> resultClass) throws QueryException {
+			Class<T> resultClass) throws QueryException {
 		return queryRawStream(dimensions, storedMeasures, where, resultClass, classLoader);
 	}
 
 	public <T> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
-												Class<T> resultClass, DefiningClassLoader queryClassLoader) throws QueryException {
+			Class<T> resultClass, DefiningClassLoader queryClassLoader) throws QueryException {
 
 		List<AggregationContainer> compatibleAggregations = getCompatibleAggregationsForQuery(dimensions, storedMeasures, where);
 
@@ -586,8 +586,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	private <T, K extends Comparable, S, A> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
-																			 Class<T> resultClass, DefiningClassLoader queryClassLoader,
-																			 List<AggregationContainer> compatibleAggregations) {
+			Class<T> resultClass, DefiningClassLoader queryClassLoader,
+			List<AggregationContainer> compatibleAggregations) {
 		List<AggregationContainerWithScore> containerWithScores = new ArrayList<>();
 		for (AggregationContainer compatibleAggregation : compatibleAggregations) {
 			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, storedMeasures, where);
@@ -646,8 +646,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	List<AggregationContainer> getCompatibleAggregationsForQuery(Collection<String> dimensions,
-																 Collection<String> storedMeasures,
-																 AggregationPredicate where) {
+			Collection<String> storedMeasures,
+			AggregationPredicate where) {
 		where = where.simplify();
 		List<String> allDimensions = Stream.concat(dimensions.stream(), where.getDimensions().stream()).collect(toList());
 
@@ -714,7 +714,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			Aggregation aggregation = entry.getValue().aggregation;
 
 			runnables.add(() -> strategy.apply(aggregation)
-					.whenResult(aggregationDiff -> {
+					.accept(aggregationDiff -> {
 						if (!aggregationDiff.isEmpty()) {
 							map.put(aggregationId, aggregationDiff);
 						}
@@ -722,7 +722,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					.toVoid());
 		}
 
-		return Promises.sequence(runnables).thenApply($ -> CubeDiff.of(map));
+		return Promises.sequence(runnables).map($ -> CubeDiff.of(map));
 	}
 
 	private List<String> getAllParents(String dimension) {
@@ -766,7 +766,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				cubeQuery.getWhere().getDimensions()));
 		long queryStarted = eventloop.currentTimeMillis();
 		return new RequestContext<>().execute(queryClassLoader, cubeQuery)
-				.whenComplete((queryResult, e) -> {
+				.acceptEx((queryResult, e) -> {
 					if (e == null) {
 						queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
 					} else {
@@ -842,13 +842,13 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations)
 					.toList()
-					.thenCompose(this::processResults);
+					.then(this::processResults);
 		}
 
 		void prepareDimensions() throws QueryException {
 			for (String attribute : query.getAttributes()) {
-//				if (resultAttributes.contains(attribute))
-//					continue;
+				//				if (resultAttributes.contains(attribute))
+				//					continue;
 				recordAttributes.add(attribute);
 				List<String> dimensions = new ArrayList<>();
 				if (dimensionTypes.containsKey(attribute)) {
@@ -1036,7 +1036,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				}
 			}
 			return Promises.all(tasks)
-					.thenApply($ -> processResults2(results, totals, filterAttributes));
+					.map($ -> processResults2(results, totals, filterAttributes));
 		}
 
 		QueryResult processResults2(List<R> results, R totals, Map<String, Object> filterAttributes) {
@@ -1080,7 +1080,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		private Promise<Void> resolveSpecifiedDimensions(AttributeResolverContainer resolverContainer,
-														 Map<String, Object> result) {
+				Map<String, Object> result) {
 			Object[] key = new Object[resolverContainer.dimensions.size()];
 			for (int i = 0; i < resolverContainer.dimensions.size(); i++) {
 				String dimension = resolverContainer.dimensions.get(i);
@@ -1091,7 +1091,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return resolverContainer.resolver.resolveAttributes(singletonList(key),
 					result1 -> (Object[]) result1,
 					(result12, attributes) -> attributesPlaceholder[0] = attributes)
-					.whenResult($ -> {
+					.accept($ -> {
 						for (int i = 0; i < resolverContainer.attributes.size(); i++) {
 							String attribute = resolverContainer.attributes.get(i);
 							result.put(attribute, attributesPlaceholder[0] != null ? ((Object[]) attributesPlaceholder[0])[i] : null);

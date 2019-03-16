@@ -79,13 +79,13 @@ public final class HttpDataFormats {
 			return MultipartParser.create(boundary)
 					.splitByFiles(bodyStream, name ->
 							ChannelConsumer.ofPromise(uploader.upload(name, offset, revision)
-									.thenCompose(consumer -> {
+									.then(consumer -> {
 										if (!(consumer instanceof RecyclingChannelConsumer)) {
 											return Promise.of(consumer);
 										}
 										return Promise.ofException(REVISION_NOT_HIGH_ENOUGH);
 									})))
-					.thenApplyEx(errorHandler());
+					.mapEx(errorHandler());
 		} catch (ParseException e) {
 			return Promise.ofException(e);
 		}
@@ -97,7 +97,7 @@ public final class HttpDataFormats {
 			String headerRange = request.getHeaderOrNull(HttpHeaders.RANGE);
 			if (headerRange == null) {
 				return downloader.download(0, -1)
-						.thenApplyEx(errorHandler(HttpResponse.ok200()
+						.mapEx(errorHandler(HttpResponse.ok200()
 								.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
 								.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
 								.withHeader(ACCEPT_RANGES, "bytes")
@@ -119,7 +119,7 @@ public final class HttpDataFormats {
 			}
 			long length = (endOffset == -1 ? size : endOffset) - offset + 1;
 			return downloader.download(offset, length)
-					.thenApplyEx(errorHandler(HttpResponse.ok206()
+					.mapEx(errorHandler(HttpResponse.ok206()
 							.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
 							.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + localName + "\""))
 							.withHeader(ACCEPT_RANGES, "bytes")

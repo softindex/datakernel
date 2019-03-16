@@ -104,8 +104,8 @@ public final class CubeHttpClient implements ICube {
 	@Override
 	public Promise<QueryResult> query(CubeQuery query) {
 		return httpClient.request(buildRequest(query))
-				.thenCompose(httpResponse -> httpResponse.getBody()
-						.thenCompose(body -> {
+				.then(httpResponse -> httpResponse.getBody()
+						.then(body -> {
 							try {
 								String response = body.getString(UTF_8);
 								if (httpResponse.getCode() != 200) {
@@ -119,7 +119,7 @@ public final class CubeHttpClient implements ICube {
 								body.recycle();
 							}
 						}))
-				.whenComplete(toLogger(logger, "query", query));
+				.acceptEx(toLogger(logger, "query", query));
 	}
 
 	private HttpRequest buildRequest(CubeQuery query) {

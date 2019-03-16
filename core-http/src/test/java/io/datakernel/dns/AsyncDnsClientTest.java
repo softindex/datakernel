@@ -144,7 +144,7 @@ public final class AsyncDnsClientTest {
 									.flatMap($2 -> Stream.of("www.google.com", "www.github.com", "www.kpi.ua"))
 									.limit(100)
 									.map(cachedClient::resolve4))
-							.thenComposeEx(($2, e) -> {
+							.thenEx(($2, e) -> {
 								if (e instanceof DnsQueryException) {
 									if (((DnsQueryException) e).getResult().getErrorCode() == TIMED_OUT) {
 										System.out.println("TIMED_OUT");
@@ -153,7 +153,7 @@ public final class AsyncDnsClientTest {
 								}
 								return Promise.of(null, e);
 							})
-							.whenComplete(assertComplete());
+							.acceptEx(assertComplete());
 
 					try {
 						subloop.run();

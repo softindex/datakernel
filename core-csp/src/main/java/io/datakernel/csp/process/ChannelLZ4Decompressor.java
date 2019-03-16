@@ -112,9 +112,9 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 	public void processHeader() {
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
 			input.needMoreData()
-					.thenComposeEx(ChannelLZ4Decompressor::checkTruncatedDataException)
-					.thenComposeEx(super::sanitize)
-					.whenResult($ -> processHeader());
+					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
+					.thenEx(super::sanitize)
+					.accept($ -> processHeader());
 			return;
 		}
 
@@ -131,17 +131,17 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		}
 
 		input.endOfStream()
-				.thenComposeEx(super::sanitize)
-				.thenCompose($ -> output.accept(null))
-				.whenResult($ -> completeProcess());
+				.thenEx(super::sanitize)
+				.then($ -> output.accept(null))
+				.accept($ -> completeProcess());
 	}
 
 	public void processBody() {
 		if (!bufs.hasRemainingBytes(header.compressedLen)) {
 			input.needMoreData()
-					.thenComposeEx(ChannelLZ4Decompressor::checkTruncatedDataException)
-					.thenComposeEx(super::sanitize)
-					.whenResult($ -> processBody());
+					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
+					.thenEx(super::sanitize)
+					.accept($ -> processBody());
 			return;
 		}
 
@@ -158,7 +158,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		}
 
 		output.accept(outputBuf)
-				.whenResult($ -> processHeader());
+				.accept($ -> processHeader());
 	}
 
 	@Override

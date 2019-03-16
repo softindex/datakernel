@@ -87,14 +87,14 @@ public interface FsClient {
 
 	default Promise<ChannelConsumer<ByteBuf>> append(String name) {
 		return getMetadata(name)
-				.thenCompose(m -> m != null ?
+				.then(m -> m != null ?
 						upload(name, m.isTombstone() ? 0 : m.getSize(), m.getRevision()) :
 						upload(name, 0, DEFAULT_REVISION));
 	}
 
 	default Promise<Void> truncate(String name, long revision) {
 		return upload(name, 0, revision)
-				.thenCompose(consumer -> consumer.accept(null));
+				.then(consumer -> consumer.accept(null));
 	}
 
 	// endregion
@@ -178,7 +178,7 @@ public interface FsClient {
 	 */
 	default Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
 		return copy(name, target, targetRevision)
-				.thenCompose($ -> delete(name, removeRevision));
+				.then($ -> delete(name, removeRevision));
 	}
 
 	default Promise<Void> move(String name, String target) {
@@ -189,7 +189,7 @@ public interface FsClient {
 		String finalName = name.endsWith("/") ? name : name + '/';
 		String finalTarget = target.endsWith("/") ? target : target + '/';
 		return list(finalName + "**")
-				.thenCompose(list -> Promises.all(list.stream()
+				.then(list -> Promises.all(list.stream()
 						.map(meta -> {
 							String filename = meta.getName();
 							return move(filename, finalTarget + filename.substring(finalName.length()), targetRevision, removeRevision);
@@ -226,7 +226,7 @@ public interface FsClient {
 	 */
 	default Promise<List<FileMetadata>> list(String glob) {
 		return listEntities(glob)
-				.thenApply(list -> list.stream()
+				.map(list -> list.stream()
 						.filter(m -> !m.isTombstone())
 						.collect(toList()));
 	}
@@ -239,7 +239,7 @@ public interface FsClient {
 	 */
 	default Promise<@Nullable FileMetadata> getMetadata(String name) {
 		return listEntities(escapeGlob(name))
-				.thenApply(list -> list.isEmpty() ? null : list.get(0));
+				.map(list -> list.isEmpty() ? null : list.get(0));
 	}
 
 	/**

@@ -153,8 +153,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.download(getPath(chunkId))
-				.whenComplete(promiseOpenR.recordStats())
-				.thenApply(supplier -> supplier
+				.acceptEx(promiseOpenR.recordStats())
+				.map(supplier -> supplier
 						.transformWith(readFile)
 						.transformWith(ChannelLZ4Decompressor.create())
 						.transformWith(readDecompress)
@@ -170,8 +170,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.upload(getTempPath(chunkId))
-				.whenComplete(promiseOpenW.recordStats())
-				.thenApply(consumer -> StreamConsumer.ofSupplier(
+				.acceptEx(promiseOpenW.recordStats())
+				.map(consumer -> StreamConsumer.ofSupplier(
 						supplier -> supplier
 								.transformWith((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
 								.transformWith(ChannelSerializer.create(
@@ -191,20 +191,20 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	public Promise<Void> finish(Set<C> chunkIds) {
 		finishChunks = chunkIds.size();
 		return Promises.all(chunkIds.stream().map(id -> client.move(getTempPath(id), getPath(id)).toTry()))
-				.whenComplete(promiseFinishChunks.recordStats());
+				.acceptEx(promiseFinishChunks.recordStats());
 	}
 
 	@Override
 	public Promise<C> createId() {
-		return idGenerator.createId().whenComplete(promiseIdGenerator.recordStats());
+		return idGenerator.createId().acceptEx(promiseIdGenerator.recordStats());
 	}
 
 	public Promise<Void> backup(String backupId, Set<C> chunkIds) {
 		String tempBackupDir = backupDir + File.separator + backupId + "_tmp";
 
 		return Promises.all(chunkIds.stream().map(chunkId -> client.copy(chunkId + LOG, tempBackupDir + File.separator + chunkId + LOG)))
-				.thenCompose($ -> client.moveDir(tempBackupDir, backupDir + File.separator + backupId))
-				.whenComplete(promiseBackup.recordStats());
+				.then($ -> client.moveDir(tempBackupDir, backupDir + File.separator + backupId))
+				.acceptEx(promiseBackup.recordStats());
 	}
 
 	public Promise<Void> cleanup(Set<C> saveChunks) {
@@ -216,7 +216,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		int[] skipped = {0};
 		int[] deleted = {0};
 		return client.list("*" + LOG)
-				.thenCompose(list -> Promises.all(list.stream()
+				.then(list -> Promises.all(list.stream()
 						.filter(file -> {
 							C id;
 							try {
@@ -249,37 +249,37 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 							deleted[0]++;
 							return client.delete(file.getName());
 						}))
-						.whenResult($ -> {
+						.accept($ -> {
 							cleanupPreservedFiles = preserveChunks.size();
 							cleanupDeletedFiles = deleted[0];
 							cleanupDeletedFilesTotal += deleted[0];
 							cleanupSkippedFiles = skipped[0];
 							cleanupSkippedFilesTotal += skipped[0];
 						}))
-				.whenComplete(promiseCleanup.recordStats());
+				.acceptEx(promiseCleanup.recordStats());
 	}
 
 	public Promise<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
 		return client.list("*" + LOG)
-				.thenApply(list ->
+				.map(list ->
 						list.stream()
 								.filter(file -> lastModified.test(file.getTimestamp()))
 								.map(FileMetadata::getName)
 								.filter(filter)
 								.map(name -> Long.parseLong(name.substring(0, name.length() - LOG.length())))
 								.collect(Collectors.toSet()))
-				.whenComplete(promiseList.recordStats());
+				.acceptEx(promiseList.recordStats());
 	}
 
 	public Promise<Void> checkRequiredChunks(Set<C> requiredChunks) {
 		return list(s -> true, timestamp -> true)
-				.whenResult(actualChunks -> chunksCount.recordValue(actualChunks.size()))
-				.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
+				.accept(actualChunks -> chunksCount.recordValue(actualChunks.size()))
+				.then(actualChunks -> actualChunks.containsAll(requiredChunks) ?
 						Promise.of((Void) null) :
 						Promise.ofException(new IllegalStateException("Missed chunks from storage: " +
 								toLimitedString(difference(requiredChunks, actualChunks), 100))))
-				.whenComplete(promiseCleanupCheckRequiredChunks.recordStats())
-				.whenComplete(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
+				.acceptEx(promiseCleanupCheckRequiredChunks.recordStats())
+				.acceptEx(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
 	}
 
 	@NotNull

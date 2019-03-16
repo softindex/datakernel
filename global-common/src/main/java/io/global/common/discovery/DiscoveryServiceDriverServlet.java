@@ -36,11 +36,11 @@ public final class DiscoveryServiceDriverServlet implements WithMiddleware {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						return request.getBody()
-								.thenCompose(body -> {
+								.then(body -> {
 									try {
 										AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.asString(UTF_8));
 										return driver.announce(keys, data)
-												.thenApply($ -> HttpResponse.ok200());
+												.map($ -> HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.<HttpResponse>ofException(e);
 									}
@@ -53,7 +53,7 @@ public final class DiscoveryServiceDriverServlet implements WithMiddleware {
 					try {
 						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
 						return driver.find(pubKey)
-								.thenApply(data -> HttpResponse.ok200()
+								.map(data -> HttpResponse.ok200()
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(JSON_UTF_8))
 										.withBody(JsonUtils.toJson(NULLABLE_ANNOUNCE_DATA_CODEC, data).getBytes(UTF_8)));
 					} catch (ParseException e) {
@@ -65,10 +65,10 @@ public final class DiscoveryServiceDriverServlet implements WithMiddleware {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 						PrivKey sender = PrivKey.fromString(request.getCookie("Key"));
 						return request.getBody()
-								.thenCompose(body -> {
+								.then(body -> {
 									try {
 										return driver.shareKey(sender, receiver, SimKey.fromString(body.asString(UTF_8)))
-												.thenApply($ -> HttpResponse.ok200());
+												.map($ -> HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.<HttpResponse>ofException(e);
 									}
@@ -82,7 +82,7 @@ public final class DiscoveryServiceDriverServlet implements WithMiddleware {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						Hash hash = Hash.fromString(request.getPathParameter("hash"));
 						return driver.getSharedKey(keys, hash)
-								.thenApply(simKey -> {
+								.map(simKey -> {
 									if (simKey == null) {
 										return HttpResponse.ofCode(404);
 									}
@@ -98,7 +98,7 @@ public final class DiscoveryServiceDriverServlet implements WithMiddleware {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						return driver.getSharedKeys(keys)
-								.thenApply(simKeys -> HttpResponse.ok200()
+								.map(simKeys -> HttpResponse.ok200()
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(JSON_UTF_8))
 										.withBody((simKeys.stream()
 												.map(simKey -> '"' + simKey.asString() + '"')

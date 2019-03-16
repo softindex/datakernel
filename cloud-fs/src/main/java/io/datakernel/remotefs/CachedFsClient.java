@@ -91,7 +91,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 
 	public Promise<MemSize> getTotalCacheSize() {
 		return cacheClient.list("**")
-				.thenCompose(list -> Promise.of(MemSize.of(list.stream().mapToLong(FileMetadata::getSize).sum())));
+				.then(list -> Promise.of(MemSize.of(list.stream().mapToLong(FileMetadata::getSize).sum())));
 	}
 
 	@NotNull
@@ -105,7 +105,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	public MaterializedPromise<Void> start() {
 		checkState(cacheSizeLimit != null, "Cannot start cached client without specifying cache size limit");
 		return getTotalCacheSize()
-				.thenCompose(size -> {
+				.then(size -> {
 					totalCacheSize = size.toLong();
 					return ensureSpace();
 				})
@@ -137,13 +137,13 @@ public final class CachedFsClient implements FsClient, EventloopService {
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
 		return cacheClient.getMetadata(name)
-				.thenCompose(cacheMetadata -> {
+				.then(cacheMetadata -> {
 					if (cacheMetadata == null) {
 						if (offset != 0) {
 							return mainClient.download(name, offset, length);
 						}
 						return mainClient.getMetadata(name)
-								.thenCompose(mainMetadata -> {
+								.then(mainMetadata -> {
 									if (mainMetadata == null) {
 										return Promise.ofException(new StacklessException(CachedFsClient.class, "File not found: " + name));
 									}
@@ -154,7 +154,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 
 					if (length != -1 && sizeInCache >= offset + length) {
 						return cacheClient.download(name, offset, length)
-								.whenComplete((val, e) -> updateCacheStats(name));
+								.acceptEx((val, e) -> updateCacheStats(name));
 					}
 
 					if (offset > sizeInCache) {
@@ -162,17 +162,17 @@ public final class CachedFsClient implements FsClient, EventloopService {
 					}
 
 					return mainClient.getMetadata(name)
-							.thenCompose(mainMetadata -> {
+							.then(mainMetadata -> {
 								if (mainMetadata == null) {
 									return cacheClient.download(name, offset, length)
-											.whenComplete(($, e) -> updateCacheStats(name));
+											.acceptEx(($, e) -> updateCacheStats(name));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
 
 								if (sizeInCache >= sizeInMain) {
 									return cacheClient.download(name, offset, length)
-											.whenComplete((val, e) -> updateCacheStats(name));
+											.acceptEx((val, e) -> updateCacheStats(name));
 								}
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
@@ -189,7 +189,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	private Promise<ChannelSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache, long sizeInMain) {
 		long size = length == -1 ? length : length + offset - sizeInCache;
 		return mainClient.download(fileName, sizeInCache, size)
-				.thenCompose(supplier -> {
+				.then(supplier -> {
 					long toBeCached = sizeInMain - sizeInCache;
 					if (downloadingNowSize + toBeCached > cacheSizeLimit.toLong() || toBeCached > cacheSizeLimit.toLong() * (1 - LOAD_FACTOR)) {
 						return Promise.of(supplier);
@@ -197,7 +197,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 					downloadingNowSize += toBeCached;
 
 					return ensureSpace()
-							.thenApply($ -> {
+							.map($ -> {
 								ChannelSplitter<ByteBuf> splitter = ChannelSplitter.create(supplier);
 								splitter.addOutput()
 										.set(ChannelConsumer.ofPromise(cacheClient.upload(fileName, sizeInCache)));
@@ -208,11 +208,11 @@ public final class CachedFsClient implements FsClient, EventloopService {
 								return ChannelSuppliers.concat(prefix, splitter.addOutput().getSupplier())
 										.withEndOfStream(eos -> eos
 												.both(splitter.getProcessCompletion())
-												.thenCompose($2 -> {
+												.then($2 -> {
 													totalCacheSize += toBeCached;
 													return updateCacheStats(fileName);
 												})
-												.whenResult($2 -> downloadingNowSize -= toBeCached));
+												.accept($2 -> downloadingNowSize -= toBeCached));
 							});
 				});
 	}
@@ -236,13 +236,13 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return Promises.toList(cacheClient.listEntities(glob), mainClient.listEntities(glob))
-				.thenApply(lists -> FileMetadata.flatten(lists.stream()));
+				.map(lists -> FileMetadata.flatten(lists.stream()));
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return Promises.toList(cacheClient.list(glob), mainClient.list(glob))
-				.thenApply(lists -> FileMetadata.flatten(lists.stream()));
+				.map(lists -> FileMetadata.flatten(lists.stream()));
 	}
 
 	/**
@@ -269,7 +269,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 					cacheStat.lastHitTimestamp = timeProvider.currentTimeMillis();
 					return cacheStat;
 				}))
-				.whenResult($ -> cacheStats.computeIfAbsent(fileName, s -> new CacheStat(1, timeProvider.currentTimeMillis())))
+				.accept($ -> cacheStats.computeIfAbsent(fileName, s -> new CacheStat(1, timeProvider.currentTimeMillis())))
 				.toVoid();
 	}
 
@@ -284,7 +284,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 		}
 		long[] sizeAccum = {0};
 		return cacheClient.list("**")
-				.thenApply(list -> list
+				.map(list -> list
 						.stream()
 						.map(metadata -> {
 							CacheStat cacheStat = cacheStats.get(metadata.getName());
@@ -297,10 +297,10 @@ public final class CachedFsClient implements FsClient, EventloopService {
 							sizeAccum[0] += fullCacheStat.getFileMetadata().getSize();
 							return sizeAccum[0] > cacheSizeLimit.toLong() * LOAD_FACTOR;
 						}))
-				.thenCompose(filesToDelete -> Promises.all(filesToDelete
+				.then(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())
-								.whenResult($ -> {
+								.accept($ -> {
 									totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
 									cacheStats.remove(fullCacheStat.getFileMetadata().getName());
 								}))));

@@ -17,9 +17,6 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.*;
-import io.datakernel.async.MaterializedPromise;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.StacklessException;
@@ -80,7 +77,7 @@ public final class ChannelSuppliers {
 			@Override
 			protected Promise<T> doGet() {
 				return current.get()
-						.thenComposeEx((value, e) -> {
+						.thenEx((value, e) -> {
 							if (e == null) {
 								if (value != null) {
 									return Promise.of(value);
@@ -159,7 +156,7 @@ public final class ChannelSuppliers {
 			}
 			break;
 		}
-		promise.whenComplete((value, e) -> {
+		promise.acceptEx((value, e) -> {
 			if (e == null) {
 				if (value != null) {
 					try {
@@ -183,7 +180,7 @@ public final class ChannelSuppliers {
 
 	public static <T> Promise<Void> streamTo(Promise<ChannelSupplier<T>> supplier, Promise<ChannelConsumer<T>> consumer) {
 		return Promises.toTuple(supplier.toTry(), consumer.toTry())
-				.thenCompose(t -> streamTo(t.getValue1(), t.getValue2()));
+				.then(t -> streamTo(t.getValue1(), t.getValue2()));
 	}
 
 	public static <T> MaterializedPromise<Void> streamTo(Try<ChannelSupplier<T>> supplier, Try<ChannelConsumer<T>> consumer) {
@@ -224,7 +221,7 @@ public final class ChannelSuppliers {
 			if (item == null) break;
 			Promise<Void> consumerPromise = consumer.accept(item);
 			if (consumerPromise.isResult()) continue;
-			consumerPromise.whenComplete(($, e) -> {
+			consumerPromise.acceptEx(($, e) -> {
 				if (e == null) {
 					streamToImpl(supplier, consumer, cb);
 				} else {
@@ -235,10 +232,10 @@ public final class ChannelSuppliers {
 			return;
 		}
 		supplierPromise
-				.whenComplete((item, e1) -> {
+				.acceptEx((item, e1) -> {
 					if (e1 == null) {
 						consumer.accept(item)
-								.whenComplete(($, e2) -> {
+								.acceptEx(($, e2) -> {
 									if (e2 == null) {
 										if (item != null) {
 											streamToImpl(supplier, consumer, cb);
@@ -288,7 +285,7 @@ public final class ChannelSuppliers {
 			private void next(SettableCallback<V> cb) {
 				if (!endOfStream) {
 					supplier.get()
-							.whenComplete((item, e) -> {
+							.acceptEx((item, e) -> {
 								if (e == null) {
 									if (item == null) endOfStream = true;
 									iterator = fn.apply(item);

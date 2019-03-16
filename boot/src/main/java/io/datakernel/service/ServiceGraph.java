@@ -106,11 +106,21 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		}
 
 		Operation getOperation() {
-			if (startException != null || stopException != null) return Operation.EXCEPTION;
-			if (stopEnd != 0) return Operation.STOPPED;
-			if (stopBegin != 0) return Operation.STOPPING;
-			if (startEnd != 0) return Operation.STARTED;
-			if (startBegin != 0) return Operation.STARTING;
+			if (startException != null || stopException != null) {
+				return Operation.EXCEPTION;
+			}
+			if (stopEnd != 0) {
+				return Operation.STOPPED;
+			}
+			if (stopBegin != 0) {
+				return Operation.STOPPING;
+			}
+			if (startEnd != 0) {
+				return Operation.STARTED;
+			}
+			if (startBegin != 0) {
+				return Operation.STARTING;
+			}
 			return Operation.NEW;
 		}
 
@@ -230,7 +240,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private static String toGraphvizAttribute(String colorOrAttribute) {
-		if (colorOrAttribute.isEmpty() || colorOrAttribute.contains("=")) return colorOrAttribute;
+		if (colorOrAttribute.isEmpty() || colorOrAttribute.contains("=")) {
+			return colorOrAttribute;
+		}
 		return "color=" + (colorOrAttribute.startsWith("#") ? "\"" + colorOrAttribute + "\"" : colorOrAttribute);
 	}
 
@@ -266,7 +278,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private CompletionStage<?> processNode(Key<?> node, boolean start,
-			Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
+										   Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
 		List<CompletionStage<?>> dependencies = new ArrayList<>();
 		for (Key<?> dependency : (start ? forwards : backwards).getOrDefault(node, emptySet())) {
 			dependencies.add(processNode(dependency, start, cache, executor));
@@ -355,7 +367,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	 * Start services in the service graph
 	 */
 	synchronized public CompletableFuture<?> startFuture() {
-		if (started) return CompletableFuture.completedFuture(false);
+		if (started) {
+			return CompletableFuture.completedFuture(false);
+		}
 		started = true;
 		if (startCallback != null) {
 			startCallback.run();
@@ -369,7 +383,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return doStartStop(true, rootNodes)
 				.whenComplete(($, e) -> {
 					startEnd = currentTimeMillis();
-					if (e != null) startException = e;
+					if (e != null) {
+						startException = e;
+					}
 				})
 				.thenRun(() ->
 						slowestChain = findSlowestChain(
@@ -389,7 +405,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return doStartStop(false, leafNodes)
 				.whenComplete(($, e) -> {
 					stopEnd = currentTimeMillis();
-					if (e != null) stopException = e;
+					if (e != null) {
+						stopException = e;
+					}
 				})
 				.toCompletableFuture();
 	}
@@ -407,7 +425,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	private static void removeValue(Map<Key<?>, Set<Key<?>>> map, Key<?> key, Key<?> value) {
 		Set<Key<?>> objects = map.get(key);
 		objects.remove(value);
-		if (objects.isEmpty()) map.remove(key);
+		if (objects.isEmpty()) {
+			map.remove(key);
+		}
 	}
 
 	private void removeIntermediateOneWay(Key<?> vertex, Map<Key<?>, Set<Key<?>>> forwards, Map<Key<?>, Set<Key<?>>> backwards) {
@@ -464,8 +484,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 					continue next;
 				}
 			}
-			if (path.isEmpty())
+			if (path.isEmpty()) {
 				break;
+			}
 			path.remove(path.size() - 1);
 		}
 		return null;
@@ -544,7 +565,6 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	@JmxOperation
-	@SuppressWarnings("StringConcatenationInsideStringBufferAppend")
 	public String toGraphViz() {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n");
@@ -632,7 +652,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	@JmxAttribute
 	@Nullable
 	public String getSlowestChain() {
-		if (slowestChain == null) return null;
+		if (slowestChain == null) {
+			return null;
+		}
 		return slowestChain.path.stream()
 				.map(this::keyToString)
 				.collect(joining(", ", "[", "]")) +
@@ -643,7 +665,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	@JmxAttribute
 	@Nullable
 	public Duration getStartDuration() {
-		if (startBegin == 0) return null;
+		if (startBegin == 0) {
+			return null;
+		}
 		return Duration.ofMillis((startEnd != 0 ? startEnd : currentTimeMillis()) - startBegin);
 	}
 
@@ -655,7 +679,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	@JmxAttribute
 	@Nullable
 	public Duration getStopDuration() {
-		if (stopBegin == 0) return null;
+		if (stopBegin == 0) {
+			return null;
+		}
 		return Duration.ofMillis((stopEnd != 0 ? stopEnd : currentTimeMillis()) - stopBegin);
 	}
 

@@ -41,7 +41,7 @@ public final class ManagerProvider<D> implements EventloopService {
 					.withPoll();
 
 			MaterializedPromise<OTStateManager<CommitId, D>> stateManagerPromise = stateManager.start()
-					.thenApply($ -> stateManager)
+					.map($ -> stateManager)
 					.materialize();
 
 			entries.put(id, stateManagerPromise);

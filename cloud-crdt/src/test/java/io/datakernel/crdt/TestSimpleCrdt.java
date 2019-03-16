@@ -70,7 +70,7 @@ public final class TestSimpleCrdt {
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(client.upload()))
-				.whenComplete(($, e) -> server.close()));
+				.acceptEx(($, e) -> server.close()));
 
 		System.out.println("Data at 'remote' storage:");
 		remoteStorage.iterator().forEachRemaining(System.out::println);
@@ -86,9 +86,9 @@ public final class TestSimpleCrdt {
 	public void testDownload() {
 		CrdtStorageTreeMap<String, Integer> localStorage = CrdtStorageTreeMap.create(getCurrentEventloop(), Integer::max);
 
-		await(client.download().thenCompose(supplierWithResult -> supplierWithResult
+		await(client.download().then(supplierWithResult -> supplierWithResult
 				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(($, err) -> server.close())));
+				.acceptEx(($, err) -> server.close())));
 
 		System.out.println("Data fetched from 'remote' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

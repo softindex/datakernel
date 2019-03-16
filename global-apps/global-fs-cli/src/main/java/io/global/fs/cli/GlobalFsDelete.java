@@ -50,7 +50,7 @@ public final class GlobalFsDelete implements Callable<Void> {
 		for (String file : files) {
 			info("Deleting " + file + " ...");
 			gateway.delete(file)
-					.whenComplete(($, e) -> {
+					.acceptEx(($, e) -> {
 						if (e == null) {
 							info(file + " delete finished");
 							return;

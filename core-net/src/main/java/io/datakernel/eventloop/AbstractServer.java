@@ -245,7 +245,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		running = false;
 		closeServerSocketChannels();
 		return Promise.ofCallback(this::onClose)
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						logger.info("Server closed: {}", this);
 					} else {

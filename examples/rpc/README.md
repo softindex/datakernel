@@ -34,7 +34,7 @@ Since `RpcExample` class extends `Launcher`, it implements `run()` method which 
 @Override
 protected void run() {
 	//1000 is timeout value
-	client.sendRequest("World", 1000).whenComplete((res, e) -> {
+	client.sendRequest("World", 1000).acceptEx((res, e) -> {
 		if (e != null) {
 			System.err.println("Got exception: " + e);
 		} else {

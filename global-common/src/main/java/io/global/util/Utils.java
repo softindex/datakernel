@@ -30,7 +30,6 @@ public class Utils {
 	 * Returns a {@code List} of successfully completed {@code Promise}s.
 	 * Length of returned {@code List} can't be greater than {@code n}.
 	 */
-	@SuppressWarnings("Convert2MethodRef")
 	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Iterator<Promise<T>> promises) {
 		return reduceEx(promises, a -> n - a.size(),
 				new ArrayList<T>(),
@@ -54,7 +53,7 @@ public class Utils {
 	public static <T> Promise<Boolean> tolerantCollectBoolean(Stream<T> items, Function<T, Promise<Boolean>> fn) {
 		return Promises.reduce(Try.reducer(false, (a, b) -> a || b), 1,
 				asPromises(items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry()))))
-				.thenCompose(Promise::ofTry);
+				.then(Promise::ofTry);
 	}
 
 	public static <T> Promise<Void> tolerantCollectVoid(Collection<T> items, Function<T, Promise<Void>> fn) {
@@ -64,7 +63,7 @@ public class Utils {
 	public static <T> Promise<Void> tolerantCollectVoid(Stream<T> items, Function<T, Promise<Void>> fn) {
 		return Promises.reduce(Try.voidReducer(), 1,
 				asPromises(items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry()))))
-				.thenCompose(Promise::ofTry);
+				.then(Promise::ofTry);
 	}
 }
 

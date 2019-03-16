@@ -64,7 +64,7 @@ public class OTAlgorithmsTest {
 				commit -> commit.getSnapshotHint() != null ?
 						Promise.of(commit.getSnapshotHint()) :
 						REPOSITORY.loadSnapshot(commit.getId())
-								.thenApply(Optional::isPresent)));
+								.map(Optional::isPresent)));
 		assertSame(GRAPH_EXHAUSTED, exception);
 	}
 

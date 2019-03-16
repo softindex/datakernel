@@ -17,7 +17,6 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.MaterializedPromise;
-import io.datakernel.async.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -35,7 +34,7 @@ public interface EventloopService {
 
 	@NotNull
 	default CompletableFuture<?> startFuture() {
-		return getEventloop().submit(cb -> start().whenComplete(cb));
+		return getEventloop().submit(cb -> start().acceptEx(cb));
 	}
 
 	/**
@@ -47,6 +46,6 @@ public interface EventloopService {
 
 	@NotNull
 	default CompletableFuture<?> stopFuture() {
-		return getEventloop().submit(cb -> stop().whenComplete(cb));
+		return getEventloop().submit(cb -> stop().acceptEx(cb));
 	}
 }

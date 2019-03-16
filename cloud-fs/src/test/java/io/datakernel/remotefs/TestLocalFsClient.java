@@ -119,7 +119,7 @@ public final class TestLocalFsClient {
 		AsyncFile file = AsyncFile.open(executor, path, READ_OPTIONS);
 
 		await(client.upload("1/c.txt")
-				.thenCompose(readFile(file).withBufferSize(BUFFER_SIZE)::streamTo));
+				.then(readFile(file).withBufferSize(BUFFER_SIZE)::streamTo));
 
 		assertArrayEquals(Files.readAllBytes(path), Files.readAllBytes(storagePath.resolve("1/c.txt")));
 	}
@@ -224,7 +224,7 @@ public final class TestLocalFsClient {
 
 		String actual = await(ChannelSupplier.ofPromise(client.download(file))
 				.toCollector(ByteBufQueue.collector())
-				.thenApply(buf -> buf.asString(UTF_8)));
+				.map(buf -> buf.asString(UTF_8)));
 
 		assertEquals(expected, actual);
 	}

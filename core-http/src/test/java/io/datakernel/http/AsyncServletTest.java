@@ -34,7 +34,7 @@ import static org.junit.Assert.assertSame;
 public class AsyncServletTest {
 	@Test
 	public void testEnsureRequestBody() {
-		AsyncServlet servlet = request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body));
+		AsyncServlet servlet = request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body));
 
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSupplier.of(
@@ -49,7 +49,7 @@ public class AsyncServletTest {
 
 	@Test
 	public void testEnsureRequestBodyWithException() {
-		AsyncServlet servlet = request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body));
+		AsyncServlet servlet = request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body));
 		Exception exception = new Exception("TestException");
 
 		ByteBuf byteBuf = ByteBufPool.allocate(100);

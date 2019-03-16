@@ -26,7 +26,7 @@ public final class OTGraphServlet<K, D> implements AsyncServlet {
 
 	private OTGraphServlet(@NotNull OTAlgorithms<K, D> algorithms, @Nullable Function<K, String> idToString, @Nullable Function<D, String> diffToString) {
 		this.algorithms = algorithms;
-		this.graph = new OTLoadedGraph<>(algorithms.getOtSystem(), idToString, diffToString);
+		graph = new OTLoadedGraph<>(algorithms.getOtSystem(), idToString, diffToString);
 	}
 
 	public static <K, D> OTGraphServlet<K, D> create(@NotNull OTAlgorithms<K, D> algorithms, Function<K, String> idToString, Function<D, String> diffToString) {
@@ -34,7 +34,7 @@ public final class OTGraphServlet<K, D> implements AsyncServlet {
 	}
 
 	public OTGraphServlet<K, D> withCurrentCommit(@NotNull Function<HttpRequest, Promise<K>> revisionSupplier) {
-		this.currentCommitFunction = revisionSupplier;
+		currentCommitFunction = revisionSupplier;
 		return this;
 	}
 
@@ -42,11 +42,11 @@ public final class OTGraphServlet<K, D> implements AsyncServlet {
 	@Override
 	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		return currentCommitFunction.apply(request)
-				.thenCompose(currentCommit -> algorithms.getRepository().getHeads()
-						.thenCompose(heads -> algorithms.loadGraph(heads, graph))
-						.thenApply(graph -> HttpResponse.ok200()
+				.then(currentCommit -> algorithms.getRepository().getHeads()
+						.then(heads -> algorithms.loadGraph(heads, graph))
+						.map(graph -> HttpResponse.ok200()
 								.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
 								.withBody(graph.toGraphViz(currentCommit).getBytes(UTF_8))))
-				.whenComplete(toLogger(logger, thisMethod(), request, this));
+				.acceptEx(toLogger(logger, thisMethod(), request, this));
 	}
 }

@@ -57,7 +57,7 @@ public final class HttpFsClient implements FsClient {
 						return Promise.of(response);
 					case 500:
 						return response.getBody()
-								.thenCompose(body -> {
+								.then(body -> {
 									try {
 										int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.asString(UTF_8)).getValue1();
 										return Promise.ofException(code >= 1 && code <= KNOWN_ERRORS.length ?
@@ -93,9 +93,9 @@ public final class HttpFsClient implements FsClient {
 									.withAcknowledgement(ack -> ack.both(responsePromise)));
 							return buffer.getSupplier();
 						})))
-				.thenCompose(checkResponse)
-				.whenException(channelPromise::trySetException)
-				.whenComplete(responsePromise::trySet);
+				.then(checkResponse)
+				.acceptEx(Exception.class, channelPromise::trySetException)
+				.acceptEx(responsePromise::trySet);
 
 		return channelPromise;
 	}
@@ -109,8 +109,8 @@ public final class HttpFsClient implements FsClient {
 								.appendPath(name)
 								.appendQuery("range", offset + (length == -1 ? "" : ("-" + (offset + length))))
 								.build()))
-				.thenCompose(checkResponse)
-				.thenApply(HttpMessage::getBodyStream);
+				.then(checkResponse)
+				.map(HttpMessage::getBodyStream);
 	}
 
 	@Override
@@ -121,9 +121,9 @@ public final class HttpFsClient implements FsClient {
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(checkResponse)
-				.thenCompose(HttpMessage::getBody)
-				.thenCompose(body -> {
+				.then(checkResponse)
+				.then(HttpMessage::getBody)
+				.then(body -> {
 					try {
 						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
 					} catch (ParseException e) {
@@ -145,7 +145,7 @@ public final class HttpFsClient implements FsClient {
 								.appendQuery("revision", targetRevision)
 								.appendQuery("removeRevision", removeRevision)
 								.build()))
-				.thenCompose(checkResponse)
+				.then(checkResponse)
 				.toVoid();
 	}
 
@@ -159,7 +159,7 @@ public final class HttpFsClient implements FsClient {
 								.appendQuery("target", target)
 								.appendQuery("revision", targetRevision)
 								.build()))
-				.thenCompose(checkResponse)
+				.then(checkResponse)
 				.toVoid();
 	}
 
@@ -172,7 +172,7 @@ public final class HttpFsClient implements FsClient {
 								.appendPath(name)
 								.appendQuery("revision", revision)
 								.build()))
-				.thenCompose(checkResponse)
+				.then(checkResponse)
 				.toVoid();
 	}
 }

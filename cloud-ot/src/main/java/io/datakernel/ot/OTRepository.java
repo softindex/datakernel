@@ -23,7 +23,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 
 	default Promise<Void> pushAndUpdateHead(OTCommit<K, D> commit) {
 		return push(commit)
-				.thenCompose($ -> updateHeads(singleton(commit.getId()), commit.getParentIds()));
+				.then($ -> updateHeads(singleton(commit.getId()), commit.getParentIds()));
 	}
 
 	default Promise<Void> pushAndUpdateHeads(Collection<OTCommit<K, D>> commits) {
@@ -34,7 +34,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 				.map(OTCommit::getId)
 				.filter(commit -> !parents.contains(commit)).collect(toSet());
 		return push(commits)
-				.thenCompose($ -> updateHeads(heads, parents));
+				.then($ -> updateHeads(heads, parents));
 	}
 
 	@NotNull
@@ -48,7 +48,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	Promise<OTCommit<K, D>> loadCommit(K revisionId);
 
 	default Promise<Boolean> hasSnapshot(K revisionId) {
-		return loadSnapshot(revisionId).thenApply(Optional::isPresent);
+		return loadSnapshot(revisionId).map(Optional::isPresent);
 	}
 
 	Promise<Optional<List<D>>> loadSnapshot(K revisionId);

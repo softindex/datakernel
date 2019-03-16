@@ -45,8 +45,8 @@ public final class OTStateServlet implements WithMiddleware {
 
 	private OTStateServlet(ManagerProvider<Operation> provider) {
 		this.provider = provider;
-		this.algorithms = provider.getAlgorithms();
-		this.servlet = getServlet();
+		algorithms = provider.getAlgorithms();
+		servlet = getServlet();
 	}
 
 	public static OTStateServlet create(ManagerProvider<Operation> provider) {
@@ -62,14 +62,14 @@ public final class OTStateServlet implements WithMiddleware {
 	// region servlets
 	private AsyncServlet add() {
 		return request -> request.getBody()
-				.thenCompose(body -> getManager(provider, request)
-						.thenCompose(manager -> {
+				.then(body -> getManager(provider, request)
+						.then(manager -> {
 							if (manager != null) {
 								try {
 									Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
 									manager.add(operation);
 									return manager.sync()
-											.thenApply($ -> okText());
+											.map($ -> okText());
 								} catch (ParseException e) {
 									return Promise.<HttpResponse>ofException(e);
 								} finally {
@@ -83,12 +83,12 @@ public final class OTStateServlet implements WithMiddleware {
 
 	private AsyncServlet info() {
 		return request -> getManager(provider, request)
-				.thenCompose(manager -> {
+				.then(manager -> {
 					if (manager != null) {
 						return algorithms.getRepository()
 								.getHeads()
-								.thenCompose(heads -> algorithms.loadGraph(heads, ID_TO_STRING, DIFF_TO_STRING))
-								.thenApply(graph -> {
+								.then(heads -> algorithms.loadGraph(heads, ID_TO_STRING, DIFF_TO_STRING))
+								.map(graph -> {
 									String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
 									Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(
 											manager.getCommitId(),

@@ -21,13 +21,15 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.process.AbstractChannelTransformer;
 import io.global.fs.api.DataFrame;
 
-/** Abstracted out bytebuf cutting code */
+/**
+ * Abstracted out bytebuf cutting code
+ */
 abstract class ByteBufsToFrames extends AbstractChannelTransformer<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
 
 	ByteBufsToFrames(long offset) {
-		this.position = nextCheckpoint = offset;
+		position = nextCheckpoint = offset;
 	}
 
 	protected abstract Promise<Void> postCheckpoint();
@@ -55,13 +57,13 @@ abstract class ByteBufsToFrames extends AbstractChannelTransformer<ByteBufsToFra
 
 		if (remaining == 0) {
 			return postByteBuf(item)
-					.thenCompose($ -> postCheckpoint());
+					.then($ -> postCheckpoint());
 		}
 
 		ByteBuf until = item.slice(bytesUntilCheckpoint);
 		item.moveHead(bytesUntilCheckpoint);
 		return postByteBuf(until)
-				.thenCompose($ -> postCheckpoint())
-				.thenCompose($ -> onItem(item));
+				.then($ -> postCheckpoint())
+				.then($ -> onItem(item));
 	}
 }

@@ -107,7 +107,7 @@ public final class TestGzipProcessorUtils {
 	public void testGzippedCommunicationBetweenClientServer() throws IOException {
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				request -> request.getBody(CHARACTERS_COUNT)
-						.thenApply(body -> {
+						.map(body -> {
 							try {
 								assertEquals("gzip", request.getHeader(CONTENT_ENCODING));
 								assertEquals("gzip", request.getHeader(ACCEPT_ENCODING));
@@ -132,9 +132,9 @@ public final class TestGzipProcessorUtils {
 		server.listen();
 
 		ByteBuf body = await(client.request(request)
-				.whenComplete(assertComplete(response -> assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING))))
-				.thenCompose(response -> response.getBody(CHARACTERS_COUNT))
-				.whenComplete(($, e) -> {
+				.acceptEx(assertComplete(response -> assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING))))
+				.then(response -> response.getBody(CHARACTERS_COUNT))
+				.acceptEx(($, e) -> {
 					server.close();
 					client.stop();
 				}));

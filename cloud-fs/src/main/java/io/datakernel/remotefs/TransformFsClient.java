@@ -83,13 +83,13 @@ final class TransformFsClient implements FsClient {
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return parent.listEntities(globInto.apply(glob).orElse("**"))
-				.thenApply(transformList(glob));
+				.map(transformList(glob));
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return parent.list(globInto.apply(glob).orElse("**"))
-				.thenApply(transformList(glob));
+				.map(transformList(glob));
 	}
 
 	private Function<List<FileMetadata>, List<FileMetadata>> transformList(String glob) {
@@ -108,7 +108,7 @@ final class TransformFsClient implements FsClient {
 		Optional<String> transformed = into.apply(name);
 		return transformed.map(s ->
 				parent.getMetadata(s)
-						.thenApply(meta -> {
+						.map(meta -> {
 							if (meta == null) {
 								return null;
 							}

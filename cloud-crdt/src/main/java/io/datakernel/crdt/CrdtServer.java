@@ -60,7 +60,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 		MessagingWithBinaryStreaming<CrdtMessage, CrdtResponse> messaging =
 				MessagingWithBinaryStreaming.create(socket, ofJsonCodec(MESSAGE_CODEC, RESPONSE_CODEC));
 		messaging.receive()
-				.thenCompose(msg -> {
+				.then(msg -> {
 					if (msg == null) {
 						return Promise.ofException(new StacklessException(CrdtServer.class, "Unexpected end of stream"));
 					}
@@ -68,37 +68,37 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 						return messaging.receiveBinaryStream()
 								.transformWith(ChannelDeserializer.create(serializer))
 								.streamTo(StreamConsumer.ofPromise(client.upload()))
-								.thenCompose($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
-								.thenCompose($ -> messaging.sendEndOfStream())
-								.whenResult($ -> messaging.close());
+								.then($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
+								.then($ -> messaging.sendEndOfStream())
+								.accept($ -> messaging.close());
 
 					}
 					if (msg == CrdtMessages.REMOVE) {
 						return messaging.receiveBinaryStream()
 								.transformWith(ChannelDeserializer.create(keySerializer))
 								.streamTo(StreamConsumer.ofPromise(client.remove()))
-								.thenCompose($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
-								.thenCompose($ -> messaging.sendEndOfStream())
-								.whenResult($ -> messaging.close());
+								.then($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
+								.then($ -> messaging.sendEndOfStream())
+								.accept($ -> messaging.close());
 					}
 					if (msg instanceof Download) {
 						return client.download(((Download) msg).getToken())
-								.whenResult($ -> messaging.send(new DownloadStarted()))
-								.thenCompose(supplier -> supplier
+								.accept($ -> messaging.send(new DownloadStarted()))
+								.then(supplier -> supplier
 										.transformWith(ChannelSerializer.create(serializer))
 										.streamTo(messaging.sendBinaryStream()));
 					}
 					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
 				})
-				.thenComposeEx(($, e) -> {
+				.thenEx(($, e) -> {
 					if (e == null) {
 						return Promise.complete();
 					}
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
 					return messaging.send(new ServerError(prefix + e.getMessage()))
-							.thenCompose($1 -> messaging.sendEndOfStream())
-							.whenResult($1 -> messaging.close());
+							.then($1 -> messaging.sendEndOfStream())
+							.accept($1 -> messaging.close());
 				});
 	}
 }

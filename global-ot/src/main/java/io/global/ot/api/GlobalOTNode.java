@@ -38,7 +38,7 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 	default Promise<Void> saveAndUpdateHeads(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> newHeads) {
 		return save(repositoryId, commits)
-				.thenCompose($ -> saveHeads(repositoryId, newHeads));
+				.then($ -> saveHeads(repositoryId, newHeads));
 	}
 
 	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
@@ -62,11 +62,19 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
+			if (this == o) {
+				return true;
+			}
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
 			HeadsInfo that = (HeadsInfo) o;
-			if (!existing.equals(that.existing)) return false;
-			if (!required.equals(that.required)) return false;
+			if (!existing.equals(that.existing)) {
+				return false;
+			}
+			if (!required.equals(that.required)) {
+				return false;
+			}
 			return true;
 		}
 
@@ -132,7 +140,7 @@ public interface GlobalOTNode extends SharedKeyManager {
 	}
 
 	Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId,
-			Set<CommitId> required, Set<CommitId> existing);
+												   Set<CommitId> required, Set<CommitId> existing);
 
 	Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId);
 

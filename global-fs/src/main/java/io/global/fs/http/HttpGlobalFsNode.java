@@ -79,10 +79,10 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 									.withAcknowledgement(ack -> ack.both(responsePromise)));
 							return buffer.getSupplier();
 						})))
-				.thenCompose(response -> response.getCode() != 200 && response.getCode() != 201 ?
+				.then(response -> response.getCode() != 200 && response.getCode() != 201 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.whenException(channelPromise::trySetException)
-				.whenComplete(responsePromise::trySet);
+				.acceptEx(Exception.class, channelPromise::trySetException)
+				.acceptEx(responsePromise::trySet);
 
 		return channelPromise;
 	}
@@ -96,9 +96,9 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPath(filename)
 						.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
 						.build()))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.thenApply(response -> response.getBodyStream().transformWith(new FrameDecoder()));
+				.map(response -> response.getBodyStream().transformWith(new FrameDecoder()));
 	}
 
 	public static final ByteBufsParser<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_PARSER = ofDecoder(SIGNED_CHECKPOINT_CODEC);
@@ -111,9 +111,9 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
 						.build()))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.thenCompose(response ->
+				.then(response ->
 						BinaryChannelSupplier.of(response.getBodyStream())
 								.parseStream(SIGNED_CHECKPOINT_PARSER)
 								.toCollector(toList()));
@@ -127,10 +127,10 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendPath(filename)
 						.build()))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> {
+				.then(res -> res.getBody()
+						.then(body -> {
 							try {
 								return Promise.of(decode(NULLABLE_SIGNED_CHECKPOINT_CODEC, body));
 							} catch (ParseException e) {
@@ -147,7 +147,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.build())
 				.withBody(encode(SIGNED_CHECKPOINT_CODEC, tombstone).asArray()))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}

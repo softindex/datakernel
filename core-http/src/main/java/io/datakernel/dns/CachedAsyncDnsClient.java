@@ -105,7 +105,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 				return Promise.ofCallback(cb ->
 								eventloop.execute(() ->
 										CachedAsyncDnsClient.this.resolve(query)
-												.whenComplete((result, e) -> {
+												.acceptEx((result, e) -> {
 													other.execute(() -> cb.set(result, e));
 													other.completeExternalTask();
 												})));
@@ -133,7 +133,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		}
 		logger.trace("Refreshing {}", query);
 		client.resolve(query)
-				.whenComplete((response, e) -> {
+				.acceptEx((response, e) -> {
 					addToCache(query, response, e);
 					refreshingNow.remove(query);
 				});
@@ -163,7 +163,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 				return v;
 			}
 			MaterializedPromise<DnsResponse> resolve = client.resolve(k);
-			resolve.whenComplete((response, e) -> {
+			resolve.acceptEx((response, e) -> {
 				addToCache(k, response, e);
 				pending.remove(k);
 			});

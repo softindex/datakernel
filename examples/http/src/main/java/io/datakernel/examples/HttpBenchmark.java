@@ -211,7 +211,7 @@ public class HttpBenchmark extends Launcher {
 			sendRequest(promise, counters, maxRequests);
 		}
 
-		return promise.thenApply($ -> System.currentTimeMillis() - start);
+		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
 	private void sendRequest(SettablePromise<Long> promise, Counters counters, long maxRequests) {
@@ -224,7 +224,7 @@ public class HttpBenchmark extends Launcher {
 		HttpRequest request = HttpRequest.get(addr);
 
 		httpClient.request(request)
-				.whenComplete((res, e) -> {
+				.acceptEx((res, e) -> {
 					++counters.completed;
 
 					// Stop round

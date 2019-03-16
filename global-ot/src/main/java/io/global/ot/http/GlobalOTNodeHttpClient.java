@@ -75,8 +75,8 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	@Override
 	public Promise<Set<String>> list(PubKey pubKey) {
 		return httpClient.request(request(GET, LIST, urlEncodePubKey(pubKey)))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, ofSet(STRING_CODEC))));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, ofSet(STRING_CODEC))));
 	}
 
 	@Override
@@ -84,7 +84,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SAVE, apiQuery(repositoryId))
 						.initialize(withJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), commits)))
-				.thenCompose(GlobalOTNodeHttpClient::processResult);
+				.then(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
@@ -92,21 +92,21 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, UPDATE_HEADS, apiQuery(repositoryId))
 						.initialize(withJson(ofSet(SIGNED_COMMIT_HEAD_JSON), newHeads)))
-				.thenCompose(GlobalOTNodeHttpClient::processResult);
+				.then(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
 	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return httpClient.request(request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, COMMIT_JSON)));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, COMMIT_JSON)));
 	}
 
 	@Override
 	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, HEADS_INFO_JSON)));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, HEADS_INFO_JSON)));
 	}
 
 	@Override
@@ -124,7 +124,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 								)
 						)
 				))
-				.thenApply(res ->
+				.map(res ->
 						BinaryChannelSupplier.of(res.getBodyStream())
 								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
@@ -142,18 +142,18 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
 										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
 						))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
-				.whenComplete(done::set);
-		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.thenCompose($ -> done)));
+				.acceptEx(done::set);
+		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.then($ -> done)));
 	}
 
 	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return httpClient.request(request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
 				.withBody(encode(SIGNED_SNAPSHOT_CODEC, encryptedSnapshot)))
-				.thenCompose(GlobalOTNodeHttpClient::processResult);
+				.then(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
@@ -162,11 +162,12 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 				request(GET, LOAD_SNAPSHOT,
 						apiQuery(repositoryId, map(
 								"id", urlEncodeCommitId(id)))))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> {
+				.then(res -> res.getBody()
+						.then(body -> {
 							try {
-								if (res.getCode() != 200)
+								if (res.getCode() != 200) {
 									return Promise.ofException(HttpException.ofCode(res.getCode()));
+								}
 								if (!body.canRead()) {
 									return Promise.of(Optional.empty());
 								}
@@ -188,8 +189,8 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 								.map(HttpDataFormats::urlEncodeCommitId)
 								.collect(joining(",")))
 				)))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, ofSet(COMMIT_ID_JSON))));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, ofSet(COMMIT_ID_JSON))));
 	}
 
 	@Override
@@ -203,16 +204,16 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 								)
 						)
 				))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return httpClient.request(
 				request(GET, GET_HEADS, apiQuery(repositoryId)))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
 	}
 
 	@Override
@@ -220,23 +221,23 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SHARE_KEY, receiver.asString())
 						.initialize(withJson(SIGNED_SHARED_KEY_JSON, simKey)))
-				.thenCompose(GlobalOTNodeHttpClient::processResult);
+				.then(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
 	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash simKeyHash) {
 		return httpClient.request(
 				request(GET, GET_SHARED_KEY, urlEncodePubKey(receiver) + "/" + simKeyHash.asString()))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, SIGNED_SHARED_KEY_JSON)));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, SIGNED_SHARED_KEY_JSON)));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
 		return httpClient.request(
 				request(GET, GET_SHARED_KEYS, urlEncodePubKey(receiver)))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> processResult(res, body, ofList(SIGNED_SHARED_KEY_JSON))));
+				.then(res -> res.getBody()
+						.then(body -> processResult(res, body, ofList(SIGNED_SHARED_KEY_JSON))));
 	}
 
 	@Override
@@ -244,17 +245,18 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SEND_PULL_REQUEST, "")
 						.withBody(encode(SIGNED_PULL_REQUEST_CODEC, pullRequest)))
-				.thenCompose(GlobalOTNodeHttpClient::processResult);
+				.then(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		return httpClient.request(request(GET, GET_PULL_REQUESTS, apiQuery(repositoryId)))
-				.thenCompose(res -> res.getBody()
-						.thenCompose(body -> {
+				.then(res -> res.getBody()
+						.then(body -> {
 							try {
-								if (res.getCode() != 200)
+								if (res.getCode() != 200) {
 									return Promise.ofException(HttpException.ofCode(res.getCode()));
+								}
 								return Promise.of(
 										decode(ofSet(SIGNED_PULL_REQUEST_CODEC), body.slice()));
 							} catch (ParseException e) {
@@ -290,13 +292,17 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	private static Promise<Void> processResult(HttpResponse res) {
-		if (res.getCode() != 200) return Promise.ofException(HttpException.ofCode(res.getCode()));
+		if (res.getCode() != 200) {
+			return Promise.ofException(HttpException.ofCode(res.getCode()));
+		}
 		return Promise.complete();
 	}
 
 	private static <T> Promise<T> processResult(HttpResponse res, ByteBuf body, @Nullable StructuredCodec<T> json) {
 		try {
-			if (res.getCode() != 200) return Promise.ofException(HttpException.ofCode(res.getCode()));
+			if (res.getCode() != 200) {
+				return Promise.ofException(HttpException.ofCode(res.getCode()));
+			}
 			return Promise.of(json != null ? fromJson(json, body.getString(UTF_8)) : null);
 		} catch (ParseException e) {
 			return Promise.ofException(e);

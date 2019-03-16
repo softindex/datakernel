@@ -26,7 +26,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-@SuppressWarnings("unused")
 public interface EventloopExecutor extends Executor {
 	@NotNull
 	CompletableFuture<Void> submit(@NotNull Runnable computation);

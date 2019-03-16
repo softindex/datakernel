@@ -63,7 +63,7 @@ public final class PrivateKeyStorage {
 			return Promise.of(null);
 		}
 		return discoveryService.getSharedKey(receiver, simKeyHash)
-				.thenCompose(signedSharedSimKey -> {
+				.then(signedSharedSimKey -> {
 					if (signedSharedSimKey == null) {
 						return Promise.of(null);
 					}

@@ -75,8 +75,8 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	public Promise<Void> store(PubKey receiver, SignedData<SharedSimKey> signedSharedSimKey) {
 		String file = getFilenameFor(receiver, signedSharedSimKey.getValue().getHash());
 		return storage.upload(file, 0, now.currentTimeMillis())
-				.thenCompose(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo)
-				.whenComplete(toLogger(logger, TRACE, "store", receiver, signedSharedSimKey, this));
+				.then(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo)
+				.acceptEx(toLogger(logger, TRACE, "store", receiver, signedSharedSimKey, this));
 	}
 
 	private static final BiFunction<ChannelSupplier<ByteBuf>, Throwable, Promise<@Nullable SignedData<SharedSimKey>>> LOAD_SHARED_KEY =
@@ -88,7 +88,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 					return Promise.ofException(e);
 				}
 				return supplier.toCollector(ByteBufQueue.collector())
-						.thenCompose(buf -> {
+						.then(buf -> {
 							try {
 								return Promise.of(decode(SHARED_KEY_CODEC, buf.slice()));
 							} catch (ParseException e2) {
@@ -102,18 +102,18 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	@Override
 	public Promise<@Nullable SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
 		return storage.download(getFilenameFor(receiver, hash))
-				.thenComposeEx(LOAD_SHARED_KEY)
-				.whenComplete(toLogger(logger, TRACE, "load", receiver, hash, this));
+				.thenEx(LOAD_SHARED_KEY)
+				.acceptEx(toLogger(logger, TRACE, "load", receiver, hash, this));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver) {
 		return storage.list(getGlobFor(receiver))
-				.thenCompose(files -> reduce(toList(), 1, asPromises(files.stream()
-						.map(meta -> AsyncSupplier.cast(() -> storage.download(meta.getName()).thenComposeEx(LOAD_SHARED_KEY)))
+				.then(files -> reduce(toList(), 1, asPromises(files.stream()
+						.map(meta -> AsyncSupplier.cast(() -> storage.download(meta.getName()).thenEx(LOAD_SHARED_KEY)))
 						.collect(toList()))))
-				.thenApply(list -> list.stream().filter(Objects::nonNull).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
+				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()))
+				.acceptEx(toLogger(logger, TRACE, "loadAll", receiver, this));
 	}
 
 	@Override

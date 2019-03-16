@@ -100,7 +100,7 @@ public class FileDownloadExample extends Launcher {
 			// producer result here means that file was successfully downloaded from server
 			ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
 					.streamTo(consumer)
-					.whenComplete(($, e) -> {
+					.acceptEx(($, e) -> {
 						if (e != null) {
 							logger.error("Server error while sending file " + DOWNLOADED_FILE, e);
 						} else {

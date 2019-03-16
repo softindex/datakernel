@@ -192,7 +192,7 @@ public abstract class AbstractHttpConnection {
 			size += buf.readRemaining();
 		}
 		if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-		socket.read().whenComplete(startLineConsumer);
+		socket.read().acceptEx(startLineConsumer);
 	}
 
 	private void readHeaders() throws ParseException {
@@ -244,7 +244,7 @@ public abstract class AbstractHttpConnection {
 			}
 
 			if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-			socket.read().whenComplete(headersConsumer);
+			socket.read().acceptEx(headersConsumer);
 			return;
 		}
 
@@ -316,7 +316,7 @@ public abstract class AbstractHttpConnection {
 		BinaryChannelSupplier encodedStream = BinaryChannelSupplier.ofProvidedQueue(
 				readQueue,
 				() -> socket.read()
-						.thenComposeEx((buf, e) -> {
+						.thenEx((buf, e) -> {
 							if (e == null) {
 								if (buf != null) {
 									readQueue.add(buf);
@@ -363,7 +363,7 @@ public abstract class AbstractHttpConnection {
 		onHeadersReceived(supplier);
 
 		process.getProcessCompletion()
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						flags |= BODY_RECEIVED;
 						onBodyReceived();
@@ -428,7 +428,7 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeBuf(ByteBuf buf) {
 		socket.write(buf)
-				.whenComplete(($, e2) -> {
+				.acceptEx(($, e2) -> {
 					if (isClosed()) return;
 					if (e2 == null) {
 						flags |= BODY_SENT;
@@ -441,11 +441,11 @@ public abstract class AbstractHttpConnection {
 
 	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
 		supplier.get()
-				.whenComplete((buf, e) -> {
+				.acceptEx((buf, e) -> {
 					if (e == null) {
 						if (buf != null) {
 							socket.write(buf)
-									.whenComplete(($, e2) -> {
+									.acceptEx(($, e2) -> {
 										if (isClosed()) return;
 										if (e2 == null) {
 											writeStream(supplier);

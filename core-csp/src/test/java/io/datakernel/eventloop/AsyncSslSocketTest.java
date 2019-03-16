@@ -91,27 +91,27 @@ public final class AsyncSslSocketTest {
 	public void testWrite() throws IOException {
 		startServer(sslContext, sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
 				.parse(PARSER)
-				.whenComplete(($, e) -> sslSocket.close())
-				.whenComplete(assertComplete(result -> assertEquals(TEST_STRING, result))));
+				.acceptEx(($, e) -> sslSocket.close())
+				.acceptEx(assertComplete(result -> assertEquals(TEST_STRING, result))));
 
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.thenCompose(sslSocket ->
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(sslSocket ->
 						sslSocket.write(wrapAscii(TEST_STRING))
-								.whenComplete(($, e) -> sslSocket.close())));
+								.acceptEx(($, e) -> sslSocket.close())));
 	}
 
 	@Test
 	public void testRead() throws IOException {
 		startServer(sslContext, sslSocket ->
 				sslSocket.write(wrapAscii(TEST_STRING))
-						.whenComplete(assertComplete()));
+						.acceptEx(assertComplete()));
 
 		String result = await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.thenCompose(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
 						.parse(PARSER)
-						.whenComplete(($, e) -> sslSocket.close())));
+						.acceptEx(($, e) -> sslSocket.close())));
 
 		assertEquals(TEST_STRING, result);
 	}
@@ -120,17 +120,17 @@ public final class AsyncSslSocketTest {
 	public void testLoopBack() throws IOException {
 		startServer(sslContext, serverSsl -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(serverSsl))
 				.parse(PARSER)
-				.thenCompose(result -> serverSsl.write(wrapAscii(result)))
-				.whenComplete(($, e) -> serverSsl.close())
-				.whenComplete(assertComplete()));
+				.then(result -> serverSsl.write(wrapAscii(result)))
+				.acceptEx(($, e) -> serverSsl.close())
+				.acceptEx(assertComplete()));
 
 		String result = await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.thenCompose(sslSocket ->
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(sslSocket ->
 						sslSocket.write(wrapAscii(TEST_STRING))
-								.thenCompose($ -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
+								.then($ -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
 										.parse(PARSER))
-								.whenComplete(($, e) -> sslSocket.close())));
+								.acceptEx(($, e) -> sslSocket.close())));
 
 		assertEquals(TEST_STRING, result);
 	}
@@ -139,28 +139,28 @@ public final class AsyncSslSocketTest {
 	public void sendsLargeAmountOfDataFromClientToServer() throws IOException {
 		startServer(sslContext, serverSsl -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(serverSsl))
 				.parse(PARSER_LARGE)
-				.whenComplete(($, e) -> serverSsl.close())
-				.whenComplete(assertComplete(result -> assertEquals(result, sentData.toString()))));
+				.acceptEx(($, e) -> serverSsl.close())
+				.acceptEx(assertComplete(result -> assertEquals(result, sentData.toString()))));
 
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.whenResult(sslSocket ->
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.accept(sslSocket ->
 						sendData(sslSocket)
-								.whenComplete(($, e) -> sslSocket.close())));
+								.acceptEx(($, e) -> sslSocket.close())));
 	}
 
 	@Test
 	public void sendsLargeAmountOfDataFromServerToClient() throws IOException {
 		startServer(sslContext, serverSsl ->
 				sendData(serverSsl)
-						.whenComplete(($, e) -> serverSsl.close())
-						.whenComplete(assertComplete()));
+						.acceptEx(($, e) -> serverSsl.close())
+						.acceptEx(assertComplete()));
 
 		String result = await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.thenCompose(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
 						.parse(PARSER_LARGE)
-						.whenComplete(($, e) -> sslSocket.close())));
+						.acceptEx(($, e) -> sslSocket.close())));
 
 		assertEquals(sentData.toString(), result);
 	}
@@ -169,16 +169,16 @@ public final class AsyncSslSocketTest {
 	public void testCloseAndOperationAfterClose() throws IOException {
 		startServer(sslContext, socket ->
 				socket.write(wrapAscii("He"))
-						.whenComplete(($, e) -> socket.close())
-						.thenCompose($ -> socket.write(wrapAscii("ello")))
-						.whenComplete(($, e) -> assertSame(CLOSE_EXCEPTION, e)));
+						.acceptEx(($, e) -> socket.close())
+						.then($ -> socket.write(wrapAscii("ello")))
+						.acceptEx(($, e) -> assertSame(CLOSE_EXCEPTION, e)));
 
 		Throwable e = awaitException(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.thenCompose(sslSocket -> {
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(sslSocket -> {
 					BinaryChannelSupplier supplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket));
 					return supplier.parse(PARSER)
-							.whenException(supplier::close);
+							.acceptEx(Exception.class, supplier::close);
 				}));
 
 		assertSame(CLOSE_EXCEPTION, e);
@@ -235,10 +235,10 @@ public final class AsyncSslSocketTest {
 		sentData.append(String.join("", Collections.nCopies(1000, TEST_STRING)));
 
 		return socket.write(largeBuf)
-				.thenCompose($ -> Promises.loop(1000, AsyncPredicate.of(i -> i != 0),
+				.then($ -> Promises.loop(1000, AsyncPredicate.of(i -> i != 0),
 						i -> socket.write(wrapAscii(TEST_STRING))
 								.async()
-								.thenApply($2 -> i - 1)));
+								.map($2 -> i - 1)));
 	}
 	// endregion
 }

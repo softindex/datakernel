@@ -68,7 +68,6 @@ import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 
-@SuppressWarnings("unused")
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public class GlobalOTNodeImplTest {
@@ -309,7 +308,6 @@ public class GlobalOTNodeImplTest {
 		assertEquals(getCommitIds(3, 5), headsCommitIds);
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testDownload() {
 		GlobalOTNode globalOTNode = getMasterNode(1);
@@ -890,7 +888,7 @@ public class GlobalOTNodeImplTest {
 		return await(
 				Promises.toList(parents.stream()
 						.map(id -> storage.loadCommit(getCommitId(id))))
-						.thenApply(parentCommits -> parentCommits.stream()
+						.map(parentCommits -> parentCommits.stream()
 								.map(rawCommit -> rawCommit.orElseThrow(AssertionError::new).getLevel())
 								.max(naturalOrder()).orElseThrow(AssertionError::new))
 		);

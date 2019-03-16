@@ -122,7 +122,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 
 	private void processHeader() {
 		input.parse(ofFixedSize(10))
-				.whenResult(buf -> {
+				.accept(buf -> {
 							//header validation
 							if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
 								buf.recycle();
@@ -147,7 +147,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 							runNext(flag).run();
 						}
 				)
-				.whenException(this::close);
+				.acceptEx(Exception.class, this::close);
 	}
 
 	private void processBody() {
@@ -166,19 +166,19 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 			}
 			if (inflater.finished()) {
 				output.acceptAll(queue.asIterator())
-						.whenResult($ -> processFooter());
+						.accept($ -> processFooter());
 				return;
 			}
 		}
 
 		output.acceptAll(queue.asIterator())
-				.thenCompose($ -> input.needMoreData())
-				.whenResult($ -> processBody());
+				.then($ -> input.needMoreData())
+				.accept($ -> processBody());
 	}
 
 	private void processFooter() {
 		input.parse(ofFixedSize(GZIP_FOOTER_SIZE))
-				.whenResult(buf -> {
+				.accept(buf -> {
 					if ((int) crc32.getValue() != reverseBytes(buf.readInt())) {
 						close(CRC32_VALUE_DIFFERS);
 						buf.recycle();
@@ -192,10 +192,10 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 					}
 					buf.recycle();
 					input.endOfStream()
-							.thenCompose($ -> output.accept(null))
-							.whenResult($ -> completeProcess());
+							.then($ -> output.accept(null))
+							.accept($ -> completeProcess());
 				})
-				.whenException(this::close);
+				.acceptEx(Exception.class, this::close);
 	}
 
 	private void inflate(ByteBufQueue queue) throws DataFormatException {
@@ -235,35 +235,35 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 
 	private void skipTerminatorByte(int flag, int part) {
 		input.parse(ByteBufsParser.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
-				.whenException(e -> close(FNAME_FCOMMENT_TOO_LARGE))
-				.whenResult(ByteBuf::recycle)
-				.whenResult($ -> runNext(flag - part).run());
+				.acceptEx(Exception.class, e -> close(FNAME_FCOMMENT_TOO_LARGE))
+				.accept(ByteBuf::recycle)
+				.accept($ -> runNext(flag - part).run());
 	}
 
 	private void skipExtra(int flag) {
 		input.parse(ofFixedSize(2))
-				.thenApply(shortBuf -> {
+				.map(shortBuf -> {
 					short toSkip = reverseBytes(shortBuf.readShort());
 					shortBuf.recycle();
 					return toSkip;
 				})
-				.thenCompose(toSkip -> {
+				.then(toSkip -> {
 					if (toSkip > MAX_HEADER_FIELD_LENGTH) {
 						close(FEXTRA_TOO_LARGE);
 						return Promise.ofException(FEXTRA_TOO_LARGE);
 					}
 					return input.parse(ofFixedSize(toSkip));
 				})
-				.whenException(this::close)
-				.whenResult(ByteBuf::recycle)
-				.whenResult($ -> runNext(flag - FEXTRA).run());
+				.acceptEx(Exception.class, this::close)
+				.accept(ByteBuf::recycle)
+				.accept($ -> runNext(flag - FEXTRA).run());
 	}
 
 	private void skipCRC16(int flag) {
 		input.parse(ofFixedSize(2))
-				.whenException(this::close)
-				.whenResult(ByteBuf::recycle)
-				.whenResult($ -> runNext(flag - FHCRC).run());
+				.acceptEx(Exception.class, this::close)
+				.accept(ByteBuf::recycle)
+				.accept($ -> runNext(flag - FHCRC).run());
 	}
 
 	private Runnable runNext(int flag) {

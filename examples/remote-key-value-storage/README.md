@@ -383,7 +383,7 @@ public class RpcClientLauncher extends Launcher {
 		switch (args[0]) {
 			case "--put":
 				client.<PutRequest, PutResponse>sendRequest(new PutRequest(args[1], args[2]), timeout)
-						.whenComplete((response, err) -> {
+						.acceptEx((response, err) -> {
 							if (err == null) {
 								System.out.println("put request was made successfully");
 								System.out.println("previous value: " + response.getPreviousValue());
@@ -395,7 +395,7 @@ public class RpcClientLauncher extends Launcher {
 				break;
 			case "--get":
 				client.<GetRequest, GetResponse>sendRequest(new GetRequest(args[1]), timeout)
-						.whenComplete((response, err) -> {
+						.acceptEx((response, err) -> {
 							if (err == null) {
 								System.out.println("get request was made successfully");
 								System.out.println("value: " + response.getValue());

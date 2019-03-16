@@ -149,7 +149,7 @@ public interface AsyncSupplier<T> {
 	@Contract(pure = true)
 	@NotNull
 	default <V> AsyncSupplier<V> map(@NotNull Function<? super T, ? extends V> fn) {
-		return () -> get().thenApply(fn);
+		return () -> get().map(fn);
 	}
 
 	/**
@@ -159,26 +159,25 @@ public interface AsyncSupplier<T> {
 	 */
 	@Contract(pure = true)
 	@NotNull
-	default <V> AsyncSupplier<V> mapAsync(@NotNull Function<? super T, ? extends Promise<V>> fn) {
-		return () -> get().thenCompose(fn);
+	default <V> AsyncSupplier<V> then(@NotNull Function<? super T, ? extends Promise<V>> fn) {
+		return () -> get().then(fn);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	default AsyncSupplier<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
-		return () -> get().whenComplete(action);
+	default AsyncSupplier<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action) {
+		return () -> get().acceptEx(action);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	default AsyncSupplier<T> whenResult(@NotNull Consumer<? super T> action) {
-		return () -> get().whenResult(action);
+	default AsyncSupplier<T> accept(@NotNull Consumer<? super T> action) {
+		return () -> get().accept(action);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	default AsyncSupplier<T> whenException(@NotNull Consumer<Throwable> action) {
-		return () -> get().whenException(action);
+	default AsyncSupplier<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action) {
+		return () -> get().acceptEx(type, action);
 	}
-
 }

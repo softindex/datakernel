@@ -70,7 +70,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	private Column<CommitId, Byte> pendingCommits;
 
 	private CommitStorageRocksDb(Eventloop eventloop, String storagePath, DBOptions dbOptions, TransactionDBOptions transactionDBOptions,
-			ColumnFamilyOptions columnFamilyOptions, WriteOptions writeOptions, FlushOptions flushOptions) {
+								 ColumnFamilyOptions columnFamilyOptions, WriteOptions writeOptions, FlushOptions flushOptions) {
 		this.eventloop = eventloop;
 		this.dbOptions = dbOptions;
 		this.transactionDBOptions = transactionDBOptions;
@@ -81,8 +81,8 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	}
 
 	public static CommitStorageRocksDb create(Eventloop eventloop, String storagePath, DBOptions dbOptions,
-			TransactionDBOptions transactionDBOptions, ColumnFamilyOptions columnFamilyOptions, WriteOptions writeOptions,
-			FlushOptions flushOptions) {
+											  TransactionDBOptions transactionDBOptions, ColumnFamilyOptions columnFamilyOptions, WriteOptions writeOptions,
+											  FlushOptions flushOptions) {
 		return new CommitStorageRocksDb(eventloop, storagePath, dbOptions, transactionDBOptions, columnFamilyOptions, writeOptions, flushOptions);
 	}
 
@@ -158,7 +158,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	@Override
 	public Promise<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(heads, repositoryId, REPO_ID_CODEC, Tuple2::getValue2))
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repositoryId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), repositoryId, this));
 	}
 
 	@Override
@@ -181,25 +181,25 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 						throw new UncheckedException(e);
 					}
 				})
-				.whenComplete(toLogger(logger, thisMethod(), repositoryId, newHeads, excludedHeads, this));
+				.acceptEx(toLogger(logger, thisMethod(), repositoryId, newHeads, excludedHeads, this));
 	}
 
 	@Override
 	public Promise<Boolean> hasCommit(CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> get(commits, commitId) != null)
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), commitId, this));
 	}
 
 	@Override
 	public Promise<Optional<RawCommit>> loadCommit(CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> Optional.ofNullable(get(commits, commitId)))
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), commitId, this));
 	}
 
 	@Override
 	public Promise<Set<CommitId>> getChildren(CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(parentToChildren, commitId, COMMIT_ID_CODEC, Tuple2::getValue2).keySet())
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), commitId, this));
 	}
 
 	@Override
@@ -237,7 +237,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 						return true;
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, rawCommit, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), commitId, rawCommit, this));
 	}
 
 	@Override
@@ -251,19 +251,19 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					db.flush(flushOptions, snapshots.handle);
 					return old == null;
 				})
-				.whenComplete(toLogger(logger, thisMethod(), encryptedSnapshot, this));
+				.acceptEx(toLogger(logger, thisMethod(), encryptedSnapshot, this));
 	}
 
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> Optional.ofNullable(get(snapshots, new Tuple2<>(repositoryId, commitId))))
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repositoryId, commitId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), repositoryId, commitId, this));
 	}
 
 	@Override
 	public Promise<Set<CommitId>> listSnapshotIds(RepoID repositoryId) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(snapshots, repositoryId, REPO_ID_CODEC, Tuple2::getValue2).keySet())
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repositoryId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), repositoryId, this));
 	}
 
 	@Override
@@ -275,13 +275,13 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					put(pullRequests, key, EMPTY);
 					return b == null;
 				})
-				.whenComplete(toLogger(logger, thisMethod(), pullRequest, this));
+				.acceptEx(toLogger(logger, thisMethod(), pullRequest, this));
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(pullRequests, repository, REPO_ID_CODEC, Tuple2::getValue2).keySet())
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repository, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), repository, this));
 	}
 
 	@Override
@@ -321,7 +321,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 						throw new UncheckedException(e);
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), this));
 	}
 
 	@Override
@@ -331,7 +331,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					Integer count = get(incompleteParentsCount, commitId);
 					return count == null || count == 0;
 				})
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.acceptEx(toLogger(logger, TRACE, thisMethod(), commitId, this));
 	}
 
 	@NotNull
@@ -363,7 +363,6 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	@Nullable
 	private <K, V> V get(@Nullable Transaction tnx, @Nullable ReadOptions ro, Column<K, V> column, K key) throws RocksDBException, ParseException {
 		byte[] keyBytes = encodeAsArray(column.keyCodec, key);
-		//noinspection ConstantConditions
 		byte[] valueBytes = tnx == null ?
 				db.get(column.handle, keyBytes) :
 				tnx.get(column.handle, ro, keyBytes);
@@ -375,18 +374,19 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	}
 
 	private <K, V, P, K2> Map<K2, V> getRange(@Nullable Transaction tnx, @Nullable ReadOptions ro, Column<K, V> column, P prefix,
-			StructuredCodec<P> prefixCodec, Function<K, K2> keyMapper) throws ParseException {
+											  StructuredCodec<P> prefixCodec, Function<K, K2> keyMapper) throws ParseException {
 		byte[] prefixBytes = encodeAsArray(prefixCodec, prefix);
 		Map<K2, V> result = new HashMap<>();
 
-		//noinspection ConstantConditions
 		try (RocksIterator iterator = tnx == null ?
 				db.newIterator(column.handle) :
 				tnx.getIterator(ro, column.handle)
 		) {
 			for (iterator.seek(prefixBytes); iterator.isValid(); iterator.next()) {
 				byte[] keyBytes = iterator.key();
-				if (!arrayStartsWith(keyBytes, prefixBytes)) break;
+				if (!arrayStartsWith(keyBytes, prefixBytes)) {
+					break;
+				}
 
 				result.put(keyMapper.apply(decode(column.keyCodec, keyBytes)), decode(column.valueCodec, iterator.value()));
 			}

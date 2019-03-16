@@ -52,7 +52,7 @@ public final class TestCachedFsClient {
 			supplier.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
 	public static final Function<ChannelSupplier<ByteBuf>, Promise<String>> TO_STRING = supplier ->
-			supplier.toCollector(ByteBufQueue.collector()).thenApply(buf -> buf.asString(UTF_8));
+			supplier.toCollector(ByteBufQueue.collector()).map(buf -> buf.asString(UTF_8));
 
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();
@@ -93,12 +93,12 @@ public final class TestCachedFsClient {
 	@Test
 	public void testDownloadFileNotInCache() {
 		String downloadedString = await(cacheRemote.download("test.txt")
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals(testTxtContent, downloadedString);
 
 		String cachedString = await(cache.download("test.txt")
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals(testTxtContent, cachedString);
 	}
@@ -106,7 +106,7 @@ public final class TestCachedFsClient {
 	@Test
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
 		String downloadedString = await(cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals("in", downloadedString);
 		assertFalse(Files.exists(cacheStorage.resolve("test.txt")));
@@ -119,12 +119,12 @@ public final class TestCachedFsClient {
 		assertArrayEquals(bytes, Files.readAllBytes(cacheTestFile));
 
 		String downloadedString = await(cacheRemote.download("test.txt")
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals(testTxtContent, downloadedString);
 
 		String cachedString = await(cache.download("test.txt")
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals(testTxtContent, cachedString);
 	}
@@ -134,7 +134,7 @@ public final class TestCachedFsClient {
 		Files.write(cacheTestFile, "line1\nline2\nline3".getBytes(UTF_8));
 
 		String downloadedString = await(cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals("in", downloadedString);
 	}
@@ -143,7 +143,7 @@ public final class TestCachedFsClient {
 	public void testDownloadFileFullyInCache() throws IOException {
 		Files.copy(serverTestFile, cacheTestFile);
 		String downloadedString = await(cacheRemote.download("test.txt")
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals(testTxtContent, downloadedString);
 	}
@@ -152,7 +152,7 @@ public final class TestCachedFsClient {
 	public void testDownloadFileFullyInCacheWithOffsetAndLength() throws IOException {
 		Files.copy(serverTestFile, cacheTestFile);
 		String downloadedString = await(cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals("in", downloadedString);
 	}
@@ -163,7 +163,7 @@ public final class TestCachedFsClient {
 		String fileContent = "This file is stored only in cache";
 		Files.write(filePath, fileContent.getBytes());
 		String downloadedString = await(cacheRemote.download("cacheOnly.txt")
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals(fileContent, downloadedString);
 	}
@@ -174,7 +174,7 @@ public final class TestCachedFsClient {
 		String fileContent = "This file is stored only in cache";
 		Files.write(filePath, fileContent.getBytes());
 		String downloadedString = await(cacheRemote.download("cacheOnly.txt", 1, 2)
-				.thenCompose(TO_STRING));
+				.then(TO_STRING));
 
 		assertEquals("hi", downloadedString);
 	}
@@ -341,10 +341,10 @@ public final class TestCachedFsClient {
 		new Random().nextBytes(fileData);
 		Files.write(cacheStorage.resolve("bigFile.txt"), fileData);
 
-		await(cacheRemote.start().thenCompose($ -> cacheRemote.download("bigFile.txt"))
-				.thenCompose(RECYCLING_FUNCTION));
+		await(cacheRemote.start().then($ -> cacheRemote.download("bigFile.txt"))
+				.then(RECYCLING_FUNCTION));
 		await(cacheRemote.download("bigFile.txt")
-				.thenCompose(RECYCLING_FUNCTION));
+				.then(RECYCLING_FUNCTION));
 
 		// 1 file
 		initializeCacheDownloadFiles(1, "testFile_");
@@ -367,7 +367,7 @@ public final class TestCachedFsClient {
 		Files.write(serverStorage.resolve("tiny.txt"), fileData);
 
 		await(cacheRemote.download("tiny.txt")
-				.thenCompose(RECYCLING_FUNCTION));
+				.then(RECYCLING_FUNCTION));
 
 		MemSize cacheSize = await(cacheRemote.getTotalCacheSize());
 		assertEquals(35 * 1024 + 1, cacheSize.toLong());
@@ -428,7 +428,7 @@ public final class TestCachedFsClient {
 		for (int j = 0; j < nTimes; j++) {
 			for (int i = 0; i < numberOfFiles; i++) {
 				await(cacheRemote.download(prefix + i)
-						.thenCompose(RECYCLING_FUNCTION));
+						.then(RECYCLING_FUNCTION));
 			}
 		}
 	}

@@ -63,8 +63,8 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		ByteBuf body = await(client.request(HttpRequest.get(URL))
-				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
-				.thenCompose(HttpMessage::getBody));
+				.acceptEx(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
+				.then(HttpMessage::getBody));
 
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
 	}
@@ -82,8 +82,8 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		ByteBuf body = await(client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.whenComplete(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
-				.thenCompose(HttpMessage::getBody));
+				.acceptEx(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
+				.then(HttpMessage::getBody));
 
 		assertEquals("Test message", body.asString(UTF_8));
 	}
@@ -113,8 +113,8 @@ public final class AbstractHttpConnectionTest {
 
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
-				.thenCompose(response -> response.getBody()
-						.whenComplete((body, e) -> {
+				.then(response -> response.getBody()
+						.acceptEx((body, e) -> {
 							if (e != null) throw new AssertionError(e);
 							try {
 								assertEquals(expectedHeader, response.getHeader(CONNECTION));
@@ -124,7 +124,7 @@ public final class AbstractHttpConnectionTest {
 								throw new AssertionError(e1);
 							}
 						})
-						.thenApply($ -> response));
+						.map($ -> response));
 	}
 
 	@SuppressWarnings("SameParameterValue")
@@ -135,10 +135,10 @@ public final class AbstractHttpConnectionTest {
 								() -> checkRequest("keep-alive", 1, connectionCount)
 										.post()
 										.toVoid()))
-				.thenCompose($ -> checkRequest("close", 1, connectionCount))
+				.then($ -> checkRequest("close", 1, connectionCount))
 				.post()
-				.thenCompose($ -> checkRequest("keep-alive", 2, connectionCount))
+				.then($ -> checkRequest("keep-alive", 2, connectionCount))
 				.post()
-				.whenComplete(($, e) -> server.close()));
+				.acceptEx(($, e) -> server.close()));
 	}
 }

@@ -198,8 +198,8 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	private Promise<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();
 		return task.get()
-				.whenComplete(stats.recordStats())
-				.whenComplete((result, e) -> {
+				.acceptEx(stats.recordStats())
+				.acceptEx((result, e) -> {
 					lastCompleteTime = eventloop.currentTimeMillis();
 					if (e == null) {
 						firstRetryTime = 0;

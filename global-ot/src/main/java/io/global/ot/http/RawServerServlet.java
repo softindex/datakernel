@@ -63,7 +63,7 @@ public final class RawServerServlet implements WithMiddleware {
 	private final MiddlewareServlet middlewareServlet;
 
 	private RawServerServlet(GlobalOTNode node) {
-		this.middlewareServlet = servlet(node);
+		middlewareServlet = servlet(node);
 	}
 
 	public static RawServerServlet create(GlobalOTNode node) {
@@ -75,29 +75,29 @@ public final class RawServerServlet implements WithMiddleware {
 				.with(GET, "/" + LIST + "/:pubKey", req -> {
 					try {
 						return node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
-								.thenApply(names ->
+								.map(names ->
 										HttpResponse.ok200()
 												.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SAVE + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
+				.with(POST, "/" + SAVE + "/:pubKey/:name", req -> req.getBody().then(body -> {
 					try {
 						Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), body.getString(UTF_8));
 						return node.save(urlDecodeRepositoryId(req), commits)
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
 						body.recycle();
 					}
 				}))
-				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
+				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", req -> req.getBody().then(body -> {
 					try {
 						Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), body.getString(UTF_8));
 						return node.saveHeads(urlDecodeRepositoryId(req), heads)
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -107,7 +107,7 @@ public final class RawServerServlet implements WithMiddleware {
 				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req -> {
 					try {
 						return node.loadCommit(urlDecodeRepositoryId(req), urlDecodeCommitId(req.getQueryParameter("commitId")))
-								.thenApply(commit -> HttpResponse.ok200()
+								.map(commit -> HttpResponse.ok200()
 										.withBody(toJson(COMMIT_JSON, commit).getBytes(UTF_8)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -117,18 +117,18 @@ public final class RawServerServlet implements WithMiddleware {
 					try {
 						return node.getHeadsInfo(
 								urlDecodeRepositoryId(req))
-								.thenApply(headsInfo -> HttpResponse.ok200()
+								.map(headsInfo -> HttpResponse.ok200()
 										.withBody(toJson(HEADS_INFO_JSON, headsInfo).getBytes(UTF_8))
 								);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
+				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", req -> req.getBody().then(body -> {
 					try {
 						SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, body.slice());
 						return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -140,7 +140,7 @@ public final class RawServerServlet implements WithMiddleware {
 						return node.loadSnapshot(
 								urlDecodeRepositoryId(req),
 								urlDecodeCommitId(req.getQueryParameter("id")))
-								.thenApply(maybeSnapshot -> maybeSnapshot
+								.map(maybeSnapshot -> maybeSnapshot
 										.map(snapshot -> HttpResponse.ok200()
 												.withBody(encode(SIGNED_SNAPSHOT_CODEC, snapshot)))
 										.orElseGet(() -> HttpResponse.ofCode(404))
@@ -154,7 +154,7 @@ public final class RawServerServlet implements WithMiddleware {
 						return node.listSnapshots(
 								urlDecodeRepositoryId(req),
 								req.parseQueryParameter("snapshots", COMMIT_IDS_PARSER))
-								.thenApply(snapshots -> HttpResponse.ok200()
+								.map(snapshots -> HttpResponse.ok200()
 										.withBody(toJson(ofSet(COMMIT_ID_JSON), snapshots).getBytes(UTF_8)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -163,17 +163,17 @@ public final class RawServerServlet implements WithMiddleware {
 				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
 					try {
 						return node.getHeads(urlDecodeRepositoryId(req))
-								.thenApply(heads -> HttpResponse.ok200()
+								.map(heads -> HttpResponse.ok200()
 										.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))
 								);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SHARE_KEY + "/:owner", req -> req.getBody().thenCompose(body -> {
+				.with(POST, "/" + SHARE_KEY + "/:owner", req -> req.getBody().then(body -> {
 					try {
 						return node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, body.getString(UTF_8)))
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -185,7 +185,7 @@ public final class RawServerServlet implements WithMiddleware {
 						return node.getSharedKey(
 								req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey),
 								req.parsePathParameter("hash", Hash::fromString))
-								.thenApply(sharedSimKey -> HttpResponse.ok200()
+								.map(sharedSimKey -> HttpResponse.ok200()
 										.withBody(toJson(SIGNED_SHARED_KEY_JSON, sharedSimKey).getBytes(UTF_8))
 								);
 					} catch (ParseException e) {
@@ -196,18 +196,18 @@ public final class RawServerServlet implements WithMiddleware {
 					try {
 						return node.getSharedKeys(
 								req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey))
-								.thenApply(sharedSimKeys -> HttpResponse.ok200()
+								.map(sharedSimKeys -> HttpResponse.ok200()
 										.withBody(toJson(ofList(SIGNED_SHARED_KEY_JSON), sharedSimKeys).getBytes(UTF_8))
 								);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SEND_PULL_REQUEST, req -> req.getBody().thenCompose(body -> {
+				.with(POST, "/" + SEND_PULL_REQUEST, req -> req.getBody().then(body -> {
 					try {
 						SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, body.slice());
 						return node.sendPullRequest(pullRequest)
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -217,7 +217,7 @@ public final class RawServerServlet implements WithMiddleware {
 				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
 					try {
 						return node.getPullRequests(urlDecodeRepositoryId(req))
-								.thenApply(pullRequests -> HttpResponse.ok200()
+								.map(pullRequests -> HttpResponse.ok200()
 										.withBody(encode(ofSet(SIGNED_PULL_REQUEST_CODEC), pullRequests)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -229,7 +229,7 @@ public final class RawServerServlet implements WithMiddleware {
 								urlDecodeRepositoryId(req),
 								req.parseQueryParameter("required", COMMIT_IDS_PARSER),
 								req.parseQueryParameter("existing", COMMIT_IDS_PARSER))
-								.thenApply(downloader -> HttpResponse.ok200()
+								.map(downloader -> HttpResponse.ok200()
 										.withBodyStream(downloader
 												.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
 												.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
@@ -246,7 +246,7 @@ public final class RawServerServlet implements WithMiddleware {
 								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
 								.streamTo(ChannelConsumer.ofPromise(node.upload(repoID)))
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

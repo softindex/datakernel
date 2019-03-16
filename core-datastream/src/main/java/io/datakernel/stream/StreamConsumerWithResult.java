@@ -36,7 +36,7 @@ public final class StreamConsumerWithResult<T, X> {
 
 	public StreamConsumerWithResult<T, X> sanitize() {
 		return new StreamConsumerWithResult<>(consumer,
-				consumer.getAcknowledgement().combine(result.whenException(consumer::close), ($, v) -> v).post());
+				consumer.getAcknowledgement().combine(result.acceptEx(Exception.class, consumer::close), ($, v) -> v).post());
 	}
 
 	public <T1, X1> StreamConsumerWithResult<T1, X1> transform(
@@ -57,8 +57,8 @@ public final class StreamConsumerWithResult<T, X> {
 
 	public static <T, X> StreamConsumerWithResult<T, X> ofPromise(Promise<StreamConsumerWithResult<T, X>> promise) {
 		return of(
-				StreamConsumer.ofPromise(promise.thenApply(StreamConsumerWithResult::getConsumer)),
-				promise.thenCompose(StreamConsumerWithResult::getResult));
+				StreamConsumer.ofPromise(promise.map(StreamConsumerWithResult::getConsumer)),
+				promise.then(StreamConsumerWithResult::getResult));
 	}
 
 	public StreamConsumer<T> getConsumer() {

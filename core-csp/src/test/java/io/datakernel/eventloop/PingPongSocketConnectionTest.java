@@ -53,25 +53,25 @@ public final class PingPongSocketConnectionTest {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					loop(ITERATIONS, AsyncPredicate.of(i -> i != 0),
 							i -> bufsSupplier.parse(PARSER)
-									.whenResult(res -> assertEquals(REQUEST_MSG, res))
-									.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG)))
-									.thenApply($ -> i - 1))
-							.whenComplete(($, e) -> socket.close())
-							.whenComplete(assertComplete());
+									.accept(res -> assertEquals(REQUEST_MSG, res))
+									.then($ -> socket.write(wrapAscii(RESPONSE_MSG)))
+									.map($ -> i - 1))
+							.acceptEx(($, e) -> socket.close())
+							.acceptEx(assertComplete());
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce()
 				.listen();
 
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.thenCompose(socket -> {
+				.then(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					return loop(ITERATIONS, AsyncPredicate.of(i -> i != 0),
 							i -> socket.write(wrapAscii(REQUEST_MSG))
-									.thenCompose($ -> bufsSupplier.parse(PARSER))
-									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
-									.thenApply($ -> i - 1))
-							.whenResult($ -> socket.close());
+									.then($ -> bufsSupplier.parse(PARSER))
+									.accept(res -> assertEquals(RESPONSE_MSG, res))
+									.map($ -> i - 1))
+							.accept($ -> socket.close());
 				}));
 	}
 }

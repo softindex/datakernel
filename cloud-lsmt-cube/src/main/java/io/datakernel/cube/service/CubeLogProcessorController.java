@@ -89,16 +89,16 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	Promise<Boolean> doProcessLogs() {
 		return process()
-				.whenComplete(promiseProcessLogs.recordStats())
-				.whenComplete(toLogger(logger, thisMethod(), stateManager));
+				.acceptEx(promiseProcessLogs.recordStats())
+				.acceptEx(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	Promise<Boolean> process() {
 		return Promise.complete()
-				.thenCompose($ -> stateManager.sync())
-				.thenApply($ -> stateManager.getCommitId())
-				.thenCompose(predicate::test)
-				.thenCompose(ok -> {
+				.then($ -> stateManager.sync())
+				.map($ -> stateManager.getCommitId())
+				.then(predicate::test)
+				.then(ok -> {
 					if (!ok) return Promise.of(false);
 
 					logger.info("Pull to commit: {}, start log processing", stateManager.getCommitId());
@@ -112,16 +112,16 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 							Promises.reduce(toList(), 1, asPromises(tasks));
 
 					return promise
-							.whenComplete(promiseProcessLogsImpl.recordStats())
-							.whenResult(this::cubeDiffJmx)
-							.thenCompose(diffs -> Promise.complete()
-									.whenResult($ -> stateManager.addAll(diffs))
-									.thenCompose($ -> chunkStorage.finish(addedChunks(diffs)))
-									.thenCompose($ -> stateManager.sync())
-									.whenException(e -> stateManager.reset())
-									.thenApply($ -> true));
+							.acceptEx(promiseProcessLogsImpl.recordStats())
+							.accept(this::cubeDiffJmx)
+							.then(diffs -> Promise.complete()
+									.accept($ -> stateManager.addAll(diffs))
+									.then($ -> chunkStorage.finish(addedChunks(diffs)))
+									.then($ -> stateManager.sync())
+									.acceptEx(Exception.class, e -> stateManager.reset())
+									.map($ -> true));
 				})
-				.whenComplete(toLogger(logger, thisMethod(), stateManager));
+				.acceptEx(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	private void cubeDiffJmx(List<LogDiff<CubeDiff>> logDiffs) {

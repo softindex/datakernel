@@ -184,9 +184,9 @@ public final class CrdtClusterTest {
 						() -> client.request(HttpRequest.of(PUT, "http://127.0.0.1:7000")
 								.withBody(JsonUtils.toJson(codec, new CrdtData<>("value_" + i, i)).getBytes(UTF_8)))
 								.toVoid()))
-				.whenException(System.err::println)
-				.whenComplete(uploadStat.recordStats())
-				.whenComplete(assertComplete($ -> System.out.println(uploadStat)));
+				.acceptEx(Exception.class, System.err::println)
+				.acceptEx(uploadStat.recordStats())
+				.acceptEx(assertComplete($ -> System.out.println(uploadStat)));
 
 		// RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(eventloop, ADDRESS, CRDT_DATA_SERIALIZER);
 		//
@@ -204,8 +204,8 @@ public final class CrdtClusterTest {
 
 		StreamSupplier.ofStream(IntStream.range(0, 1000000)
 				.mapToObj(i -> new CrdtData<>("value_" + i, i))).streamTo(StreamConsumer.ofPromise(client.upload()))
-				.whenComplete(uploadStat.recordStats())
-				.whenComplete(assertComplete($ -> {
+				.acceptEx(uploadStat.recordStats())
+				.acceptEx(assertComplete($ -> {
 					System.out.println(uploadStat);
 					System.out.println("finished");
 				}));
@@ -217,8 +217,8 @@ public final class CrdtClusterTest {
 		CrdtStorageClient<String, Integer> client = CrdtStorageClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);
 
 		client.download()
-				.thenCompose(supplierWithResult -> supplierWithResult
+				.then(supplierWithResult -> supplierWithResult
 						.streamTo(StreamConsumer.of(System.out::println))
-						.whenComplete(assertComplete($ -> System.out.println("finished"))));
+						.acceptEx(assertComplete($ -> System.out.println("finished"))));
 	}
 }

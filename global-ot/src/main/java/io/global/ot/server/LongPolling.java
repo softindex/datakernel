@@ -18,17 +18,19 @@ public final class LongPolling<T> {
 
 	public LongPolling(@NotNull AsyncSupplier<T> fetch) {
 		this.fetch = AsyncSuppliers.coalesce(fetch);
-		this.fetchNext = () -> {
-			if (promise != null) return promise;
+		fetchNext = () -> {
+			if (promise != null) {
+				return promise;
+			}
 			promise = new SettablePromise<>();
 			return promise
-					.whenComplete((v, e) -> promise = null);
+					.acceptEx((v, e) -> promise = null);
 		};
 	}
 
 	public Promise<T> poll(@NotNull Predicate<T> predicate) {
 		return fetch.get()
-				.thenCompose(initialValue -> Promises.until(initialValue,
+				.then(initialValue -> Promises.until(initialValue,
 						$ -> fetchNext.get(),
 						AsyncPredicate.of(predicate)));
 	}
@@ -41,7 +43,7 @@ public final class LongPolling<T> {
 
 	public void wakeup() {
 		if (promise != null) {
-			fetch.get().whenResult(this::wakeup);
+			fetch.get().accept(this::wakeup);
 		}
 	}
 }

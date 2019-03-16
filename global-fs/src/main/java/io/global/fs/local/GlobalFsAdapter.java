@@ -76,7 +76,7 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	@Override
 	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long limit) {
 		return driver.download(space, name, offset, limit)
-				.thenApply(supplier -> supplier
+				.map(supplier -> supplier
 						.transformWith(CipherTransformer.create(currentSimKey, CryptoUtils.nonceFromString(name), offset)));
 	}
 
@@ -89,27 +89,27 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return driver.listEntities(space, glob)
-				.thenApply(res -> res.stream()
+				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+				.acceptEx(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return driver.list(space, glob)
-				.thenApply(res -> res.stream()
+				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+				.acceptEx(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
 		return driver.getMetadata(space, name)
-				.thenApply(checkpoint -> checkpoint != null ? fromCheckpoint(checkpoint) : null)
-				.whenComplete(toLogger(logger, TRACE, "getMetadata", name, this));
+				.map(checkpoint -> checkpoint != null ? fromCheckpoint(checkpoint) : null)
+				.acceptEx(toLogger(logger, TRACE, "getMetadata", name, this));
 	}
 
 	@Override

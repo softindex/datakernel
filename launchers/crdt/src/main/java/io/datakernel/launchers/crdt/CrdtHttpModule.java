@@ -67,7 +67,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				CrdtData::getKey, descriptor.getKeyCodec(),
 				CrdtData::getState, descriptor.getStateCodec());
 		MiddlewareServlet servlet = MiddlewareServlet.create()
-				.with(HttpMethod.POST, "/", request -> request.getBody().thenCompose(body -> {
+				.with(HttpMethod.POST, "/", request -> request.getBody().then(body -> {
 					try {
 						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
 						S state = client.get(key);
@@ -83,7 +83,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 						body.recycle();
 					}
 				}))
-				.with(HttpMethod.PUT, "/", request -> request.getBody().thenCompose(body -> {
+				.with(HttpMethod.PUT, "/", request -> request.getBody().then(body -> {
 					try {
 						client.put(JsonUtils.fromJson(codec, body.getString(UTF_8)));
 						return Promise.of(HttpResponse.ok200());
@@ -93,7 +93,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 						body.recycle();
 					}
 				}))
-				.with(HttpMethod.DELETE, "/", request -> request.getBody().thenCompose(body -> {
+				.with(HttpMethod.DELETE, "/", request -> request.getBody().then(body -> {
 					try {
 						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
 						if (client.remove(key)) {
@@ -119,9 +119,9 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				})
 				.with(HttpMethod.POST, "/awaitBackup", request ->
 						backup.backupInProgress() ?
-								backup.backup().thenApply($ -> HttpResponse.ofCode(204)
+								backup.backup().map($ -> HttpResponse.ofCode(204)
 										.withBody("Finished already running backup".getBytes(UTF_8))) :
-								backup.backup().thenApply($ -> HttpResponse.ok200())));
+								backup.backup().map($ -> HttpResponse.ok200())));
 		return servlet;
 	}
 }

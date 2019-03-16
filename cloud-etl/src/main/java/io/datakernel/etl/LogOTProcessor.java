@@ -118,12 +118,12 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		StreamSupplierWithResult<T, Map<String, LogPositionDiff>> supplier = getSupplier();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 		return supplier.getSupplier().streamTo(consumer.getConsumer())
-				.thenCompose($ -> Promises.toTuple(
-						supplier.getResult().whenComplete(promiseSupplier.recordStats()),
-						consumer.getResult().whenComplete(promiseConsumer.recordStats())))
-				.whenComplete(promiseProcessLog.recordStats())
-				.thenApply(result -> LogDiff.of(result.getValue1(), result.getValue2()))
-				.whenResult(logDiff ->
+				.then($ -> Promises.toTuple(
+						supplier.getResult().acceptEx(promiseSupplier.recordStats()),
+						consumer.getResult().acceptEx(promiseConsumer.recordStats())))
+				.acceptEx(promiseProcessLog.recordStats())
+				.map(result -> LogDiff.of(result.getValue1(), result.getValue2()))
+				.accept(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.getPositions()));
 	}
 

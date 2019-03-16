@@ -123,7 +123,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
 		return client.list(namingScheme.getListGlob(logPartition))
-				.thenApply(files ->
+				.map(files ->
 						files.stream()
 								.map(FileMetadata::getName)
 								.map(namingScheme::parse)
@@ -131,12 +131,12 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 								.filter(partitionAndFile -> partitionAndFile.getLogPartition().equals(logPartition))
 								.map(PartitionAndFile::getLogFile)
 								.collect(toList()))
-				.thenApply(logFiles ->
+				.map(logFiles ->
 						logFiles.stream()
 								.filter(logFile -> isFileInRange(logFile, startPosition, endLogFile))
 								.sorted()
 								.collect(toList()))
-				.thenApply(logFilesToRead -> readLogFiles(logPartition, startPosition, logFilesToRead));
+				.map(logFilesToRead -> readLogFiles(logPartition, startPosition, logFilesToRead));
 	}
 
 	private StreamSupplierWithResult<T, LogPosition> readLogFiles(@NotNull String logPartition, @NotNull LogPosition startPosition, @NotNull List<LogFile> logFiles) {
@@ -177,7 +177,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 
 				return StreamSupplier.ofPromise(
 						client.download(namingScheme.path(logPartition, currentLogFile), position)
-								.thenApply(fileStream -> {
+								.map(fileStream -> {
 									inputStreamPosition = 0L;
 									sw.reset().start();
 									return fileStream
@@ -197,12 +197,12 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 													}))
 											.transformWith(supplier ->
 													supplier.withEndOfStream(eos ->
-															eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
+															eos.thenEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
 																	Promise.complete() :
 																	Promise.ofException(e))))
 											.transformWith(ChannelDeserializer.create(serializer))
 											.withEndOfStream(eos ->
-													eos.whenComplete(($, e) -> log(e)))
+													eos.acceptEx(($, e) -> log(e)))
 											.withLateBinding();
 								}));
 			}

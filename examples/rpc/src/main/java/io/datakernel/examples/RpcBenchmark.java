@@ -216,7 +216,7 @@ public class RpcBenchmark extends Launcher {
 			sendRequest(promise, counters, maxRequests);
 		}
 
-		return promise.thenApply($ -> System.currentTimeMillis() - start);
+		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
 	private void sendRequest(SettablePromise<Long> promise, Counters counters, long maxRequests) {
@@ -228,7 +228,7 @@ public class RpcBenchmark extends Launcher {
 		++counters.sent;
 
 		rpcClient.sendRequest("Hello world" + counters.sent, 1000)
-				.whenComplete((res, exc) -> {
+				.acceptEx((res, exc) -> {
 					++counters.completed;
 
 					// Stop round

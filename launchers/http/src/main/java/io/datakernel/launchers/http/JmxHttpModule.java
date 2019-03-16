@@ -354,7 +354,7 @@ public class JmxHttpModule extends AbstractModule {
 						});
 
 				return loader.getResource("index_template.html")
-						.thenApply(buf -> HttpResponse.ok200()
+						.map(buf -> HttpResponse.ok200()
 								.withBody(cachedIndex = String.format(buf.asString(UTF_8), indexHTML(tree, request.getPath())).getBytes(UTF_8)));
 			}
 
@@ -372,7 +372,7 @@ public class JmxHttpModule extends AbstractModule {
 					Promises.toList(
 							Arrays.stream(generics != null ? generics.split(", ") : new String[0])
 									.map(JmxHttpModule::getClass)))
-					.thenCompose(tuple -> {
+					.then(tuple -> {
 						Type type = RecursiveType.of(
 								tuple.getValue1(),
 								tuple.getValue2()
@@ -390,9 +390,9 @@ public class JmxHttpModule extends AbstractModule {
 							return Promise.ofException(HttpException.ofCode(501, "Instance annotations except @Named are not supported"));
 						}
 						return JmxHttpModule.getClass(annotation.substring(0, annotation.length() - 2))
-								.thenApply(annCls -> Key.get(type, (Class<Annotation>) annCls));
+								.map(annCls -> Key.get(type, (Class<Annotation>) annCls));
 					})
-					.thenCompose(key -> {
+					.then(key -> {
 						Object instance = null;
 						if (workerId != null) {
 							Binding<WorkerPools> wpBinding = injector.getExistingBinding(Key.get(WorkerPools.class));
@@ -416,7 +416,7 @@ public class JmxHttpModule extends AbstractModule {
 						}
 						Object finalInstance = instance;
 						return loader.getResource("table_template.html")
-								.thenApply(buf -> HttpResponse.ok200()
+								.map(buf -> HttpResponse.ok200()
 										.withBody(String.format(
 												buf.asString(UTF_8),
 												htmlEscape(prettyPrintSimpleKeyName(key)) + (workerId != null ? " (worker id: " + workerId + ")" : ""),

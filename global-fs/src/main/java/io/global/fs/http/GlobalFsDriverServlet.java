@@ -61,12 +61,12 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 						SimKey simKey = getSimKey(request);
 						String name = request.getPathParameter("name");
 						return driver.getMetadata(space, name)
-								.thenCompose(meta -> {
+								.then(meta -> {
 									if (meta != null) {
 										return httpDownload(request,
 												(offset, limit) ->
 														driver.download(space, name, offset, limit)
-																.thenApply(supplier -> supplier
+																.map(supplier -> supplier
 																		.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
 												name, meta.getPosition());
 									}
@@ -88,7 +88,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				.with("/list/:space", request -> {
 					try {
 						return driver.listEntities(PubKey.fromString(request.getPathParameter("space")), request.getQueryParameter("glob", "**"))
-								.thenApply(list -> HttpResponse.ok200()
+								.map(list -> HttpResponse.ok200()
 										.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
 					} catch (ParseException e) {
@@ -98,7 +98,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				.with("/getMetadata/:space/:name*", request -> {
 					try {
 						return driver.getMetadata(PubKey.fromString(request.getPathParameter("space")), request.getPathParameter("name"))
-								.thenApply(list -> HttpResponse.ok200()
+								.map(list -> HttpResponse.ok200()
 										.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
 					} catch (ParseException e) {
@@ -110,7 +110,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
 						String name = request.getPathParameter("name");
 						return driver.delete(keys, name, parseRevision(request))
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

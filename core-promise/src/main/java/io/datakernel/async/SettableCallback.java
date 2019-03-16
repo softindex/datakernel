@@ -22,7 +22,7 @@ public interface SettableCallback<T> {
 
 	void setException(@NotNull Throwable e);
 
-	default void set(@Nullable T result, @Nullable Throwable e) {
+	default void set(T result, @Nullable Throwable e) {
 		if (e == null) {
 			set(result);
 		} else {
@@ -34,7 +34,7 @@ public interface SettableCallback<T> {
 	 * Tries to set provided {@code result} for this
 	 * {@code SettablePromise} if it is not completed yet.
 	 */
-	default void trySet(@Nullable T result) {
+	default void trySet(T result) {
 		if (!isComplete()) {
 			set(result);
 		}
@@ -54,7 +54,7 @@ public interface SettableCallback<T> {
 	 * Tries to set result or exception for this {@code SettablePromise}
 	 * if it not completed yet. Otherwise does nothing.
 	 */
-	default void trySet(@Nullable T result, @Nullable Throwable e) {
+	default void trySet(T result, @Nullable Throwable e) {
 		if (!isComplete()) {
 			if (e == null) {
 				trySet(result);
@@ -64,7 +64,7 @@ public interface SettableCallback<T> {
 		}
 	}
 
-	default void post(@Nullable T result) {
+	default void post(T result) {
 		getCurrentEventloop().post(() -> set(result));
 	}
 
@@ -72,11 +72,11 @@ public interface SettableCallback<T> {
 		getCurrentEventloop().post(() -> setException(e));
 	}
 
-	default void post(@Nullable T result, @Nullable Throwable e) {
+	default void post(T result, @Nullable Throwable e) {
 		getCurrentEventloop().post(() -> set(result, e));
 	}
 
-	default void tryPost(@Nullable T result) {
+	default void tryPost(T result) {
 		getCurrentEventloop().post(() -> trySet(result));
 	}
 
@@ -84,7 +84,7 @@ public interface SettableCallback<T> {
 		getCurrentEventloop().post(() -> trySetException(e));
 	}
 
-	default void tryPost(@Nullable T result, @Nullable Throwable e) {
+	default void tryPost(T result, @Nullable Throwable e) {
 		getCurrentEventloop().post(() -> trySet(result, e));
 	}
 

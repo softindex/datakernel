@@ -66,10 +66,10 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(space.asString())
 								.build())
 						.withBody(encode(SIGNED_ANNOUNCE, announceData)))
-				.thenCompose(response -> response.getCode() != 201 ?
+				.then(response -> response.getCode() != 201 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
-				.whenComplete(toLogger(logger, "announce", space, announceData, this));
+				.acceptEx(toLogger(logger, "announce", space, announceData, this));
 	}
 
 	private <T> Promise<T> tryParseResponse(HttpResponse response, ByteBuf body, ParserFunction<ByteBuf, T> from) {
@@ -99,13 +99,13 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(FIND)
 						.appendPathPart(space.asString())
 						.build()))
-				.thenComposeEx((response, e) -> {
+				.thenEx((response, e) -> {
 					if (e != null) {
 						logger.trace("Failed to find announcements", e);
 						return Promise.of(null);
 					}
 					return response.getBody()
-							.thenCompose(body ->
+							.then(body ->
 									tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice())));
 				});
 	}
@@ -120,7 +120,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(receiver.asString())
 								.build())
 						.withBody(encode(SIGNED_SHARED_SIM_KEY, simKey)))
-				.thenCompose(response -> response.getCode() != 201 ?
+				.then(response -> response.getCode() != 201 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
@@ -134,8 +134,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(receiver.asString())
 						.appendPathPart(hash.asString())
 						.build()))
-				.thenCompose(response -> response.getBody()
-						.thenCompose(body ->
+				.then(response -> response.getBody()
+						.then(body ->
 								tryParseResponse(response, body, buf -> decode(NULLABLE_SIGNED_SHARED_SIM_KEY, buf.slice()))));
 	}
 
@@ -147,8 +147,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(GET_SHARED_KEY)
 						.appendPathPart(receiver.asString())
 						.build()))
-				.thenCompose(response -> response.getBody()
-						.thenCompose(body -> (
+				.then(response -> response.getBody()
+						.then(body -> (
 								tryParseResponse(response, body, buf -> decode(LIST_OF_SIGNED_SHARED_SIM_KEYS, buf.slice())))));
 	}
 }

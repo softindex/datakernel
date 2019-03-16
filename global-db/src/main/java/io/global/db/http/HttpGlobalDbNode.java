@@ -62,7 +62,7 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.build())
 						.withBodyStream(buffer.getSupplier()
 								.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.materialize();
 		return Promise.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
@@ -76,9 +76,9 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPathPart(DOWNLOAD)
 								.appendPath(tableID.asString())
 								.build()))
-				.thenCompose(response1 -> response1.getCode() != 200 ?
+				.then(response1 -> response1.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
-				.thenApply(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(DB_ITEM_PARSER));
+				.map(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(DB_ITEM_PARSER));
 	}
 
 	@Override
@@ -90,9 +90,9 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPath(tableID.asString())
 								.build())
 						.withBody(ByteBuf.wrapForReading(key)))
-				.thenCompose(response1 -> response1.getCode() != 200 ?
+				.then(response1 -> response1.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
-				.thenCompose(response -> response.getBody().thenApply(body -> {
+				.then(response -> response.getBody().map(body -> {
 					try {
 						return decode(DB_ITEM_CODEC, body.slice());
 					} catch (ParseException e) {
@@ -112,7 +112,7 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPath(tableID.asString())
 								.build())
 						.withBody(encode(DB_ITEM_CODEC, item)))
-				.thenCompose(response -> response.getCode() != 200 ?
+				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
@@ -125,9 +125,9 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPathPart(LIST)
 								.appendPath(owner.asString())
 								.build()))
-				.thenCompose(response1 -> response1.getCode() != 200 ?
+				.then(response1 -> response1.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
-				.thenCompose(response -> response.getBody().thenCompose(body -> {
+				.then(response -> response.getBody().then(body -> {
 					try {
 						return Promise.of(decode(LIST_STRING_CODEC, body.slice()));
 					} catch (ParseException e) {

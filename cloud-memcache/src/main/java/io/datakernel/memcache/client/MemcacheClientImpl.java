@@ -24,7 +24,7 @@ public final class MemcacheClientImpl implements MemcacheClient {
 	public Promise<ByteBuf> get(byte[] key, int timeout) {
 		GetRequest request = new GetRequest(key);
 		return rpcClient.<GetRequest, GetResponse>sendRequest(request, timeout)
-				.thenApply(response -> {
+				.map(response -> {
 					if (response == null) {
 						return null;
 					}

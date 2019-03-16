@@ -106,7 +106,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 		}
 
 		reader.streamTo(gateway.upload(name, offset, revision))
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						info(name + " upload finished");
 						return;

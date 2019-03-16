@@ -121,9 +121,9 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 
 		chunksCollector.addPromise(
 				supplier.streamTo(chunker)
-						.thenCompose($ -> chunker.getResult()),
+						.then($ -> chunker.getResult()),
 				List::addAll)
-				.whenResult($ -> suspendOrResume());
+				.accept($ -> suspendOrResume());
 	}
 
 	private void suspendOrResume() {

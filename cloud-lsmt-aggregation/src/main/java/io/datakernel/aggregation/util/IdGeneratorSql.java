@@ -43,7 +43,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	}
 
 	public static IdGeneratorSql create(Eventloop eventloop, Executor executor, DataSource dataSource,
-	                                    SqlAtomicSequence sequence) {
+			SqlAtomicSequence sequence) {
 		return new IdGeneratorSql(eventloop, executor, dataSource, sequence);
 	}
 
@@ -55,7 +55,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	private Promise<Void> doReserveId() {
 		int finalStride = stride;
 		return Promise.ofBlockingCallable(executor, () -> getAndAdd(finalStride))
-				.whenResult(id -> {
+				.accept(id -> {
 					next = id;
 					limit = id + finalStride;
 				})
@@ -76,7 +76,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 			return Promise.of(next++);
 		}
 		return reserveId.get()
-				.thenCompose($ -> createId());
+				.then($ -> createId());
 	}
 
 	@NotNull

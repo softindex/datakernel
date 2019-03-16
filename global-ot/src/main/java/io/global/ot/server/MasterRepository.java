@@ -34,7 +34,7 @@ public final class MasterRepository {
 	private final AsyncSupplier<Set<SignedData<RawCommitHead>>> poll = AsyncSuppliers.reuse(this::doPoll);
 
 	public MasterRepository(@NotNull RawServerId rawServerId, @NotNull RepoID repoID, @NotNull GlobalOTNode node,
-			@NotNull Set<SignedData<RawCommitHead>> heads, @NotNull Set<SignedData<RawPullRequest>> pullRequests) {
+							@NotNull Set<SignedData<RawCommitHead>> heads, @NotNull Set<SignedData<RawPullRequest>> pullRequests) {
 		this.rawServerId = rawServerId;
 		this.repoID = repoID;
 		this.node = node;
@@ -48,7 +48,7 @@ public final class MasterRepository {
 
 	private Promise<Set<SignedData<RawCommitHead>>> doPoll() {
 		return node.pollHeads(repoID, heads.stream().map(head -> head.getValue().getCommitId()).collect(toSet()))
-				.whenResult(result -> this.heads = result);
+				.accept(result -> heads = result);
 	}
 
 	@NotNull

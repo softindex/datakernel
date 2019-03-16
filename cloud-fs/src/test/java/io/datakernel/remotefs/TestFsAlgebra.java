@@ -46,7 +46,7 @@ public final class TestFsAlgebra {
 	}
 
 	private void upload(FsClient client, String filename) {
-		await(client.upload(filename).thenCompose(consumer -> consumer.accept(null)));
+		await(client.upload(filename).then(consumer -> consumer.accept(null)));
 	}
 
 	private void expect(String... realFiles) {

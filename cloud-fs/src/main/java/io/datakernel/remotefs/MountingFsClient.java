@@ -62,13 +62,13 @@ final class MountingFsClient implements FsClient {
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return Promises.toList(Stream.concat(Stream.of(root), mounts.values().stream()).map(f -> f.listEntities(glob)))
-				.thenApply(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
+				.map(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return Promises.toList(Stream.concat(Stream.of(root), mounts.values().stream()).map(f -> f.list(glob)))
-				.thenApply(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
+				.map(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
 	}
 
 	@Override
@@ -79,10 +79,10 @@ final class MountingFsClient implements FsClient {
 			return first.move(name, target, targetRevision, removeRevision);
 		}
 		return first.download(name)
-				.thenCompose(supplier ->
+				.then(supplier ->
 						second.upload(name, 0, targetRevision)
-								.thenCompose(supplier::streamTo))
-				.thenCompose($ -> first.delete(name));
+								.then(supplier::streamTo))
+				.then($ -> first.delete(name));
 	}
 
 	@Override
@@ -93,9 +93,9 @@ final class MountingFsClient implements FsClient {
 			return first.copy(name, target, targetRevision);
 		}
 		return first.download(name)
-				.thenCompose(supplier ->
+				.then(supplier ->
 						second.upload(name, 0, targetRevision)
-								.thenCompose(supplier::streamTo));
+								.then(supplier::streamTo));
 	}
 
 	@Override

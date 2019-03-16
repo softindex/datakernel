@@ -33,7 +33,7 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 		this.httpClient = httpClient;
 		this.url = url.endsWith("/") ? url : url + '/';
 		this.revisionCodec = revisionCodec;
-		this.fetchDataCodec = FetchData.codec(revisionCodec, diffCodec);
+		fetchDataCodec = FetchData.codec(revisionCodec, diffCodec);
 	}
 
 	public static <K, D> OTNodeHttpClient<K, D> create(IAsyncHttpClient httpClient, String url, StructuredCodec<K> revisionCodec, StructuredCodec<D> diffCodec) {
@@ -41,45 +41,46 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 	}
 
 	public static <D> OTNodeHttpClient<CommitId, D> forGlobalNode(IAsyncHttpClient httpClient, String url,
-			StructuredCodec<D> diffCodec) {
+																  StructuredCodec<D> diffCodec) {
 		return new OTNodeHttpClient<>(httpClient, url, REGISTRY.get(CommitId.class), diffCodec);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<byte[]> createCommit(K parent, List<? extends D> diffs, long level) {
 		FetchData<K, D> fetchData = new FetchData<>(parent, level, (List<D>) diffs);
 		return httpClient.request(post(url + CREATE_COMMIT)
 				.withBody(toJson(fetchDataCodec, fetchData).getBytes(UTF_8)))
-				.thenCompose(HttpMessage::getBody)
-				.thenApply(ByteBuf::asArray);
+				.then(HttpMessage::getBody)
+				.map(ByteBuf::asArray);
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> push(byte[] commit) {
 		return httpClient.request(post(url + PUSH)
 				.withBody(commit))
-				.thenCompose(response -> response.getBody()
-						.thenCompose(body -> processResult(response, body, fetchDataCodec)));
+				.then(response -> response.getBody()
+						.then(body -> processResult(response, body, fetchDataCodec)));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
 		return httpClient.request(get(url + CHECKOUT))
-				.thenCompose(response -> response.getBody()
-						.thenCompose(body -> processResult(response, body, fetchDataCodec)));
+				.then(response -> response.getBody()
+						.then(body -> processResult(response, body, fetchDataCodec)));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
 		return httpClient.request(get(url + FETCH + "?id=" + urlEncode(toJson(revisionCodec, currentCommitId))))
-				.thenCompose(response -> response.getBody()
-						.thenCompose(body -> processResult(response, body, fetchDataCodec)));
+				.then(response -> response.getBody()
+						.then(body -> processResult(response, body, fetchDataCodec)));
 	}
 
 	private static <T> Promise<T> processResult(HttpResponse res, ByteBuf body, @NotNull StructuredCodec<T> json) {
 		try {
-			if (res.getCode() != 200) return Promise.ofException(HttpException.ofCode(res.getCode()));
+			if (res.getCode() != 200) {
+				return Promise.ofException(HttpException.ofCode(res.getCode()));
+			}
 			return Promise.of(fromJson(json, body.getString(UTF_8)));
 		} catch (ParseException e) {
 			return Promise.ofException(e);

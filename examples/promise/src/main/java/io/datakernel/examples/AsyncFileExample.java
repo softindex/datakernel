@@ -46,8 +46,8 @@ public class AsyncFileExample {
 		try {
 			AsyncFile asyncFile = AsyncFile.open(executorService, PATH, set(WRITE, CREATE_NEW, APPEND));
 			return asyncFile.write(wrapAscii("Hello\n"))
-					.thenCompose($ -> asyncFile.write(wrapAscii("This is test file\n")))
-					.thenCompose($ -> asyncFile.write(wrapAscii("This is the 3rd line in file")));
+					.then($ -> asyncFile.write(wrapAscii("This is test file\n")))
+					.then($ -> asyncFile.write(wrapAscii("This is the 3rd line in file")));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
@@ -58,7 +58,7 @@ public class AsyncFileExample {
 		try {
 			return AsyncFile.open(executorService, PATH, set(READ))
 					.read()
-					.whenResult(buf -> System.out.println(buf.getString(UTF_8)));
+					.accept(buf -> System.out.println(buf.getString(UTF_8)));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
@@ -78,7 +78,7 @@ public class AsyncFileExample {
 		Promises.sequence(
 				() -> writeToFile(),
 				() -> readFromFile().toVoid())
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e != null) {
 						System.out.println("Something went wrong : " + e);
 					}

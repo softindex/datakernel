@@ -167,7 +167,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 		return Promise.of(StreamConsumer.ofChannelConsumer(
 				ChannelConsumer.<CrdtData<K, S>>of(data -> Promise.ofBlockingRunnable(executor, () -> doPut(data.getKey(), data.getState())))
 						.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
-						.withAcknowledgement(ack -> ack.thenCompose($ -> flush()))));
+						.withAcknowledgement(ack -> ack.then($ -> flush()))));
 	}
 
 	@Override
@@ -178,7 +178,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 					iterator.seekToFirst();
 					return iterator;
 				})
-				.thenApply(iterator -> StreamSupplier.ofChannelSupplier(ChannelSupplier.of(
+				.map(iterator -> StreamSupplier.ofChannelSupplier(ChannelSupplier.of(
 						() -> Promise.ofBlockingCallable(executor, () -> {
 							while (iterator.isValid()) {
 								byte[] keyBytes = iterator.key();
@@ -202,7 +202,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 		return Promise.of(StreamConsumer.ofChannelConsumer(
 				ChannelConsumer.<K>of(key -> Promise.ofBlockingRunnable(executor, () -> doRemove(key)))
 						.transformWith(detailedStats ? removeStatsDetailed : removeStats)
-						.withAcknowledgement(ack -> ack.thenCompose($ -> flush()))));
+						.withAcknowledgement(ack -> ack.then($ -> flush()))));
 	}
 
 	@Override

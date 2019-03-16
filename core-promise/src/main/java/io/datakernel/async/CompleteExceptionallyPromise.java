@@ -73,7 +73,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull S promise) {
+	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> next(@NotNull S promise) {
 		promise.accept(null, exception);
 		return promise;
 	}
@@ -81,13 +81,13 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn) {
+	public <U> Promise<U> map(@NotNull Function<? super T, ? extends U> fn) {
 		return (CompleteExceptionallyPromise<U>) this;
 	}
 
 	@NotNull
 	@Override
-	public <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
+	public <U> Promise<U> mapEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
 		try {
 			return Promise.of(fn.apply(null, exception));
 		} catch (UncheckedException u) {
@@ -98,13 +98,13 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn) {
 		return (CompleteExceptionallyPromise<U>) this;
 	}
 
 	@NotNull
 	@Override
-	public <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
 		try {
 			return fn.apply(null, exception);
 		} catch (UncheckedException u) {
@@ -114,21 +114,22 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
-	public Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action) {
+	public Promise<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action) {
 		action.accept(null, exception);
 		return this;
 	}
 
 	@NotNull
 	@Override
-	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
+	public Promise<T> accept(@NotNull Consumer<? super T> action) {
 		return this;
 	}
 
-	@NotNull
 	@Override
-	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
-		action.accept(exception);
+	public Promise<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action) {
+		if (type.isAssignableFrom(exception.getClass())) {
+			action.accept(exception);
+		}
 		return this;
 	}
 

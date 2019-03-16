@@ -91,7 +91,7 @@ public class MySqlSharedKeyStorage implements SharedKeyStorage {
 					}
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, thisMethod(), receiver, signedSharedSimKey));
+				.acceptEx(toLogger(logger, thisMethod(), receiver, signedSharedSimKey));
 	}
 
 	@Override
@@ -115,7 +115,7 @@ public class MySqlSharedKeyStorage implements SharedKeyStorage {
 						}
 					}
 				})
-				.whenComplete(toLogger(logger, thisMethod(), receiver, hash));
+				.acceptEx(toLogger(logger, thisMethod(), receiver, hash));
 	}
 
 	@Override
@@ -138,7 +138,7 @@ public class MySqlSharedKeyStorage implements SharedKeyStorage {
 						}
 					}
 				})
-				.whenComplete(toLogger(logger, thisMethod(), receiver));
+				.acceptEx(toLogger(logger, thisMethod(), receiver));
 	}
 
 	public void initialize() throws IOException, SQLException {

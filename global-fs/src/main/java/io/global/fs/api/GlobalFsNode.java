@@ -45,14 +45,14 @@ public interface GlobalFsNode {
 
 	default Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob) {
 		return listEntities(space, glob)
-				.thenApply(list -> list.stream()
+				.map(list -> list.stream()
 						.filter(signedCheckpoint -> !signedCheckpoint.getValue().isTombstone())
 						.collect(toList()));
 	}
 
 	default Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
 		return listEntities(space, escapeGlob(filename))
-				.thenApply(res -> res.size() == 1 ? res.get(0) : null);
+				.map(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
 	Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone);

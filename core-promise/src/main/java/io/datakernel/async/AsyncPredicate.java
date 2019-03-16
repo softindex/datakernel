@@ -31,7 +31,7 @@ public interface AsyncPredicate<T> {
 	}
 
 	default AsyncPredicate<T> negate() {
-		return t -> test(t).thenApply(b -> !b);
+		return t -> test(t).map(b -> !b);
 	}
 
 	default AsyncPredicate<T> and(AsyncPredicate<? super T> other) {

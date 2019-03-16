@@ -118,7 +118,7 @@ public interface Promise<T> {
 
 	/**
 	 * Creates a completed {@code Promise} from {@code T value} and
-	 * {@code Throwable e} parameters. Useful for {@link #thenComposeEx(BiFunction)}
+	 * {@code Throwable e} parameters. Useful for {@link #thenEx(BiFunction)}
 	 * passthroughs (for example, when mapping specific exceptions).
 	 *
 	 * @param value value to wrap when exception is null
@@ -332,7 +332,7 @@ public interface Promise<T> {
 	@NotNull
 	default MaterializedPromise<T> post() {
 		SettablePromise<T> result = new SettablePromise<>();
-		whenComplete(result::post);
+		acceptEx(result::post);
 		return result;
 	}
 
@@ -341,7 +341,7 @@ public interface Promise<T> {
 	default MaterializedPromise<T> materialize() {
 		assert !isComplete() : "Trying to materialize a completed promise";
 		SettablePromise<T> cb = new SettablePromise<>();
-		whenComplete(cb::set);
+		acceptEx(cb::set);
 		return cb;
 	}
 
@@ -354,7 +354,7 @@ public interface Promise<T> {
 	 * @return subscribed {@code Promise}
 	 */
 	@Contract("_ -> param1")
-	@NotNull <U, P extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(@NotNull P promise);
+	@NotNull <U, P extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> next(@NotNull P promise);
 
 	/**
 	 * Applies {@code fn} to the result of this {@code Promise}.
@@ -363,7 +363,7 @@ public interface Promise<T> {
 	 * @return {@code Promise} that applies given function
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> thenApply(@NotNull Function<? super T, ? extends U> fn);
+	@NotNull <U> Promise<U> map(@NotNull Function<? super T, ? extends U> fn);
 
 	/**
 	 * Applies {@code fn} to the result or exception of this {@code Promise}.
@@ -372,7 +372,7 @@ public interface Promise<T> {
 	 * @return {@code Promise} that applies given function
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> thenApplyEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn);
+	@NotNull <U> Promise<U> mapEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
 	 * Applies function to the result of this {@code Promise} if it
@@ -382,7 +382,7 @@ public interface Promise<T> {
 	 * @param fn to be applied
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> thenCompose(@NotNull Function<? super T, ? extends Promise<U>> fn);
+	@NotNull <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn);
 
 	/**
 	 * Applies {@link BiFunction} to the result of this {@code Promise}.
@@ -392,7 +392,7 @@ public interface Promise<T> {
 	 * @return this {@code Promise}
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> thenComposeEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
+	@NotNull <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
 
 	/**
 	 * Subscribes given action to be executed
@@ -403,7 +403,7 @@ public interface Promise<T> {
 	 */
 	@Contract(" _ -> this")
 	@NotNull
-	Promise<T> whenComplete(@NotNull BiConsumer<? super T, Throwable> action);
+	Promise<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action);
 
 	/**
 	 * Subscribes given action to be executed after
@@ -414,18 +414,18 @@ public interface Promise<T> {
 	 */
 	@Contract(" _ -> this")
 	@NotNull
-	Promise<T> whenResult(@NotNull Consumer<? super T> action);
+	Promise<T> accept(@NotNull Consumer<? super T> action);
 
 	/**
 	 * Subscribes given action to be executed after
 	 * this {@code Promise} completes exceptionally.
 	 *
+	 * @param type   type of the exception to catch
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
-	@Contract(" _ -> this")
-	@NotNull
-	Promise<T> whenException(@NotNull Consumer<Throwable> action);
+	@Contract("_, _ -> this")
+	Promise<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action);
 
 	/**
 	 * Combines two {@code Promise}s in one using {@code fn}.

@@ -47,7 +47,7 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 	private final MiddlewareServlet servlet;
 
 	private GlobalFsNodeServlet(GlobalFsNode node) {
-		this.servlet = servlet(node);
+		servlet = servlet(node);
 	}
 
 	public static GlobalFsNodeServlet create(GlobalFsNode node) {
@@ -64,8 +64,8 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 						long revision = parseRevision(request);
 						ChannelSupplier<ByteBuf> body = request.getBodyStream();
 						return node.upload(space, path, offset, revision)
-								.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
-								.thenApply($ -> HttpResponse.ok200());
+								.then(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -76,7 +76,7 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						String path = request.getPathParameter("path");
 						return node.download(space, path, range[0], range[1])
-								.thenApply(supplier ->
+								.map(supplier ->
 										HttpResponse.ok200()
 												.withBodyStream(supplier.transformWith(new FrameEncoder())));
 					} catch (ParseException e) {
@@ -87,7 +87,7 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						return node.listEntities(space, request.getQueryParameter("glob"))
-								.thenApply(list ->
+								.map(list ->
 										HttpResponse.ok200()
 												.withBodyStream(ChannelSupplier.ofStream(list.stream()
 														.map(meta -> encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
@@ -99,7 +99,7 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						return node.getMetadata(space, request.getPathParameter("path"))
-								.thenCompose(meta ->
+								.then(meta ->
 										Promise.of(HttpResponse.ok200()
 												.withBody(encode(NULLABLE_SIGNED_CHECKPOINT_CODEC, meta))));
 					} catch (ParseException e) {
@@ -108,12 +108,12 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 				})
 				.with(POST, "/" + DELETE + "/:space", request ->
 						request.getBody()
-								.thenCompose(body -> {
+								.then(body -> {
 									try {
 										PubKey space = PubKey.fromString(request.getPathParameter("space"));
 										SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.getArray());
 										return node.delete(space, checkpoint)
-												.thenApply($ -> HttpResponse.ok200());
+												.map($ -> HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.<HttpResponse>ofException(e);
 									} finally {

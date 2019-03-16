@@ -51,75 +51,75 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	@Override
 	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.createCommit(parent, diffs, level)
-				.thenApply(commitToObject)
-				.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level));
+				.map(commitToObject)
+				.acceptEx(toLogger(logger, thisMethod(), parent, diffs, level));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> push(C commit) {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
-				.thenCompose($ -> repository.getHeads())
-				.thenCompose(initalHeads -> algorithms.excludeParents(union(initalHeads, singleton(otCommit.getId())))
-						.thenCompose(algorithms::merge)
-						.thenCompose(mergeHead -> {
+				.then($ -> repository.getHeads())
+				.then(initalHeads -> algorithms.excludeParents(union(initalHeads, singleton(otCommit.getId())))
+						.then(algorithms::merge)
+						.then(mergeHead -> {
 							Set<K> mergeHeadSet = singleton(mergeHead);
 							return repository.updateHeads(mergeHeadSet, difference(initalHeads, mergeHeadSet))
-									.thenCompose($ -> doFetch(mergeHeadSet, otCommit.getId()));
+									.then($ -> doFetch(mergeHeadSet, otCommit.getId()));
 						}))
-				.whenComplete(toLogger(logger, thisMethod(), commit));
+				.acceptEx(toLogger(logger, thisMethod(), commit));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
 		@SuppressWarnings("unchecked") List<D>[] cachedSnapshotRef = new List[]{null};
 		return repository.getHeads()
-				.thenCompose(heads -> algorithms.findParent(
+				.then(heads -> algorithms.findParent(
 						heads,
 						DiffsReducer.toList(),
 						commit -> commit.getSnapshotHint() == Boolean.FALSE ?
 								Promise.of(false) :
 								repository.loadSnapshot(commit.getId())
-										.thenApply(maybeSnapshot -> (cachedSnapshotRef[0] = maybeSnapshot.orElse(null)) != null)
+										.map(maybeSnapshot -> (cachedSnapshotRef[0] = maybeSnapshot.orElse(null)) != null)
 				))
-				.thenCompose(findResult -> Promise.of(
+				.then(findResult -> Promise.of(
 						new FetchData<>(
 								findResult.getChild(),
 								findResult.getChildLevel(),
 								concat(cachedSnapshotRef[0], findResult.getAccumulatedDiffs()))))
-				.thenCompose(checkoutData -> fetch(checkoutData.getCommitId())
-						.thenApply(fetchData -> new FetchData<>(
+				.then(checkoutData -> fetch(checkoutData.getCommitId())
+						.map(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
 								fetchData.getLevel(),
 								algorithms.getOtSystem().squash(concat(checkoutData.getDiffs(), fetchData.getDiffs()))
 						))
 				)
-				.whenComplete(toLogger(logger, thisMethod()));
+				.acceptEx(toLogger(logger, thisMethod()));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
 		return repository.getHeads()
-				.thenCompose(heads -> doFetch(heads, currentCommitId))
-				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
+				.then(heads -> doFetch(heads, currentCommitId))
+				.acceptEx(toLogger(logger, thisMethod(), currentCommitId));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> poll(K currentCommitId) {
 		Duration[] pollIntervalRef = new Duration[]{Duration.ZERO};
 		return repository.getHeads()
-				.thenCompose(initialHeads ->
+				.then(initialHeads ->
 						Promises.until(initialHeads,
 								heads -> repository.pollHeads(heads)
-										.whenResult(newHeads ->
+										.accept(newHeads ->
 												pollIntervalRef[0] = Objects.equals(heads, newHeads) ?
 														pollInterval :
 														Duration.ZERO),
 								heads -> heads.contains(currentCommitId) ?
 										Promises.delay(Promise.of(false), pollIntervalRef[0]) :
 										Promise.of(true)))
-				.thenCompose(heads -> doFetch(heads, currentCommitId))
-				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
+				.then(heads -> doFetch(heads, currentCommitId))
+				.acceptEx(toLogger(logger, thisMethod(), currentCommitId));
 	}
 
 	private Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
@@ -127,11 +127,11 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 				heads,
 				DiffsReducer.toList(),
 				commit -> Promise.of(commit.getId().equals(currentCommitId)))
-				.thenApply(findResult -> new FetchData<>(
+				.map(findResult -> new FetchData<>(
 						findResult.getChild(),
 						findResult.getChildLevel(),
 						algorithms.getOtSystem().squash(findResult.getAccumulatedDiffs())
 				))
-				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
+				.acceptEx(toLogger(logger, thisMethod(), currentCommitId));
 	}
 }

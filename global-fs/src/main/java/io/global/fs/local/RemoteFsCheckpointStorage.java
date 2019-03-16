@@ -60,7 +60,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 
 	private Promise<ByteBuf> download(String filename) {
 		return storage.download(filename)
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()));
+				.then(supplier -> supplier.toCollector(ByteBufQueue.collector()));
 	}
 
 	@Override
@@ -71,7 +71,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					.streamTo(storage.upload(filename, 0, now.currentTimeMillis()));
 		}
 		return load(filename, checkpoint.getPosition())
-				.thenCompose(existing -> {
+				.then(existing -> {
 					if (existing == null) {
 						return ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, signedCheckpoint))
 								.streamTo(storage.append(filename));
@@ -80,13 +80,13 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							Promise.complete() :
 							Promise.ofException(OVERRIDING);
 				})
-				.whenComplete(toLogger(logger, TRACE, "store", filename, signedCheckpoint, this));
+				.acceptEx(toLogger(logger, TRACE, "store", filename, signedCheckpoint, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		return download(filename)
-				.thenComposeEx((buf, e) -> {
+				.thenEx((buf, e) -> {
 					if (e != null) {
 						return e == FILE_NOT_FOUND ?
 								Promise.of(null) :
@@ -108,20 +108,20 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "load", filename, position, this));
+				.acceptEx(toLogger(logger, TRACE, "load", filename, position, this));
 	}
 
 	@Override
 	public Promise<List<String>> listMetaCheckpoints(String glob) {
 		return storage.list(glob)
-				.thenApply(list -> list.stream().map(FileMetadata::getName).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
+				.map(list -> list.stream().map(FileMetadata::getName).collect(toList()))
+				.acceptEx(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
 		return download(filename)
-				.thenComposeEx((buf, e) -> {
+				.thenEx((buf, e) -> {
 					if (e != null) {
 						return e == FILE_NOT_FOUND ?
 								Promise.of(null) :
@@ -144,13 +144,13 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
+				.acceptEx(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
 	}
 
 	@Override
 	public Promise<long[]> loadIndex(String filename) {
 		return download(filename)
-				.thenComposeEx((buf, e) -> {
+				.thenEx((buf, e) -> {
 					if (e != null) {
 						return e == FILE_NOT_FOUND ?
 								Promise.of(new long[0]) :
@@ -175,19 +175,19 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "loadIndex", filename, this));
+				.acceptEx(toLogger(logger, TRACE, "loadIndex", filename, this));
 	}
 
 	@Override
 	public Promise<Void> drop(String filename, long revision) {
 		return loadMetaCheckpoint(filename)
-				.thenCompose(meta -> {
+				.then(meta -> {
 					if (meta != null && meta.getValue().getRevision() < revision) {
 						return storage.truncate(filename, now.currentTimeMillis());
 					}
 					return Promise.complete();
 				})
-				.whenComplete(toLogger(logger, TRACE, "drop", filename, revision, this));
+				.acceptEx(toLogger(logger, TRACE, "drop", filename, revision, this));
 	}
 
 	@Override

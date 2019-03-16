@@ -51,7 +51,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	private boolean lastPostedCheckpoint = false;
 
 	private FrameSigner(PrivKey privateKey, CheckpointPosStrategy checkpointPosStrategy,
-			String filename, long offset, long revision, SHA256Digest digest, @Nullable Hash simKeyHash) {
+						String filename, long offset, long revision, SHA256Digest digest, @Nullable Hash simKeyHash) {
 		super(offset);
 		this.filename = filename;
 		this.checkpointPosStrategy = checkpointPosStrategy;
@@ -62,7 +62,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	}
 
 	public static FrameSigner create(PrivKey privateKey, CheckpointPosStrategy checkpointPosStrategy,
-			String filename, long offset, long revision, @Nullable SHA256Digest digest, @Nullable Hash simKeyHash) {
+									 String filename, long offset, long revision, @Nullable SHA256Digest digest, @Nullable Hash simKeyHash) {
 		return new FrameSigner(privateKey, checkpointPosStrategy, filename, offset, revision, digest != null ? digest : new SHA256Digest(), simKeyHash);
 	}
 
@@ -85,6 +85,6 @@ public final class FrameSigner extends ByteBufsToFrames {
 
 	@Override
 	protected Promise<Void> onProcessFinish() {
-		return lastPostedCheckpoint ? sendEndOfStream() : postCheckpoint().thenCompose($ -> sendEndOfStream());
+		return lastPostedCheckpoint ? sendEndOfStream() : postCheckpoint().then($ -> sendEndOfStream());
 	}
 }

@@ -85,7 +85,7 @@ public final class GlobalFsDownload implements Callable<Void> {
 
 		ChannelSupplier.ofPromise(gateway.download(file, offset, length))
 				.streamTo(writer)
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						info(file + " download finished");
 						return;

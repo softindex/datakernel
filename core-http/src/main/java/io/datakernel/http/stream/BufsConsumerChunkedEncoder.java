@@ -33,7 +33,8 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
-	private BufsConsumerChunkedEncoder() {}
+	private BufsConsumerChunkedEncoder() {
+	}
 
 	public static BufsConsumerChunkedEncoder create() {
 		return new BufsConsumerChunkedEncoder();
@@ -70,18 +71,18 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 	@Override
 	protected void doProcess() {
 		input.get()
-				.whenResult(buf -> {
+				.accept(buf -> {
 					if (buf != null) {
 						if (buf.canRead()) {
 							output.accept(encodeBuf(buf))
-									.whenResult($ -> doProcess());
+									.accept($ -> doProcess());
 						} else {
 							buf.recycle();
 							doProcess();
 						}
 					} else {
 						output.accept(LAST_CHUNK, null)
-								.whenResult($ -> completeProcess());
+								.accept($ -> completeProcess());
 					}
 				});
 	}

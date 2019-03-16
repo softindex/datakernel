@@ -43,7 +43,8 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
-	private BufsConsumerGzipDeflater() {}
+	private BufsConsumerGzipDeflater() {
+	}
 
 	public static BufsConsumerGzipDeflater create() {
 		return new BufsConsumerGzipDeflater();
@@ -96,12 +97,12 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 
 	private void writeHeader() {
 		output.accept(ByteBuf.wrapForReading(GZIP_HEADER))
-				.whenResult($ -> writeBody());
+				.accept($ -> writeBody());
 	}
 
 	private void writeBody() {
 		input.get()
-				.whenComplete((buf, e) -> {
+				.acceptEx((buf, e) -> {
 					if (buf != null) {
 						if (buf.canRead()) {
 							crc32.update(buf.array(), buf.head(), buf.readRemaining());
@@ -109,7 +110,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 							buf.recycle();
 							ByteBufQueue queue = deflate();
 							output.acceptAll(queue.asIterator())
-									.whenResult($ -> writeBody());
+									.accept($ -> writeBody());
 						} else {
 							buf.recycle();
 						}
@@ -127,8 +128,8 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		footer.writeInt(Integer.reverseBytes(deflater.getTotalIn()));
 		queue.add(footer);
 		output.acceptAll(queue.asIterator())
-				.thenCompose($ -> output.accept(null))
-				.whenResult($ -> completeProcess());
+				.then($ -> output.accept(null))
+				.accept($ -> completeProcess());
 	}
 
 	private ByteBufQueue deflate() {

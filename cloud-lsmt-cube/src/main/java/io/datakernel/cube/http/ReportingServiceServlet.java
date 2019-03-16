@@ -97,7 +97,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			CubeQuery cubeQuery = parseQuery(httpRequest);
 			return cube.query(cubeQuery)
-					.thenApply(queryResult -> {
+					.map(queryResult -> {
 						Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
 						String json = toJson(getQueryResultCodec(), queryResult);
 						HttpResponse httpResponse = createResponse(json);

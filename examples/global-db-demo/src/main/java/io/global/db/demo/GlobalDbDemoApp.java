@@ -183,13 +183,13 @@ public final class GlobalDbDemoApp extends Launcher {
 
 		eventloop.post(() ->
 				discoveryService.announce(aliceKeys.getPubKey(), announceData)
-						.thenCompose($ -> alice.upload("test_table"))
-						.thenCompose(ChannelSupplier.ofIterable(dbItems)::streamTo)
-						.whenException(Throwable::printStackTrace)
-						.whenResult($ -> System.out.println("Data items have been uploaded to database\nDownloading back..."))
-						.thenCompose($ -> alice.download("test_table"))
-						.thenCompose(supplier -> supplier.streamTo(ChannelConsumer.ofConsumer(DB_ITEM_CONSUMER)))
-						.whenComplete(($, e) -> shutdown())
+						.then($ -> alice.upload("test_table"))
+						.then(ChannelSupplier.ofIterable(dbItems)::streamTo)
+						.acceptEx(Exception.class, Throwable::printStackTrace)
+						.accept($ -> System.out.println("Data items have been uploaded to database\nDownloading back..."))
+						.then($ -> alice.download("test_table"))
+						.then(supplier -> supplier.streamTo(ChannelConsumer.ofConsumer(DB_ITEM_CONSUMER)))
+						.acceptEx(($, e) -> shutdown())
 		);
 		awaitShutdown();
 	}

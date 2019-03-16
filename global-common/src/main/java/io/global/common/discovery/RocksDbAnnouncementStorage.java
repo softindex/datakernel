@@ -67,7 +67,7 @@ public class RocksDbAnnouncementStorage implements AnnouncementStorage {
 						throw new UncheckedException(e);
 					}
 				})
-				.whenComplete(toLogger(logger, thisMethod(), space, announceData));
+				.acceptEx(toLogger(logger, thisMethod(), space, announceData));
 	}
 
 	@Override
@@ -83,6 +83,6 @@ public class RocksDbAnnouncementStorage implements AnnouncementStorage {
 						return decode(ANNOUNCEMENT_CODEC, valueBytes);
 					}
 				})
-				.whenComplete(toLogger(logger, thisMethod(), space));
+				.acceptEx(toLogger(logger, thisMethod(), space));
 	}
 }

@@ -46,7 +46,7 @@ public final class TestClientMultilineHeaders {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		String allowHeader = await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenApply(response -> response.getHeaderOrNull(ALLOW)));
+				.map(response -> response.getHeaderOrNull(ALLOW)));
 
 		assertEquals("GET,   HEAD", allowHeader);
 	}

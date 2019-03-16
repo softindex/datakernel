@@ -67,7 +67,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 				(this.temporaryStreamsCollector = AsyncCollector.create(new ArrayList<>()))
 						.run(input.getEndOfStream())
 						.get()
-						.thenApply(streamIds -> {
+						.map(streamIds -> {
 							input.list.sort(itemComparator);
 							Iterator<T> iterator = !distinct ?
 									input.list.iterator() :
@@ -160,7 +160,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 						input.list.iterator() :
 						new DistinctIterator<>(input.list, keyFunction, keyComparator);
 				writeToTemporaryStorage(iterator)
-						.whenResult($ -> suspendOrResume());
+						.accept($ -> suspendOrResume());
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}
@@ -169,9 +169,9 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		private Promise<Integer> writeToTemporaryStorage(Iterator<T> sortedList) {
 			return temporaryStreamsCollector.addPromise(
 					storage.newPartitionId()
-							.thenCompose(partitionId -> storage.write(partitionId)
-									.thenCompose(consumer -> StreamSupplier.ofIterator(sortedList).streamTo(consumer)
-											.thenApply($ -> partitionId))),
+							.then(partitionId -> storage.write(partitionId)
+									.then(consumer -> StreamSupplier.ofIterator(sortedList).streamTo(consumer)
+											.map($ -> partitionId))),
 					List::add);
 		}
 

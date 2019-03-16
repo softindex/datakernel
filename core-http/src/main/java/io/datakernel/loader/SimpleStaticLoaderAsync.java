@@ -27,7 +27,7 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 		}
 
 		return AsyncFile.readFile(executor, file)
-				.thenComposeEx((buf, e) -> {
+				.thenEx((buf, e) -> {
 					if (e instanceof NoSuchFileException) {
 						return Promise.ofException(HttpException.notFound404());
 					}

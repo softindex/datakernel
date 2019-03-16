@@ -58,8 +58,8 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		(this.chunksCollector = AsyncCollector.create(new ArrayList<>()))
 				.run(switcher.getAcknowledgement());
 		this.chunkSize = chunkSize;
-		chunksCollector.get().whenComplete(result::trySet);
-		getAcknowledgement().whenException(result::trySetException);
+		chunksCollector.get().acceptEx(result::trySet);
+		getAcknowledgement().acceptEx(Exception.class, result::trySetException);
 	}
 
 	public static <C, T> AggregationChunker<C, T> create(AggregationStructure aggregation, List<String> fields,
@@ -96,15 +96,15 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
 			actualConsumer.getAcknowledgement()
-					.thenApply($ -> count == 0 ?
+					.map($ -> count == 0 ?
 							null :
 							AggregationChunk.create(chunkId,
 									fields,
 									PrimaryKey.ofObject(first, aggregation.getKeys()),
 									PrimaryKey.ofObject(last, aggregation.getKeys()),
 									count))
-					.whenComplete(result::trySet);
-			getAcknowledgement().whenException(result::trySetException);
+					.acceptEx(result::trySet);
+			getAcknowledgement().acceptEx(Exception.class, result::trySetException);
 		}
 
 		@Override
@@ -141,8 +141,8 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 	private void startNewChunk() {
 		StreamConsumer<T> consumer = StreamConsumer.ofPromise(
 				storage.createId()
-						.thenCompose(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
-								.thenApply(streamConsumer -> {
+						.then(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
+								.map(streamConsumer -> {
 									ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
 
 									chunksCollector.addPromise(

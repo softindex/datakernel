@@ -87,12 +87,12 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 
 	private Promise<Void> splitByFilesImpl(MultipartFrame headerFrame, ChannelSupplier<MultipartFrame> frames, Function<String, ChannelConsumer<ByteBuf>> consumerFunction) {
 		return getFilenameFromHeader(headerFrame.getHeaders().get("content-disposition"))
-				.thenCompose(filename -> {
+				.then(filename -> {
 					MultipartFrame[] last = {null};
 					return frames
 							.until(f -> {
 								boolean res = !f.isData() && getFilenameFromHeader(f.getHeaders().get("content-disposition"))
-										.thenApplyEx((x, e) -> x)
+										.mapEx((x, e) -> x)
 										.materialize()
 										.getResult() != null; // ignoring any exceptions in this hack
 								if (res) {
@@ -103,7 +103,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 							.filter(MultipartFrame::isData)
 							.map(MultipartFrame::getData)
 							.streamTo(consumerFunction.apply(filename))
-							.thenCompose($ -> last[0] != null ? splitByFilesImpl(last[0], frames, consumerFunction) : Promise.complete())
+							.then($ -> last[0] != null ? splitByFilesImpl(last[0], frames, consumerFunction) : Promise.complete())
 							.toVoid();
 				});
 	}
@@ -111,7 +111,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 	public Promise<Void> splitByFiles(ChannelSupplier<ByteBuf> source, Function<String, ChannelConsumer<ByteBuf>> consumerFunction) {
 		ChannelSupplier<MultipartFrame> frames = BinaryChannelSupplier.of(source).parseStream(this);
 		return frames.get()
-				.thenCompose(frame ->
+				.then(frame ->
 						frame.isHeaders() ?
 								splitByFilesImpl(frame, frames, consumerFunction) :
 								Promise.ofException(new StacklessException(MultipartParser.class, "First frame had no headers")));

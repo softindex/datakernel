@@ -16,7 +16,10 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.*;
+import io.datakernel.async.Callback;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -126,10 +129,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 
 	private final JmxInspector statsSocket = new JmxInspector();
-//	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
-//	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
-//	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
-//	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
+	//	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
+	//	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
+	//	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
+	//	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
 
 	// region builders
 	private RpcClient(Eventloop eventloop) {
@@ -346,7 +349,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		logger.info("Connecting {}", address);
 
 		AsyncTcpSocketImpl.connect(address, 0, socketSettings)
-				.whenResult(asyncTcpSocketImpl -> {
+				.accept(asyncTcpSocketImpl -> {
 					asyncTcpSocketImpl
 							.withInspector(statsSocket);
 					AsyncTcpSocket socket = sslContext == null ?
@@ -370,7 +373,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 						eventloop.postLater(() -> startPromise.set(null));
 					}
 				})
-				.whenException(e -> {
+				.acceptEx(Exception.class, e -> {
 					//jmx
 					generalConnectsStats.failedConnects++;
 					connectsStatsPerAddress.get(address).failedConnects++;
@@ -590,25 +593,25 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return statsSocket;
 	}
 
-//	@JmxAttribute
-//	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
-//		return statsSerializer;
-//	}
-//
-//	@JmxAttribute
-//	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
-//		return statsDeserializer;
-//	}
-//
-//	@JmxAttribute
-//	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
-//		return compression ? statsCompressor : null;
-//	}
-//
-//	@JmxAttribute
-//	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
-//		return compression ? statsDecompressor : null;
-//	}
+	//	@JmxAttribute
+	//	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
+	//		return statsSerializer;
+	//	}
+	//
+	//	@JmxAttribute
+	//	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
+	//		return statsDeserializer;
+	//	}
+	//
+	//	@JmxAttribute
+	//	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
+	//		return compression ? statsCompressor : null;
+	//	}
+	//
+	//	@JmxAttribute
+	//	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
+	//		return compression ? statsDecompressor : null;
+	//	}
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {

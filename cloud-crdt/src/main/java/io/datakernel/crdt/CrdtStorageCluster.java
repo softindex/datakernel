@@ -144,7 +144,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 					I id = entry.getKey();
 					return entry.getValue()
 							.ping()
-							.thenApplyEx(($, e) -> {
+							.mapEx(($, e) -> {
 								if (e == null) {
 									markAlive(id);
 								} else {
@@ -153,20 +153,20 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 								return null;
 							});
 				}))
-				.whenComplete(toLogger(logger, "checkAllPartitions"));
+				.acceptEx(toLogger(logger, "checkAllPartitions"));
 	}
 
 	public Promise<Void> checkDeadPartitions() {
 		return Promises.all(deadClients.entrySet().stream()
 				.map(e -> e.getValue()
 						.ping()
-						.thenApplyEx(($, exc) -> {
+						.mapEx(($, exc) -> {
 							if (exc == null) {
 								markAlive(e.getKey());
 							}
 							return null;
 						})))
-				.whenComplete(toLogger(logger, "checkDeadPartitions"));
+				.acceptEx(toLogger(logger, "checkDeadPartitions"));
 	}
 
 	private void markAlive(I partitionId) {
@@ -196,9 +196,9 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(entry -> entry.getValue().upload()
-								.whenException(err -> markDead(entry.getKey(), err))
+								.acceptEx(Exception.class, err -> markDead(entry.getKey(), err))
 								.toTry()))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					boolean[] anyConnection = {false};
 					List<StreamConsumer<CrdtData<K, S>>> successes = tries.stream()
 							.map(t -> {
@@ -223,9 +223,9 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 				aliveClients.entrySet().stream()
 						.map(entry ->
 								entry.getValue().download(timestamp)
-										.whenException(err -> markDead(entry.getKey(), err))
+										.acceptEx(Exception.class, err -> markDead(entry.getKey(), err))
 										.toTry()))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					List<StreamSupplier<CrdtData<K, S>>> successes = tries.stream()
 							.filter(Try::isSuccess)
 							.map(Try::get)
@@ -254,9 +254,9 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 				aliveClients.entrySet().stream()
 						.sorted(comparingByKey)
 						.map(entry -> entry.getValue().remove()
-								.whenException(err -> markDead(entry.getKey(), err))
+								.acceptEx(Exception.class, err -> markDead(entry.getKey(), err))
 								.toTry()))
-				.thenCompose(tries -> {
+				.then(tries -> {
 					List<StreamConsumer<K>> successes = tries.stream()
 							.filter(Try::isSuccess)
 							.map(Try::get)

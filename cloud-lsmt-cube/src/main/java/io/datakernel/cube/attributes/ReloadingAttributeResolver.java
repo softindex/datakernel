@@ -67,7 +67,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		reloads++;
 		scheduledRunnable.cancel();
 		long reloadTimestamp = eventloop.currentTimeMillis();
-		reload(timestamp).whenComplete((result, e) -> {
+		reload(timestamp).acceptEx((result, e) -> {
 			if (e == null) {
 				reloadTime.recordValue((int) (eventloop.currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
@@ -96,7 +96,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		if (reloadPeriod == 0) return Promise.complete();
 		long reloadTimestamp = eventloop.currentTimeMillis();
 		return reload(timestamp)
-				.whenResult(result -> {
+				.accept(result -> {
 					reloadTime.recordValue((int) (eventloop.currentTimeMillis() - reloadTimestamp));
 					cache.putAll(result);
 					timestamp = reloadTimestamp;

@@ -69,8 +69,8 @@ public final class HttpStreamTest {
 				.getBodyStream()
 				.async()
 				.toCollector(ByteBufQueue.collector())
-				.whenComplete(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))))
-				.thenCompose(s -> Promise.of(HttpResponse.ok200())));
+				.acceptEx(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))))
+				.then(s -> Promise.of(HttpResponse.ok200())));
 
 		Integer code = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
@@ -78,7 +78,7 @@ public final class HttpStreamTest {
 								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.async()
-				.thenApply(HttpResponse::getCode));
+				.map(HttpResponse::getCode));
 
 		assertEquals((Integer) 200, code);
 	}
@@ -94,8 +94,8 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT))
 				.async()
-				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
-				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
+				.acceptEx(assertComplete(response -> assertEquals(200, response.getCode())))
+				.then(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
 
 		assertEquals(requestBody, body.asString(UTF_8));
 	}
@@ -106,16 +106,16 @@ public final class HttpStreamTest {
 				.getBodyStream()
 				.async()
 				.toList()
-				.thenApply(ChannelSupplier::ofIterable)
-				.thenCompose(bodyStream -> Promise.of(HttpResponse.ok200().withBodyStream(bodyStream.async()))));
+				.map(ChannelSupplier::ofIterable)
+				.then(bodyStream -> Promise.of(HttpResponse.ok200().withBodyStream(bodyStream.async()))));
 
 		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
 								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
-				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
-				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
+				.acceptEx(assertComplete(response -> assertEquals(200, response.getCode())))
+				.then(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
 
 		assertEquals(requestBody, body.asString(UTF_8));
 	}
@@ -131,14 +131,14 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(supplier))
-				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
+				.then(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
 
 		assertEquals(exceptionMessage, body.asString(UTF_8));
 	}
 
 	@Test
 	public void testChunkedEncodingMessage() throws IOException {
-		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -155,9 +155,9 @@ public final class HttpStreamTest {
 						"Test";
 
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
-				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.thenCompose($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
+						.then($ -> socket.read())
+						.acceptEx(($, e) -> socket.close())));
 
 		assertEquals(responseMessage, body.asString(UTF_8));
 
@@ -166,7 +166,7 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testMalformedChunkedEncodingMessage() throws IOException {
-		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -177,9 +177,9 @@ public final class HttpStreamTest {
 						"ffffffffff";
 
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
-				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.thenCompose($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
+						.then($ -> socket.read())
+						.acceptEx(($, e) -> socket.close())));
 
 		assertNull(body);
 
@@ -193,7 +193,7 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testTruncatedRequest() throws IOException {
-		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -205,10 +205,10 @@ public final class HttpStreamTest {
 						"3";
 
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
-				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.thenCompose($ -> socket.write(null))
-						.thenCompose($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
+						.then($ -> socket.write(null))
+						.then($ -> socket.read())
+						.acceptEx(($, e) -> socket.close())));
 
 		assertNull(body);
 
@@ -223,7 +223,7 @@ public final class HttpStreamTest {
 	public void testSendingErrors() throws IOException {
 		Exception exception = new Exception("Test Exception");
 
-		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
 
 		Throwable e = awaitException(
 				AsyncHttpClient.create(Eventloop.getCurrentEventloop())
@@ -231,7 +231,7 @@ public final class HttpStreamTest {
 								.withBodyStream(ChannelSuppliers.concat(
 										ChannelSupplier.ofIterable(expectedList),
 										ChannelSupplier.ofException(exception))))
-						.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
+						.then(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
 
 		assertSame(e, exception);
 	}

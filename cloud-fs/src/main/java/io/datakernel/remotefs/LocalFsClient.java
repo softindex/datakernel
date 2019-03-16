@@ -229,13 +229,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 								.transformWith(ChannelByteRanger.drop(skip));
 					}
 				})
-				.thenApply(consumer -> consumer
+				.map(consumer -> consumer
 						// call withAcknowledgement in eventloop thread
 						.withAcknowledgement(ack -> ack
-								.whenComplete(writeFinishPromise.recordStats())
-								.whenComplete(toLogger(logger, TRACE, "writing to file", name, offset, revision, this))))
-				.whenComplete(writeBeginPromise.recordStats())
-				.whenComplete(toLogger(logger, TRACE, "upload", name, offset, revision, this));
+								.acceptEx(writeFinishPromise.recordStats())
+								.acceptEx(toLogger(logger, TRACE, "writing to file", name, offset, revision, this))))
+				.acceptEx(writeBeginPromise.recordStats())
+				.acceptEx(toLogger(logger, TRACE, "upload", name, offset, revision, this));
 	}
 
 	@Override
@@ -258,25 +258,25 @@ public final class LocalFsClient implements FsClient, EventloopService {
 								.withLength(length == -1 ? Long.MAX_VALUE : length);
 					}
 				})
-				.thenApply(consumer -> consumer
+				.map(consumer -> consumer
 						// call withAcknowledgement in eventloop thread
-						.withEndOfStream(eos -> eos.whenComplete(readFinishPromise.recordStats())))
-				.whenComplete(toLogger(logger, TRACE, "download", name, offset, length, this))
-				.whenComplete(readBeginPromise.recordStats());
+						.withEndOfStream(eos -> eos.acceptEx(readFinishPromise.recordStats())))
+				.acceptEx(toLogger(logger, TRACE, "download", name, offset, length, this))
+				.acceptEx(readBeginPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return ofBlockingCallable(executor, () -> doList(glob, true))
-				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this))
-				.whenComplete(listPromise.recordStats());
+				.acceptEx(toLogger(logger, TRACE, "listEntities", glob, this))
+				.acceptEx(listPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return ofBlockingCallable(executor, () -> doList(glob, false))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
-				.whenComplete(listPromise.recordStats());
+				.acceptEx(toLogger(logger, TRACE, "list", glob, this))
+				.acceptEx(listPromise.recordStats());
 	}
 
 	@Override
@@ -288,8 +288,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
-				.whenComplete(singleMovePromise.recordStats());
+				.acceptEx(toLogger(logger, TRACE, "move", name, target, this))
+				.acceptEx(singleMovePromise.recordStats());
 	}
 
 	@Override
@@ -315,8 +315,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
-				.whenComplete(singleMovePromise.recordStats());
+				.acceptEx(toLogger(logger, TRACE, "move", name, target, this))
+				.acceptEx(singleMovePromise.recordStats());
 	}
 
 	@Override
@@ -328,8 +328,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "copy", name, target, this))
-				.whenComplete(singleCopyPromise.recordStats());
+				.acceptEx(toLogger(logger, TRACE, "copy", name, target, this))
+				.acceptEx(singleCopyPromise.recordStats());
 	}
 
 	@Override
@@ -341,8 +341,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "delete", name, this))
-				.whenComplete(singleDeletePromise.recordStats());
+				.acceptEx(toLogger(logger, TRACE, "delete", name, this))
+				.acceptEx(singleDeletePromise.recordStats());
 	}
 
 	@Override

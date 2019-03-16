@@ -11,7 +11,8 @@ import java.util.function.Supplier;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class AsyncAwait {
-	private AsyncAwait() {}
+	private AsyncAwait() {
+	}
 
 	private static final ThreadLocal<Eventloop> EVENTLOOP = new ThreadLocal<>();
 
@@ -36,8 +37,8 @@ public final class AsyncAwait {
 		CompletableFuture<R> future = new CompletableFuture<>();
 		eventloop.execute(
 				() -> supplier.get()
-						.whenResult(future::complete)
-						.whenException(future::completeExceptionally)
+						.accept(future::complete)
+						.acceptEx(Exception.class, future::completeExceptionally)
 		);
 		try {
 			return future.get();
@@ -52,38 +53,59 @@ public final class AsyncAwait {
 
 	@NotNull
 	public static <R> Promise<R> async(@NotNull BlockingMethod0 fn) {
-		return asyncImpl(() -> { fn.call(); return null; });
+		return asyncImpl(() -> {
+			fn.call();
+			return null;
+		});
 	}
 
 	@NotNull
 	public static <R, T1> Promise<R> async(@NotNull BlockingMethod1<T1> fn, T1 arg1) {
-		return asyncImpl(() -> { fn.call(arg1); return null; });
+		return asyncImpl(() -> {
+			fn.call(arg1);
+			return null;
+		});
 	}
 
 	@NotNull
 	public static <R, T1, T2> Promise<R> async(@NotNull BlockingMethod2<T1, T2> fn, T1 arg1, T2 arg2) {
-		return asyncImpl(() -> { fn.call(arg1, arg2); return null; });
+		return asyncImpl(() -> {
+			fn.call(arg1, arg2);
+			return null;
+		});
 	}
 
 	@NotNull
 	public static <R, T1, T2, T3> Promise<R> async(@NotNull BlockingMethod3<T1, T2, T3> fn, T1 arg1, T2 arg2, T3 arg3) {
-		return asyncImpl(() -> { fn.call(arg1, arg2, arg3); return null; });
+		return asyncImpl(() -> {
+			fn.call(arg1, arg2, arg3);
+			return null;
+		});
 	}
 
 	@NotNull
 	public static <R, T1, T2, T3, T4> Promise<R> async(@NotNull BlockingMethod4<T1, T2, T3, T4> fn, T1 arg1, T2 arg2, T3 arg3, T4 arg4) {
-		return asyncImpl(() -> { fn.call(arg1, arg2, arg3, arg4); return null; });
+		return asyncImpl(() -> {
+			fn.call(arg1, arg2, arg3, arg4);
+			return null;
+		});
 	}
 
 	@NotNull
 	public static <R, T1, T2, T3, T4, T5> Promise<R> async(@NotNull BlockingMethod5<T1, T2, T3, T4, T5> fn, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5) {
-		return asyncImpl(() -> { fn.call(arg1, arg2, arg3, arg4, arg5); return null; });
+		return asyncImpl(() -> {
+			fn.call(arg1, arg2, arg3, arg4, arg5);
+			return null;
+		});
 	}
 
 	@NotNull
 	public static <R, T1, T2, T3, T4, T5, T6> Promise<R> async(@NotNull BlockingMethod6<T1, T2, T3, T4, T5, T6> fn,
 			T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) {
-		return asyncImpl(() -> { fn.call(arg1, arg2, arg3, arg4, arg5, arg6); return null; });
+		return asyncImpl(() -> {
+			fn.call(arg1, arg2, arg3, arg4, arg5, arg6);
+			return null;
+		});
 	}
 
 	@NotNull

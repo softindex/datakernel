@@ -93,13 +93,13 @@ public final class StaticServlet implements AsyncServlet {
 		String finalPath = path;
 
 		return resourceLoader.getResource(path)
-				.thenComposeEx((byteBuf, e) -> {
+				.thenEx((byteBuf, e) -> {
 					if (byteBuf != null) {
 						return Promise.of(createHttpResponse(byteBuf, finalPath));
 					}
 					if (defaultResource != null) {
 						return resourceLoader.getResource(defaultResource)
-								.thenApply(byteBuf2 -> HttpResponse.ofCode(200)
+								.map(byteBuf2 -> HttpResponse.ofCode(200)
 										.withBody(byteBuf2)
 										.withHeader(CONTENT_TYPE, ofContentType(getContentType(defaultResource))));
 					}

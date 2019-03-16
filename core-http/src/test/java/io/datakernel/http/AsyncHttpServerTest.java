@@ -357,7 +357,7 @@ public final class AsyncHttpServerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)))
+				request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)))
 				.withListenPort(port);
 
 		server.listen();

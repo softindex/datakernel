@@ -33,6 +33,6 @@ public interface AsyncServlet {
 	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
 
 	default AsyncServlet map(UnaryOperator<HttpResponse> fn) {
-		return request -> serve(request).thenApply(fn);
+		return request -> serve(request).map(fn);
 	}
 }

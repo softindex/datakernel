@@ -4,8 +4,8 @@ import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.AsyncSuppliers.coalesce;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.TestUtils.await;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
@@ -49,7 +49,7 @@ public class AsyncSuppliersTest {
 
 		Promise<Void>[] nextPromise = new Promise[1];
 		Promise<Void> promise1 = subscribe.get()
-				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+				.acceptEx(($, e) -> nextPromise[0] = subscribe.get());
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get();
@@ -74,9 +74,9 @@ public class AsyncSuppliersTest {
 
 		Promise<Void>[] nextPromise = new Promise[3];
 		Promise<Void> promise1 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise[2] = subscribe.get())));
+				.acceptEx(($1, e1) -> nextPromise[0] = subscribe.get()
+						.acceptEx(($2, e2) -> nextPromise[1] = subscribe.get()
+								.acceptEx(($3, e3) -> nextPromise[2] = subscribe.get())));
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get();
@@ -108,7 +108,7 @@ public class AsyncSuppliersTest {
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get()
-				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+				.acceptEx(($, e) -> nextPromise[0] = subscribe.get());
 		Promise<Void> promise4 = subscribe.get();
 
 		await(promise1);
@@ -133,9 +133,9 @@ public class AsyncSuppliersTest {
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise[2] = subscribe.get())));
+				.acceptEx(($1, e1) -> nextPromise[0] = subscribe.get()
+						.acceptEx(($2, e2) -> nextPromise[1] = subscribe.get()
+								.acceptEx(($3, e3) -> nextPromise[2] = subscribe.get())));
 		Promise<Void> promise4 = subscribe.get();
 
 		await(promise1);
@@ -165,14 +165,13 @@ public class AsyncSuppliersTest {
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise1[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise1[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise1[2] = subscribe.get())));
+				.acceptEx(($1, e1) -> nextPromise1[0] = subscribe.get()
+						.acceptEx(($2, e2) -> nextPromise1[1] = subscribe.get()
+								.acceptEx(($3, e3) -> nextPromise1[2] = subscribe.get())));
 		Promise<Void> promise4 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise2[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise2[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise2[2] = subscribe.get())));
-		;
+				.acceptEx(($1, e1) -> nextPromise2[0] = subscribe.get()
+						.acceptEx(($2, e2) -> nextPromise2[1] = subscribe.get()
+								.acceptEx(($3, e3) -> nextPromise2[2] = subscribe.get())));
 
 		await(promise1);
 
@@ -207,7 +206,7 @@ public class AsyncSuppliersTest {
 		Promise<Void>[] nextPromise = new Promise[1];
 		Promise<Void> promise1 = subscribe.get();
 		Promise<Void> promise2 = subscribe.get()
-				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+				.acceptEx(($, e) -> nextPromise[0] = subscribe.get());
 		Promise<Void> promise3 = subscribe.get();
 
 		await(promise1);

@@ -100,8 +100,8 @@ public class HttpClientExample extends Launcher {
 			HttpRequest request = HttpRequest.post(addr).withBody(encodeAscii(msg));
 
 			httpClient.request(request)
-					.thenCompose(response -> response.getBody()
-							.whenComplete((body, e) -> {
+					.then(response -> response.getBody()
+							.acceptEx((body, e) -> {
 								try {
 									if (e == null) {
 										System.out.println("Server response: " + body.getString(UTF_8));

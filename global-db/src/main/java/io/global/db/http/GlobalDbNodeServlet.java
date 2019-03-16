@@ -55,18 +55,18 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 	}
 
 	private GlobalDbNodeServlet(GlobalDbNode node) {
-		this.servlet = MiddlewareServlet.create()
+		servlet = MiddlewareServlet.create()
 				.with(POST, "/" + UPLOAD + "/:space/:repo", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						TableID tableID = TableID.of(space, request.getPathParameter("repo"));
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
 						return node.upload(tableID)
-								.thenApply(consumer ->
+								.map(consumer ->
 										BinaryChannelSupplier.of(bodyStream)
 												.parseStream(DB_ITEM_PARSER)
 												.streamTo(consumer))
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -82,19 +82,19 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 							throw new ParseException(e);
 						}
 						return node.download(tableID, offset)
-								.thenApply(supplier ->
+								.map(supplier ->
 										HttpResponse.ok200()
 												.withBodyStream(supplier.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + GET_ITEM + "/:owner/:repo", request -> request.getBody().thenCompose(body -> {
+				.with(GET, "/" + GET_ITEM + "/:owner/:repo", request -> request.getBody().then(body -> {
 					try {
 						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 						TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
 						return node.get(tableID, body.asArray())
-								.thenApply(item ->
+								.map(item ->
 										HttpResponse.ok200().withBody(encode(DB_ITEM_CODEC, item)));
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
@@ -102,12 +102,12 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 						body.recycle();
 					}
 				}))
-				.with(PUT, "/" + PUT_ITEM + "/:owner/:repo", request -> request.getBody().thenCompose(body -> {
+				.with(PUT, "/" + PUT_ITEM + "/:owner/:repo", request -> request.getBody().then(body -> {
 					try {
 						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 						TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
 						return node.put(tableID, decode(DB_ITEM_CODEC, body.slice()))
-								.thenApply($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					} finally {
@@ -118,7 +118,7 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 					try {
 						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 						return node.list(owner)
-								.thenApply(list ->
+								.map(list ->
 										HttpResponse.ok200()
 												.withBody(encode(LIST_STRING_CODEC, list)));
 					} catch (ParseException e) {

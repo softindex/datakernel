@@ -67,7 +67,7 @@ public final class TestHttpsClient {
 						AcceptMediaType.of(XML_APP, 90),
 						AcceptMediaType.of(WEBP),
 						AcceptMediaType.of(ANY, 80))))
-				.thenApply(HttpResponse::getCode));
+				.map(HttpResponse::getCode));
 
 		assertEquals((Integer) 200, code);
 	}

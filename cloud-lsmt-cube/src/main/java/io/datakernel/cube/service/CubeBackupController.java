@@ -71,36 +71,36 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 
 	public Promise<Void> backupHead() {
 		return repository.getHeads()
-				.thenCompose(heads -> {
+				.then(heads -> {
 					if (heads.isEmpty()) {
 						return Promise.ofException(new IllegalArgumentException("heads is empty"));
 					}
 					return backup(first(heads));
 				})
-				.whenComplete(promiseBackup.recordStats())
-				.whenComplete(toLogger(logger, thisMethod()));
+				.acceptEx(promiseBackup.recordStats())
+				.acceptEx(toLogger(logger, thisMethod()));
 	}
 
 	public Promise<Void> backup(K commitId) {
 		return Promises.toTuple(repository.loadCommit(commitId), algorithms.checkout(commitId))
-				.thenCompose(tuple -> Promises.sequence(
+				.then(tuple -> Promises.sequence(
 						() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2())),
 						() -> backupDb(tuple.getValue1(), tuple.getValue2())))
-				.whenComplete(toLogger(logger, thisMethod(), commitId));
+				.acceptEx(toLogger(logger, thisMethod(), commitId));
 	}
 
 	private Promise<Void> backupChunks(K commitId, Set<C> chunkIds) {
 		return storage.backup(String.valueOf(commitId), chunkIds)
-				.whenComplete(promiseBackupChunks.recordStats())
-				.whenComplete(logger.isTraceEnabled() ?
+				.acceptEx(promiseBackupChunks.recordStats())
+				.acceptEx(logger.isTraceEnabled() ?
 						toLogger(logger, TRACE, thisMethod(), chunkIds) :
 						toLogger(logger, thisMethod(), toLimitedString(chunkIds, 6)));
 	}
 
 	private Promise<Void> backupDb(OTCommit<K, D> commit, List<D> snapshot) {
 		return repository.backup(commit, snapshot)
-				.whenComplete(promiseBackupDb.recordStats())
-				.whenComplete(toLogger(logger, thisMethod(), commit, snapshot));
+				.acceptEx(promiseBackupDb.recordStats())
+				.acceptEx(toLogger(logger, thisMethod(), commit, snapshot));
 	}
 
 	@NotNull

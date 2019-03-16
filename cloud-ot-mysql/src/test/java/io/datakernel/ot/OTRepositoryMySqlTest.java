@@ -169,12 +169,12 @@ public class OTRepositoryMySqlTest {
 //
 //		final CompletableFuture<Long> beforeVirtualЩFutureNode4 = OTAlgorithms
 //				.loadAllChanges(repository, keyComparator, otSystem, 6)
-//				.thenApply(OTRemoteSqlTest::apply)
+//				.map(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
 //		final CompletableFuture<Long> beforeVirtualFutureNode5 = OTAlgorithms
 //				.loadAllChanges(repository, keyComparator, otSystem, 8)
-//				.thenApply(OTRemoteSqlTest::apply)
+//				.map(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
 //		eventloop.run();
@@ -192,12 +192,12 @@ public class OTRepositoryMySqlTest {
 //
 //		final CompletableFuture<Long> afterVirtualFutureNode4 = OTAlgorithms
 //				.loadAllChanges(repository, keyComparator, otSystem, 6)
-//				.thenApply(OTRemoteSqlTest::apply)
+//				.map(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
 //		final CompletableFuture<Long> afterVirtualFutureNode5 = OTAlgorithms
 //				.loadAllChanges(repository, keyComparator, otSystem, 8)
-//				.thenApply(OTRemoteSqlTest::apply)
+//				.map(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
 //		eventloop.run();

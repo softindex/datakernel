@@ -78,8 +78,8 @@ public final class SimpleProxyServerTest {
 				request -> {
 					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
 					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
-							.thenCompose(result -> result.getBody()
-									.thenApply(body ->
+							.then(result -> result.getBody()
+									.map(body ->
 											HttpResponse.ofCode(result.getCode())
 													.withBody(encodeAscii("FORWARDED: " + body.asString(UTF_8)))));
 				})

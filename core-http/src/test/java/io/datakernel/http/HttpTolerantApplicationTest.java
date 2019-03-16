@@ -101,8 +101,8 @@ public final class HttpTolerantApplicationTest {
 
 		String header = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + port))
-				.thenApply(response -> response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
-				.whenComplete(asserting(($, e) -> {
+				.map(response -> response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
+				.acceptEx(asserting(($, e) -> {
 					listener.close();
 				})));
 

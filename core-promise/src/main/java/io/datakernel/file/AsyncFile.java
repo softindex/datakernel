@@ -85,12 +85,12 @@ public final class AsyncFile {
 	 */
 	public static Promise<AsyncFile> openAsync(Executor executor, Path path, Set<OpenOption> openOptions) {
 		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
-				.thenApply(channel -> new AsyncFile(executor, channel, path, null));
+				.map(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
 	public static Promise<AsyncFile> openAsync(Executor executor, Path path, Set<OpenOption> openOptions, Object mutexLock) {
 		return Promise.ofBlockingCallable(executor, () -> doOpenChannel(path, openOptions))
-				.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
+				.map(channel -> new AsyncFile(executor, channel, path, mutexLock));
 	}
 
 	private static FileChannel doOpenChannel(Path path, Set<OpenOption> openOptions) throws IOException {
@@ -200,10 +200,10 @@ public final class AsyncFile {
 	 */
 	public static Promise<ByteBuf> readFile(Executor executor, Path path) {
 		return openAsync(executor, path, set(READ))
-				.thenCompose(file -> file.read()
-						.thenCompose(buf -> file.close()
-								.whenException($ -> buf.recycle())
-								.thenApply($ -> buf)));
+				.then(file -> file.read()
+						.then(buf -> file.close()
+								.acceptEx(Exception.class, $ -> buf.recycle())
+								.map($ -> buf)));
 	}
 
 	/**
@@ -216,9 +216,9 @@ public final class AsyncFile {
 	 */
 	public static Promise<Void> writeNewFile(Executor executor, Path path, ByteBuf buf) {
 		return openAsync(executor, path, set(WRITE, CREATE_NEW))
-				.thenCompose(file -> file.write(buf)
-						.thenCompose($ -> file.close()))
-				.whenException($ -> buf.recycle());
+				.then(file -> file.write(buf)
+						.then($ -> file.close()))
+				.acceptEx(Exception.class, $ -> buf.recycle());
 	}
 
 	public Executor getExecutor() {
@@ -327,8 +327,8 @@ public final class AsyncFile {
 
 		ByteBuf buf = ByteBufPool.allocate((int) (size - position));
 		return read(buf, position)
-				.whenException($ -> buf.recycle())
-				.thenApply($ -> buf);
+				.acceptEx(Exception.class, $ -> buf.recycle())
+				.map($ -> buf);
 	}
 
 	/**
@@ -431,7 +431,7 @@ public final class AsyncFile {
 	}
 
 	private <T> Promise<T> sanitize(Promise<T> promise) {
-		return promise.thenComposeEx((result, e) -> {
+		return promise.thenEx((result, e) -> {
 			if (!isOpen()) {
 				tryRecycle(result);
 				return Promise.ofException(FILE_CLOSED);

@@ -56,7 +56,7 @@ public class OTStateManagerTest {
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
-				return super.fetch(currentCommitId).thenCompose(fetchData -> {
+				return super.fetch(currentCommitId).then(fetchData -> {
 					getCurrentEventloop();
 					return Promises.delay(Promise.of(fetchData), (long) 100);
 				});

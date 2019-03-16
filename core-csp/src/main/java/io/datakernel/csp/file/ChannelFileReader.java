@@ -96,7 +96,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 		int bufSize = (int) Math.min(bufferSize, limit);
 		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
 		return asyncFile.read(buf, position) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
-				.thenComposeEx(($, e) -> {
+				.thenEx(($, e) -> {
 					if (e != null) {
 						buf.recycle();
 						close(e);
@@ -123,7 +123,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	private void closeFile() {
 		asyncFile.close()
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						logger.trace(this + ": closed file");
 					} else {

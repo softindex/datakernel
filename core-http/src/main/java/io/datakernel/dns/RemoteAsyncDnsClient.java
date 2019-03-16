@@ -167,7 +167,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 		socket.send(UdpPacket.of(payload, dnsServerAddress));
 		socket.receive();
 		return timeout(promise, timeout)
-				.thenComposeEx((queryResult, e) -> {
+				.thenEx((queryResult, e) -> {
 					if (e == null) {
 						if (inspector != null) {
 							inspector.onDnsQueryResult(query, queryResult);

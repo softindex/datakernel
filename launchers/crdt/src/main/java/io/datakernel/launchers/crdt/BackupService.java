@@ -57,7 +57,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 
 	public Promise<Void> restore() {
 		return localFiles.download()
-				.thenCompose(supplierWithResult ->
+				.then(supplierWithResult ->
 						supplierWithResult.streamTo(StreamConsumer.ofPromise(inMemory.upload())));
 	}
 
@@ -69,11 +69,11 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		long lastTimestamp = this.lastTimestamp;
 		this.lastTimestamp = eventloop.currentTimeMillis();
 		return backupPromise = inMemory.download(lastTimestamp)
-				.thenCompose(supplierWithResult -> supplierWithResult
+				.then(supplierWithResult -> supplierWithResult
 						.streamTo(StreamConsumer.ofPromise(localFiles.upload()))
-						.thenCompose($ -> StreamSupplier.ofIterable(removedKeys)
+						.then($ -> StreamSupplier.ofIterable(removedKeys)
 								.streamTo(StreamConsumer.ofPromise(localFiles.remove())))
-						.whenComplete(($, e) -> {
+						.acceptEx(($, e) -> {
 							inMemory.clearRemovedKeys();
 							backupPromise = null;
 						}));
@@ -86,7 +86,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	@NotNull
 	@Override
 	public MaterializedPromise<Void> start() {
-		return restore().thenCompose($ -> localFiles.consolidate()).materialize();
+		return restore().then($ -> localFiles.consolidate()).materialize();
 	}
 
 	@NotNull

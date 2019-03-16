@@ -66,7 +66,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 						throw new RuntimeException(e);
 					}
 				})
-				.whenResult(strings -> names = strings)
+				.accept(strings -> names = strings)
 				.toVoid()
 				.materialize();
 	}

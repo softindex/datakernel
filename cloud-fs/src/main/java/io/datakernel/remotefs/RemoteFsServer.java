@@ -92,7 +92,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
 				MessagingWithBinaryStreaming.create(socket, SERIALIZER);
 		messaging.receive()
-				.thenCompose(msg -> {
+				.then(msg -> {
 					if (msg == null) {
 						logger.warn("unexpected end of stream: {}", this);
 						messaging.close();
@@ -105,15 +105,15 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					}
 					return handler.onMessage(messaging, msg);
 				})
-				.whenComplete(handleRequestPromise.recordStats())
-				.thenComposeEx(($, e) -> {
+				.acceptEx(handleRequestPromise.recordStats())
+				.thenEx(($, e) -> {
 					if (e == null) {
 						return Promise.complete();
 					}
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					return messaging.send(new ServerError(getErrorCode(e)))
-							.thenCompose($2 -> messaging.sendEndOfStream())
-							.whenResult($2 -> messaging.close());
+							.then($2 -> messaging.sendEndOfStream())
+							.accept($2 -> messaging.close());
 				});
 	}
 
@@ -121,26 +121,26 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		onMessage(Upload.class, (messaging, msg) -> {
 			String name = msg.getName();
 			return client.upload(name, msg.getOffset(), msg.getRevision())
-					.thenCompose(uploader -> {
+					.then(uploader -> {
 						if (uploader instanceof RecyclingChannelConsumer) {
 							return messaging.send(new UploadAck(false));
 						}
 						return messaging.send(new UploadAck(true))
-								.thenCompose($ -> messaging.receiveBinaryStream()
+								.then($ -> messaging.receiveBinaryStream()
 										.streamTo(uploader));
 					})
-					.thenCompose($ -> messaging.send(new UploadFinished()))
-					.thenCompose($ -> messaging.sendEndOfStream())
-					.whenResult($ -> messaging.close())
-					.whenComplete(uploadPromise.recordStats())
-					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
+					.then($ -> messaging.send(new UploadFinished()))
+					.then($ -> messaging.sendEndOfStream())
+					.accept($ -> messaging.close())
+					.acceptEx(uploadPromise.recordStats())
+					.acceptEx(toLogger(logger, TRACE, "receiving data", msg, this))
 					.toVoid();
 		});
 
 		onMessage(Download.class, (messaging, msg) -> {
 			String name = msg.getName();
 			return client.getMetadata(name)
-					.thenCompose(meta -> {
+					.then(meta -> {
 						if (meta == null) {
 							return Promise.ofException(FILE_NOT_FOUND);
 						}
@@ -153,12 +153,12 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						long fixedLength = length == -1 ? size - offset : length;
 
 						return messaging.send(new DownloadSize(fixedLength))
-								.thenCompose($ ->
+								.then($ ->
 										ChannelSupplier.ofPromise(client.download(name, offset, fixedLength))
 												.streamTo(messaging.sendBinaryStream()))
-								.whenComplete(toLogger(logger, "sending data", meta, offset, fixedLength, this));
+								.acceptEx(toLogger(logger, "sending data", meta, offset, fixedLength, this));
 					})
-					.whenComplete(downloadPromise.recordStats());
+					.acceptEx(downloadPromise.recordStats());
 		});
 		onMessage(Move.class, simpleHandler(msg -> client.move(msg.getName(), msg.getTarget(), msg.getTargetRevision(), msg.getRemoveRevision()), $ -> new MoveFinished(), movePromise));
 		onMessage(Copy.class, simpleHandler(msg -> client.copy(msg.getName(), msg.getTarget(), msg.getRevision()), $ -> new CopyFinished(), copyPromise));
@@ -172,9 +172,9 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	private <T extends FsCommand, R> MessagingHandler<T> simpleHandler(Function<T, Promise<R>> action, Function<R, FsResponse> response, PromiseStats stats) {
 		return (messaging, msg) -> action.apply(msg)
-				.thenCompose(res -> messaging.send(response.apply(res)))
-				.thenCompose($ -> messaging.sendEndOfStream())
-				.whenComplete(stats.recordStats());
+				.then(res -> messaging.send(response.apply(res)))
+				.then($ -> messaging.sendEndOfStream())
+				.acceptEx(stats.recordStats());
 	}
 
 	@FunctionalInterface

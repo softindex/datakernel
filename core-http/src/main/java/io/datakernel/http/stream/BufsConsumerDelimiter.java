@@ -38,7 +38,9 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 	private int remaining;
 
 	// region creators
-	private BufsConsumerDelimiter(int remaining) {this.remaining = remaining;}
+	private BufsConsumerDelimiter(int remaining) {
+		this.remaining = remaining;
+	}
 
 	public static BufsConsumerDelimiter create(int remaining) {
 		checkState(remaining >= 0, "Cannot create delimiter with number of remaining bytes that is less than 0");
@@ -77,21 +79,21 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 	protected void doProcess() {
 		if (remaining == 0) {
 			input.endOfStream()
-					.thenCompose($ -> output.accept(null))
-					.whenResult($ -> completeProcess());
+					.then($ -> output.accept(null))
+					.accept($ -> completeProcess());
 			return;
 		}
 		ByteBufQueue outputBufs = new ByteBufQueue();
 		remaining -= bufs.drainTo(outputBufs, remaining);
 		output.acceptAll(outputBufs.asIterator())
-				.whenResult($ -> {
+				.accept($ -> {
 					if (remaining != 0) {
 						input.needMoreData()
-								.whenResult($1 -> doProcess());
+								.accept($1 -> doProcess());
 					} else {
 						input.endOfStream()
-								.thenCompose($1 -> output.accept(null))
-								.whenResult($1 -> completeProcess());
+								.then($1 -> output.accept(null))
+								.accept($1 -> completeProcess());
 					}
 				});
 	}

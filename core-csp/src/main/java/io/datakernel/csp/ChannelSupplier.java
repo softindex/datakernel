@@ -193,7 +193,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<T> doGet() {
 				if (supplier != null) return supplier.get();
-				return materializedPromise.thenComposeEx((supplier, e) -> {
+				return materializedPromise.thenEx((supplier, e) -> {
 					if (e == null) {
 						this.supplier = supplier;
 						return supplier.get();
@@ -206,7 +206,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				materializedPromise.whenResult(supplier -> supplier.close(e));
+				materializedPromise.accept(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -286,7 +286,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<T> doGet() {
 				return ChannelSupplier.this.get()
-						.whenResult(value -> { if (value != null) fn.accept(value);});
+						.accept(value -> { if (value != null) fn.accept(value);});
 			}
 		};
 	}
@@ -301,7 +301,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<V> doGet() {
 				return ChannelSupplier.this.get()
-						.thenApply(value -> {
+						.map(value -> {
 							if (value != null) {
 								try {
 									return fn.apply(value);
@@ -327,7 +327,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<V> doGet() {
 				return ChannelSupplier.this.get()
-						.thenCompose(value -> value != null ?
+						.then(value -> value != null ?
 								fn.apply(value) :
 								Promise.of(null));
 			}
@@ -351,7 +351,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 						tryRecycle(value);
 						continue;
 					}
-					return promise.thenCompose(value -> {
+					return promise.then(value -> {
 						if (value == null || predicate.test(value)) {
 							return Promise.of(value);
 						} else {
@@ -380,7 +380,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 					return Promise.of(null);
 				}
 				return ChannelSupplier.this.get()
-						.thenApply(value -> {
+						.map(value -> {
 							if (value == null) {
 								return null;
 							}
@@ -403,7 +403,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 		return new AbstractChannelSupplier<T>(this) {
 			@Override
 			protected Promise<T> doGet() {
-				return ChannelSupplier.this.get().thenComposeEx((value, e) -> Promise.of(value));
+				return ChannelSupplier.this.get().thenEx((value, e) -> Promise.of(value));
 			}
 		};
 	}
@@ -449,7 +449,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<T> doGet() {
 				return ChannelSupplier.this.get()
-						.thenComposeEx((item, e) -> {
+						.thenEx((item, e) -> {
 							if (e == null) {
 								if (item != null) return Promise.of(item);
 								endOfStream.trySet(null);
@@ -470,7 +470,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 
 	static MaterializedPromise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
 		return Promise.ofCallback(cb ->
-				fn.accept(endOfStream -> endOfStream.whenComplete(cb::set)));
+				fn.accept(endOfStream -> endOfStream.acceptEx(cb::set)));
 	}
 
 }

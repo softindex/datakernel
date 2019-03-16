@@ -339,7 +339,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert host != null;
 
 		return asyncDnsClient.resolve4(host)
-				.thenComposeEx((dnsResponse, e) -> {
+				.thenEx((dnsResponse, e) -> {
 					if (e == null) {
 						if (inspector != null) inspector.onResolve(request, dnsResponse);
 						if (dnsResponse.isSuccessful()) {
@@ -366,7 +366,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 
 		return AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
-				.thenComposeEx((asyncTcpSocketImpl, e) -> {
+				.thenEx((asyncTcpSocketImpl, e) -> {
 					if (e == null) {
 						boolean https = request.isHttps();
 						asyncTcpSocketImpl

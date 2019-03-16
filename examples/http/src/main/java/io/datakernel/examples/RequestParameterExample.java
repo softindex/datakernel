@@ -35,7 +35,7 @@ public class RequestParameterExample {
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				MiddlewareServlet.create()
-						.with(HttpMethod.POST, "/hello", request -> request.getPostParameters().thenApply(postParameters ->
+						.with(HttpMethod.POST, "/hello", request -> request.getPostParameters().map(postParameters ->
 								HttpResponse.ok200()
 										.withBody(wrapUtf8("<center><h2>Hello, " + postParameters.get("name") + "!</h2></center>"))))
 						.withFallback(StaticServlet.create(eventloop, StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR))))

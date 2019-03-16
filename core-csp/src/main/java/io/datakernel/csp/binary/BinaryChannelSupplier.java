@@ -60,7 +60,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			@Override
 			public Promise<Void> needMoreData() {
 				return input.get()
-						.thenCompose(buf -> {
+						.then(buf -> {
 							if (buf != null) {
 								bufs.add(buf);
 								return Promise.complete();
@@ -78,7 +78,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 					return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 				}
 				return input.get()
-						.thenCompose(buf -> {
+						.then(buf -> {
 							if (buf == null) {
 								return Promise.complete();
 							} else {
@@ -134,7 +134,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 
 	private <T> void doParse(ByteBufsParser<T> parser, SettableCallback<T> cb) {
 		needMoreData()
-				.whenComplete(($, e) -> {
+				.acceptEx(($, e) -> {
 					if (e == null) {
 						T result;
 						try {
@@ -157,19 +157,19 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 
 	public final <T> Promise<T> parseRemaining(ByteBufsParser<T> parser) {
 		return parse(parser)
-				.thenCompose(result -> {
+				.then(result -> {
 					if (!bufs.isEmpty()) {
 						close(UNEXPECTED_DATA_EXCEPTION);
 						return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 					}
-					return endOfStream().thenApply($ -> result);
+					return endOfStream().map($ -> result);
 				});
 	}
 
 	public final <T> ChannelSupplier<T> parseStream(ByteBufsParser<T> parser) {
 		return ChannelSupplier.of(
 				() -> parse(parser)
-						.thenComposeEx((value, e) -> {
+						.thenEx((value, e) -> {
 							if (e == null) return Promise.of(value);
 							if (e == UNEXPECTED_END_OF_STREAM_EXCEPTION && bufs.isEmpty()) return Promise.of(null);
 							return Promise.ofException(e);

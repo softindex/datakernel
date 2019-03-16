@@ -35,7 +35,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.CollectionUtils.asIterator;
+import static io.datakernel.util.CollectionUtils.transformIterator;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -62,7 +63,7 @@ public final class Promises {
 	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, long delay) {
 		if (promise.isComplete()) return promise;
 		if (delay <= 0) return Promise.ofException(TIMEOUT_EXCEPTION);
-		return promise.then(new NextPromise<T, T>() {
+		return promise.next(new NextPromise<T, T>() {
 			@Nullable ScheduledRunnable schedule = getCurrentEventloop()
 					.delay(delay,
 							() -> {
@@ -108,7 +109,7 @@ public final class Promises {
 		if (delayMillis <= 0) return promise;
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
-				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb::set)));
+				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.acceptEx(cb::set)));
 	}
 
 	/**
@@ -130,7 +131,7 @@ public final class Promises {
 	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, long timestamp) {
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
-				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb::set)));
+				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.acceptEx(cb::set)));
 	}
 
 	/**
@@ -226,7 +227,7 @@ public final class Promises {
 			if (promise.isResult()) continue;
 			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
 			resultPromise.countdown++;
-			promise.then(resultPromise);
+			promise.next(resultPromise);
 		}
 		return resultPromise.countdown != 0 ? resultPromise : Promise.complete();
 	}
@@ -336,7 +337,7 @@ public final class Promises {
 			if (promise.isResult()) return Promise.of(promise.materialize().getResult());
 			if (promise.isException()) continue;
 			resultPromise.errors++;
-			promise.whenComplete((result, e) -> {
+			promise.acceptEx((result, e) -> {
 				if (e == null) {
 					if (resultPromise.isComplete()) {
 						cleanup.accept(result);
@@ -376,17 +377,17 @@ public final class Promises {
 		if (number > 1) return Promise.ofException(new StacklessException(Promises.class,
 				"There are not enough promises to be complete"));
 
-		return promise.thenApply(Collections::singletonList);
+		return promise.map(Collections::singletonList);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> some(@NotNull Promise<? extends T> promise1,
-									  		@NotNull Promise<? extends T> promise2,
-									 	 	int number) {
+			@NotNull Promise<? extends T> promise2,
+			int number) {
 		if (number == 0) return (Promise<List<T>>) some(number);
-		if (number == 1) return any(promise1, promise2).thenApply(Collections::singletonList);
+		if (number == 1) return any(promise1, promise2).map(Collections::singletonList);
 
 		return some(asIterator(promise1, promise2), number);
 	}
@@ -418,10 +419,10 @@ public final class Promises {
 	 * the size of array will be the {@param number} if there will be passed the appropriate
 	 * amount of {@param promises}. In case the lower amount {@param promises} then {@param number} of
 	 * the return array will consist of the same {@param promises} which will be complete.
-	 *
+	 * <p>
 	 * Provided the number is less or equal '0', the result will be the {@see Promise}
 	 * and result of it is {@see CompleteExceptionallyPromise}
-	 *
+	 * <p>
 	 * The result in the same order isn`t guaranteed
 	 *
 	 * @param number - amount first complete {@see Promise}
@@ -455,7 +456,7 @@ public final class Promises {
 			}
 
 			resultPromise.activePromises++;
-			promise.whenComplete((result, e) -> {
+			promise.acceptEx((result, e) -> {
 				if (e == null) {
 					resultPromise.resultArray.add(result);
 					if (resultPromise.isFull()) {
@@ -494,7 +495,7 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> toList(@NotNull Promise<? extends T> promise1) {
-		return promise1.thenApply(Collections::singletonList);
+		return promise1.map(Collections::singletonList);
 	}
 
 	/**
@@ -535,7 +536,7 @@ public final class Promises {
 	public static <T> Promise<List<T>> toList(@NotNull List<? extends Promise<? extends T>> promises) {
 		int size = promises.size();
 		if (size == 0) return Promise.of(Collections.emptyList());
-		if (size == 1) return promises.get(0).thenApply(Collections::singletonList);
+		if (size == 1) return promises.get(0).map(Collections::singletonList);
 		if (size == 2) return promises.get(0).combine(promises.get(1), Arrays::asList);
 
 		@SuppressWarnings("unchecked") PromiseToList<T> resultPromise = new PromiseToList<>((T[]) new Object[size]);
@@ -549,7 +550,7 @@ public final class Promises {
 			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
 			int index = i;
 			resultPromise.countdown++;
-			promise.whenComplete((result, e) -> {
+			promise.acceptEx((result, e) -> {
 				if (e == null) {
 					resultPromise.processComplete(result, index);
 				} else {
@@ -578,7 +579,7 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T[]> toArray(@NotNull Class<T> type, @NotNull Promise<? extends T> promise1) {
-		return promise1.thenApply(value -> {
+		return promise1.map(value -> {
 			@NotNull T[] array = (T[]) Array.newInstance(type, 1);
 			array[0] = value;
 			return array;
@@ -642,7 +643,7 @@ public final class Promises {
 			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
 			int index = i;
 			resultPromise.countdown++;
-			promise.whenComplete((result, e) -> {
+			promise.acceptEx((result, e) -> {
 				if (e == null) {
 					resultPromise.processComplete(result, index);
 				} else {
@@ -656,7 +657,7 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T1, R> Promise<R> toTuple(@NotNull TupleConstructor1<T1, R> constructor, @NotNull Promise<? extends T1> promise1) {
-		return promise1.thenApply(constructor::create);
+		return promise1.map(constructor::create);
 	}
 
 	@Contract(pure = true)
@@ -675,7 +676,7 @@ public final class Promises {
 			@NotNull Promise<? extends T2> promise2,
 			@NotNull Promise<? extends T3> promise3) {
 		return toList(promise1, promise2, promise3)
-				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)));
+				.map(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -687,7 +688,7 @@ public final class Promises {
 			@NotNull Promise<? extends T3> promise3,
 			@NotNull Promise<? extends T4> promise4) {
 		return toList(promise1, promise2, promise3, promise4)
-				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)));
+				.map(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -700,7 +701,7 @@ public final class Promises {
 			@NotNull Promise<? extends T4> promise4,
 			@NotNull Promise<? extends T5> promise5) {
 		return toList(promise1, promise2, promise3, promise4, promise5)
-				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)));
+				.map(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -714,14 +715,14 @@ public final class Promises {
 			@NotNull Promise<? extends T5> promise5,
 			@NotNull Promise<? extends T6> promise6) {
 		return toList(promise1, promise2, promise3, promise4, promise5, promise6)
-				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4),
+				.map(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4),
 						(T6) list.get(5)));
 	}
 
 	@Contract(pure = true)
 	@NotNull
 	public static <T1> Promise<Tuple1<T1>> toTuple(@NotNull Promise<? extends T1> promise1) {
-		return promise1.thenApply((Function<T1, Tuple1<T1>>) Tuple1::new);
+		return promise1.map((Function<T1, Tuple1<T1>>) Tuple1::new);
 	}
 
 	@Contract(pure = true)
@@ -738,7 +739,7 @@ public final class Promises {
 			@NotNull Promise<? extends T2> promise2,
 			@NotNull Promise<? extends T3> promise3) {
 		return toList(promise1, promise2, promise3)
-				.thenApply(list -> new Tuple3<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)));
+				.map(list -> new Tuple3<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -750,7 +751,7 @@ public final class Promises {
 			@NotNull Promise<? extends T3> promise3,
 			@NotNull Promise<? extends T4> promise4) {
 		return toList(promise1, promise2, promise3, promise4)
-				.thenApply(list -> new Tuple4<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)));
+				.map(list -> new Tuple4<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -763,7 +764,7 @@ public final class Promises {
 			@NotNull Promise<? extends T4> promise4,
 			@NotNull Promise<? extends T5> promise5) {
 		return toList(promise1, promise2, promise3, promise4, promise5)
-				.thenApply(list -> new Tuple5<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)));
+				.map(list -> new Tuple5<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -777,7 +778,7 @@ public final class Promises {
 			@NotNull Promise<? extends T5> promise5,
 			@NotNull Promise<? extends T6> promise6) {
 		return toList(promise1, promise2, promise3, promise4, promise5, promise6)
-				.thenApply(list -> new Tuple6<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)));
+				.map(list -> new Tuple6<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)));
 	}
 
 	/**
@@ -803,7 +804,7 @@ public final class Promises {
 	 */
 	@NotNull
 	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void> promise1, @NotNull AsyncSupplier<Void> promise2) {
-		return promise1.get().thenCompose($ -> sequence(promise2));
+		return promise1.get().then($ -> sequence(promise2));
 	}
 
 	/**
@@ -848,7 +849,7 @@ public final class Promises {
 		while (promises.hasNext()) {
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;
-			promise.whenComplete((result, e) -> {
+			promise.acceptEx((result, e) -> {
 				if (e == null) {
 					sequenceImpl(promises, cb);
 				} else {
@@ -944,7 +945,7 @@ public final class Promises {
 			cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
 			return;
 		}
-		promises.next().whenComplete((result, e) -> {
+		promises.next().acceptEx((result, e) -> {
 			if (predicate.test(result, e)) {
 				cb.set(result, e);
 				return;
@@ -986,8 +987,10 @@ public final class Promises {
 	private static void repeatImpl(@NotNull Supplier<Promise<Void>> supplier, @NotNull SettableCallback<Void> cb) {
 		while (true) {
 			Promise<Void> promise = supplier.get();
-			if (promise.isResult()) {continue;}
-			promise.whenComplete(($, e) -> {
+			if (promise.isResult()) {
+				continue;
+			}
+			promise.acceptEx(($, e) -> {
 				if (e == null) {
 					repeatImpl(supplier, cb);
 				} else {
@@ -1019,7 +1022,7 @@ public final class Promises {
 		if (loopCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
 			return loop(seed, ((AsyncPredicates.AsyncPredicateWrapper<T>) loopCondition).getPredicate(), next);
 		}
-		return until(seed, next, (AsyncPredicate<T>) v -> loopCondition.test(v).thenApply(b -> !b)).toVoid();
+		return until(seed, next, (AsyncPredicate<T>) v -> loopCondition.test(v).map(b -> !b)).toVoid();
 	}
 
 	private static Promise<Void> loop(@NotNull Predicate<Void> loopCondition, @NotNull AsyncSupplier<Void> action) {
@@ -1044,7 +1047,7 @@ public final class Promises {
 			return until(seed, next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
 		}
 		return breakCondition.test(seed)
-				.thenComposeEx((b, e) -> {
+				.thenEx((b, e) -> {
 					if (e == null) {
 						if (!b) {
 							return Promise.ofCallback(cb ->
@@ -1082,7 +1085,7 @@ public final class Promises {
 					break;
 				}
 			} else {
-				promise.whenComplete((newValue, e) -> {
+				promise.acceptEx((newValue, e) -> {
 					if (e == null) {
 						if (breakCondition.test(newValue)) {
 							cb.set(newValue);
@@ -1114,7 +1117,7 @@ public final class Promises {
 					}
 				}
 				@Nullable T finalValue = value;
-				breakPromise.whenComplete((b, e) -> {
+				breakPromise.acceptEx((b, e) -> {
 					if (e == null) {
 						if (b) {
 							cb.set(finalValue);
@@ -1127,10 +1130,10 @@ public final class Promises {
 				});
 				break;
 			} else {
-				promise.whenComplete((newValue, e) -> {
+				promise.acceptEx((newValue, e) -> {
 					if (e == null) {
 						breakCondition.test(newValue)
-								.whenComplete((b, e2) -> {
+								.acceptEx((b, e2) -> {
 									if (e2 == null) {
 										if (b) {
 											cb.set(newValue);
@@ -1249,7 +1252,7 @@ public final class Promises {
 				}
 			}
 			calls[0]++;
-			promise.whenComplete((v, e) -> {
+			promise.acceptEx((v, e) -> {
 				calls[0]--;
 				if (cb.isComplete()) {
 					return;
@@ -1337,7 +1340,7 @@ public final class Promises {
 				continue;
 			}
 			calls[0]++;
-			promise.whenComplete((v, e) -> {
+			promise.acceptEx((v, e) -> {
 				calls[0]--;
 				if (cb.isComplete()) {
 					if (recycler != null) recycler.accept(v);
@@ -1537,7 +1540,7 @@ public final class Promises {
 					SettablePromise<R> result = new SettablePromise<>();
 					isRunning = true;
 					Promise<? extends R> promise = directCallFn.apply(parameters);
-					promise.whenComplete((v, e) -> {
+					promise.acceptEx((v, e) -> {
 						result.set(v, e);
 						isRunning = false;
 						processNext();
@@ -1561,11 +1564,11 @@ public final class Promises {
 					isRunning = true;
 					Promise<? extends R> promise = accumulatedCallFn.apply(accumulatedParameters);
 					if (promise.isComplete()) {
-						promise.whenComplete(subscribedPromise::set);
+						promise.acceptEx(subscribedPromise::set);
 						isRunning = false;
 						continue;
 					}
-					promise.whenComplete((result, e) -> {
+					promise.acceptEx((result, e) -> {
 						subscribedPromise.set(result, e);
 						isRunning = false;
 						processNext();
