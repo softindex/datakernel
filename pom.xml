@@ -309,11 +309,16 @@
 			</modules>
 		</profile>
 		<profile>
-			<id>global-apps</id>
+			<id>global</id>
 			<activation>
-				<activeByDefault>true</activeByDefault>
+				<activeByDefault>false</activeByDefault>
 			</activation>
 			<modules>
+				<module>global-common</module>
+				<module>global-ot</module>
+				<module>global-fs</module>
+				<module>global-db</module>
+				<module>global-launchers</module>
 				<module>global-apps</module>
 			</modules>
 		</profile>
