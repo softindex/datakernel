@@ -32,7 +32,7 @@ In console:
 ```
 $ cd datakernel/global-launchers
 $ mvn exec:java@DiscoveryServiceLauncher
-$ # in another console
+$ # then start another process
 $ cd datakernel/global-launchers
 $ mvn exec:java@GlobalNodesLauncher
 ```
@@ -45,7 +45,7 @@ Next, open *GlobalNodesLauncher* class, which is located at **datakernel -> glob
 run its *main()* method.
 
 #### 4. Run Global-DB demo app
-Note: **Do not terminate Launchers**.
+Note: **Both of the Launchers shouldn't be terminated**.
 
 To run the app in console enter these commands:
 ```
@@ -56,7 +56,6 @@ In IDE:
 Open *GlobalDbDemoApp* class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
 *main()* method.
 
-#### Explanation
 After you start all of the needed classes, the upload of 10 data items to database and their download back will begin; 
 you'll receive the following output:
 ```

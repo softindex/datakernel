@@ -18,22 +18,23 @@ applications using principles which conceptually resemble Git, but in a more adv
 * User-defined data types and working with commit graph of any complexity:
     * Global-OT can work with any user-defined data types. This data is stored in nodes of commit graphs. The edges of 
     commit graphs store user-defined operations which can be applied to the data.
-    * Global-OT uses user-defined OT-rules. If you’re not familiar with OT concepts, explore this article. In a nutshell, 
-    OT enables to merge conflict operations without data loss, using special rules for merging (see picture 1). 
+    * Global-OT uses user-defined OT-rules, which enables to merge conflict operations without data loss.
     * Global-OT framework automatically merges commit graphs of any complexity, using a special algorithm of recursive 
     merging. It splits complex commit graph to atomic OT operations.
     
 ### Global-OT network design:
 
+<p align="center">
 <img src="http://datakernel.io/static/images/globalot-architecture.png">
+</p>
 
 Global-OT has a fully decentralized multi-tier network design:
 1. Client applications layer - all Global-OT applications, such as mobile and desktop applications or even a server.
 2. P2P Global-OT servers layer which can be split in two logical layers:
-    * Master OT-Servers (store original file systems)
-    * Caching OT-Servers (store cache of file systems)
+    * Master OT-Servers (store original repositories)
+    * Caching OT-Servers (store cache of repositories)
 3. P2P Discovery Service layer - has a DNS-like role, stores information about IPs and public keys of the uploaded 
-file systems.
+repositories.
 
 This solution provides the following features:
 * There is no need for central lock service or ZooKeeper-like services.

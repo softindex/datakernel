@@ -23,18 +23,21 @@ directly into application) - which means extremely low latencies and high data a
 
 1. Client applications layer - all Global-FS applications, such as mobile and desktop applications or even a server.
 2. P2P Global-FS servers layer which can be split in two logical layers:
-    * Master FS-Servers (store original file systems)
-    * Caching FS-Servers (store cache of file systems)
+    * **Master** FS-Servers (store original file systems)
+    * **Caching** FS-Servers (store cache of file systems)
 3. P2P Discovery Service layer - has a DNS-like role, stores information about IPs and public keys of the uploaded 
 file systems.
 
 ### Encryption and security
 1. Each file in Global-FS is automatically signed with private key and can optionally be encrypted.
-2. Anyone who downloads file can check the validity of signatures. Moreover, Caching servers can check
+2. Anyone who downloads file can check the validity of signatures. Moreover, **Caching** servers can check
 the validity even if the file is encrypted.
 3. Each uploaded to Global-FS network file is divided in parts which consist of *checkpoints* and particular amount of 
 bytes of data (amount can be configured using FS-Driver). These *checkpoints* are signed and control if any data was modified.
 
+<p align="center">
+<img src="http://datakernel.io/static/images/globalfs-file-security.jpg">
+</p>
 
 ### Data sharing in Global-FS
 #### Uploading files
@@ -49,9 +52,9 @@ can be signed and identified.
     
     Or they can create their own option.
     
-    The chosen servers become Master servers, a primary source of the data.
+    The chosen servers become **Master** servers, a primary source of the data.
 * FS-Driver announces the Discovery Service via FS-Servers that users want to upload some data and which servers are 
-chosen as Master. Discovery Service checks the signature of the announce package and if this stage completes successfully, 
+chosen as **Master**. Discovery Service checks the signature of the announce package and if this stage completes successfully, 
 the uploaded files can be reached by any user.
 
 #### Downloading files
@@ -61,17 +64,17 @@ downloaders should also know the symmetric encryption key in order to read them.
 * Downloaders connect to any FS-Server to get the file system they need. For this purpose mostly one of the following 
 options is used:
 
-    * Local datacenter
+    * Local data center
     * Physically most closely located server
     * ISP Server
 * If the server contains requested file system and it is relevant (most recent, the biggest), downloaders get it and the 
 process completes. But if the data or its more relevant version is located somewhere else, server sends a request to a 
 Discovery Service server.
-* Discovery Service redirects the request to the Master server which has the needed file system and downloading starts.
+* Discovery Service redirects the request to the **Master** server which has the needed file system and downloading starts.
 * While downloading, the server to which users first connected to will save the cache of all the transited files (if 
 caching is enabled).
 
 After successful download, users can check data validity by signature.
 
-You can run [demo FS application](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo) to see 
+You can run [demo FS application](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-app) to see 
 how the technology works.

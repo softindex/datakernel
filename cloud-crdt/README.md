@@ -13,7 +13,7 @@ This module includes implementations of CRDT Client and Server:
 * `RocksDBCrdtClient` - a CRDT client for working with RocksDB.
 * `CrdtServer` - a CRDT server which processes uploads, downloads and removes of data.
 
-There are also some useful builtin primitives needed for convenient CRDT applications development:
+There are also some useful built-in primitives needed for convenient CRDT applications development:
 
 * `GCounterInt` - an increment-only counter of int type.
 * `GCounterLong` - an increment-only counter of long type.

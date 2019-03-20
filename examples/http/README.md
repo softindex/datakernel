@@ -100,6 +100,7 @@ Then open one of the classes:
 * `MiddlewareServletExample`
 * `RequestParametrExample`
 * `StaticServletExample`
+
 which are located at **datakernel -> examples -> http** and run *main()* of the chosen example.
 
 Now you can connect to you server by visiting [localhost:8080](http://localhost:8080/) in your browser.

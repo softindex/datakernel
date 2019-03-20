@@ -11,7 +11,8 @@ an example of setting up a simple HTTP server utilizing `HttpServerLauncher`.
 
 [Launch](#http)
 
-#### "Hello World" 
+### "Hello World" 
+#### Launch
 To run the example in console, you should execute these lines in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel
@@ -33,44 +34,10 @@ Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open *HelloWorldLauncher* class, which is located at **datakernel -> examples -> launchers** and run its *main()* 
 method.
+#### Explanation
+When you run the example, you will see *Hello World!* message right in your console.
 
-
-#### HTTP
-To run the examples in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/launchers
-$ mvn exec:java@HttpServerScratch
-# or 
-$ mvn exec:java@HttpSimpleServer
-```
-
-To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
-accordance to DataKernel module structure, the working directory should be set to the module folder. 
-
-In IntelliJ IDEA you can do it in the following way:
-`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||`.
-
-Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
-
-Then open one of the classes:
-* *HttpServerScratch*
-* *HttpSimpleServer*
-
-which are located at **datakernel -> examples -> launchers** and run *main()* of the chosen example.
-
-When you start on of the examples, open your browser and go to [localhost:25565](http://localhost:25565). 
-You will see the following content:
-```
-"Hello from HTTP server" 
-```
-If you run **"Hello World" Launcher** example, you will see *Hello World!* message right in your console.
-
-Let's have a closer look at "Hello World" Launcher example and initialization of the launcher itself:
+Let's have a closer look at the example and initialization of the launcher itself:
 ```java
 Launcher launcher = new Launcher() {
 			@Override
@@ -95,8 +62,47 @@ When creating launchers, you can override these methods:
 * *ConfigModule* will provide Config to your components.
 * *SimpleModule* will provide *AsyncHttpServer* along with needed *Eventloop* and *AsyncServlet*.
 
-In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends *Launcher*. It also 
-overrides *getModules()* and *run()* methods.
+
+### HTTP
+#### Launch
+To run the examples in console, you should execute these lines in appropriate folder:
+```
+$ git clone https://github.com/softindex/datakernel
+$ cd datakernel
+$ mvn clean install -DskipTests
+$ cd examples/launchers
+$ mvn exec:java@HttpServerScratch
+# or 
+$ mvn exec:java@HttpSimpleServer
+```
+
+To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
+set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+accordance to DataKernel module structure, the working directory should be set to the module folder. 
+
+In IntelliJ IDEA you can do it in the following way:
+`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
+$MODULE_WORKING_DIR$||`.
+
+Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
+
+Then open one of the classes:
+* `HttpServerScratch`
+* `HttpSimpleServer`
+
+which are located at **datakernel -> examples -> launchers** and run *main()* of the chosen example.
+
+After you start one of the examples, open your browser and go to [localhost:25565](http://localhost:25565).
+
+#### Explanation
+ 
+You will see the following content:
+```
+"Hello from HTTP server" 
+```
+
+In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends *Launcher*. Just like 
+["Hello World" Launcher](#hello-world) example, it also overrides *getModules()* and *run()* methods.
 
 **HTTP Simple Server** shows how simply an HTTP server can be created utilizing *HttpServerLauncher*. When using predefined 
 launchers, you should override the following methods:

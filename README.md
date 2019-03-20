@@ -1,3 +1,5 @@
+<img src="http://datakernel.io/static/images/logo.png">
+
 ## Introduction
 
 DataKernel is a full-stack application framework for Java. 
@@ -40,86 +42,32 @@ If you are interested in developing web-applications with JavaScript front-end, 
 Also, check out [examples module](https://github.com/softindex/datakernel/tree/master/examples), which includes examples 
 for most of the DataKernel components along with use cases of their combinations.
 
-## Core components 
+## DataKernel framework structure
 
-### [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)
-ByteBuf is a more lightweight and efficient version of Java's `ByteBuffer` class with support of simultaneous input and 
-output. Module's `ByteBufQueue` allows you to work with multiple `ByteBuf`s in a convenient way. `ByteBufPool` 
-significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. You can also get stats 
-on pool's memory consumption and efficiency.
+DataKernel framework consists of 30+ modules of different complexity and purposes. All of the components can be 
+logically split in 4 groups:
 
-[ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
+* [Core components](#core-components) - building blocks of DataKernel framework and some core technologies
+* [Cloud components](#cloud-components) - modules designed for cloud solutions
+* [Global components](#global-components) - technologies for creating global network applications
+* [Integration components](#integration-components) - include modules for DataKernel components integration and 
+integration with UIKernel.io front-end JS library.
 
-### [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop)
+### Core components
+| Core components | | |
+|---|---|---|
+| **[ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)** | ByteBuf is a more lightweight and efficient version of Java's `ByteBuffer` class with support of simultaneous input and output. Module's `ByteBufQueue` allows you to work with multiple `ByteBuf`s in a convenient way. `ByteBufPool` significantly reduces memory consumption and Java Garbage Collector load by reusing `ByteBuf`s. You can also get stats on pool's memory consumption and efficiency. | [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf) |
+| **[Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop)** | Eventloop resembles Event Loop in Node.js and provides efficient non-blocking network and file I/O for building Node.js-like client/server applications with high performance requirements. Although Eventloop runs in a single thread, multiple Eventloops can run at the same time to provide efficient CPU usage. | [Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop) |
+| **[Net](https://github.com/softindex/datakernel/tree/master/core-net)** | Net module handles low-level asynchronous socket I/O (TCP/UDP) based on ByteBuf. Provides ability to create servers that utilize Eventloop and support SSL. | [Net examples](https://github.com/softindex/datakernel/tree/master/examples/net) |
+| **[CSP](https://github.com/softindex/datakernel/tree/master/core-csp)** | CSP stands for Communicating Sequential Processes. This module provides asynchronous sequential communication between processes via channels similarly to the Go language. | [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp) |
+| **[Promise](https://github.com/softindex/datakernel/tree/master/core-promise)** | Promise module resembles JavaScript Promise and is an alternative to Java's `CompletionStage`. It allows to organize asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. They have a minimalistic and extremely fast single-threaded implementation with minimal overhead and memory consumption. | [Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise) |
+| **[Codegen](https://github.com/softindex/datakernel/tree/master/core-codegen)** | Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the complexity of direct bytecode manipulation, so you can use it to create custom classes on the fly by providing a class description. It is particularly useful in the situations when you have to adjust class behavior in the runtime, based on some external factors. | [Codegen examples](https://github.com/softindex/datakernel/tree/master/examples/codegen) |
+| **[Serializer](https://github.com/softindex/datakernel/tree/master/core-serializer)** | Extremely fast and space-efficient serializers created with bytecode engineering. Introduces schema-less approach for best performance. | [Serializer examples](https://github.com/softindex/datakernel/tree/master/examples/serializer), [Benchmark](https://github.com/softindex/datakernel/tree/master/core-serializer#benchmark) |
+| **[Datastream](https://github.com/softindex/datakernel/tree/master/core-datastream)** | Composable asynchronous/reactive streams with powerful data processing capabilities. Useful for transferring high volumes of lightweight values. | [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams), [Benchmark](https://github.com/softindex/datakernel/tree/master/core-datastream#benchmark)|
+| **[HTTP](https://github.com/softindex/datakernel/tree/master/core-http)** | High-performance asynchronous HTTP client and server. Contains built-in servlets for request dispatching and static content loading. | [HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http), [Benchmark](https://github.com/softindex/datakernel/tree/master/core-http#benchmark) |
+| **[Codec](https://github.com/softindex/datakernel/tree/master/core-codec)** | Contains tools for encoding/decoding primitives and objects with built-in support of conversion to/from JSON and ByteBuf. The process resembles serialization and can be used to convert objects to a custom representation. | [Codec examples](https://github.com/softindex/datakernel/tree/master/examples/codec) |
 
-Eventloop resembles Event Loop in Node.js and provides efficient non-blocking network and file I/O for building 
-Node.js-like client/server applications with high performance requirements. Although Eventloop runs in a single thread, 
-multiple Eventloops can run at the same time to provide efficient CPU usage.
-
-[Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop)
-
-### [Net](https://github.com/softindex/datakernel/tree/master/core-net)
-
-Net module handles low-level asynchronous socket I/O (TCP/UDP) based on ByteBuf. Provides ability to create servers that 
-utilize Eventloop and support SSL.
-
-[Net examples](https://github.com/softindex/datakernel/tree/master/examples/net)
-
-### [CSP](https://github.com/softindex/datakernel/tree/master/core-csp)
-
-CSP stands for Communicating Sequential Processes. This module provides asynchronous sequential communication between 
-processes via channels similarly to the Go language.
-
-[CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp)
-
-### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
-
-Promise module resembles JavaScript Promise and is an alternative to Java's `CompletionStage`. It allows to organize 
-asynchronous code in convenient way by creating chains of operations which are wrapped in `Promise`s. They have a 
-minimalistic and extremely fast single-threaded implementation with minimal overhead and memory consumption.
-
-[Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise)
-
-### [Codegen](https://github.com/softindex/datakernel/tree/master/core-codegen)
-
-Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the 
-complexity of direct bytecode manipulation, so you can use it to create custom classes on the fly by providing a class 
-description. It is particularly useful in the situations when you have to adjust class behavior in the runtime, based on 
-some external factors.
-
-[Codegen examples](https://github.com/softindex/datakernel/tree/master/examples/codegen)
-
-### [Serializer](https://github.com/softindex/datakernel/tree/master/core-serializer)
-
-Extremely fast and space-efficient serializers created with bytecode engineering. Introduces schema-less approach for 
-best performance.
-
-[Serializer examples](https://github.com/softindex/datakernel/tree/master/examples/serializer)  
-[Benchmark](https://github.com/softindex/datakernel/tree/master/core-serializer#benchmark)
-
-### [Datastream](https://github.com/softindex/datakernel/tree/master/core-datastream)
-
-Composable asynchronous/reactive streams with powerful data processing capabilities. Useful for transferring high volumes 
-of lightweight values.
-
-[Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams)  
-[Benchmark](https://github.com/softindex/datakernel/tree/master/core-datastream#benchmark)
-
-### [HTTP](https://github.com/softindex/datakernel/tree/master/core-http)
-
-High-performance asynchronous HTTP client and server. Contains built-in servlets for request dispatching and static 
-content loading.  
-
-[HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http)  
-[Benchmark](https://github.com/softindex/datakernel/tree/master/core-http#benchmark)
-
-### [Codec](https://github.com/softindex/datakernel/tree/master/core-codec)
-
-Contains tools for encoding/decoding primitives and objects with built-in support of conversion to/from JSON and ByteBuf. 
-The process resembles serialization and can be used to convert objects to a custom representation.
-
-[Codec examples](https://github.com/softindex/datakernel/tree/master/examples/codec)  
-
+ 
 ## Cloud components
 
 ### [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc)

@@ -7,7 +7,7 @@ Boot module enables booting complex applications and services according to their
 * Worker Pool: simply create worker pools for your applications and set the amount of workers
 * Guice integration: extension of [Google Guice](https://github.com/google/guice) Dependency Injection Framework to 
 simplify work with service graph
-* Launcher: utility to facilitate app launching using configs, service graph and guice
+* Launcher: utility to facilitate app launching using configs, service graph and Guice
 
 The main component is a `ServiceGraphModule` which builds dependency graph based on Guice's object graph. It is used to 
 start or stop services concurrently, according to their dependencies. 

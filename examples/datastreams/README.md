@@ -50,17 +50,20 @@ Consumer received: [0, 1, 2, 3, 4]
 Let's have a look at the implementation:
 ```java
 public static void main(String[] args) {
+	
 	//creating an eventloop for streams operations
 	Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+	
 	//creating a supplier of some numbers
 	StreamSupplier<Integer> supplier = StreamSupplier.of(0, 1, 2, 3, 4);
+	
 	//creating a consumer for our supplier
 	StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
-
-        //streaming supplier's numbers to consumer
+    
+	//streaming supplier's numbers to consumer
 	supplier.streamTo(consumer);
 
-        //when stream completes, the streamed data is printed out
+	//when stream completes, the streamed data is printed out
 	consumer.getResult().accept(result -> System.out.println("Consumer received: " + result));
 	eventloop.run();
 	}

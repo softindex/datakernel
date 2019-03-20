@@ -160,7 +160,7 @@ public class ByteBufPoolExample {
 		// Recycling ByteBuf to put it back to pool
 		byteBuf.recycle();
 
-		// Now pool consists of 1 ByteBuf that is the one we just recycled
+		// Now pool consists of 1 ByteBuf which is the one we've just recycled
 		System.out.println("Number of ByteBufs in pool after recycling: " + ByteBufPool.getPoolItems());
 
 		// Trying to allocate another ByteBuf
@@ -174,7 +174,7 @@ public class ByteBufPoolExample {
 	private static void ensuringWriteRemaining() {
 		ByteBuf byteBuf = ByteBufPool.allocate(3);
 
-		// Size is equal to power of 2 that is larger than 3, hence 4
+		// Size is equal to the power of 2 that is larger than 3, hence 4
 		System.out.println("Size of ByteBuf: " + byteBuf.writeRemaining());
 
 		byteBuf.write(new byte[]{0, 1, 2});

@@ -79,9 +79,9 @@ http-helloworld
                         └── SimpleServlet.java
 ```
 
-Next, configure your pom.xml file. We will need the following dependencies: datakernel-http, datakernel-boot and some 
+Next, configure your **pom.xml** file. We will need the following dependencies: datakernel-http, datakernel-boot and some 
 logger (Note: we don't need to specify datakernel-eventloop, because it is already a transitive dependency of both 
-datakernel-boot and datakernel-http modules). So your pom.xml should look as follows:
+datakernel-boot and datakernel-http modules). So your **pom.xml** should look as follows:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -146,7 +146,7 @@ datakernel-boot and datakernel-http modules). So your pom.xml should look as fol
 </project>
 ```
 
-Write down a SimpleServlet which will return the web-page that shows a worker id and a response message:
+Write down a `SimpleServlet` which will return the web-page that shows a worker id and a response message:
 ```java
 public class SimpleServlet implements AsyncServlet {
 	//an identifier for worker
@@ -178,7 +178,7 @@ Boot module includes three main parts:
 
 **Service Graph** uses dependency tree built by Google Guice to run services in a proper order. Service Graph considers all 
 dependencies from Guice, determines which of them can be treated as services and then starts those services in a proper 
-way. You just need to extend AbstractModule and write down the dependencies of your app, Service Graph will do the rest 
+way. You just need to extend `AbstractModule` and write down the dependencies of your app, Service Graph will do the rest 
 of work.
 
 **Configs** are a useful extension for properties file. Main features:
@@ -187,7 +187,7 @@ of work.
 * specifying default value for property
 * saving all properties that were used into file
 
-A typical usage of configs looks like this:
+A typical usage of configs looks as follows:
 
 ```java
 int port = config.get(ofInteger(), "port", 5577);
@@ -196,7 +196,7 @@ int port = config.get(ofInteger(), "port", 5577);
 
 where `ofInteger()` is a converter, `port` is a property key and `5577` is a default value.
 
-So let's extend AbstractModule and write down all the dependencies needed for multi-worker HTTP-server:
+So let's extend `AbstractModule` and write down all the dependencies needed for multi-worker HTTP-server:
 ```java
 public class HttpHelloWorldModule extends AbstractModule {
 	@Provides
@@ -253,9 +253,9 @@ Launcher integrates all components together and manages application lifecycle, w
 * *stop* (stopping services, mostly done by Service Graph)
 
 We should extend Launcher and override several method:
-* *getModules()* - supplies all the needed modules for our application, including our HttpHelloWorldModule
+* *getModules()* - supplies all the needed modules for our application, including our `HttpHelloWorldModule`
 * *onStart()* - this method is executed when application starts running and loads port configs
-* *run()* - prints some introductory messages, then awaitShutdown() method is called to enable application stop properly 
+* *run()* - prints some introductory messages, then *awaitShutdown()* method is called to enable application stop properly 
 after interruption is made (for example, Ctrl+C in unix-like systems).
 
 ```java

@@ -11,7 +11,7 @@ options:
 
 While HTTP is more popular and well-specified, it has some overhead. When performance is a significant aspect of application, 
 you should use something faster than HTTP. And for this purpose DataKernel framework has an RPC module which is based on 
-fast serialzers and custom optimized communication protocol, which allows to greatly improve application performance.
+fast serializers and custom optimized communication protocol, which allows to significantly improve application performance.
 
 ## What you will need:
 
@@ -19,7 +19,7 @@ fast serialzers and custom optimized communication protocol, which allows to gre
 * Maven 3.0
 
 
-## What modules will be used:
+## Which modules will be used:
 
 * [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc)
 * [Serializer](https://github.com/softindex/datakernel/tree/master/core-serializer)
@@ -76,8 +76,8 @@ remote-key-value-storage
 ```
 
 
-Next, configure your pom.xml file. We will need the following dependencies: RPC, Boot and some Logger. So your pom.xml 
-should look like following:
+Next, configure your **pom.xml** file. We will need the following dependencies: *RPC*, *Boot* and some *Logger*. So your 
+**pom.xml** should look as follows:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -246,7 +246,7 @@ public class KeyValueStore {
 ```
 
 
-Now, let's write down a guice module for RPC server using DataKernel Boot, that will handle "get" and "put" requests 
+Now, let's write down a Guice module for RPC server using DataKernel Boot, that will handle "get" and "put" requests 
 (Note: if you are not familiar with DataKernel Boot, please take a look at [Hello World HTTP Server Tutorial](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld))
 
 ```java
@@ -283,7 +283,7 @@ public class RpcServerModule extends AbstractModule {
 As you can see, in order to properly create `RpcServer` we should indicate all the classes which will be sent between 
 client and server, and specify appropriate RequestHandler for each request class.
 <br>
-Since Java 1.8 they can be expressed as lambdas, which are represented as third arguments in these lines:
+Since Java 1.8 they can be expressed as lambdas, so they are represented as third arguments in these lines:
 
 ```java
 .withHandler(PutRequest.class, PutResponse.class, req -> Promise.of(new PutResponse(store.put(req.getKey(), req.getValue()))))
