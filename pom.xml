@@ -43,12 +43,6 @@
 		<module>cloud-lsmt-cube</module>
 		<module>cloud-etl</module>
 		<module>cloud-dataflow</module>
-		<module>global-launchers</module>
-		<module>global-common</module>
-		<module>global-ot</module>
-		<module>global-fs</module>
-		<module>global-db</module>
-		<module>global-apps</module>
 		<module>common</module>
 		<module>boot</module>
 		<module>uikernel</module>
@@ -311,7 +305,7 @@
 		<profile>
 			<id>global</id>
 			<activation>
-				<activeByDefault>false</activeByDefault>
+				<activeByDefault>true</activeByDefault>
 			</activation>
 			<modules>
 				<module>global-common</module>
