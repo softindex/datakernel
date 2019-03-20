@@ -67,66 +67,21 @@ integration with UIKernel.io front-end JS library.
 | **[HTTP](https://github.com/softindex/datakernel/tree/master/core-http)** | High-performance asynchronous HTTP client and server. Contains built-in servlets for request dispatching and static content loading. | [HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http), [Benchmark](https://github.com/softindex/datakernel/tree/master/core-http#benchmark) |
 | **[Codec](https://github.com/softindex/datakernel/tree/master/core-codec)** | Contains tools for encoding/decoding primitives and objects with built-in support of conversion to/from JSON and ByteBuf. The process resembles serialization and can be used to convert objects to a custom representation. | [Codec examples](https://github.com/softindex/datakernel/tree/master/examples/codec) |
 
- 
-## Cloud components
+### Cloud components 
+| Cloud components | | |
+| --- | --- | --- |
+|**[RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc)**| High-performance and fault-tolerant remote procedure call module for building distributed applications with an extremely efficient asynchronous binary RPC streaming protocol. | [RPC examples](https://github.com/softindex/datakernel/tree/master/examples/rpc) |
+|**[FS](https://github.com/softindex/datakernel/tree/master/cloud-fs)**| Basis for building efficient, scalable remote file storage with implementation of caching and fast asynchronous file I/O based on Java NIO. Utilizes CSP for fast and reliable file transfer. | [FS examples](https://github.com/softindex/datakernel/tree/master/examples/remotefs) |
+|**[OT](https://github.com/softindex/datakernel/tree/master/cloud-ot)**| This module allows to build collaborative software systems based on Git-like approach and with automatic conflict resolution, utilizing a special algorithm for operational transformations.||
+|**[OT-MySQL](https://github.com/softindex/datakernel/tree/master/cloud-ot-mysql)**| Enables binding OT repositories to MySQL (or any other) database. You can even store `OTRepository` commits in-memory or as files on a disk.||
+|**[LSMT Aggregation](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-aggregation)**| Log-structured merge-tree table which stores aggregate functions and designed for OLAP workload.||
+|**[LSMT OLAP Cube](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-cube)**|Multidimensional OLAP (Online Analytical Processing) database with predefined set of dimensions, measures, and log-structured merge-tree tables containing pre-aggregated data. LSMT database efficiently executes multi-dimensional analytical queries.||
+|**[Dataflow](https://github.com/softindex/datakernel/tree/master/cloud-dataflow)**| Distributed stream-based batch processing engine for Big Data applications. Represents a set of tools to work with data sets which can span multiple partitions. ||
+|**[CRDT](https://github.com/softindex/datakernel/tree/master/cloud-crdt)**| Conflict-free replicated data type implementation (specifically, state-based CRDT). Contains tools to create collaborative editing applications using CRDT approach to merge data that comes from multiple nodes into a single CRDT structure.| [CRDT examples](https://github.com/softindex/datakernel/tree/master/examples/crdt) |
+|**[Multilog](https://github.com/softindex/datakernel/tree/master/cloud-multilog)**| This module manages integrity of log files stored in distributed file system and allows to work with them as if they were stored in a single place.||
+|**[ETL](https://github.com/softindex/datakernel/tree/master/cloud-etl)**| Processes logs using operational transformations. Uses OT module to persist logs and resolve conflicts. ||
 
-### [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc)
-
-High-performance and fault-tolerant remote procedure call module for building distributed applications with an extremely
-efficient asynchronous binary RPC streaming protocol.
-
-[RPC examples](https://github.com/softindex/datakernel/tree/master/examples/rpc)  
-
-### [FS](https://github.com/softindex/datakernel/tree/master/cloud-fs)
-
-Basis for building efficient, scalable remote file storage with implementation of caching and fast asynchronous file I/O 
-based on Java NIO. Utilizes CSP for fast and reliable file transfer.
-
-[FS examples](https://github.com/softindex/datakernel/tree/master/examples/remotefs)  
-
-### [OT](https://github.com/softindex/datakernel/tree/master/cloud-ot)
-
-This module allows to build collaborative software systems based on Git-like approach and with automatic conflict 
-resolution, utilizing a special algorithm for operational transformations.
-
-### [OT-MySQL](https://github.com/softindex/datakernel/tree/master/cloud-ot-mysql)
-
-Enables binding OT repositories to MySQL (or any other) database. You can even store `OTRepository` commits in-memory or 
-as files on a disk.
-
-### [LSMT Aggregation](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-aggregation)
-
-Log-structured merge-tree table which stores aggregate functions and designed for OLAP workload.
-
-### [LSMT OLAP Cube](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-cube)
-
-Multidimensional OLAP (Online Analytical Processing) database with predefined set of dimensions, measures, and 
-log-structured merge-tree tables containing pre-aggregated data. LSMT database efficiently executes multi-dimensional 
-analytical queries.
-
-### [Dataflow](https://github.com/softindex/datakernel/tree/master/cloud-dataflow)
-
-Distributed stream-based batch processing engine for Big Data applications. Represents a set of tools to work with 
-data sets which can span multiple partitions.
-
-### [CRDT](https://github.com/softindex/datakernel/tree/master/cloud-crdt)
-
-Conflict-free replicated data type implementation (specifically, state-based CRDT). Contains tools to create 
-collaborative editing applications using CRDT approach to merge data that comes from multiple nodes into a single CRDT 
-structure. 
-
-[CRDT examples](https://github.com/softindex/datakernel/tree/master/examples/crdt)
-
-### [Multilog](https://github.com/softindex/datakernel/tree/master/cloud-multilog)
-
-This module manages integrity of log files stored in distributed file system and allows to work with them as if they 
-were stored in a single place.
-
-### [ETL](https://github.com/softindex/datakernel/tree/master/cloud-etl)
-
-Processes logs using operational transformations. Uses OT module to persist logs and resolve conflicts.
-
-## Global components
+### Global components
 
 Global components are designed to be used distributively across the whole global network. Global network consists of 
 interconnected nodes (or servers) and discovery services that help to route one node with another. To achieve this and 
@@ -137,54 +92,16 @@ preserve data integrity between global nodes, all of the components have the fol
 * Different operating modes. A global node can work in proxy mode (as a router), in caching mode (locally saving data 
 that it downloads/uploads) or in pre-fetching mode (uploading data from master nodes in advance).
 
-### [Global Common](https://github.com/softindex/datakernel/tree/master/global-common)
+| Global components |||
+|---|---|---|
+|**[Global Common](https://github.com/softindex/datakernel/tree/master/global-common)**| A foundation for other global components. Contains a `DiscoveryService` that conducts a DNS-like role for other global nodes. This module also contains cryptography tools and some common classes. Cryptography allows nodes to work with non-trusted servers. ||
+|**[Global-FS](https://github.com/softindex/datakernel/tree/master/global-fs)**| Allows to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.|[Global-FS CLI](https://github.com/softindex/datakernel/tree/master/examples/global-fs-cli), [Global-FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)|
+|**[Global-OT](https://github.com/softindex/datakernel/tree/master/global-ot)**| Extends both OT and Blockchain technologies (representing the data as Git-like graph of individual immutable content-addressable commits, encrypted and signed with private key of its owner). Global-OT can work with non-trusted servers. | [Global-OT Demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo), [Global-OT Editor](https://github.com/softindex/datakernel/tree/master/examples/global-ot-editor), [Global-OT Chat](https://github.com/softindex/datakernel/tree/master/examples/global-ot-chat)|
+|**[Global-DB](https://github.com/softindex/datakernel/tree/master/global-db)**| This module is a variation of Global-FS, optimized for storing small binary key-value pairs and their synchronization. | [Global-DB Demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)|
 
-A foundation for other global components. Contains a `DiscoveryService` that conducts a DNS-like role for other global 
-nodes. This module also contains cryptography tools and some common classes. Cryptography allows nodes to work with 
-non-trusted servers. 
-
-### [Global-FS](https://github.com/softindex/datakernel/tree/master/global-fs)
-
-A framework to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, 
-distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.
-
-[Global-FS CLI](https://github.com/softindex/datakernel/tree/master/examples/global-fs-cli)
-
-[Global-FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
-
-### [Global-OT](https://github.com/softindex/datakernel/tree/master/global-ot)
-
-A framework which extends both OT and Blockchain technologies (representing the data as Git-like graph of 
-individual immutable content-addressable commits, encrypted and signed with private key of its owner). Global-OT can 
-work with non-trusted servers. 
-
-[Global-OT Demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
-
-
-### [Global-DB](https://github.com/softindex/datakernel/tree/master/global-db)
-
-This module is a variation of Global-FS, optimized for storing small binary key-value pairs and their synchronization .
-
-[Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)
-
-## Integration components
-
-### [Boot](https://github.com/softindex/datakernel/tree/master/boot)
-
-An intelligent way of booting complex applications and services according to their dependencies. Component contains 
-several modules that help to configure and launch an application easier.
-
-[Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot)
-
-### [Launchers](https://github.com/softindex/datakernel/tree/master/launchers)
-
-Module contains a set of predefined launchers as well as some common initializers for services. 
-Contains standard launchers for CRDT, HTTP, FS and RPC modules.
-
-[Launchers examples](https://github.com/softindex/datakernel/tree/master/examples/launchers)
-
-### [UIKernel](https://github.com/softindex/datakernel/tree/master/uikernel)
-This module represents integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets. 
-With this module you can build a server application that will be compatible with UIKernel JS library. 
-
-[UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)
+### Integration components
+|Integration components|||
+|---|---|---|
+|**[Boot](https://github.com/softindex/datakernel/tree/master/boot)**|An intelligent way of booting complex applications and services according to their dependencies. Component contains several modules that help to configure and launch an application easier.| [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) |
+|**[Launchers](https://github.com/softindex/datakernel/tree/master/launchers)**|Module contains a set of predefined launchers as well as some common initializers for services. Contains standard launchers for CRDT, HTTP, FS and RPC modules.| [Launchers examples](https://github.com/softindex/datakernel/tree/master/examples/launchers) |
+|**[UIKernel](https://github.com/softindex/datakernel/tree/master/uikernel)**|This module represents integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets. With this module you can build a server application that will be compatible with UIKernel JS library. |[UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)|
