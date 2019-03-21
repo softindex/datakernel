@@ -39,7 +39,6 @@ import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaders.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-@SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
 
@@ -170,7 +169,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withKeepAliveTimeout(@NotNull Duration keepAliveTime) {
-		this.keepAliveTimeoutMillis = (int) keepAliveTime.toMillis();
+		keepAliveTimeoutMillis = (int) keepAliveTime.toMillis();
 		return this;
 	}
 
@@ -184,12 +183,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withReadWriteTimeout(@NotNull Duration readTimeout) {
-		this.readWriteTimeoutMillis = (int) readTimeout.toMillis();
+		readWriteTimeoutMillis = (int) readTimeout.toMillis();
 		return this;
 	}
 
 	public AsyncHttpServer withHttpErrorFormatter(@NotNull HttpExceptionFormatter httpExceptionFormatter) {
-		this.errorFormatter = httpExceptionFormatter;
+		errorFormatter = httpExceptionFormatter;
 		return this;
 	}
 
@@ -213,18 +212,21 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
 			expiredConnectionsCheck = null;
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
-			if (readWriteTimeoutMillis != 0)
+			if (readWriteTimeoutMillis != 0) {
 				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
-			if (getConnectionsCount() != 0)
+			}
+			if (getConnectionsCount() != 0) {
 				scheduleExpiredConnectionsCheck();
+			}
 		});
 	}
 
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		assert eventloop.inEventloopThread();
-		if (expiredConnectionsCheck == null)
+		if (expiredConnectionsCheck == null) {
 			scheduleExpiredConnectionsCheck();
+		}
 		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet, charBuffer);
 		connection.serve();
 	}

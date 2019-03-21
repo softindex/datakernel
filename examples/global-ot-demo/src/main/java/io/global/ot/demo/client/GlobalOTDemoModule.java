@@ -99,6 +99,7 @@ final class GlobalOTDemoModule extends AbstractModule {
 	ManagerProvider<Operation> provideManager(OTAlgorithms<CommitId, Operation> algorithms) {
 		return new ManagerProvider<>(algorithms, OperationState::new);
 	}
+
 	@Provides
 	@Singleton
 	OTRepository<CommitId, Operation> provideRepository(Bootstrap<Operation> bootstrap, MyRepositoryId<Operation> myRepositoryId) {

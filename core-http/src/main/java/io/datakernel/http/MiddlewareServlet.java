@@ -50,10 +50,12 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	public MiddlewareServlet with(@Nullable HttpMethod method, String path, AsyncServlet servlet) {
-		if (servlet == null)
+		if (servlet == null) {
 			throw new NullPointerException();
-		if (!path.isEmpty() && !path.startsWith(ROOT))
+		}
+		if (!path.isEmpty() && !path.startsWith(ROOT)) {
 			throw new IllegalArgumentException("Invalid path " + path);
+		}
 		if (path.isEmpty() || path.equals(ROOT)) {
 			apply(method, servlet);
 			return this;
@@ -70,10 +72,10 @@ public class MiddlewareServlet implements AsyncServlet {
 
 	public MiddlewareServlet withFallback(AsyncServlet servlet) {
 		checkNotNull(servlet);
-		if (this.fallbackServlet != null) {
+		if (fallbackServlet != null) {
 			throw new IllegalStateException("Fallback servlet is already set");
 		}
-		this.fallbackServlet = servlet;
+		fallbackServlet = servlet;
 		return this;
 	}
 
@@ -90,8 +92,9 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	public MiddlewareServlet withFallback(String path, AsyncServlet servlet) {
-		if (!path.isEmpty() && !path.startsWith(ROOT))
+		if (!path.isEmpty() && !path.startsWith(ROOT)) {
 			throw new IllegalArgumentException("Invalid path " + path);
+		}
 		if (path.isEmpty() || path.equals(ROOT)) {
 			withFallback(servlet);
 			return this;
@@ -105,8 +108,9 @@ public class MiddlewareServlet implements AsyncServlet {
 		if (method == null) {
 			return withFallback(path, servlet);
 		}
-		if (!path.isEmpty() && !path.startsWith(ROOT))
+		if (!path.isEmpty() && !path.startsWith(ROOT)) {
 			throw new IllegalArgumentException("Invalid path " + path);
+		}
 		if (path.isEmpty() || path.equals(ROOT)) {
 			withFallback(method, servlet);
 			return this;

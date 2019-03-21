@@ -30,8 +30,7 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.putPositiveInt;
-import static io.datakernel.http.HttpHeaders.LOCATION;
-import static io.datakernel.http.HttpHeaders.SET_COOKIE;
+import static io.datakernel.http.HttpHeaders.*;
 
 /**
  * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
@@ -82,7 +81,16 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	@NotNull
 	public static HttpResponse redirect302(@NotNull String url) {
 		HttpResponse response = HttpResponse.ofCode(302);
+		// RFC-7231, section 6.4.3 (https://tools.ietf.org/html/rfc7231#section-6.4.3)
 		response.addHeader(LOCATION, url);
+		return response;
+	}
+
+	@NotNull
+	public static HttpResponse unauthorized401(@NotNull String challenge) {
+		HttpResponse response = new HttpResponse(401);
+		// RFC-7235, section 3.1 (https://tools.ietf.org/html/rfc7235#section-3.1)
+		response.addHeader(WWW_AUTHENTICATE, challenge);
 		return response;
 	}
 
@@ -163,18 +171,22 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@NotNull
 	public Map<String, HttpCookie> getCookies() throws ParseException {
-		if (parsedCookies != null) return parsedCookies;
+		if (parsedCookies != null) {
+			return parsedCookies;
+		}
 		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
 		for (HttpCookie cookie : parseHeader(SET_COOKIE, HttpHeaderValue::toFullCookies)) {
 			cookies.put(cookie.getName(), cookie);
 		}
-		return this.parsedCookies = cookies;
+		return parsedCookies = cookies;
 	}
 
 	@NotNull
 	public HttpCookie getCookie(@NotNull String cookie) throws ParseException {
 		HttpCookie httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) return httpCookie;
+		if (httpCookie != null) {
+			return httpCookie;
+		}
 		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
 	}
 

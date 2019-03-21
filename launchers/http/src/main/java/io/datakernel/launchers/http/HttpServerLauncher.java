@@ -66,8 +66,7 @@ public abstract class HttpServerLauncher extends Launcher {
 				new AbstractModule() {
 					@Provides
 					@Singleton
-					Eventloop provide(Config config,
-							OptionalDependency<ThrottlingController> maybeThrottlingController) {
+					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));

@@ -44,7 +44,6 @@ import static io.datakernel.http.HttpMethod.*;
  * {@code HttpRequest} class provides methods which can be used intuitively for
  * creating and configuring an HTTP request.
  */
-@SuppressWarnings("WeakerAccess")
 public final class HttpRequest extends HttpMessage implements Initializable<HttpRequest> {
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
@@ -55,6 +54,8 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private InetAddress remoteAddress;
 	private Map<String, String> pathParameters;
 	private Map<String, String> queryParameters;
+
+	private Map<Class<?>, Object> attachments;
 
 	// region creators
 	HttpRequest(@NotNull HttpMethod method, @Nullable UrlParser url) {
@@ -165,7 +166,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	void setRemoteAddress(@NotNull InetAddress inetAddress) {
-		this.remoteAddress = inetAddress;
+		remoteAddress = inetAddress;
 	}
 
 	@NotNull
@@ -216,18 +217,22 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public Map<String, String> getCookies() throws ParseException {
-		if (parsedCookies != null) return parsedCookies;
+		if (parsedCookies != null) {
+			return parsedCookies;
+		}
 		Map<String, String> cookies = new LinkedHashMap<>();
 		for (HttpCookie cookie : parseHeader(COOKIE, HttpHeaderValue::toSimpleCookies)) {
 			cookies.put(cookie.getName(), cookie.getValue());
 		}
-		return this.parsedCookies = cookies;
+		return parsedCookies = cookies;
 	}
 
 	@NotNull
 	public String getCookie(@NotNull String cookie) throws ParseException {
 		String httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) return httpCookie;
+		if (httpCookie != null) {
+			return httpCookie;
+		}
 		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
 	}
 
@@ -249,7 +254,9 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	@NotNull
 	public Map<String, String> getQueryParameters() {
 		assert !isRecycled();
-		if (queryParameters != null) return queryParameters;
+		if (queryParameters != null) {
+			return queryParameters;
+		}
 		queryParameters = url.getQueryParameters();
 		return queryParameters;
 	}
@@ -258,7 +265,9 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String getQueryParameter(@NotNull String key) throws ParseException {
 		assert !isRecycled();
 		String result = url.getQueryParameter(key);
-		if (result != null) return result;
+		if (result != null) {
+			return result;
+		}
 		throw new ParseException(HttpRequest.class, "Query parameter '" + key + "' is required");
 	}
 
@@ -339,7 +348,9 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String getPathParameter(@NotNull String key) throws ParseException {
 		assert !isRecycled();
 		String result = pathParameters != null ? pathParameters.get(key) : null;
-		if (result != null) return result;
+		if (result != null) {
+			return result;
+		}
 		throw new ParseException(HttpRequest.class, "There is no path parameter with key: " + key);
 	}
 
@@ -373,6 +384,14 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return partialPath.startsWith("/") ? partialPath.substring(1) : partialPath; // strip first '/'
 	}
 
+	@SuppressWarnings("unchecked")
+	public <T> T get(Class<T> type) {
+		assert attachments != null;
+		Object res = attachments.get(type);
+		assert res != null;
+		return (T) res;
+	}
+
 	String pollUrlPart() {
 		assert !isRecycled();
 		return url.pollUrlPart();
@@ -387,6 +406,13 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 			pathParameters = new HashMap<>();
 		}
 		pathParameters.put(key, UrlParser.urlDecode(value));
+	}
+
+	void attach(Object extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(extra.getClass(), extra);
 	}
 
 	@Override

@@ -40,7 +40,7 @@ import static io.datakernel.http.HttpMethod.*;
 /**
  * It represents server connection. It can receive {@link HttpRequest requests}
  * from {@link AsyncHttpClient clients} and respond to them with
- * {@link AsyncServlet async servlet}.
+ * {@link AsyncServlet<HttpRequest> async servlet}.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final int HEADERS_SLOTS = 256;
@@ -84,12 +84,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-			AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
+						 AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
 		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
-		this.inspector = server.inspector;
+		inspector = server.inspector;
 		this.charBuffer = charBuffer;
 	}
 
@@ -101,7 +101,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(@NotNull Throwable e) {
-		if (inspector != null) inspector.onHttpError(remoteAddress, e);
+		if (inspector != null) {
+			inspector.onHttpError(remoteAddress, e);
+		}
 	}
 
 	/**
@@ -124,14 +126,16 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		int urlEnd;
 		for (urlEnd = urlStart; urlEnd < limit; urlEnd++) {
-			if (line[urlEnd] == SP)
+			if (line[urlEnd] == SP) {
 				break;
+			}
 		}
 
 		int p;
 		for (p = urlEnd + 1; p < limit; p++) {
-			if (line[p] != SP)
+			if (line[p] != SP) {
 				break;
+			}
 		}
 
 		if (p + 7 < limit) {
@@ -157,9 +161,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private static HttpMethod getHttpMethod(byte[] line) {
 		boolean get = line[0] == 'G' && line[1] == 'E' && line[2] == 'T' && line[3] == SP;
-		if (get) return GET;
+		if (get) {
+			return GET;
+		}
 		boolean post = line[0] == 'P' && line[1] == 'O' && line[2] == 'S' && line[3] == 'T' && line[4] == SP;
-		if (post) return POST;
+		if (post) {
+			return POST;
+		}
 		return getHttpMethodFromMap(line);
 	}
 
@@ -171,8 +179,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				for (int p = 0; p < MAX_PROBINGS; p++) {
 					int slot = (hashCode + p) & (METHODS.length - 1);
 					HttpMethod method = METHODS[slot];
-					if (method == null)
+					if (method == null) {
 						break;
+					}
 					if (method.compareTo(line, 0, i)) {
 						return method;
 					}
@@ -196,7 +205,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
-		if (request.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
+		if (request.headers.size() >= MAX_HEADERS) {
+			throw TOO_MANY_HEADERS;
+		}
 		request.addParsedHeader(header, array, off, len);
 	}
 
@@ -226,7 +237,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		request.bodySupplier = bodySupplier;
 		request.setRemoteAddress(remoteAddress);
 
-		if (inspector != null) inspector.onHttpRequest(request);
+		if (inspector != null) {
+			inspector.onHttpRequest(request);
+		}
 
 		switchPool(server.poolServing);
 
@@ -240,15 +253,21 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		servletResult.acceptEx((response, e) -> {
 			if (isClosed()) {
 				request.recycle();
-				if (response != null) response.recycle();
+				if (response != null) {
+					response.recycle();
+				}
 				return;
 			}
 			if (e == null) {
-				if (inspector != null) inspector.onHttpResponse(request, response);
+				if (inspector != null) {
+					inspector.onHttpResponse(request, response);
+				}
 				switchPool(server.poolReadWrite);
 				writeHttpResponse(response);
 			} else {
-				if (inspector != null) inspector.onServletException(request, e);
+				if (inspector != null) {
+					inspector.onServletException(request, e);
+				}
 				switchPool(server.poolReadWrite);
 				writeException(e);
 			}

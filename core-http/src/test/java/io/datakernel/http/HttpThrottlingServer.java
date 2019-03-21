@@ -76,7 +76,7 @@ public class HttpThrottlingServer {
 	private final AsyncHttpServer server;
 
 	public HttpThrottlingServer(Eventloop eventloop, ServerOptions options) {
-		this.server = buildHttpServer(eventloop, options.getLoadBusinessLogic());
+		server = buildHttpServer(eventloop, options.getLoadBusinessLogic());
 	}
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, int loadBusinessLogic) {
@@ -113,8 +113,9 @@ public class HttpThrottlingServer {
 
 	public static void main(String[] args) throws Exception {
 		ServerOptions options = ServerOptions.parseCommandLine(args);
-		if (options == null)
+		if (options == null) {
 			return;
+		}
 		info(options);
 
 		EventloopInspector throttlingController = ThrottlingController.create();

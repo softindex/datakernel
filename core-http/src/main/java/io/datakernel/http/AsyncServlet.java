@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 /**
@@ -29,8 +30,13 @@ import java.util.function.UnaryOperator;
  */
 @FunctionalInterface
 public interface AsyncServlet {
+
 	@NotNull
-	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
+	Promise<HttpResponse> serve(HttpRequest request) throws UncheckedException;
+
+	default AsyncServlet with(Function<AsyncServlet, AsyncServlet> middleware) {
+		return middleware.apply(this);
+	}
 
 	default AsyncServlet map(UnaryOperator<HttpResponse> fn) {
 		return request -> serve(request).map(fn);
