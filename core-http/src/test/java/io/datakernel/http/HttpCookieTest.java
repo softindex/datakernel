@@ -114,4 +114,62 @@ public class HttpCookieTest {
 		assertEquals(cookieName, cookie.getName());
 		assertEquals(cookieValue, cookie.getValue());
 	}
+
+	@Test
+	public void testRenderPathSlash() {
+		HttpCookie cookie = HttpCookie.of("name", "value")
+				.withPath("/");
+
+		String expected = "name=value; Path=/";
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
+		cookie.renderFull(buf);
+		assertEquals(expected, ByteBufStrings.asAscii(buf));
+	}
+
+	@Test
+	public void testParsePathSlash() throws ParseException {
+		String cookieName = "name";
+		String cookieValue = "value";
+		String cookiePath = "/";
+		byte[] bytes = ByteBufStrings.encodeAscii(cookieName + "=" + cookieValue + "; Path=" + cookiePath);
+
+		ArrayList<HttpCookie> cookies = new ArrayList<>();
+		HttpCookie.parseFull(bytes, 0, bytes.length, cookies);
+
+		assertEquals(1, cookies.size());
+
+		HttpCookie cookie = first(cookies);
+
+		assertEquals(cookieName, cookie.getName());
+		assertEquals(cookieValue, cookie.getValue());
+		assertEquals(cookiePath, cookie.getPath());
+	}
+
+	@Test
+	public void testRenderPathEmpty() {
+		HttpCookie cookie = HttpCookie.of("name", "value");
+
+		String expected = "name=value";
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
+		cookie.renderFull(buf);
+		assertEquals(expected, ByteBufStrings.asAscii(buf));
+	}
+
+	@Test
+	public void testParsePathEmpty() throws ParseException {
+		String cookieName = "name";
+		String cookieValue = "value";
+		byte[] bytes = ByteBufStrings.encodeAscii(cookieName + "=" + cookieValue);
+
+		ArrayList<HttpCookie> cookies = new ArrayList<>();
+		HttpCookie.parseFull(bytes, 0, bytes.length, cookies);
+
+		assertEquals(1, cookies.size());
+
+		HttpCookie cookie = first(cookies);
+
+		assertEquals(cookieName, cookie.getName());
+		assertEquals(cookieValue, cookie.getValue());
+		assertEquals("/", cookie.getPath());
+	}
 }

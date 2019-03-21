@@ -68,7 +68,7 @@ public final class HttpCookie {
 	private long expirationDate = -1;
 	private int maxAge = -1;
 	private String domain;
-	private String path = "/";
+	private String path = "";
 	private boolean secure;
 	private boolean httpOnly;
 	private String extension;
@@ -77,6 +77,11 @@ public final class HttpCookie {
 	private HttpCookie(String name, String value) {
 		this.name = name;
 		this.value = value;
+	}
+
+	private HttpCookie(String name, String value, String path) {
+		this(name, value);
+		this.path = path;
 	}
 
 	public static HttpCookie of(String name, String value) {
@@ -204,7 +209,7 @@ public final class HttpCookie {
 
 	static void parseFull(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
 		try {
-			HttpCookie cookie = new HttpCookie("", "");
+			HttpCookie cookie = new HttpCookie("", "", "/");
 			while (pos < end) {
 				pos = skipSpaces(bytes, pos, end);
 				int keyStart = pos;
@@ -231,7 +236,7 @@ public final class HttpCookie {
 					} else {
 						value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
 					}
-					cookie = new HttpCookie(key, value);
+					cookie = new HttpCookie(key, value, "/");
 					cookies.add(cookie);
 				} else {
 					handler.handle(cookie, bytes, equalSign + 1, valueEnd);
@@ -342,7 +347,7 @@ public final class HttpCookie {
 			putAscii(buf, "=");
 			putAscii(buf, domain);
 		}
-		if (!(path == null || path.equals("/"))) {
+		if (!(path == null || path.equals(""))) {
 			putAscii(buf, "; ");
 			buf.put(PATH);
 			putAscii(buf, "=");

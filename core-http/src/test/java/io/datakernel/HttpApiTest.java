@@ -97,6 +97,7 @@ public final class HttpApiTest {
 		HttpCookie cookie1 = HttpCookie.of("name2", "value2");
 		cookie1.setMaxAge(123);
 		cookie1.setExpirationDate(Instant.now());
+		cookie1.setPath("/");
 		responseCookies.add(cookie1);
 	}
 
