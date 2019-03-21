@@ -20,12 +20,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 @SuppressWarnings("unused")
 public final class HttpHeaders {
-	private static final CaseInsensitiveTokenMap<HttpHeader> headers = new CaseInsensitiveTokenMap<HttpHeader>(512, 2, HttpHeader.class) {
-		@Override
-		protected HttpHeader create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
-			return new HttpHeader(bytes, offset, length, lowerCaseBytes, lowerCaseHashCode);
-		}
-	};
+	private static final CaseInsensitiveTokenMap<HttpHeader> headers = new CaseInsensitiveTokenMap<>(512, 2, HttpHeader.class, HttpHeader::new);
 
 	public static final HttpHeader CACHE_CONTROL = headers.register("Cache-Control");
 	public static final HttpHeader CONTENT_LENGTH = headers.register("Content-Length");

@@ -23,12 +23,7 @@ import java.util.Map;
 
 @SuppressWarnings("unused")
 public final class MediaTypes {
-	static final CaseInsensitiveTokenMap<MediaType> mimes = new CaseInsensitiveTokenMap<MediaType>(2048, 2, MediaType.class) {
-		@Override
-		protected MediaType create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
-			return new MediaType(bytes, offset, length, lowerCaseBytes, lowerCaseHashCode);
-		}
-	};
+	static final CaseInsensitiveTokenMap<MediaType> mimes = new CaseInsensitiveTokenMap<>(2048, 2, MediaType.class, MediaType::new);
 	private final static Map<String, MediaType> ext2mime = new HashMap<>();
 
 	public static final MediaType ANY = register("*/*");

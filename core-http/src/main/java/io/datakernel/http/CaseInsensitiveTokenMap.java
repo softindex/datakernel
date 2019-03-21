@@ -23,7 +23,7 @@ import java.lang.reflect.Array;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 
-public abstract class CaseInsensitiveTokenMap<T extends Token> {
+public final class CaseInsensitiveTokenMap<T extends Token> {
 	public static abstract class Token {
 		protected final byte[] lowerCaseBytes;
 		protected final int lowerCaseHashCode;
@@ -36,9 +36,11 @@ public abstract class CaseInsensitiveTokenMap<T extends Token> {
 
 	protected final T[] TOKENS;
 	protected final int maxProbings;
+	private final TokenFactory<T> factory;
 
-	protected CaseInsensitiveTokenMap(int slotsNumber, int maxProbings, Class<T> elementsType) {
+	protected CaseInsensitiveTokenMap(int slotsNumber, int maxProbings, Class<T> elementsType, TokenFactory<T> factory) {
 		this.maxProbings = maxProbings;
+		this.factory = factory;
 		@SuppressWarnings("unchecked") T[] ts = (T[]) Array.newInstance(elementsType, slotsNumber);
 		TOKENS = ts;
 	}
@@ -65,13 +67,14 @@ public abstract class CaseInsensitiveTokenMap<T extends Token> {
 		int lowerCaseHashCode = 1;
 		for (int i = 0; i < bytes.length; i++) {
 			byte b = bytes[i];
-			if (b >= 'A' && b <= 'Z')
+			if (b >= 'A' && b <= 'Z') {
 				b += 'a' - 'A';
+			}
 			lowerCaseBytes[i] = b;
 			lowerCaseHashCode = lowerCaseHashCode * 31 + b;
 		}
 
-		return create(bytes, 0, bytes.length, lowerCaseBytes, lowerCaseHashCode);
+		return factory.create(bytes, 0, bytes.length, lowerCaseBytes, lowerCaseHashCode);
 	}
 
 	public final T getOrCreate(byte[] bytes, int offset, int length) {
@@ -81,15 +84,16 @@ public abstract class CaseInsensitiveTokenMap<T extends Token> {
 
 	public final T getOrCreate(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		T t = get(bytes, offset, length, lowerCaseHashCode);
-		return (t != null) ? t : create(bytes, offset, length, null, lowerCaseHashCode);
+		return (t != null) ? t : factory.create(bytes, offset, length, null, lowerCaseHashCode);
 	}
 
 	public final T get(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		for (int p = 0; p < maxProbings; p++) {
 			int slot = (lowerCaseHashCode + p) & (TOKENS.length - 1);
 			T t = TOKENS[slot];
-			if (t == null)
+			if (t == null) {
 				break;
+			}
 			if (t.lowerCaseHashCode == lowerCaseHashCode && equalsLowerCaseAscii(t.lowerCaseBytes, bytes, offset, length)) {
 				return t;
 			}
@@ -97,5 +101,9 @@ public abstract class CaseInsensitiveTokenMap<T extends Token> {
 		return null;
 	}
 
-	protected abstract T create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode);
+	@FunctionalInterface
+	public interface TokenFactory<T> {
+
+		T create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode);
+	}
 }

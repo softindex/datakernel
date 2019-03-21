@@ -36,12 +36,7 @@ import static java.nio.charset.Charset.forName;
 // http://www.iana.org/assignments/character-sets/character-sets.txt
 // case insensitive
 public final class HttpCharset extends Token {
-	private final static CaseInsensitiveTokenMap<HttpCharset> charsets = new CaseInsensitiveTokenMap<HttpCharset>(256, 2, HttpCharset.class) {
-		@Override
-		protected HttpCharset create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
-			return new HttpCharset(bytes, offset, length, lowerCaseBytes, lowerCaseHashCode);
-		}
-	};
+	private final static CaseInsensitiveTokenMap<HttpCharset> charsets = new CaseInsensitiveTokenMap<>(256, 2, HttpCharset.class, HttpCharset::new);
 	private final static Map<Charset, HttpCharset> java2http = new HashMap<>();
 
 	public static final HttpCharset UTF_8 = charsets.register("utf-8").addCharset(StandardCharsets.UTF_8);
@@ -109,8 +104,12 @@ public final class HttpCharset extends Token {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
 		HttpCharset that = (HttpCharset) o;
 		return arraysEquals(bytes, offset, length, that.bytes, that.offset, that.length);
 	}
