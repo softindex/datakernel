@@ -49,6 +49,7 @@ public class ByteBufQueueExample {
 
 		// Taken ByteBuf is combined of every ByteBuf that were in Queue
 		System.out.println("Buf taken from queue: " + Arrays.toString(takenBuf.asArray()));
+		System.out.println("Is queue empty? " + QUEUE.isEmpty());
 		System.out.println();
 	}
 
@@ -60,7 +61,7 @@ public class ByteBufQueueExample {
 		QUEUE.drainTo(buf -> System.out.println(Arrays.toString(buf.getArray())));
 
 		// Queue is empty after draining
-		System.out.println("Queue is empty? " + QUEUE.isEmpty());
+		System.out.println("Is queue empty? " + QUEUE.isEmpty());
 		System.out.println();
 	}
 

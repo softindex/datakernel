@@ -100,7 +100,7 @@ special channels and streams:
 create channels for communications, ByteBufs parsers and handle Communication Sequential Processes.
 
 * [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams) - includes 6 examples 
-of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#datasteams-and-csp-compatibility-example), which illustrate how Datastreams can be combined with CSP to create inter-server streams.
+of simple datastreams use cases. Pay attention to [`NetworkDemoServer` and `NetworkDemoClient` examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams#5-datasteams-and-csp-compatibility-example), which illustrate how Datastreams can be combined with CSP to create inter-server streams.
 
 Also, 
 * [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) - show how to boot your projects 

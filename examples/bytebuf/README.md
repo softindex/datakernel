@@ -255,7 +255,10 @@ Queue is empty? true
 The first line represents our queue after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]` with `QUEUE.add()` method.
 Then method `QUEUE.take()` is applied and the first added buf, which is `[0, 1, 2, 3]`, is taken from the queue.
 The next line represents the consequence of two operations: adding a new `[6, 7, 8]` buf and then applying 
-`QUEUE.takeRemaining()` which takes all remaining bufs from the queue.
+`QUEUE.takeRemaining()` which takes all remaining bufs from the queue. 
+
+**Note: pay attention to the difference between *take()* and *poll()* `ByteBufQueue` methods.** When using *take()*, you 
+must be sure that there is at least one ByteBuf remaining in the queue, otherwise use *poll()*.
 
 Finally, the last three lines represent the following operations:
 

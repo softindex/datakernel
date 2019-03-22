@@ -51,7 +51,7 @@ logically split in 4 groups:
 * [Cloud components](#cloud-components) - modules designed for cloud solutions
 * [Global components](#global-components) - technologies for creating global network applications
 * [Integration components](#integration-components) - include modules for DataKernel components integration and 
-integration with UIKernel.io front-end JS library.
+integration with UIKernel front-end JS library.
 
 ### Core components
 | Core components | | |
@@ -104,4 +104,4 @@ that it downloads/uploads) or in pre-fetching mode (uploading data from master n
 |---|---|---|
 |**[Boot](https://github.com/softindex/datakernel/tree/master/boot)**|An intelligent way of booting complex applications and services according to their dependencies. Component contains several modules that help to configure and launch an application easier.| [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot) |
 |**[Launchers](https://github.com/softindex/datakernel/tree/master/launchers)**|Module contains a set of predefined launchers as well as some common initializers for services. Contains standard launchers for CRDT, HTTP, FS and RPC modules.| [Launchers examples](https://github.com/softindex/datakernel/tree/master/examples/launchers) |
-|**[UIKernel](https://github.com/softindex/datakernel/tree/master/uikernel)**|This module represents integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets. With this module you can build a server application that will be compatible with UIKernel JS library. |[UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)|
+|**[UIKernel](https://github.com/softindex/datakernel/tree/master/uikernel)**|This module represents integration with UIKernel JS frontend library: JSON serializers, grid model, basic servlets. With this module you can build a server application that will be compatible with UIKernel. |[UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)|

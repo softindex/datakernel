@@ -155,7 +155,7 @@ public class SimpleServlet implements AsyncServlet {
 	private final String responseMessage;
 
 	public SimpleServlet(int id, String responseMessage) {
-		this.workerId = id;
+		workerId = id;
 		this.responseMessage = responseMessage;
 	}
 

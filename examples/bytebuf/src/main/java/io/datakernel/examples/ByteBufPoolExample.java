@@ -67,6 +67,7 @@ public class ByteBufPoolExample {
 		// We need to write 3 more bytes so we have to ensure that there are 3 spare bytes in ByteBuf
 		// and if there are not - create new ByteBuf with enough room for 3 bytes (old ByteBuf will get recycled)
 		ByteBuf newByteBuf = ByteBufPool.ensureWriteRemaining(byteBuf, 3);
+		System.out.println("Amount of ByteBufs in pool:" + ByteBufPool.getStats().getPoolItems());
 
 		// As we need to write 3 more bytes, we need a ByteBuf that can hold 6 bytes.
 		// The next power of 2 is 8, so considering 3 bytes that have already been written, new ByteBuf

@@ -118,7 +118,7 @@ Then open `AsyncFileExample` class, which is located at **datakernel -> examples
 
 
 #### Explanation
-When you run **Async File Example**, you'll receive the following output:
+When you run **Async File Example**, you'll receive the following output, which represents content of the created file:
 
 ```
 Hello
