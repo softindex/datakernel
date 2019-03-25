@@ -27,7 +27,6 @@ import io.datakernel.stream.processor.LoggingRule.LoggerConfig;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.common.api.NodeFactory;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
@@ -50,8 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -105,17 +103,17 @@ public final class GlobalFsTest {
 
 		Map<RawServerId, GlobalFsNode> nodes = new HashMap<>();
 
-		NodeFactory<GlobalFsNode> clientFactory = new NodeFactory<GlobalFsNode>() {
+		Function<RawServerId, GlobalFsNode> clientFactory = new Function<RawServerId, GlobalFsNode>() {
 			@Override
-			public GlobalFsNode create(RawServerId serverId) {
+			public GlobalFsNode apply(RawServerId serverId) {
 				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
 				// StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
 				// return HttpGlobalFsNode.create(serverId.getServerIdString(), client);
 				return node;
 			}
 		};
-		firstClient = clientFactory.create(FIRST_ID);
-		GlobalFsNode secondClient = clientFactory.create(SECOND_ID);
+		firstClient = clientFactory.apply(FIRST_ID);
+		GlobalFsNode secondClient = clientFactory.apply(SECOND_ID);
 
 		rawFirstClient = (LocalGlobalFsNode) nodes.get(FIRST_ID);
 		rawSecondClient = (LocalGlobalFsNode) nodes.get(SECOND_ID);
@@ -126,7 +124,7 @@ public final class GlobalFsTest {
 		firstAliceAdapter = firstDriver.adapt(alice.getPrivKey());
 		secondAliceAdapter = secondDriver.adapt(alice.getPrivKey());
 
-		GlobalFsNode cachingNode = clientFactory.create(new RawServerId("http://127.0.0.1:1003"));
+		GlobalFsNode cachingNode = clientFactory.apply(new RawServerId("http://127.0.0.1:1003"));
 		GlobalFsDriver driver = GlobalFsDriver.create(cachingNode, CheckpointPosStrategy.of(16));
 		aliceGateway = driver.adapt(alice.getPrivKey());
 		bobGateway = driver.adapt(bob.getPrivKey());
@@ -269,6 +267,7 @@ public final class GlobalFsTest {
 
 		// it should have the proper size
 		FileMetadata meta = await(firstAliceAdapter.getMetadata(FILENAME));
+		assertNotNull(meta);
 		assertEquals(expected.length(), meta.getSize());
 	}
 
@@ -435,7 +434,9 @@ public final class GlobalFsTest {
 		System.out.println(await(firstAliceAdapter.listEntities("**")));
 
 		// and check if it is now deleted on the first node
-		assertTrue(await(firstAliceAdapter.getMetadata(FILENAME)).isTombstone());
+		FileMetadata meta = await(firstAliceAdapter.getMetadata(FILENAME));
+		assertNotNull(meta);
+		assertTrue(meta.isTombstone());
 	}
 
 	@Test

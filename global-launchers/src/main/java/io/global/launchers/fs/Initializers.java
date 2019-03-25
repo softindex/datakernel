@@ -34,7 +34,7 @@ public class Initializers {
 
 	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
 		return node -> node
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
+				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))
 				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));

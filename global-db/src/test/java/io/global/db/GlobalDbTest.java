@@ -25,7 +25,6 @@ import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.common.api.NodeFactory;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.db.api.DbClient;
 import io.global.db.api.DbStorage;
@@ -46,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.set;
@@ -75,7 +75,7 @@ public final class GlobalDbTest {
 	private GlobalDbAdapter firstAliceAdapter;
 	private GlobalDbAdapter secondAliceAdapter;
 
-	private NodeFactory<GlobalDbNode> nodeFactory;
+	private Function<RawServerId, GlobalDbNode> nodeFactory;
 	private BiFunction<PubKey, String, DbStorage> storageFactory;
 
 	private DbClient cachingAliceGateway;
@@ -92,17 +92,17 @@ public final class GlobalDbTest {
 
 		Map<RawServerId, GlobalDbNode> nodes = new HashMap<>();
 
-		nodeFactory = new NodeFactory<GlobalDbNode>() {
+		nodeFactory = new Function<RawServerId, GlobalDbNode>() {
 			@Override
-			public GlobalDbNode create(RawServerId serverId) {
+			public GlobalDbNode apply(RawServerId serverId) {
 				GlobalDbNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalDbNode.create(id, discoveryService, this, storageFactory));
 				StubHttpClient client = StubHttpClient.of(GlobalDbNodeServlet.create(node));
 				return HttpGlobalDbNode.create(serverId.getServerIdString(), client);
 			}
 		};
 
-		GlobalDbNode firstNode = nodeFactory.create(FIRST_ID);
-		GlobalDbNode secondNode = nodeFactory.create(SECOND_ID);
+		GlobalDbNode firstNode = nodeFactory.apply(FIRST_ID);
+		GlobalDbNode secondNode = nodeFactory.apply(SECOND_ID);
 
 		rawSecondClient = (LocalGlobalDbNode) nodes.get(SECOND_ID);
 
@@ -112,7 +112,7 @@ public final class GlobalDbTest {
 		firstAliceAdapter = firstDriver.adapt(alice);
 		secondAliceAdapter = secondDriver.adapt(alice);
 
-		GlobalDbNode cachingNode = nodeFactory.create(new RawServerId("http://127.0.0.1:1003"));
+		GlobalDbNode cachingNode = nodeFactory.apply(new RawServerId("http://127.0.0.1:1003"));
 		GlobalDbDriver cachingDriver = GlobalDbDriver.create(cachingNode);
 		cachingAliceGateway = cachingDriver.adapt(alice);
 	}

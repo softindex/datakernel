@@ -35,7 +35,7 @@ public class Initializers {
 
 	public static Initializer<LocalGlobalDbNode> ofLocalGlobalDbNode(Config config) {
 		return node -> node
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
+				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
 	}
 }

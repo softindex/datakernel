@@ -18,7 +18,7 @@ package io.global.launchers.ot;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.ot.server.GlobalOTNodeImpl;
+import io.global.ot.server.LocalGlobalOTNode;
 
 import java.util.HashSet;
 
@@ -33,9 +33,9 @@ public class Initializers {
 		throw new AssertionError();
 	}
 
-	public static Initializer<GlobalOTNodeImpl> ofGlobalOTNodeImpl(Config config) {
+	public static Initializer<LocalGlobalOTNode> ofGlobalOTNodeImpl(Config config) {
 		return node -> node
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
+				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
 	}
 }

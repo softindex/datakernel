@@ -32,30 +32,24 @@ import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
-import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.common.api.NodeFactory;
-import io.global.db.LocalGlobalDbNode.Namespace.Repo;
+import io.global.common.api.LocalGlobalNode;
+import io.global.db.LocalGlobalDbNamespace.Repo;
 import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.global.util.Utils.nSuccessesOrLess;
 
-public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<LocalGlobalDbNode> {
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalDbNode.class);
-
+public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, LocalGlobalDbNamespace, GlobalDbNode> implements GlobalDbNode, Initializable<LocalGlobalDbNode> {
 	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalDbNode.class, "latencyMargin", Duration.ofMinutes(5));
-
-	private final Set<PubKey> managedPubKeys = new HashSet<>();
 
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
@@ -63,60 +57,35 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 	private boolean doesDownloadCaching = true;
 	private boolean doesUploadCaching = false;
 
-	private final Map<PubKey, Namespace> namespaces = new HashMap<>();
-
 	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
-	private final RawServerId id;
-	private final DiscoveryService discoveryService;
-	private final NodeFactory<GlobalDbNode> nodeFactory;
 	private final BiFunction<PubKey, String, DbStorage> storageFactory;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
 	private LocalGlobalDbNode(RawServerId id, DiscoveryService discoveryService,
-							  NodeFactory<GlobalDbNode> nodeFactory,
+							  Function<RawServerId, GlobalDbNode> nodeFactory,
 							  BiFunction<PubKey, String, DbStorage> storageFactory) {
-		this.id = id;
-		this.discoveryService = discoveryService;
-		this.nodeFactory = nodeFactory;
+		super(id, discoveryService, nodeFactory, LocalGlobalDbNamespace::new);
 		this.storageFactory = storageFactory;
 	}
 
 	public static LocalGlobalDbNode create(RawServerId id, DiscoveryService discoveryService,
-										   NodeFactory<GlobalDbNode> nodeFactory,
+										   Function<RawServerId, GlobalDbNode> nodeFactory,
 										   BiFunction<PubKey, String, DbStorage> storageFactory) {
 		return new LocalGlobalDbNode(id, discoveryService, nodeFactory, storageFactory);
 	}
-
-	public LocalGlobalDbNode withManagedPubKey(PubKey managedPubKey) {
-		managedPubKeys.add(managedPubKey);
-		return this;
-	}
-
-	public LocalGlobalDbNode withManagedPubKeys(Set<PubKey> managedPubKeys) {
-		this.managedPubKeys.addAll(managedPubKeys);
-		return this;
-	}
-
-	public LocalGlobalDbNode withLatencyMargin(Duration latencyMargin) {
-		this.latencyMargin = latencyMargin;
-		return this;
-	}
 	// endregion
 
-	private Namespace ensureNamespace(PubKey space) {
-		return namespaces.computeIfAbsent(space, Namespace::new);
-	}
 
-	private boolean isMasterFor(PubKey space) {
-		return managedPubKeys.contains(space);
+	public BiFunction<PubKey, String, DbStorage> getStorageFactory() {
+		return storageFactory;
 	}
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload(PubKey space, String table) {
-		Namespace ns = ensureNamespace(space);
+		LocalGlobalDbNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
 					Repo repo = ns.ensureRepository(table);
@@ -171,7 +140,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download(PubKey space, String table, long timestamp) {
-		Namespace ns = ensureNamespace(space);
+		LocalGlobalDbNamespace ns = ensureNamespace(space);
 		Repo repo = ns.ensureRepository(table);
 		return repo.download(timestamp)
 				.then(supplier -> {
@@ -204,7 +173,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 	@Override
 	public Promise<SignedData<DbItem>> get(PubKey space, String table, byte[] key) {
-		Namespace ns = ensureNamespace(space);
+		LocalGlobalDbNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
 					Repo repo = ns.ensureRepository(table);
@@ -224,20 +193,19 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 	@Override
 	public Promise<List<String>> list(PubKey space) {
-		Namespace ns = ensureNamespace(space);
-		return ns
-				.ensureMasterNodes()
+		LocalGlobalDbNamespace ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
 				.then(masters -> {
-					if (!isMasterFor(space)) {
-						return Promises.firstSuccessful(masters.stream()
-								.map(node -> AsyncSupplier.cast(() -> node.list(space))));
+					if (isMasterFor(space)) {
+						return Promise.of(new ArrayList<>(ns.getRepoNames()));
 					}
-					return Promise.of(new ArrayList<>(ns.repos.keySet()));
+					return Promises.firstSuccessful(masters.stream()
+							.map(node -> AsyncSupplier.cast(() -> node.list(space))));
 				});
 	}
 
 	public Promise<Void> fetch() {
-		return Promises.all(managedPubKeys.stream().map(this::fetch));
+		return Promises.all(getManagedPublicKeys().stream().map(this::fetch));
 	}
 
 	public Promise<Void> push() {
@@ -282,128 +250,5 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 	@Override
 	public String toString() {
 		return "LocalGlobalDbNode{id=" + id + '}';
-	}
-
-	class Namespace {
-		final PubKey space;
-
-		final Map<String, Repo> repos = new HashMap<>();
-
-		final AsyncSupplier<List<GlobalDbNode>> ensureMasterNodes = reuse(this::doEnsureNodes);
-		final Map<RawServerId, GlobalDbNode> masterNodes = new HashMap<>();
-		long updateNodesTimestamp;
-		long announceTimestamp;
-
-		Namespace(PubKey space) {
-			this.space = space;
-		}
-
-		Repo ensureRepository(String table) {
-			return repos.computeIfAbsent(table, t -> new Repo(storageFactory.apply(space, t), space, t));
-		}
-
-		Promise<Void> fetch() {
-			return ensureMasterNodes()
-					.then(masters ->
-							Promises.all(masters.stream()
-									.map(node -> node
-											.list(space)
-											.then(tables ->
-													Promises.all(tables.stream()
-															.map(table ->
-																	ensureRepository(table)
-																			.fetch(node)))))));
-		}
-
-		Promise<Void> push() {
-			return ensureMasterNodes()
-					.then(masters ->
-							Promises.all(masters
-									.stream()
-									.map(node ->
-											Promises.all(repos
-													.values()
-													.stream()
-													.map(repo -> repo.push(node))))));
-		}
-
-		Promise<List<GlobalDbNode>> ensureMasterNodes() {
-			return ensureMasterNodes.get();
-		}
-
-		@NotNull
-		Promise<List<GlobalDbNode>> doEnsureNodes() {
-			if (updateNodesTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
-				return Promise.of(getMasterNodes());
-			}
-			return discoveryService.find(space)
-					.mapEx((announceData, e) -> {
-						if (e == null && announceData != null) {
-							AnnounceData announce = announceData.getValue();
-							if (announce.getTimestamp() >= announceTimestamp) {
-								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
-								masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
-								if (newServerIds.remove(id)) { // ensure that we are master for the space if it was announced
-									if (managedPubKeys.add(space)) {
-										logger.trace("became a master for {}: {}", space, LocalGlobalDbNode.this);
-									}
-								} else {
-									if (managedPubKeys.remove(space)) {
-										logger.trace("stopped being a master for {}: {}", space, LocalGlobalDbNode.this);
-									}
-								}
-								newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, nodeFactory::create));
-								updateNodesTimestamp = now.currentTimeMillis();
-								announceTimestamp = announce.getTimestamp();
-							}
-						}
-						return getMasterNodes();
-					});
-		}
-
-		@NotNull
-		List<GlobalDbNode> getMasterNodes() {
-			return new ArrayList<>(masterNodes.values());
-		}
-
-		class Repo {
-			final DbStorage storage;
-			final PubKey space;
-			final String table;
-
-			long lastFetchTimestamp = 0;
-			long cacheTimestamp = 0;
-
-			Repo(DbStorage storage, PubKey space, String table) {
-				this.storage = storage;
-				this.space = space;
-				this.table = table;
-			}
-
-			Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
-				return storage.upload()
-						.map(consumer -> consumer
-								.withAcknowledgement(ack -> ack
-										.accept($ -> cacheTimestamp = now.currentTimeMillis())));
-			}
-
-			Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
-				return now.currentTimeMillis() - cacheTimestamp <= latencyMargin.toMillis() ?
-						storage.download(timestamp) :
-						Promise.of(null);
-			}
-
-			Promise<Void> fetch(GlobalDbNode node) {
-				long timestamp = now.currentTimeMillis();
-				return Promises.toTuple(node.download(space, table, lastFetchTimestamp), storage.upload())
-						.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()))
-						.accept($ -> lastFetchTimestamp = timestamp);
-			}
-
-			Promise<Void> push(GlobalDbNode node) {
-				return Promises.toTuple(storage.download(), node.upload(space, table))
-						.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()));
-			}
-		}
 	}
 }
