@@ -44,6 +44,10 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 		return new OTNodeImpl<>(repository, otSystem, commit -> commit, object -> object);
 	}
 
+	public OTRepository<K, D> getRepository() {
+		return repository;
+	}
+
 	@Override
 	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.loadCommit(parent)

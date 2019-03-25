@@ -16,19 +16,17 @@
 
 package io.global.ot.chat.operations;
 
-import io.datakernel.ot.OTSystem;
-import io.datakernel.ot.OTSystemImpl;
-import io.datakernel.ot.TransformResult;
+import io.global.chat.chatroom.messages.Message;
+import io.global.chat.chatroom.messages.MessageOperation;
 
 import java.util.function.Function;
 
-import static java.util.Collections.singletonList;
-
 public final class Utils {
 	public static final int CONTENT_MAX_LENGTH = 10;
-	public static final Function<ChatOperation, String> DIFF_TO_STRING = op -> {
-		String author = op.getAuthor();
-		String allContent = op.getContent();
+	public static final Function<MessageOperation, String> DIFF_TO_STRING = op -> {
+		Message message = op.getMessage();
+		String author = message.getAuthor();
+		String allContent = message.getContent();
 		String content = allContent.length() > CONTENT_MAX_LENGTH ?
 				(allContent.substring(0, CONTENT_MAX_LENGTH) + "...") :
 				allContent;
@@ -38,24 +36,4 @@ public final class Utils {
 	private Utils() {
 		throw new AssertionError();
 	}
-
-	public static OTSystem<ChatOperation> createOTSystem() {
-		return OTSystemImpl.<ChatOperation>create()
-				.withEmptyPredicate(ChatOperation.class, ChatOperation::isEmpty)
-				.withInvertFunction(ChatOperation.class, op -> singletonList(op.invert()))
-				.withSquashFunction(ChatOperation.class, ChatOperation.class, (op1, op2) -> {
-					if (op1.isEmpty()) {
-						return op2;
-					}
-					if (op2.isEmpty()) {
-						return op1;
-					}
-					if (op1.isInversionFor(op2)) {
-						return ChatOperation.EMPTY;
-					}
-					return null;
-				})
-				.withTransformFunction(ChatOperation.class, ChatOperation.class, (left, right) -> TransformResult.of(right, left));
-	}
-
 }

@@ -29,6 +29,11 @@
       <artifactId>datakernel-http</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>global-chat</artifactId>
+      <version>0.0.1</version>
+    </dependency>
 
     <dependency>
       <groupId>io.datakernel</groupId>
