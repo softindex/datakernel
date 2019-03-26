@@ -51,7 +51,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 	@NotNull
 	private Promise<Void> doUpdateRepositories() {
 		logger.trace("Updating repositories");
-		if (updateRepositoriesTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+		if (updateRepositoriesTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.complete();
 		}
 		return ensureMasterNodes()
@@ -193,7 +193,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 
 		@NotNull
 		private Promise<Void> doUpdate() {
-			if (updateTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots())
@@ -203,7 +203,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		@NotNull
 		private Promise<Void> doUpdateHeads() {
 			logger.trace("Updating heads");
-			if (updateHeadsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateHeadsTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -219,7 +219,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		@NotNull
 		private Promise<Void> doUpdateSnapshots() {
 			logger.trace("Updating snapshots");
-			if (updateSnapshotsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateSnapshotsTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -239,7 +239,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		@NotNull
 		private Promise<Void> doUpdatePullRequests() {
 			logger.trace("Updating pull requests");
-			if (updatePullRequestsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updatePullRequestsTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -299,6 +299,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		private Promise<Void> doPushSnapshots() {
 			return forEachMaster(master -> {
 				logger.trace("{} pushing snapshots to {}", repositoryId, master);
+				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in commitStorage.listSnapshotIds()
 				return master.listSnapshots(repositoryId, emptySet())
 						.then(remoteSnapshotIds -> node.getCommitStorage().listSnapshotIds(repositoryId)
 								.map(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds)))

@@ -3,8 +3,6 @@ package io.global.common.api;
 import io.datakernel.util.ApplicationSettings;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -15,8 +13,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public abstract class LocalGlobalNode<S extends LocalGlobalNode<S, L, N>, L extends GlobalNamespace<L, S, N>, N> {
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalNode.class);
-
 	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalNode.class, "latencyMargin", Duration.ofMinutes(5));
 
 	private final Set<PubKey> managedPublicKeys = new HashSet<>();

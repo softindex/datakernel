@@ -39,7 +39,7 @@ public abstract class GlobalNamespace<S extends GlobalNamespace<S, L, N>, L exte
 	}
 
 	private Promise<List<N>> doEnsureMasterNodes() {
-		if (updateNodesTimestamp >= now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+		if (updateNodesTimestamp > now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.of(getMasterNodes());
 		}
 		return node.getDiscoveryService().find(space)

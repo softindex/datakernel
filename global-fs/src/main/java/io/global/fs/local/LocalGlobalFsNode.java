@@ -281,7 +281,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 				.acceptEx(toLogger(logger, "catchUp", this));
 	}
 
-	private void catchUpImpl(SettableCallback<Void> cb) {
+	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
 		long started = now.currentTimeMillis();
 		fetch()
 				.accept(didAnything -> {

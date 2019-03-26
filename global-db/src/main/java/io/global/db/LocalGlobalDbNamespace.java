@@ -74,7 +74,7 @@ public final class LocalGlobalDbNamespace extends GlobalNamespace<LocalGlobalDbN
 		}
 
 		public Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
-			return node.now.currentTimeMillis() - cacheTimestamp <= node.getLatencyMargin().toMillis() ?
+			return node.now.currentTimeMillis() - cacheTimestamp < node.getLatencyMargin().toMillis() ?
 					storage.download(timestamp) :
 					Promise.of(null);
 		}
