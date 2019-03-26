@@ -64,7 +64,7 @@ public static void main(String[] args) {
 	supplier.streamTo(consumer);
 
 	//when stream completes, the streamed data is printed out
-	consumer.getResult().accept(result -> System.out.println("Consumer received: " + result));
+	consumer.getResult().whenResult(result -> System.out.println("Consumer received: " + result));
 	eventloop.run();
 	}
 ```
@@ -192,7 +192,7 @@ private static void mapper() {
 	supplier.transformWith(simpleMap).streamTo(consumer);
         
 	//when consumer completes receiving values, the result is printed out
-	consumer.getResult().accept(System.out::println);
+	consumer.getResult().whenResult(System.out::println);
 }
 ```
 
@@ -221,9 +221,9 @@ private static void sharder() {
 
 
 	//when consumers complete receiving values, the result is printed out
-	first.getResult().accept(x -> System.out.println("first: " + x));
-	second.getResult().accept(x -> System.out.println("second: " + x));
-	third.getResult().accept(x -> System.out.println("third: " + x));
+	first.getResult().whenResult(x -> System.out.println("first: " + x));
+	second.getResult().whenResult(x -> System.out.println("second: " + x));
+	third.getResult().whenResult(x -> System.out.println("third: " + x));
 ```
 
 The last line of the output is a result of utilizing `StreamFilter`:
@@ -243,7 +243,7 @@ private static void filter() {
 	supplier.transformWith(filter).streamTo(consumer);
 
    	//when consumer completes receiving values, the result is printed out
-	consumer.getResult().accept(System.out::println);
+	consumer.getResult().whenResult(System.out::println);
 }
 ```
 
@@ -330,7 +330,7 @@ public static void main(String[] args) {
 					.streamTo(consumer);
                 
 				//When consumer gets a result, it prints it out
-				consumer.getResult().accept(list -> list.forEach(System.out::println));
+				consumer.getResult().whenResult(list -> list.forEach(System.out::println));
 			}
     }
 }

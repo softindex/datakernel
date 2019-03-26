@@ -50,7 +50,7 @@ public class ByteBufsParserExample {
 		};
 		//BinaryChannelSupplier processes our "Hello" message. When parsing completes, its result is printed out
 		BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)).parse(parser)
-				.accept(System.out::println);
+				.whenResult(System.out::println);
 	}
 }
 ```
@@ -110,7 +110,7 @@ private static void toCollector() {
 	
 	        //collects the provided Integers to List
 			.toCollector(Collectors.toList())
-			.accept(System.out::println);
+			.whenResult(System.out::println);
 }
 
 private static void filter() {

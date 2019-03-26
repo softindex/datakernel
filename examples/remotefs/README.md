@@ -96,7 +96,7 @@ protected void run() throws Exception {
 
 		//consumer result here is a marker of successful upload
 		producer.streamTo(consumer)
-			.acceptEx(($, e) -> {
+			.whenComplete(($, e) -> {
 				if (e != null) {
 					logger.error("Error while uploading file {}", FILE_NAME, e);
 				} else {
