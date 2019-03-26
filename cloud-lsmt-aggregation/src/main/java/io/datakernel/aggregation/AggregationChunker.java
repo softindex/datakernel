@@ -58,8 +58,8 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		(this.chunksCollector = AsyncCollector.create(new ArrayList<>()))
 				.run(switcher.getAcknowledgement());
 		this.chunkSize = chunkSize;
-		chunksCollector.get().acceptEx(result::trySet);
-		getAcknowledgement().acceptEx(Exception.class, result::trySetException);
+		chunksCollector.get().whenComplete(result::trySet);
+		getAcknowledgement().whenException(result::trySetException);
 	}
 
 	public static <C, T> AggregationChunker<C, T> create(AggregationStructure aggregation, List<String> fields,
@@ -103,8 +103,8 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 									PrimaryKey.ofObject(first, aggregation.getKeys()),
 									PrimaryKey.ofObject(last, aggregation.getKeys()),
 									count))
-					.acceptEx(result::trySet);
-			getAcknowledgement().acceptEx(Exception.class, result::trySetException);
+					.whenComplete(result::trySet);
+			getAcknowledgement().whenException(result::trySetException);
 		}
 
 		@Override

@@ -94,8 +94,8 @@ public final class HttpFsClient implements FsClient {
 							return buffer.getSupplier();
 						})))
 				.then(checkResponse)
-				.acceptEx(Exception.class, channelPromise::trySetException)
-				.acceptEx(responsePromise::trySet);
+				.whenException(channelPromise::trySetException)
+				.whenComplete(responsePromise::trySet);
 
 		return channelPromise;
 	}

@@ -90,7 +90,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
 			forwarder.getSupplier().streamTo(consumer);
 			consumer.withAcknowledgement(ack ->
-					ack.acceptEx(($, e) -> {
+					ack.whenComplete(($, e) -> {
 						if (e != null) {
 							logger.warn("Exception occurred while trying to send data");
 						}
@@ -135,7 +135,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 		messaging.receive()
-				.accept(msg -> {
+				.whenResult(msg -> {
 					if (msg != null) {
 						doRead(messaging, msg);
 					} else {
@@ -143,7 +143,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 						messaging.close();
 					}
 				})
-				.acceptEx(Exception.class, e -> {
+				.whenException(e -> {
 					logger.error("received error while trying to read", e);
 					messaging.close();
 				});

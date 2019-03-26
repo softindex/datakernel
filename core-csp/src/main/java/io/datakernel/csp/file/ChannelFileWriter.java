@@ -97,7 +97,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 					}
 					if (buf == null) {
 						return closeFile()
-								.acceptEx(($1, e1) -> close());
+								.whenComplete(($1, e1) -> close());
 					}
 					return asyncFile.write(buf)
 							.thenEx(($2, e2) -> {
@@ -115,7 +115,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 			return Promise.complete();
 		}
 		return (forceOnClose ? asyncFile.forceAndClose(forceMetadata) : asyncFile.close())
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e == null) {
 						logger.trace(this + ": closed file");
 					} else {

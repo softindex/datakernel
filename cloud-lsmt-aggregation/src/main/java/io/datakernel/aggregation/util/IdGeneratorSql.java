@@ -55,7 +55,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	private Promise<Void> doReserveId() {
 		int finalStride = stride;
 		return Promise.ofBlockingCallable(executor, () -> getAndAdd(finalStride))
-				.accept(id -> {
+				.whenResult(id -> {
 					next = id;
 					limit = id + finalStride;
 				})

@@ -52,7 +52,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.createCommit(parent, diffs, level)
 				.map(commitToObject)
-				.acceptEx(toLogger(logger, thisMethod(), parent, diffs, level));
+				.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level));
 	}
 
 	@Override
@@ -67,7 +67,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 							return repository.updateHeads(mergeHeadSet, difference(initalHeads, mergeHeadSet))
 									.then($ -> doFetch(mergeHeadSet, otCommit.getId()));
 						}))
-				.acceptEx(toLogger(logger, thisMethod(), commit));
+				.whenComplete(toLogger(logger, thisMethod(), commit));
 	}
 
 	@Override
@@ -94,14 +94,14 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 								algorithms.getOtSystem().squash(concat(checkoutData.getDiffs(), fetchData.getDiffs()))
 						))
 				)
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
 		return repository.getHeads()
 				.then(heads -> doFetch(heads, currentCommitId))
-				.acceptEx(toLogger(logger, thisMethod(), currentCommitId));
+				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}
 
 	@Override
@@ -111,7 +111,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 				.then(initialHeads ->
 						Promises.until(initialHeads,
 								heads -> repository.pollHeads(heads)
-										.accept(newHeads ->
+										.whenResult(newHeads ->
 												pollIntervalRef[0] = Objects.equals(heads, newHeads) ?
 														pollInterval :
 														Duration.ZERO),
@@ -119,7 +119,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 										Promises.delay(Promise.of(false), pollIntervalRef[0]) :
 										Promise.of(true)))
 				.then(heads -> doFetch(heads, currentCommitId))
-				.acceptEx(toLogger(logger, thisMethod(), currentCommitId));
+				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}
 
 	private Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
@@ -132,6 +132,6 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 						findResult.getChildLevel(),
 						algorithms.getOtSystem().squash(findResult.getAccumulatedDiffs())
 				))
-				.acceptEx(toLogger(logger, thisMethod(), currentCommitId));
+				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}
 }

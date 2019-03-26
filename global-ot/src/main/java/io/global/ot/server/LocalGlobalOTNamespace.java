@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -58,9 +59,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 				.then(masters -> firstSuccessful(masters.stream()
 						.map(master -> AsyncSupplier.cast(() ->
 								master.list(space))))
-						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))
-				.accept(repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name))))
-				.accept($ -> updateRepositoriesTimestamp = node.now.currentTimeMillis())
+						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet()))).whenResult((Consumer<? super Set<String>>) repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name)))).whenResult((Consumer<? super Set<String>>) $ -> updateRepositoriesTimestamp = node.now.currentTimeMillis())
 				.toVoid();
 	}
 
@@ -165,10 +164,9 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 									GlobalOTNode node = masterNodes.get(serverId);
 									return Promises.toTuple(Tuple2::new,
 											node.getHeads(repositoryId),
-											node.getPullRequests(repositoryId))
-											.accept(tuple -> masterRepositories.put(serverId,
-													new MasterRepository(serverId, repositoryId, node,
-															tuple.getValue1(), tuple.getValue2())));
+											node.getPullRequests(repositoryId)).whenResult((Consumer<? super Tuple2<Set<SignedData<RawCommitHead>>, Set<SignedData<RawPullRequest>>>>) tuple -> masterRepositories.put(serverId,
+											new MasterRepository(serverId, repositoryId, node,
+													tuple.getValue1(), tuple.getValue2())));
 								}));
 					})
 					.map($ -> masterRepositories);
@@ -177,18 +175,17 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		@NotNull
 		private Promise<Void> doPollHeads() {
 			return ensureMasterRepositories()
-					.then(masterRepositories -> Promises.until(
-							() -> Promises.any(masterRepositories.values().stream().map(MasterRepository::poll))
-									.map($ -> masterRepositories.values().stream()
+					.then(masterRepositories1 -> Promises.until(
+							() -> Promises.any(masterRepositories1.values().stream().map(MasterRepository::poll))
+									.map($ -> masterRepositories1.values().stream()
 											.flatMap(masterRepository -> masterRepository.getHeads().stream())
 											.collect(toSet())),
-							AsyncPredicate.of(polledHeads -> {
-								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads);
-								this.polledHeads = polledHeads;
+							AsyncPredicate.of(polledHeads1 -> {
+								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads1);
+								this.polledHeads = polledHeads1;
 								return found;
 							})))
-					.then(this::saveHeads)
-					.accept($ -> updateHeadsTimestamp = node.now.currentTimeMillis());
+					.then(this::saveHeads).whenResult((Consumer<? super Void>) $1 -> updateHeadsTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
@@ -196,8 +193,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 			if (updateTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
-			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots())
-					.accept($ -> updateTimestamp = node.now.currentTimeMillis());
+			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots()).whenResult((Consumer<? super Void>) $ -> updateTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
@@ -212,8 +208,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 									.map(master -> AsyncSupplier.cast(() ->
 											master.getHeads(repositoryId)))))
 							.mapEx((result, e) -> e == null ? result : Collections.<SignedData<RawCommitHead>>emptySet())
-							.then(this::saveHeads))
-					.accept($ -> updateHeadsTimestamp = node.now.currentTimeMillis());
+							.then(this::saveHeads)).whenResult((Consumer<? super Void>) $ -> updateHeadsTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
@@ -232,8 +227,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 																	.map(snapshotId -> master.loadSnapshot(repositoryId, snapshotId)
 																			.then(Promise::ofOptional)))))))
 									.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawSnapshot>>emptyList())))
-							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot))))
-					.accept($ -> updateSnapshotsTimestamp = node.now.currentTimeMillis());
+							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot)))).whenResult((Consumer<? super Void>) $ -> updateSnapshotsTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
@@ -248,8 +242,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 									master.getPullRequests(repositoryId))))
 							.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawPullRequest>>emptySet())))
 					.then(pullRequests -> Promises.all(
-							pullRequests.stream().map(node.getCommitStorage()::savePullRequest)))
-					.accept($ -> updatePullRequestsTimestamp = node.now.currentTimeMillis());
+							pullRequests.stream().map(node.getCommitStorage()::savePullRequest))).whenResult((Consumer<? super Void>) $ -> updatePullRequestsTimestamp = node.now.currentTimeMillis());
 		}
 
 		private Promise<Void> doSaveHeads(Set<SignedData<RawCommitHead>> signedNewHeads) {
@@ -268,8 +261,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 						return excludeParents(union(existingHeads, newHeads))
 								.then(realHeads -> node.getCommitStorage().updateHeads(repositoryId,
 										signedNewHeads.stream().filter(signedNewHead -> realHeads.contains(signedNewHead.getValue().getCommitId())).collect(toSet()),
-										difference(existingHeads, realHeads))
-										.acceptEx(($, e) -> longPollingHeads.wakeup())
+										difference(existingHeads, realHeads)).whenComplete((Callback<? super Void>) ($, e) -> longPollingHeads.wakeup())
 								);
 					});
 		}
@@ -326,16 +318,16 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
 			PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 			return Promises.all(heads.stream()
-					.map(head -> node.loadCommit(repositoryId, head)
-							.accept(commit ->
-									queue.add(new RawCommitEntry(head, commit)))))
+					.map(head -> {
+						return node.loadCommit(repositoryId, head).whenResult((Consumer<? super RawCommit>) commit ->
+								queue.add(new RawCommitEntry(head, commit)));
+					}))
 					.then(value -> Promise.<Set<CommitId>>ofCallback(cb ->
 							doExcludeParents(
 									queue,
 									queue.stream().mapToLong(entry -> entry.commit.getLevel()).min().orElse(0L),
 									new HashSet<>(heads),
-									cb)))
-					.acceptEx(toLogger(logger, "excludeParents", heads, this));
+									cb))).whenComplete(toLogger(logger, "excludeParents", heads, this));
 		}
 
 		private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
@@ -350,14 +342,13 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 					entry.commit.getParents()
 							.stream()
 							.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
-							.map(parentId -> node.loadCommit(repositoryId, parentId)
-									.accept(parentRawCommit ->
-											queue.add(new RawCommitEntry(parentId, parentRawCommit)))))
-					.accept($ -> doExcludeParents(
-							queue, minLevel,
-							resultHeads,
-							cb))
-					.acceptEx(Exception.class, cb::setException);
+							.map(parentId -> {
+								return node.loadCommit(repositoryId, parentId).whenResult((Consumer<? super RawCommit>) parentRawCommit ->
+										queue.add(new RawCommitEntry(parentId, parentRawCommit)));
+							})).whenResult((Consumer<? super Void>) $ -> doExcludeParents(
+					queue, minLevel,
+					resultHeads,
+					cb)).whenException(cb::setException);
 		}
 
 		private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {

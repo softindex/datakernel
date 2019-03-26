@@ -58,7 +58,7 @@ public class AsyncFileExample {
 		try {
 			return AsyncFile.open(executorService, PATH, set(READ))
 					.read()
-					.accept(buf -> System.out.println(buf.getString(UTF_8)));
+					.whenResult(buf -> System.out.println(buf.getString(UTF_8)));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
@@ -78,7 +78,7 @@ public class AsyncFileExample {
 		Promises.sequence(
 				() -> writeToFile(),
 				() -> readFromFile().toVoid())
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e != null) {
 						System.out.println("Something went wrong : " + e);
 					}

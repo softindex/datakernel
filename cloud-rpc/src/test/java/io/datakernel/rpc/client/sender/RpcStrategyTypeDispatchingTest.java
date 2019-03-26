@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -26,8 +25,10 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.rpc.client.sender.Callbacks.*;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 @SuppressWarnings("ConstantConditions")
 public class RpcStrategyTypeDispatchingTest {
@@ -64,13 +65,13 @@ public class RpcStrategyTypeDispatchingTest {
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		for (int i = 0; i < dataTypeOneRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeOne(), 50, Callback.ignore());
+			sender.sendRequest(new RpcMessageDataTypeOne(), 50, ignore());
 		}
 		for (int i = 0; i < dataTypeTwoRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeTwo(), 50, Callback.ignore());
+			sender.sendRequest(new RpcMessageDataTypeTwo(), 50, ignore());
 		}
 		for (int i = 0; i < dataTypeThreeRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeThree(), 50, Callback.ignore());
+			sender.sendRequest(new RpcMessageDataTypeThree(), 50, ignore());
 		}
 
 		assertEquals(dataTypeOneRequests, connection1.getRequests());
@@ -100,7 +101,7 @@ public class RpcStrategyTypeDispatchingTest {
 				.onDefault(defaultServer);
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
-		sender.sendRequest(new RpcMessageDataStub(), 50, Callback.assertNoCalls());
+		sender.sendRequest(new RpcMessageDataStub(), 50, assertNoCalls());
 
 		assertEquals(0, connection1.getRequests());
 		assertEquals(0, connection2.getRequests());
@@ -129,7 +130,7 @@ public class RpcStrategyTypeDispatchingTest {
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		// sender is not specified for RpcMessageDataStub, default sender is null
 		CompletableFuture<Object> future = new CompletableFuture<>();
-		sender.sendRequest(new RpcMessageDataStub(), 50, Callback.forFuture(future));
+		sender.sendRequest(new RpcMessageDataStub(), 50, forFuture(future));
 
 		future.get();
 	}

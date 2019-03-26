@@ -301,7 +301,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 
 		stream.getEndOfStream()
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (temporarySortDir == null) {
 						deleteSortDirSilent(sortDir);
 					}
@@ -520,7 +520,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		consolidationStarted = eventloop.currentTimeMillis();
 
 		return doConsolidation(chunks)
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e == null) {
 						consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
 						consolidations++;

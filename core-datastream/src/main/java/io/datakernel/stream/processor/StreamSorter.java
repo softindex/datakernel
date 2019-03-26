@@ -160,7 +160,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 						input.list.iterator() :
 						new DistinctIterator<>(input.list, keyFunction, keyComparator);
 				writeToTemporaryStorage(iterator)
-						.accept($ -> suspendOrResume());
+						.whenResult($ -> suspendOrResume());
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}

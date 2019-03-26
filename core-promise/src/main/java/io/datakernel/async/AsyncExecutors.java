@@ -50,9 +50,8 @@ public class AsyncExecutors {
 				return Promise.ofCallback(cb -> {
 					currentEventloop.startExternalTask();
 					eventloop.execute(() -> supplier.get()
-							.acceptEx((result, e) -> {
-								currentEventloop.execute(() ->
-										cb.set(result, e));
+							.whenComplete((result, e) -> {
+								currentEventloop.execute(() -> cb.accept(result, e));
 								currentEventloop.completeExternalTask();
 							}));
 				});
@@ -93,10 +92,10 @@ public class AsyncExecutors {
 					AsyncSupplier<Object> supplier = (AsyncSupplier<Object>) deque.pollFirst();
 					SettableCallback<Object> cb = (SettableCallback<Object>) deque.pollFirst();
 					pendingCalls++;
-					supplier.get().acceptEx((result, e) -> {
+					supplier.get().whenComplete((result, e) -> {
 						pendingCalls--;
 						processBuffer();
-						cb.set(result, e);
+						cb.accept(result, e);
 					});
 				}
 			}
@@ -106,7 +105,7 @@ public class AsyncExecutors {
 			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) throws RejectedExecutionException {
 				if (pendingCalls < maxParallelCalls) {
 					pendingCalls++;
-					return supplier.get().acceptEx(($, e) -> {
+					return supplier.get().whenComplete(($, e) -> {
 						pendingCalls--;
 						processBuffer();
 					});
@@ -137,7 +136,7 @@ public class AsyncExecutors {
 			int retryCount, long _retryTimestamp, @NotNull SettableCallback<T> cb) {
 		supplier.get()
 				.async()
-				.acceptEx((value, e) -> {
+				.whenComplete((value, e) -> {
 					if (e == null) {
 						cb.set(value);
 					} else {

@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.AsyncProcess;
+import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufConsumer;
@@ -38,8 +39,6 @@ import io.datakernel.util.MemSize;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.function.BiConsumer;
 
 import static io.datakernel.async.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -192,7 +191,7 @@ public abstract class AbstractHttpConnection {
 			size += buf.readRemaining();
 		}
 		if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-		socket.read().acceptEx(startLineConsumer);
+		socket.read().whenComplete(startLineConsumer);
 	}
 
 	private void readHeaders() throws ParseException {
@@ -244,7 +243,7 @@ public abstract class AbstractHttpConnection {
 			}
 
 			if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-			socket.read().acceptEx(headersConsumer);
+			socket.read().whenComplete(headersConsumer);
 			return;
 		}
 
@@ -363,7 +362,7 @@ public abstract class AbstractHttpConnection {
 		onHeadersReceived(supplier);
 
 		process.getProcessCompletion()
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e == null) {
 						flags |= BODY_RECEIVED;
 						onBodyReceived();
@@ -428,7 +427,7 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeBuf(ByteBuf buf) {
 		socket.write(buf)
-				.acceptEx(($, e2) -> {
+				.whenComplete(($, e2) -> {
 					if (isClosed()) return;
 					if (e2 == null) {
 						flags |= BODY_SENT;
@@ -441,11 +440,11 @@ public abstract class AbstractHttpConnection {
 
 	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
 		supplier.get()
-				.acceptEx((buf, e) -> {
+				.whenComplete((buf, e) -> {
 					if (e == null) {
 						if (buf != null) {
 							socket.write(buf)
-									.acceptEx(($, e2) -> {
+									.whenComplete(($, e2) -> {
 										if (isClosed()) return;
 										if (e2 == null) {
 											writeStream(supplier);
@@ -470,7 +469,7 @@ public abstract class AbstractHttpConnection {
 		poolTimestamp = eventloop.currentTimeMillis();
 	}
 
-	private abstract class ReadConsumer implements BiConsumer<ByteBuf, Throwable> {
+	private abstract class ReadConsumer implements Callback<ByteBuf> {
 		@Override
 		public void accept(ByteBuf buf, Throwable e) {
 			assert !isClosed() || e != null;

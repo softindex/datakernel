@@ -21,7 +21,6 @@ import io.datakernel.functional.Try;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -64,7 +63,7 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 
 	@NotNull
 	@Override
-	public final <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> next(@NotNull S promise) {
+	public final <U, S extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull S promise) {
 		promise.accept(getResult(), null);
 		return promise;
 	}
@@ -111,20 +110,20 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 
 	@NotNull
 	@Override
-	public final Promise<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action) {
+	public final Promise<T> whenComplete(@NotNull Callback<? super T> action) {
 		action.accept(getResult(), null);
 		return this;
 	}
 
 	@NotNull
 	@Override
-	public final Promise<T> accept(@NotNull Consumer<? super T> action) {
+	public final Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		action.accept(getResult());
 		return this;
 	}
 
 	@Override
-	public final Promise<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action) {
+	public final Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		return this;
 	}
 

@@ -49,8 +49,8 @@ public final class FrameDecoder extends AbstractChannelTransformer<FrameDecoder,
 		BinaryChannelSupplier.of(input)
 				.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes().andThen(this::parseDataFrame))
 				.streamTo(output)
-				.accept($ -> completeProcess())
-				.acceptEx(Exception.class, this::close);
+				.whenResult($ -> completeProcess())
+				.whenException(this::close);
 	}
 
 	private DataFrame parseDataFrame(ByteBuf buf) throws ParseException {

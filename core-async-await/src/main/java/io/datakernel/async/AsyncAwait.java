@@ -37,8 +37,8 @@ public final class AsyncAwait {
 		CompletableFuture<R> future = new CompletableFuture<>();
 		eventloop.execute(
 				() -> supplier.get()
-						.accept(future::complete)
-						.acceptEx(Exception.class, future::completeExceptionally)
+						.whenResult(future::complete)
+						.whenException(future::completeExceptionally)
 		);
 		try {
 			return future.get();

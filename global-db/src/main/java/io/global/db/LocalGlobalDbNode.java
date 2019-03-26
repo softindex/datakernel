@@ -16,10 +16,7 @@
 
 package io.global.db;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -43,6 +40,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -104,14 +102,15 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 								boolean[] localCompleted = {false};
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
-											.withAcknowledgement(ack -> ack
-													.acceptEx(($, e) -> {
-														if (e == null) {
-															localCompleted[0] = true;
-														} else {
-															splitter.close(e);
-														}
-													})));
+											.withAcknowledgement(ack -> {
+												return ack.whenComplete((Callback<? super Void>) ($, e) -> {
+													if (e == null) {
+														localCompleted[0] = true;
+													} else {
+														splitter.close(e);
+													}
+												});
+											}));
 								} else {
 									localCompleted[0] = true;
 								}
@@ -119,7 +118,7 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 								int[] up = {consumers.size()};
 
 								consumers.forEach(output -> splitter.addOutput()
-										.set(output.withAcknowledgement(ack -> ack.acceptEx(Exception.class, e -> {
+										.set(output.withAcknowledgement(ack -> ack.whenException(e -> {
 											if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
 												splitter.close(e);
 											}
@@ -234,16 +233,14 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 		} else if (fetchPromise.isException()) {
 			cb.setException(fetchPromise.materialize().getException());
 		} else {
-			fetchPromise
-					.accept($ -> {
-						long timestampEnd = now.currentTimeMillis();
-						if (timestampEnd - started > latencyMargin.toMillis()) {
-							catchUpImpl(cb);
-						} else {
-							cb.set(null);
-						}
-					})
-					.acceptEx(Exception.class, cb::setException);
+			fetchPromise.whenResult((Consumer<? super Void>) $ -> {
+				long timestampEnd = now.currentTimeMillis();
+				if (timestampEnd - started > latencyMargin.toMillis()) {
+					catchUpImpl(cb);
+				} else {
+					cb.set(null);
+				}
+			}).whenException(cb::setException);
 		}
 	}
 

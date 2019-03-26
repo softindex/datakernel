@@ -12,7 +12,7 @@ public class TestStreamSuppliers {
 			final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 			{
-				supplier.getEndOfStream().acceptEx(endOfStream::trySet);
+				supplier.getEndOfStream().whenComplete(endOfStream::trySet);
 			}
 
 			@Override

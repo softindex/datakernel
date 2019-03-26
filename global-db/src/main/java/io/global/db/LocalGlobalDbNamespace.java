@@ -13,6 +13,7 @@ import io.global.db.api.GlobalDbNode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public final class LocalGlobalDbNamespace extends GlobalNamespace<LocalGlobalDbNamespace, LocalGlobalDbNode, GlobalDbNode> {
 	private final Map<String, Repo> repos = new HashMap<>();
@@ -69,8 +70,9 @@ public final class LocalGlobalDbNamespace extends GlobalNamespace<LocalGlobalDbN
 		public Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
 			return storage.upload()
 					.map(consumer -> consumer
-							.withAcknowledgement(ack -> ack
-									.accept($ -> cacheTimestamp = node.now.currentTimeMillis())));
+							.withAcknowledgement(ack -> {
+								return ack.whenResult((Consumer<? super Void>) $ -> cacheTimestamp = node.now.currentTimeMillis());
+							}));
 		}
 
 		public Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
@@ -82,8 +84,7 @@ public final class LocalGlobalDbNamespace extends GlobalNamespace<LocalGlobalDbN
 		public Promise<Void> fetch(GlobalDbNode from) {
 			long timestamp = node.now.currentTimeMillis();
 			return Promises.toTuple(from.download(space, table, lastFetchTimestamp), storage.upload())
-					.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()))
-					.accept($ -> lastFetchTimestamp = timestamp);
+					.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2())).whenResult((Consumer<? super Void>) $ -> lastFetchTimestamp = timestamp);
 		}
 
 		public Promise<Void> push(GlobalDbNode into) {

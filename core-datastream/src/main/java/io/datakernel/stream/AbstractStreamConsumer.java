@@ -65,13 +65,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		this.supplier = supplier;
 		onWired();
 		supplier.getEndOfStream()
-				.acceptEx(endOfStream::set)
-				.acceptEx(Exception.class, this::close)
+				.whenComplete(endOfStream)
+				.whenException(this::close)
 				.post()
-				.accept($1 -> onEndOfStream()
-						.acceptEx(Exception.class, this::close)
+				.whenResult($1 -> onEndOfStream()
+						.whenException(this::close)
 						.post()
-						.accept($2 -> acknowledge()));
+						.whenResult($2 -> acknowledge()));
 	}
 
 	protected void onWired() {

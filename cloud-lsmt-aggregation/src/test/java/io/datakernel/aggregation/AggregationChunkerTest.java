@@ -72,7 +72,7 @@ public final class AggregationChunkerTest {
 			@Override
 			public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create((List<T>) items);
-				consumer.getEndOfStream().acceptEx(assertComplete());
+				consumer.getEndOfStream().whenComplete(assertComplete());
 				return Promise.of(consumer);
 			}
 

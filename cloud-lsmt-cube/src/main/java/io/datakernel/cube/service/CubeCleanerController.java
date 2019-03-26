@@ -1,10 +1,7 @@
 package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.RemoteFsChunkStorage;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.*;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -23,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -116,14 +112,14 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
 					return Promise.of(v, e);
 				})
-				.acceptEx(promiseCleanup.recordStats())
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(promiseCleanup.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	Promise<Set<K>> findFrozenCut(Set<K> heads, Instant freezeTimestamp) {
 		return algorithms.findCut(heads,
 				commits -> commits.stream().allMatch(commit -> commit.getInstant().compareTo(freezeTimestamp) < 0))
-				.acceptEx(toLogger(logger, thisMethod(), heads, freezeTimestamp));
+				.whenComplete(toLogger(logger, thisMethod(), heads, freezeTimestamp));
 	}
 
 	Promise<Void> cleanupFrozenCut(Set<K> frozenCut) {
@@ -131,7 +127,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 				.then(algorithms::findAllCommonParents)
 				.then(algorithms::findAnyCommonParent)
 				.then(this::trySaveSnapshotAndCleanupChunks)
-				.acceptEx(toLogger(logger, thisMethod(), frozenCut));
+				.whenComplete(toLogger(logger, thisMethod(), frozenCut));
 	}
 
 	static class Tuple<K, D, C> {
@@ -163,7 +159,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 								return Promise.complete();
 							}
 						}))
-				.acceptEx(toLogger(logger, thisMethod(), checkpointNode));
+				.whenComplete(toLogger(logger, thisMethod(), checkpointNode));
 	}
 
 	Promise<Optional<K>> findSnapshot(Set<K> heads, int skipSnapshots) {
@@ -175,14 +171,14 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 				commit -> commit.getSnapshotHint() != null ?
 						Promise.of(commit.getSnapshotHint()) :
 						repository.hasSnapshot(commit.getId()))
-				.accept(findResult -> {
+				.whenResult(findResult -> {
 					if (skipSnapshots <= 0) {
 						cb.set(Optional.of(findResult.getCommit()));
 					} else {
 						findSnapshotImpl(findResult.getCommitParents(), skipSnapshots - 1, cb);
 					}
 				})
-				.acceptEx(Exception.class, cb::setException);
+				.whenException(cb::setException);
 	}
 
 	private Promise<Set<C>> collectRequiredChunks(K checkpointNode) {
@@ -194,19 +190,19 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 										(Set<C> accumulatedChunks, List<D> diffs) ->
 												union(accumulatedChunks, chunksInDiffs(cubeDiffScheme, diffs)),
 										CollectionUtils::union))
-								.acceptEx(promiseCleanupCollectRequiredChunks.recordStats()))
+								.whenComplete(promiseCleanupCollectRequiredChunks.recordStats()))
 				.map(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()))
-				.acceptEx(transform(Set::size,
+				.whenComplete(transform(Set::size,
 						toLogger(logger, thisMethod(), checkpointNode)));
 	}
 
 	private Promise<Void> cleanup(K checkpointNode, Set<C> requiredChunks, Instant chunksCleanupTimestamp) {
 		return chunksStorage.checkRequiredChunks(requiredChunks)
 				.then($ -> repository.cleanup(checkpointNode)
-						.acceptEx(promiseCleanupRepository.recordStats()))
+						.whenComplete(promiseCleanupRepository.recordStats()))
 				.then($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
-						.acceptEx(promiseCleanupChunks.recordStats()))
-				.acceptEx(logger.isTraceEnabled() ?
+						.whenComplete(promiseCleanupChunks.recordStats()))
+				.whenComplete(logger.isTraceEnabled() ?
 						toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
 						toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
 	}
@@ -272,7 +268,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		return eventloop;
 	}
 
-	private static <T, R> BiConsumer<R, Throwable> transform(Function<? super R, ? extends T> fn, BiConsumer<? super T, Throwable> toConsumer) {
+	private static <T, R> Callback<R> transform(Function<? super R, ? extends T> fn, Callback<? super T> toConsumer) {
 		return (value, e) -> toConsumer.accept(value != null ? fn.apply(value) : null, e);
 	}
 }

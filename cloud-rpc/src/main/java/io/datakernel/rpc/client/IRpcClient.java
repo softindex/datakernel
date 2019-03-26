@@ -21,7 +21,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
-import org.jetbrains.annotations.Nullable;
 
 public interface IRpcClient {
 	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException(IRpcClient.class, "RPC request has timed out");
@@ -29,17 +28,7 @@ public interface IRpcClient {
 
 	default <I, O> Promise<O> sendRequest(I request, int timeout) {
 		SettablePromise<O> resultPromise = new SettablePromise<>();
-		sendRequest(request, timeout, new Callback<O>() {
-			@Override
-			public void set(@Nullable O result) {
-				resultPromise.set(result);
-			}
-
-			@Override
-			public void setException(Throwable e) {
-				resultPromise.setException(e);
-			}
-		});
+		sendRequest(request, timeout, resultPromise);
 		return resultPromise;
 	}
 

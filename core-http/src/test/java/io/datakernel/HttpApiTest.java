@@ -105,7 +105,7 @@ public final class HttpApiTest {
 	public void test() throws IOException {
 		server.listen();
 		await(client.request(createRequest())
-				.acceptEx((response, e) -> {
+				.whenComplete((response, e) -> {
 					testResponse(response);
 					server.close();
 					client.stop();

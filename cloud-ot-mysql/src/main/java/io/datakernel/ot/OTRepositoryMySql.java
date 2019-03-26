@@ -162,8 +162,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						}
 					}
 				})
-				.acceptEx(promiseCreateCommitId.recordStats())
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(promiseCreateCommitId.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@Override
@@ -223,8 +223,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					}
 					return (Void) null;
 				})
-				.acceptEx(promisePush.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
+				.whenComplete(promisePush.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
 	}
 
 	@NotNull
@@ -242,8 +242,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					}
 					return (Void) null;
 				})
-				.acceptEx(promiseUpdateHeads.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), newHeads, excludedHeads));
+				.whenComplete(promiseUpdateHeads.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), newHeads, excludedHeads));
 	}
 
 	@NotNull
@@ -264,8 +264,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						}
 					}
 				})
-				.acceptEx(promiseGetHeads.recordStats())
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(promiseGetHeads.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@Override
@@ -286,8 +286,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						}
 					}
 				})
-				.acceptEx(promiseLoadSnapshot.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), revisionId));
+				.whenComplete(promiseLoadSnapshot.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
 	@Override
@@ -335,8 +335,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 								.withSnapshotHint(snapshot);
 					}
 				})
-				.acceptEx(promiseLoadCommit.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), revisionId));
+				.whenComplete(promiseLoadCommit.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
 	@Override
@@ -356,8 +356,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						}
 					}
 				})
-				.acceptEx(promiseSaveSnapshot.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), revisionId, diffs));
+				.whenComplete(promiseSaveSnapshot.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId, diffs));
 	}
 
 	@Override
@@ -385,7 +385,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 					return (Void) null;
 				})
-				.acceptEx(toLogger(logger, thisMethod(), minId));
+				.whenComplete(toLogger(logger, thisMethod(), minId));
 	}
 
 	@Override
@@ -404,7 +404,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						}
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), commit.getId(), snapshot));
+				.whenComplete(toLogger(logger, thisMethod(), commit.getId(), snapshot));
 	}
 
 	@NotNull

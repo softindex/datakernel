@@ -85,7 +85,7 @@ public final class CrdtExample {
 				})
 				.then($ -> cluster.download())
 				.then(StreamSupplier::toList)
-				.acceptEx((list, e) -> {
+				.whenComplete((list, e) -> {
 					executor.shutdown();
 					if (e != null) {
 						throw new AssertionError(e);

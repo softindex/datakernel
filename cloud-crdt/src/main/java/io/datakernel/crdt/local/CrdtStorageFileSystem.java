@@ -230,7 +230,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 								.filter(meta -> meta.getTimestamp() > barrier)
 								.map(meta -> ChannelSupplier.ofPromise(client.download(meta.getName()))
 										.toCollector(ByteBufQueue.collector())
-										.accept(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
+										.whenResult(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
 										.toVoid())))
 				.then($ -> client.list("*"))
 				.then(list -> {
@@ -256,7 +256,7 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 							.then($ -> consolidationFolderClient.delete(metafile))
 							.then($ -> Promises.all(files.stream().map(client::delete)));
 				})
-				.acceptEx(consolidationStats.recordStats());
+				.whenComplete(consolidationStats.recordStats());
 	}
 
 	static class CrdtReducingData<K extends Comparable<K>, S> {

@@ -80,7 +80,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		private final Exception noValidResultException;
 
 		public Sender(List<RpcSender> senders, ResultValidator<?> resultValidator,
-		              Exception noValidResultException) {
+				Exception noValidResultException) {
 			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.resultValidator = checkNotNull(resultValidator);
@@ -90,16 +90,15 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			FirstResultCallback<O> resultCallback
-					= new FirstResultCallback<>(cb, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
+			FirstResultCallback<O> firstResultCallback = new FirstResultCallback<>(cb, (ResultValidator<O>) resultValidator,
+					subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {
-				sender.sendRequest(request, timeout, resultCallback.getCallback());
+				sender.sendRequest(request, timeout, firstResultCallback);
 			}
-
 		}
 	}
 
-	private static final class FirstResultCallback<T> {
+	private static final class FirstResultCallback<T> implements Callback<T> {
 		private final Callback<T> resultCallback;
 		private final ResultValidator<T> resultValidator;
 		private final Exception noValidResultException;
@@ -110,7 +109,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		private boolean complete;
 
 		public FirstResultCallback(Callback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
-		                           Exception noValidResultException) {
+				Exception noValidResultException) {
 			checkArgument(expectedCalls > 0, "Number of expected calls should be greater than 0");
 			this.expectedCalls = expectedCalls;
 			this.resultCallback = checkNotNull(resultCallback);
@@ -118,27 +117,22 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			this.noValidResultException = noValidResultException;
 		}
 
-		public Callback<T> getCallback() {
-			return new Callback<T>() {
-				@Override
-				public void set(T result) {
-					--expectedCalls;
-					if (!hasResult && resultValidator.isValidResult(result)) {
-						FirstResultCallback.this.result = result;  // first valid result
-						FirstResultCallback.this.hasResult = true;
-					}
-					processResult();
+		@Override
+		public void accept(T result, @Nullable Throwable e) {
+			if (e == null) {
+				--expectedCalls;
+				if (!hasResult && resultValidator.isValidResult(result)) {
+					this.result = result;  // first valid result
+					this.hasResult = true;
 				}
-
-				@Override
-				public void setException(Throwable e) {
-					--expectedCalls;
-					if (!hasResult) {
-						FirstResultCallback.this.exception = e; // last Exception
-					}
-					processResult();
+				processResult();
+			} else {
+				--expectedCalls;
+				if (!hasResult) {
+					this.exception = e; // last Exception
 				}
-			};
+				processResult();
+			}
 		}
 
 		private boolean resultReady() {
@@ -151,13 +145,13 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			}
 			complete = true;
 			if (hasResult) {
-				resultCallback.set(result);
+				resultCallback.accept(result, null);
 			} else {
 				resolveException();
 				if (exception == null) {
-					resultCallback.set(null);
+					resultCallback.accept(null, null);
 				} else {
-					resultCallback.setException(exception);
+					resultCallback.accept(null, exception);
 				}
 			}
 		}

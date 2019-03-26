@@ -157,7 +157,7 @@ public final class RpcBlockingTest {
 			return rpcClient.getEventloop().<HelloResponse>submit(
 					cb -> rpcClient
 							.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-							.acceptEx(cb))
+							.whenComplete(cb))
 					.get().message;
 		} catch (ExecutionException e) {
 			//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown

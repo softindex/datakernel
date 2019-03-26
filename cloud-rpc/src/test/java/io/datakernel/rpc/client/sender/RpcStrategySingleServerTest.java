@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -24,6 +23,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.rpc.client.sender.Callbacks.assertNoCalls;
 import static org.junit.Assert.*;
 
 public class RpcStrategySingleServerTest {
@@ -68,7 +68,7 @@ public class RpcStrategySingleServerTest {
 
 		assert sender != null;
 		for (int i = 0; i < calls; i++) {
-			sender.sendRequest(data, timeout, Callback.assertNoCalls());
+			sender.sendRequest(data, timeout, assertNoCalls());
 		}
 
 		assertEquals(calls, connection.getRequests());

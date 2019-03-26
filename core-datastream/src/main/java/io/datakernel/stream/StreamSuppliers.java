@@ -123,7 +123,7 @@ public final class StreamSuppliers {
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
 			consumer.getAcknowledgement()
-					.acceptEx(Exception.class, endOfStream::trySetException);
+					.whenException(endOfStream::trySetException);
 		}
 
 		@Override
@@ -201,7 +201,7 @@ public final class StreamSuppliers {
 		protected void produce(AsyncProduceController async) {
 			async.begin();
 			supplier.get()
-					.acceptEx((item, e) -> {
+					.whenComplete((item, e) -> {
 						if (e == null) {
 							if (item != null) {
 								send(item);

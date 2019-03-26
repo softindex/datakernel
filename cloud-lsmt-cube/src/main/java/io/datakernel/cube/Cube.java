@@ -714,7 +714,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			Aggregation aggregation = entry.getValue().aggregation;
 
 			runnables.add(() -> strategy.apply(aggregation)
-					.accept(aggregationDiff -> {
+					.whenResult(aggregationDiff -> {
 						if (!aggregationDiff.isEmpty()) {
 							map.put(aggregationId, aggregationDiff);
 						}
@@ -766,7 +766,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				cubeQuery.getWhere().getDimensions()));
 		long queryStarted = eventloop.currentTimeMillis();
 		return new RequestContext<>().execute(queryClassLoader, cubeQuery)
-				.acceptEx((queryResult, e) -> {
+				.whenComplete((queryResult, e) -> {
 					if (e == null) {
 						queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
 					} else {
@@ -1091,7 +1091,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return resolverContainer.resolver.resolveAttributes(singletonList(key),
 					result1 -> (Object[]) result1,
 					(result12, attributes) -> attributesPlaceholder[0] = attributes)
-					.accept($ -> {
+					.whenResult($ -> {
 						for (int i = 0; i < resolverContainer.attributes.size(); i++) {
 							String attribute = resolverContainer.attributes.get(i);
 							result.put(attribute, attributesPlaceholder[0] != null ? ((Object[]) attributesPlaceholder[0])[i] : null);

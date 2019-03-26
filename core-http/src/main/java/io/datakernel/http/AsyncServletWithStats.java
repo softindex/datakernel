@@ -26,7 +26,7 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
 		return doServe(request)
-				.acceptEx(stats.recordStats());
+				.whenComplete(stats.recordStats());
 	}
 
 	@NotNull

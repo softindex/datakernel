@@ -16,8 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.eventloop.selector.changer.OptimizedSelectedKeysSet;
-import io.datakernel.eventloop.selector.changer.SelectorSetChanger;
+import io.datakernel.async.Callback;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
@@ -49,9 +48,9 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import static io.datakernel.eventloop.Utils.tryToOptimizeSelector;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyIterator;
@@ -358,7 +357,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		ensureSelector();
 		assert selector != null;
 		breakEventloop = false;
-		boolean setWasOptimized = SelectorSetChanger.tryToOptimize(selector);
+		boolean setWasOptimized = tryToOptimizeSelector(selector);
 
 		long timeAfterSelectorSelect = 0;
 		long timeAfterBusinessLogic = 0;
@@ -1090,7 +1089,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(@NotNull Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
+	public <T> CompletableFuture<T> submit(@NotNull Consumer<Callback<T>> callbackConsumer) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			try {

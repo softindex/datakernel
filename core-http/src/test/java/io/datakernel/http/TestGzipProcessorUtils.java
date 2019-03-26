@@ -132,9 +132,9 @@ public final class TestGzipProcessorUtils {
 		server.listen();
 
 		ByteBuf body = await(client.request(request)
-				.acceptEx(assertComplete(response -> assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING))))
+				.whenComplete(assertComplete(response -> assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING))))
 				.then(response -> response.getBody(CHARACTERS_COUNT))
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					server.close();
 					client.stop();
 				}));

@@ -77,32 +77,32 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 					}
 					return announcementStorage.store(space, announceData);
 				})
-				.acceptEx(toLogger(logger, "announce", space, announceData, this));
+				.whenComplete(toLogger(logger, "announce", space, announceData, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return announcementStorage.load(space)
-				.acceptEx(toLogger(logger, TRACE, "find", space, this));
+				.whenComplete(toLogger(logger, TRACE, "find", space, this));
 	}
 
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		// should be signed by sender, so we do not verify signature with receiver's key like in announce
 		return sharedKeyStorage.store(receiver, simKey)
-				.acceptEx(toLogger(logger, "shareKey", receiver, simKey, this));
+				.whenComplete(toLogger(logger, "shareKey", receiver, simKey, this));
 	}
 
 	@Override
 	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
 		return sharedKeyStorage.load(receiver, hash)
-				.acceptEx(toLogger(logger, TRACE, "getSharedKey", receiver, hash, this));
+				.whenComplete(toLogger(logger, TRACE, "getSharedKey", receiver, hash, this));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
 		return sharedKeyStorage.loadAll(receiver)
-				.acceptEx(toLogger(logger, TRACE, "getSharedKeys", receiver, this));
+				.whenComplete(toLogger(logger, TRACE, "getSharedKeys", receiver, this));
 	}
 
 	@NotNull

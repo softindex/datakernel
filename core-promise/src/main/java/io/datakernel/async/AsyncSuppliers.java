@@ -24,7 +24,7 @@ public final class AsyncSuppliers {
 				if (runningPromise != null) return runningPromise;
 				runningPromise = (Promise<T>) actual.get();
 				Promise<T> runningPromise = this.runningPromise;
-				runningPromise.acceptEx((result, e) -> this.runningPromise = null);
+				runningPromise.whenComplete((result, e) -> this.runningPromise = null);
 				return runningPromise;
 			}
 		};
@@ -66,7 +66,7 @@ public final class AsyncSuppliers {
 			}
 
 			void getImpl(Promise<T> promise, SettableCallback<T> cb) {
-				promise.acceptEx((v, e) -> {
+				promise.whenComplete((v, e) -> {
 					if (e == null) {
 						cb.set(v);
 					} else {
@@ -106,7 +106,7 @@ public final class AsyncSuppliers {
 					prefetchCalls++;
 					prefetchSupplier.get()
 							.async()
-							.acceptEx((value, e) -> {
+							.whenComplete((value, e) -> {
 								prefetchCalls--;
 								if (e == null) {
 									prefetched.addLast(value);
@@ -129,7 +129,7 @@ public final class AsyncSuppliers {
 		public @NotNull Promise<T> get() {
 			running++;
 			return asyncSupplier.get()
-					.acceptEx((v, e) -> running--);
+					.whenComplete((v, e) -> running--);
 		}
 
 		public int getRunning() {

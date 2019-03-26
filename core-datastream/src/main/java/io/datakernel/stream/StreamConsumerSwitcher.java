@@ -110,9 +110,9 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		public void setConsumer(StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
 			consumer.getAcknowledgement()
-					.acceptEx(Exception.class, this::close)
+					.whenException(this::close)
 					.post()
-					.accept($ -> {
+					.whenResult($ -> {
 						if (--pendingConsumers == 0) {
 							acknowledge();
 						}

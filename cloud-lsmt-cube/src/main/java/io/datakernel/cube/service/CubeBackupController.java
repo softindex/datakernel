@@ -77,8 +77,8 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 					}
 					return backup(first(heads));
 				})
-				.acceptEx(promiseBackup.recordStats())
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(promiseBackup.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public Promise<Void> backup(K commitId) {
@@ -86,21 +86,21 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 				.then(tuple -> Promises.sequence(
 						() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2())),
 						() -> backupDb(tuple.getValue1(), tuple.getValue2())))
-				.acceptEx(toLogger(logger, thisMethod(), commitId));
+				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
 	private Promise<Void> backupChunks(K commitId, Set<C> chunkIds) {
 		return storage.backup(String.valueOf(commitId), chunkIds)
-				.acceptEx(promiseBackupChunks.recordStats())
-				.acceptEx(logger.isTraceEnabled() ?
+				.whenComplete(promiseBackupChunks.recordStats())
+				.whenComplete(logger.isTraceEnabled() ?
 						toLogger(logger, TRACE, thisMethod(), chunkIds) :
 						toLogger(logger, thisMethod(), toLimitedString(chunkIds, 6)));
 	}
 
 	private Promise<Void> backupDb(OTCommit<K, D> commit, List<D> snapshot) {
 		return repository.backup(commit, snapshot)
-				.acceptEx(promiseBackupDb.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), commit, snapshot));
+				.whenComplete(promiseBackupDb.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), commit, snapshot));
 	}
 
 	@NotNull

@@ -21,7 +21,6 @@ import io.datakernel.functional.Try;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -73,7 +72,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> next(@NotNull S promise) {
+	public <U, S extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull S promise) {
 		promise.accept(null, exception);
 		return promise;
 	}
@@ -114,22 +113,20 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
-	public Promise<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action) {
+	public Promise<T> whenComplete(@NotNull Callback<? super T> action) {
 		action.accept(null, exception);
 		return this;
 	}
 
 	@NotNull
 	@Override
-	public Promise<T> accept(@NotNull Consumer<? super T> action) {
+	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		return this;
 	}
 
 	@Override
-	public Promise<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action) {
-		if (type.isAssignableFrom(exception.getClass())) {
-			action.accept(exception);
-		}
+	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
+		action.accept(exception);
 		return this;
 	}
 

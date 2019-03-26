@@ -52,18 +52,18 @@ public final class MessagingWithBinaryStreamingTest {
 		messaging.receive()
 				.then(msg -> {
 					if (msg != null) {
-						return messaging.send(msg).accept($ -> pong(messaging));
+						return messaging.send(msg).whenResult($ -> pong(messaging));
 					}
 					messaging.close();
 					return Promise.complete();
 				})
-				.acceptEx(Exception.class, e -> messaging.close());
+				.whenException(e -> messaging.close());
 	}
 
 	private static void ping(int n, Messaging<Integer, Integer> messaging) {
 		messaging.send(n)
 				.then($ -> messaging.receive())
-				.accept(msg -> {
+				.whenResult(msg -> {
 					if (msg != null) {
 						if (msg > 0) {
 							ping(msg - 1, messaging);
@@ -72,7 +72,7 @@ public final class MessagingWithBinaryStreamingTest {
 						}
 					}
 				})
-				.acceptEx(Exception.class, e -> messaging.close());
+				.whenException(e -> messaging.close());
 	}
 
 	@Test
@@ -84,7 +84,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.listen();
 
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.acceptEx(assertComplete(socket -> ping(3, MessagingWithBinaryStreaming.create(socket, INTEGER_SERIALIZER)))));
+				.whenComplete(assertComplete(socket -> ping(3, MessagingWithBinaryStreaming.create(socket, INTEGER_SERIALIZER)))));
 	}
 
 	@Test
@@ -137,21 +137,21 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
 					messaging.receive()
-							.acceptEx(assertComplete(msg -> assertEquals("start", msg)))
+							.whenComplete(assertComplete(msg -> assertEquals("start", msg)))
 							.then($ ->
 									messaging.receiveBinaryStream()
 											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 											.toList()
 											.then(list ->
 													messaging.sendEndOfStream().map($2 -> list)))
-							.acceptEx(assertComplete(list -> assertEquals(source, list)));
+							.whenComplete(assertComplete(list -> assertEquals(source, list)));
 				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
 				.listen();
 
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.accept(socket -> {
+				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
@@ -176,7 +176,7 @@ public final class MessagingWithBinaryStreamingTest {
 					MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 
 					messaging.receive()
-							.accept(msg -> assertEquals("start", msg))
+							.whenResult(msg -> assertEquals("start", msg))
 							.then(msg ->
 									messaging.receiveBinaryStream()
 											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
@@ -185,7 +185,7 @@ public final class MessagingWithBinaryStreamingTest {
 													messaging.send("ack")
 															.then($ -> messaging.sendEndOfStream())
 															.map($ -> list)))
-							.acceptEx(assertComplete(list -> assertEquals(source, list)));
+							.whenComplete(assertComplete(list -> assertEquals(source, list)));
 				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
@@ -202,7 +202,7 @@ public final class MessagingWithBinaryStreamingTest {
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream()))
 							.then($ -> messaging.receive())
-							.acceptEx(($, e) -> messaging.close());
+							.whenComplete(($, e) -> messaging.close());
 				}));
 
 		assertEquals("ack", msg);
@@ -218,20 +218,20 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
 					messaging.receive()
-							.acceptEx(assertComplete(msg -> assertEquals("start", msg)))
+							.whenComplete(assertComplete(msg -> assertEquals("start", msg)))
 							.then(msg -> messaging.sendEndOfStream())
 							.then(msg ->
 									messaging.receiveBinaryStream()
 											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 											.toList())
-							.acceptEx(assertComplete(list -> assertEquals(source, list)));
+							.whenComplete(assertComplete(list -> assertEquals(source, list)));
 				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
 				.listen();
 
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.accept(socket -> {
+				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 

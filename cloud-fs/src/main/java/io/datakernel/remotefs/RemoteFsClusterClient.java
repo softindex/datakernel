@@ -166,7 +166,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 										return null;
 									});
 						}))
-				.acceptEx(toLogger(logger, "checkAllPartitions"));
+				.whenComplete(toLogger(logger, "checkAllPartitions"));
 	}
 
 	/**
@@ -187,7 +187,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 									}
 									return null;
 								})))
-				.acceptEx(toLogger(logger, "checkDeadPartitions"));
+				.whenComplete(toLogger(logger, "checkDeadPartitions"));
 	}
 
 	private void markAlive(Object partitionId) {
@@ -270,7 +270,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 							.thenEx(wrapDeath(id))
 							.map(consumer -> new ConsumerWithId(id,
 									consumer.withAcknowledgement(ack ->
-											ack.acceptEx(Exception.class, e -> markIfDead(id, e)))))
+											ack.whenException(e -> markIfDead(id, e)))))
 							.toTry();
 				}))
 				.then(tries -> {
@@ -316,9 +316,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								}
 								return Promise.complete();
 							})
-							.acceptEx(uploadFinishPromise.recordStats())));
+							.whenComplete(uploadFinishPromise.recordStats())));
 				})
-				.acceptEx(uploadStartPromise.recordStats());
+				.whenComplete(uploadStartPromise.recordStats());
 	}
 
 	@Override
@@ -382,15 +382,15 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								}
 								logger.trace("downloading file {} from {}", name, piwfs.getValue1());
 								return client.download(name, offset, length)
-										.acceptEx(Exception.class, e -> logger.warn("Failed to connect to server with key " + piwfs.getValue1() + " to download file " + name, e))
+										.whenException(e -> logger.warn("Failed to connect to server with key " + piwfs.getValue1() + " to download file " + name, e))
 										.thenEx(wrapDeath(piwfs.getValue1()))
 										.map(supplier -> supplier
 												.withEndOfStream(eos -> eos
-														.acceptEx(Exception.class, e -> markIfDead(piwfs.getValue1(), e))
-														.acceptEx(downloadFinishPromise.recordStats())));
+														.whenException(e -> markIfDead(piwfs.getValue1(), e))
+														.whenComplete(downloadFinishPromise.recordStats())));
 							}), Cancellable::cancel);
 				})
-				.acceptEx(downloadStartPromise.recordStats());
+				.whenComplete(downloadStartPromise.recordStats());
 	}
 
 	@Override
@@ -404,7 +404,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		}
 
 		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().move(name, target, targetRevision, removeRevision).thenEx(wrapDeath(e.getKey()))))
-				.acceptEx(movePromise.recordStats());
+				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
@@ -418,7 +418,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		}
 
 		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().copy(name, target, targetRevision).thenEx(wrapDeath(e.getKey()))))
-				.acceptEx(copyPromise.recordStats());
+				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
@@ -436,7 +436,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					}
 					return ofFailure("Couldn't delete on any partition", tries);
 				})
-				.acceptEx(deletePromise.recordStats());
+				.whenComplete(deletePromise.recordStats());
 	}
 
 	private Promise<List<FileMetadata>> doList(String glob, BiFunction<FsClient, String, Promise<List<FileMetadata>>> list) {
@@ -461,7 +461,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					}
 					return Promise.of(FileMetadata.flatten(tries.stream().filter(Try::isSuccess).map(Try::get)));
 				})
-				.acceptEx(listPromise.recordStats());
+				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override

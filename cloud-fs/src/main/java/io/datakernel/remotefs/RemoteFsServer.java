@@ -105,7 +105,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					}
 					return handler.onMessage(messaging, msg);
 				})
-				.acceptEx(handleRequestPromise.recordStats())
+				.whenComplete(handleRequestPromise.recordStats())
 				.thenEx(($, e) -> {
 					if (e == null) {
 						return Promise.complete();
@@ -113,7 +113,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					return messaging.send(new ServerError(getErrorCode(e)))
 							.then($2 -> messaging.sendEndOfStream())
-							.accept($2 -> messaging.close());
+							.whenResult($2 -> messaging.close());
 				});
 	}
 
@@ -131,9 +131,9 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					})
 					.then($ -> messaging.send(new UploadFinished()))
 					.then($ -> messaging.sendEndOfStream())
-					.accept($ -> messaging.close())
-					.acceptEx(uploadPromise.recordStats())
-					.acceptEx(toLogger(logger, TRACE, "receiving data", msg, this))
+					.whenResult($ -> messaging.close())
+					.whenComplete(uploadPromise.recordStats())
+					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
 					.toVoid();
 		});
 
@@ -156,9 +156,9 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 								.then($ ->
 										ChannelSupplier.ofPromise(client.download(name, offset, fixedLength))
 												.streamTo(messaging.sendBinaryStream()))
-								.acceptEx(toLogger(logger, "sending data", meta, offset, fixedLength, this));
+								.whenComplete(toLogger(logger, "sending data", meta, offset, fixedLength, this));
 					})
-					.acceptEx(downloadPromise.recordStats());
+					.whenComplete(downloadPromise.recordStats());
 		});
 		onMessage(Move.class, simpleHandler(msg -> client.move(msg.getName(), msg.getTarget(), msg.getTargetRevision(), msg.getRemoveRevision()), $ -> new MoveFinished(), movePromise));
 		onMessage(Copy.class, simpleHandler(msg -> client.copy(msg.getName(), msg.getTarget(), msg.getRevision()), $ -> new CopyFinished(), copyPromise));
@@ -174,7 +174,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		return (messaging, msg) -> action.apply(msg)
 				.then(res -> messaging.send(response.apply(res)))
 				.then($ -> messaging.sendEndOfStream())
-				.acceptEx(stats.recordStats());
+				.whenComplete(stats.recordStats());
 	}
 
 	@FunctionalInterface

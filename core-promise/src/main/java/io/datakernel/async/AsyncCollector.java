@@ -68,7 +68,7 @@ public final class AsyncCollector<R> implements Cancellable {
 	public <T> Promise<T> addPromise(@NotNull Promise<T> promise, @NotNull Accumulator<R, T> accumulator) {
 		checkState(!resultPromise.isComplete());
 		activePromises++;
-		return promise.acceptEx((v, e) -> {
+		return promise.whenComplete((v, e) -> {
 			activePromises--;
 			if (resultPromise.isComplete()) return;
 			if (e == null) {

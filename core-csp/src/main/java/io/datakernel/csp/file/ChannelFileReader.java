@@ -123,7 +123,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	private void closeFile() {
 		asyncFile.close()
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e == null) {
 						logger.trace(this + ": closed file");
 					} else {

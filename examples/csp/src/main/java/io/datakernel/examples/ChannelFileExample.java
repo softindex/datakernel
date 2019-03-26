@@ -76,7 +76,7 @@ public class ChannelFileExample {
 		Promises.sequence(
 				ChannelFileExample::writeToFile,
 				ChannelFileExample::readFile)
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e != null) {
 						e.printStackTrace();
 					}

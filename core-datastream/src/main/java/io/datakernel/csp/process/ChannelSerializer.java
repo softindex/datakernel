@@ -138,7 +138,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		if (!bufs.isEmpty()) {
 			flushing = true;
 			output.accept(bufs.poll())
-					.acceptEx(($, e) -> {
+					.whenComplete(($, e) -> {
 						if (e == null) {
 							flushing = false;
 							doFlush();
@@ -150,7 +150,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (getEndOfStream().isResult()) {
 				flushing = true;
 				output.accept(null)
-						.accept($ -> acknowledge());
+						.whenResult($ -> acknowledge());
 			} else {
 				getSupplier().resume(input);
 			}

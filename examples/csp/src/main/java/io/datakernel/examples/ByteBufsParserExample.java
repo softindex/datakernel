@@ -39,6 +39,6 @@ public class ByteBufsParserExample {
 		};
 
 		BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)).parse(parser)
-				.accept(System.out::println);
+				.whenResult(System.out::println);
 	}
 }

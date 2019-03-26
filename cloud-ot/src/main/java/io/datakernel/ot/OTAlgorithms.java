@@ -96,23 +96,23 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			return;
 		}
 		reducer.onCommit(commit)
-				.accept(maybeResult -> {
+				.whenResult(maybeResult -> {
 					OTCommit<K, D> polledCommit = queue.poll();
 					assert polledCommit == commit;
 					if (maybeResult == resume()) {
 						toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
-								.accept(parentCommits -> {
+								.whenResult(parentCommits -> {
 									queue.addAll(parentCommits);
 									walkGraphImpl(reducer, queue, visited, cb);
 								})
-								.acceptEx(Exception.class, cb::setException);
+								.whenException(cb::setException);
 					} else if (maybeResult == skip()) {
 						walkGraphImpl(reducer, queue, visited, cb);
 					} else {
 						cb.set(maybeResult);
 					}
 				})
-				.acceptEx(Exception.class, cb::setException);
+				.whenException(cb::setException);
 	}
 
 	public static final class FindResult<K, A> {
@@ -195,7 +195,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	public Promise<K> merge() {
 		return repository.getHeads()
 				.then(this::merge)
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public Promise<K> mergeAndUpdateHeads() {
@@ -207,7 +207,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return merge(heads)
 				.then(mergeId -> repository.updateHeads(difference(singleton(mergeId), heads), difference(heads, singleton(mergeId)))
 						.map($ -> mergeId))
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	static class Tuple<K, D> {
@@ -257,19 +257,19 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						return Promise.of(resume());
 					}
 				})
-				.acceptEx(findCut.recordStats());
+				.whenComplete(findCut.recordStats());
 	}
 
 	public Promise<K> findAnyCommonParent(Set<K> startCut) {
 		return reduce(startCut, new FindAnyCommonParentReducer<>(DiffsReducer.toVoid()))
 				.map(Map.Entry::getKey)
-				.acceptEx(toLogger(logger, thisMethod(), startCut));
+				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
 	public Promise<Set<K>> findAllCommonParents(Set<K> startCut) {
 		return reduce(startCut, new FindAllCommonParentsReducer<>(DiffsReducer.toVoid()))
 				.map(Map::keySet)
-				.acceptEx(toLogger(logger, thisMethod(), startCut));
+				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
 	public Promise<List<D>> diff(K node1, K node2) {
@@ -280,7 +280,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 					List<D> diffs2 = entry.getValue().get(node2);
 					return concat(diffs2, otSystem.invert(diffs1));
 				})
-				.acceptEx(toLogger(logger, thisMethod(), startCut));
+				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
 	public Promise<Set<K>> excludeParents(Set<K> startNodes) {
@@ -306,7 +306,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						return Promise.of(resume());
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), startNodes));
+				.whenComplete(toLogger(logger, thisMethod(), startNodes));
 	}
 
 	private static final class FindAnyCommonParentReducer<K, D, A> extends AbstractGraphReducer<K, D, A, Map.Entry<K, Map<K, A>>> {
@@ -372,7 +372,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 										repository.loadSnapshot(commit.getId())
 												.map(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
 								.then(findResult -> Promise.of(cachedSnapshot[0])))
-				.acceptEx(toLogger(logger, thisMethod()));
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -387,7 +387,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 												.map(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
 								.then(findResult -> diff(findResult.commit, commitId)
 										.map(diff -> concat(cachedSnapshot[0], diff))))
-				.acceptEx(toLogger(logger, thisMethod(), commitId));
+				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
 	public Promise<Void> saveSnapshot(K revisionId) {
@@ -412,7 +412,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						return Promise.ofException(e);
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), heads));
+				.whenComplete(toLogger(logger, thisMethod(), heads));
 	}
 
 	private class LoadGraphReducer implements GraphReducer<K, D, OTLoadedGraph<K, D>> {
@@ -461,7 +461,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public Promise<OTLoadedGraph<K, D>> loadForMerge(Set<K> heads) {
 		return reduce(heads, new LoadGraphReducer())
-				.acceptEx(toLogger(logger, thisMethod(), heads));
+				.whenComplete(toLogger(logger, thisMethod(), heads));
 	}
 
 	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads, OTLoadedGraph<K, D> graph) {
@@ -478,7 +478,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 					return Promise.of(v, e);
 				})
 				.map($ -> graph)
-				.acceptEx(toLogger(logger, thisMethod(), heads, graph));
+				.whenComplete(toLogger(logger, thisMethod(), heads, graph));
 	}
 
 	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {

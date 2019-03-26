@@ -75,7 +75,7 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 		long startTime = monitoring ? System.currentTimeMillis() : 0;
 
 		Object messageData = message.getData();
-		apply(messageData).acceptEx((result, e) -> {
+		apply(messageData).whenComplete((result, e) -> {
 			if (startTime != 0) {
 				int value = (int) (System.currentTimeMillis() - startTime);
 				requestHandlingTime.recordValue(value);

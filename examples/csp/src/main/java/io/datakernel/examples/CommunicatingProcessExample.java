@@ -46,14 +46,14 @@ public class CommunicatingProcessExample extends AbstractCommunicatingProcess im
 	@Override
 	protected void doProcess() {
 		input.get()
-				.acceptEx((data, e) -> {
+				.whenComplete((data, e) -> {
 					if (data == null) {
 						output.accept(null)
-								.accept($ -> completeProcess());
+								.whenResult($ -> completeProcess());
 					} else {
 						data = data.toUpperCase() + '(' + data.length() + ')';
 						output.accept(data)
-								.accept($ -> doProcess());
+								.whenResult($ -> doProcess());
 					}
 				});
 	}

@@ -50,7 +50,7 @@ public class MultiEchoServerExample {
 			sockets.add(socket);
 			BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
 					.parseStream(ofCrlfTerminatedBytes())
-					.withEndOfStream(voidPromise -> voidPromise.accept($ -> sockets.remove(socket)))
+					.withEndOfStream(voidPromise -> voidPromise.whenResult($ -> sockets.remove(socket)))
 					.peek(buf -> System.out.println("client:" + buf.getString(UTF_8)))
 					.map(buf -> {
 						ByteBuf serverBuf = ByteBufStrings.wrapUtf8("Server> ");

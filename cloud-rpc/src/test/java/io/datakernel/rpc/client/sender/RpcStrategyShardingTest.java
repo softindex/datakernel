@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import io.datakernel.rpc.hash.ShardingFunction;
@@ -26,7 +25,8 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.async.Callback.assertNoCalls;
+import static io.datakernel.rpc.client.sender.Callbacks.assertNoCalls;
+import static io.datakernel.rpc.client.sender.Callbacks.forFuture;
 import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
 import static io.datakernel.rpc.client.sender.RpcStrategies.sharding;
 import static org.junit.Assert.assertEquals;
@@ -92,9 +92,9 @@ public class RpcStrategyShardingTest {
 		CompletableFuture<Object> future2 = new CompletableFuture<>();
 		CompletableFuture<Object> future3 = new CompletableFuture<>();
 
-		sender.sendRequest(0, 50, Callback.forFuture(future1));
-		sender.sendRequest(1, 50, Callback.forFuture(future2));
-		sender.sendRequest(2, 50, Callback.forFuture(future3));
+		sender.sendRequest(0, 50, forFuture(future1));
+		sender.sendRequest(1, 50, forFuture(future2));
+		sender.sendRequest(2, 50, forFuture(future3));
 
 		assertEquals(1, connection2.getRequests());
 		assertEquals(1, connection3.getRequests());

@@ -69,7 +69,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.then(response -> response.getCode() != 201 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
-				.acceptEx(toLogger(logger, "announce", space, announceData, this));
+				.whenComplete(toLogger(logger, "announce", space, announceData, this));
 	}
 
 	private <T> Promise<T> tryParseResponse(HttpResponse response, ByteBuf body, ParserFunction<ByteBuf, T> from) {

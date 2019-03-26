@@ -136,7 +136,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 							filterNot(list.stream(), negativeGlob)
 									.map(meta ->
 											() -> repartitionFile(meta)
-													.acceptEx(singleFileRepartitionPromiseStats.recordStats())
+													.whenComplete(singleFileRepartitionPromiseStats.recordStats())
 													.then((Boolean success) -> {
 														if (success) {
 															ensuredFiles++;
@@ -146,7 +146,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 														return Promise.complete();
 													})));
 				})
-				.acceptEx(repartitionPromiseStats.recordStats())
+				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenEx(($, e) -> {
 					if (e != null) {
 						logger.warn("forced repartition finish, {} files ensured, {} errored, {} untouched", ensuredFiles, failedFiles, allFiles - ensuredFiles - failedFiles);
@@ -154,7 +154,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 						logger.info("repartition finished, {} files ensured, {} errored", ensuredFiles, failedFiles);
 					}
 					if (closeCallback != null) {
-						closeCallback.set($, e);
+						closeCallback.accept($, e);
 					}
 					return Promise.complete();
 				});
@@ -214,11 +214,11 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 										splitter.addOutput()
 												.set(ChannelConsumer.ofPromise(clients.get(partitionId).upload(name, 0, revision))
 														.withAcknowledgement(fn)))
-										.acceptEx(Exception.class, e -> {
+										.whenException(e -> {
 											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');
 											cluster.markDead(partitionId, e);
 										})
-										.accept($ -> logger.trace("file {} uploaded to '{}'", meta, partitionId))
+										.whenResult($ -> logger.trace("file {} uploaded to '{}'", meta, partitionId))
 										.toTry();
 							}))
 							.then(tries -> {
@@ -240,7 +240,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 										});
 							});
 				})
-				.acceptEx(toLogger(logger, TRACE, "repartitionFile", meta));
+				.whenComplete(toLogger(logger, TRACE, "repartitionFile", meta));
 	}
 
 	private Promise<List<Object>> getPartitionsThatNeedOurFile(FileMetadata fileToUpload, List<Object> selected) {
@@ -253,7 +253,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					}
 					return clients.get(partitionId)
 							.listEntities(fileToUpload.getName()) // checking file existense and size on particular partition
-							.acceptEx((list, e) -> {
+							.whenComplete((list, e) -> {
 								if (e != null) {
 									logger.warn("failed connecting to partition " + partitionId + " (" + e + ')');
 									cluster.markDead(partitionId, e);

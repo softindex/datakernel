@@ -202,7 +202,7 @@ public final class AsyncFile {
 		return openAsync(executor, path, set(READ))
 				.then(file -> file.read()
 						.then(buf -> file.close()
-								.acceptEx(Exception.class, $ -> buf.recycle())
+								.whenException($ -> buf.recycle())
 								.map($ -> buf)));
 	}
 
@@ -218,7 +218,7 @@ public final class AsyncFile {
 		return openAsync(executor, path, set(WRITE, CREATE_NEW))
 				.then(file -> file.write(buf)
 						.then($ -> file.close()))
-				.acceptEx(Exception.class, $ -> buf.recycle());
+				.whenException($ -> buf.recycle());
 	}
 
 	public Executor getExecutor() {
@@ -327,7 +327,7 @@ public final class AsyncFile {
 
 		ByteBuf buf = ByteBufPool.allocate((int) (size - position));
 		return read(buf, position)
-				.acceptEx(Exception.class, $ -> buf.recycle())
+				.whenException($ -> buf.recycle())
 				.map($ -> buf);
 	}
 

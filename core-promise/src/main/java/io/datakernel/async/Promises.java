@@ -109,7 +109,7 @@ public final class Promises {
 		if (delayMillis <= 0) return promise;
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
-				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.acceptEx(cb::set)));
+				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb)));
 	}
 
 	/**
@@ -131,7 +131,7 @@ public final class Promises {
 	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, long timestamp) {
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
-				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.acceptEx(cb::set)));
+				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb)));
 	}
 
 	/**
@@ -337,7 +337,7 @@ public final class Promises {
 			if (promise.isResult()) return Promise.of(promise.materialize().getResult());
 			if (promise.isException()) continue;
 			resultPromise.errors++;
-			promise.acceptEx((result, e) -> {
+			promise.whenComplete((result, e) -> {
 				if (e == null) {
 					if (resultPromise.isComplete()) {
 						cleanup.accept(result);
@@ -456,7 +456,7 @@ public final class Promises {
 			}
 
 			resultPromise.activePromises++;
-			promise.acceptEx((result, e) -> {
+			promise.whenComplete((result, e) -> {
 				if (e == null) {
 					resultPromise.resultArray.add(result);
 					if (resultPromise.isFull()) {
@@ -550,7 +550,7 @@ public final class Promises {
 			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
 			int index = i;
 			resultPromise.countdown++;
-			promise.acceptEx((result, e) -> {
+			promise.whenComplete((result, e) -> {
 				if (e == null) {
 					resultPromise.processComplete(result, index);
 				} else {
@@ -643,7 +643,7 @@ public final class Promises {
 			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
 			int index = i;
 			resultPromise.countdown++;
-			promise.acceptEx((result, e) -> {
+			promise.whenComplete((result, e) -> {
 				if (e == null) {
 					resultPromise.processComplete(result, index);
 				} else {
@@ -849,7 +849,7 @@ public final class Promises {
 		while (promises.hasNext()) {
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;
-			promise.acceptEx((result, e) -> {
+			promise.whenComplete((result, e) -> {
 				if (e == null) {
 					sequenceImpl(promises, cb);
 				} else {
@@ -945,9 +945,9 @@ public final class Promises {
 			cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
 			return;
 		}
-		promises.next().acceptEx((result, e) -> {
+		promises.next().whenComplete((result, e) -> {
 			if (predicate.test(result, e)) {
-				cb.set(result, e);
+				cb.accept(result, e);
 				return;
 			}
 			firstImpl(promises, predicate, cb);
@@ -990,7 +990,7 @@ public final class Promises {
 			if (promise.isResult()) {
 				continue;
 			}
-			promise.acceptEx(($, e) -> {
+			promise.whenComplete(($, e) -> {
 				if (e == null) {
 					repeatImpl(supplier, cb);
 				} else {
@@ -1085,7 +1085,7 @@ public final class Promises {
 					break;
 				}
 			} else {
-				promise.acceptEx((newValue, e) -> {
+				promise.whenComplete((newValue, e) -> {
 					if (e == null) {
 						if (breakCondition.test(newValue)) {
 							cb.set(newValue);
@@ -1117,7 +1117,7 @@ public final class Promises {
 					}
 				}
 				@Nullable T finalValue = value;
-				breakPromise.acceptEx((b, e) -> {
+				breakPromise.whenComplete((b, e) -> {
 					if (e == null) {
 						if (b) {
 							cb.set(finalValue);
@@ -1130,10 +1130,10 @@ public final class Promises {
 				});
 				break;
 			} else {
-				promise.acceptEx((newValue, e) -> {
+				promise.whenComplete((newValue, e) -> {
 					if (e == null) {
 						breakCondition.test(newValue)
-								.acceptEx((b, e2) -> {
+								.whenComplete((b, e2) -> {
 									if (e2 == null) {
 										if (b) {
 											cb.set(newValue);
@@ -1252,7 +1252,7 @@ public final class Promises {
 				}
 			}
 			calls[0]++;
-			promise.acceptEx((v, e) -> {
+			promise.whenComplete((v, e) -> {
 				calls[0]--;
 				if (cb.isComplete()) {
 					return;
@@ -1334,13 +1334,13 @@ public final class Promises {
 			if (promise.isComplete()) {
 				@Nullable Try<R> maybeResult = consumer.apply(accumulator, promise.materialize().getTry());
 				if (maybeResult != null) {
-					cb.set(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
+					cb.accept(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
 					return;
 				}
 				continue;
 			}
 			calls[0]++;
-			promise.acceptEx((v, e) -> {
+			promise.whenComplete((v, e) -> {
 				calls[0]--;
 				if (cb.isComplete()) {
 					if (recycler != null) recycler.accept(v);
@@ -1348,7 +1348,7 @@ public final class Promises {
 				}
 				@Nullable Try<R> maybeResult = consumer.apply(accumulator, Try.of(v, e));
 				if (maybeResult != null) {
-					cb.set(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
+					cb.accept(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
 				} else {
 					reduceExImpl(promises, maxCalls, calls,
 							accumulator, consumer, finisher, recycler, cb);
@@ -1540,8 +1540,8 @@ public final class Promises {
 					SettablePromise<R> result = new SettablePromise<>();
 					isRunning = true;
 					Promise<? extends R> promise = directCallFn.apply(parameters);
-					promise.acceptEx((v, e) -> {
-						result.set(v, e);
+					promise.whenComplete((v, e) -> {
+						result.accept(v, e);
 						isRunning = false;
 						processNext();
 					});
@@ -1564,12 +1564,12 @@ public final class Promises {
 					isRunning = true;
 					Promise<? extends R> promise = accumulatedCallFn.apply(accumulatedParameters);
 					if (promise.isComplete()) {
-						promise.acceptEx(subscribedPromise::set);
+						promise.whenComplete(subscribedPromise);
 						isRunning = false;
 						continue;
 					}
-					promise.acceptEx((result, e) -> {
-						subscribedPromise.set(result, e);
+					promise.whenComplete((result, e) -> {
+						subscribedPromise.accept(result, e);
 						isRunning = false;
 						processNext();
 					});

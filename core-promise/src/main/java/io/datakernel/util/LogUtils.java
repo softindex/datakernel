@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import io.datakernel.async.Callback;
 import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -106,10 +107,10 @@ public class LogUtils {
 		}
 	}
 
-	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-	                                                    Level callLevel, Supplier<String> callMsg,
-	                                                    Level resultLevel, Function<T, String> resultMsg,
-	                                                    @Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
+	public static <T> Callback<T> toLogger(Logger logger,
+												 Level callLevel, Supplier<String> callMsg,
+												 Level resultLevel, Function<T, String> resultMsg,
+												 @Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
 		if (!logger.isErrorEnabled()) return ($, e) -> {};
 		callLevel.log(logger, callMsg);
 		return (result, e) -> {
@@ -129,18 +130,18 @@ public class LogUtils {
 		};
 	}
 
-	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-	                                                    Level callLevel, Supplier<String> callMsg,
-	                                                    Level resultLevel, Function<T, String> resultMsg) {
+	public static <T> Callback<T> toLogger(Logger logger,
+												 Level callLevel, Supplier<String> callMsg,
+												 Level resultLevel, Function<T, String> resultMsg) {
 		return toLogger(logger,
 				callLevel, callMsg,
 				resultLevel, resultMsg,
 				null, e -> callMsg.get());
 	}
 
-	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-	                                                    Level callLevel, Level resultLevel, Level errorLevel,
-	                                                    String methodName, Object... parameters) {
+	public static <T> Callback<T> toLogger(Logger logger,
+												 Level callLevel, Level resultLevel, Level errorLevel,
+												 String methodName, Object... parameters) {
 		return toLogger(logger,
 				callLevel, () -> formatCall(methodName, parameters),
 				resultLevel, result -> formatResult(methodName, result, parameters),
@@ -149,19 +150,19 @@ public class LogUtils {
 						e -> formatResult(methodName, e, parameters));
 	}
 
-	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-	                                                    Level callLevel, Level resultLevel,
-	                                                    String methodName, Object... parameters) {
+	public static <T> Callback<T> toLogger(Logger logger,
+												 Level callLevel, Level resultLevel,
+												 String methodName, Object... parameters) {
 		return toLogger(logger, callLevel, resultLevel, null, methodName, parameters);
 	}
 
-	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-	                                                    Level level,
-	                                                    String methodName, Object... parameters) {
+	public static <T> Callback<T> toLogger(Logger logger,
+												 Level level,
+												 String methodName, Object... parameters) {
 		return toLogger(logger, level, level, methodName, parameters);
 	}
 
-	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger, String methodName, Object... parameters) {
+	public static <T> Callback<T> toLogger(Logger logger, String methodName, Object... parameters) {
 		return toLogger(logger, TRACE, INFO, methodName, parameters);
 	}
 

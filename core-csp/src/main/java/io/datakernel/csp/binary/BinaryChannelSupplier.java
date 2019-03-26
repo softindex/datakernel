@@ -134,7 +134,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 
 	private <T> void doParse(ByteBufsParser<T> parser, SettableCallback<T> cb) {
 		needMoreData()
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e == null) {
 						T result;
 						try {

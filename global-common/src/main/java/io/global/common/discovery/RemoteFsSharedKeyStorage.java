@@ -76,7 +76,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 		String file = getFilenameFor(receiver, signedSharedSimKey.getValue().getHash());
 		return storage.upload(file, 0, now.currentTimeMillis())
 				.then(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo)
-				.acceptEx(toLogger(logger, TRACE, "store", receiver, signedSharedSimKey, this));
+				.whenComplete(toLogger(logger, TRACE, "store", receiver, signedSharedSimKey, this));
 	}
 
 	private static final BiFunction<ChannelSupplier<ByteBuf>, Throwable, Promise<@Nullable SignedData<SharedSimKey>>> LOAD_SHARED_KEY =
@@ -103,7 +103,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	public Promise<@Nullable SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
 		return storage.download(getFilenameFor(receiver, hash))
 				.thenEx(LOAD_SHARED_KEY)
-				.acceptEx(toLogger(logger, TRACE, "load", receiver, hash, this));
+				.whenComplete(toLogger(logger, TRACE, "load", receiver, hash, this));
 	}
 
 	@Override
@@ -113,7 +113,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 						.map(meta -> AsyncSupplier.cast(() -> storage.download(meta.getName()).thenEx(LOAD_SHARED_KEY)))
 						.collect(toList()))))
 				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()))
-				.acceptEx(toLogger(logger, TRACE, "loadAll", receiver, this));
+				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
 	}
 
 	@Override

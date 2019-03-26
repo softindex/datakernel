@@ -1,4 +1,4 @@
-package io.datakernel.eventloop.selector.changer;
+package io.datakernel.eventloop;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +10,8 @@ import java.nio.channels.Selector;
  * Is used to replace the inefficient {@link java.util.HashSet} in {@link sun.nio.ch.SelectorImpl}
  * into {@link OptimizedSelectedKeysSet}. Replace fields to advance performance for the {@link Selector}
  */
-public final class SelectorSetChanger {
-	private static final Logger logger = LoggerFactory.getLogger(SelectorSetChanger.class);
+final class Utils {
+	private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
 	private static Field SELECTED_KEYS_FIELD;
 	private static Field PUBLIC_SELECTED_KEYS_FIELD;
@@ -36,7 +36,7 @@ public final class SelectorSetChanger {
 	 * @param selector selector instance whose selected keys field is to be changed
 	 * @return <code>true</code> on success
 	 */
-	public static boolean tryToOptimize(Selector selector) {
+	public static boolean tryToOptimizeSelector(Selector selector) {
 		OptimizedSelectedKeysSet selectedKeys = new OptimizedSelectedKeysSet();
 		try {
 			SELECTED_KEYS_FIELD.set(selector, selectedKeys);

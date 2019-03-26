@@ -86,8 +86,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		this.consumer = consumer;
 		onWired();
 		consumer.getAcknowledgement()
-				.acceptEx(Exception.class, this::close)
-				.acceptEx(acknowledgement::set);
+				.whenException(this::close)
+				.whenComplete(acknowledgement);
 	}
 
 	protected void onWired() {

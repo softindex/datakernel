@@ -53,11 +53,11 @@ public final class PingPongSocketConnectionTest {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					loop(ITERATIONS, AsyncPredicate.of(i -> i != 0),
 							i -> bufsSupplier.parse(PARSER)
-									.accept(res -> assertEquals(REQUEST_MSG, res))
+									.whenResult(res -> assertEquals(REQUEST_MSG, res))
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG)))
 									.map($ -> i - 1))
-							.acceptEx(($, e) -> socket.close())
-							.acceptEx(assertComplete());
+							.whenComplete(($, e) -> socket.close())
+							.whenComplete(assertComplete());
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce()
@@ -69,9 +69,9 @@ public final class PingPongSocketConnectionTest {
 					return loop(ITERATIONS, AsyncPredicate.of(i -> i != 0),
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.then($ -> bufsSupplier.parse(PARSER))
-									.accept(res -> assertEquals(RESPONSE_MSG, res))
+									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
 									.map($ -> i - 1))
-							.accept($ -> socket.close());
+							.whenResult($ -> socket.close());
 				}));
 	}
 }

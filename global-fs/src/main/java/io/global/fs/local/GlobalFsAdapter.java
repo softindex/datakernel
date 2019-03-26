@@ -92,7 +92,7 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.acceptEx(toLogger(logger, TRACE, "list", glob, this));
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 
@@ -102,14 +102,14 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.acceptEx(toLogger(logger, TRACE, "list", glob, this));
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
 		return driver.getMetadata(space, name)
 				.map(checkpoint -> checkpoint != null ? fromCheckpoint(checkpoint) : null)
-				.acceptEx(toLogger(logger, TRACE, "getMetadata", name, this));
+				.whenComplete(toLogger(logger, TRACE, "getMetadata", name, this));
 	}
 
 	@Override

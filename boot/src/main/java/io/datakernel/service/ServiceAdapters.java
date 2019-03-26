@@ -16,6 +16,7 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.Callback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -28,7 +29,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.BiConsumer;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -43,7 +43,7 @@ public final class ServiceAdapters {
 	private ServiceAdapters() {
 	}
 
-	private static <T> BiConsumer<T, Throwable> completeFuture(CompletableFuture<?> future) {
+	private static <T> Callback<T> completeFuture(CompletableFuture<?> future) {
 		return ($, e) -> {
 			if (e != null) {
 				future.completeExceptionally(e);
@@ -119,14 +119,14 @@ public final class ServiceAdapters {
 			public CompletableFuture<?> start(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
 				instance.getEventloop().execute(() ->
-						instance.start().acceptEx(completeFuture(future)));
+						instance.start().whenComplete(completeFuture(future)));
 				return future;
 			}
 
 			@Override
 			public CompletableFuture<?> stop(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.stop().acceptEx(completeFuture(future)));
+				instance.getEventloop().execute(() -> instance.stop().whenComplete(completeFuture(future)));
 				return future;
 			}
 		};
@@ -151,7 +151,7 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<?> stop(EventloopServer instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.close().acceptEx(completeFuture(future)));
+				instance.getEventloop().execute(() -> instance.close().whenComplete(completeFuture(future)));
 				return future;
 			}
 		};

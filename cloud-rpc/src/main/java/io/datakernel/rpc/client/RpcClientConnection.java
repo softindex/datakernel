@@ -29,6 +29,8 @@ import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.rpc.protocol.RpcStream.Listener;
 import io.datakernel.util.Stopwatch;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
@@ -214,7 +216,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 
 	private void returnError(Callback<?> cb, Exception e) {
 		if (cb != null) {
-			cb.setException(e);
+			cb.accept(null, e);
 		}
 	}
 
@@ -264,7 +266,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		Callback<Object> cb = (Callback<Object>) activeRequests.remove(message.getCookie());
 		if (cb == null) return;
 
-		cb.set(message.getData());
+		cb.accept(message.getData(), null);
 		if (serverClosing && activeRequests.size() == 0) {
 			close();
 		}
@@ -354,17 +356,24 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		}
 
 		@Override
-		public void set(T result) {
+		public void accept(T result, @Nullable Throwable e) {
+			if (e == null) {
+				onResult(result);
+			} else {
+				onException(e);
+			}
+		}
+
+		private void onResult(T result) {
 			int responseTime = timeElapsed();
 			connectionStats.getResponseTime().recordValue(responseTime);
 			requestStatsPerClass.getResponseTime().recordValue(responseTime);
 			rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
 			recordOverdue();
-			callback.set(result);
+			callback.accept(result, null);
 		}
 
-		@Override
-		public void setException(Throwable e) {
+		private void onException(@NotNull Throwable e) {
 			if (e instanceof RpcRemoteException) {
 				int responseTime = timeElapsed();
 				connectionStats.getFailedRequests().recordEvent();
@@ -382,7 +391,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 				connectionStats.getRejectedRequests().recordEvent();
 				requestStatsPerClass.getRejectedRequests().recordEvent();
 			}
-			callback.setException(e);
+			callback.accept(null, e);
 		}
 
 		private int timeElapsed() {

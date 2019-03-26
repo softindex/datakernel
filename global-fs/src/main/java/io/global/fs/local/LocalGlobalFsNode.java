@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -120,6 +121,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 	@Override
 	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset, long revision) {
 		LocalGlobalFsNamespace ns = ensureNamespace(space);
+		// check only after ensureMasterNodes because it could've made us master
 		return ns.ensureMasterNodes()
 				.then(masters -> {
 					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
@@ -135,14 +137,15 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput()
 											.set(ChannelConsumer.ofPromise(ns.upload(filename, offset, revision))
-													.withAcknowledgement(ack -> ack
-															.acceptEx(($, e) -> {
-																if (e == null) {
-																	localCompleted[0] = true;
-																} else {
-																	splitter.close(e);
-																}
-															})));
+													.withAcknowledgement(ack -> {
+														return ack.whenComplete((Callback<? super Void>) ($, e) -> {
+															if (e == null) {
+																localCompleted[0] = true;
+															} else {
+																splitter.close(e);
+															}
+														});
+													}));
 								} else {
 									localCompleted[0] = true;
 								}
@@ -151,7 +154,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 
 								consumers.forEach(output -> splitter.addOutput()
 										.set(output
-												.withAcknowledgement(ack -> ack.acceptEx(Exception.class, e -> {
+												.withAcknowledgement(ack -> ack.whenException(e -> {
 													if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
 														splitter.close(e);
 													}
@@ -169,13 +172,13 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 													return Promise.ofException(new StacklessException(LocalGlobalFsNode.class, "Not enough successes"));
 												}));
 							});
-				})
-				.acceptEx(toLogger(logger, "upload", space, filename, offset, this));
+				}).whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
 
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long length) {
 		LocalGlobalFsNamespace ns = ensureNamespace(space);
+		// if we have cached file and it is same as or better than remote
 		return Promises.toTuple(ns.getMetadata(filename), getMetadata(space, filename))
 				.then(t -> {
 					GlobalFsCheckpoint localMeta = t.getValue1() != null ? t.getValue1().getValue() : null;
@@ -211,8 +214,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 														.withEndOfStream(eos -> eos.both(splitter.getProcessCompletion()));
 											}))
 									.iterator()));
-				})
-				.acceptEx(toLogger(logger, "download", space, filename, offset, length, this));
+				}).whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
 	private <T> Promise<T> simpleMethod(PubKey space, Function<GlobalFsNode, Promise<T>> self, Function<LocalGlobalFsNamespace, Promise<T>> local) {
@@ -230,26 +232,22 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> listEntities(PubKey space, String glob) {
-		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob))
-				.acceptEx(toLogger(logger, TRACE, "list", space, glob, this));
+		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob)).whenComplete(toLogger(logger, TRACE, "list", space, glob, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
 		return simpleMethod(space, node -> node.getMetadata(space, filename), ns -> ns.getMetadata(filename))
-				.mapEx((res, e) -> e != null ? null : res)
-				.acceptEx(toLogger(logger, TRACE, "getMetadata", space, filename, this));
+				.mapEx((res, e) -> e != null ? null : res).whenComplete(toLogger(logger, TRACE, "getMetadata", space, filename, this));
 	}
 
 	@Override
 	public Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone) {
-		return simpleMethod(space, node -> node.delete(space, tombstone), ns -> ns.delete(tombstone))
-				.acceptEx(toLogger(logger, "delete", space, tombstone, this));
+		return simpleMethod(space, node -> node.delete(space, tombstone), ns -> ns.delete(tombstone)).whenComplete(toLogger(logger, "delete", space, tombstone, this));
 	}
 
 	public Promise<Boolean> push() {
-		return tolerantCollectBoolean(namespaces.values(), this::push)
-				.acceptEx(toLogger(logger, "push", this));
+		return tolerantCollectBoolean(namespaces.values(), this::push).whenComplete(toLogger(logger, "push", this));
 	}
 
 	public Promise<Boolean> push(PubKey space) {
@@ -258,41 +256,35 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 
 	private Promise<Boolean> push(LocalGlobalFsNamespace ns) {
 		return ns.ensureMasterNodes()
-				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**")))
-				.acceptEx(toLogger(logger, "push", ns.getSpace(), this));
+				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**"))).whenComplete(toLogger(logger, "push", ns.getSpace(), this));
 	}
 
 	public Promise<Boolean> fetch() {
-		return tolerantCollectBoolean(getManagedPublicKeys(), this::fetch)
-				.acceptEx(toLogger(logger, "fetch", this));
+		return tolerantCollectBoolean(getManagedPublicKeys(), this::fetch).whenComplete(toLogger(logger, "fetch", this));
 	}
 
 	public Promise<Boolean> fetch(PubKey space) {
 		LocalGlobalFsNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
-				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**")))
-				.acceptEx(toLogger(logger, "fetch", space, this));
+				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**"))).whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
 	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpImpl));
 
 	public Promise<Void> catchUp() {
-		return catchUpImpl.get()
-				.acceptEx(toLogger(logger, "catchUp", this));
+		return catchUpImpl.get().whenComplete(toLogger(logger, "catchUp", this));
 	}
 
 	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
 		long started = now.currentTimeMillis();
-		fetch()
-				.accept(didAnything -> {
-					long timestampEnd = now.currentTimeMillis();
-					if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
-						cb.set(null);
-					} else {
-						catchUpImpl(cb);
-					}
-				})
-				.acceptEx(Exception.class, cb::setException);
+		fetch().whenResult((Consumer<? super Boolean>) didAnything -> {
+			long timestampEnd = now.currentTimeMillis();
+			if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
+				cb.set(null);
+			} else {
+				catchUpImpl(cb);
+			}
+		}).whenException(cb::setException);
 	}
 
 	@Override

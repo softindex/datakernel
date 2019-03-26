@@ -46,11 +46,9 @@ import static java.util.stream.Collectors.toSet;
 
 public final class OTDriver {
 	private static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
-	private static final StructuredCodec<List<byte[]>> COMMIT_DIFFS_CODEC = REGISTRY.get(new TypeT<List<byte[]>>() {
-	});
+	private static final StructuredCodec<List<byte[]>> COMMIT_DIFFS_CODEC = REGISTRY.get(new TypeT<List<byte[]>>() {});
 	private static final StructuredCodec<RawCommitHead> COMMIT_HEAD_CODEC = REGISTRY.get(RawCommitHead.class);
-	private static final StructuredCodec<RawSnapshot> SNAPSHOT_CODEC = REGISTRY.get(new TypeT<RawSnapshot>() {
-	});
+	private static final StructuredCodec<RawSnapshot> SNAPSHOT_CODEC = REGISTRY.get(new TypeT<RawSnapshot>() {});
 
 	private final GlobalOTNode service;
 
@@ -73,7 +71,7 @@ public final class OTDriver {
 	}
 
 	public <D> OTCommit<CommitId, D> createCommit(MyRepositoryId<D> myRepositoryId,
-												  Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
+			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
 		long timestamp = now.currentTimeMillis();
 		EncryptedData encryptedDiffs = encryptAES(
 				encodeAsArray(COMMIT_DIFFS_CODEC,
@@ -96,7 +94,7 @@ public final class OTDriver {
 	}
 
 	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
-												  PubKey senderPubKey, Hash simKeyHash) {
+			PubKey senderPubKey, Hash simKeyHash) {
 		return service.getSharedKey(myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
 				.mapEx((signedSimKey, e) -> {
 					if (e == null) {
@@ -124,7 +122,7 @@ public final class OTDriver {
 	}
 
 	public Promise<SimKey> ensureSimKey(MyRepositoryId<?> myRepositoryId,
-										Set<RepoID> originRepositoryIds, Hash simKeyHash) {
+			Set<RepoID> originRepositoryIds, Hash simKeyHash) {
 		return simKeys.containsKey(simKeyHash) ?
 				Promise.of(simKeys.get(simKeyHash)) :
 				Promises.any(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
@@ -136,12 +134,12 @@ public final class OTDriver {
 	}
 
 	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
-								  OTCommit<CommitId, D> commit) {
+			OTCommit<CommitId, D> commit) {
 		return push(myRepositoryId, singleton(commit));
 	}
 
 	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
-								  Collection<OTCommit<CommitId, D>> commits) {
+			Collection<OTCommit<CommitId, D>> commits) {
 		if (commits.isEmpty()) {
 			return Promise.complete();
 		}
@@ -202,7 +200,7 @@ public final class OTDriver {
 	}
 
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
-														 Set<RepoID> originRepositoryIds, CommitId revisionId) {
+			Set<RepoID> originRepositoryIds, CommitId revisionId) {
 		return Promises.firstSuccessful(
 				() -> service.loadCommit(myRepositoryId.getRepositoryId(), revisionId),
 				() -> Promises.any(originRepositoryIds.stream()
@@ -236,7 +234,7 @@ public final class OTDriver {
 	}
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
-													   Set<RepoID> originRepositoryIds, CommitId revisionId) {
+			Set<RepoID> originRepositoryIds, CommitId revisionId) {
 		return Promises.any(
 				union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
 						.map(repositoryId -> loadSnapshot(myRepositoryId, repositoryId, revisionId)
@@ -245,7 +243,7 @@ public final class OTDriver {
 	}
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
-													   RepoID repositoryId, CommitId revisionId) {
+			RepoID repositoryId, CommitId revisionId) {
 		return service.loadSnapshot(repositoryId, revisionId)
 				.then(optionalRawSnapshot -> {
 					if (!optionalRawSnapshot.isPresent()) {
@@ -272,7 +270,7 @@ public final class OTDriver {
 	}
 
 	public <D> Promise<Void> saveSnapshot(MyRepositoryId<D> myRepositoryId,
-										  CommitId revisionId, List<D> diffs) {
+			CommitId revisionId, List<D> diffs) {
 		return service.saveSnapshot(myRepositoryId.getRepositoryId(),
 				SignedData.sign(
 						SNAPSHOT_CODEC,

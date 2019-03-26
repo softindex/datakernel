@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import io.datakernel.rpc.hash.HashFunction;
@@ -26,6 +25,8 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.rpc.client.sender.Callbacks.assertNoCalls;
+import static io.datakernel.rpc.client.sender.Callbacks.ignore;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -63,7 +64,7 @@ public class RpcStrategiesTest {
 
 		RpcSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(new Object(), 50, Callback.ignore());
+			sender.sendRequest(new Object(), 50, ignore());
 		}
 
 		List<RpcSenderStub> connections =
@@ -91,7 +92,7 @@ public class RpcStrategiesTest {
 
 		RpcSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(new Object(), 50, Callback.assertNoCalls());
+			sender.sendRequest(new Object(), 50, assertNoCalls());
 		}
 
 		assertEquals(iterations / 2, connection1.getRequests());
@@ -120,11 +121,11 @@ public class RpcStrategiesTest {
 				firstValidResult(servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)));
 
 		RpcSender sender = strategy.createSender(pool);
-		sender.sendRequest(0, 50, Callback.assertNoCalls());
-		sender.sendRequest(0, 50, Callback.assertNoCalls());
-		sender.sendRequest(1, 50, Callback.assertNoCalls());
-		sender.sendRequest(1, 50, Callback.assertNoCalls());
-		sender.sendRequest(0, 50, Callback.assertNoCalls());
+		sender.sendRequest(0, 50, assertNoCalls());
+		sender.sendRequest(0, 50, assertNoCalls());
+		sender.sendRequest(1, 50, assertNoCalls());
+		sender.sendRequest(1, 50, assertNoCalls());
+		sender.sendRequest(0, 50, assertNoCalls());
 
 		assertEquals(3, connection1.getRequests());
 		assertEquals(0, connection2.getRequests());
@@ -156,13 +157,13 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_5, connection5);
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			sender.sendRequest(i, 50, Callback.ignore());
+			sender.sendRequest(i, 50, ignore());
 		}
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			sender.sendRequest(i, 50, Callback.ignore());
+			sender.sendRequest(i, 50, ignore());
 		}
 
 		double acceptableError = iterationsPerLoop / 10.0;
@@ -198,10 +199,10 @@ public class RpcStrategiesTest {
 
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerDataStub; i++) {
-			sender.sendRequest(new Object(), timeout, Callback.assertNoCalls());
+			sender.sendRequest(new Object(), timeout, assertNoCalls());
 		}
 		for (int i = 0; i < iterationsPerDataStubWithKey; i++) {
-			sender.sendRequest("request", timeout, Callback.assertNoCalls());
+			sender.sendRequest("request", timeout, assertNoCalls());
 		}
 
 		assertEquals(iterationsPerDataStubWithKey, connection1.getRequests());

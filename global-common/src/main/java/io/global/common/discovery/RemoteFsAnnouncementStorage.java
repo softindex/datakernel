@@ -61,7 +61,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 		String file = getFilenameFor(space);
 		return storage.upload(file, 0, now.currentTimeMillis())
 				.then(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
-				.acceptEx(toLogger(logger, TRACE, "store", signedAnnounceData, this));
+				.whenComplete(toLogger(logger, TRACE, "store", signedAnnounceData, this));
 	}
 
 	@Override
@@ -85,7 +85,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 						buf.recycle();
 					}
 				})
-				.acceptEx(toLogger(logger, TRACE, "load", space, this));
+				.whenComplete(toLogger(logger, TRACE, "load", space, this));
 	}
 
 	@Override

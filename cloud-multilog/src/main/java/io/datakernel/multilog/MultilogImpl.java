@@ -202,7 +202,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 																	Promise.ofException(e))))
 											.transformWith(ChannelDeserializer.create(serializer))
 											.withEndOfStream(eos ->
-													eos.acceptEx(($, e) -> log(e)))
+													eos.whenComplete(($, e) -> log(e)))
 											.withLateBinding();
 								}));
 			}

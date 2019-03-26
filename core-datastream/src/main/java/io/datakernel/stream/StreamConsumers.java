@@ -139,7 +139,7 @@ public final class StreamConsumers {
 				Promise<Void> accept = consumer.accept(deque.poll());
 				if (accept.isResult()) continue;
 				writing = true;
-				accept.acceptEx(($, e) -> {
+				accept.whenComplete(($, e) -> {
 					writing = false;
 					if (e == null) {
 						produce();
@@ -151,7 +151,7 @@ public final class StreamConsumers {
 			}
 			if (getEndOfStream().isResult()) {
 				consumer.accept(null)
-						.acceptEx(result::trySet);
+						.whenComplete(result::trySet);
 			} else {
 				getSupplier().resume(this);
 			}
@@ -180,7 +180,7 @@ public final class StreamConsumers {
 
 		@Override
 		public void setSupplier(StreamSupplier<T> supplier) {
-			supplier.getEndOfStream().acceptEx(acknowledgement::trySet);
+			supplier.getEndOfStream().whenComplete(acknowledgement::trySet);
 		}
 
 		@Override
@@ -204,7 +204,7 @@ public final class StreamConsumers {
 
 		@Override
 		public void setSupplier(StreamSupplier<T> supplier) {
-			supplier.getEndOfStream().acceptEx(acknowledgement::trySet);
+			supplier.getEndOfStream().whenComplete(acknowledgement::trySet);
 			supplier.resume($ -> {});
 		}
 

@@ -65,7 +65,7 @@ public final class DatagraphClient {
 							.map($ -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(serialization.getSerializer(type)))
 									.withEndOfStream(eos -> eos
-											.acceptEx(($1, e1) -> messaging.close()))
+											.whenComplete(($1, e1) -> messaging.close()))
 									.withLateBinding());
 				});
 	}

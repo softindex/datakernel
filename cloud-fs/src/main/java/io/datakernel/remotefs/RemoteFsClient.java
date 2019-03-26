@@ -125,18 +125,18 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 																Promise.complete() :
 																handleInvalidResponse(msg2);
 													})
-													.acceptEx(Exception.class, e -> {
+													.whenException(e -> {
 														messaging.close(e);
 														logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
 													})
-													.acceptEx(uploadFinishPromise.recordStats())));
+													.whenComplete(uploadFinishPromise.recordStats())));
 								})
-								.acceptEx(Exception.class, e -> {
+								.whenException(e -> {
 									messaging.close(e);
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 								}))
-				.acceptEx(toLogger(logger, "upload", filename, this))
-				.acceptEx(uploadStartPromise.recordStats());
+				.whenComplete(toLogger(logger, "upload", filename, this))
+				.whenComplete(uploadStartPromise.recordStats());
 	}
 
 	@Override
@@ -170,36 +170,36 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 																" actual: " + size[0]);
 														return Promise.ofException(size[0] < receivingSize ? UNEXPECTED_END_OF_STREAM : TOO_MUCH_DATA);
 													})
-													.acceptEx(downloadFinishPromise.recordStats())
-													.accept($1 -> messaging.close())));
+													.whenComplete(downloadFinishPromise.recordStats())
+													.whenResult($1 -> messaging.close())));
 								})
-								.acceptEx(Exception.class, e -> {
+								.whenException(e -> {
 									messaging.close(e);
 									logger.warn("error trying to download file " + name + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 								}))
-				.acceptEx(toLogger(logger, "download", name, offset, length, this))
-				.acceptEx(downloadStartPromise.recordStats());
+				.whenComplete(toLogger(logger, "download", name, offset, length, this))
+				.whenComplete(downloadStartPromise.recordStats());
 	}
 
 	@Override
 	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
 		return simpleCommand(new Move(name, target, targetRevision, removeRevision), MoveFinished.class, $ -> (Void) null)
-				.acceptEx(toLogger(logger, "move", name, target, targetRevision, removeRevision, this))
-				.acceptEx(movePromise.recordStats());
+				.whenComplete(toLogger(logger, "move", name, target, targetRevision, removeRevision, this))
+				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
 	public Promise<Void> copy(String name, String target, long targetRevision) {
 		return simpleCommand(new Copy(name, target, targetRevision), CopyFinished.class, $ -> (Void) null)
-				.acceptEx(toLogger(logger, "copy", name, target, targetRevision, this))
-				.acceptEx(copyPromise.recordStats());
+				.whenComplete(toLogger(logger, "copy", name, target, targetRevision, this))
+				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
 	public Promise<Void> delete(String name, long revision) {
 		return simpleCommand(new Delete(name, revision), DeleteFinished.class, $ -> (Void) null)
-				.acceptEx(toLogger(logger, "delete", name, revision, this))
-				.acceptEx(deletePromise.recordStats());
+				.whenComplete(toLogger(logger, "delete", name, revision, this))
+				.whenComplete(deletePromise.recordStats());
 	}
 
 	@Override
@@ -207,8 +207,8 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 		checkNotNull(glob, "glob");
 
 		return simpleCommand(new RemoteFsCommands.List(glob, true), ListFinished.class, ListFinished::getFiles)
-				.acceptEx(toLogger(logger, "listEntities", glob, this))
-				.acceptEx(listPromise.recordStats());
+				.whenComplete(toLogger(logger, "listEntities", glob, this))
+				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
@@ -216,16 +216,16 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 		checkNotNull(glob, "glob");
 
 		return simpleCommand(new RemoteFsCommands.List(glob, false), ListFinished.class, ListFinished::getFiles)
-				.acceptEx(toLogger(logger, "list", glob, this))
-				.acceptEx(listPromise.recordStats());
+				.whenComplete(toLogger(logger, "list", glob, this))
+				.whenComplete(listPromise.recordStats());
 	}
 
 	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
 				.map(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
-				.accept($ -> logger.trace("connected to [{}]: {}", address, this))
-				.acceptEx(Exception.class, e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
-				.acceptEx(connectPromise.recordStats());
+				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
+				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
+				.whenComplete(connectPromise.recordStats());
 	}
 
 	private <T> Promise<T> handleInvalidResponse(@Nullable FsResponse msg) {
@@ -253,7 +253,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									}
 									return handleInvalidResponse(msg);
 								})
-								.acceptEx(Exception.class, e -> {
+								.whenException(e -> {
 									messaging.close(e);
 									logger.warn("Error while processing command " + command + " (" + e + ") : " + this);
 								}));

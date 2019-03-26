@@ -234,7 +234,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				materializedPromise.accept(supplier -> supplier.close(e));
+				materializedPromise.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -434,7 +434,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 								return newAcknowledgement;
 							});
 				} else {
-					ChannelConsumer.this.accept(null).acceptEx(acknowledgement::trySet);
+					ChannelConsumer.this.accept(null).whenComplete(acknowledgement::trySet);
 					return newAcknowledgement;
 				}
 			}
@@ -451,6 +451,6 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 */
 	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
 		return Promise.ofCallback(cb ->
-				fn.accept(ack -> ack.acceptEx(cb::set)));
+				fn.accept(ack -> ack.whenComplete(cb)));
 	}
 }

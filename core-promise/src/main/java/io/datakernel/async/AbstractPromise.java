@@ -23,21 +23,20 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 abstract class AbstractPromise<T> implements Promise<T> {
 
-	private static final BiConsumer<Object, Throwable> COMPLETED_PROMISE =
+	private static final Callback<Object> COMPLETED_PROMISE =
 			(value, e) -> { throw new UnsupportedOperationException();};
 
-	private static final BiConsumer<Object, Throwable> COMPLETED_EXCEPTIONALLY_PROMISE =
+	private static final Callback<Object> COMPLETED_EXCEPTIONALLY_PROMISE =
 			(value, e) -> { throw new UnsupportedOperationException();};
 
 	@Nullable
-	protected BiConsumer<? super T, Throwable> next;
+	protected Callback<? super T> next;
 
 	@Override
 	public boolean isComplete() {
@@ -102,18 +101,18 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> next(@Async.Schedule @NotNull S promise) {
+	public <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@Async.Schedule @NotNull P promise) {
 		subscribe(promise);
 		return promise;
 	}
 
-	protected void subscribe(@Async.Schedule @NotNull BiConsumer<? super T, Throwable> consumer) {
+	protected void subscribe(@Async.Schedule @NotNull Callback<? super T> consumer) {
 		if (next == null) {
 			next = consumer;
 		} else {
 			assert !isComplete() : "Promise has already been completed";
-			BiConsumer<? super T, Throwable> finalNext = next;
-			next = (BiConsumer<T, Throwable>) (result, e) -> {
+			Callback<? super T> finalNext = next;
+			next = (Callback<T>) (result, e) -> {
 				finalNext.accept(result, e);
 				consumer.accept(result, e);
 			};
@@ -185,7 +184,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 						completeExceptionally(u.getCause());
 						return;
 					}
-					promise.acceptEx(this::complete);
+					promise.whenComplete(this::complete);
 				} else {
 					completeExceptionally(e);
 				}
@@ -206,7 +205,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 						completeExceptionally(u.getCause());
 						return;
 					}
-					promise.acceptEx(this::complete);
+					promise.whenComplete(this::complete);
 				} else {
 					Promise<U> promise;
 					try {
@@ -215,7 +214,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 						completeExceptionally(u.getCause());
 						return;
 					}
-					promise.acceptEx(this::complete);
+					promise.whenComplete(this::complete);
 				}
 			}
 
@@ -228,15 +227,15 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public Promise<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action) {
+	public Promise<T> whenComplete(@NotNull Callback<? super T> action) {
 		subscribe(action);
 		return this;
 	}
 
 	@NotNull
 	@Override
-	public Promise<T> accept(@Async.Schedule @NotNull Consumer<? super T> action) {
-		return acceptEx(new BiConsumer<T, Throwable>() {
+	public Promise<T> whenResult(@Async.Schedule @NotNull Consumer<? super T> action) {
+		return whenComplete(new Callback<T>() {
 			private void accept(@Async.Execute Consumer<? super T> action, T result) {
 				action.accept(result);
 			}
@@ -251,17 +250,10 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	}
 
 	@Override
-	public Promise<T> acceptEx(Class<? extends Throwable> type, @Async.Schedule @NotNull Consumer<Throwable> action) {
-		return acceptEx(new BiConsumer<T, Throwable>() {
-			private void accept(@Async.Execute Consumer<Throwable> action, Throwable e) {
+	public Promise<T> whenException(@Async.Schedule @NotNull Consumer<Throwable> action) {
+		return whenComplete((result, e) -> {
+			if (e != null) {
 				action.accept(e);
-			}
-
-			@Override
-			public void accept(T result, @Nullable Throwable e) {
-				if (e != null && type.isAssignableFrom(e.getClass())) {
-					accept(action, e);
-				}
 			}
 		});
 	}
@@ -322,7 +314,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			return map(result -> fn.apply(result, ((CompletePromise<U>) other).getResult()));
 		}
 		@NotNull PromiseCombine<T, V, U> resultPromise = new PromiseCombine<>(fn);
-		other.acceptEx((result, e) -> {
+		other.whenComplete((result, e) -> {
 			if (e == null) {
 				resultPromise.onOtherComplete(result);
 			} else {
@@ -352,7 +344,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	public Promise<Void> both(@NotNull Promise<?> other) {
 		if (other instanceof CompletePromise) return toVoid();
 		PromiseBoth<T> resultPromise = new PromiseBoth<>();
-		other.acceptEx((result, e) -> {
+		other.whenComplete((result, e) -> {
 			if (e == null) {
 				if (--resultPromise.counter == 0) {
 					resultPromise.complete(null);
@@ -388,7 +380,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			return otherCompletePromise;
 		}
 		EitherPromise<T> resultPromise = new EitherPromise<>();
-		other.acceptEx((result, e) -> {
+		other.whenComplete((result, e) -> {
 			if (e == null) {
 				resultPromise.tryComplete(result);
 			} else {

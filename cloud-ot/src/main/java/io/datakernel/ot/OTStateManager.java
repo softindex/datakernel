@@ -106,7 +106,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@Override
 	public MaterializedPromise<Void> start() {
 		return checkout()
-				.accept($ -> poll())
+				.whenResult($ -> poll())
 				.materialize();
 	}
 
@@ -115,7 +115,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public MaterializedPromise<Void> stop() {
 		poll = null;
 		return isValid() ?
-				sync().acceptEx(($, e) -> invalidateInternalState()).materialize() :
+				sync().whenComplete(($, e) -> invalidateInternalState()).materialize() :
 				Promise.complete();
 	}
 
@@ -123,7 +123,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public Promise<Void> checkout() {
 		checkState(commitId == null);
 		return repository.checkout()
-				.accept(checkoutData -> {
+				.whenResult(checkoutData -> {
 					state.init();
 					apply(checkoutData.getDiffs());
 
@@ -133,7 +133,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 					level = checkoutData.getLevel();
 				})
 				.toVoid()
-				.acceptEx(toLogger(logger, thisMethod(), this));
+				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	private boolean isSyncing() {
@@ -157,15 +157,15 @@ public final class OTStateManager<K, D> implements EventloopService {
 				poll == null ? this::fetch : Promise::complete,
 				this::commit,
 				this::push)
-				.acceptEx(($, e) -> poll())
-				.acceptEx(toLogger(logger, thisMethod(), this));
+				.whenComplete(($, e) -> poll())
+				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	private void poll() {
 		if (poll != null && !poll.isRunning()) {
 			poll.get()
 					.async()
-					.acceptEx(($, e) -> {
+					.whenComplete(($, e) -> {
 						if (!sync.isRunning()) {
 							poll();
 						}
@@ -177,22 +177,22 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Promise<Void> fetch() {
 		K fetchCommitId = this.commitId;
 		return repository.fetch(fetchCommitId)
-				.accept(fetchData -> rebase(fetchCommitId, fetchData))
+				.whenResult(fetchData -> rebase(fetchCommitId, fetchData))
 				.toVoid()
-				.acceptEx(toLogger(logger, thisMethod(), this));
+				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	@NotNull
 	private Promise<Void> doPoll() {
 		K pollCommitId = this.commitId;
 		return repository.poll(pollCommitId)
-				.accept(fetchData -> {
+				.whenResult(fetchData -> {
 					if (!sync.isRunning()) {
 						rebase(pollCommitId, fetchData);
 					}
 				})
 				.toVoid()
-				.acceptEx(toLogger(logger, thisMethod(), this));
+				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	private void rebase(K originalCommitId, FetchData<K, D> fetchData) {
@@ -226,14 +226,14 @@ public final class OTStateManager<K, D> implements EventloopService {
 		int originalSize = workingDiffs.size();
 		List<D> diffs = new ArrayList<>(otSystem.squash(workingDiffs));
 		return repository.createCommit(this.commitId, diffs, level + 1L)
-				.accept(commit -> {
+				.whenResult(commit -> {
 					assert pendingCommit == null;
 					pendingCommit = commit;
 					pendingCommitDiffs = diffs;
 					workingDiffs = new ArrayList<>(workingDiffs.subList(originalSize, workingDiffs.size()));
 				})
 				.toVoid()
-				.acceptEx(toLogger(logger, thisMethod(), this));
+				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	@NotNull
@@ -241,13 +241,13 @@ public final class OTStateManager<K, D> implements EventloopService {
 		if (pendingCommit == null) return Promise.complete();
 		K currentCommitId = this.commitId;
 		return repository.push(pendingCommit)
-				.accept(fetchData -> {
+				.whenResult(fetchData -> {
 					pendingCommit = null;
 					pendingCommitDiffs = null;
 					rebase(currentCommitId, fetchData);
 				})
 				.toVoid()
-				.acceptEx(toLogger(logger, thisMethod(), this));
+				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	public void reset() {

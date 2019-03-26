@@ -75,7 +75,7 @@ public class RocksDbSharedKeyStorage implements SharedKeyStorage {
 						throw new UncheckedException(e);
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), receiver, signedSharedSimKey));
+				.whenComplete(toLogger(logger, thisMethod(), receiver, signedSharedSimKey));
 	}
 
 	@Override
@@ -91,7 +91,7 @@ public class RocksDbSharedKeyStorage implements SharedKeyStorage {
 						return decode(SHARED_SIM_KEY_CODEC, valueBytes);
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), receiver, hash));
+				.whenComplete(toLogger(logger, thisMethod(), receiver, hash));
 	}
 
 	@Override
@@ -112,6 +112,6 @@ public class RocksDbSharedKeyStorage implements SharedKeyStorage {
 						return result;
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), receiver));
+				.whenComplete(toLogger(logger, thisMethod(), receiver));
 	}
 }

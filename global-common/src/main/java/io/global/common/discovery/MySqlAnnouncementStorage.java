@@ -73,7 +73,7 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 					}
 					return (Void) null;
 				})
-				.acceptEx(toLogger(logger, thisMethod(), space, announceData));
+				.whenComplete(toLogger(logger, thisMethod(), space, announceData));
 	}
 
 	@Override
@@ -94,7 +94,7 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 						}
 					}
 				})
-				.acceptEx(toLogger(logger, thisMethod(), space));
+				.whenComplete(toLogger(logger, thisMethod(), space));
 	}
 
 	public void initialize() throws IOException, SQLException {

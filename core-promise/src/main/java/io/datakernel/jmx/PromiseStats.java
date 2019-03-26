@@ -17,13 +17,13 @@
 package io.datakernel.jmx;
 
 import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
@@ -75,10 +75,10 @@ public class PromiseStats {
 	}
 
 	public <T> Promise<T> monitor(Promise<T> promise) {
-		return promise.acceptEx(recordStats());
+		return promise.whenComplete(recordStats());
 	}
 
-	public <T> BiConsumer<T, Throwable> recordStats() {
+	public <T> Callback<T> recordStats() {
 		activePromises++;
 		long before = currentTimeMillis();
 		lastStartTimestamp = before;

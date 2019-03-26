@@ -123,15 +123,15 @@ public final class AbstractCommunicatingProcessTest {
 		@Override
 		protected void doProcess() {
 			input.get()
-					.acceptEx((data, e) -> {
+					.whenComplete((data, e) -> {
 						if (data == null) {
 							output.accept(null)
-									.acceptEx(Exception.class, this::close)
-									.accept($ -> completeProcess());
+									.whenException(this::close)
+									.whenResult($ -> completeProcess());
 						} else {
 							output.accept(data)
-									.acceptEx(Exception.class, this::close)
-									.accept($ -> doProcess());
+									.whenException(this::close)
+									.whenResult($ -> doProcess());
 						}
 					});
 		}

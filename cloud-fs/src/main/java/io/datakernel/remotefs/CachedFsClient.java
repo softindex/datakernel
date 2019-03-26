@@ -154,7 +154,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 
 					if (length != -1 && sizeInCache >= offset + length) {
 						return cacheClient.download(name, offset, length)
-								.acceptEx((val, e) -> updateCacheStats(name));
+								.whenComplete((val, e) -> updateCacheStats(name));
 					}
 
 					if (offset > sizeInCache) {
@@ -165,14 +165,14 @@ public final class CachedFsClient implements FsClient, EventloopService {
 							.then(mainMetadata -> {
 								if (mainMetadata == null) {
 									return cacheClient.download(name, offset, length)
-											.acceptEx(($, e) -> updateCacheStats(name));
+											.whenComplete(($, e) -> updateCacheStats(name));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
 
 								if (sizeInCache >= sizeInMain) {
 									return cacheClient.download(name, offset, length)
-											.acceptEx((val, e) -> updateCacheStats(name));
+											.whenComplete((val, e) -> updateCacheStats(name));
 								}
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
@@ -212,7 +212,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 													totalCacheSize += toBeCached;
 													return updateCacheStats(fileName);
 												})
-												.accept($2 -> downloadingNowSize -= toBeCached));
+												.whenResult($2 -> downloadingNowSize -= toBeCached));
 							});
 				});
 	}
@@ -269,7 +269,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 					cacheStat.lastHitTimestamp = timeProvider.currentTimeMillis();
 					return cacheStat;
 				}))
-				.accept($ -> cacheStats.computeIfAbsent(fileName, s -> new CacheStat(1, timeProvider.currentTimeMillis())))
+				.whenResult($ -> cacheStats.computeIfAbsent(fileName, s -> new CacheStat(1, timeProvider.currentTimeMillis())))
 				.toVoid();
 	}
 
@@ -300,7 +300,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 				.then(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())
-								.accept($ -> {
+								.whenResult($ -> {
 									totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
 									cacheStats.remove(fullCacheStat.getFileMetadata().getName());
 								}))));

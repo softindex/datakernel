@@ -5,7 +5,16 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public interface SettableCallback<T> {
+public interface SettableCallback<T> extends Callback<T> {
+	@Override
+	default void accept(T result, @Nullable Throwable e) {
+		if (e == null) {
+			set(result);
+		} else {
+			setException(e);
+		}
+	}
+
 	default boolean isComplete() {
 		return isResult() || isException();
 	}
@@ -21,14 +30,6 @@ public interface SettableCallback<T> {
 	void set(T result);
 
 	void setException(@NotNull Throwable e);
-
-	default void set(T result, @Nullable Throwable e) {
-		if (e == null) {
-			set(result);
-		} else {
-			setException(e);
-		}
-	}
 
 	/**
 	 * Tries to set provided {@code result} for this
@@ -73,7 +74,7 @@ public interface SettableCallback<T> {
 	}
 
 	default void post(T result, @Nullable Throwable e) {
-		getCurrentEventloop().post(() -> set(result, e));
+		getCurrentEventloop().post(() -> accept(result, e));
 	}
 
 	default void tryPost(T result) {

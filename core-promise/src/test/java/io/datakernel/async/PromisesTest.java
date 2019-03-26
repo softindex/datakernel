@@ -239,7 +239,7 @@ public final class PromisesTest {
 	@Test
 	public void testLoop() {
 		Promises.loop(0, AsyncPredicate.of(i -> i < 5), i -> Promise.of(i + 1)
-				.accept(counter::set));
+				.whenResult(counter::set));
 		assertEquals(5, counter.get());
 	}
 
@@ -247,8 +247,8 @@ public final class PromisesTest {
 	public void testLoopAsync() {
 		await(Promises.loop(0, AsyncPredicate.of(i -> i < 5), i ->
 				Promises.delay(Promise.of(i + 1), 10)
-						.accept(counter::set)
-						.accept(System.out::println)));
+						.whenResult(counter::set)
+						.whenResult(System.out::println)));
 		assertEquals(5, counter.get());
 	}
 
@@ -300,8 +300,8 @@ public final class PromisesTest {
 		Integer result2 = 101;
 		Promise<List<Integer>> resultPromise = some(Promise.of(result1), Promise.of(result2), 2);
 
-		resultPromise.accept(list -> assertEquals(2, list.size()))
-				.accept(list -> {
+		resultPromise.whenResult(list -> assertEquals(2, list.size()))
+				.whenResult(list -> {
 					Integer gotResult1 = list.get(0);
 					Integer gotResult2 = list.get(1);
 					assertTrue(result1 == gotResult1 || result1 == gotResult2);
@@ -327,7 +327,7 @@ public final class PromisesTest {
 		List<Promise<Integer>> params = Stream.generate(() -> of(0)).limit(10).collect(Collectors.toList());
 
 		Promise<List<Integer>> promiseResult = some(params, params.size() / 2);
-		promiseResult.accept(result -> assertEquals(params.size() / 2, result.size()));
+		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
 	}
 
 	@SuppressWarnings("all")
@@ -336,7 +336,7 @@ public final class PromisesTest {
 		List<Promise<Integer>> params = Stream.generate(() -> of(0)).limit(10).collect(Collectors.toList());
 
 		Promise<List<Integer>> promiseResult = some(params, 0);
-		promiseResult.accept(result -> assertEquals(0, result.size()));
+		promiseResult.whenResult(result -> assertEquals(0, result.size()));
 	}
 
 	@SuppressWarnings("all")
@@ -346,7 +346,7 @@ public final class PromisesTest {
 				.collect(Collectors.toList());
 
 		Promise<List<Integer>> promiseResult = some(params, params.size() / 2);
-		promiseResult.accept(result -> assertEquals(params.size() / 2, result.size()));
+		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
 	}
 
 
@@ -370,7 +370,7 @@ public final class PromisesTest {
 				ofException(new RuntimeException()));
 
 		Promise<List<Object>> result = some(params, 3);
-		result.acceptEx(Exception.class, e -> assertTrue(true));
+		result.whenException(e -> assertTrue(true));
 	}
 
 	private Promise<Integer> getStage(Integer number) {

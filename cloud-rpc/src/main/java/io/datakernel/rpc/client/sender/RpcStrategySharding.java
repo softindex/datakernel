@@ -92,7 +92,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 			if (sender != null) {
 				sender.sendRequest(request, timeout, cb);
 			} else {
-				cb.setException(NO_SENDER_AVAILABLE_EXCEPTION);
+				cb.accept(null, NO_SENDER_AVAILABLE_EXCEPTION);
 			}
 		}
 

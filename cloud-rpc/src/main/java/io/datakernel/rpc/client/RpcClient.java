@@ -349,7 +349,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		logger.info("Connecting {}", address);
 
 		AsyncTcpSocketImpl.connect(address, 0, socketSettings)
-				.accept(asyncTcpSocketImpl -> {
+				.whenResult(asyncTcpSocketImpl -> {
 					asyncTcpSocketImpl
 							.withInspector(statsSocket);
 					AsyncTcpSocket socket = sslContext == null ?
@@ -373,7 +373,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 						eventloop.postLater(() -> startPromise.set(null));
 					}
 				})
-				.acceptEx(Exception.class, e -> {
+				.whenException(e -> {
 					//jmx
 					generalConnectsStats.failedConnects++;
 					connectsStatsPerAddress.get(address).failedConnects++;
@@ -444,7 +444,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		if (timeout > 0) {
 			requestSender.sendRequest(request, timeout, cb);
 		} else {
-			cb.setException(RPC_TIMEOUT_EXCEPTION);
+			cb.accept(null, RPC_TIMEOUT_EXCEPTION);
 		}
 	}
 
@@ -459,19 +459,15 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 				eventloop.execute(() -> {
 					if (timeout > 0) {
 						requestSender.sendRequest(request, timeout,
-								new Callback<O>() {
-									@Override
-									public void set(O result) {
-										anotherEventloop.execute(() -> cb.set(result));
-									}
-
-									@Override
-									public void setException(Throwable e) {
-										anotherEventloop.execute(() -> cb.setException(e));
+								(Callback<O>) (result, e) -> {
+									if (e == null) {
+										anotherEventloop.execute(() -> cb.accept(result, null));
+									} else {
+										anotherEventloop.execute(() -> cb.accept(null, e));
 									}
 								});
 					} else {
-						cb.setException(RPC_TIMEOUT_EXCEPTION);
+						cb.accept(null, RPC_TIMEOUT_EXCEPTION);
 					}
 				});
 			}
@@ -494,7 +490,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private final class NoSenderAvailable implements RpcSender {
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			eventloop.post(() -> cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
+			eventloop.post(() -> cb.accept(null, NO_SENDER_AVAILABLE_EXCEPTION));
 		}
 	}
 

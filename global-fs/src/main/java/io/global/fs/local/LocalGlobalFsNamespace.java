@@ -173,11 +173,12 @@ public final class LocalGlobalFsNamespace extends GlobalNamespace<LocalGlobalFsN
 											.map($ -> true);
 								}
 							});
-				}))
-				.acceptEx(toLogger(logger, TRACE, "push", space, into, node));
+				})).whenComplete(toLogger(logger, TRACE, "push", space, into, node));
 	}
 
 	public Promise<Boolean> fetch(GlobalFsNode from, String glob) {
+		// our file is better
+		// other file is encrypted with different key
 		return from.listEntities(space, glob)
 				.then(files -> tolerantCollectBoolean(files, signedRemoteMeta -> {
 							GlobalFsCheckpoint remoteMeta = signedRemoteMeta.getValue();
@@ -212,7 +213,6 @@ public final class LocalGlobalFsNamespace extends GlobalNamespace<LocalGlobalFsN
 												.map($ -> true);
 									});
 						}
-				))
-				.acceptEx(toLogger(logger, TRACE, "fetch", space, from, node));
+				)).whenComplete(toLogger(logger, TRACE, "fetch", space, from, node));
 	}
 }

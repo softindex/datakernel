@@ -45,7 +45,7 @@ public class ChannelExample {
 	private static void toCollector() {
 		ChannelSupplier.of(1, 2, 3, 4, 5)
 				.toCollector(Collectors.toList())
-				.accept(System.out::println);
+				.whenResult(System.out::println);
 	}
 
 	private static void filter() {

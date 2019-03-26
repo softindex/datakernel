@@ -48,7 +48,7 @@ public final class MasterRepository {
 
 	private Promise<Set<SignedData<RawCommitHead>>> doPoll() {
 		return node.pollHeads(repoID, heads.stream().map(head -> head.getValue().getCommitId()).collect(toSet()))
-				.accept(result -> heads = result);
+				.whenResult(result -> heads = result);
 	}
 
 	@NotNull

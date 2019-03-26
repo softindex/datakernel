@@ -196,7 +196,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	static <T> StreamSupplier<T> ofPromise(Promise<? extends StreamSupplier<T>> promise) {
 		if (promise.isResult()) return promise.materialize().getResult();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		promise.acceptEx((supplier, e) -> {
+		promise.whenComplete((supplier, e) -> {
 			if (e == null) {
 				checkArgument(supplier.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, supplier);

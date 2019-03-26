@@ -69,7 +69,7 @@ public final class HttpStreamTest {
 				.getBodyStream()
 				.async()
 				.toCollector(ByteBufQueue.collector())
-				.acceptEx(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))))
+				.whenComplete(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))))
 				.then(s -> Promise.of(HttpResponse.ok200())));
 
 		Integer code = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
@@ -94,7 +94,7 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT))
 				.async()
-				.acceptEx(assertComplete(response -> assertEquals(200, response.getCode())))
+				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
 				.then(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
 
 		assertEquals(requestBody, body.asString(UTF_8));
@@ -114,7 +114,7 @@ public final class HttpStreamTest {
 						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
 								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
-				.acceptEx(assertComplete(response -> assertEquals(200, response.getCode())))
+				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
 				.then(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
 
 		assertEquals(requestBody, body.asString(UTF_8));
@@ -157,7 +157,7 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
-						.acceptEx(($, e) -> socket.close())));
+						.whenComplete(($, e) -> socket.close())));
 
 		assertEquals(responseMessage, body.asString(UTF_8));
 
@@ -179,7 +179,7 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
-						.acceptEx(($, e) -> socket.close())));
+						.whenComplete(($, e) -> socket.close())));
 
 		assertNull(body);
 
@@ -208,7 +208,7 @@ public final class HttpStreamTest {
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.write(null))
 						.then($ -> socket.read())
-						.acceptEx(($, e) -> socket.close())));
+						.whenComplete(($, e) -> socket.close())));
 
 		assertNull(body);
 

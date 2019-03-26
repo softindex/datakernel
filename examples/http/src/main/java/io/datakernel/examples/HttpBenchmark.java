@@ -224,7 +224,7 @@ public class HttpBenchmark extends Launcher {
 		HttpRequest request = HttpRequest.get(addr);
 
 		httpClient.request(request)
-				.acceptEx((res, e) -> {
+				.whenComplete((res, e) -> {
 					++counters.completed;
 
 					// Stop round

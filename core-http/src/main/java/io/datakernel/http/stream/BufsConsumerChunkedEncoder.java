@@ -71,18 +71,18 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 	@Override
 	protected void doProcess() {
 		input.get()
-				.accept(buf -> {
+				.whenResult(buf -> {
 					if (buf != null) {
 						if (buf.canRead()) {
 							output.accept(encodeBuf(buf))
-									.accept($ -> doProcess());
+									.whenResult($ -> doProcess());
 						} else {
 							buf.recycle();
 							doProcess();
 						}
 					} else {
 						output.accept(LAST_CHUNK, null)
-								.accept($ -> completeProcess());
+								.whenResult($ -> completeProcess());
 					}
 				});
 	}

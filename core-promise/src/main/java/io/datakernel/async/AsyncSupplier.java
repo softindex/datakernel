@@ -22,13 +22,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import static io.datakernel.async.Utils.forEachRemainingImpl;
 
 /**
  * Represents asynchronous supplier that returns {@link Promise} of some data.
@@ -130,14 +127,16 @@ public interface AsyncSupplier<T> {
 		return () -> asyncExecutor.execute(this);
 	}
 
+	@Contract(pure = true)
 	@NotNull
-	default Promise<Void> forEachRemaining(@NotNull Consumer<T> consumer) {
-		return forEachRemainingAsync(AsyncConsumer.of(consumer));
+	default AsyncSupplier<T> peek(@NotNull Consumer<? super T> action) {
+		return () -> get().whenResult(action);
 	}
 
+	@Contract(pure = true)
 	@NotNull
-	default Promise<Void> forEachRemainingAsync(@NotNull AsyncConsumer<T> consumer) {
-		return Promise.ofCallback(cb -> forEachRemainingImpl(this, consumer, cb));
+	default AsyncSupplier<T> peekEx(@NotNull Callback<T> action) {
+		return () -> get().whenComplete(action);
 	}
 
 	/**
@@ -159,25 +158,7 @@ public interface AsyncSupplier<T> {
 	 */
 	@Contract(pure = true)
 	@NotNull
-	default <V> AsyncSupplier<V> then(@NotNull Function<? super T, ? extends Promise<V>> fn) {
+	default <V> AsyncSupplier<V> mapAsync(@NotNull Function<? super T, ? extends Promise<V>> fn) {
 		return () -> get().then(fn);
-	}
-
-	@Contract(pure = true)
-	@NotNull
-	default AsyncSupplier<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action) {
-		return () -> get().acceptEx(action);
-	}
-
-	@Contract(pure = true)
-	@NotNull
-	default AsyncSupplier<T> accept(@NotNull Consumer<? super T> action) {
-		return () -> get().accept(action);
-	}
-
-	@Contract(pure = true)
-	@NotNull
-	default AsyncSupplier<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action) {
-		return () -> get().acceptEx(type, action);
 	}
 }

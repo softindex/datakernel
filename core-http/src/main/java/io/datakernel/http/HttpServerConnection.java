@@ -96,7 +96,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	public void serve() {
 		(pool = server.poolReadWrite).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
-		socket.read().acceptEx(startLineConsumer);
+		socket.read().whenComplete(startLineConsumer);
 	}
 
 	@Override
@@ -250,7 +250,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
 		}
-		servletResult.acceptEx((response, e) -> {
+		servletResult.whenComplete((response, e) -> {
 			if (isClosed()) {
 				request.recycle();
 				if (response != null) {

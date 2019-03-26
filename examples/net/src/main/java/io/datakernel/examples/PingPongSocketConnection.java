@@ -50,9 +50,9 @@ public class PingPongSocketConnection {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					repeat(() ->
 							bufsSupplier.parse(PARSER)
-									.accept(System.out::println)
+									.whenResult(System.out::println)
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG))))
-							.acceptEx(($, e) -> socket.close());
+							.whenComplete(($, e) -> socket.close());
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce();
@@ -60,16 +60,16 @@ public class PingPongSocketConnection {
 		server.listen();
 
 		AsyncTcpSocketImpl.connect(ADDRESS)
-				.accept(socket -> {
+				.whenResult(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					loop(0, AsyncPredicate.of(i -> i < ITERATIONS),
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.then($ -> bufsSupplier.parse(PARSER)
-											.accept(System.out::println)
+											.whenResult(System.out::println)
 											.map($2 -> i + 1)))
-							.acceptEx(($, e) -> socket.close());
+							.whenComplete(($, e) -> socket.close());
 				})
-				.acceptEx(Exception.class, e -> { throw new RuntimeException(e); });
+				.whenException(e -> { throw new RuntimeException(e); });
 
 		eventloop.run();
 	}

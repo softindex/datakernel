@@ -121,8 +121,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 					return null;
 				})
-				.acceptEx(Exception.class, this::close)
-				.accept(chunkLength -> {
+				.whenException(this::close)
+				.whenResult(chunkLength -> {
 					if (chunkLength != 0) {
 						consumeCRLF(chunkLength);
 					} else {
@@ -138,16 +138,16 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 			int newChunkLength = chunkLength;
 			output.accept(tempBuf)
 					.then($ -> input.needMoreData())
-					.accept($ -> processData(newChunkLength));
+					.whenResult($ -> processData(newChunkLength));
 			return;
 		}
 		input.parse(assertBytes(CRLF))
-				.acceptEx(Exception.class, e -> {
+				.whenException(e -> {
 					tempBuf.recycle();
 					close(MALFORMED_CHUNK);
 				})
 				.then($ -> output.accept(tempBuf))
-				.accept($ -> processLength());
+				.whenResult($ -> processLength());
 	}
 
 	private void consumeCRLF(int chunkLength) {
@@ -159,9 +159,9 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					}
 					return maybeResult;
 				})
-				.accept(ByteBuf::recycle)
-				.acceptEx(Exception.class, this::close)
-				.accept($ -> processData(chunkLength));
+				.whenResult(ByteBuf::recycle)
+				.whenException(this::close)
+				.whenResult($ -> processData(chunkLength));
 	}
 
 	private void validateLastChunk() {
@@ -175,7 +175,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 				input.endOfStream()
 						.then($ -> output.accept(null))
-						.accept($ -> completeProcess());
+						.whenResult($ -> completeProcess());
 				return;
 			}
 		}
@@ -183,7 +183,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 		bufs.skip(remainingBytes - 3);
 
 		input.needMoreData()
-				.accept($ -> validateLastChunk());
+				.whenResult($ -> validateLastChunk());
 	}
 
 	@Override

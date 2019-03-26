@@ -228,7 +228,7 @@ public class RpcBenchmark extends Launcher {
 		++counters.sent;
 
 		rpcClient.sendRequest("Hello world" + counters.sent, 1000)
-				.acceptEx((res, exc) -> {
+				.whenComplete((res, exc) -> {
 					++counters.completed;
 
 					// Stop round

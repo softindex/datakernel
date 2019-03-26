@@ -97,12 +97,12 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 
 	private void writeHeader() {
 		output.accept(ByteBuf.wrapForReading(GZIP_HEADER))
-				.accept($ -> writeBody());
+				.whenResult($ -> writeBody());
 	}
 
 	private void writeBody() {
 		input.get()
-				.acceptEx((buf, e) -> {
+				.whenComplete((buf, e) -> {
 					if (buf != null) {
 						if (buf.canRead()) {
 							crc32.update(buf.array(), buf.head(), buf.readRemaining());
@@ -110,7 +110,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 							buf.recycle();
 							ByteBufQueue queue = deflate();
 							output.acceptAll(queue.asIterator())
-									.accept($ -> writeBody());
+									.whenResult($ -> writeBody());
 						} else {
 							buf.recycle();
 						}
@@ -129,7 +129,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		queue.add(footer);
 		output.acceptAll(queue.asIterator())
 				.then($ -> output.accept(null))
-				.accept($ -> completeProcess());
+				.whenResult($ -> completeProcess());
 	}
 
 	private ByteBufQueue deflate() {

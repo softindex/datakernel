@@ -63,7 +63,7 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		ByteBuf body = await(client.request(HttpRequest.get(URL))
-				.acceptEx(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
+				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
 				.then(HttpMessage::getBody));
 
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
@@ -82,7 +82,7 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		ByteBuf body = await(client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.acceptEx(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
+				.whenComplete(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
 				.then(HttpMessage::getBody));
 
 		assertEquals("Test message", body.asString(UTF_8));
@@ -114,7 +114,7 @@ public final class AbstractHttpConnectionTest {
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
 				.then(response -> response.getBody()
-						.acceptEx((body, e) -> {
+						.whenComplete((body, e) -> {
 							if (e != null) throw new AssertionError(e);
 							try {
 								assertEquals(expectedHeader, response.getHeader(CONNECTION));
@@ -139,6 +139,6 @@ public final class AbstractHttpConnectionTest {
 				.post()
 				.then($ -> checkRequest("keep-alive", 2, connectionCount))
 				.post()
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 	}
 }

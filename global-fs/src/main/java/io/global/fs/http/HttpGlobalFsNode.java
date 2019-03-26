@@ -81,8 +81,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						})))
 				.then(response -> response.getCode() != 200 && response.getCode() != 201 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.acceptEx(Exception.class, channelPromise::trySetException)
-				.acceptEx(responsePromise::trySet);
+				.whenException(channelPromise::trySetException)
+				.whenComplete(responsePromise::trySet);
 
 		return channelPromise;
 	}

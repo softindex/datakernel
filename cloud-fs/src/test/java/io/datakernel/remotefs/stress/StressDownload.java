@@ -59,7 +59,7 @@ public class StressDownload {
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
-			client.download(file, 0).acceptEx((supplier, e) -> {
+			client.download(file, 0).whenComplete((supplier, e) -> {
 				if (e == null) {
 					try {
 						supplier.streamTo(ChannelFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));

@@ -18,6 +18,8 @@ package io.datakernel.test;
 
 import ch.qos.logback.classic.Level;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import io.datakernel.async.Callback;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +27,10 @@ import javax.sql.DataSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class TestUtils {
 	private static int activePromises = 0;
@@ -68,7 +73,7 @@ public class TestUtils {
 		enableLogging(Logger.ROOT_LOGGER_NAME, Level.TRACE);
 	}
 
-	public static <T> BiConsumer<T, Throwable> assertComplete(ThrowingConsumer<T> consumer) {
+	public static <T> Callback<T> assertComplete(ThrowingConsumer<T> consumer) {
 		activePromises++;
 		return (t, e) -> {
 			activePromises--;
@@ -89,7 +94,7 @@ public class TestUtils {
 		};
 	}
 
-	public static <T> BiConsumer<T, Throwable> assertComplete() {
+	public static <T> Callback<T> assertComplete() {
 		return assertComplete($ -> {});
 	}
 
@@ -103,7 +108,6 @@ public class TestUtils {
 
 	@FunctionalInterface
 	public interface ThrowingSupplier<T> {
-
 		T get() throws Throwable;
 	}
 
@@ -121,7 +125,6 @@ public class TestUtils {
 
 	@FunctionalInterface
 	public interface ThrowingConsumer<T> {
-
 		void accept(T t) throws Throwable;
 	}
 
@@ -138,12 +141,11 @@ public class TestUtils {
 	}
 
 	@FunctionalInterface
-	public interface ThrowingBiConsumer<T, U> {
-
-		void accept(T t, U u) throws Throwable;
+	public interface ThrowingConsumerEx<T> {
+		void accept(T result, @Nullable Throwable e) throws Throwable;
 	}
 
-	public static <T, U> BiConsumer<T, U> asserting(ThrowingBiConsumer<T, U> consumer) {
+	public static <T> Callback<T> asserting(ThrowingConsumerEx<T> consumer) {
 		return (x, y) -> {
 			try {
 				consumer.accept(x, y);
@@ -157,7 +159,6 @@ public class TestUtils {
 
 	@FunctionalInterface
 	public interface ThrowingFunction<T, R> {
-
 		R apply(T t) throws Throwable;
 	}
 
@@ -175,7 +176,6 @@ public class TestUtils {
 
 	@FunctionalInterface
 	public interface ThrowingBiFunction<T, U, R> {
-
 		R apply(T t, U u) throws Throwable;
 	}
 

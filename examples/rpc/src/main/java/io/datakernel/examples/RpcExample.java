@@ -71,7 +71,7 @@ public class RpcExample extends Launcher {
 
 	@Override
 	protected void run() {
-		client.sendRequest("World", 1000).acceptEx((res, e) -> {
+		client.sendRequest("World", 1000).whenComplete((res, e) -> {
 			if (e != null) {
 				System.err.println("Got exception: " + e);
 			} else {

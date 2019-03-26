@@ -80,20 +80,20 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 		if (remaining == 0) {
 			input.endOfStream()
 					.then($ -> output.accept(null))
-					.accept($ -> completeProcess());
+					.whenResult($ -> completeProcess());
 			return;
 		}
 		ByteBufQueue outputBufs = new ByteBufQueue();
 		remaining -= bufs.drainTo(outputBufs, remaining);
 		output.acceptAll(outputBufs.asIterator())
-				.accept($ -> {
+				.whenResult($ -> {
 					if (remaining != 0) {
 						input.needMoreData()
-								.accept($1 -> doProcess());
+								.whenResult($1 -> doProcess());
 					} else {
 						input.endOfStream()
 								.then($1 -> output.accept(null))
-								.accept($1 -> completeProcess());
+								.whenResult($1 -> completeProcess());
 					}
 				});
 	}

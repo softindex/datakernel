@@ -92,7 +92,7 @@ public final class FsIntegrationTest {
 		String resultFile = "file_uploaded.txt";
 
 		await(upload(resultFile, CONTENT)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
@@ -104,7 +104,7 @@ public final class FsIntegrationTest {
 		await(Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> ChannelSupplier.of(ByteBuf.wrapForReading(CONTENT))
 						.streamTo(ChannelConsumer.ofPromise(client.upload("file" + i)))))
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		for (int i = 0; i < files; i++) {
 			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
@@ -116,7 +116,7 @@ public final class FsIntegrationTest {
 		String resultFile = "big file_uploaded.txt";
 
 		await(upload(resultFile, BIG_FILE)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)));
 	}
@@ -126,7 +126,7 @@ public final class FsIntegrationTest {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
 		await(upload(resultFile, CONTENT)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
@@ -134,7 +134,7 @@ public final class FsIntegrationTest {
 	@Test
 	public void testUploadServerFail() {
 		Throwable exception = awaitException(upload("../../nonlocal/../file.txt", CONTENT)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertSame(BAD_PATH, exception);
 	}
@@ -152,7 +152,7 @@ public final class FsIntegrationTest {
 				ChannelSupplier.of(test4));
 
 		Throwable exception = awaitException(supplier.streamTo(ChannelConsumer.ofPromise(client.upload(resultFile)))
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Test exception"));
@@ -166,7 +166,7 @@ public final class FsIntegrationTest {
 	private Promise<ByteBuf> download(String file) {
 		return client.download(file)
 				.then(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.acceptEx(($, e) -> server.close());
+				.whenComplete(($, e) -> server.close());
 	}
 
 	@Test
@@ -195,7 +195,7 @@ public final class FsIntegrationTest {
 		String file = "file_not_exist_downloaded.txt";
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(file))
 				.streamTo(ChannelConsumer.of($ -> Promise.complete()))
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("File not found"));
@@ -214,7 +214,7 @@ public final class FsIntegrationTest {
 		}
 
 		await(Promises.all(tasks)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		for (int i = 0; i < tasks.size(); i++) {
 			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
@@ -227,7 +227,7 @@ public final class FsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 
 		await(client.delete(file)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertFalse(Files.exists(storage.resolve(file)));
 	}
@@ -237,7 +237,7 @@ public final class FsIntegrationTest {
 		String file = "no_file.txt";
 
 		await(client.delete(file)
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 	}
 
 	@Test
@@ -254,7 +254,7 @@ public final class FsIntegrationTest {
 		}
 
 		List<FileMetadata> metadataList = await(client.list("**")
-				.acceptEx(($, e) -> server.close()));
+				.whenComplete(($, e) -> server.close()));
 
 		assertEquals(expected, metadataList.stream()
 				.map(FileMetadata::getName)
@@ -287,7 +287,7 @@ public final class FsIntegrationTest {
 
 		Tuple2<List<FileMetadata>, List<FileMetadata>> tuple = await(
 				Promises.toTuple(client.subfolder("subfolder1").listEntities("**"), client.subfolder("subfolder2").listEntities("**"))
-						.acceptEx(($, e) -> server.close())
+						.whenComplete(($, e) -> server.close())
 		);
 
 		assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getName).collect(toSet()));

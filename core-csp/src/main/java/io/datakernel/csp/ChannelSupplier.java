@@ -206,7 +206,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				materializedPromise.accept(supplier -> supplier.close(e));
+				materializedPromise.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -286,7 +286,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<T> doGet() {
 				return ChannelSupplier.this.get()
-						.accept(value -> { if (value != null) fn.accept(value);});
+						.whenResult(value -> { if (value != null) fn.accept(value);});
 			}
 		};
 	}
@@ -470,7 +470,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 
 	static MaterializedPromise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
 		return Promise.ofCallback(cb ->
-				fn.accept(endOfStream -> endOfStream.acceptEx(cb::set)));
+				fn.accept(endOfStream -> endOfStream.whenComplete(cb)));
 	}
 
 }

@@ -60,7 +60,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 								return Promise.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
-						.acceptEx(Exception.class, this::close),
+						.whenException(this::close),
 				Promise::complete,
 				this);
 	}
@@ -76,7 +76,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	private void prefetch() {
 		if (bufs.isEmpty()) {
 			socket.read()
-					.accept(buf -> {
+					.whenResult(buf -> {
 						if (buf != null) {
 							bufs.add(buf);
 						} else {
@@ -84,15 +84,15 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 							closeIfDone();
 						}
 					})
-					.acceptEx(Exception.class, this::close);
+					.whenException(this::close);
 		}
 	}
 
 	@Override
 	public Promise<I> receive() {
 		return bufsSupplier.parse(serializer)
-				.accept($ -> prefetch())
-				.acceptEx(Exception.class, this::close);
+				.whenResult($ -> prefetch())
+				.whenException(this::close);
 	}
 
 	@Override
@@ -103,18 +103,18 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	@Override
 	public Promise<Void> sendEndOfStream() {
 		return socket.write(null)
-				.accept($ -> {
+				.whenResult($ -> {
 					writeDone = true;
 					closeIfDone();
 				})
-				.acceptEx(Exception.class, this::close);
+				.whenException(this::close);
 	}
 
 	@Override
 	public ChannelConsumer<ByteBuf> sendBinaryStream() {
 		return ChannelConsumer.ofSocket(socket)
 				.withAcknowledgement(ack -> ack
-						.accept($ -> {
+						.whenResult($ -> {
 							writeDone = true;
 							closeIfDone();
 						}));
@@ -124,7 +124,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public ChannelSupplier<ByteBuf> receiveBinaryStream() {
 		return ChannelSuppliers.concat(ChannelSupplier.ofIterator(bufs.asIterator()), ChannelSupplier.ofSocket(socket))
 				.withEndOfStream(eos -> eos
-						.accept($ -> {
+						.whenResult($ -> {
 							readDone = true;
 							closeIfDone();
 						}));

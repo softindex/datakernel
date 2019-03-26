@@ -24,7 +24,7 @@ public final class LongPolling<T> {
 			}
 			promise = new SettablePromise<>();
 			return promise
-					.acceptEx((v, e) -> promise = null);
+					.whenComplete((v, e) -> promise = null);
 		};
 	}
 
@@ -43,7 +43,7 @@ public final class LongPolling<T> {
 
 	public void wakeup() {
 		if (promise != null) {
-			fetch.get().accept(this::wakeup);
+			fetch.get().whenResult(this::wakeup);
 		}
 	}
 }

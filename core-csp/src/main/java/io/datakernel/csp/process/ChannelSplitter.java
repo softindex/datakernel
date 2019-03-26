@@ -113,11 +113,11 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 	protected void doProcess() {
 		if (isProcessComplete()) return;
 		input.get()
-				.acceptEx((item, e) -> {
+				.whenComplete((item, e) -> {
 					if (e == null) {
 						if (item != null) {
 							Promises.all(outputs.stream().map(output -> output.accept(trySlice(item))))
-									.acceptEx(($, e2) -> {
+									.whenComplete(($, e2) -> {
 										if (e2 == null) {
 											doProcess();
 										} else {
@@ -127,7 +127,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 							tryRecycle(item);
 						} else {
 							Promises.all(outputs.stream().map(output -> output.accept(null)))
-									.acceptEx(($, e1) -> completeProcess(e1));
+									.whenComplete(($, e1) -> completeProcess(e1));
 						}
 					} else {
 						close(e);

@@ -119,7 +119,7 @@ public final class CubeHttpClient implements ICube {
 								body.recycle();
 							}
 						}))
-				.acceptEx(toLogger(logger, "query", query));
+				.whenComplete(toLogger(logger, "query", query));
 	}
 
 	private HttpRequest buildRequest(CubeQuery query) {

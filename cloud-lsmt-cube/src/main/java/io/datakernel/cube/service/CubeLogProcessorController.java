@@ -89,8 +89,8 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	Promise<Boolean> doProcessLogs() {
 		return process()
-				.acceptEx(promiseProcessLogs.recordStats())
-				.acceptEx(toLogger(logger, thisMethod(), stateManager));
+				.whenComplete(promiseProcessLogs.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	Promise<Boolean> process() {
@@ -112,16 +112,16 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 							Promises.reduce(toList(), 1, asPromises(tasks));
 
 					return promise
-							.acceptEx(promiseProcessLogsImpl.recordStats())
-							.accept(this::cubeDiffJmx)
+							.whenComplete(promiseProcessLogsImpl.recordStats())
+							.whenResult(this::cubeDiffJmx)
 							.then(diffs -> Promise.complete()
-									.accept($ -> stateManager.addAll(diffs))
+									.whenResult($ -> stateManager.addAll(diffs))
 									.then($ -> chunkStorage.finish(addedChunks(diffs)))
 									.then($ -> stateManager.sync())
-									.acceptEx(Exception.class, e -> stateManager.reset())
+									.whenException(e -> stateManager.reset())
 									.map($ -> true));
 				})
-				.acceptEx(toLogger(logger, thisMethod(), stateManager));
+				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	private void cubeDiffJmx(List<LogDiff<CubeDiff>> logDiffs) {

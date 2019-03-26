@@ -136,7 +136,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 	private void doRead() {
 		sanitize(upstream.read())
-				.accept(buf -> {
+				.whenResult(buf -> {
 					assert isOpen();
 					if (buf != null) {
 						net2engine = ByteBufPool.append(net2engine, buf);
@@ -154,7 +154,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 	private void doWrite(ByteBuf dstBuf) {
 		sanitize(upstream.write(dstBuf))
-				.accept($ -> {
+				.whenResult($ -> {
 					assert isOpen();
 					if (engine.isOutboundDone()) {
 						close();
@@ -262,7 +262,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
 			Promise.ofBlockingRunnable(executor, task)
-					.accept($ -> {
+					.whenResult($ -> {
 						if (!isOpen()) return;
 						try {
 							doHandshake();

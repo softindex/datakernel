@@ -118,7 +118,7 @@ public final class GlobalFsDriver {
 					}
 					return doUpload(keys, filename, offset, revision, skip, key, checkpoint.isTombstone() ? null : checkpoint.getDigest());
 				})
-				.acceptEx(toLogger(logger, INFO, INFO, "upload", filename, offset, revision, key, this));
+				.whenComplete(toLogger(logger, INFO, INFO, "upload", filename, offset, revision, key, this));
 	}
 
 	public Promise<ChannelSupplier<ByteBuf>> download(PubKey space, String filename, long offset, long limit) {
@@ -134,29 +134,29 @@ public final class GlobalFsDriver {
 					return node.download(space, filename, offset, limit)
 							.map(supplier -> supplier.transformWith(FrameVerifier.create(space, filename, offset, limit)));
 				})
-				.acceptEx(toLogger(logger, INFO, INFO, "download", filename, offset, limit, this));
+				.whenComplete(toLogger(logger, INFO, INFO, "download", filename, offset, limit, this));
 	}
 
 	public Promise<List<GlobalFsCheckpoint>> listEntities(PubKey space, String glob) {
 		return node.listEntities(space, glob)
 				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.acceptEx(toLogger(logger, TRACE, "listEntities", glob, this));
+				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this));
 	}
 
 	public Promise<List<GlobalFsCheckpoint>> list(PubKey space, String glob) {
 		return node.list(space, glob)
 				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.acceptEx(toLogger(logger, TRACE, "list", glob, this));
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
 	}
 
 	public Promise<@Nullable GlobalFsCheckpoint> getMetadata(PubKey space, String filename) {
 		return node.getMetadata(space, filename)
 				.then(signedCheckpoint -> Promise.of(signedCheckpoint != null ? signedCheckpoint.getValue() : null))
-				.acceptEx(toLogger(logger, TRACE, "getMetadata", filename, this));
+				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
 	}
 
 	public Promise<Void> delete(KeyPair keys, String filename, long revision) {
 		return node.delete(keys.getPubKey(), SignedData.sign(CHECKPOINT_CODEC, GlobalFsCheckpoint.createTombstone(filename, revision), keys.getPrivKey()))
-				.acceptEx(toLogger(logger, TRACE, "delete", filename, revision, this));
+				.whenComplete(toLogger(logger, TRACE, "delete", filename, revision, this));
 	}
 }

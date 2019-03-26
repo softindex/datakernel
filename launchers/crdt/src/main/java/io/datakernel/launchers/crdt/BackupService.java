@@ -73,7 +73,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 						.streamTo(StreamConsumer.ofPromise(localFiles.upload()))
 						.then($ -> StreamSupplier.ofIterable(removedKeys)
 								.streamTo(StreamConsumer.ofPromise(localFiles.remove())))
-						.acceptEx(($, e) -> {
+						.whenComplete(($, e) -> {
 							inMemory.clearRemovedKeys();
 							backupPromise = null;
 						}));

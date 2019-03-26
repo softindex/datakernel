@@ -107,7 +107,7 @@ public final class CrdtStorageTreeMap<K extends Comparable<K>, S> implements Crd
 						.map(entry -> new CrdtData<>(entry.getKey(), entry.getValue().state)))
 				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
 				.withEndOfStream(eos ->
-						eos.acceptEx(($, e) -> {
+						eos.whenComplete(($, e) -> {
 							downloadCalls--;
 							removedWhileDownloading.forEach(storage::remove);
 							removedWhileDownloading.clear();

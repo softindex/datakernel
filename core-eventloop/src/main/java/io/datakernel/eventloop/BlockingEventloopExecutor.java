@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.Callback;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class BlockingEventloopExecutor implements EventloopExecutor {
@@ -136,7 +136,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(@NotNull Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
+	public <T> CompletableFuture<T> submit(@NotNull Consumer<Callback<T>> callbackConsumer) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
 			try {

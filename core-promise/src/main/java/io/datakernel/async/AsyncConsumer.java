@@ -71,6 +71,15 @@ public interface AsyncConsumer<T> {
 
 	@Contract(pure = true)
 	@NotNull
+	default AsyncConsumer<T> peek(@NotNull Consumer<T> action) {
+		return value -> {
+			action.accept(value);
+			return accept(value);
+		};
+	}
+
+	@Contract(pure = true)
+	@NotNull
 	default <V> AsyncConsumer<V> map(@NotNull Function<? super V, ? extends T> fn) {
 		return value -> accept(fn.apply(value));
 	}
@@ -79,11 +88,5 @@ public interface AsyncConsumer<T> {
 	@NotNull
 	default <V> AsyncConsumer<V> mapAsync(@NotNull Function<? super V, ? extends Promise<T>> fn) {
 		return value -> fn.apply(value).then(this::accept);
-	}
-
-	@Contract(pure = true)
-	@NotNull
-	default AsyncConsumer<T> whenException(@NotNull Consumer<Throwable> action) {
-		return value -> accept(value).acceptEx(Exception.class, action);
 	}
 }

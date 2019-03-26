@@ -153,7 +153,7 @@ public final class AsyncDnsClientTest {
 								}
 								return Promise.of(null, e);
 							})
-							.acceptEx(assertComplete());
+							.whenComplete(assertComplete());
 
 					try {
 						subloop.run();

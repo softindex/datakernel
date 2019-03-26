@@ -163,7 +163,7 @@ public interface Promise<T> {
 		SettablePromise<T> promise = new SettablePromise<>();
 		completionStage.whenCompleteAsync(new BiConsumer<T, Throwable>() {
 			private void complete(@SuppressWarnings("unused") @Async.Execute CompletionStage<? extends T> $, T result, Throwable e) {
-				promise.set(result, e);
+				promise.accept(result, e);
 				eventloop.completeExternalTask();
 			}
 
@@ -332,7 +332,7 @@ public interface Promise<T> {
 	@NotNull
 	default MaterializedPromise<T> post() {
 		SettablePromise<T> result = new SettablePromise<>();
-		acceptEx(result::post);
+		whenComplete(result::post);
 		return result;
 	}
 
@@ -341,7 +341,7 @@ public interface Promise<T> {
 	default MaterializedPromise<T> materialize() {
 		assert !isComplete() : "Trying to materialize a completed promise";
 		SettablePromise<T> cb = new SettablePromise<>();
-		acceptEx(cb::set);
+		whenComplete(cb);
 		return cb;
 	}
 
@@ -354,7 +354,7 @@ public interface Promise<T> {
 	 * @return subscribed {@code Promise}
 	 */
 	@Contract("_ -> param1")
-	@NotNull <U, P extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> next(@NotNull P promise);
+	@NotNull <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull P promise);
 
 	/**
 	 * Applies {@code fn} to the result of this {@code Promise}.
@@ -403,7 +403,7 @@ public interface Promise<T> {
 	 */
 	@Contract(" _ -> this")
 	@NotNull
-	Promise<T> acceptEx(@NotNull BiConsumer<? super T, Throwable> action);
+	Promise<T> whenComplete(@NotNull Callback<? super T> action);
 
 	/**
 	 * Subscribes given action to be executed after
@@ -414,18 +414,17 @@ public interface Promise<T> {
 	 */
 	@Contract(" _ -> this")
 	@NotNull
-	Promise<T> accept(@NotNull Consumer<? super T> action);
+	Promise<T> whenResult(@NotNull Consumer<? super T> action);
 
 	/**
 	 * Subscribes given action to be executed after
 	 * this {@code Promise} completes exceptionally.
 	 *
-	 * @param type   type of the exception to catch
 	 * @param action to be executed
 	 * @return this {@code Promise}
 	 */
-	@Contract("_, _ -> this")
-	Promise<T> acceptEx(Class<? extends Throwable> type, @NotNull Consumer<Throwable> action);
+	@Contract("_ -> this")
+	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
 	/**
 	 * Combines two {@code Promise}s in one using {@code fn}.

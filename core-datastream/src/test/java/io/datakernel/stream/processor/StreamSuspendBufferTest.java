@@ -30,7 +30,7 @@ public class StreamSuspendBufferTest {
 				.transformWith(StreamBuffer.create());
 
 		StreamConsumer<String> consumer = StreamConsumerToList.<String>create()
-				.withResultAcceptor(v -> v.acceptEx(result::set))
+				.withResultAcceptor(v -> v.whenComplete(result))
 				.transformWith(decorator((context, receiver) ->
 						item -> {
 							receiver.accept(item);

@@ -101,7 +101,7 @@ public class HttpClientExample extends Launcher {
 
 			httpClient.request(request)
 					.then(response -> response.getBody()
-							.acceptEx((body, e) -> {
+							.whenComplete((body, e) -> {
 								try {
 									if (e == null) {
 										System.out.println("Server response: " + body.getString(UTF_8));

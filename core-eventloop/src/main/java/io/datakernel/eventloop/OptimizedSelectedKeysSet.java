@@ -1,4 +1,4 @@
-package io.datakernel.eventloop.selector.changer;
+package io.datakernel.eventloop;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +13,7 @@ import java.util.Iterator;
  * It allows to avoid redundant work of GC
  * Should use it as a simple array instead of a set
  */
-public final class OptimizedSelectedKeysSet extends AbstractSet<SelectionKey> {
+final class OptimizedSelectedKeysSet extends AbstractSet<SelectionKey> {
 	private static final int INITIAL_SIZE = 1 << 4;
 	private int size;
 	private SelectionKey[] selectionKeys;

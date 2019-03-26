@@ -106,9 +106,9 @@ public final class AsyncHttpClientTest {
 	public void testEmptyLineResponse() throws IOException {
 		SimpleServer.create(socket ->
 				socket.read()
-						.accept(ByteBuf::recycle)
+						.whenResult(ByteBuf::recycle)
 						.then($ -> socket.write(wrapAscii("\r\n")))
-						.acceptEx(($, e) -> socket.close()))
+						.whenComplete(($, e) -> socket.close()))
 				.withListenPort(PORT)
 				.withAcceptOnce()
 				.listen();
@@ -144,7 +144,7 @@ public final class AsyncHttpClientTest {
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
-				.acceptEx(($, e1) -> {
+				.whenComplete(($, e1) -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));
 

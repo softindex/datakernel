@@ -53,7 +53,7 @@ public class FileNamesLoadingService implements EventloopService {
 						throw new RuntimeException(e);
 					}
 				})
-				.accept(strings -> fileNames = strings)
+				.whenResult(strings -> fileNames = strings)
 				.toVoid()
 				.materialize();
 	}

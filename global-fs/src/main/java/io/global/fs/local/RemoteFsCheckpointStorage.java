@@ -80,7 +80,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							Promise.complete() :
 							Promise.ofException(OVERRIDING);
 				})
-				.acceptEx(toLogger(logger, TRACE, "store", filename, signedCheckpoint, this));
+				.whenComplete(toLogger(logger, TRACE, "store", filename, signedCheckpoint, this));
 	}
 
 	@Override
@@ -108,14 +108,14 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.acceptEx(toLogger(logger, TRACE, "load", filename, position, this));
+				.whenComplete(toLogger(logger, TRACE, "load", filename, position, this));
 	}
 
 	@Override
 	public Promise<List<String>> listMetaCheckpoints(String glob) {
 		return storage.list(glob)
 				.map(list -> list.stream().map(FileMetadata::getName).collect(toList()))
-				.acceptEx(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
+				.whenComplete(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
 	}
 
 	@Override
@@ -144,7 +144,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.acceptEx(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
+				.whenComplete(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
 	}
 
 	@Override
@@ -175,7 +175,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.acceptEx(toLogger(logger, TRACE, "loadIndex", filename, this));
+				.whenComplete(toLogger(logger, TRACE, "loadIndex", filename, this));
 	}
 
 	@Override
@@ -187,7 +187,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					return Promise.complete();
 				})
-				.acceptEx(toLogger(logger, TRACE, "drop", filename, revision, this));
+				.whenComplete(toLogger(logger, TRACE, "drop", filename, revision, this));
 	}
 
 	@Override

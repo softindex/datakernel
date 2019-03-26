@@ -69,7 +69,7 @@ public final class RpcBinaryProtocolTest {
 				.then($ ->
 						Promises.toList(IntStream.range(0, countRequests)
 								.mapToObj(i -> client.<String, String>sendRequest(testMessage, 1000))))
-				.acceptEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					client.stop();
 					server.close();
 				}));

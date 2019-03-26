@@ -44,14 +44,14 @@ public final class AbstractServerTest {
 		SimpleServer.create(socket ->
 				repeat(() ->
 						socket.read()
-								.accept(buf -> {
+								.whenResult(buf -> {
 									if (buf == null) {
 										socket.close();
 										return;
 									}
 									Eventloop.getCurrentEventloop().delay(5, () ->
 											socket.write(buf)
-													.accept($ -> socket.close()));
+													.whenResult($ -> socket.close()));
 								})
 								.toVoid()))
 				.withSocketSettings(settings)
@@ -63,7 +63,7 @@ public final class AbstractServerTest {
 				.then(socket ->
 						socket.write(ByteBufStrings.wrapAscii(message))
 								.then($ -> socket.read())
-								.acceptEx(($, e) -> socket.close())));
+								.whenComplete(($, e) -> socket.close())));
 
 		assertEquals(message, response.asString(UTF_8));
 	}

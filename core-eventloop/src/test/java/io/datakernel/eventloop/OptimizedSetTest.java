@@ -1,18 +1,13 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.eventloop.selector.changer.OptimizedSelectedKeysSet;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.spi.AbstractSelectionKey;
 import java.util.Iterator;
-import java.util.Set;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.*;
 
 public class OptimizedSetTest {
@@ -73,23 +68,31 @@ public class OptimizedSetTest {
 
 	private class SimpleSelectionKey extends SelectionKey {
 		int id;
+
 		SimpleSelectionKey(int id) {
 			this.id = id;
 		}
+
 		public SelectableChannel channel() {
 			return null;
 		}
+
 		public Selector selector() {
 			return null;
 		}
+
 		public boolean isValid() { return false; }
+
 		public void cancel() { }
+
 		public int interestOps() {
 			return 0;
 		}
+
 		public SelectionKey interestOps(int ops) {
 			return null;
 		}
+
 		public int readyOps() {
 			return 0;
 		}
