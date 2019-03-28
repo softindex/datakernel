@@ -24,7 +24,6 @@ import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -36,7 +35,6 @@ import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -47,15 +45,11 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.global.util.Utils.nSuccessesOrLess;
 
 public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl, GlobalDbNamespace, GlobalDbNode> implements GlobalDbNode, Initializable<GlobalDbNodeImpl> {
-	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(GlobalDbNodeImpl.class, "latencyMargin", Duration.ofMinutes(5));
-
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
 
 	private boolean doesDownloadCaching = true;
 	private boolean doesUploadCaching = false;
-
-	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
 	private final BiFunction<PubKey, String, DbStorage> storageFactory;
 

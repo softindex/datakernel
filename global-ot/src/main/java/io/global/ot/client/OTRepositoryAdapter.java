@@ -16,6 +16,7 @@
 
 package io.global.ot.client;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.exception.ParseException;
@@ -28,10 +29,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.sha256;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
-import static java.util.Collections.singleton;
 import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toCollection;
 
@@ -70,13 +69,13 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	@NotNull
 	@Override
 	public Promise<Set<CommitId>> getHeads() {
-		return driver.getHeads(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds));
+		return driver.getHeads(myRepositoryId.getRepositoryId());
 	}
 
 	@NotNull
 	@Override
-	public Promise<Set<CommitId>> pollHeads(Set<CommitId> heads) {
-		return driver.pollHeads(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds));
+	public AsyncSupplier<Set<CommitId>> pollHeads() {
+		return driver.pollHeads(myRepositoryId.getRepositoryId());
 	}
 
 	@Override

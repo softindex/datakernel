@@ -4,13 +4,14 @@ import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Tuple2;
+import io.datakernel.util.Ref;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
 import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,6 @@ import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.emptySet;
-import static java.util.Comparator.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNamespace, GlobalOTNodeImpl, GlobalOTNode> {
@@ -42,7 +42,11 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 	}
 
 	public RepositoryEntry ensureRepository(RepoID repositoryId) {
-		return repositories.computeIfAbsent(repositoryId, RepositoryEntry::new);
+		return repositories.computeIfAbsent(repositoryId, $ -> {
+			RepositoryEntry repositoryEntry = new RepositoryEntry(repositoryId);
+			repositoryEntry.start();
+			return repositoryEntry;
+		});
 	}
 
 	public Promise<Void> updateRepositories() {
@@ -95,19 +99,20 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
 		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(this::doSaveHeads, CollectionUtils::union);
 
-		private final LongPolling<Set<SignedData<RawCommitHead>>> longPollingHeads;
-
 		private final Map<RawServerId, MasterRepository> masterRepositories = new HashMap<>();
+
+		@Nullable
 		private Set<SignedData<RawCommitHead>> polledHeads;
+
+		@Nullable
+		private SettablePromise<Void> pollNotifier;
 
 		RepositoryEntry(RepoID repositoryId) {
 			this.repositoryId = repositoryId;
-			longPollingHeads = new LongPolling<>(
-					() -> node.getCommitStorage().getHeads(repositoryId).map(Map::values).map(HashSet::new));
 		}
 
-		public LongPolling<Set<SignedData<RawCommitHead>>> getLongPollingHeads() {
-			return longPollingHeads;
+		public void start() {
+			Promises.loop(AsyncPredicate.of($ -> node.pollMasterRepositories), this::doPollMasterHeads);
 		}
 
 		// region API methods
@@ -156,29 +161,49 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		@NotNull
 		private Promise<Map<RawServerId, MasterRepository>> doEnsureMasterRepositories() {
 			return ensureMasterNodes()
-					.then($ -> {
-						difference(masterRepositories.keySet(), masterNodes.keySet()).forEach(masterRepositories::remove);
-						return Promises.all(difference(masterNodes.keySet(), masterRepositories.keySet())
-								.stream()
-								.map(serverId -> {
-									GlobalOTNode node = masterNodes.get(serverId);
-									return Promises.toTuple(Tuple2::new,
-											node.getHeads(repositoryId),
-											node.getPullRequests(repositoryId)).whenResult((Consumer<? super Tuple2<Set<SignedData<RawCommitHead>>, Set<SignedData<RawPullRequest>>>>) tuple -> masterRepositories.put(serverId,
-											new MasterRepository(serverId, repositoryId, node,
-													tuple.getValue1(), tuple.getValue2())));
-								}));
+					.whenResult($ -> {
+						difference(masterRepositories.keySet(), masterNodes.keySet())
+								.forEach(masterRepositories::remove);
+						difference(masterNodes.keySet(), masterRepositories.keySet())
+								.forEach(serverId -> masterRepositories.put(serverId,
+										new MasterRepository(serverId, repositoryId, masterNodes.get(serverId))));
 					})
 					.map($ -> masterRepositories);
 		}
 
+		private Promise<Void> ensurePollNotifier() {
+			if (pollNotifier == null) pollNotifier = new SettablePromise<>();
+			return pollNotifier;
+		}
+
+		private void notifyPoll() {
+			if (pollNotifier != null) {
+				SettablePromise<@Nullable Void> pollNotifier = this.pollNotifier;
+				this.pollNotifier = null;
+				pollNotifier.set(null);
+			}
+		}
+
+		public AsyncSupplier<Set<SignedData<RawCommitHead>>> pollHeads() {
+			Ref<Set<SignedData<RawCommitHead>>> lastHeads = new Ref<>(emptySet());
+			return () -> Promises.<Set<SignedData<RawCommitHead>>>until(
+					() -> node.getCommitStorage().getHeads(repositoryId).map(Map::values).map(HashSet::new),
+					polledHeads -> !lastHeads.value.containsAll(polledHeads) ?
+							Promise.of(true) :
+							ensurePollNotifier().map($ -> false))
+					.whenResult(polledHeads -> lastHeads.value = polledHeads);
+		}
+
 		@NotNull
-		private Promise<Void> doPollHeads() {
+		private Promise<Void> doPollMasterHeads() {
 			return ensureMasterRepositories()
 					.then(masterRepositories -> Promises.until(
 							() -> Promises.any(masterRepositories.values().stream().map(MasterRepository::poll))
-									.map($ -> masterRepositories.values().stream()
-											.flatMap(masterRepository -> masterRepository.getHeads().stream())
+									.map($ -> masterRepositories.values()
+											.stream()
+											.map(MasterRepository::getHeads)
+											.filter(Objects::nonNull)
+											.flatMap(Collection::stream)
 											.collect(toSet())),
 							AsyncPredicate.of(polledHeads -> {
 								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads);
@@ -194,7 +219,8 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			if (updateTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
-			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots()).whenResult((Consumer<? super Void>) $ -> updateTimestamp = node.now.currentTimeMillis());
+			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots())
+					.whenResult($ -> updateTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
@@ -209,13 +235,14 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 									.map(master -> AsyncSupplier.cast(() ->
 											master.getHeads(repositoryId)))))
 							.mapEx((result, e) -> e == null ? result : Collections.<SignedData<RawCommitHead>>emptySet())
-							.then(this::saveHeads)).whenResult((Consumer<? super Void>) $ -> updateHeadsTimestamp = node.now.currentTimeMillis());
+							.then(this::saveHeads))
+					.whenResult($ -> updateHeadsTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
 		private Promise<Void> doUpdateSnapshots() {
 			logger.trace("Updating snapshots");
-			if (updateSnapshotsTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateSnapshotsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -228,13 +255,14 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 																	.map(snapshotId -> master.loadSnapshot(repositoryId, snapshotId)
 																			.then(Promise::ofOptional)))))))
 									.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawSnapshot>>emptyList())))
-							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot)))).whenResult((Consumer<? super Void>) $ -> updateSnapshotsTimestamp = node.now.currentTimeMillis());
+							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot))))
+					.whenResult($ -> updateSnapshotsTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
 		private Promise<Void> doUpdatePullRequests() {
 			logger.trace("Updating pull requests");
-			if (updatePullRequestsTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updatePullRequestsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -243,26 +271,22 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 									master.getPullRequests(repositoryId))))
 							.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawPullRequest>>emptySet())))
 					.then(pullRequests -> Promises.all(
-							pullRequests.stream().map(node.getCommitStorage()::savePullRequest))).whenResult((Consumer<? super Void>) $ -> updatePullRequestsTimestamp = node.now.currentTimeMillis());
+							pullRequests.stream().map(node.getCommitStorage()::savePullRequest)))
+					.whenResult($ -> updatePullRequestsTimestamp = node.now.currentTimeMillis());
 		}
 
 		private Promise<Void> doSaveHeads(Set<SignedData<RawCommitHead>> signedNewHeads) {
-			if (signedNewHeads.isEmpty()) {
-				return Promise.complete();
-			}
+			if (signedNewHeads.isEmpty()) return Promise.complete();
 			return node.getCommitStorage().getHeads(repositoryId)
 					.map(Map::keySet)
 					.then(existingHeads -> {
-						Set<CommitId> newHeads = signedNewHeads.stream()
-								.map(signedNewHead -> signedNewHead.getValue().getCommitId())
-								.collect(toSet());
-						if (existingHeads.containsAll(newHeads)) {
-							return Promise.complete();
-						}
+						Set<CommitId> newHeads = signedNewHeads.stream().map(signedNewHead -> signedNewHead.getValue().getCommitId()).collect(toSet());
+						if (existingHeads.containsAll(newHeads)) return Promise.complete();
 						return excludeParents(union(existingHeads, newHeads))
 								.then(realHeads -> node.getCommitStorage().updateHeads(repositoryId,
 										signedNewHeads.stream().filter(signedNewHead -> realHeads.contains(signedNewHead.getValue().getCommitId())).collect(toSet()),
-										difference(existingHeads, realHeads)).whenComplete((Callback<? super Void>) ($, e) -> longPollingHeads.wakeup())
+										difference(existingHeads, realHeads))
+										.whenComplete(($, e) -> notifyPoll())
 								);
 					});
 		}
@@ -292,7 +316,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private Promise<Void> doPushSnapshots() {
 			return forEachMaster(master -> {
 				logger.trace("{} pushing snapshots to {}", repositoryId, master);
-				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in commitStorage.listSnapshotIds()
+				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in node.getCommitStorage().listSnapshotIds()
 				return master.listSnapshots(repositoryId, emptySet())
 						.then(remoteSnapshotIds -> node.getCommitStorage().listSnapshotIds(repositoryId)
 								.map(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds)))
@@ -317,18 +341,18 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		// region Helper methods
 		public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
-			PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
+			PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(Collections.reverseOrder());
 			return Promises.all(heads.stream()
-					.map(head -> {
-						return node.loadCommit(repositoryId, head).whenResult((Consumer<? super RawCommit>) commit ->
-								queue.add(new RawCommitEntry(head, commit)));
-					}))
+					.map(head -> node.loadCommit(repositoryId, head)
+							.whenResult(commit ->
+									queue.add(new RawCommitEntry(head, commit)))))
 					.then(value -> Promise.<Set<CommitId>>ofCallback(cb ->
 							doExcludeParents(
 									queue,
 									queue.stream().mapToLong(entry -> entry.commit.getLevel()).min().orElse(0L),
 									new HashSet<>(heads),
-									cb))).whenComplete(toLogger(logger, "excludeParents", heads, this));
+									cb)))
+					.whenComplete(toLogger(logger, "excludeParents", heads, this));
 		}
 
 		private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
@@ -343,13 +367,15 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					entry.commit.getParents()
 							.stream()
 							.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
-							.map(parentId -> {
-								return node.loadCommit(repositoryId, parentId).whenResult((Consumer<? super RawCommit>) parentRawCommit ->
-										queue.add(new RawCommitEntry(parentId, parentRawCommit)));
-							})).whenResult((Consumer<? super Void>) $ -> doExcludeParents(
-					queue, minLevel,
-					resultHeads,
-					cb)).whenException(cb::setException);
+							.map(parentId ->
+									node.loadCommit(repositoryId, parentId)
+											.whenResult(parentRawCommit ->
+													queue.add(new RawCommitEntry(parentId, parentRawCommit)))))
+					.whenResult($ -> doExcludeParents(
+							queue, minLevel,
+							resultHeads,
+							cb))
+					.whenException(cb::setException);
 		}
 
 		private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {

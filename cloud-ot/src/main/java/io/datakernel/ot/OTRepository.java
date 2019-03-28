@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import org.jetbrains.annotations.NotNull;
 
@@ -41,8 +42,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	Promise<Set<K>> getHeads();
 
 	@NotNull
-	default Promise<Set<K>> pollHeads(Set<K> heads) {
-		return getHeads();
+	default AsyncSupplier<Set<K>> pollHeads() {
+		return this::getHeads;
 	}
 
 	Promise<OTCommit<K, D>> loadCommit(K revisionId);

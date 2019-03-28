@@ -1,7 +1,6 @@
 package io.global.ot.server;
 
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.AsyncSuppliers;
 import io.datakernel.async.Promise;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -10,10 +9,9 @@ import io.global.ot.api.RawCommitHead;
 import io.global.ot.api.RawPullRequest;
 import io.global.ot.api.RepoID;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
-
-import static java.util.stream.Collectors.toSet;
 
 public final class MasterRepository {
 	@NotNull
@@ -25,30 +23,27 @@ public final class MasterRepository {
 	@NotNull
 	private final GlobalOTNode node;
 
-	@NotNull
+	@Nullable
 	private Set<SignedData<RawCommitHead>> heads;
 
-	@NotNull
-	private final Set<SignedData<RawPullRequest>> pullRequests;
+	@Nullable
+	private Set<SignedData<RawPullRequest>> pullRequests;
 
-	private final AsyncSupplier<Set<SignedData<RawCommitHead>>> poll = AsyncSuppliers.reuse(this::doPoll);
+	@Nullable
+	private AsyncSupplier<Set<SignedData<RawCommitHead>>> poll;
 
-	public MasterRepository(@NotNull RawServerId rawServerId, @NotNull RepoID repoID, @NotNull GlobalOTNode node,
-							@NotNull Set<SignedData<RawCommitHead>> heads, @NotNull Set<SignedData<RawPullRequest>> pullRequests) {
+	public MasterRepository(@NotNull RawServerId rawServerId, @NotNull RepoID repoID, @NotNull GlobalOTNode node) {
 		this.rawServerId = rawServerId;
 		this.repoID = repoID;
 		this.node = node;
-		this.heads = heads;
-		this.pullRequests = pullRequests;
 	}
 
 	public Promise<Set<SignedData<RawCommitHead>>> poll() {
+		if (poll == null) {
+			poll = node.pollHeads(repoID)
+					.map(heads -> this.heads = heads);
+		}
 		return poll.get();
-	}
-
-	private Promise<Set<SignedData<RawCommitHead>>> doPoll() {
-		return node.pollHeads(repoID, heads.stream().map(head -> head.getValue().getCommitId()).collect(toSet()))
-				.whenResult(result -> heads = result);
 	}
 
 	@NotNull
@@ -66,12 +61,12 @@ public final class MasterRepository {
 		return node;
 	}
 
-	@NotNull
+	@Nullable
 	public Set<SignedData<RawCommitHead>> getHeads() {
 		return heads;
 	}
 
-	@NotNull
+	@Nullable
 	public Set<SignedData<RawPullRequest>> getPullRequests() {
 		return pullRequests;
 	}

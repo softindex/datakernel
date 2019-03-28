@@ -16,7 +16,9 @@
 
 package io.global.ot.http;
 
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -163,6 +165,20 @@ public final class RawServerServlet implements WithMiddleware {
 				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
 					try {
 						return node.getHeads(urlDecodeRepositoryId(req))
+								.map(heads -> HttpResponse.ok200()
+										.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/" + POLL_HEADS + "/:pubKey/:name", req -> {
+					try {
+						Set<CommitId> lastHeads = req.parseQueryParameter("lastHeads", COMMIT_IDS_PARSER);
+						return Promises.until(node.pollHeads(urlDecodeRepositoryId(req)),
+								AsyncPredicate.of(polledHeads ->
+										!polledHeads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet())
+												.equals(lastHeads)))
 								.map(heads -> HttpResponse.ok200()
 										.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))
 								);

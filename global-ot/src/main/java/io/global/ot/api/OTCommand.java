@@ -24,6 +24,7 @@ public enum OTCommand implements HttpPathPart {
 	UPDATE_HEADS("updateHeads"),
 	LOAD_COMMIT("loadCommit"),
 	GET_HEADS("getHeads"),
+	POLL_HEADS("pollHeads"),
 	GET_HEADS_INFO("getHeadsInfo"),
 	SAVE_SNAPSHOT("saveSnapshot"),
 	LOAD_SNAPSHOT("loadSnapshot"),

@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import org.slf4j.Logger;
@@ -7,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -18,14 +18,13 @@ import static java.util.Collections.singleton;
 
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
-	public static final Duration DEFAULT_POLL_INTERVAL = Duration.ofMillis(1000L);
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTRepository<K, D> repository;
 	private final Function<OTCommit<K, D>, C> commitToObject;
 	private final Function<C, OTCommit<K, D>> objectToCommit;
 
-	private Duration pollInterval = DEFAULT_POLL_INTERVAL;
+	private Duration pollInterval = PollSanitizer.DEFAULT_YIELD_INTERVAL;
 
 	private OTNodeImpl(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K, D>> objectToCommit) {
 		this.algorithms = algorithms;
@@ -106,27 +105,16 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<FetchData<K, D>> poll(K currentCommitId) {
-		Duration[] pollIntervalRef = new Duration[]{Duration.ZERO};
-		return repository.getHeads()
-				.then(initialHeads ->
-						Promises.until(initialHeads,
-								heads -> repository.pollHeads(heads)
-										.whenResult(newHeads ->
-												pollIntervalRef[0] = Objects.equals(heads, newHeads) ?
-														pollInterval :
-														Duration.ZERO),
-								heads -> heads.contains(currentCommitId) ?
-										Promises.delay(Promise.of(false), pollIntervalRef[0]) :
-										Promise.of(true)))
-				.then(heads -> doFetch(heads, currentCommitId))
-				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
+		return Promises.until(PollSanitizer.create(repository.pollHeads()),
+				AsyncPredicate.of(polledHeads -> !polledHeads.contains(currentCommitId)))
+				.then(heads -> doFetch(heads, currentCommitId));
 	}
 
 	private Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
 		return algorithms.findParent(
 				heads,
 				DiffsReducer.toList(),
-				commit -> Promise.of(commit.getId().equals(currentCommitId)))
+				AsyncPredicate.of(commit -> commit.getId().equals(currentCommitId)))
 				.map(findResult -> new FetchData<>(
 						findResult.getChild(),
 						findResult.getChildLevel(),

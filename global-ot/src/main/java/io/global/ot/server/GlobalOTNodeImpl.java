@@ -38,7 +38,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -59,14 +58,15 @@ import static java.util.stream.Collectors.toSet;
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
-	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(GlobalOTNodeImpl.class, "latencyMargin", Duration.ofSeconds(20));
+	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", false);
 
 	private final Eventloop eventloop;
 	private final CommitStorage commitStorage;
 
+	boolean pollMasterRepositories = DEFAULT_POLL_MASTER_REPOSITORIES;
+
 	private int propagations = 1;
 	private int minimumSuccesses = 0;
-	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -85,9 +85,18 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return new GlobalOTNodeImpl(eventloop, id, discoveryService, commitStorage, nodeFactory);
 	}
 
+	public GlobalOTNodeImpl withPollMasterRepositories(boolean pollMasterRepositories) {
+		this.pollMasterRepositories = pollMasterRepositories;
+		return this;
+	}
+
 	@Override
 	protected GlobalOTNamespace createNamespace(PubKey space) {
 		return new GlobalOTNamespace(this, space);
+	}
+
+	public RawServerId getId() {
+		return id;
 	}
 
 	public CommitStorage getCommitStorage() {
@@ -122,6 +131,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@NotNull
 	@Override
 	public MaterializedPromise<Void> stop() {
+		pollMasterRepositories = false;
 		return Promise.complete();
 	}
 
@@ -190,10 +200,9 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return commitStorage.getHeads(repositoryId)
 				.then(thisHeads -> Promises.all(
 						union(thisHeads.keySet(), required, existing).stream()
-								.map(commitId -> {
-									return getCommit(repositoryId, commitId).whenResult((Consumer<? super Optional<RawCommit>>) maybeCommit -> maybeCommit.ifPresent(commit ->
-											queue.add(new RawCommitEntry(commitId, commit))));
-								}))
+								.map(commitId -> getCommit(repositoryId, commitId)
+										.whenResult((Consumer<? super Optional<RawCommit>>) maybeCommit -> maybeCommit.ifPresent(commit ->
+												queue.add(new RawCommitEntry(commitId, commit))))))
 						.map($ -> AsyncSupplier.cast(() -> getNextStreamEntry(repositoryId, queue, skipCommits, required, existing)))
 						.map(ChannelSupplier::of)
 						.map(supplier -> supplier.map(
@@ -220,14 +229,13 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 				nextCommitIds.stream()
 						.filter(nextCommitId -> !existing.contains(nextCommitId))
 						.filter(nextCommitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(nextCommitId::equals))
-						.map(nextCommitId -> {
-							return getCommit(repositoryId, nextCommitId).whenResult((Consumer<? super Optional<RawCommit>>) maybeNextCommit -> maybeNextCommit.ifPresent(nextCommit -> {
-								if (skipped && !required.contains(nextCommitId)) {
-									skipCommits.add(nextCommitId);
-								}
-								queue.add(new RawCommitEntry(nextCommitId, nextCommit));
-							}));
-						})).whenResult((Consumer<? super Void>) $ -> {
+						.map(nextCommitId -> getCommit(repositoryId, nextCommitId)
+								.whenResult((Consumer<? super Optional<RawCommit>>) maybeNextCommit -> maybeNextCommit.ifPresent(nextCommit -> {
+									if (skipped && !required.contains(nextCommitId)) {
+										skipCommits.add(nextCommitId);
+									}
+									queue.add(new RawCommitEntry(nextCommitId, nextCommit));
+								})))).whenResult((Consumer<? super Void>) $ -> {
 			if (!skipped) {
 				cb.set(entry);
 				return;
@@ -242,7 +250,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 				.then(masters -> isMasterFor(repositoryId.getOwner()) ?
 						Promise.complete() :
 						ensureRepository(repositoryId)
-								.updateHeads())
+								.update())
 				.then($ -> getLocalHeadsInfo(repositoryId)).whenComplete(toLogger(logger, "getHeadsInfo", repositoryId, this));
 	}
 
@@ -252,23 +260,20 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
 				.map(Map::keySet)
-				.then(heads -> {
-					return Promises.all(
-							heads.stream()
-									.map(headId -> {
-										return commitStorage.loadCommit(headId).whenResult((Consumer<? super Optional<RawCommit>>) maybeCommit -> {
+				.then(heads -> Promises.all(
+						heads.stream()
+								.map(headId -> commitStorage.loadCommit(headId)
+										.whenResult((Consumer<? super Optional<RawCommit>>) maybeCommit -> {
 											if (maybeCommit.isPresent()) {
 												existing.add(headId);
 												queue.add(new RawCommitEntry(headId, maybeCommit.get()));
 											} else {
 												required.add(headId);
 											}
-										});
-									}))
-							.then($1 -> Promise.ofCallback((SettableCallback<Set<CommitId>> cb) ->
-									findMissingParents(queue, new HashSet<>(), cb))).whenResult((Consumer<? super Set<CommitId>>) required::addAll)
-							.map($ -> new HeadsInfo(existing, required));
-				});
+										})))
+						.then($ -> Promise.ofCallback((SettableCallback<Set<CommitId>> cb) ->
+								findMissingParents(queue, new HashSet<>(), cb))).whenResult((Consumer<? super Set<CommitId>>) required::addAll)
+						.map($ -> new HeadsInfo(existing, required)));
 	}
 
 	private void findMissingParents(PriorityQueue<RawCommitEntry> queue, Set<CommitId> missingParents, SettableCallback<Set<CommitId>> cb) {
@@ -282,18 +287,16 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 						.map(parentId -> commitStorage.isCompleteCommit(parentId)
-								.then(isCompleteCommit -> {
-									return isCompleteCommit ?
-											Promise.complete() :
-											commitStorage.loadCommit(parentId).whenResult((Consumer<? super Optional<RawCommit>>) maybeCommit -> {
-												if (maybeCommit.isPresent()) {
-													queue.add(new RawCommitEntry(parentId, maybeCommit.get()));
-												} else {
-													missingParents.add(parentId);
-												}
-											})
-													.toVoid();
-								}))).whenResult((Consumer<? super Void>) $ -> findMissingParents(queue, missingParents, cb)).whenException(cb::setException);
+								.then(isCompleteCommit -> isCompleteCommit ?
+										Promise.complete() :
+										commitStorage.loadCommit(parentId).whenResult((Consumer<? super Optional<RawCommit>>) maybeCommit -> {
+											if (maybeCommit.isPresent()) {
+												queue.add(new RawCommitEntry(parentId, maybeCommit.get()));
+											} else {
+												missingParents.add(parentId);
+											}
+										})
+												.toVoid()))).whenResult((Consumer<? super Void>) $ -> findMissingParents(queue, missingParents, cb)).whenException(cb::setException);
 	}
 
 	@Override
@@ -400,13 +403,8 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	}
 
 	@Override
-	public Promise<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId, Set<CommitId> lastCommitIds) {
-		return ensureRepository(repositoryId).getLongPollingHeads().poll(
-				heads -> heads.stream()
-						.map(SignedData::getValue)
-						.map(RawCommitHead::getCommitId)
-						.anyMatch(commitId -> !lastCommitIds.contains(commitId))
-		);
+	public AsyncSupplier<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId) {
+		return ensureRepository(repositoryId).pollHeads();
 	}
 
 	@Override
@@ -414,8 +412,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return ensureMasterNodes(repositoryId)
 				.then(masters -> isMasterFor(repositoryId.getOwner()) ?
 						Promise.complete() :
-						ensureRepository(repositoryId)
-								.updateHeads())
+						ensureRepository(repositoryId).update())
 				.then($ -> commitStorage.getHeads(repositoryId))
 				.map(map -> (Set<SignedData<RawCommitHead>>) new HashSet<>(map.values())).whenComplete(toLogger(logger, "getHeads", repositoryId));
 	}

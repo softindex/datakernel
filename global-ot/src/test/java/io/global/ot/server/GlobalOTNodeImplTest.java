@@ -100,8 +100,7 @@ public class GlobalOTNodeImplTest {
 	@Parameters(name = "{0}")
 	public static Collection<Object[]> getParameters() {
 		return Arrays.asList(
-				new Object[]{(Function<Path, CommitStorage>) path -> new CommitStorageStub()
-				},
+				new Object[]{(Function<Path, CommitStorage>) path -> new CommitStorageStub()},
 				new Object[]{(Function<Path, CommitStorage>) path -> {
 					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
 							getCurrentEventloop(),

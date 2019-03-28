@@ -16,6 +16,7 @@
 
 package io.global.ot.util;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -74,10 +75,9 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 		return Promise.ofException(ERROR);
 	}
 
-
 	@Override
-	public Promise<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
-		return Promise.ofException(ERROR);
+	public AsyncSupplier<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId) {
+		return () -> Promise.ofException(ERROR);
 	}
 
 	@Override

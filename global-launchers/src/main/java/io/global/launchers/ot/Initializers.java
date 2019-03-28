@@ -22,10 +22,10 @@ import io.global.ot.server.GlobalOTNodeImpl;
 
 import java.util.HashSet;
 
-import static io.datakernel.config.ConfigConverters.ofDuration;
-import static io.datakernel.config.ConfigConverters.ofList;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_LATENCY_MARGIN;
 import static io.global.launchers.GlobalConfigConverters.ofPubKey;
+import static io.global.ot.server.GlobalOTNodeImpl.DEFAULT_POLL_MASTER_REPOSITORIES;
 import static java.util.Collections.emptyList;
 
 public class Initializers {
@@ -36,6 +36,7 @@ public class Initializers {
 	public static Initializer<GlobalOTNodeImpl> ofGlobalOTNodeImpl(Config config) {
 		return node -> node
 				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
-				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
+				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN))
+				.withPollMasterRepositories(config.get(ofBoolean(), "pollMasters", DEFAULT_POLL_MASTER_REPOSITORIES));
 	}
 }

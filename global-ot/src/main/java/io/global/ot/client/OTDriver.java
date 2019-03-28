@@ -16,6 +16,7 @@
 
 package io.global.ot.client;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
@@ -179,8 +180,8 @@ public final class OTDriver {
 						.collect(toSet()));
 	}
 
-	public Promise<Set<CommitId>> pollHeads(RepoID repositoryId, Set<CommitId> existingCommits) {
-		return service.pollHeads(repositoryId, existingCommits)
+	public AsyncSupplier<Set<CommitId>> pollHeads(RepoID repositoryId) {
+		return service.pollHeads(repositoryId)
 				.map(signedCommitHeads -> signedCommitHeads.stream()
 						.filter(signedCommitHead ->
 								signedCommitHead.verify(repositoryId.getOwner().getEcPublicKey()))
@@ -189,26 +190,16 @@ public final class OTDriver {
 						.collect(toSet()));
 	}
 
-	public Promise<Set<CommitId>> getHeads(Set<RepoID> repositoryIds) {
-		return Promises.toList(repositoryIds.stream().map(this::getHeads))
-				.map(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()));
-	}
-
-	public Promise<Set<CommitId>> pollHeads(Set<RepoID> repositoryIds) {
-		return Promises.toList(repositoryIds.stream().map(this::getHeads))
-				.map(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()));
-	}
-
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
-			Set<RepoID> originRepositoryIds, CommitId revisionId) {
+			Set<RepoID> originRepositoryIds, CommitId commitId) {
 		return Promises.firstSuccessful(
-				() -> service.loadCommit(myRepositoryId.getRepositoryId(), revisionId),
+				() -> service.loadCommit(myRepositoryId.getRepositoryId(), commitId),
 				() -> Promises.any(originRepositoryIds.stream()
-						.map(originRepositoryId -> service.loadCommit(originRepositoryId, revisionId))))
+						.map(originRepositoryId -> service.loadCommit(originRepositoryId, commitId))))
 				.then(rawCommit -> ensureSimKey(myRepositoryId, originRepositoryIds, rawCommit.getSimKeyHash())
 						.map(simKey -> {
 							try {
-								return getOTCommit(myRepositoryId, revisionId, rawCommit, simKey);
+								return getOTCommit(myRepositoryId, commitId, rawCommit, simKey);
 							} catch (ParseException e) {
 								throw new UncheckedException(e);
 							}
@@ -216,7 +207,7 @@ public final class OTDriver {
 	}
 
 	@NotNull
-	public <D> OTCommit<CommitId, D> getOTCommit(MyRepositoryId<D> myRepositoryId, CommitId revisionId, RawCommit rawCommit, SimKey simKey) throws ParseException {
+	public <D> OTCommit<CommitId, D> getOTCommit(MyRepositoryId<D> myRepositoryId, CommitId commitId, RawCommit rawCommit, SimKey simKey) throws ParseException {
 		List<byte[]> list = decode(COMMIT_DIFFS_CODEC,
 				decryptAES(rawCommit.getEncryptedDiffs(), simKey.getAesKey()));
 		if (list.size() != rawCommit.getParents().size()) {
@@ -229,22 +220,22 @@ public final class OTDriver {
 			parents.put(parent, decode(myRepositoryId.getDiffsCodec(), it.next()));
 		}
 
-		return OTCommit.of(revisionId, parents, rawCommit.getLevel())
+		return OTCommit.of(commitId, parents, rawCommit.getLevel())
 				.withTimestamp(rawCommit.getTimestamp());
 	}
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
-			Set<RepoID> originRepositoryIds, CommitId revisionId) {
+			Set<RepoID> originRepositoryIds, CommitId commitId) {
 		return Promises.any(
 				union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
-						.map(repositoryId -> loadSnapshot(myRepositoryId, repositoryId, revisionId)
+						.map(repositoryId -> loadSnapshot(myRepositoryId, repositoryId, commitId)
 								.then(Promise::ofOptional)))
 				.mapEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.empty());
 	}
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
-			RepoID repositoryId, CommitId revisionId) {
-		return service.loadSnapshot(repositoryId, revisionId)
+			RepoID repositoryId, CommitId commitId) {
+		return service.loadSnapshot(repositoryId, commitId)
 				.then(optionalRawSnapshot -> {
 					if (!optionalRawSnapshot.isPresent()) {
 						return Promise.of(Optional.empty());
@@ -270,13 +261,13 @@ public final class OTDriver {
 	}
 
 	public <D> Promise<Void> saveSnapshot(MyRepositoryId<D> myRepositoryId,
-			CommitId revisionId, List<D> diffs) {
+			CommitId commitId, List<D> diffs) {
 		return service.saveSnapshot(myRepositoryId.getRepositoryId(),
 				SignedData.sign(
 						SNAPSHOT_CODEC,
 						RawSnapshot.of(
 								myRepositoryId.getRepositoryId(),
-								revisionId,
+								commitId,
 								encryptAES(encodeAsArray(myRepositoryId.getDiffsCodec(), diffs), currentSimKey.getAesKey()),
 								Hash.sha1(currentSimKey.getBytes())),
 						myRepositoryId.getPrivKey()));

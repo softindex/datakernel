@@ -16,6 +16,7 @@
 
 package io.global.ot.http;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -29,6 +30,7 @@ import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.Ref;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -57,7 +59,9 @@ import static io.global.ot.api.OTCommand.*;
 import static io.global.ot.http.RawServerServlet.DEFAULT_CHUNK_SIZE;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	private final IAsyncHttpClient httpClient;
@@ -194,18 +198,22 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId, Set<CommitId> lastCommitIds) {
-		return httpClient.request(
-				request(GET, GET_HEADS,
+	public AsyncSupplier<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId) {
+		Ref<Set<CommitId>> lastCommitIds = new Ref<>(emptySet());
+		return () -> httpClient.request(
+				request(GET, POLL_HEADS,
 						apiQuery(repositoryId, map(
-								"heads", lastCommitIds.stream()
+								"lastHeads", lastCommitIds.get()
+										.stream()
 										.map(HttpDataFormats::urlEncodeCommitId)
 										.collect(joining(","))
 								)
 						)
 				))
 				.then(res -> res.getBody()
-						.then(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))));
+						.then(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))))
+				.whenResult(heads ->
+						lastCommitIds.value = heads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet()));
 	}
 
 	@Override
