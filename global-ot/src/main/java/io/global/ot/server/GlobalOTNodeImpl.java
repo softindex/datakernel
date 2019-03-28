@@ -29,10 +29,10 @@ import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.CollectorsEx;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
+import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
-import io.global.common.api.LocalGlobalNode;
 import io.global.ot.api.*;
-import io.global.ot.server.LocalGlobalOTNamespace.RepositoryEntry;
+import io.global.ot.server.GlobalOTNamespace.RepositoryEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -56,10 +56,10 @@ import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
-public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, LocalGlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<LocalGlobalOTNode> {
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalOTNode.class);
+public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
+	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
-	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalOTNode.class, "latencyMargin", Duration.ofSeconds(20));
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(GlobalOTNodeImpl.class, "latencyMargin", Duration.ofSeconds(20));
 
 	private final Eventloop eventloop;
 	private final CommitStorage commitStorage;
@@ -70,19 +70,24 @@ public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, 
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	private LocalGlobalOTNode(Eventloop eventloop, RawServerId id,
-							  DiscoveryService discoveryService,
-							  @Nullable CommitStorage commitStorage,
-							  Function<RawServerId, GlobalOTNode> nodeFactory) {
-		super(id, discoveryService, nodeFactory, LocalGlobalOTNamespace::new);
+	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
+			DiscoveryService discoveryService,
+			@Nullable CommitStorage commitStorage,
+			Function<RawServerId, GlobalOTNode> nodeFactory) {
+		super(id, discoveryService, nodeFactory);
 		this.eventloop = checkNotNull(eventloop);
 		this.commitStorage = checkNotNull(commitStorage);
 	}
 
-	public static LocalGlobalOTNode create(Eventloop eventloop, RawServerId id,
-										   DiscoveryService discoveryService, CommitStorage commitStorage,
-										   Function<RawServerId, GlobalOTNode> nodeFactory) {
-		return new LocalGlobalOTNode(eventloop, id, discoveryService, commitStorage, nodeFactory);
+	public static GlobalOTNodeImpl create(Eventloop eventloop, RawServerId id,
+			DiscoveryService discoveryService, CommitStorage commitStorage,
+			Function<RawServerId, GlobalOTNode> nodeFactory) {
+		return new GlobalOTNodeImpl(eventloop, id, discoveryService, commitStorage, nodeFactory);
+	}
+
+	@Override
+	protected GlobalOTNamespace createNamespace(PubKey space) {
+		return new GlobalOTNamespace(this, space);
 	}
 
 	public CommitStorage getCommitStorage() {
@@ -122,7 +127,7 @@ public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, 
 
 	@Override
 	public Promise<Set<String>> list(PubKey pubKey) {
-		LocalGlobalOTNamespace ns = ensureNamespace(pubKey);
+		GlobalOTNamespace ns = ensureNamespace(pubKey);
 		return ns.ensureMasterNodes()
 				.then($ -> isMasterFor(pubKey) ?
 						Promise.complete() :
@@ -197,13 +202,13 @@ public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, 
 	}
 
 	private Promise<@Nullable RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-																 Set<CommitId> required, Set<CommitId> existing) {
+			Set<CommitId> required, Set<CommitId> existing) {
 		return Promise.ofCallback(cb -> getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb));
 	}
 
 	private void getNextStreamEntryImpl(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-										Set<CommitId> required, Set<CommitId> existing,
-										SettableCallback<@Nullable RawCommitEntry> cb) {
+			Set<CommitId> required, Set<CommitId> existing,
+			SettableCallback<@Nullable RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;
@@ -335,7 +340,7 @@ public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, 
 											if (up[0] >= minimumSuccesses) {
 												return Promise.complete();
 											}
-											return Promise.ofException(new StacklessException(LocalGlobalOTNode.class, "Not enough successes"));
+											return Promise.ofException(new StacklessException(GlobalOTNodeImpl.class, "Not enough successes"));
 										})
 								);
 							});
@@ -483,7 +488,7 @@ public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, 
 	}
 
 	public Promise<Void> update() {
-		return tolerantCollectVoid(namespaces.values(), LocalGlobalOTNamespace::updateRepositories)
+		return tolerantCollectVoid(namespaces.values(), GlobalOTNamespace::updateRepositories)
 				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update));
 	}
 
@@ -526,6 +531,6 @@ public final class LocalGlobalOTNode extends LocalGlobalNode<LocalGlobalOTNode, 
 
 	@Override
 	public String toString() {
-		return "LocalGlobalOTNode{id=" + id + '}';
+		return "GlobalOTNodeImpl{id=" + id + '}';
 	}
 }

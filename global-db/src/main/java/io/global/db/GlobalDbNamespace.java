@@ -6,7 +6,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.common.api.GlobalNamespace;
+import io.global.common.api.AbstractGlobalNamespace;
 import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
 
@@ -15,10 +15,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-public final class LocalGlobalDbNamespace extends GlobalNamespace<LocalGlobalDbNamespace, LocalGlobalDbNode, GlobalDbNode> {
+public final class GlobalDbNamespace extends AbstractGlobalNamespace<GlobalDbNamespace, GlobalDbNodeImpl, GlobalDbNode> {
 	private final Map<String, Repo> repos = new HashMap<>();
 
-	public LocalGlobalDbNamespace(LocalGlobalDbNode node, PubKey space) {
+	public GlobalDbNamespace(GlobalDbNodeImpl node, PubKey space) {
 		super(node, space);
 	}
 

@@ -18,13 +18,13 @@ package io.global.launchers.ot;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.ot.server.LocalGlobalOTNode;
+import io.global.ot.server.GlobalOTNodeImpl;
 
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofList;
-import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
+import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_LATENCY_MARGIN;
 import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static java.util.Collections.emptyList;
 
@@ -33,7 +33,7 @@ public class Initializers {
 		throw new AssertionError();
 	}
 
-	public static Initializer<LocalGlobalOTNode> ofGlobalOTNodeImpl(Config config) {
+	public static Initializer<GlobalOTNodeImpl> ofGlobalOTNodeImpl(Config config) {
 		return node -> node
 				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));

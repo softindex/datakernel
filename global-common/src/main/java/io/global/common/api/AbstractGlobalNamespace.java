@@ -12,8 +12,8 @@ import java.util.*;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 
-public abstract class GlobalNamespace<S extends GlobalNamespace<S, L, N>, L extends LocalGlobalNode<L, S, N>, N> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalNamespace.class);
+public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<S, L, N>, L extends AbstractGlobalNode<L, S, N>, N> {
+	private static final Logger logger = LoggerFactory.getLogger(AbstractGlobalNamespace.class);
 
 	protected final L node;
 	protected final PubKey space;
@@ -25,7 +25,7 @@ public abstract class GlobalNamespace<S extends GlobalNamespace<S, L, N>, L exte
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public GlobalNamespace(L node, PubKey space) {
+	public AbstractGlobalNamespace(L node, PubKey space) {
 		this.node = node;
 		this.space = space;
 	}

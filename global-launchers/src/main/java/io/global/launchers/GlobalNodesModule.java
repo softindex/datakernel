@@ -35,7 +35,7 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
-import io.global.db.LocalGlobalDbNode;
+import io.global.db.GlobalDbNodeImpl;
 import io.global.db.api.GlobalDbNode;
 import io.global.db.http.GlobalDbNodeServlet;
 import io.global.db.http.HttpGlobalDbNode;
@@ -43,12 +43,12 @@ import io.global.db.stub.RuntimeDbStorageStub;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
-import io.global.fs.local.LocalGlobalFsNode;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
-import io.global.ot.server.LocalGlobalOTNode;
+import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.stub.CommitStorageStub;
 
 import java.util.concurrent.ExecutorService;
@@ -75,22 +75,22 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	LocalGlobalOTNode provide(Eventloop eventloop, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
-		return LocalGlobalOTNode.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, commitStorage, factory)
+	GlobalOTNodeImpl provide(Eventloop eventloop, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+		return GlobalOTNodeImpl.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, commitStorage, factory)
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
 	}
 
 	@Provides
 	@Singleton
-	LocalGlobalFsNode provide(Config config, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory, FsClient fsClient) {
-		return LocalGlobalFsNode.create(config.get(ofRawServerId(), "fs.serverId"), discoveryService, factory, fsClient)
+	GlobalFsNodeImpl provide(Config config, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory, FsClient fsClient) {
+		return GlobalFsNodeImpl.create(config.get(ofRawServerId(), "fs.serverId"), discoveryService, factory, fsClient)
 				.initialize(ofLocalGlobalFsNode(config.getChild("fs")));
 	}
 
 	@Provides
 	@Singleton
-	LocalGlobalDbNode provide(Config config, DiscoveryService discoveryService, Function<RawServerId, GlobalDbNode> factory) {
-		return LocalGlobalDbNode.create(config.get(ofRawServerId(), "db.serverId"), discoveryService, factory, ($1, $2) -> new RuntimeDbStorageStub())
+	GlobalDbNodeImpl provide(Config config, DiscoveryService discoveryService, Function<RawServerId, GlobalDbNode> factory) {
+		return GlobalDbNodeImpl.create(config.get(ofRawServerId(), "db.serverId"), discoveryService, factory, ($1, $2) -> new RuntimeDbStorageStub())
 				.initialize(ofLocalGlobalDbNode(config.getChild("ot")));
 	}
 
@@ -134,19 +134,19 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	RawServerServlet provideRawServerServlet(LocalGlobalOTNode node) {
+	RawServerServlet provideRawServerServlet(GlobalOTNodeImpl node) {
 		return RawServerServlet.create(node);
 	}
 
 	@Provides
 	@Singleton
-	GlobalFsNodeServlet provideGlobalFsServlet(LocalGlobalFsNode node) {
+	GlobalFsNodeServlet provideGlobalFsServlet(GlobalFsNodeImpl node) {
 		return GlobalFsNodeServlet.create(node);
 	}
 
 	@Provides
 	@Singleton
-	GlobalDbNodeServlet provideGlobalDbServlet(LocalGlobalDbNode node) {
+	GlobalDbNodeServlet provideGlobalDbServlet(GlobalDbNodeImpl node) {
 		return GlobalDbNodeServlet.create(node);
 	}
 
@@ -191,7 +191,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("FS push")
-	EventloopTaskScheduler provideFsPushScheduler(Eventloop eventloop, LocalGlobalFsNode node, Config config) {
+	EventloopTaskScheduler provideFsPushScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
 				.initialize(ofEventloopTaskScheduler(config.getChild("fs.push")));
 	}
@@ -199,7 +199,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("FS catch up")
-	EventloopTaskScheduler provideFsCatchUpScheduler(Eventloop eventloop, LocalGlobalFsNode node, Config config) {
+	EventloopTaskScheduler provideFsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("fs.catchUp")));
 	}
@@ -207,7 +207,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("OT push")
-	EventloopTaskScheduler provideOTPushScheduler(Eventloop eventloop, LocalGlobalOTNode node, Config config) {
+	EventloopTaskScheduler provideOTPushScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
 				.initialize(ofEventloopTaskScheduler(config.getChild("ot.push")));
 	}
@@ -215,7 +215,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("OT catch up")
-	EventloopTaskScheduler provideOTCatchUpScheduler(Eventloop eventloop, LocalGlobalOTNode node, Config config) {
+	EventloopTaskScheduler provideOTCatchUpScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("ot.catchUp")));
 	}
@@ -223,7 +223,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("OT update")
-	EventloopTaskScheduler provideOTUpdateScheduler(Eventloop eventloop, LocalGlobalOTNode node, Config config) {
+	EventloopTaskScheduler provideOTUpdateScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::update)
 				.initialize(ofEventloopTaskScheduler(config.getChild("ot.update")));
 	}
@@ -231,7 +231,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("DB push")
-	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, LocalGlobalDbNode node, Config config) {
+	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, GlobalDbNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
 				.initialize(ofEventloopTaskScheduler(config.getChild("db.push")));
 	}
@@ -239,7 +239,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("DB catch up")
-	EventloopTaskScheduler provideDbCatchUpScheduler(Eventloop eventloop, LocalGlobalDbNode node, Config config) {
+	EventloopTaskScheduler provideDbCatchUpScheduler(Eventloop eventloop, GlobalDbNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("db.catchUp")));
 	}

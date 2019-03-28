@@ -10,7 +10,7 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.common.api.GlobalNamespace;
+import io.global.common.api.AbstractGlobalNamespace;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -31,13 +31,13 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.util.Utils.tolerantCollectBoolean;
 import static java.util.stream.Collectors.toList;
 
-public final class LocalGlobalFsNamespace extends GlobalNamespace<LocalGlobalFsNamespace, LocalGlobalFsNode, GlobalFsNode> {
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNamespace.class);
+public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNamespace, GlobalFsNodeImpl, GlobalFsNode> {
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNamespace.class);
 
 	private final FsClient storage;
 	private final CheckpointStorage checkpointStorage;
 
-	public LocalGlobalFsNamespace(LocalGlobalFsNode node, PubKey space) {
+	public GlobalFsNamespace(GlobalFsNodeImpl node, PubKey space) {
 		super(node, space);
 		storage = node.getStorageFactory().apply(space);
 		checkpointStorage = node.getCheckpointStorageFactory().apply(space);

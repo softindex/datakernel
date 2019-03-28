@@ -8,7 +8,7 @@ import io.datakernel.util.Tuple2;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
-import io.global.common.api.GlobalNamespace;
+import io.global.common.api.AbstractGlobalNamespace;
 import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -28,8 +28,8 @@ import static java.util.Collections.emptySet;
 import static java.util.Comparator.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
-public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTNamespace, LocalGlobalOTNode, GlobalOTNode> {
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalOTNamespace.class);
+public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNamespace, GlobalOTNodeImpl, GlobalOTNode> {
+	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNamespace.class);
 
 	private final Map<RepoID, RepositoryEntry> repositories = new HashMap<>();
 
@@ -37,7 +37,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 
 	private long updateRepositoriesTimestamp;
 
-	public LocalGlobalOTNamespace(LocalGlobalOTNode node, PubKey pubKey) {
+	public GlobalOTNamespace(GlobalOTNodeImpl node, PubKey pubKey) {
 		super(node, pubKey);
 	}
 
@@ -175,17 +175,18 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		@NotNull
 		private Promise<Void> doPollHeads() {
 			return ensureMasterRepositories()
-					.then(masterRepositories1 -> Promises.until(
-							() -> Promises.any(masterRepositories1.values().stream().map(MasterRepository::poll))
-									.map($ -> masterRepositories1.values().stream()
+					.then(masterRepositories -> Promises.until(
+							() -> Promises.any(masterRepositories.values().stream().map(MasterRepository::poll))
+									.map($ -> masterRepositories.values().stream()
 											.flatMap(masterRepository -> masterRepository.getHeads().stream())
 											.collect(toSet())),
-							AsyncPredicate.of(polledHeads1 -> {
-								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads1);
-								this.polledHeads = polledHeads1;
+							AsyncPredicate.of(polledHeads -> {
+								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads);
+								this.polledHeads = polledHeads;
 								return found;
 							})))
-					.then(this::saveHeads).whenResult((Consumer<? super Void>) $1 -> updateHeadsTimestamp = node.now.currentTimeMillis());
+					.then(this::saveHeads)
+					.whenResult($ -> updateHeadsTimestamp = node.now.currentTimeMillis());
 		}
 
 		@NotNull
@@ -331,7 +332,7 @@ public final class LocalGlobalOTNamespace extends GlobalNamespace<LocalGlobalOTN
 		}
 
 		private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
-									  Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
+				Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
 			RawCommitEntry entry = queue.poll();
 			if (entry == null || entry.commit.getLevel() < minLevel) {
 				cb.set(resultHeads);

@@ -18,12 +18,12 @@ package io.global.launchers.fs;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.fs.local.LocalGlobalFsNode;
+import io.global.fs.local.GlobalFsNodeImpl;
 
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
+import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_LATENCY_MARGIN;
 import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static java.util.Collections.emptyList;
 
@@ -32,7 +32,7 @@ public class Initializers {
 		throw new AssertionError();
 	}
 
-	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
+	public static Initializer<GlobalFsNodeImpl> ofLocalGlobalFsNode(Config config) {
 		return node -> node
 				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))

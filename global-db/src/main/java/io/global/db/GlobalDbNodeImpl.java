@@ -29,9 +29,9 @@ import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
+import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
-import io.global.common.api.LocalGlobalNode;
-import io.global.db.LocalGlobalDbNamespace.Repo;
+import io.global.db.GlobalDbNamespace.Repo;
 import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
 import org.jetbrains.annotations.Nullable;
@@ -46,8 +46,8 @@ import java.util.function.Function;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.global.util.Utils.nSuccessesOrLess;
 
-public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, LocalGlobalDbNamespace, GlobalDbNode> implements GlobalDbNode, Initializable<LocalGlobalDbNode> {
-	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalDbNode.class, "latencyMargin", Duration.ofMinutes(5));
+public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl, GlobalDbNamespace, GlobalDbNode> implements GlobalDbNode, Initializable<GlobalDbNodeImpl> {
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(GlobalDbNodeImpl.class, "latencyMargin", Duration.ofMinutes(5));
 
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
@@ -62,20 +62,24 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
-	private LocalGlobalDbNode(RawServerId id, DiscoveryService discoveryService,
+	private GlobalDbNodeImpl(RawServerId id, DiscoveryService discoveryService,
 							  Function<RawServerId, GlobalDbNode> nodeFactory,
 							  BiFunction<PubKey, String, DbStorage> storageFactory) {
-		super(id, discoveryService, nodeFactory, LocalGlobalDbNamespace::new);
+		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 	}
 
-	public static LocalGlobalDbNode create(RawServerId id, DiscoveryService discoveryService,
+	public static GlobalDbNodeImpl create(RawServerId id, DiscoveryService discoveryService,
 										   Function<RawServerId, GlobalDbNode> nodeFactory,
 										   BiFunction<PubKey, String, DbStorage> storageFactory) {
-		return new LocalGlobalDbNode(id, discoveryService, nodeFactory, storageFactory);
+		return new GlobalDbNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
 	// endregion
 
+	@Override
+	protected GlobalDbNamespace createNamespace(PubKey space) {
+		return new GlobalDbNamespace(this, space);
+	}
 
 	public BiFunction<PubKey, String, DbStorage> getStorageFactory() {
 		return storageFactory;
@@ -83,7 +87,7 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload(PubKey space, String table) {
-		LocalGlobalDbNamespace ns = ensureNamespace(space);
+		GlobalDbNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
 					Repo repo = ns.ensureRepository(table);
@@ -130,7 +134,7 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 													if (up[0] >= uploadSuccessNumber) {
 														return Promise.complete();
 													}
-													return Promise.ofException(new StacklessException(LocalGlobalDbNode.class, "Not enough successes"));
+													return Promise.ofException(new StacklessException(GlobalDbNodeImpl.class, "Not enough successes"));
 												}));
 							});
 
@@ -139,7 +143,7 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download(PubKey space, String table, long timestamp) {
-		LocalGlobalDbNamespace ns = ensureNamespace(space);
+		GlobalDbNamespace ns = ensureNamespace(space);
 		Repo repo = ns.ensureRepository(table);
 		return repo.download(timestamp)
 				.then(supplier -> {
@@ -172,7 +176,7 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 
 	@Override
 	public Promise<SignedData<DbItem>> get(PubKey space, String table, byte[] key) {
-		LocalGlobalDbNamespace ns = ensureNamespace(space);
+		GlobalDbNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
 					Repo repo = ns.ensureRepository(table);
@@ -192,7 +196,7 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 
 	@Override
 	public Promise<List<String>> list(PubKey space) {
-		LocalGlobalDbNamespace ns = ensureNamespace(space);
+		GlobalDbNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
 					if (isMasterFor(space)) {
@@ -246,6 +250,6 @@ public final class LocalGlobalDbNode extends LocalGlobalNode<LocalGlobalDbNode, 
 
 	@Override
 	public String toString() {
-		return "LocalGlobalDbNode{id=" + id + '}';
+		return "GlobalDbNodeImpl{id=" + id + '}';
 	}
 }

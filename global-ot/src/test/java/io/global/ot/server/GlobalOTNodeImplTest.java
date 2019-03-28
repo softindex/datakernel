@@ -69,7 +69,7 @@ import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunnerFactory.class)
-public class LocalGlobalOTNodeTest {
+public class GlobalOTNodeImplTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -128,7 +128,7 @@ public class LocalGlobalOTNodeTest {
 					deleteFolder(resolved);
 				}
 				storage = storageFn.apply(temporaryFolder.newFolder(folder).toPath());
-				LocalGlobalOTNode master = LocalGlobalOTNode.create(Eventloop.getCurrentEventloop(),
+				GlobalOTNodeImpl master = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(),
 						new RawServerId(folder),
 						discoveryService,
 						storage,
@@ -159,13 +159,13 @@ public class LocalGlobalOTNodeTest {
 		turnedOffNodes.clear();
 		COMMIT_ID = 1;
 		intermediateStorage = storageFn.apply(temporaryFolder.newFolder("intermediate").toPath());
-		intermediateNode = LocalGlobalOTNode.create(Eventloop.getCurrentEventloop(),
+		intermediateNode = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(),
 				new RawServerId("intermediate"),
 				discoveryService,
 				intermediateStorage,
 				createFactory())
 				.withLatencyMargin(Duration.ZERO);
-		((LocalGlobalOTNode) intermediateNode).now = now;
+		((GlobalOTNodeImpl) intermediateNode).now = now;
 		initializeMasters(1);
 	}
 
@@ -348,7 +348,7 @@ public class LocalGlobalOTNodeTest {
 		addCommits(null, 5, masterNode); //id - 1, 2, 3, 4, 5(head)
 		addCommits(null, 4, masterNode); //id - 6, 7, 8, 9 (head)
 
-		HeadsInfo headsInfoIntermediate = await(((LocalGlobalOTNode) intermediateNode).getLocalHeadsInfo(REPO_ID));
+		HeadsInfo headsInfoIntermediate = await(((GlobalOTNodeImpl) intermediateNode).getLocalHeadsInfo(REPO_ID));
 		await(ChannelSupplier.ofPromise(masterNode.download(REPO_ID, headsInfoIntermediate.getRequired(), headsInfoIntermediate.getExisting()))
 				.streamTo(ChannelConsumer.ofPromise(intermediateNode.upload(REPO_ID))));
 
@@ -388,12 +388,12 @@ public class LocalGlobalOTNodeTest {
 		addCommits(null, 5, intermediateNode);
 
 		// Assume fetch iteration passed
-		await(((LocalGlobalOTNode) firstMaster).fetch());
-		await(((LocalGlobalOTNode) secondMaster).fetch());
+		await(((GlobalOTNodeImpl) firstMaster).fetch());
+		await(((GlobalOTNodeImpl) secondMaster).fetch());
 
 		// Another fetch iteration just to be sure (because the order of fetches matters)
-		await(((LocalGlobalOTNode) firstMaster).fetch());
-		await(((LocalGlobalOTNode) secondMaster).fetch());
+		await(((GlobalOTNodeImpl) firstMaster).fetch());
+		await(((GlobalOTNodeImpl) secondMaster).fetch());
 
 		assertHeads(intermediateStorage, 5);
 		assertHeads(firstMasterStorage, 5);
@@ -413,12 +413,12 @@ public class LocalGlobalOTNodeTest {
 
 		// Assume fetch iteration passed
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			await(((LocalGlobalOTNode) tuple.getValue2()).fetch());
+			await(((GlobalOTNodeImpl) tuple.getValue2()).fetch());
 		}
 
 		// Another fetch iteration just to be sure (because the order of fetches matters)
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			await(((LocalGlobalOTNode) tuple.getValue2()).fetch());
+			await(((GlobalOTNodeImpl) tuple.getValue2()).fetch());
 		}
 
 		assertHeads(intermediateStorage, 5);
@@ -435,7 +435,7 @@ public class LocalGlobalOTNodeTest {
 	@Test
 	public void testCatchupMasters() {
 		initializeMasters(2);
-		masters.forEach((integer, tuple) -> ((LocalGlobalOTNode) tuple.getValue2()).now = () -> 10);
+		masters.forEach((integer, tuple) -> ((GlobalOTNodeImpl) tuple.getValue2()).now = () -> 10);
 		CommitStorage firstMasterStorage = getMasterStorage(1);
 		CommitStorage secondMasterStorage = getMasterStorage(2);
 		GlobalOTNode firstMaster = getMasterNode(1);
@@ -445,12 +445,12 @@ public class LocalGlobalOTNodeTest {
 		addCommits(null, 5, intermediateNode);
 
 		// Assume catch up iteration passed
-		await(((LocalGlobalOTNode) secondMaster).catchUp());
-		await(((LocalGlobalOTNode) firstMaster).catchUp());
+		await(((GlobalOTNodeImpl) secondMaster).catchUp());
+		await(((GlobalOTNodeImpl) firstMaster).catchUp());
 
 		// Another catch up iteration just to be sure (because the order of fetches matters)
-		await(((LocalGlobalOTNode) firstMaster).catchUp());
-		await(((LocalGlobalOTNode) secondMaster).catchUp());
+		await(((GlobalOTNodeImpl) firstMaster).catchUp());
+		await(((GlobalOTNodeImpl) secondMaster).catchUp());
 
 		assertHeads(intermediateStorage, 5);
 		assertHeads(firstMasterStorage, 5);
@@ -464,19 +464,19 @@ public class LocalGlobalOTNodeTest {
 	@LoggerConfig(value = "WARN") // too many logs
 	public void testCatchupRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
-		masters.forEach((integer, tuple) -> ((LocalGlobalOTNode) tuple.getValue2()).now = () -> 10);
+		masters.forEach((integer, tuple) -> ((GlobalOTNodeImpl) tuple.getValue2()).now = () -> 10);
 
 		// will propagate commits to one master (Promises.firstSuccessfull())
 		addCommits(null, 5, intermediateNode);
 
 		// Assume catch up iteration passed
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			await(((LocalGlobalOTNode) tuple.getValue2()).catchUp());
+			await(((GlobalOTNodeImpl) tuple.getValue2()).catchUp());
 		}
 
 		// Another catch up iteration just to be sure (because the order of fetches matters)
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			await(((LocalGlobalOTNode) tuple.getValue2()).catchUp());
+			await(((GlobalOTNodeImpl) tuple.getValue2()).catchUp());
 		}
 
 		assertHeads(intermediateStorage, 5);
@@ -502,8 +502,8 @@ public class LocalGlobalOTNodeTest {
 		addCommits(null, 5, intermediateNode);
 
 		// Assume push iteration passed
-		await(((LocalGlobalOTNode) secondMaster).push());
-		await(((LocalGlobalOTNode) firstMaster).push());
+		await(((GlobalOTNodeImpl) secondMaster).push());
+		await(((GlobalOTNodeImpl) firstMaster).push());
 
 		assertHeads(intermediateStorage, 5);
 		assertHeads(firstMasterStorage, 5);
@@ -523,7 +523,7 @@ public class LocalGlobalOTNodeTest {
 
 		// Assume push iteration passed
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			await(((LocalGlobalOTNode) tuple.getValue2()).push());
+			await(((GlobalOTNodeImpl) tuple.getValue2()).push());
 		}
 
 		assertHeads(intermediateStorage, 5);
@@ -543,7 +543,7 @@ public class LocalGlobalOTNodeTest {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
 		// ensuring pub key
-		((LocalGlobalOTNode) intermediateNode).ensureRepository(REPO_ID);
+		((GlobalOTNodeImpl) intermediateNode).ensureRepository(REPO_ID);
 
 		intermediateStorage.saveCommit(getCommitId(1), RawCommit.of(emptySet(),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, 1, now.currentTimeMillis()));
@@ -557,7 +557,7 @@ public class LocalGlobalOTNodeTest {
 		await();
 
 		// Assume pushed new commits
-		await(((LocalGlobalOTNode) intermediateNode).push());
+		await(((GlobalOTNodeImpl) intermediateNode).push());
 
 		assertHeads(intermediateStorage, 2);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
@@ -578,7 +578,7 @@ public class LocalGlobalOTNodeTest {
 		List<CommitId> downloadedCommits = await(ChannelSupplier.ofPromise(intermediateNode.download(REPO_ID, getCommitIds(5), emptySet())).toList())
 				.stream().map(CommitEntry::getCommitId).collect(toList());
 
-		IntStream.of(1, 2, 3, 4, 5).boxed().map(LocalGlobalOTNodeTest::getCommitId).forEach(id -> assertTrue(downloadedCommits.contains(id)));
+		IntStream.of(1, 2, 3, 4, 5).boxed().map(GlobalOTNodeImplTest::getCommitId).forEach(id -> assertTrue(downloadedCommits.contains(id)));
 		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
 	}
 
@@ -627,12 +627,12 @@ public class LocalGlobalOTNodeTest {
 		assertCommitsAbsent(intermediateStorage, 7); // absent on intermediate
 
 		// assume push iteration passed
-		await(((LocalGlobalOTNode) intermediateNode).push());
+		await(((GlobalOTNodeImpl) intermediateNode).push());
 		// commits are now present on master node
 		assertCommits(masterStorage, 4, 5, 6);
 
 		// assume fetch iteration passed
-		await(((LocalGlobalOTNode) intermediateNode).fetch());
+		await(((GlobalOTNodeImpl) intermediateNode).fetch());
 		// all commits are synced now
 		assertCommits(1, 2, 3, 4, 5, 6, 7);
 	}
@@ -659,7 +659,7 @@ public class LocalGlobalOTNodeTest {
 		assertEquals(0, masterSnapshotIds.size());
 
 		turnOn("master1");
-		await(((LocalGlobalOTNode) intermediateNode).pushSnapshots());
+		await(((GlobalOTNodeImpl) intermediateNode).pushSnapshots());
 
 		Set<CommitId> newSnapshotIds = await(masterStorage.listSnapshotIds(REPO_ID));
 		assertEquals(1, newSnapshotIds.size());
@@ -687,7 +687,7 @@ public class LocalGlobalOTNodeTest {
 		assertEquals(0, masterSnapshotIds.size());
 
 		turnOn("master1");
-		await(((LocalGlobalOTNode) intermediateNode).pushPullRequests());
+		await(((GlobalOTNodeImpl) intermediateNode).pushPullRequests());
 
 		Set<SignedData<RawPullRequest>> newSnapshotIds = await(masterStorage.getPullRequests(REPO_ID));
 		assertEquals(1, newSnapshotIds.size());
@@ -702,7 +702,7 @@ public class LocalGlobalOTNodeTest {
 				return Promise.of(null);
 			}
 		};
-		LocalGlobalOTNode node = LocalGlobalOTNode.create(Eventloop.getCurrentEventloop(), new RawServerId("test"),
+		GlobalOTNodeImpl node = GlobalOTNodeImpl.create(Eventloop.getCurrentEventloop(), new RawServerId("test"),
 				discoveryService, storageFn.apply(temporaryFolder.newFolder().toPath()), id -> null);
 
 		await(node.list(PUB_KEY));
@@ -733,7 +733,7 @@ public class LocalGlobalOTNodeTest {
 
 	public static CommitEntry createCommitEntry(Set<Integer> parents, long parentLevel, boolean head) {
 		EncryptedData encryptedData = EncryptedData.encrypt(DATA, SIM_KEY);
-		Set<CommitId> parentIds = parents.stream().map(LocalGlobalOTNodeTest::getCommitId).collect(toSet());
+		Set<CommitId> parentIds = parents.stream().map(GlobalOTNodeImplTest::getCommitId).collect(toSet());
 		RawCommit rawCommit = RawCommit.of(parentIds, encryptedData, HASH, (parentLevel + 1), now.currentTimeMillis());
 		CommitId commitId = nextCommitId();
 		return new CommitEntry(commitId, rawCommit, head ?
@@ -906,8 +906,8 @@ public class LocalGlobalOTNodeTest {
 		} else {
 			throw new AssertionError("No server corresponds to this id: " + idString);
 		}
-		if (intermediateNode instanceof LocalGlobalOTNode) {
-			((LocalGlobalOTNode) intermediateNode).ensureNamespace(PUB_KEY).getMasters().clear();
+		if (intermediateNode instanceof GlobalOTNodeImpl) {
+			((GlobalOTNodeImpl) intermediateNode).ensureNamespace(PUB_KEY).getMasters().clear();
 		}
 	}
 
@@ -924,8 +924,8 @@ public class LocalGlobalOTNodeTest {
 		} else {
 			throw new AssertionError("No server corresponds to this id: " + idString);
 		}
-		if (intermediateNode instanceof LocalGlobalOTNode) {
-			((LocalGlobalOTNode) intermediateNode).ensureNamespace(PUB_KEY).getMasters().clear();
+		if (intermediateNode instanceof GlobalOTNodeImpl) {
+			((GlobalOTNodeImpl) intermediateNode).ensureNamespace(PUB_KEY).getMasters().clear();
 		}
 	}
 

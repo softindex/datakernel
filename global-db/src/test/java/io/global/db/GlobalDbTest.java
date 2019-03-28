@@ -69,7 +69,7 @@ public final class GlobalDbTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private LocalGlobalDbNode rawSecondClient;
+	private GlobalDbNodeImpl rawSecondClient;
 
 	private GlobalDbDriver firstDriver;
 	private GlobalDbAdapter firstAliceAdapter;
@@ -95,7 +95,7 @@ public final class GlobalDbTest {
 		nodeFactory = new Function<RawServerId, GlobalDbNode>() {
 			@Override
 			public GlobalDbNode apply(RawServerId serverId) {
-				GlobalDbNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalDbNode.create(id, discoveryService, this, storageFactory));
+				GlobalDbNode node = nodes.computeIfAbsent(serverId, id -> GlobalDbNodeImpl.create(id, discoveryService, this, storageFactory));
 				StubHttpClient client = StubHttpClient.of(GlobalDbNodeServlet.create(node));
 				return HttpGlobalDbNode.create(serverId.getServerIdString(), client);
 			}
@@ -104,7 +104,7 @@ public final class GlobalDbTest {
 		GlobalDbNode firstNode = nodeFactory.apply(FIRST_ID);
 		GlobalDbNode secondNode = nodeFactory.apply(SECOND_ID);
 
-		rawSecondClient = (LocalGlobalDbNode) nodes.get(SECOND_ID);
+		rawSecondClient = (GlobalDbNodeImpl) nodes.get(SECOND_ID);
 
 		firstDriver = GlobalDbDriver.create(firstNode);
 		GlobalDbDriver secondDriver = GlobalDbDriver.create(secondNode);
@@ -172,7 +172,7 @@ public final class GlobalDbTest {
 		Set<DbItem> content = createContent();
 
 		RawServerId serverId = new RawServerId("localhost:432");
-		GlobalDbNode other = LocalGlobalDbNode.create(serverId, discoveryService, nodeFactory, storageFactory);
+		GlobalDbNode other = GlobalDbNodeImpl.create(serverId, discoveryService, nodeFactory, storageFactory);
 		GlobalDbDriver otherDriver = GlobalDbDriver.create(other);
 		DbClient otherClient = otherDriver.adapt(alice.getPubKey());
 
@@ -188,7 +188,7 @@ public final class GlobalDbTest {
 		Set<DbItem> content = createContent();
 
 		RawServerId serverId = new RawServerId("localhost:432");
-		GlobalDbNode other = LocalGlobalDbNode.create(serverId, discoveryService, nodeFactory, storageFactory);
+		GlobalDbNode other = GlobalDbNodeImpl.create(serverId, discoveryService, nodeFactory, storageFactory);
 		GlobalDbDriver otherDriver = GlobalDbDriver.create(other);
 		DbClient otherClient = otherDriver.adapt(alice.getPubKey());
 

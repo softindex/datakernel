@@ -28,8 +28,8 @@ import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
+import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
-import io.global.common.api.LocalGlobalNode;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -50,8 +50,8 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.util.Utils.nSuccessesOrLess;
 import static io.global.util.Utils.tolerantCollectBoolean;
 
-public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, LocalGlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNode.class);
+public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl, GlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<GlobalFsNodeImpl> {
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeImpl.class);
 
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
@@ -65,50 +65,55 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
-	private LocalGlobalFsNode(RawServerId id, DiscoveryService discoveryService,
+	private GlobalFsNodeImpl(RawServerId id, DiscoveryService discoveryService,
 							  Function<RawServerId, GlobalFsNode> nodeFactory,
 							  Function<PubKey, FsClient> storageFactory,
 							  Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
-		super(id, discoveryService, nodeFactory, LocalGlobalFsNamespace::new);
+		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 		this.checkpointStorageFactory = checkpointStorageFactory;
 	}
 
-	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService,
+	public static GlobalFsNodeImpl create(RawServerId id, DiscoveryService discoveryService,
 										   Function<RawServerId, GlobalFsNode> nodeFactory,
 										   Function<PubKey, FsClient> storageFactory,
 										   Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
-		return new LocalGlobalFsNode(id, discoveryService, nodeFactory, storageFactory, checkpointStorageFactory);
+		return new GlobalFsNodeImpl(id, discoveryService, nodeFactory, storageFactory, checkpointStorageFactory);
 	}
 
-	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> nodeFactory, FsClient fsClient) {
+	public static GlobalFsNodeImpl create(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> nodeFactory, FsClient fsClient) {
 		FsClient data = fsClient.subfolder("data");
 		FsClient checkpoints = fsClient.subfolder("checkpoints");
-		return new LocalGlobalFsNode(id, discoveryService, nodeFactory,
+		return new GlobalFsNodeImpl(id, discoveryService, nodeFactory,
 				key -> data.subfolder(key.asString()),
 				key -> new RemoteFsCheckpointStorage(checkpoints.subfolder(key.asString())));
 	}
 
-	public LocalGlobalFsNode withDownloadCaching(boolean caching) {
+	public GlobalFsNodeImpl withDownloadCaching(boolean caching) {
 		doesDownloadCaching = caching;
 		return this;
 	}
 
-	public LocalGlobalFsNode withUploadCaching(boolean caching) {
+	public GlobalFsNodeImpl withUploadCaching(boolean caching) {
 		doesUploadCaching = caching;
 		return this;
 	}
 
-	public LocalGlobalFsNode withoutCaching() {
+	public GlobalFsNodeImpl withoutCaching() {
 		return withDownloadCaching(false);
 	}
 
-	public LocalGlobalFsNode withUploadRedundancy(int minUploads, int maxUploads) {
+	public GlobalFsNodeImpl withUploadRedundancy(int minUploads, int maxUploads) {
 		uploadSuccessNumber = minUploads;
 		uploadCallNumber = maxUploads;
 		return this;
 	}
 	// endregion
+
+	@Override
+	protected GlobalFsNamespace createNamespace(PubKey space) {
+		return new GlobalFsNamespace(this, space);
+	}
 
 	public Function<PubKey, FsClient> getStorageFactory() {
 		return storageFactory;
@@ -120,7 +125,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 
 	@Override
 	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset, long revision) {
-		LocalGlobalFsNamespace ns = ensureNamespace(space);
+		GlobalFsNamespace ns = ensureNamespace(space);
 		// check only after ensureMasterNodes because it could've made us master
 		return ns.ensureMasterNodes()
 				.then(masters -> {
@@ -169,7 +174,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 													if (up[0] >= uploadSuccessNumber) {
 														return Promise.complete();
 													}
-													return Promise.ofException(new StacklessException(LocalGlobalFsNode.class, "Not enough successes"));
+													return Promise.ofException(new StacklessException(GlobalFsNodeImpl.class, "Not enough successes"));
 												}));
 							});
 				}).whenComplete(toLogger(logger, "upload", space, filename, offset, this));
@@ -177,7 +182,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long length) {
-		LocalGlobalFsNamespace ns = ensureNamespace(space);
+		GlobalFsNamespace ns = ensureNamespace(space);
 		// if we have cached file and it is same as or better than remote
 		return Promises.toTuple(ns.getMetadata(filename), getMetadata(space, filename))
 				.then(t -> {
@@ -217,8 +222,8 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 				}).whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
-	private <T> Promise<T> simpleMethod(PubKey space, Function<GlobalFsNode, Promise<T>> self, Function<LocalGlobalFsNamespace, Promise<T>> local) {
-		LocalGlobalFsNamespace ns = ensureNamespace(space);
+	private <T> Promise<T> simpleMethod(PubKey space, Function<GlobalFsNode, Promise<T>> self, Function<GlobalFsNamespace, Promise<T>> local) {
+		GlobalFsNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(nodes -> {
 					if (isMasterFor(space)) {
@@ -254,7 +259,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 		return push(ensureNamespace(space));
 	}
 
-	private Promise<Boolean> push(LocalGlobalFsNamespace ns) {
+	private Promise<Boolean> push(GlobalFsNamespace ns) {
 		return ns.ensureMasterNodes()
 				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**"))).whenComplete(toLogger(logger, "push", ns.getSpace(), this));
 	}
@@ -264,7 +269,7 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 	}
 
 	public Promise<Boolean> fetch(PubKey space) {
-		LocalGlobalFsNamespace ns = ensureNamespace(space);
+		GlobalFsNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**"))).whenComplete(toLogger(logger, "fetch", space, this));
 	}
@@ -289,6 +294,6 @@ public final class LocalGlobalFsNode extends LocalGlobalNode<LocalGlobalFsNode, 
 
 	@Override
 	public String toString() {
-		return "LocalGlobalFsNode{id=" + id + '}';
+		return "GlobalFsNodeImpl{id=" + id + '}';
 	}
 }

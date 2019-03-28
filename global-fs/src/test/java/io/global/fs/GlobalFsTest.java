@@ -32,7 +32,7 @@ import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.fs.local.LocalGlobalFsNode;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.fs.transformers.FrameSigner;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -76,8 +76,8 @@ public final class GlobalFsTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private LocalGlobalFsNode rawFirstClient;
-	private LocalGlobalFsNode rawSecondClient;
+	private GlobalFsNodeImpl rawFirstClient;
+	private GlobalFsNodeImpl rawSecondClient;
 
 	private GlobalFsNode firstClient;
 	private GlobalFsDriver firstDriver;
@@ -106,7 +106,7 @@ public final class GlobalFsTest {
 		Function<RawServerId, GlobalFsNode> clientFactory = new Function<RawServerId, GlobalFsNode>() {
 			@Override
 			public GlobalFsNode apply(RawServerId serverId) {
-				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
+				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> GlobalFsNodeImpl.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
 				// StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
 				// return HttpGlobalFsNode.create(serverId.getServerIdString(), client);
 				return node;
@@ -115,8 +115,8 @@ public final class GlobalFsTest {
 		firstClient = clientFactory.apply(FIRST_ID);
 		GlobalFsNode secondClient = clientFactory.apply(SECOND_ID);
 
-		rawFirstClient = (LocalGlobalFsNode) nodes.get(FIRST_ID);
-		rawSecondClient = (LocalGlobalFsNode) nodes.get(SECOND_ID);
+		rawFirstClient = (GlobalFsNodeImpl) nodes.get(FIRST_ID);
+		rawSecondClient = (GlobalFsNodeImpl) nodes.get(SECOND_ID);
 
 		firstDriver = GlobalFsDriver.create(firstClient, CheckpointPosStrategy.of(10));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, CheckpointPosStrategy.of(15));

@@ -9,11 +9,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public abstract class LocalGlobalNode<S extends LocalGlobalNode<S, L, N>, L extends GlobalNamespace<L, S, N>, N> {
-	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalNode.class, "latencyMargin", Duration.ofMinutes(5));
+public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, L extends AbstractGlobalNamespace<L, S, N>, N> {
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(AbstractGlobalNode.class, "latencyMargin", Duration.ofMinutes(5));
 
 	private final Set<PubKey> managedPublicKeys = new HashSet<>();
 
@@ -24,14 +23,14 @@ public abstract class LocalGlobalNode<S extends LocalGlobalNode<S, L, N>, L exte
 
 	protected final RawServerId id;
 	protected final DiscoveryService discoveryService;
-	protected final BiFunction<S, PubKey, L> namespaceFactory;
 
-	public LocalGlobalNode(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, N> nodeFactory, BiFunction<S, PubKey, L> namespaceFactory) {
+	public AbstractGlobalNode(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, N> nodeFactory) {
 		this.id = id;
 		this.discoveryService = discoveryService;
 		this.nodeFactory = nodeFactory;
-		this.namespaceFactory = namespaceFactory;
 	}
+
+	protected abstract L createNamespace(PubKey space);
 
 	@SuppressWarnings("unchecked")
 	public S withManagedPublicKey(PubKey space) {
@@ -71,9 +70,8 @@ public abstract class LocalGlobalNode<S extends LocalGlobalNode<S, L, N>, L exte
 		return discoveryService;
 	}
 
-	@SuppressWarnings("unchecked")
 	public L ensureNamespace(PubKey space) {
-		return namespaces.computeIfAbsent(space, k -> namespaceFactory.apply((S) this, k));
+		return namespaces.computeIfAbsent(space, this::createNamespace);
 	}
 
 	public boolean isMasterFor(PubKey space) {
