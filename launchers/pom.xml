@@ -1,49 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>io.datakernel</groupId>
-		<artifactId>datakernel</artifactId>
-		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<artifactId>datakernel-launchers</artifactId>
-	<packaging>pom</packaging>
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<name>DataKernel: Launchers</name>
-	<description>
-		A set of predefined launchers as well as some common initializers for services.
-	</description>
+  <artifactId>datakernel-launchers</artifactId>
+  <packaging>pom</packaging>
 
-	<modules>
-		<module>common</module>
-		<module>crdt</module>
-		<module>http</module>
-		<module>remotefs</module>
-		<module>rpc</module>
-	</modules>
+  <name>DataKernel: Launchers</name>
+  <description>
+    A set of predefined launchers as well as some common initializers for services.
+  </description>
 
-	<dependencies>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-boot</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<optional>true</optional>
-		</dependency>
+  <modules>
+    <module>common</module>
+    <module>crdt</module>
+    <module>http</module>
+    <module>remotefs</module>
+    <module>rpc</module>
+  </modules>
 
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-test</artifactId>
-			<version>${project.version}</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-boot</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-test</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
 </project>

@@ -1,42 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>io.datakernel</groupId>
-		<artifactId>datakernel</artifactId>
-		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<artifactId>datakernel-boot</artifactId>
+  <artifactId>datakernel-boot</artifactId>
 
-	<name>DataKernel: Boot</name>
-	<description>
-		An intelligent way of booting complex applications and services according to their dependencies
-	</description>
+  <name>DataKernel: Boot</name>
+  <description>
+    An intelligent way of booting complex applications and services according to their dependencies
+  </description>
 
-	<dependencies>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-net</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.google.inject</groupId>
-			<artifactId>guice</artifactId>
-			<version>4.2.0</version>
-			<classifier>no_aop</classifier>
-		</dependency>
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-net</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+      <classifier>no_aop</classifier>
+    </dependency>
 
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-test</artifactId>
-			<version>${project.version}</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-test</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
 </project>

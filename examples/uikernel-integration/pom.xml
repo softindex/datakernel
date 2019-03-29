@@ -1,33 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<artifactId>datakernel-examples</artifactId>
-		<groupId>io.datakernel</groupId>
-		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<artifactId>uikernel-integration</artifactId>
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-examples</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<name>Datakernel Examples: UIKernel integration</name>
+  <artifactId>uikernel-integration</artifactId>
 
-	<properties>
-		<datakernel.version>3.0.0</datakernel.version>
-		<main.class>io.datakernel.examples.UIKernelWebAppLauncher</main.class>
-	</properties>
+  <name>Datakernel Examples: UIKernel integration</name>
 
-	<dependencies>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-boot</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-uikernel</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-	</dependencies>
+  <properties>
+    <datakernel.version>3.0.0</datakernel.version>
+    <main.class>io.datakernel.examples.UIKernelWebAppLauncher</main.class>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-boot</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-uikernel</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
 </project>

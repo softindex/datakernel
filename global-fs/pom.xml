@@ -1,35 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>io.datakernel</groupId>
-		<artifactId>datakernel</artifactId>
-		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<artifactId>global-fs</artifactId>
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<name>Global: FS</name>
-	<description>
-		A distributed file system that is an alternative for IPFS and BitTorrent.
-	</description>
+  <artifactId>global-fs</artifactId>
 
-	<dependencies>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>global-common</artifactId>
-			<version>${project.version}</version>
-		</dependency>
+  <name>Global: FS</name>
+  <description>
+    A distributed file system that is an alternative for IPFS and BitTorrent.
+  </description>
 
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-test</artifactId>
-			<version>${project.version}</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>global-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-test</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
 </project>

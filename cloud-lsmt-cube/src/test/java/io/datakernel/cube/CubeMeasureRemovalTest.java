@@ -47,6 +47,7 @@ import org.junit.runner.RunWith;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +92,7 @@ public class CubeMeasureRemovalTest {
 	private Path logsDir;
 
 	@Before
-	public void before() throws IOException {
+	public void before() throws IOException, SQLException {
 		aggregationsDir = temporaryFolder.newFolder().toPath();
 		logsDir = temporaryFolder.newFolder().toPath();
 

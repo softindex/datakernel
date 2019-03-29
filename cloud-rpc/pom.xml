@@ -1,45 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>io.datakernel</groupId>
-		<artifactId>datakernel</artifactId>
-		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<artifactId>datakernel-rpc</artifactId>
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<name>DataKernel: RPC</name>
-	<description>
-		High-performance and fault-tolerant remote procedure call module for building distributed applications.
-		Provides a high-performance asynchronous binary RPC streaming protocol.
-	</description>
+  <artifactId>datakernel-rpc</artifactId>
 
-	<dependencies>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-net</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-datastream</artifactId>
-			<version>${project.version}</version>
-		</dependency>
+  <name>DataKernel: RPC</name>
+  <description>
+    High-performance and fault-tolerant remote procedure call module for building distributed applications.
+    Provides a high-performance asynchronous binary RPC streaming protocol.
+  </description>
 
-		<dependency>
-			<groupId>net.jpountz.lz4</groupId>
-			<artifactId>lz4</artifactId>
-		</dependency>
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-net</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-datastream</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-test</artifactId>
-			<version>${project.version}</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+    <dependency>
+      <groupId>net.jpountz.lz4</groupId>
+      <artifactId>lz4</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-test</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
 </project>

@@ -63,7 +63,7 @@ public class AnnouncementStorageTest {
 					try {
 						DataSource dataSource = dataSource(MY_SQL_PROPERTIES);
 						return MySqlAnnouncementStorage.create(dataSource);
-					} catch (IOException e) {
+					} catch (IOException | SQLException e) {
 						System.out.println("WARNING: Failed to get properties from " + MY_SQL_PROPERTIES + " (" +
 								e.getMessage() + "), using stub instead");
 						return new InMemoryAnnouncementStorage();

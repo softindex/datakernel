@@ -1,31 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>io.datakernel</groupId>
-		<artifactId>datakernel</artifactId>
-		<version>3.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<artifactId>datakernel-eventloop</artifactId>
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<name>DataKernel: Event Loop</name>
-	<description>
-		Efficient non-blocking network and file I/O, for building Node.js-like client/server applications with
-		high performance requirements. It is somewhat similar to Event Loop in Node.js.
-		Although Eventloop runs in a single thread, multiple Eventloops can run at the same time allowing for efficient
-		CPU usage.
-	</description>
+  <artifactId>datakernel-eventloop</artifactId>
 
-	<dependencies>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-common</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-	</dependencies>
+  <name>DataKernel: Event Loop</name>
+  <description>
+    Efficient non-blocking network and file I/O, for building Node.js-like client/server applications with
+    high performance requirements. It is similar to Event Loop in Node.js.
+    Although Eventloop runs in a single thread, multiple Eventloops can run at the same time allowing for efficient
+    CPU usage.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
 
 </project>

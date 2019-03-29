@@ -17,7 +17,7 @@
 package io.datakernel.test;
 
 import ch.qos.logback.classic.Level;
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import com.mysql.cj.jdbc.MysqlDataSource;
 import io.datakernel.async.Callback;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.Properties;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -35,7 +36,7 @@ import java.util.function.Supplier;
 public class TestUtils {
 	private static int activePromises = 0;
 
-	public static DataSource dataSource(String databasePropertiesPath) throws IOException {
+	public static DataSource dataSource(String databasePropertiesPath) throws IOException, SQLException {
 		Properties properties = new Properties();
 		properties.load(new InputStreamReader(new BufferedInputStream(new FileInputStream(new File(databasePropertiesPath))), StandardCharsets.UTF_8));
 

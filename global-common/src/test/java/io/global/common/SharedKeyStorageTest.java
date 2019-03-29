@@ -48,24 +48,26 @@ public class SharedKeyStorageTest {
 	@Parameters(name = "{0}")
 	public static Collection<Object[]> getParameters() {
 		return Arrays.asList(
-				new Object[]{(Function<Path, SharedKeyStorage>) path -> {
-					try {
-						return RocksDbSharedKeyStorage.create(RocksDB.open(path.toString()));
-					} catch (RocksDBException e) {
-						throw new AssertionError(e);
-					}
-				}
+				new Object[]{
+						(Function<Path, SharedKeyStorage>) path -> {
+							try {
+								return RocksDbSharedKeyStorage.create(RocksDB.open(path.toString()));
+							} catch (RocksDBException e) {
+								throw new AssertionError(e);
+							}
+						}
 				},
-				new Object[]{(Function<Path, SharedKeyStorage>) path -> {
-					try {
-						DataSource dataSource = dataSource(MY_SQL_PROPERTIES);
-						return MySqlSharedKeyStorage.create(dataSource);
-					} catch (IOException e) {
-						System.out.println("WARNING: Failed to get properties from " + MY_SQL_PROPERTIES + " (" +
-								e.getMessage() + "), using stub instead");
-						return new InMemorySharedKeyStorage();
-					}
-				}
+				new Object[]{
+						(Function<Path, SharedKeyStorage>) path -> {
+							try {
+								DataSource dataSource = dataSource(MY_SQL_PROPERTIES);
+								return MySqlSharedKeyStorage.create(dataSource);
+							} catch (IOException | SQLException e) {
+								System.out.println("WARNING: Failed to get properties from " + MY_SQL_PROPERTIES + " (" +
+										e.getMessage() + "), using stub instead");
+								return new InMemorySharedKeyStorage();
+							}
+						}
 				}
 		);
 	}
