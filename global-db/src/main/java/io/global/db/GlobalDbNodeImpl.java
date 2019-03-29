@@ -22,9 +22,10 @@ import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.ref.BooleanRef;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -35,6 +36,7 @@ import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -45,11 +47,15 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.global.util.Utils.nSuccessesOrLess;
 
 public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl, GlobalDbNamespace, GlobalDbNode> implements GlobalDbNode, Initializable<GlobalDbNodeImpl> {
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(GlobalDbNodeImpl.class, "latencyMargin", Duration.ofMinutes(5));
+
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
 
 	private boolean doesDownloadCaching = true;
 	private boolean doesUploadCaching = false;
+
+	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
 	private final BiFunction<PubKey, String, DbStorage> storageFactory;
 
@@ -57,15 +63,15 @@ public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl,
 
 	// region creators
 	private GlobalDbNodeImpl(RawServerId id, DiscoveryService discoveryService,
-							  Function<RawServerId, GlobalDbNode> nodeFactory,
-							  BiFunction<PubKey, String, DbStorage> storageFactory) {
+							 Function<RawServerId, GlobalDbNode> nodeFactory,
+							 BiFunction<PubKey, String, DbStorage> storageFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 	}
 
 	public static GlobalDbNodeImpl create(RawServerId id, DiscoveryService discoveryService,
-										   Function<RawServerId, GlobalDbNode> nodeFactory,
-										   BiFunction<PubKey, String, DbStorage> storageFactory) {
+										  Function<RawServerId, GlobalDbNode> nodeFactory,
+										  BiFunction<PubKey, String, DbStorage> storageFactory) {
 		return new GlobalDbNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
 	// endregion
@@ -97,39 +103,23 @@ public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl,
 								ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.create(buffer.getSupplier())
 										.lenient();
 
-								boolean[] localCompleted = {false};
+								BooleanRef localCompleted = new BooleanRef(false);
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
-											.withAcknowledgement(ack -> {
-												return ack.whenComplete((Callback<? super Void>) ($, e) -> {
-													if (e == null) {
-														localCompleted[0] = true;
-													} else {
-														splitter.close(e);
-													}
-												});
-											}));
+											.withAcknowledgement(ack ->
+													ack.whenComplete((Callback<? super Void>) ($, e) -> {
+														if (e == null) {
+															localCompleted.set(true);
+														} else {
+															splitter.close(e);
+														}
+													})));
 								} else {
-									localCompleted[0] = true;
+									localCompleted.set(true);
 								}
 
-								int[] up = {consumers.size()};
-
-								consumers.forEach(output -> splitter.addOutput()
-										.set(output.withAcknowledgement(ack -> ack.whenException(e -> {
-											if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
-												splitter.close(e);
-											}
-										}))));
-
-								return buffer.getConsumer()
-										.withAcknowledgement(ack -> ack
-												.then($ -> {
-													if (up[0] >= uploadSuccessNumber) {
-														return Promise.complete();
-													}
-													return Promise.ofException(new StacklessException(GlobalDbNodeImpl.class, "Not enough successes"));
-												}));
+								MaterializedPromise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
+								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 							});
 
 				});

@@ -33,6 +33,7 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
+import io.datakernel.util.ref.LongRef;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -155,20 +156,20 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 									logger.trace("download size for file {} is {}: {}", name, receivingSize, this);
 
-									long[] size = {0};
+									LongRef size = new LongRef(0);
 									return Promise.of(messaging.receiveBinaryStream()
-											.peek(buf -> size[0] += buf.readRemaining())
+											.peek(buf -> size.inc(buf.readRemaining()))
 											.withEndOfStream(eos -> eos
 													.then($ -> messaging.sendEndOfStream())
 													.then(result -> {
-														if (size[0] == receivingSize) {
+														if (size.get() == receivingSize) {
 															return Promise.of(result);
 														}
 														logger.error("invalid stream size for file " + name +
 																" (offset " + offset + ", length " + length + ")," +
 																" expected: " + receivingSize +
-																" actual: " + size[0]);
-														return Promise.ofException(size[0] < receivingSize ? UNEXPECTED_END_OF_STREAM : TOO_MUCH_DATA);
+																" actual: " + size.get());
+														return Promise.ofException(size.get() < receivingSize ? UNEXPECTED_END_OF_STREAM : TOO_MUCH_DATA);
 													})
 													.whenComplete(downloadFinishPromise.recordStats())
 													.whenResult($1 -> messaging.close())));

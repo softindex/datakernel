@@ -16,12 +16,16 @@
 
 package io.datakernel.csp.process;
 
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelInput;
 import io.datakernel.csp.dsl.WithChannelOutputs;
 import io.datakernel.exception.Exceptions;
+import io.datakernel.exception.StacklessException;
+import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.IntRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,6 +79,24 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		};
 	}
 
+	public MaterializedPromise<Void> splitInto(List<ChannelConsumer<T>> consumers, int requiredSuccesses, BooleanRef extraCondition) {
+		IntRef up = new IntRef(consumers.size());
+
+		consumers.forEach(output ->
+				outputs.add(sanitize(output
+						.withAcknowledgement(ack ->
+								ack.whenException(e -> {
+									if (e != null && up.dec() < requiredSuccesses && extraCondition.get()) {
+										close(e);
+									}
+								})))));
+		return startProcess()
+				.then($ -> up.get() >= requiredSuccesses ?
+						Promise.complete() :
+						Promise.ofException(new StacklessException(ChannelSplitter.class, "Not enough successes")))
+				.materialize();
+	}
+
 	private void tryStart() {
 		if (input != null && outputs.stream().allMatch(Objects::nonNull)) {
 			getCurrentEventloop().post(this::startProcess);
@@ -111,7 +133,9 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 
 	@Override
 	protected void doProcess() {
-		if (isProcessComplete()) return;
+		if (isProcessComplete()) {
+			return;
+		}
 		input.get()
 				.whenComplete((item, e) -> {
 					if (e == null) {

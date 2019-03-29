@@ -1,5 +1,8 @@
 package io.global.common.api;
 
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.util.ApplicationSettings;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -10,6 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, L extends AbstractGlobalNamespace<L, S, N>, N> {
 	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(AbstractGlobalNode.class, "latencyMargin", Duration.ofMinutes(5));
@@ -70,11 +74,25 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 		return discoveryService;
 	}
 
+	// public for testing
 	public L ensureNamespace(PubKey space) {
 		return namespaces.computeIfAbsent(space, this::createNamespace);
 	}
 
-	public boolean isMasterFor(PubKey space) {
+	protected boolean isMasterFor(PubKey space) {
 		return managedPublicKeys.contains(space);
+	}
+
+	protected <T> Promise<T> simpleMethod(PubKey space, Function<N, Promise<T>> self, Function<L, Promise<T>> local) {
+		L ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
+				.then(nodes -> {
+					if (isMasterFor(space)) {
+						return local.apply(ns);
+					}
+					return Promises.firstSuccessful(Stream.concat(
+							nodes.stream().map(globalFsNode -> () -> self.apply(globalFsNode)),
+							Stream.generate(() -> AsyncSupplier.cast(() -> local.apply(ns))).limit(1)));
+				});
 	}
 }

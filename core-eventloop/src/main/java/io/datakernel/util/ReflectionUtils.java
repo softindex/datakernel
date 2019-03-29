@@ -18,6 +18,7 @@ package io.datakernel.util;
 
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.*;
+import io.datakernel.util.ref.BooleanRef;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.MXBean;
@@ -41,24 +42,24 @@ public final class ReflectionUtils {
 
 	public static boolean isPrimitiveType(Class<?> cls) {
 		return cls == boolean.class
-			|| cls == byte.class
-			|| cls == char.class
-			|| cls == short.class
-			|| cls == int.class
-			|| cls == long.class
-			|| cls == float.class
-			|| cls == double.class;
+				|| cls == byte.class
+				|| cls == char.class
+				|| cls == short.class
+				|| cls == int.class
+				|| cls == long.class
+				|| cls == float.class
+				|| cls == double.class;
 	}
 
 	public static boolean isBoxedPrimitiveType(Class<?> cls) {
 		return cls == Boolean.class
-			|| cls == Byte.class
-			|| cls == Character.class
-			|| cls == Short.class
-			|| cls == Integer.class
-			|| cls == Long.class
-			|| cls == Float.class
-			|| cls == Double.class;
+				|| cls == Byte.class
+				|| cls == Character.class
+				|| cls == Short.class
+				|| cls == Integer.class
+				|| cls == Long.class
+				|| cls == Float.class
+				|| cls == Double.class;
 	}
 
 	public static boolean isPrimitiveTypeOrBox(Class<?> cls) {
@@ -83,17 +84,17 @@ public final class ReflectionUtils {
 
 	public static boolean isGetter(Method method) {
 		return Modifier.isPublic(method.getModifiers())
-			&& method.getName().length() > 2
-			&& (method.getName().startsWith("get") && method.getReturnType() != void.class
-			|| method.getName().startsWith("is") && (method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class));
+				&& method.getName().length() > 2
+				&& (method.getName().startsWith("get") && method.getReturnType() != void.class
+				|| method.getName().startsWith("is") && (method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class));
 	}
 
 	public static boolean isSetter(Method method) {
 		return Modifier.isPublic(method.getModifiers())
-			&& method.getName().length() > 3
-			&& method.getName().startsWith("set")
-			&& method.getReturnType() == void.class
-			&& method.getParameterCount() == 1;
+				&& method.getName().length() > 3
+				&& method.getName().startsWith("set")
+				&& method.getReturnType() == void.class
+				&& method.getParameterCount() == 1;
 	}
 
 	public static String extractFieldNameFromGetter(Method getter) {
@@ -146,16 +147,16 @@ public final class ReflectionUtils {
 			};
 		}
 		return Arrays.stream(cls.getConstructors())
-			.filter(c -> c.getParameterTypes().length == 0)
-			.findAny()
-			.<Supplier<T>>map(c -> () -> {
-				try {
-					return (T) c.newInstance();
-				} catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-					throw new UncheckedException(e);
-				}
-			})
-			.orElse(null);
+				.filter(c -> c.getParameterTypes().length == 0)
+				.findAny()
+				.<Supplier<T>>map(c -> () -> {
+					try {
+						return (T) c.newInstance();
+					} catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+						throw new UncheckedException(e);
+					}
+				})
+				.orElse(null);
 	}
 
 	public static boolean canBeCreated(Class<?> cls, String... factoryMethodNames) {
@@ -177,22 +178,28 @@ public final class ReflectionUtils {
 			return;
 		}
 		for (Method method : instance.getClass().getMethods()) {
-			if (method.getParameters().length != 0 || !Modifier.isPublic(method.getModifiers()))
+			if (method.getParameters().length != 0 || !Modifier.isPublic(method.getModifiers())) {
 				continue;
+			}
 			Class<?> returnType = method.getReturnType();
-			if (returnType == void.class || isSimpleType(returnType))
+			if (returnType == void.class || isSimpleType(returnType)) {
 				continue;
-			if (Arrays.stream(method.getAnnotations()).noneMatch(a -> a.annotationType() == JmxAttribute.class))
+			}
+			if (Arrays.stream(method.getAnnotations()).noneMatch(a -> a.annotationType() == JmxAttribute.class)) {
 				continue;
+			}
 			Object fieldValue;
 			try {
 				fieldValue = method.invoke(instance);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				continue;
 			}
-			if (fieldValue == null)
+			if (fieldValue == null) {
 				continue;
-			if (action.test(fieldValue)) continue;
+			}
+			if (action.test(fieldValue)) {
+				continue;
+			}
 			if (Map.class.isAssignableFrom(returnType)) {
 				for (Object item : ((Map<?, ?>) fieldValue).values()) {
 					visitFields(item, action);
@@ -247,35 +254,35 @@ public final class ReflectionUtils {
 			return false;
 		}
 		Set<String> attributeNames = getAllInterfaces(instance.getClass()).stream()
-			.filter(ReflectionUtils::isBeanInterface)
-			.flatMap(i -> Arrays.stream(i.getMethods())
-				.filter(ReflectionUtils::isGetter)
-				.map(Method::getName))
-			.collect(toSet());
-		boolean[] changed = {false};
+				.filter(ReflectionUtils::isBeanInterface)
+				.flatMap(i -> Arrays.stream(i.getMethods())
+						.filter(ReflectionUtils::isGetter)
+						.map(Method::getName))
+				.collect(toSet());
+		BooleanRef changed = new BooleanRef(false);
 		Arrays.stream(instance.getClass().getMethods())
-			.filter(method -> isGetter(method) && (attributeNames.contains(method.getName())
-				|| Arrays.stream(method.getAnnotations()).anyMatch(a -> a.annotationType() == JmxAttribute.class)))
-			.sorted(Comparator.comparing(Method::getName))
-			.forEach(method -> {
-				Object fieldValue;
-				method.setAccessible(true); // anonymous classes do not work without this, wow
-				try {
-					fieldValue = method.invoke(instance);
-				} catch (IllegalAccessException | InvocationTargetException e) {
-					return;
-				}
-				changed[0] = true;
-				JmxAttribute annotation = method.getAnnotation(JmxAttribute.class);
-				String name = annotation == null || annotation.name().equals(JmxAttribute.USE_GETTER_NAME) ?
-					extractFieldNameFromGetter(method) :
-					annotation.name();
-				name = rootName.isEmpty() ? name : rootName + (name.isEmpty() ? "" : "_" + name);
-				if (fieldValue != instance && !attrs.containsKey(name) && !getJmxAttributes(fieldValue, name, attrs)) {
-					attrs.put(name, fieldValue);
-				}
-			});
-		return changed[0];
+				.filter(method -> isGetter(method) && (attributeNames.contains(method.getName())
+						|| Arrays.stream(method.getAnnotations()).anyMatch(a -> a.annotationType() == JmxAttribute.class)))
+				.sorted(Comparator.comparing(Method::getName))
+				.forEach(method -> {
+					Object fieldValue;
+					method.setAccessible(true); // anonymous classes do not work without this, wow
+					try {
+						fieldValue = method.invoke(instance);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						return;
+					}
+					changed.set(true);
+					JmxAttribute annotation = method.getAnnotation(JmxAttribute.class);
+					String name = annotation == null || annotation.name().equals(JmxAttribute.USE_GETTER_NAME) ?
+							extractFieldNameFromGetter(method) :
+							annotation.name();
+					name = rootName.isEmpty() ? name : rootName + (name.isEmpty() ? "" : "_" + name);
+					if (fieldValue != instance && !attrs.containsKey(name) && !getJmxAttributes(fieldValue, name, attrs)) {
+						attrs.put(name, fieldValue);
+					}
+				});
+		return changed.get();
 	}
 
 	public static void resetStats(Object instance) {
@@ -321,6 +328,7 @@ public final class ReflectionUtils {
 	 * If annotation has no elements, string looks like this : "AnnotationName"
 	 * If annotation has a single element with the name "value", string looks like this : "AnnotationName(someValue)"
 	 * If annotation has one or more custom elements, string looks like this : "(key1=value1,key2=value2)"
+	 *
 	 * @param annotation
 	 * @return String representation of annotation with its elements
 	 * @throws ReflectiveOperationException

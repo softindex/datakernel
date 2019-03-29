@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.util.ref.LongRef;
 import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -79,14 +80,14 @@ public final class GlobalFsDriver {
 	private Promise<ChannelConsumer<ByteBuf>> doUpload(
 			KeyPair keys, String filename, long offset, long revision, long skip,
 			@Nullable SimKey key, @Nullable SHA256Digest startingDigest) {
-		long[] size = {offset + skip};
+		LongRef size = new LongRef(offset + skip);
 		return node.upload(keys.getPubKey(), filename, offset + skip, revision)
 				.map(consumer -> {
 					Hash simKeyHash = key != null ? Hash.sha1(key.getBytes()) : null;
 					return consumer
 							.transformWith(FrameSigner.create(keys.getPrivKey(), checkpointPosStrategy, filename, offset + skip, revision, startingDigest, simKeyHash))
 							.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset + skip))
-							.peek(buf -> size[0] += buf.readRemaining())
+							.peek(buf -> size.inc(buf.readRemaining()))
 							.transformWith(ChannelByteRanger.drop(skip));
 				});
 	}

@@ -71,17 +71,17 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
-			DiscoveryService discoveryService,
-			@Nullable CommitStorage commitStorage,
-			Function<RawServerId, GlobalOTNode> nodeFactory) {
+							 DiscoveryService discoveryService,
+							 @Nullable CommitStorage commitStorage,
+							 Function<RawServerId, GlobalOTNode> nodeFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.eventloop = checkNotNull(eventloop);
 		this.commitStorage = checkNotNull(commitStorage);
 	}
 
 	public static GlobalOTNodeImpl create(Eventloop eventloop, RawServerId id,
-			DiscoveryService discoveryService, CommitStorage commitStorage,
-			Function<RawServerId, GlobalOTNode> nodeFactory) {
+										  DiscoveryService discoveryService, CommitStorage commitStorage,
+										  Function<RawServerId, GlobalOTNode> nodeFactory) {
 		return new GlobalOTNodeImpl(eventloop, id, discoveryService, commitStorage, nodeFactory);
 	}
 
@@ -95,6 +95,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return new GlobalOTNamespace(this, space);
 	}
 
+	@Override
 	public RawServerId getId() {
 		return id;
 	}
@@ -211,13 +212,13 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	}
 
 	private Promise<@Nullable RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-			Set<CommitId> required, Set<CommitId> existing) {
+																 Set<CommitId> required, Set<CommitId> existing) {
 		return Promise.ofCallback(cb -> getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb));
 	}
 
 	private void getNextStreamEntryImpl(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-			Set<CommitId> required, Set<CommitId> existing,
-			SettableCallback<@Nullable RawCommitEntry> cb) {
+										Set<CommitId> required, Set<CommitId> existing,
+										SettableCallback<@Nullable RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;

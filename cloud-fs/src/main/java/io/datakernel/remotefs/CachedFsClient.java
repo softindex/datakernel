@@ -27,6 +27,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.ref.LongRef;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -282,7 +283,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 		if (totalCacheSize + downloadingNowSize <= cacheSizeLimit.toLong()) {
 			return Promise.complete();
 		}
-		long[] sizeAccum = {0};
+		LongRef size = new LongRef(0);
 		return cacheClient.list("**")
 				.map(list -> list
 						.stream()
@@ -293,10 +294,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 									new FullCacheStat(metadata, cacheStat.numberOfHits, cacheStat.lastHitTimestamp);
 						})
 						.sorted(comparator.reversed())
-						.filter(fullCacheStat -> {
-							sizeAccum[0] += fullCacheStat.getFileMetadata().getSize();
-							return sizeAccum[0] > cacheSizeLimit.toLong() * LOAD_FACTOR;
-						}))
+						.filter(fullCacheStat -> size.inc(fullCacheStat.getFileMetadata().getSize()) > cacheSizeLimit.toLong() * LOAD_FACTOR))
 				.then(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())

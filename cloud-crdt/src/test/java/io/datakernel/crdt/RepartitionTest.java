@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.util.ref.IntRef;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -51,12 +52,12 @@ public final class RepartitionTest {
 
 		clients.forEach((k, v) -> {
 			System.out.println(k + ":");
-			int[] i = {0};
+			IntRef count = new IntRef(0);
 			v.iterator().forEachRemaining(x -> {
-				i[0]++;
+				count.inc();
 				System.out.println(x);
 			});
-			System.out.println("Was " + i[0] + " elements");
+			System.out.println("Was " + count.get() + " elements");
 		});
 	}
 }

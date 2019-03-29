@@ -28,6 +28,7 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.http.MultipartParser.MultipartFrame;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Recyclable;
+import io.datakernel.util.ref.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -88,7 +89,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 	private Promise<Void> splitByFilesImpl(MultipartFrame headerFrame, ChannelSupplier<MultipartFrame> frames, Function<String, ChannelConsumer<ByteBuf>> consumerFunction) {
 		return getFilenameFromHeader(headerFrame.getHeaders().get("content-disposition"))
 				.then(filename -> {
-					MultipartFrame[] last = {null};
+					Ref<MultipartFrame> last = new Ref<>();
 					return frames
 							.until(f -> {
 								boolean res = !f.isData() && getFilenameFromHeader(f.getHeaders().get("content-disposition"))
@@ -96,14 +97,16 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 										.materialize()
 										.getResult() != null; // ignoring any exceptions in this hack
 								if (res) {
-									last[0] = f;
+									last.set(f);
 								}
 								return res;
 							})
 							.filter(MultipartFrame::isData)
 							.map(MultipartFrame::getData)
 							.streamTo(consumerFunction.apply(filename))
-							.then($ -> last[0] != null ? splitByFilesImpl(last[0], frames, consumerFunction) : Promise.complete())
+							.then($ -> last.get() != null ?
+									splitByFilesImpl(last.get(), frames, consumerFunction) :
+									Promise.complete())
 							.toVoid();
 				});
 	}

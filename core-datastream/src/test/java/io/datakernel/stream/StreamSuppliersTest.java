@@ -1,6 +1,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.util.ref.IntRef;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -52,16 +53,16 @@ public class StreamSuppliersTest {
 	@Test
 	public void testSupplierSupplier() {
 		List<Integer> actual = new ArrayList<>();
-		int[] i = {0};
+		IntRef count = new IntRef(-1);
 		await(StreamSupplier.ofSupplier(
 				() -> {
-					if (i[0] == 10) {
+					if (count.get() == 10) {
 						return null;
 					}
-					return i[0]++;
+					return count.inc();
 				})
 				.streamTo(StreamConsumerToList.create(actual)));
 
-		assertEquals(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), actual);
+		assertEquals(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), actual);
 	}
 }

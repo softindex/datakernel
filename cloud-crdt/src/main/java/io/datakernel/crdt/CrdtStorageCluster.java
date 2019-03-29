@@ -37,6 +37,7 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.ref.BooleanRef;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -199,14 +200,14 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 								.whenException(err -> markDead(entry.getKey(), err))
 								.toTry()))
 				.then(tries -> {
-					boolean[] anyConnection = {false};
+					BooleanRef anyConnection = new BooleanRef(false);
 					List<StreamConsumer<CrdtData<K, S>>> successes = tries.stream()
 							.map(t -> {
-								anyConnection[0] |= t.isSuccess();
+								anyConnection.or(t.isSuccess());
 								return t.getOrSupply(StreamConsumer::idle);
 							})
 							.collect(toList());
-					if (!anyConnection[0]) {
+					if (!anyConnection.get()) {
 						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
 					}
 					ShardingStreamSplitter<CrdtData<K, S>, K> shplitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);

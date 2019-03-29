@@ -3,6 +3,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
+import io.datakernel.util.ref.BooleanRef;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -23,7 +24,7 @@ public class StreamSuspendBufferTest {
 
 		SettablePromise<List<String>> result = new SettablePromise<>();
 
-		boolean[] suspended = {false};
+		BooleanRef suspended = new BooleanRef(false);
 
 		StreamSupplier<String> supplier = StreamSupplier.ofIterable(items)
 				.transformWith(suspendingModifier)
@@ -34,12 +35,12 @@ public class StreamSuspendBufferTest {
 				.transformWith(decorator((context, receiver) ->
 						item -> {
 							receiver.accept(item);
-							//									logger.info("Received: " + item);
-							assertFalse("Should not be suspended when receiving new item!", suspended[0]);
-							suspended[0] = true;
+							// logger.info("Received: " + item);
+							assertFalse("Should not be suspended when receiving new item!", suspended.get());
+							suspended.set(true);
 							context.suspend();
 							Eventloop.getCurrentEventloop().post(() -> {
-								suspended[0] = false;
+								suspended.set(false);
 								context.resume();
 							});
 						}));

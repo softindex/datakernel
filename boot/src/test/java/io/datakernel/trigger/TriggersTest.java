@@ -3,6 +3,7 @@ package io.datakernel.trigger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
+import io.datakernel.util.ref.BooleanRef;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,11 +62,11 @@ public class TriggersTest {
 	public void testDuplicateTriggersResume() {
 		triggers = Triggers.create();
 		triggers.now = CurrentTimeProvider.ofTimeSequence(System.currentTimeMillis(), Triggers.CACHE_TIMEOUT.toMillis());
-		boolean[] condition = {true};
+		BooleanRef condition = new BooleanRef(true);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", () -> {
-			if (!condition[0]) {
+			if (!condition.get()) {
 				return TriggerResult.none();
 			}
 			return TriggerResult.create();
@@ -74,10 +75,10 @@ public class TriggersTest {
 		assertEquals(3, triggers.getResults().size());
 		triggers.suppressTriggerByName("nameOne");
 		assertEquals(0, triggers.getResults().size());
-		condition[0] = false;
+		condition.set(false);
 		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 10, 10);
 		triggers.getResults();
-		condition[0] = true;
+		condition.set(true);
 		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 1000, 10);
 		assertEquals(1, triggers.getResults().size());
 	}
@@ -86,9 +87,9 @@ public class TriggersTest {
 	public void testResumeTrigger() {
 		triggers = Triggers.create();
 		triggers.now = CurrentTimeProvider.ofTimeSequence(System.currentTimeMillis(), Triggers.CACHE_TIMEOUT.toMillis());
-		boolean[] condition = {true};
+		BooleanRef condition = new BooleanRef(true);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", () -> {
-			if (!condition[0]) {
+			if (!condition.get()) {
 				return TriggerResult.none();
 			}
 			return TriggerResult.create();
@@ -97,10 +98,10 @@ public class TriggersTest {
 		assertEquals(1, results.size());
 		triggers.suppressTriggerByName("nameOne");
 		assertEquals(0, triggers.getResults().size());
-		condition[0] = false;
+		condition.set(false);
 		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 10, 10);
 		triggers.getResults();
-		condition[0] = true;
+		condition.set(true);
 		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 1000, 10);
 		assertEquals(1, triggers.getResults().size());
 	}

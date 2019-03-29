@@ -9,6 +9,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.ContentTypes;
 import io.datakernel.http.HttpHeaderValue;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.util.ref.LongRef;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -29,9 +30,9 @@ public final class HttpUploadResetTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request ->
 				httpUpload(request, (name, offset, revision) -> {
 					System.out.println("name = " + name + ", offset = " + offset + ", revision = " + revision);
-					long[] size = {0};
+					LongRef size = new LongRef(0);
 					return Promise.of(ChannelConsumers.<ByteBuf>recycling().mapAsync(buf -> {
-						if ((size[0] += buf.readRemaining()) > 10 * 1024 * 1024 /* 10 MB*/) {
+						if (size.inc(buf.readRemaining()) > 10 * 1024 * 1024 /* 10 MB*/) {
 							// could be tested by Content-Length ofc, but here we are testing what happens
 							// exactly at some point of actual data being received
 							return Promise.<ByteBuf>ofException(new StacklessException(HttpUploadResetTest.class, "File too large"));

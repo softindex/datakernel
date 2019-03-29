@@ -24,6 +24,7 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.ref.BooleanRef;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Rule;
@@ -96,16 +97,16 @@ public class TriggersModuleTest {
 		injector.getInstance(Key.get(WorkerPool.class, named("first"))).getInstances(String.class);
 		injector.getInstance(Key.get(WorkerPool.class, named("second"))).getInstances(String.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-		boolean[] wasExecuted = {false};
+		BooleanRef wasExecuted = new BooleanRef(false);
 		try {
 			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
 			assertEquals(firstPoolSize + secondPoolSize, triggersWatcher.getResults().size());
 			triggersWatcher.getResults()
 					.forEach(triggerWithResult -> assertTrue(triggerWithResult.toString().startsWith("HIGH : String : test :: ")));
-			wasExecuted[0] = true;
+			wasExecuted.set(true);
 		} finally {
-			assertTrue(wasExecuted[0]);
+			assertTrue(wasExecuted.get());
 			serviceGraph.stopFuture().get();
 		}
 	}
@@ -148,16 +149,16 @@ public class TriggersModuleTest {
 				}
 		);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-		boolean[] wasExecuted = {false};
+		BooleanRef wasExecuted = new BooleanRef(false);
 		try {
 			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
 			List<TriggerWithResult> triggerResults = triggersWatcher.getResults();
 			assertEquals(3, triggerResults.size());
 			triggerResults.forEach(result -> assertTrue(result.toString().startsWith("HIGH : Eventloop : test")));
-			wasExecuted[0] = true;
+			wasExecuted.set(true);
 		} finally {
-			assertTrue(wasExecuted[0]);
+			assertTrue(wasExecuted.get());
 			serviceGraph.stopFuture().get();
 		}
 	}

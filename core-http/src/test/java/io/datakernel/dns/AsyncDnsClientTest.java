@@ -24,6 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.inspector.AbstractInspector;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.RequiresInternetConnection;
+import io.datakernel.util.ref.IntRef;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -131,7 +132,7 @@ public final class AsyncDnsClientTest {
 				DnsCache.create(eventloop)
 		);
 
-		int[] index = {0};
+		IntRef index = new IntRef(-1);
 		IntStream.range(0, threadCount)
 				.mapToObj($ -> (Runnable) () -> {
 					eventloop.startExternalTask();
@@ -163,7 +164,7 @@ public final class AsyncDnsClientTest {
 						eventloop.completeExternalTask();
 					}
 				})
-				.forEach(runnable -> new Thread(runnable, "test thread #" + index[0]++).start());
+				.forEach(runnable -> new Thread(runnable, "test thread #" + index.inc()).start());
 
 		System.out.println("Real requests per query:");
 		inspector.getRequestCounts().forEach((k, v) -> System.out.println(v + " of " + k));

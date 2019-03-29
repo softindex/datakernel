@@ -21,10 +21,10 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.ref.BooleanRef;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
@@ -66,18 +65,18 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	// region creators
 	private GlobalFsNodeImpl(RawServerId id, DiscoveryService discoveryService,
-							  Function<RawServerId, GlobalFsNode> nodeFactory,
-							  Function<PubKey, FsClient> storageFactory,
-							  Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
+							 Function<RawServerId, GlobalFsNode> nodeFactory,
+							 Function<PubKey, FsClient> storageFactory,
+							 Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 		this.checkpointStorageFactory = checkpointStorageFactory;
 	}
 
 	public static GlobalFsNodeImpl create(RawServerId id, DiscoveryService discoveryService,
-										   Function<RawServerId, GlobalFsNode> nodeFactory,
-										   Function<PubKey, FsClient> storageFactory,
-										   Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
+										  Function<RawServerId, GlobalFsNode> nodeFactory,
+										  Function<PubKey, FsClient> storageFactory,
+										  Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
 		return new GlobalFsNodeImpl(id, discoveryService, nodeFactory, storageFactory, checkpointStorageFactory);
 	}
 
@@ -138,44 +137,24 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 								ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
 
-								boolean[] localCompleted = new boolean[1];
+								BooleanRef localCompleted = new BooleanRef(false);
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput()
 											.set(ChannelConsumer.ofPromise(ns.upload(filename, offset, revision))
-													.withAcknowledgement(ack -> {
-														return ack.whenComplete((Callback<? super Void>) ($, e) -> {
-															if (e == null) {
-																localCompleted[0] = true;
-															} else {
-																splitter.close(e);
-															}
-														});
-													}));
+													.withAcknowledgement(ack -> ack
+															.whenComplete((Callback<? super Void>) ($, e) -> {
+																if (e == null) {
+																	localCompleted.set(true);
+																} else {
+																	splitter.close(e);
+																}
+															})));
 								} else {
-									localCompleted[0] = true;
+									localCompleted.set(true);
 								}
 
-								int[] up = {consumers.size()};
-
-								consumers.forEach(output -> splitter.addOutput()
-										.set(output
-												.withAcknowledgement(ack -> ack.whenException(e -> {
-													if (e != null && --up[0] < uploadSuccessNumber && localCompleted[0]) {
-														splitter.close(e);
-													}
-												}))));
-
-								MaterializedPromise<Void> process = splitter.startProcess();
-
-								return buffer.getConsumer()
-										.withAcknowledgement(ack -> ack
-												.both(process)
-												.then($ -> {
-													if (up[0] >= uploadSuccessNumber) {
-														return Promise.complete();
-													}
-													return Promise.ofException(new StacklessException(GlobalFsNodeImpl.class, "Not enough successes"));
-												}));
+								MaterializedPromise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
+								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 							});
 				}).whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
@@ -222,37 +201,28 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 				}).whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
-	private <T> Promise<T> simpleMethod(PubKey space, Function<GlobalFsNode, Promise<T>> self, Function<GlobalFsNamespace, Promise<T>> local) {
-		GlobalFsNamespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.then(nodes -> {
-					if (isMasterFor(space)) {
-						return local.apply(ns);
-					}
-					return Promises.firstSuccessful(Stream.concat(
-							nodes.stream().map(globalFsNode -> () -> self.apply(globalFsNode)),
-							Stream.generate(() -> AsyncSupplier.cast(() -> local.apply(ns))).limit(1)));
-				});
-	}
-
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> listEntities(PubKey space, String glob) {
-		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob)).whenComplete(toLogger(logger, TRACE, "list", space, glob, this));
+		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob))
+				.whenComplete(toLogger(logger, TRACE, "list", space, glob, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
 		return simpleMethod(space, node -> node.getMetadata(space, filename), ns -> ns.getMetadata(filename))
-				.mapEx((res, e) -> e != null ? null : res).whenComplete(toLogger(logger, TRACE, "getMetadata", space, filename, this));
+				.mapEx((res, e) -> e != null ? null : res)
+				.whenComplete(toLogger(logger, TRACE, "getMetadata", space, filename, this));
 	}
 
 	@Override
 	public Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone) {
-		return simpleMethod(space, node -> node.delete(space, tombstone), ns -> ns.delete(tombstone)).whenComplete(toLogger(logger, "delete", space, tombstone, this));
+		return simpleMethod(space, node -> node.delete(space, tombstone), ns -> ns.delete(tombstone))
+				.whenComplete(toLogger(logger, "delete", space, tombstone, this));
 	}
 
 	public Promise<Boolean> push() {
-		return tolerantCollectBoolean(namespaces.values(), this::push).whenComplete(toLogger(logger, "push", this));
+		return tolerantCollectBoolean(namespaces.values(), this::push)
+				.whenComplete(toLogger(logger, "push", this));
 	}
 
 	public Promise<Boolean> push(PubKey space) {
@@ -261,23 +231,27 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	private Promise<Boolean> push(GlobalFsNamespace ns) {
 		return ns.ensureMasterNodes()
-				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**"))).whenComplete(toLogger(logger, "push", ns.getSpace(), this));
+				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**")))
+				.whenComplete(toLogger(logger, "push", ns.getSpace(), this));
 	}
 
 	public Promise<Boolean> fetch() {
-		return tolerantCollectBoolean(getManagedPublicKeys(), this::fetch).whenComplete(toLogger(logger, "fetch", this));
+		return tolerantCollectBoolean(getManagedPublicKeys(), this::fetch)
+				.whenComplete(toLogger(logger, "fetch", this));
 	}
 
 	public Promise<Boolean> fetch(PubKey space) {
 		GlobalFsNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
-				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**"))).whenComplete(toLogger(logger, "fetch", space, this));
+				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**")))
+				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
 	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpImpl));
 
 	public Promise<Void> catchUp() {
-		return catchUpImpl.get().whenComplete(toLogger(logger, "catchUp", this));
+		return catchUpImpl.get()
+				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
 	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
