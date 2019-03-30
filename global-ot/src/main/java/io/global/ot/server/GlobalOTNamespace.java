@@ -4,7 +4,7 @@ import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Ref;
+import io.datakernel.util.ref.Ref;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -172,7 +172,9 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private Promise<Void> ensurePollNotifier() {
-			if (pollNotifier == null) pollNotifier = new SettablePromise<>();
+			if (pollNotifier == null) {
+				pollNotifier = new SettablePromise<>();
+			}
 			return pollNotifier;
 		}
 
@@ -188,10 +190,10 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			Ref<Set<SignedData<RawCommitHead>>> lastHeads = new Ref<>(emptySet());
 			return () -> Promises.<Set<SignedData<RawCommitHead>>>until(
 					() -> node.getCommitStorage().getHeads(repositoryId).map(Map::values).map(HashSet::new),
-					polledHeads -> !lastHeads.value.containsAll(polledHeads) ?
+					polledHeads -> !lastHeads.get().containsAll(polledHeads) ?
 							Promise.of(true) :
 							ensurePollNotifier().map($ -> false))
-					.whenResult(polledHeads -> lastHeads.value = polledHeads);
+					.whenResult(lastHeads::set);
 		}
 
 		@NotNull
@@ -276,12 +278,16 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private Promise<Void> doSaveHeads(Set<SignedData<RawCommitHead>> signedNewHeads) {
-			if (signedNewHeads.isEmpty()) return Promise.complete();
+			if (signedNewHeads.isEmpty()) {
+				return Promise.complete();
+			}
 			return node.getCommitStorage().getHeads(repositoryId)
 					.map(Map::keySet)
 					.then(existingHeads -> {
 						Set<CommitId> newHeads = signedNewHeads.stream().map(signedNewHead -> signedNewHead.getValue().getCommitId()).collect(toSet());
-						if (existingHeads.containsAll(newHeads)) return Promise.complete();
+						if (existingHeads.containsAll(newHeads)) {
+							return Promise.complete();
+						}
 						return excludeParents(union(existingHeads, newHeads))
 								.then(realHeads -> node.getCommitStorage().updateHeads(repositoryId,
 										signedNewHeads.stream().filter(signedNewHead -> realHeads.contains(signedNewHead.getValue().getCommitId())).collect(toSet()),
@@ -356,7 +362,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
-				Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
+									  Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
 			RawCommitEntry entry = queue.poll();
 			if (entry == null || entry.commit.getLevel() < minLevel) {
 				cb.set(resultHeads);

@@ -220,7 +220,9 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							Files.createDirectories(path.getParent());
 							file = AsyncFile.open(executor, path, set(CREATE_NEW, WRITE), this);
 							skip = 0;
-							removeAttribute(path, TOMBSTONE_ATTRIBUTE);
+							if (defaultRevision == null) {
+								removeAttribute(path, TOMBSTONE_ATTRIBUTE);
+							}
 							setRevision(path, revision);
 						}
 						return ChannelFileWriter.create(file)
@@ -404,7 +406,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private boolean isTombstone(Path path) throws IOException {
-		Boolean attr = getBooleanAttribute(path, TOMBSTONE_ATTRIBUTE);
+		Boolean attr = defaultRevision == null ? getBooleanAttribute(path, TOMBSTONE_ATTRIBUTE) : null;
 		return attr != null && attr;
 	}
 
@@ -511,12 +513,15 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			if (!Files.isRegularFile(path)) {
 				return null;
 			}
-			Long revision = getLongAttribute(path, REVISION_ATTRIBUTE);
-			if (defaultRevision == null && revision == null) {
-				return null;
-			}
-			if (revision == null) {
+			long revision;
+			if (defaultRevision != null) {
 				revision = defaultRevision;
+			} else {
+				Long rev = getLongAttribute(path, REVISION_ATTRIBUTE);
+				if (rev == null) {
+					return null;
+				}
+				revision = rev;
 			}
 			String name = storage.relativize(path).toString();
 			name = File.separatorChar == '\\' ? name.replace('\\', '/') : name;

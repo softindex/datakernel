@@ -30,7 +30,7 @@ import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.Ref;
+import io.datakernel.util.ref.Ref;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -213,7 +213,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 				.then(res -> res.getBody()
 						.then(body -> processResult(res, body, ofSet(SIGNED_COMMIT_HEAD_JSON))))
 				.whenResult(heads ->
-						lastCommitIds.value = heads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet()));
+						lastCommitIds.set(heads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet())));
 	}
 
 	@Override
