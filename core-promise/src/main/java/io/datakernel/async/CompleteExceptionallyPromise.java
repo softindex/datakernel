@@ -97,15 +97,15 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
 		return (CompleteExceptionallyPromise<U>) this;
 	}
 
 	@NotNull
 	@Override
-	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
 		try {
-			return fn.apply(null, exception);
+			return (Promise<U>) fn.apply(null, exception);
 		} catch (UncheckedException u) {
 			return Promise.ofException(u.getCause());
 		}

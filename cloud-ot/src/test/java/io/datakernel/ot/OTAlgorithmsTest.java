@@ -1,6 +1,5 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -46,7 +45,7 @@ public class OTAlgorithmsTest {
 		Integer id1 = await(REPOSITORY.createCommitId());
 		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofRoot(id1)));
 		Integer id2 = await(REPOSITORY.createCommitId());
-		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
+		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(0, id2, id1, emptyList(), id1)));
 
 		Throwable exception = awaitException(algorithms.checkout(id2));
 		assertSame(GRAPH_EXHAUSTED, exception);
@@ -58,13 +57,11 @@ public class OTAlgorithmsTest {
 		Integer id1 = await(REPOSITORY.createCommitId());
 		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofRoot(id1)));
 		Integer id2 = await(REPOSITORY.createCommitId());
-		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(id2, id1, emptyList(), id1)));
+		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(0, id2, id1, emptyList(), id1)));
 
 		Throwable exception = awaitException(algorithms.findParent(singleton(id2), DiffsReducer.toVoid(),
-				commit -> commit.getSnapshotHint() != null ?
-						Promise.of(commit.getSnapshotHint()) :
-						REPOSITORY.loadSnapshot(commit.getId())
-								.map(Optional::isPresent)));
+				commit -> REPOSITORY.loadSnapshot(commit.getId())
+						.map(Optional::isPresent)));
 		assertSame(GRAPH_EXHAUSTED, exception);
 	}
 
@@ -191,15 +188,15 @@ public class OTAlgorithmsTest {
 
 	}
 
-	private void doTestCheckoutGraph1(int snaphotId, List<TestOp> snapshotDiffs) {
-		await(REPOSITORY.saveSnapshot(snaphotId, snapshotDiffs));
+	private void doTestCheckoutGraph1(int snapshotId, List<TestOp> snapshotDiffs) {
+		await(REPOSITORY.saveSnapshot(snapshotId, snapshotDiffs));
 
 		List<TestOp> diffs = await(algorithms.checkout(9));
 		assertEquals(16, applyToState(diffs));
 	}
 
-	private void doTestCheckoutGraph2(int snaphotId, List<TestOp> snapshotDiffs) {
-		await(REPOSITORY.saveSnapshot(snaphotId, snapshotDiffs));
+	private void doTestCheckoutGraph2(int snapshotId, List<TestOp> snapshotDiffs) {
+		await(REPOSITORY.saveSnapshot(snapshotId, snapshotDiffs));
 
 		List<TestOp> diffs = await(algorithms.checkout(6));
 		assertEquals(5, applyToState(diffs));

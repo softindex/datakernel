@@ -24,9 +24,9 @@ import java.util.Map;
 import static java.util.Collections.singletonMap;
 
 public interface OTCommitFactory<K, D> {
-	Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level);
+	Promise<OTCommit<K, D>> createCommit(int epoch, Map<K, ? extends List<? extends D>> parentDiffs, long level);
 
-	default Promise<OTCommit<K, D>> createCommit(K parent, List<? extends D> parentDiff, long level) {
-		return createCommit(singletonMap(parent, parentDiff), level);
+	default Promise<OTCommit<K, D>> createCommit(int epoch, K parent, List<? extends D> parentDiff, long level) {
+		return createCommit(epoch, singletonMap(parent, parentDiff), level);
 	}
 }

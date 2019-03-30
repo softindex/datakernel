@@ -71,6 +71,7 @@ public final class BinaryDataFormats {
 
 			.with(RawCommit.class, registry ->
 					tuple(RawCommit::parse,
+							RawCommit::getEpoch, registry.get(Integer.class),
 							RawCommit::getParents, registry.get(new TypeT<Set<CommitId>>() {}),
 							RawCommit::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawCommit::getSimKeyHash, registry.get(Hash.class),

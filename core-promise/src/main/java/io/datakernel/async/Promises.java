@@ -392,7 +392,6 @@ public final class Promises {
 		return some(asIterator(promise1, promise2), number);
 	}
 
-
 	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
@@ -400,13 +399,11 @@ public final class Promises {
 		return some(promises.iterator(), number);
 	}
 
-
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> some(@NotNull Stream<? extends Promise<? extends T>> promises, int number) {
 		return some(promises.iterator(), number);
 	}
-
 
 	@Contract(pure = true)
 	@NotNull
@@ -476,7 +473,6 @@ public final class Promises {
 			resultPromise.completeExceptionally(exception);
 		}
 	}
-
 
 	/**
 	 * Returns a successfully completed {@code Promise}
@@ -779,6 +775,84 @@ public final class Promises {
 			@NotNull Promise<? extends T6> promise6) {
 		return toList(promise1, promise2, promise3, promise4, promise5, promise6)
 				.map(list -> new Tuple6<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, T1, R, R1> Function<T, Promise<R>> mapTuple(@NotNull TupleConstructor1<R1, R> constructor,
+			@NotNull Function<? super T, T1> getter1, Function<T1, ? extends Promise<R1>> fn1) {
+		return t -> toTuple(constructor,
+				fn1.apply(getter1.apply(t)));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, T1, T2, R, R1, R2> Function<T, Promise<R>> mapTuple(@NotNull TupleConstructor2<R1, R2, R> constructor,
+			@NotNull Function<? super T, T1> getter1, Function<T1, ? extends Promise<R1>> fn1,
+			@NotNull Function<? super T, T2> getter2, Function<T2, ? extends Promise<R2>> fn2) {
+		return t -> toTuple(constructor,
+				fn1.apply(getter1.apply(t)),
+				fn2.apply(getter2.apply(t)));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, T1, T2, T3, R, R1, R2, R3> Function<T, Promise<R>> mapTuple(@NotNull TupleConstructor3<R1, R2, R3, R> constructor,
+			@NotNull Function<? super T, T1> getter1, Function<T1, ? extends Promise<R1>> fn1,
+			@NotNull Function<? super T, T2> getter2, Function<T2, ? extends Promise<R2>> fn2,
+			@NotNull Function<? super T, T3> getter3, Function<T3, ? extends Promise<R3>> fn3) {
+		return t -> toTuple(constructor,
+				fn1.apply(getter1.apply(t)),
+				fn2.apply(getter2.apply(t)),
+				fn3.apply(getter3.apply(t)));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, T1, T2, T3, T4, R, R1, R2, R3, R4> Function<T, Promise<R>> mapTuple(@NotNull TupleConstructor4<R1, R2, R3, R4, R> constructor,
+			@NotNull Function<? super T, T1> getter1, Function<T1, ? extends Promise<R1>> fn1,
+			@NotNull Function<? super T, T2> getter2, Function<T2, ? extends Promise<R2>> fn2,
+			@NotNull Function<? super T, T3> getter3, Function<T3, ? extends Promise<R3>> fn3,
+			@NotNull Function<? super T, T4> getter4, Function<T4, ? extends Promise<R4>> fn4) {
+		return t -> toTuple(constructor,
+				fn1.apply(getter1.apply(t)),
+				fn2.apply(getter2.apply(t)),
+				fn3.apply(getter3.apply(t)),
+				fn4.apply(getter4.apply(t)));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, T1, T2, T3, T4, T5, R, R1, R2, R3, R4, R5> Function<T, Promise<R>> mapTuple(@NotNull TupleConstructor5<R1, R2, R3, R4, R5, R> constructor,
+			@NotNull Function<? super T, T1> getter1, Function<T1, ? extends Promise<R1>> fn1,
+			@NotNull Function<? super T, T2> getter2, Function<T2, ? extends Promise<R2>> fn2,
+			@NotNull Function<? super T, T3> getter3, Function<T3, ? extends Promise<R3>> fn3,
+			@NotNull Function<? super T, T4> getter4, Function<T4, ? extends Promise<R4>> fn4,
+			@NotNull Function<? super T, T5> getter5, Function<T5, ? extends Promise<R5>> fn5) {
+		return t -> toTuple(constructor,
+				fn1.apply(getter1.apply(t)),
+				fn2.apply(getter2.apply(t)),
+				fn3.apply(getter3.apply(t)),
+				fn4.apply(getter4.apply(t)),
+				fn5.apply(getter5.apply(t)));
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T, T1, T2, T3, T4, T5, T6, R, R1, R2, R3, R4, R5, R6> Function<T, Promise<R>> mapTuple(@NotNull TupleConstructor6<R1, R2, R3, R4, R5, R6, R> constructor,
+			@NotNull Function<? super T, T1> getter1, Function<T1, ? extends Promise<R1>> fn1,
+			@NotNull Function<? super T, T2> getter2, Function<T2, ? extends Promise<R2>> fn2,
+			@NotNull Function<? super T, T3> getter3, Function<T3, ? extends Promise<R3>> fn3,
+			@NotNull Function<? super T, T4> getter4, Function<T4, ? extends Promise<R4>> fn4,
+			@NotNull Function<? super T, T5> getter5, Function<T5, ? extends Promise<R5>> fn5,
+			@NotNull Function<? super T, T6> getter6, Function<T6, ? extends Promise<R6>> fn6) {
+		return t -> toTuple(constructor,
+				fn1.apply(getter1.apply(t)),
+				fn2.apply(getter2.apply(t)),
+				fn3.apply(getter3.apply(t)),
+				fn4.apply(getter4.apply(t)),
+				fn5.apply(getter5.apply(t)),
+				fn6.apply(getter6.apply(t)));
 	}
 
 	/**
@@ -1379,7 +1453,6 @@ public final class Promises {
 				tryCompleteExceptionally(e);
 			}
 		}
-
 
 	}
 

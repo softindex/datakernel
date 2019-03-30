@@ -6,7 +6,6 @@ import io.datakernel.ot.OTCommitFactory;
 import io.datakernel.ot.OTRepository;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -73,11 +72,11 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	}
 
 	@Override
-	public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
+	public Promise<OTCommit<K, D>> createCommit(int epoch, Map<K, ? extends List<? extends D>> parentDiffs, long level) {
 		return commitFactory != null ?
-				commitFactory.createCommit(parentDiffs, level) :
+				commitFactory.createCommit(epoch, parentDiffs, level) :
 				createCommitId()
-						.map(newId -> OTCommit.of(newId, parentDiffs, level));
+						.map(newId -> OTCommit.of(0, newId, parentDiffs, level));
 	}
 
 	@Override
@@ -96,7 +95,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	@NotNull
 	@Override
-	public Promise<Set<K>> getHeads() {
+	public Promise<Set<K>> getAllHeads() {
 		return Promise.of(new HashSet<>(heads));
 	}
 
@@ -117,11 +116,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	@Override
 	public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
-		try {
-			return Promise.of(Optional.of(doLoadSnapshot(revisionId)));
-		} catch (IOException e) {
-			return Promise.ofException(e);
-		}
+		return Promise.of(Optional.ofNullable(snapshots.get(revisionId)));
 	}
 
 	public void doPush(OTCommit<K, D> commit) {
@@ -157,19 +152,12 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	public OTCommit<K, D> doLoadCommit(K revisionId) {
 		OTCommit<K, D> commit = commits.get(revisionId);
 		checkNotNull(commit);
-		return OTCommit.of(commit.getId(), commit.getParents(), commit.getLevel())
-				.withTimestamp(commit.getTimestamp())
-				.withSnapshotHint(snapshots.containsKey(revisionId));
+		return OTCommit.of(0, commit.getId(), commit.getParents(), commit.getLevel())
+				.withTimestamp(commit.getTimestamp());
 	}
 
 	public void doSaveSnapshot(K revisionId, List<D> diffs) {
 		snapshots.put(revisionId, diffs);
-	}
-
-	public List<D> doLoadSnapshot(K revisionId) throws IOException {
-		if (snapshots.containsKey(revisionId))
-			return snapshots.get(revisionId);
-		throw new IOException();
 	}
 
 	public void reset() {

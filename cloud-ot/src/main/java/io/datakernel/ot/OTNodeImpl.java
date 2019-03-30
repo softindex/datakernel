@@ -4,6 +4,7 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.util.ref.Ref;
+import io.datakernel.util.ref.RefInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
 		return repository.loadCommit(parent)
 				.then(parentCommit ->
-						repository.createCommit(parent, diffs, level)
+						repository.createCommit(parentCommit.getEpoch(), parent, diffs, level)
 								.map(commitToObject)
 								.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level)));
 	}
@@ -75,16 +76,15 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
+		RefInt epoch = new RefInt(0);
 		Ref<List<D>> cachedSnapshot = new Ref<>();
 		return repository.getHeads()
 				.then(heads -> algorithms.findParent(
 						heads,
 						DiffsReducer.toList(),
-						commit -> commit.getSnapshotHint() == Boolean.FALSE ?
-								Promise.of(false) :
-								repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null)
-				))
+						commit -> repository.loadSnapshot(commit.getId())
+								.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null)))
+				.whenResult(findResult -> epoch.set(findResult.getEpoch()))
 				.then(findResult -> Promise.of(
 						new FetchData<>(
 								findResult.getChild(),

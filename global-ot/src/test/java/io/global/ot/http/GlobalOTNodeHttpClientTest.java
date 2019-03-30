@@ -64,7 +64,7 @@ public class GlobalOTNodeHttpClientTest {
 	private final SimKey simKey = SimKey.generate();
 	private final SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
 	private final RepoID repository = RepoID.of(pubKey, "test");
-	private final RawCommit rootCommit = RawCommit.of(emptySet(),
+	private final RawCommit rootCommit = RawCommit.of(0, emptySet(),
 			EncryptedData.encrypt(new byte[0], simKey),
 			Hash.sha1(simKey.getBytes()),
 			0, 0L);

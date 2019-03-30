@@ -78,7 +78,7 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncFullHistory() {
 		for (int i = 1; i <= 5; i++) {
-			repository.doPushAndUpdateHead(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPushAndUpdateHead(ofCommit(0, i, i - 1, asList(add(1)), i + 1L));
 		}
 
 		assertEquals(0, testOpState.getValue());
@@ -91,7 +91,7 @@ public class OTStateManagerTest {
 	public void testApplyDiffBeforeSync() {
 		repository.revisionIdSupplier = () -> 11;
 		for (int i = 1; i <= 10; i++) {
-			repository.doPushAndUpdateHead(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPushAndUpdateHead(ofCommit(0, i, i - 1, asList(add(1)), i + 1L));
 		}
 
 		assertEquals(0, testOpState.getValue());
@@ -105,7 +105,7 @@ public class OTStateManagerTest {
 	@Test
 	public void testMultipleSyncs() {
 		for (int i = 1; i <= 20; i++) {
-			repository.doPushAndUpdateHead(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPushAndUpdateHead(ofCommit(0, i, i - 1, asList(add(1)), i + 1L));
 			if (i == 5 || i == 15) {
 				await(stateManager.sync());
 			}

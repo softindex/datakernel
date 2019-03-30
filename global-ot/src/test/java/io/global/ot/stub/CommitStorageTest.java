@@ -147,7 +147,7 @@ public class CommitStorageTest {
 	private Promise<Boolean> saveCommit(int id, Set<Integer> parents, long level) {
 		CommitId commitId = CommitId.ofBytes(new byte[]{(byte) id});
 		Set<CommitId> parentIds = parents.stream().map(this::getCommitId).collect(toSet());
-		RawCommit rawCommit = RawCommit.of(parentIds, EncryptedData.encrypt(DATA, SIM_KEY), Hash.sha1(SIM_KEY.getAesKey().getKey()), level, currentTimeMillis());
+		RawCommit rawCommit = RawCommit.of(0, parentIds, EncryptedData.encrypt(DATA, SIM_KEY), Hash.sha1(SIM_KEY.getAesKey().getKey()), level, currentTimeMillis());
 		return storage.saveCommit(commitId, rawCommit);
 	}
 

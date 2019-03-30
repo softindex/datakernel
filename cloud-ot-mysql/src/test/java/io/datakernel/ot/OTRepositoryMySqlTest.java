@@ -112,7 +112,7 @@ public class OTRepositoryMySqlTest {
 
 		Long id = await(repository.createCommitId());
 
-		await(repository.pushAndUpdateHead(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id)));
+		await(repository.pushAndUpdateHead(ofCommit(0, id, rootId, singletonList(new TestSet(0, 5)), id)));
 
 		Set<Long> heads = await(repository.getHeads());
 		assertEquals(1, heads.size());

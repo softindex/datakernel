@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS `{revisions}` (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `epoch` int NOT NULL,
   `level` bigint NOT NULL,
   `snapshot` longtext,
   `type` enum('NEW','HEAD','INNER') NOT NULL DEFAULT 'NEW',

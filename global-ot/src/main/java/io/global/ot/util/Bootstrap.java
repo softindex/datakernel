@@ -44,7 +44,7 @@ public final class Bootstrap<D> implements EventloopService {
 						return Promise.complete();
 					}
 
-					OTCommit<CommitId, D> rootCommit = driver.createCommit(myRepositoryId, emptyMap(), 1);
+					OTCommit<CommitId, D> rootCommit = driver.createCommit(0, myRepositoryId, emptyMap(), 1);
 					return driver.push(myRepositoryId, rootCommit)
 							.then($ -> driver.updateHeads(myRepositoryId, singleton(rootCommit.getId()), emptySet()))
 							.then($ -> driver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()));

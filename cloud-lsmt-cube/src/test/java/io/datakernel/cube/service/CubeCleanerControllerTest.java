@@ -109,17 +109,17 @@ public class CubeCleanerControllerTest {
 		await(repository.push(OTCommit.ofRoot(id1)));                          // 1N
 
 		Long id2 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofCommit(id2, id1, emptyList(), id1))); // 2N
+		await(repository.push(OTCommit.ofCommit(0, id2, id1, emptyList(), id1))); // 2N
 
 		Long id3 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofCommit(id3, id2, emptyList(), id2))); // 3N
+		await(repository.push(OTCommit.ofCommit(0, id3, id2, emptyList(), id2))); // 3N
 
 		Long id4 = await(repository.createCommitId());
-		await(repository.push(OTCommit.ofCommit(id4, id3, emptyList(), id3)));
+		await(repository.push(OTCommit.ofCommit(0, id4, id3, emptyList(), id3)));
 		await(repository.saveSnapshot(id4, emptyList()));                      // 4S
 
 		Long id5 = await(repository.createCommitId());
-		await(repository.pushAndUpdateHead(OTCommit.ofCommit(id5, id4, emptyList(), id4))); // 5N
+		await(repository.pushAndUpdateHead(OTCommit.ofCommit(0, id5, id4, emptyList(), id4))); // 5N
 	}
 
 }

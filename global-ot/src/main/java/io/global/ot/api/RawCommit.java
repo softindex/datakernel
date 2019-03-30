@@ -26,6 +26,7 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RawCommit {
+	private final int epoch;
 	private final Set<CommitId> parents;
 	private final EncryptedData encryptedDiffs;
 	private final Hash simKeyHash;
@@ -33,8 +34,9 @@ public final class RawCommit {
 	private final long timestamp;
 
 	// region creators
-	private RawCommit(Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	private RawCommit(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long level, long timestamp) {
+		this.epoch = epoch;
 		this.parents = checkNotNull(parents);
 		this.encryptedDiffs = checkNotNull(encryptedDiffs);
 		this.simKeyHash = checkNotNull(simKeyHash);
@@ -42,16 +44,20 @@ public final class RawCommit {
 		this.timestamp = timestamp;
 	}
 
-	public static RawCommit of(Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	public static RawCommit of(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long level, long timestamp) {
-		return new RawCommit(parents, encryptedDiffs, simKeyHash, level, timestamp);
+		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
 
-	public static RawCommit parse(Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	public static RawCommit parse(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long level, long timestamp) throws ParseException {
-		return new RawCommit(parents, encryptedDiffs, simKeyHash, level, timestamp);
+		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
 	// endregion
+
+	public int getEpoch() {
+		return epoch;
+	}
 
 	public Set<CommitId> getParents() {
 		return new HashSet<>(parents);

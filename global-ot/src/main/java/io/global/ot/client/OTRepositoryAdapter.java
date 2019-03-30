@@ -47,8 +47,8 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	}
 
 	@Override
-	public Promise<OTCommit<CommitId, D>> createCommit(Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
-		return Promise.of(driver.createCommit(myRepositoryId, parentDiffs, level));
+	public Promise<OTCommit<CommitId, D>> createCommit(int epoch, Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
+		return Promise.of(driver.createCommit(epoch, myRepositoryId, parentDiffs, level));
 	}
 
 	@Override
@@ -68,7 +68,7 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 
 	@NotNull
 	@Override
-	public Promise<Set<CommitId>> getHeads() {
+	public Promise<Set<CommitId>> getAllHeads() {
 		return driver.getHeads(myRepositoryId.getRepositoryId());
 	}
 

@@ -111,7 +111,7 @@ public final class GlobalFsDriver {
 						return Promise.ofException(OFFSET_TOO_BIG);
 					}
 					if (revision < oldRev) {
-						return Promise.of(ChannelConsumers.recycling());
+						return Promise.of(ChannelConsumers.<ByteBuf>recycling());
 					}
 					long skip = size - offset;
 					if (!Objects.equals(checkpoint.getSimKeyHash(), key != null ? Hash.sha1(key.getBytes()) : null)) {

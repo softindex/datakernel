@@ -546,9 +546,9 @@ public class GlobalOTNodeImplTest {
 		// ensuring pub key
 		((GlobalOTNodeImpl) intermediateNode).ensureRepository(REPO_ID);
 
-		intermediateStorage.saveCommit(getCommitId(1), RawCommit.of(emptySet(),
+		intermediateStorage.saveCommit(getCommitId(1), RawCommit.of(0, emptySet(),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, 1, now.currentTimeMillis()));
-		intermediateStorage.saveCommit(getCommitId(2), RawCommit.of(set(getCommitId(1)),
+		intermediateStorage.saveCommit(getCommitId(2), RawCommit.of(0, set(getCommitId(1)),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, 2, now.currentTimeMillis()));
 		SignedData<RawCommitHead> signedHead = SignedData.sign(REGISTRY.get(RawCommitHead.class),
 				RawCommitHead.of(REPO_ID, getCommitId(2), now.currentTimeMillis()), PRIV_KEY);
@@ -735,7 +735,7 @@ public class GlobalOTNodeImplTest {
 	public static CommitEntry createCommitEntry(Set<Integer> parents, long parentLevel, boolean head) {
 		EncryptedData encryptedData = EncryptedData.encrypt(DATA, SIM_KEY);
 		Set<CommitId> parentIds = parents.stream().map(GlobalOTNodeImplTest::getCommitId).collect(toSet());
-		RawCommit rawCommit = RawCommit.of(parentIds, encryptedData, HASH, (parentLevel + 1), now.currentTimeMillis());
+		RawCommit rawCommit = RawCommit.of(0, parentIds, encryptedData, HASH, (parentLevel + 1), now.currentTimeMillis());
 		CommitId commitId = nextCommitId();
 		return new CommitEntry(commitId, rawCommit, head ?
 				SignedData.sign(

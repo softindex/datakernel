@@ -71,7 +71,8 @@ public final class OTDriver {
 		return currentSimKey;
 	}
 
-	public <D> OTCommit<CommitId, D> createCommit(MyRepositoryId<D> myRepositoryId,
+	@SuppressWarnings("unchecked")
+	public <D> OTCommit<CommitId, D> createCommit(int epoch, MyRepositoryId<D> myRepositoryId,
 			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
 		long timestamp = now.currentTimeMillis();
 		EncryptedData encryptedDiffs = encryptAES(
@@ -82,14 +83,14 @@ public final class OTDriver {
 								.collect(toList())),
 				currentSimKey.getAesKey());
 		byte[] rawCommitBytes = encodeAsArray(COMMIT_CODEC,
-				RawCommit.of(
+				RawCommit.of(epoch,
 						parentDiffs.keySet(),
 						encryptedDiffs,
 						Hash.sha1(currentSimKey.getAesKey().getKey()),
 						level,
 						timestamp));
 		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
-		return OTCommit.of(commitId, parentDiffs, level)
+		return OTCommit.of(epoch, commitId, parentDiffs, level)
 				.withTimestamp(timestamp)
 				.withSerializedData(rawCommitBytes);
 	}
@@ -220,7 +221,7 @@ public final class OTDriver {
 			parents.put(parent, decode(myRepositoryId.getDiffsCodec(), it.next()));
 		}
 
-		return OTCommit.of(commitId, parents, rawCommit.getLevel())
+		return OTCommit.of(rawCommit.getEpoch(), commitId, parents, rawCommit.getLevel())
 				.withTimestamp(rawCommit.getTimestamp());
 	}
 

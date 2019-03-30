@@ -395,7 +395,7 @@ public interface Promise<T> {
 	 * applied to the result of this {@code Promise}
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> mapEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn);
+	@NotNull <U> Promise<U> mapEx(@NotNull BiFunction<? super T, @Nullable Throwable, ? extends U> fn);
 
 	/**
 	 * Returns a new {@code Promise} which, when this {@code Promise} completes
@@ -405,7 +405,7 @@ public interface Promise<T> {
 	 * @param fn to be applied
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn);
+	@NotNull <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn);
 
 	/**
 	 * Returns a new {@code Promise} which, when this {@code Promise} completes either
@@ -417,7 +417,7 @@ public interface Promise<T> {
 	 * @return new {@code Promise}
 	 */
 	@Contract(pure = true)
-	@NotNull <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
+	@NotNull <U> Promise<U> thenEx(@NotNull BiFunction<? super T, @Nullable Throwable, ? extends Promise<? extends U>> fn);
 
 	/**
 	 * Subscribes given action to be executed

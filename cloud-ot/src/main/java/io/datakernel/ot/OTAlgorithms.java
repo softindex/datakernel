@@ -2,7 +2,6 @@ package io.datakernel.ot;
 
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
@@ -10,6 +9,8 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.exceptions.OTException;
+import io.datakernel.util.Tuple2;
+import io.datakernel.util.ref.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
+import static io.datakernel.async.Promises.mapTuple;
 import static io.datakernel.async.Promises.toList;
 import static io.datakernel.ot.GraphReducer.resume;
 import static io.datakernel.ot.GraphReducer.skip;
@@ -79,13 +82,26 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public <R> Promise<R> reduce(Set<K> heads, GraphReducer<K, D, R> reducer) {
+		return loadAndReduce(heads, reducer)
+				.map(Tuple2::getValue2);
+	}
+
+	public <R> Promise<Tuple2<List<OTCommit<K, D>>, R>> loadAndReduce(Set<K> heads, GraphReducer<K, D, R> reducer) {
 		return toList(heads.stream().map(repository::loadCommit))
+				.map(this::filterEpoch)
 				.then(headCommits -> {
 					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
 					queue.addAll(headCommits);
 					reducer.onStart(unmodifiableCollection(queue));
-					return Promise.ofCallback(cb -> walkGraphImpl(reducer, queue, new HashSet<>(heads), cb));
+					return Promise.<R>ofCallback(cb -> walkGraphImpl(reducer, queue, new HashSet<>(heads), cb))
+							.map(result -> new Tuple2<>(headCommits, result));
 				});
+	}
+
+	@NotNull
+	private List<OTCommit<K, D>> filterEpoch(List<OTCommit<K, D>> commits) {
+		int maxEpoch = commits.stream().mapToInt(OTCommit::getEpoch).max().orElse(0);
+		return commits.stream().filter(commit -> commit.getEpoch() == maxEpoch).collect(Collectors.toList());
 	}
 
 	private <R> void walkGraphImpl(GraphReducer<K, D, R> reducer, PriorityQueue<OTCommit<K, D>> queue,
@@ -116,6 +132,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public static final class FindResult<K, A> {
+		private final int epoch;
 		@NotNull
 		private final K commit;
 		private final Set<K> commitParents;
@@ -124,13 +141,18 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		private final long childLevel;
 		private final A accumulatedDiffs;
 
-		private FindResult(@NotNull K commit, Set<K> commitParents, long commitLevel, K child, long childLevel, A accumulatedDiffs) {
+		private FindResult(int epoch, @NotNull K commit, Set<K> commitParents, long commitLevel, K child, long childLevel, A accumulatedDiffs) {
+			this.epoch = epoch;
 			this.commit = commit;
 			this.commitParents = commitParents;
 			this.commitLevel = commitLevel;
 			this.child = child;
 			this.childLevel = childLevel;
 			this.accumulatedDiffs = accumulatedDiffs;
+		}
+
+		public int getEpoch() {
+			return epoch;
 		}
 
 		@NotNull
@@ -174,6 +196,14 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return reduce(startNodes,
 				new AbstractGraphReducer<K, D, A, FindResult<K, A>>(diffsReducer) {
+					int epoch;
+
+					@Override
+					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
+						this.epoch = queue.iterator().next().getEpoch();
+						super.onStart(queue);
+					}
+
 					@NotNull
 					@Override
 					protected Promise<Optional<FindResult<K, A>>> tryGetResult(OTCommit<K, D> commit,
@@ -183,7 +213,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 									if (!matched) return Optional.empty();
 									Map.Entry<K, A> someHead = accumulators.get(commit.getId()).entrySet().iterator().next();
 									return Optional.of(new FindResult<>(
-											commit.getId(), commit.getParentIds(), commit.getLevel(),
+											epoch, commit.getId(), commit.getParentIds(), commit.getLevel(),
 											someHead.getKey(), headCommits.get(someHead.getKey()).getLevel(),
 											someHead.getValue()
 									));
@@ -224,16 +254,31 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	public Promise<K> merge(@NotNull Set<K> heads) {
 		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
 
-		//noinspection OptionalGetWithoutIsPresent
-		return Promises.toTuple(Tuple::new,
-				loadAndMerge(heads),
-				toList(heads.stream()
-						.map(repository::loadCommit))
-						.map(headCommits -> headCommits.stream()
-								.mapToLong(OTCommit::getLevel)
-								.max()
-								.getAsLong()))
-				.then(tuple -> repository.createCommit(tuple.mergeDiffs, tuple.parentsMaxLevel + 1L))
+		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
+		return loadAndReduce(heads, new LoadGraphReducer())
+				.then(mapTuple(Tuple2::new,
+						Tuple2::getValue1, Promise::of,
+						Tuple2::getValue2, graph -> {
+							try {
+								Map<K, List<D>> mergeResult = graph.merge(graph.excludeParents(heads));
+								if (logger.isTraceEnabled()) {
+									logger.info(graph.toGraphViz() + "\n");
+								}
+								return Promise.of(mergeResult);
+							} catch (OTException e) {
+								if (logger.isTraceEnabled()) {
+									logger.error(graph.toGraphViz() + "\n", e);
+								}
+								return Promise.ofException(e);
+							}
+						}))
+				.then(tuple -> {
+					List<OTCommit<K, D>> headCommits = tuple.getValue1();
+					int epoch = headCommits.get(0).getEpoch();
+					long parentLevel = headCommits.stream().mapToLong(OTCommit::getLevel).max().getAsLong();
+					Map<K, List<D>> mergeResult = tuple.getValue2();
+					return repository.createCommit(epoch, mergeResult, parentLevel + 1L);
+				})
 				.then(mergeCommit -> repository.push(mergeCommit)
 						.map($ -> mergeCommit.getId()));
 	}
@@ -293,6 +338,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 					@Override
 					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
+						//noinspection OptionalGetWithoutIsPresent
 						minLevel = queue.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
 					}
 
@@ -361,58 +407,32 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		});
 	}
 
-	@SuppressWarnings("unchecked")
 	public Promise<List<D>> checkout() {
-		List<D>[] cachedSnapshot = new List[1];
+		Ref<List<D>> cachedSnapshot = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(heads, DiffsReducer.toVoid(),
-								commit -> commit.getSnapshotHint() == Boolean.FALSE ?
-										Promise.of(false) :
-										repository.loadSnapshot(commit.getId())
-												.map(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
-								.then(findResult -> Promise.of(cachedSnapshot[0])))
+								commit -> repository.loadSnapshot(commit.getId())
+										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
+								.then(findResult -> Promise.of(cachedSnapshot.value)))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	@SuppressWarnings("unchecked")
 	public Promise<List<D>> checkout(K commitId) {
-		List<D>[] cachedSnapshot = new List[1];
+		Ref<List<D>> cachedSnapshot = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(union(heads, singleton(commitId)), DiffsReducer.toVoid(),
-								commit -> commit.getSnapshotHint() == Boolean.FALSE ?
-										Promise.of(false) :
-										repository.loadSnapshot(commit.getId())
-												.map(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
+								commit -> repository.loadSnapshot(commit.getId())
+										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
 								.then(findResult -> diff(findResult.commit, commitId)
-										.map(diff -> concat(cachedSnapshot[0], diff))))
+										.map(diff -> concat(cachedSnapshot.value, diff))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
 	public Promise<Void> saveSnapshot(K revisionId) {
 		return checkout(revisionId)
 				.then(diffs -> repository.saveSnapshot(revisionId, diffs));
-	}
-
-	private Promise<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
-		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
-		return loadForMerge(heads)
-				.then(graph -> {
-					try {
-						Map<K, List<D>> mergeResult = graph.merge(graph.excludeParents(heads));
-						if (logger.isTraceEnabled()) {
-							logger.info(graph.toGraphViz() + "\n");
-						}
-						return Promise.of(mergeResult);
-					} catch (OTException e) {
-						if (logger.isTraceEnabled()) {
-							logger.error(graph.toGraphViz() + "\n", e);
-						}
-						return Promise.ofException(e);
-					}
-				})
-				.whenComplete(toLogger(logger, thisMethod(), heads));
 	}
 
 	private class LoadGraphReducer implements GraphReducer<K, D, OTLoadedGraph<K, D>> {

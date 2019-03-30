@@ -163,10 +163,10 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
 		if (isComplete()) {
 			try {
-				return isResult() ? fn.apply(result) : (Promise<U>) this;
+				return isResult() ? (Promise<U>) fn.apply(result) : (Promise<U>) this;
 			} catch (UncheckedException u) {
 				return Promise.ofException(u.getCause());
 			}
@@ -176,10 +176,10 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 
 	@NotNull
 	@Override
-	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
 		if (isComplete()) {
 			try {
-				return fn.apply(result, exception);
+				return (Promise<U>) fn.apply(result, exception);
 			} catch (UncheckedException u) {
 				return Promise.ofException(u.getCause());
 			}

@@ -90,9 +90,9 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 
 	@NotNull
 	@Override
-	public final <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn) {
+	public final <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
 		try {
-			return fn.apply(getResult());
+			return (Promise<U>) fn.apply(getResult());
 		} catch (UncheckedException u) {
 			return Promise.ofException(u.getCause());
 		}
@@ -100,9 +100,9 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 
 	@NotNull
 	@Override
-	public final <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public final <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
 		try {
-			return fn.apply(getResult(), null);
+			return (Promise<U>) fn.apply(getResult(), null);
 		} catch (UncheckedException u) {
 			return Promise.ofException(u.getCause());
 		}

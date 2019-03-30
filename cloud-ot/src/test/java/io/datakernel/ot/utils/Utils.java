@@ -160,7 +160,7 @@ public class Utils {
 			}
 		}
 		return graph.entrySet().stream()
-				.map(entry -> OTCommit.of(entry.getKey(), entry.getValue(), initialLevel - 1L + levels.get(entry.getKey()))
+				.map(entry -> OTCommit.of(0, entry.getKey(), entry.getValue(), initialLevel - 1L + levels.get(entry.getKey()))
 						.withTimestamp(initialLevel - 1L + levels.get(entry.getKey())))
 				.collect(toList());
 	}

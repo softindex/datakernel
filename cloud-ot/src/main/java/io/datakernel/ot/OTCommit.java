@@ -28,58 +28,54 @@ import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 
 public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
+	public static final int INITIAL_EPOCH = 0;
+	private final int epoch;
 	private final K id;
 	private final Map<K, List<D>> parents;
 	private final long level;
 
 	private long timestamp;
 	@Nullable
-	private Boolean snapshotHint;
-	@Nullable
 	private byte[] serializedData;
 
-	private OTCommit(K id, Map<K, List<D>> parents, long level) {
+	private OTCommit(int epoch, K id, Map<K, List<D>> parents, long level) {
+		this.epoch = epoch;
 		this.id = id;
 		this.parents = parents;
 		this.level = level;
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <K, D> OTCommit<K, D> of(K id, Map<K, ? extends List<? extends D>> parents, long level) {
+	public static <K, D> OTCommit<K, D> of(int epoch, K id, Map<K, ? extends List<? extends D>> parents, long level) {
 		checkNotNull(id);
 		checkArgument(level, v -> v > 0, "Level should be greater than 0");
 		checkArgument(parents != null, "Cannot create OTCommit with parents that is null");
-		return new OTCommit<>(id, (Map<K, List<D>>) parents, level);
+		return new OTCommit<>(epoch, id, (Map<K, List<D>>) parents, level);
 	}
 
 	public static <K, D> OTCommit<K, D> ofRoot(K id) {
 		checkNotNull(id);
-		return new OTCommit<>(id, emptyMap(), 1L);
+		return new OTCommit<>(INITIAL_EPOCH, id, emptyMap(), 1L);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <K, D> OTCommit<K, D> ofCommit(K id, K parent, List<? extends D> diffs, long parentLevel) {
+	public static <K, D> OTCommit<K, D> ofCommit(int epoch, K id, K parent, List<? extends D> diffs, long parentLevel) {
 		checkNotNull(id);
 		checkNotNull(parent);
 		checkArgument(parentLevel, v -> v > 0, "Level should be greater than 0");
 		Map<K, ? extends List<? extends D>> parentMap = singletonMap(parent, diffs);
-		return new OTCommit<>(id, (Map<K, List<D>>) parentMap, parentLevel + 1L);
+		return new OTCommit<>(epoch, id, (Map<K, List<D>>) parentMap, parentLevel + 1L);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <K, D> OTCommit<K, D> ofMerge(K id, Map<K, ? extends List<? extends D>> parents, long maxParentLevel) {
+	public static <K, D> OTCommit<K, D> ofMerge(int epoch, K id, Map<K, ? extends List<? extends D>> parents, long maxParentLevel) {
 		checkNotNull(id);
 		checkArgument(maxParentLevel, v -> v > 0, "Level should be greater than 0");
-		return new OTCommit<>(id, (Map<K, List<D>>) parents, maxParentLevel + 1L);
+		return new OTCommit<>(epoch, id, (Map<K, List<D>>) parents, maxParentLevel + 1L);
 	}
 
 	public OTCommit<K, D> withTimestamp(long timestamp) {
 		this.timestamp = timestamp;
-		return this;
-	}
-
-	public OTCommit<K, D> withSnapshotHint(@Nullable Boolean snapshotHint) {
-		this.snapshotHint = snapshotHint;
 		return this;
 	}
 
@@ -108,17 +104,16 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 		return id;
 	}
 
+	public int getEpoch() {
+		return epoch;
+	}
+
 	public Map<K, List<D>> getParents() {
 		return parents;
 	}
 
 	public Set<K> getParentIds() {
 		return parents.keySet();
-	}
-
-	@Nullable
-	public Boolean getSnapshotHint() {
-		return snapshotHint;
 	}
 
 	public long getTimestamp() {
@@ -140,12 +135,25 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	}
 
 	@Override
-	public String toString() {
-		return "{id=" + id + ", parents=" + getParentIds() + "}";
+	public int compareTo(OTCommit<?, ?> o) {
+		return Long.compare(this.level, o.level);
 	}
 
 	@Override
-	public int compareTo(OTCommit<?, ?> o) {
-		return Long.compare(this.level, o.level);
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		OTCommit<?, ?> commit = (OTCommit<?, ?>) o;
+		return id.equals(commit.id);
+	}
+
+	@Override
+	public int hashCode() {
+		return id.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return "{id=" + id + ", parents=" + getParentIds() + "}";
 	}
 }

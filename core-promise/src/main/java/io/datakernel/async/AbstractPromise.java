@@ -172,12 +172,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public <U> Promise<U> then(@Async.Schedule @NotNull Function<? super T, ? extends Promise<U>> fn) {
+	public <U> Promise<U> then(@Async.Schedule @NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
 		return next(new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
-					Promise<U> promise;
+					Promise<? extends U> promise;
 					try {
 						promise = fn.apply(result);
 					} catch (UncheckedException u) {
@@ -194,11 +194,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public <U> Promise<U> thenEx(@Async.Schedule @NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+	public <U> Promise<U> thenEx(@Async.Schedule @NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
 		return next(new NextPromise<T, U>() {
-			private void accept(@Async.Execute BiFunction<? super T, Throwable, ? extends Promise<U>> fn, T result, Throwable e) {
+			private void accept(@Async.Execute BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn, T result, Throwable e) {
 				if (e == null) {
-					Promise<U> promise;
+					Promise<? extends U> promise;
 					try {
 						promise = fn.apply(result, null);
 					} catch (UncheckedException u) {
@@ -207,7 +207,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					}
 					promise.whenComplete(this::complete);
 				} else {
-					Promise<U> promise;
+					Promise<? extends U> promise;
 					try {
 						promise = fn.apply(null, e);
 					} catch (UncheckedException u) {
