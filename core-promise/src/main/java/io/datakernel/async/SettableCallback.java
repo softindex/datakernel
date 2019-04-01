@@ -5,7 +5,25 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
+/**
+ * Represents a stateful {@code Callback}.
+ */
 public interface SettableCallback<T> extends Callback<T> {
+	/**
+	 * Accepts the provided values and performs this operation
+	 * on them. If the {@code Throwable e} is {@code null},
+	 * provided {@code result} will be set to this
+	 * {@code SettablePromise}.
+	 * <p>
+	 * Otherwise, {@code Throwable e} will be set.
+	 *
+	 * @param result a value to be set to this
+	 * 				{@code SettablePromise} if
+	 * 			    {@code e} is {@code null}
+	 * @param e 	a {@code Throwable}, which will
+	 *          	be set to this {@code SettablePromise}
+	 *          	if not {@code null}
+	 */
 	@Override
 	default void accept(T result, @Nullable Throwable e) {
 		if (e == null) {
@@ -34,6 +52,7 @@ public interface SettableCallback<T> extends Callback<T> {
 	/**
 	 * Tries to set provided {@code result} for this
 	 * {@code SettablePromise} if it is not completed yet.
+	 * Otherwise does nothing.
 	 */
 	default void trySet(T result) {
 		if (!isComplete()) {
@@ -44,6 +63,7 @@ public interface SettableCallback<T> extends Callback<T> {
 	/**
 	 * Tries to set provided {@code e} exception for this
 	 * {@code SettablePromise} if it is not completed yet.
+	 * Otherwise does nothing.
 	 */
 	default void trySetException(@NotNull Throwable e) {
 		if (!isComplete()) {

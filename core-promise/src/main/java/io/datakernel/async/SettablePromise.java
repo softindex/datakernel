@@ -30,7 +30,8 @@ import java.util.function.Function;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
- * Represents a {@link Promise} which can be completed or completedExceptionally manually.
+ * Represents a {@link Promise} which can be completed or completedExceptionally
+ * manually at once or later in the future.
  * <p>
  * Can be used as root {@code Promise} to start execution of chain of
  * {@code Promises} or when you want wrap your actions in {@code Promise}.

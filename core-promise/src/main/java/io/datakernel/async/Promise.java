@@ -30,7 +30,10 @@ import java.util.concurrent.*;
 import java.util.function.*;
 
 /**
- * Replaces default Java {@link CompletionStage} interface.
+ * Replacement of default Java {@link CompletionStage} interface with
+ * optimized design, which allows to handle different scenarios more
+ * efficiently.
+ * <p>
  * Each promise represents some sort of operations executed
  * after the previous {@code Promise} completes.
  * <p>
@@ -40,6 +43,8 @@ import java.util.function.*;
  * respectively.
  * <p>
  * {@link SettablePromise} allows to create a root for chain of {@code Promise}s.
+ * <p>
+ * @see CompletionStage
  */
 public interface Promise<T> {
 	/**
@@ -74,8 +79,9 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Creates a and returns a new {@link SettablePromise}
-	 * that is accepted by a provided {@link Consumer}
+	 * Creates and returns a new {@link SettablePromise}
+	 * that is accepted by the provided {@link Consumer} of
+	 * {@link SettableCallback}
 	 */
 	@NotNull
 	static <T> MaterializedPromise<T> ofCallback(@NotNull Consumer<@NotNull SettableCallback<T>> callbackConsumer) {
@@ -118,8 +124,9 @@ public interface Promise<T> {
 
 	/**
 	 * Creates a completed {@code Promise} from {@code T value} and
-	 * {@code Throwable e} parameters. Useful for {@link #thenEx(BiFunction)}
-	 * passthroughs (for example, when mapping specific exceptions).
+	 * {@code Throwable e} parameters, any of them can be {@code null}.
+	 * Useful for {@link #thenEx(BiFunction)} passthroughs
+	 * (for example, when mapping specific exceptions).
 	 *
 	 * @param value value to wrap when exception is null
 	 * @param e     possibly-null exception, determines type of promise completion
@@ -143,7 +150,7 @@ public interface Promise<T> {
 	 * Creates a {@code Promise} wrapper around default
 	 * Java {@code CompletableFuture} and runs it immediately.
 	 *
-	 * @return result of the given future wrapped in a {@code Promise}
+	 * @return a new {@code Promise} with a result of the given future
 	 */
 	@NotNull
 	static <T> Promise<T> ofFuture(@NotNull CompletableFuture<? extends T> future) {
@@ -180,7 +187,7 @@ public interface Promise<T> {
 	 *
 	 * @param executor executor to execute the future concurrently
 	 * @param future   the future itself
-	 * @return result of the future wrapped in a {@code Promise}
+	 * @return a new {@code Promise} of the future result
 	 */
 	@NotNull
 	static <T> Promise<T> ofFuture(@NotNull Executor executor, @Async.Schedule @NotNull Future<? extends T> future) {
@@ -216,6 +223,9 @@ public interface Promise<T> {
 		return promise;
 	}
 
+	/**
+	 * @see #ofBlockingCallable(Executor, Callable)
+	 */
 	static <T> Promise<T> ofBlockingCallable(@NotNull Callable<? extends T> callable) {
 		return ofBlockingCallable(null, callable);
 	}
@@ -320,7 +330,7 @@ public interface Promise<T> {
 
 	/**
 	 * Ensures that {@code Promise} completes asynchronously:
-	 * if this {@code Promise} is already complete, its
+	 * if this {@code Promise} is already completed, its
 	 * completion will be posted to next eventloop tick.
 	 * Otherwise, does nothing.
 	 */
@@ -357,27 +367,40 @@ public interface Promise<T> {
 	@NotNull <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull P promise);
 
 	/**
-	 * Applies {@code fn} to the result of this {@code Promise}.
+	 * Returns a new {@code Promise} which is executed with this
+	 * {@code Promise}'s result as the argument to the provided
+	 * function when this {@code Promise} completes successfully.
 	 *
-	 * @param fn function to apply
-	 * @return {@code Promise} that applies given function
+	 * @param fn function to be applied to this {@code Promise}
+	 *              when it completes successfully
+	 * @return new {@code Promise} which is the result of function
+	 * applied to the result of this {@code Promise}
+	 *
+	 * @see CompletionStage#thenApply(Function)
 	 */
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> map(@NotNull Function<? super T, ? extends U> fn);
 
 	/**
-	 * Applies {@code fn} to the result or exception of this {@code Promise}.
+	 * Returns a new {@code Promise} which is executed with this
+	 * {@code Promise}'s result as the argument to the provided
+	 * function when this {@code Promise} completes either
+	 * successfully (when {@code exception} is {@code null}) or
+	 * with an exception.
 	 *
-	 * @param fn function to apply
-	 * @return {@code Promise} that applies given function
+	 * @param fn function to be applied to this {@code Promise}
+	 *              when it completes either successfully or with
+	 *              an exception
+	 * @return new {@code Promise} which is the result of function
+	 * applied to the result of this {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> mapEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
-	 * Applies function to the result of this {@code Promise} if it
-	 * completes successfully. Returned {@code Promise} will be completed
-	 * when {@code Promise} returned from {@code fn} completes.
+	 * Returns a new {@code Promise} which, when this {@code Promise} completes
+	 * successfully, is executed with this {@code Promise's} result as
+	 * the argument to the supplied function.
 	 *
 	 * @param fn to be applied
 	 */
@@ -385,21 +408,24 @@ public interface Promise<T> {
 	@NotNull <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<U>> fn);
 
 	/**
-	 * Applies {@link BiFunction} to the result of this {@code Promise}.
-	 * Returned {@code Promise} will be completed when {@code Promise} returned from function completes.
+	 * Returns a new {@code Promise} which, when this {@code Promise} completes either
+	 * successfully (if exception is {@code null}) or exceptionally (if exception is not
+	 * {@code null}), is executed with this {@code Promise's} result as the argument to
+	 * the supplied function.
 	 *
-	 * @param fn to be applied
-	 * @return this {@code Promise}
+	 * @param fn to be applied to the result of this {@code Promise}
+	 * @return new {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
 
 	/**
 	 * Subscribes given action to be executed
-	 * after this {@code Promise} completes.
+	 * after this {@code Promise} completes and
+	 * returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return this {@code Promise}
+	 * @return new {@code Promise}
 	 */
 	@Contract(" _ -> this")
 	@NotNull
@@ -407,10 +433,11 @@ public interface Promise<T> {
 
 	/**
 	 * Subscribes given action to be executed after
-	 * this {@code Promise} completes successfully.
+	 * this {@code Promise} completes successfully
+	 * and returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return this {@code Promise}
+	 * @return new {@code Promise}
 	 */
 	@Contract(" _ -> this")
 	@NotNull
@@ -418,40 +445,47 @@ public interface Promise<T> {
 
 	/**
 	 * Subscribes given action to be executed after
-	 * this {@code Promise} completes exceptionally.
+	 * this {@code Promise} completes exceptionally
+	 * and returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return this {@code Promise}
+	 * @return new {@code Promise}
 	 */
 	@Contract("_ -> this")
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
 	/**
-	 * Combines two {@code Promise}s in one using {@code fn}.
+	 * Returns a new {@code Promise} that, when this and the other
+	 * given {@code Promise} both complete, is executed with the two
+	 * results as arguments to the supplied function.
 	 *
-	 * @param other {@code Promise} to combine
-	 * @param fn    function to combine results of both promises into one
-	 * @return {@code Promise} that completes when {@code fn} was applied on the result of both promises
+	 * @param other the other {@code Promise}
+	 * @param fn the function to use to compute the value of
+	 * the returned {@code Promise}
+	 * @return new {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull <U, V>
 	Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn);
 
 	/**
-	 * Combines two {@code Promise} in one and
-	 * completes when both of them complete.
+	 * Returns a new {@code Promise} when both
+	 * this and provided {@code other}
+	 * {@code Promises} complete.
 	 *
-	 * @param other {@code Promise} to combine
+	 * @param other the other {@code Promise}
+	 * @return 		{@code Promise} of {@code null}
+	 * 				when both this and other
+	 * 				{@code Promise} complete
 	 */
 	@Contract(pure = true)
 	@NotNull
 	Promise<Void> both(@NotNull Promise<?> other);
 
 	/**
-	 * Combines two {@code Promise}s in one and returns
-	 * the {@code Promise} which was completed first.
+	 * Returns the {@code Promise} which was completed first.
 	 *
-	 * @param other {@code Promise} to combine
+	 * @param other the other {@code Promise}
 	 * @return the first completed {@code Promise}
 	 */
 	@Contract(pure = true)
