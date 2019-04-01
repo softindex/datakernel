@@ -44,7 +44,7 @@ public interface FsClient {
 	StacklessException OFFSET_TOO_BIG = new StacklessException(FsClient.class, "Offset exceeds the actual file size");
 	StacklessException LENGTH_TOO_BIG = new StacklessException(FsClient.class, "Length with offset exceeds the actual file size");
 	StacklessException BAD_RANGE = new StacklessException(FsClient.class, "Given offset or length don't make sense");
-	StacklessException MOVING_DIRS = new StacklessException(FsClient.class, "Tried to move or copy a directory");
+	StacklessException MOVING_DIRS = new StacklessException(FsClient.class, "Tried to move, copy delete or replace a directory");
 	StacklessException UNSUPPORTED_REVISION = new StacklessException(FsClient.class, "Given revision is not supported");
 
 	long DEFAULT_REVISION = 0;

@@ -20,7 +20,6 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
@@ -44,22 +43,24 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.Promise.ofBlockingCallable;
-import static io.datakernel.remotefs.RemoteFsUtils.*;
+import static io.datakernel.remotefs.RemoteFsUtils.checkRange;
+import static io.datakernel.remotefs.RemoteFsUtils.escapeGlob;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.FileVisitResult.CONTINUE;
-import static java.nio.file.Files.newByteChannel;
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardOpenOption.*;
+import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Collections.emptyList;
 
 /**
@@ -68,8 +69,35 @@ import static java.util.Collections.emptyList;
 public final class LocalFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
 
-	private static final String TOMBSTONE_ATTRIBUTE = "tombstone";
-	private static final String REVISION_ATTRIBUTE = "revision";
+	public static final FileNamingScheme DEFAULT_FILE_NAMING_SCHEME = new FileNamingScheme() {
+		@Override
+		public String encode(String name, long revision, boolean tombstone) {
+			return name + (tombstone ? "#!" : "#") + revision;
+		}
+
+		@Override
+		@Nullable
+		public FileMetadata decode(String filename, long size, long timestamp) {
+			int idx = filename.lastIndexOf('#');
+			if (idx == -1) {
+				return null;
+			}
+			String meta = filename.substring(idx + 1);
+			filename = filename.substring(0, idx);
+			boolean tombstone = meta.startsWith("!");
+			if (tombstone) {
+				meta = meta.substring(1);
+			}
+			try {
+				long revision = Long.parseLong(meta);
+				return tombstone ?
+						FileMetadata.tombstone(filename, timestamp, revision) :
+						FileMetadata.of(filename, size, timestamp, revision);
+			} catch (NumberFormatException ignored) {
+				return null;
+			}
+		}
+	};
 
 	private final Eventloop eventloop;
 	private final Path storage;
@@ -80,6 +108,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private boolean lazyOverrides = true;
 	@Nullable
 	private Long defaultRevision = DEFAULT_REVISION;
+
+	private FileNamingScheme namingScheme = DEFAULT_FILE_NAMING_SCHEME;
 
 	CurrentTimeProvider now;
 
@@ -148,6 +178,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return this;
 	}
 
+	public LocalFsClient withNamingScheme(FileNamingScheme namingScheme) {
+		this.namingScheme = namingScheme;
+		return this;
+	}
+
 	/**
 	 * Sets the buffer size for reading files from the filesystem.
 	 */
@@ -165,66 +200,18 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return ofBlockingCallable(executor,
 				() -> {
 					synchronized (lock) {
-						Path path = resolve(name);
-						AsyncFile file;
-						long skip;
-						Long oldRev;
-
-						if (defaultRevision != null) {
-							if (revision != defaultRevision) {
-								throw UNSUPPORTED_REVISION;
-							}
-							// old logic with lazy overrides
-							boolean exists = Files.isRegularFile(path);
-							long size = exists ? Files.size(path) : 0;
-							if (offset > size) {
-								throw OFFSET_TOO_BIG;
-							}
-							if (!exists) {
-								Files.createDirectories(path.getParent());
-							}
-							file = AsyncFile.open(executor, path, set(CREATE, WRITE), this);
-							skip = lazyOverrides ? size - offset : 0;
-						} else if (Files.isRegularFile(path) && (oldRev = getLongAttribute(path, REVISION_ATTRIBUTE)) != null) {
-							long size = Files.size(path);
-
-							if (revision < oldRev) {         // existing file has higher revision, skip
-								logger.info("tried to upload file {} (rev {}), but file {} (rev {}) already exists", name, revision, name, oldRev);
-
-								return ChannelConsumers.<ByteBuf>recycling(); // TODO anton: handle recyclers over the net
-							} else if (revision == oldRev) { // same revision, append-only and lazy overrides
-								if (isTombstone(path)) { // tombstone with same revision wins, so behave like in revision < oldRev branch here
-									return ChannelConsumers.<ByteBuf>recycling();
-								}
-								if (offset > size) {
-									throw OFFSET_TOO_BIG;
-								}
-								logger.trace("appending to file: {}: {}", name, this);
-								file = AsyncFile.open(executor, path, set(CREATE, WRITE), this);
-								skip = lazyOverrides ? size - offset : 0;
-							} else {                         // higher revision, no appends but override from scratch
-								if (offset != 0) {
-									throw OFFSET_TOO_BIG;
-								}
-								logger.trace("overriding file: {}: {}", name, this);
-								file = AsyncFile.open(executor, path, set(CREATE, WRITE, TRUNCATE_EXISTING), this);
-								skip = 0;
-								removeAttribute(path, TOMBSTONE_ATTRIBUTE);
-								setRevision(path, revision);
-							}
-						} else {
-							if (offset != 0) {
-								throw OFFSET_TOO_BIG;
-							}
-							logger.trace("new file: {}: {}", name, this);
-							Files.createDirectories(path.getParent());
-							file = AsyncFile.open(executor, path, set(CREATE_NEW, WRITE), this);
-							skip = 0;
-							if (defaultRevision == null) {
-								removeAttribute(path, TOMBSTONE_ATTRIBUTE);
-							}
-							setRevision(path, revision);
+						Path path = resolve(defaultRevision == null ? namingScheme.encode(name, revision, false) : name);
+						boolean exists = Files.isRegularFile(path);
+						long size = exists ? Files.size(path) : 0;
+						if (offset > size) {
+							throw OFFSET_TOO_BIG;
 						}
+						if (!exists) {
+							Files.createDirectories(path.getParent());
+						}
+						AsyncFile file = AsyncFile.open(executor, path, set(CREATE, WRITE), this);
+						long skip = lazyOverrides ? size - offset : 0;
+
 						return ChannelFileWriter.create(file)
 								.withForceOnClose(true)
 								.withOffset(offset + skip)
@@ -232,7 +219,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 				})
 				.map(consumer -> consumer
-						// call withAcknowledgement in eventloop thread
+						// calling withAcknowledgement in eventloop thread
 						.withAcknowledgement(ack -> ack
 								.whenComplete(writeFinishPromise.recordStats())
 								.whenComplete(toLogger(logger, TRACE, "writing to file", name, offset, revision, this))))
@@ -249,11 +236,17 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return ofBlockingCallable(executor,
 				() -> {
 					synchronized (lock) {
-						Path path = resolve(name);
-						if (!Files.isRegularFile(path)) {
+						List<FileMetadata> found = doList(escapeGlob(name), true);
+						FileMetadata meta = found.isEmpty() ? null : found.get(0);
+
+						if (meta == null || meta.isTombstone()) {
 							throw FILE_NOT_FOUND;
 						}
-						checkRange(Files.size(path), offset, length);
+
+						checkRange(meta.getSize(), offset, length);
+
+						Path path = resolve(defaultRevision == null ? namingScheme.encode(name, meta.getRevision(), false) : name);
+
 						return ChannelFileReader.readFile(AsyncFile.open(executor, path, ChannelFileReader.READ_OPTIONS, this))
 								.withBufferSize(readerBufferSize)
 								.withOffset(offset)
@@ -286,34 +279,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return ofBlockingCallable(executor,
 				() -> {
 					synchronized (lock) {
-						doMove(resolve(name), resolve(target), targetRevision, removeRevision);
-					}
-					return (Void) null;
-				})
-				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
-				.whenComplete(singleMovePromise.recordStats());
-	}
-
-	@Override
-	public Promise<Void> moveDir(String name, String target, long targetRevision, long removeRevision) {
-		if (defaultRevision == null) {
-			return FsClient.super.moveDir(name, target, targetRevision, removeRevision);
-		} else if (targetRevision != defaultRevision || removeRevision != defaultRevision) {
-			return Promise.ofException(UNSUPPORTED_REVISION);
-		}
-		return ofBlockingCallable(executor,
-				() -> {
-					synchronized (lock) {
-						Path path = resolve(name);
-						Path targetPath = resolve(target);
-						// cannot move directory into existing file or directory
-						if (Files.exists(targetPath)) {
-							throw FILE_EXISTS;
+						if (defaultRevision != null && removeRevision != defaultRevision) {
+							throw UNSUPPORTED_REVISION;
 						}
-						// do nothing if it is not a directory, "it did not match"
-						if (Files.isDirectory(path)) {
-							Files.move(path, targetPath, ATOMIC_MOVE);
-						}
+						doCopy(name, target, targetRevision);
+						doDelete(resolve(name), removeRevision);
 					}
 					return (Void) null;
 				})
@@ -326,7 +296,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return ofBlockingCallable(executor,
 				() -> {
 					synchronized (lock) {
-						doMove(resolve(name), resolve(target), targetRevision, null);
+						doCopy(name, target, targetRevision);
 					}
 					return (Void) null;
 				})
@@ -354,7 +324,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
-		return ofBlockingCallable(executor, () -> getFileMeta(resolve(name), true));
+		return ofBlockingCallable(executor, () -> {
+			List<FileMetadata> found = doList(escapeGlob(name), true);
+			return found.isEmpty() ? null : found.get(0);
+		});
 	}
 
 	@Override
@@ -405,18 +378,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		throw BAD_PATH;
 	}
 
-	private boolean isTombstone(Path path) throws IOException {
-		Boolean attr = defaultRevision == null ? getBooleanAttribute(path, TOMBSTONE_ATTRIBUTE) : null;
-		return attr != null && attr;
-	}
-
-	private void setRevision(Path path, long revision) throws IOException {
-		assert defaultRevision == null || revision != defaultRevision;
-		setLongAttribute(path, REVISION_ATTRIBUTE, revision);
-	}
-
 	private void tryHardlinkOrCopy(Path path, Path targetPath) throws IOException {
-		Files.deleteIfExists(targetPath);
+		if (!Files.deleteIfExists(targetPath)) {
+			Files.createDirectories(targetPath.getParent());
+		}
 		try {
 			// try to create a hardlink
 			Files.createLink(targetPath, path);
@@ -426,12 +391,15 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 	}
 
-	private void doMove(Path path, Path targetPath, long targetRevision, @Nullable Long removeRevision) throws StacklessException, IOException {
+	private void doCopy(String name, String target, long targetRevision) throws StacklessException, IOException {
+		Path path = resolve(name);
+		Path targetPath = resolve(target);
+
 		if (Files.isDirectory(path) || Files.isDirectory(targetPath)) {
 			throw MOVING_DIRS;
 		}
-		// noop when paths are equal and also copying 'nothing' into anything is a noop
-		if (path.equals(targetPath) || !Files.isRegularFile(path)) {
+		// noop when paths are equal
+		if (path.equals(targetPath)) {
 			return;
 		}
 
@@ -440,143 +408,107 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			if (targetRevision != defaultRevision) {
 				throw UNSUPPORTED_REVISION;
 			}
-			if (removeRevision != null && !removeRevision.equals(defaultRevision)) {
-				throw UNSUPPORTED_REVISION;
-			}
 			// with old logic we cannot move into existing file
 			if (Files.isRegularFile(targetPath)) {
 				throw FILE_EXISTS;
 			}
-		} else if (Files.isRegularFile(targetPath)) {
-			// copying anything into existing file with greater revision is a noop
-			Long oldRev = getLongAttribute(targetPath, REVISION_ATTRIBUTE);
-			if (oldRev != null && targetRevision <= oldRev) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("ignoring attempt to replace file {} (rev {}) with file {} (rev {})",
-							storage.relativize(path), oldRev, storage.relativize(targetPath), targetRevision);
-				}
-				if (removeRevision != null) {
-					// cant replace target but try to remove the original when requested
-					doDelete(path, removeRevision);
-				}
-				return;
+			// copying 'nothing' into anything is a noop
+			if (Files.isRegularFile(path)) {
+				tryHardlinkOrCopy(path, targetPath);
 			}
+			return;
 		}
 
-		Files.createDirectories(targetPath.getParent());
-		if (removeRevision != null) {
-			// atomically move
-			Files.move(path, targetPath, ATOMIC_MOVE);
-			// due to above move nothing will be deleted, but a tombstone needs to be placed there
-			doDelete(path, removeRevision);
-		} else {
-			tryHardlinkOrCopy(path, targetPath);
+		List<FileMetadata> found = doList(escapeGlob(name), true);
+
+		// copying 'nothing' into anything is a noop
+		FileMetadata pathMeta = found.isEmpty() ? null : found.get(0);
+		if (pathMeta == null || pathMeta.isTombstone()) {
+			return;
 		}
 
-		// and set target revision if revisions are enabled
-		if (defaultRevision == null) {
-			setRevision(targetPath, targetRevision);
-		}
+		targetPath = resolve(namingScheme.encode(targetPath.toString(), targetRevision, false));
+
+		tryHardlinkOrCopy(resolve(namingScheme.encode(pathMeta.getName(), pathMeta.getRevision(), false)), targetPath);
 	}
 
 	private void doDelete(Path path, long revision) throws IOException, StacklessException {
-		if (defaultRevision != null) {
-			if (revision != defaultRevision) {
-				throw UNSUPPORTED_REVISION;
-			}
-			// old logic - just delete the file
-			Files.deleteIfExists(path);
+		if (Files.isDirectory(path)) {
+			throw MOVING_DIRS;
+		}
+		if (defaultRevision == null) {
+			Path tombstone = resolve(namingScheme.encode(storage.relativize(path).toString(), revision, true));
+			Files.createDirectories(tombstone.getParent());
+			Files.createFile(tombstone);
 			return;
 		}
-		if (Files.exists(path)) {
-			Long oldRev = getLongAttribute(path, REVISION_ATTRIBUTE);
-			// ignoring existense of file if it has no revision attribute
-			if (oldRev != null && revision < oldRev) {
-				// file has greater revision, we do nothing
-				if (logger.isTraceEnabled()) {
-					logger.trace("ignoring attempt to replace file {} (rev {}) with a tombstone for it (rev {})",
-							storage.relativize(path), oldRev, revision);
-				}
-				return;
-			}
-		} else {
-			Files.createDirectories(path.getParent());
+		// old logic - just delete the file
+		if (revision != defaultRevision) {
+			throw UNSUPPORTED_REVISION;
 		}
-		newByteChannel(path, EnumSet.of(CREATE, WRITE, TRUNCATE_EXISTING)).close();
-		setBooleanAttribute(path, TOMBSTONE_ATTRIBUTE, true);
-		setRevision(path, revision);
+		Files.deleteIfExists(path);
 	}
 
 	@Nullable
-	private FileMetadata getFileMeta(Path path, boolean includeTombstone) throws IOException {
+	private FileMetadata getFileMeta(Path path, String name) throws IOException {
 		synchronized (lock) {
 			if (!Files.isRegularFile(path)) {
 				return null;
 			}
-			long revision;
-			if (defaultRevision != null) {
-				revision = defaultRevision;
-			} else {
-				Long rev = getLongAttribute(path, REVISION_ATTRIBUTE);
-				if (rev == null) {
-					return null;
-				}
-				revision = rev;
-			}
-			String name = storage.relativize(path).toString();
 			name = File.separatorChar == '\\' ? name.replace('\\', '/') : name;
-			long timestamp = Files.getLastModifiedTime(path).toMillis();
-			if (isTombstone(path)) {
-				return includeTombstone ? FileMetadata.tombstone(name, timestamp, revision) : null;
-			}
-			return FileMetadata.of(name, Files.size(path), timestamp, revision);
+			return defaultRevision == null ?
+					namingScheme.decode(name, Files.size(path), Files.getLastModifiedTime(path).toMillis()) :
+					FileMetadata.of(name, Files.size(path), Files.getLastModifiedTime(path).toMillis(), defaultRevision);
 		}
 	}
 
-	private List<FileMetadata> doList(String glob, boolean listTombstones) throws IOException, StacklessException {
+	private List<FileMetadata> doList(String glob, boolean listTombstones) throws IOException {
 		// optimization for 'ping' empty list requests
 		if (glob.isEmpty()) {
 			return emptyList();
 		}
-		List<FileMetadata> list = new ArrayList<>();
+		Map<String, FileMetadata> files = new HashMap<>();
 		// optimization for listing all files
 		if ("**".equals(glob)) {
 			Files.walkFileTree(storage, new SimpleFileVisitor<Path>() {
 				@Override
 				public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-					FileMetadata meta = getFileMeta(path, listTombstones);
-					if (meta != null) {
-						list.add(meta);
+					FileMetadata meta = getFileMeta(path, storage.relativize(path).toString());
+					if (meta != null && (listTombstones || !meta.isTombstone())) {
+						files.merge(meta.getName(), meta, FileMetadata::getMoreCompleteFile);
 					}
 					return CONTINUE;
 				}
 			});
-			return list;
+			return new ArrayList<>(files.values());
 		}
-		// optimization for single-file requests
-		if (!isWildcard(glob)) {
-			Path path = resolve(glob);
-			FileMetadata meta = getFileMeta(path, listTombstones);
-			if (meta != null) {
-				list.add(meta);
+		int counter = 0;
+		for (String part : glob.split("/")) {
+			if (RemoteFsUtils.isWildcard(part)) {
+				break;
 			}
-			return list;
+			counter++;
 		}
-		// common
+		int concreteDirCount = counter;
 		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
 		Files.walkFileTree(storage, new SimpleFileVisitor<Path>() {
+
+			@Override
+			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+				Path rel = storage.relativize(dir);
+				return rel.getNameCount() <= concreteDirCount && !glob.startsWith(rel.toString()) ? SKIP_SUBTREE : CONTINUE;
+			}
+
 			@Override
 			public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-				if (matcher.matches(storage.relativize(path))) {
-					FileMetadata meta = getFileMeta(path, listTombstones);
-					if (meta != null) {
-						list.add(meta);
-					}
+				FileMetadata meta = getFileMeta(path, storage.relativize(path).toString());
+				if (meta != null && (listTombstones || !meta.isTombstone()) && matcher.matches(Paths.get(meta.getName()))) {
+					files.merge(meta.getName(), meta, FileMetadata::getMoreCompleteFile);
 				}
 				return CONTINUE;
 			}
 		});
-		return list;
+		return new ArrayList<>(files.values());
 	}
 
 	//region JMX

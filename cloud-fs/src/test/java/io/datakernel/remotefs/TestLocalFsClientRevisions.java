@@ -1,5 +1,7 @@
 package io.datakernel.remotefs;
 
+import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -10,8 +12,6 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -26,51 +26,54 @@ public final class TestLocalFsClientRevisions {
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	private Path storage;
-
 	private FsClient client;
 
 	@Before
 	public void setUp() throws IOException {
-		storage = tmpFolder.newFolder("storage").toPath();
-		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), storage).withRevisions();
+		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), tmpFolder.newFolder("storage").toPath()).withRevisions();
 	}
 
 	@Test
-	public void uploadOverride() throws IOException {
+	public void uploadOverride() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is first text")).streamTo(client.upload("test.txt", 0, 1)));
 		await(ChannelSupplier.of(wrapUtf8("OVERRIDEN")).streamTo(client.upload("test.txt", 0, 2)));
 
-		assertArrayEquals("OVERRIDEN".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test.txt")));
+		assertEquals("OVERRIDEN", download("test.txt"));
 	}
 
 	@Test
-	public void uploadAppend() throws IOException {
+	public void uploadAppend() {
+
 		await(ChannelSupplier.of(wrapUtf8("hello, this is first text")).streamTo(client.upload("test.txt", 0, 123)));
 		await(ChannelSupplier.of(wrapUtf8("rst text and some appended text too")).streamTo(client.upload("test.txt", 17, 123)));
 
-		assertArrayEquals("hello, this is first text and some appended text too".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test.txt")));
+		assertEquals("hello, this is first text and some appended text too", download("test.txt"));
 	}
 
 	@Test
 	public void uploadOverrideAppend() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is first text")).streamTo(client.upload("test.txt", 0, 1)));
 
-		assertSame(OFFSET_TOO_BIG, awaitException(ChannelSupplier.of(wrapUtf8("rst text and some appended text too")).streamTo(client.upload("test.txt", 17, 2))));
+		Promise<Void> process = ChannelSupplier.of(wrapUtf8("rst text and some appended text too")).streamTo(client.upload("test.txt", 17, 2));
+		assertSame(OFFSET_TOO_BIG, awaitException(process));
 	}
 
 	@Test
-	public void uploadDeleteUpload() throws IOException {
+	public void uploadDeleteUpload() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is first text")).streamTo(client.upload("test.txt", 0, 1)));
 		await(client.delete("test.txt", 1));
 
-		assertTrue(await(client.getMetadata("test.txt")).isTombstone());
+		FileMetadata metadata = await(client.getMetadata("test.txt"));
+		assertNotNull(metadata);
+		assertTrue(metadata.isTombstone());
 
 		await(ChannelSupplier.of(wrapUtf8("OVERRIDEN")).streamTo(client.upload("test.txt", 0, 2)));
 
-		assertFalse(await(client.getMetadata("test.txt")).isTombstone());
+		metadata = await(client.getMetadata("test.txt"));
+		assertNotNull(metadata);
+		assertFalse(metadata.isTombstone());
 
-		assertArrayEquals("OVERRIDEN".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test.txt")));
+		assertEquals("OVERRIDEN", download("test.txt"));
 	}
 
 	@Test
@@ -79,7 +82,9 @@ public final class TestLocalFsClientRevisions {
 
 		await(client.delete("test.txt", 1));
 
-		assertFalse(await(client.getMetadata("test.txt")).isTombstone());
+		FileMetadata metadata = await(client.getMetadata("test.txt"));
+		assertNotNull(metadata);
+		assertFalse(metadata.isTombstone());
 	}
 
 	@Test
@@ -88,48 +93,57 @@ public final class TestLocalFsClientRevisions {
 
 		await(ChannelSupplier.of(wrapUtf8("hello, this is first text")).streamTo(client.upload("test.txt", 0, 1)));
 
-		assertTrue(await(client.getMetadata("test.txt")).isTombstone());
+		FileMetadata metadata = await(client.getMetadata("test.txt"));
+		assertNotNull(metadata);
+		assertTrue(metadata.isTombstone());
 	}
 
 	@Test
-	public void moveIntoLesser() throws IOException {
+	public void moveIntoLesser() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is some text")).streamTo(client.upload("test.txt", 0, 1)));
 		await(ChannelSupplier.of(wrapUtf8("and this is another")).streamTo(client.upload("test2.txt", 0, 1)));
 
 		await(client.move("test.txt", "test2.txt", 2, 2));
 
-		assertTrue(await(client.getMetadata("test.txt")).isTombstone());
+		FileMetadata metadata = await(client.getMetadata("test.txt"));
+		assertNotNull(metadata);
+		assertTrue(metadata.isTombstone());
 
 		System.out.println(await(client.listEntities("**")));
-		assertArrayEquals("hello, this is some text".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test2.txt")));
+		assertEquals("hello, this is some text", download("test2.txt"));
 	}
 
 	@Test
-	public void moveIntoHigher() throws IOException {
+	public void moveIntoHigher() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is some text")).streamTo(client.upload("test.txt", 0, 1)));
 		await(ChannelSupplier.of(wrapUtf8("and this is another")).streamTo(client.upload("test2.txt", 0, 10)));
 
 		await(client.move("test.txt", "test2.txt", 2, 2));
-		assertArrayEquals("and this is another".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test2.txt")));
+		assertEquals("and this is another", download("test2.txt"));
 	}
 
 	@Test
-	public void copyIntoLesser() throws IOException {
+	public void copyIntoLesser() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is some text")).streamTo(client.upload("test.txt", 0, 1)));
 		await(ChannelSupplier.of(wrapUtf8("and this is another")).streamTo(client.upload("test2.txt", 0, 1)));
 
 		await(client.copy("test.txt", "test2.txt", 2));
 
-		assertArrayEquals("hello, this is some text".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test.txt")));
-		assertArrayEquals("hello, this is some text".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test2.txt")));
+		assertEquals("hello, this is some text", download("test2.txt"));
+		assertEquals("hello, this is some text", download("test.txt"));
 	}
 
 	@Test
-	public void copyIntoHigher() throws IOException {
+	public void copyIntoHigher() {
 		await(ChannelSupplier.of(wrapUtf8("hello, this is some text")).streamTo(client.upload("test.txt", 0, 1)));
 		await(ChannelSupplier.of(wrapUtf8("and this is another")).streamTo(client.upload("test2.txt", 0, 10)));
 
 		await(client.copy("test.txt", "test2.txt", 2));
-		assertArrayEquals("and this is another".getBytes(UTF_8), Files.readAllBytes(storage.resolve("test2.txt")));
+
+		assertEquals("and this is another", download("test2.txt"));
+	}
+
+	private String download(String name) {
+		return await(await(client.download(name)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
 	}
 }

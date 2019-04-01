@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -197,40 +198,24 @@ public final class GlobalFsTest {
 				.resolve(folderFor(FIRST_ID))
 				.resolve("data")
 				.resolve(alice.getPubKey().asString())
-				.resolve(FILENAME));
+				.resolve(FILENAME + "#0"));
 
 		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), data);
 	}
 
 	@Test
-	public void announcedUpload() {
+	public void announcedUpload() throws IOException {
 		announce(alice, set(FIRST_ID, SECOND_ID));
 
 		// upload to the caching node, it'll cache and also forward to one of the masters
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(aliceGateway.upload(FILENAME))));
 
-		int found = 0;
+		Path first = dir.resolve(folderFor(FIRST_ID)).resolve("data").resolve(alice.getPubKey().asString());
+		Path second = dir.resolve(folderFor(SECOND_ID)).resolve("data").resolve(alice.getPubKey().asString());
+		Files.createDirectories(first);
+		Files.createDirectories(second);
 
-		try {
-			Files.readAllBytes(dir
-					.resolve(folderFor(FIRST_ID))
-					.resolve("data")
-					.resolve(alice.getPubKey().asString())
-					.resolve(FILENAME));
-			found++;
-		} catch (Exception ignored) {
-		}
-		try {
-			Files.readAllBytes(dir
-					.resolve(folderFor(SECOND_ID))
-					.resolve("data")
-					.resolve(alice.getPubKey().asString())
-					.resolve(FILENAME));
-			found++;
-		} catch (Exception ignored) {
-		}
-
-		assertEquals(1, found);
+		assertEquals(1, Stream.concat(Files.list(first), Files.list(second)).count());
 	}
 
 	@Test
