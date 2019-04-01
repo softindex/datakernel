@@ -3,6 +3,7 @@ package io.global.common.api;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.ApplicationSettings;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -27,6 +28,8 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 
 	protected final RawServerId id;
 	protected final DiscoveryService discoveryService;
+
+	protected CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	public AbstractGlobalNode(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, N> nodeFactory) {
 		this.id = id;
@@ -54,6 +57,12 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 		return (S) this;
 	}
 
+	@SuppressWarnings("unchecked")
+	public S withCurrentTimeProvider(CurrentTimeProvider currentTimeProvider) {
+		this.now = currentTimeProvider;
+		return (S) this;
+	}
+
 	public Set<PubKey> getManagedPublicKeys() {
 		return managedPublicKeys;
 	}
@@ -68,6 +77,10 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 
 	public Duration getLatencyMargin() {
 		return latencyMargin;
+	}
+
+	public CurrentTimeProvider getCurrentTimeProvider() {
+		return now;
 	}
 
 	public DiscoveryService getDiscoveryService() {

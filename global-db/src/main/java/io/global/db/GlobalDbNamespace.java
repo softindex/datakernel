@@ -70,21 +70,21 @@ public final class GlobalDbNamespace extends AbstractGlobalNamespace<GlobalDbNam
 		public Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
 			return storage.upload()
 					.map(consumer -> consumer
-							.withAcknowledgement(ack -> {
-								return ack.whenResult((Consumer<? super Void>) $ -> cacheTimestamp = node.now.currentTimeMillis());
-							}));
+							.withAcknowledgement(ack -> ack
+									.whenResult((Consumer<? super Void>) $ -> cacheTimestamp = node.getCurrentTimeProvider().currentTimeMillis())));
 		}
 
 		public Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
-			return node.now.currentTimeMillis() - cacheTimestamp < node.getLatencyMargin().toMillis() ?
+			return node.getCurrentTimeProvider().currentTimeMillis() - cacheTimestamp < node.getLatencyMargin().toMillis() ?
 					storage.download(timestamp) :
 					Promise.of(null);
 		}
 
 		public Promise<Void> fetch(GlobalDbNode from) {
-			long timestamp = node.now.currentTimeMillis();
+			long timestamp = node.getCurrentTimeProvider().currentTimeMillis();
 			return Promises.toTuple(from.download(space, table, lastFetchTimestamp), storage.upload())
-					.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2())).whenResult((Consumer<? super Void>) $ -> lastFetchTimestamp = timestamp);
+					.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()))
+					.whenResult((Consumer<? super Void>) $ -> lastFetchTimestamp = timestamp);
 		}
 
 		public Promise<Void> push(GlobalDbNode into) {

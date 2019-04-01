@@ -22,7 +22,6 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.ref.BooleanRef;
 import io.global.common.PubKey;
@@ -60,8 +59,6 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	private final Function<PubKey, FsClient> storageFactory;
 	private final Function<PubKey, CheckpointStorage> checkpointStorageFactory;
-
-	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
 	private GlobalFsNodeImpl(RawServerId id, DiscoveryService discoveryService,
@@ -156,7 +153,8 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 								MaterializedPromise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
 								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 							});
-				}).whenComplete(toLogger(logger, "upload", space, filename, offset, this));
+				})
+				.whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
 
 	@Override
@@ -198,7 +196,8 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 														.withEndOfStream(eos -> eos.both(splitter.getProcessCompletion()));
 											}))
 									.iterator()));
-				}).whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
+				})
+				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
 	@Override
@@ -256,14 +255,23 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
 		long started = now.currentTimeMillis();
-		fetch().whenResult((Consumer<? super Boolean>) didAnything -> {
-			long timestampEnd = now.currentTimeMillis();
-			if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
-				cb.set(null);
-			} else {
-				catchUpImpl(cb);
-			}
-		}).whenException(cb::setException);
+		Promise<Boolean> fetchPromise = fetch();
+		if (fetchPromise.isResult()) {
+			cb.set(null);
+		} else if (fetchPromise.isException()) {
+			cb.setException(fetchPromise.materialize().getException());
+		} else {
+			fetchPromise
+					.whenResult((Consumer<? super Boolean>) didAnything -> {
+						long timestampEnd = now.currentTimeMillis();
+						if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
+							cb.set(null);
+						} else {
+							catchUpImpl(cb);
+						}
+					})
+					.whenException(cb::setException);
+		}
 	}
 
 	@Override

@@ -173,7 +173,8 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 											.map($ -> true);
 								}
 							});
-				})).whenComplete(toLogger(logger, TRACE, "push", space, into, node));
+				}))
+				.whenComplete(toLogger(logger, TRACE, "push", space, into, node));
 	}
 
 	public Promise<Boolean> fetch(GlobalFsNode from, String glob) {
@@ -213,6 +214,7 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 												.map($ -> true);
 									});
 						}
-				)).whenComplete(toLogger(logger, TRACE, "fetch", space, from, node));
+				))
+				.whenComplete(toLogger(logger, TRACE, "fetch", space, from, node));
 	}
 }

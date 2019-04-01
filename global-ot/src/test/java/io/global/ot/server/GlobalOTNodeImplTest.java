@@ -113,6 +113,10 @@ public class GlobalOTNodeImplTest {
 	}
 
 	private void initializeMasters(Integer numberOfMasters) {
+		initializeMasters(numberOfMasters, now);
+	}
+
+	private void initializeMasters(Integer numberOfMasters, CurrentTimeProvider timeProvider) {
 		clearDiscovery();
 		IntStream.rangeClosed(1, numberOfMasters).boxed().forEach(id -> {
 			try {
@@ -132,8 +136,8 @@ public class GlobalOTNodeImplTest {
 						discoveryService,
 						storage,
 						createFactory())
-						.withLatencyMargin(Duration.ZERO);
-				master.now = now;
+						.withLatencyMargin(Duration.ZERO)
+						.withCurrentTimeProvider(timeProvider);
 				masters.put(id, new Tuple2<>(storage, master));
 			} catch (IOException e) {
 				throw new AssertionError(e);
@@ -163,8 +167,8 @@ public class GlobalOTNodeImplTest {
 				discoveryService,
 				intermediateStorage,
 				createFactory())
-				.withLatencyMargin(Duration.ZERO);
-		((GlobalOTNodeImpl) intermediateNode).now = now;
+				.withLatencyMargin(Duration.ZERO)
+				.withCurrentTimeProvider(now);
 		initializeMasters(1);
 	}
 
@@ -433,8 +437,7 @@ public class GlobalOTNodeImplTest {
 
 	@Test
 	public void testCatchupMasters() {
-		initializeMasters(2);
-		masters.forEach((integer, tuple) -> ((GlobalOTNodeImpl) tuple.getValue2()).now = () -> 10);
+		initializeMasters(2, () -> 10);
 		CommitStorage firstMasterStorage = getMasterStorage(1);
 		CommitStorage secondMasterStorage = getMasterStorage(2);
 		GlobalOTNode firstMaster = getMasterNode(1);
@@ -462,8 +465,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	@LoggerConfig(value = "WARN") // too many logs
 	public void testCatchupRandomNumberOfMasters() {
-		initializeMasters(RANDOM.nextInt(5) + 1);
-		masters.forEach((integer, tuple) -> ((GlobalOTNodeImpl) tuple.getValue2()).now = () -> 10);
+		initializeMasters(RANDOM.nextInt(5) + 1, () -> 10);
 
 		// will propagate commits to one master (Promises.firstSuccessfull())
 		addCommits(null, 5, intermediateNode);

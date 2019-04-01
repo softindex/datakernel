@@ -56,14 +56,15 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 	@NotNull
 	private Promise<Void> doUpdateRepositories() {
 		logger.trace("Updating repositories");
-		if (updateRepositoriesTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+		if (updateRepositoriesTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.complete();
 		}
 		return ensureMasterNodes()
 				.then(masters -> firstSuccessful(masters.stream()
 						.map(master -> AsyncSupplier.cast(() ->
 								master.list(space))))
-						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet()))).whenResult((Consumer<? super Set<String>>) repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name)))).whenResult((Consumer<? super Set<String>>) $ -> updateRepositoriesTimestamp = node.now.currentTimeMillis())
+						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))
+				.whenResult((Consumer<? super Set<String>>) repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name)))).whenResult((Consumer<? super Set<String>>) $ -> updateRepositoriesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
 				.toVoid();
 	}
 
@@ -213,22 +214,22 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 								return found;
 							})))
 					.then(this::saveHeads)
-					.whenResult($ -> updateHeadsTimestamp = node.now.currentTimeMillis());
+					.whenResult($ -> updateHeadsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
 		@NotNull
 		private Promise<Void> doUpdate() {
-			if (updateTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots())
-					.whenResult($ -> updateTimestamp = node.now.currentTimeMillis());
+					.whenResult($ -> updateTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
 		@NotNull
 		private Promise<Void> doUpdateHeads() {
 			logger.trace("Updating heads");
-			if (updateHeadsTimestamp > node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateHeadsTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -238,13 +239,13 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 											master.getHeads(repositoryId)))))
 							.mapEx((result, e) -> e == null ? result : Collections.<SignedData<RawCommitHead>>emptySet())
 							.then(this::saveHeads))
-					.whenResult($ -> updateHeadsTimestamp = node.now.currentTimeMillis());
+					.whenResult($ -> updateHeadsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
 		@NotNull
 		private Promise<Void> doUpdateSnapshots() {
 			logger.trace("Updating snapshots");
-			if (updateSnapshotsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updateSnapshotsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -258,13 +259,13 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 																			.then(Promise::ofOptional)))))))
 									.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawSnapshot>>emptyList())))
 							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot))))
-					.whenResult($ -> updateSnapshotsTimestamp = node.now.currentTimeMillis());
+					.whenResult($ -> updateSnapshotsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
 		@NotNull
 		private Promise<Void> doUpdatePullRequests() {
 			logger.trace("Updating pull requests");
-			if (updatePullRequestsTimestamp >= node.now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
+			if (updatePullRequestsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
@@ -274,7 +275,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 							.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawPullRequest>>emptySet())))
 					.then(pullRequests -> Promises.all(
 							pullRequests.stream().map(node.getCommitStorage()::savePullRequest)))
-					.whenResult($ -> updatePullRequestsTimestamp = node.now.currentTimeMillis());
+					.whenResult($ -> updatePullRequestsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
 		private Promise<Void> doSaveHeads(Set<SignedData<RawCommitHead>> signedNewHeads) {
