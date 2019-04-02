@@ -20,6 +20,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
@@ -42,26 +43,25 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.Promise.ofBlockingCallable;
-import static io.datakernel.remotefs.RemoteFsUtils.checkRange;
+import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.escapeGlob;
+import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.FileVisitResult.CONTINUE;
-import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toList;
 
 /**
  * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
@@ -70,29 +70,28 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
 
 	public static final FileNamingScheme DEFAULT_FILE_NAMING_SCHEME = new FileNamingScheme() {
+		private static final String SEPARATOR = "@";
+		private static final String TOMBSTONE_QUALIFIER = "!";
+
 		@Override
 		public String encode(String name, long revision, boolean tombstone) {
-			return name + (tombstone ? "#!" : "#") + revision;
+			return name + SEPARATOR + (tombstone ? TOMBSTONE_QUALIFIER : "") + revision;
 		}
 
 		@Override
-		@Nullable
-		public FileMetadata decode(String filename, long size, long timestamp) {
-			int idx = filename.lastIndexOf('#');
+		public FilenameInfo decode(Path path, String name) {
+			int idx = name.lastIndexOf(SEPARATOR);
 			if (idx == -1) {
 				return null;
 			}
-			String meta = filename.substring(idx + 1);
-			filename = filename.substring(0, idx);
-			boolean tombstone = meta.startsWith("!");
+			String meta = name.substring(idx + 1);
+			name = name.substring(0, idx);
+			boolean tombstone = meta.startsWith(TOMBSTONE_QUALIFIER);
 			if (tombstone) {
-				meta = meta.substring(1);
+				meta = meta.substring(TOMBSTONE_QUALIFIER.length());
 			}
 			try {
-				long revision = Long.parseLong(meta);
-				return tombstone ?
-						FileMetadata.tombstone(filename, timestamp, revision) :
-						FileMetadata.of(filename, size, timestamp, revision);
+				return new FilenameInfo(path, name, Long.parseLong(meta), tombstone);
 			} catch (NumberFormatException ignored) {
 				return null;
 			}
@@ -192,6 +191,17 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 	// endregion
 
+	private ChannelConsumer<ByteBuf> doUpload(Path path, long size, long offset) throws StacklessException, IOException {
+		if (offset > size) {
+			throw OFFSET_TOO_BIG;
+		}
+		long skip = lazyOverrides ? size - offset : 0;
+		return ChannelFileWriter.create(AsyncFile.open(executor, path, set(CREATE, WRITE), this))
+				.withForceOnClose(true)
+				.withOffset(offset + skip)
+				.transformWith(ChannelByteRanger.drop(skip));
+	}
+
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
 		checkNotNull(name, "name");
@@ -199,24 +209,43 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 		return ofBlockingCallable(executor,
 				() -> {
-					synchronized (lock) {
-						Path path = resolve(defaultRevision == null ? namingScheme.encode(name, revision, false) : name);
-						boolean exists = Files.isRegularFile(path);
-						long size = exists ? Files.size(path) : 0;
-						if (offset > size) {
-							throw OFFSET_TOO_BIG;
-						}
-						if (!exists) {
+					if (defaultRevision != null) {
+						Path path = resolve(name);
+						long size;
+						if (Files.isRegularFile(path)) {
+							size = Files.size(path);
+						} else {
+							size = 0;
 							Files.createDirectories(path.getParent());
 						}
-						AsyncFile file = AsyncFile.open(executor, path, set(CREATE, WRITE), this);
-						long skip = lazyOverrides ? size - offset : 0;
-
-						return ChannelFileWriter.create(file)
-								.withForceOnClose(true)
-								.withOffset(offset + skip)
-								.transformWith(ChannelByteRanger.drop(skip));
+						return doUpload(path, size, offset);
 					}
+
+					FilenameInfo existing = getInfo(name);
+
+					if (existing == null) {
+						Path path = resolve(namingScheme.encode(name, revision, false));
+						Files.createDirectories(path.getParent());
+						return doUpload(path, 0, offset);
+					}
+
+					if (existing.getRevision() < revision) {
+
+						// cleanup existing file/tombstone with lower revision
+						Files.deleteIfExists(existing.getFilePath());
+
+						return doUpload(resolve(namingScheme.encode(name, revision, false)), 0, offset);
+					}
+
+					if (existing.getRevision() == revision) {
+						if (existing.isTombstone()) {
+							return ChannelConsumers.<ByteBuf>recycling();
+						}
+						Path path = existing.getFilePath();
+						return doUpload(path, Files.size(path), offset);
+					}
+
+					return ChannelConsumers.<ByteBuf>recycling();
 				})
 				.map(consumer -> consumer
 						// calling withAcknowledgement in eventloop thread
@@ -235,23 +264,26 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 		return ofBlockingCallable(executor,
 				() -> {
-					synchronized (lock) {
-						List<FileMetadata> found = doList(escapeGlob(name), true);
-						FileMetadata meta = found.isEmpty() ? null : found.get(0);
+					Path path;
 
-						if (meta == null || meta.isTombstone()) {
+					if (defaultRevision == null) {
+						FilenameInfo info = getInfo(name);
+
+						if (info == null || info.isTombstone()) {
 							throw FILE_NOT_FOUND;
 						}
-
-						checkRange(meta.getSize(), offset, length);
-
-						Path path = resolve(defaultRevision == null ? namingScheme.encode(name, meta.getRevision(), false) : name);
-
-						return ChannelFileReader.readFile(AsyncFile.open(executor, path, ChannelFileReader.READ_OPTIONS, this))
-								.withBufferSize(readerBufferSize)
-								.withOffset(offset)
-								.withLength(length == -1 ? Long.MAX_VALUE : length);
+						path = info.getFilePath();
+					} else {
+						path = resolve(name);
+						if (!Files.exists(path)) {
+							throw FILE_NOT_FOUND;
+						}
 					}
+
+					return ChannelFileReader.readFile(AsyncFile.open(executor, path, ChannelFileReader.READ_OPTIONS, this))
+							.withBufferSize(readerBufferSize)
+							.withOffset(offset)
+							.withLength(length == -1 ? Long.MAX_VALUE : length);
 				})
 				.map(consumer -> consumer
 						// call withAcknowledgement in eventloop thread
@@ -278,13 +310,36 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
 		return ofBlockingCallable(executor,
 				() -> {
-					synchronized (lock) {
-						if (defaultRevision != null && removeRevision != defaultRevision) {
+					// old logic
+					if (defaultRevision != null) {
+						if (removeRevision != defaultRevision) {
 							throw UNSUPPORTED_REVISION;
 						}
-						doCopy(name, target, targetRevision);
-						doDelete(resolve(name), removeRevision);
+						Path path = resolve(name);
+						Path targetPath = resolve(target);
+
+						if (Files.isDirectory(path) || Files.isDirectory(targetPath)) {
+							throw MOVING_DIRS;
+						}
+						// noop when paths are equal
+						if (path.equals(targetPath)) {
+							return null;
+						}
+						// cannot move into existing file
+						if (Files.isRegularFile(targetPath)) {
+							throw FILE_EXISTS;
+						}
+
+						if (Files.isRegularFile(path)) {
+							Files.createDirectories(targetPath.getParent());
+							Files.move(path, targetPath, ATOMIC_MOVE);
+						} else {
+							Files.deleteIfExists(targetPath);
+						}
+						return null;
 					}
+					doCopy(name, target, targetRevision);
+					doDelete(name, removeRevision);
 					return (Void) null;
 				})
 				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
@@ -295,9 +350,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Promise<Void> copy(String name, String target, long targetRevision) {
 		return ofBlockingCallable(executor,
 				() -> {
-					synchronized (lock) {
-						doCopy(name, target, targetRevision);
-					}
+					doCopy(name, target, targetRevision);
 					return (Void) null;
 				})
 				.whenComplete(toLogger(logger, TRACE, "copy", name, target, this))
@@ -308,9 +361,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Promise<Void> delete(String name, long revision) {
 		return ofBlockingCallable(executor,
 				() -> {
-					synchronized (lock) {
-						doDelete(resolve(name), revision);
-					}
+					doDelete(name, revision);
 					return (Void) null;
 				})
 				.whenComplete(toLogger(logger, TRACE, "delete", name, this))
@@ -325,8 +376,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
 		return ofBlockingCallable(executor, () -> {
-			List<FileMetadata> found = doList(escapeGlob(name), true);
-			return found.isEmpty() ? null : found.get(0);
+			FilenameInfo info = getInfo(name);
+			return info != null ? toFileMetadata(info) : null;
 		});
 	}
 
@@ -392,8 +443,28 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private void doCopy(String name, String target, long targetRevision) throws StacklessException, IOException {
-		Path path = resolve(name);
-		Path targetPath = resolve(target);
+		Path path;
+		Path targetPath;
+
+		// check the revisions
+		if (defaultRevision != null) {
+			if (targetRevision != defaultRevision) {
+				throw UNSUPPORTED_REVISION;
+			}
+
+			path = resolve(name);
+			if (!Files.isRegularFile(path)) {
+				return;
+			}
+			targetPath = resolve(target);
+		} else {
+			FilenameInfo info = getInfo(name);
+			if (info == null || info.isTombstone()) {
+				return;
+			}
+			path = info.getFilePath();
+			targetPath = resolve(namingScheme.encode(target, targetRevision, false));
+		}
 
 		if (Files.isDirectory(path) || Files.isDirectory(targetPath)) {
 			throw MOVING_DIRS;
@@ -403,112 +474,175 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return;
 		}
 
-		// check the revisions
-		if (defaultRevision != null) {
-			if (targetRevision != defaultRevision) {
-				throw UNSUPPORTED_REVISION;
-			}
-			// with old logic we cannot move into existing file
-			if (Files.isRegularFile(targetPath)) {
-				throw FILE_EXISTS;
-			}
-			// copying 'nothing' into anything is a noop
-			if (Files.isRegularFile(path)) {
-				tryHardlinkOrCopy(path, targetPath);
-			}
-			return;
+		// with old logic we cannot move into existing file
+		if (Files.isRegularFile(targetPath)) {
+			throw FILE_EXISTS;
 		}
 
-		List<FileMetadata> found = doList(escapeGlob(name), true);
-
-		// copying 'nothing' into anything is a noop
-		FileMetadata pathMeta = found.isEmpty() ? null : found.get(0);
-		if (pathMeta == null || pathMeta.isTombstone()) {
-			return;
-		}
-
-		targetPath = resolve(namingScheme.encode(targetPath.toString(), targetRevision, false));
-
-		tryHardlinkOrCopy(resolve(namingScheme.encode(pathMeta.getName(), pathMeta.getRevision(), false)), targetPath);
+		tryHardlinkOrCopy(path, targetPath);
 	}
 
-	private void doDelete(Path path, long revision) throws IOException, StacklessException {
+	private void doDelete(String name, long revision) throws IOException, StacklessException {
+
+		// old logic - just delete the file
+		if (defaultRevision != null) {
+			if (revision != defaultRevision) {
+				throw UNSUPPORTED_REVISION;
+			}
+
+			Path path = resolve(name);
+			if (Files.isDirectory(path)) {
+				throw MOVING_DIRS;
+			}
+
+			Files.deleteIfExists(path);
+			return;
+		}
+
+		Path path = resolve(namingScheme.encode(name, revision, true));
+
 		if (Files.isDirectory(path)) {
 			throw MOVING_DIRS;
 		}
-		if (defaultRevision == null) {
-			Path tombstone = resolve(namingScheme.encode(storage.relativize(path).toString(), revision, true));
-			Files.createDirectories(tombstone.getParent());
-			Files.createFile(tombstone);
+		FilenameInfo existing = getInfo(name);
+
+		if (existing == null) {
+			Files.createDirectories(path.getParent());
+			Files.createFile(path);
 			return;
 		}
-		// old logic - just delete the file
-		if (revision != defaultRevision) {
-			throw UNSUPPORTED_REVISION;
+
+		if (existing.isTombstone() && existing.getRevision() < revision || existing.getRevision() <= revision) {
+			Files.deleteIfExists(existing.getFilePath());
+			Files.createFile(path);
 		}
-		Files.deleteIfExists(path);
+	}
+
+	private FileMetadata toFileMetadata(FilenameInfo info) {
+		try {
+			Path path = info.getFilePath();
+			long timestamp = Files.getLastModifiedTime(path).toMillis();
+			return info.isTombstone() ?
+					FileMetadata.tombstone(info.getName(), timestamp, info.getRevision()) :
+					FileMetadata.of(info.getName(), Files.size(path), timestamp, info.getRevision());
+		} catch (Exception e) {
+			logger.warn("error while getting metadata for file {}", info.getFilePath());
+			return null;
+		}
+	}
+
+	private List<FileMetadata> doList(String glob, boolean listTombstones) throws IOException, StacklessException {
+		return findMatched(glob, listTombstones).stream()
+				.map(this::toFileMetadata)
+				.filter(Objects::nonNull)
+				.collect(toList());
+	}
+
+	private FilenameInfo getBetterFilenameInfo(FilenameInfo first, FilenameInfo second) {
+		return first.getRevision() > second.getRevision() ?
+				first :
+				second.getRevision() > first.getRevision() ?
+						second :
+						first.isTombstone() ?
+								first :
+								second;
 	}
 
 	@Nullable
-	private FileMetadata getFileMeta(Path path, String name) throws IOException {
-		synchronized (lock) {
-			if (!Files.isRegularFile(path)) {
-				return null;
-			}
-			name = File.separatorChar == '\\' ? name.replace('\\', '/') : name;
-			return defaultRevision == null ?
-					namingScheme.decode(name, Files.size(path), Files.getLastModifiedTime(path).toMillis()) :
-					FileMetadata.of(name, Files.size(path), Files.getLastModifiedTime(path).toMillis(), defaultRevision);
-		}
+	private FilenameInfo getInfo(String name) throws IOException, StacklessException {
+		Iterator<FilenameInfo> matched = findMatched(escapeGlob(name), true).iterator();
+		return matched.hasNext() ? matched.next() : null;
 	}
 
-	private List<FileMetadata> doList(String glob, boolean listTombstones) throws IOException {
+	private Collection<FilenameInfo> findMatched(String glob, boolean includeTombstones) throws IOException, StacklessException {
 		// optimization for 'ping' empty list requests
 		if (glob.isEmpty()) {
 			return emptyList();
 		}
-		Map<String, FileMetadata> files = new HashMap<>();
+
+		if (defaultRevision != null) {
+			return doListWithoutRevisions(glob);
+		}
+
+		Map<String, FilenameInfo> files = new HashMap<>();
 		// optimization for listing all files
 		if ("**".equals(glob)) {
 			Files.walkFileTree(storage, new SimpleFileVisitor<Path>() {
 				@Override
-				public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-					FileMetadata meta = getFileMeta(path, storage.relativize(path).toString());
-					if (meta != null && (listTombstones || !meta.isTombstone())) {
-						files.merge(meta.getName(), meta, FileMetadata::getMoreCompleteFile);
+				public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+					FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
+					if (info != null && (includeTombstones || !info.isTombstone())) {
+						files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
 					}
 					return CONTINUE;
 				}
 			});
-			return new ArrayList<>(files.values());
+			return files.values();
 		}
-		int counter = 0;
-		for (String part : glob.split("/")) {
-			if (RemoteFsUtils.isWildcard(part)) {
+
+		StringBuilder folder = new StringBuilder();
+		String[] split = glob.split("/");
+		for (int i = 0; i < split.length - 1; i++) {
+			String part = split[i];
+			if (isWildcard(part)) {
 				break;
 			}
-			counter++;
+			folder.append(part).append('/');
 		}
-		int concreteDirCount = counter;
-		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
-		Files.walkFileTree(storage, new SimpleFileVisitor<Path>() {
 
+		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob.substring(folder.length()));
+		Files.walkFileTree(storage.resolve(folder.toString()), new SimpleFileVisitor<Path>() {
 			@Override
-			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-				Path rel = storage.relativize(dir);
-				return rel.getNameCount() <= concreteDirCount && !glob.startsWith(rel.toString()) ? SKIP_SUBTREE : CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-				FileMetadata meta = getFileMeta(path, storage.relativize(path).toString());
-				if (meta != null && (listTombstones || !meta.isTombstone()) && matcher.matches(Paths.get(meta.getName()))) {
-					files.merge(meta.getName(), meta, FileMetadata::getMoreCompleteFile);
+			public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+				FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
+				if (info != null && (includeTombstones || !info.isTombstone()) && matcher.matches(Paths.get(info.getName()))) {
+					files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
 				}
 				return CONTINUE;
 			}
 		});
-		return new ArrayList<>(files.values());
+		return files.values();
+	}
+
+	private FilenameInfo infoFor(Path path, long revision) {
+		return new FilenameInfo(path, storage.relativize(path).toString(), revision, false);
+	}
+
+	private List<FilenameInfo> doListWithoutRevisions(String glob) throws IOException, StacklessException {
+		assert defaultRevision != null;
+
+		List<FilenameInfo> list = new ArrayList<>();
+		// optimization for listing all files
+		if ("**".equals(glob)) {
+			Files.walkFileTree(storage, new SimpleFileVisitor<Path>() {
+				@Override
+				public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+					list.add(infoFor(path, defaultRevision));
+					return CONTINUE;
+				}
+			});
+			return list;
+		}
+		// optimization for single-file requests
+		if (!isWildcard(glob)) {
+			Path path = resolve(glob);
+			if (Files.isRegularFile(path)) {
+				list.add(infoFor(path, defaultRevision));
+			}
+			return list;
+		}
+		// common
+		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
+		Files.walkFileTree(storage, new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) {
+				if (matcher.matches(storage.relativize(path))) {
+					list.add(infoFor(path, defaultRevision));
+				}
+				return CONTINUE;
+			}
+		});
+		return list;
 	}
 
 	//region JMX
