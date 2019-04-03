@@ -24,10 +24,16 @@ import java.util.Arrays;
 import static io.global.common.CryptoUtils.sha256;
 
 public final class CommitId {
+	private static final CommitId ROOT = new CommitId(new byte[]{});
+
 	private final byte[] bytes;
 
 	private CommitId(byte[] bytes) {
 		this.bytes = bytes;
+	}
+
+	public static CommitId ofRoot() {
+		return ROOT;
 	}
 
 	public static CommitId ofBytes(byte[] bytes) {
@@ -40,6 +46,10 @@ public final class CommitId {
 
 	public static CommitId ofCommitData(byte[] bytes) {
 		return new CommitId(sha256(bytes));
+	}
+
+	public boolean isRoot() {
+		return this.bytes.length == 0;
 	}
 
 	public byte[] toBytes() {

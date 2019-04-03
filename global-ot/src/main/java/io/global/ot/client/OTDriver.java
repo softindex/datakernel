@@ -193,6 +193,7 @@ public final class OTDriver {
 
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
 			Set<RepoID> originRepositoryIds, CommitId commitId) {
+		if (commitId.isRoot()) return Promise.of(OTCommit.ofRoot(CommitId.ofRoot()));
 		return Promises.firstSuccessful(
 				() -> service.loadCommit(myRepositoryId.getRepositoryId(), commitId),
 				() -> Promises.any(originRepositoryIds.stream()
