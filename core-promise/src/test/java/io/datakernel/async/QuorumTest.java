@@ -18,7 +18,7 @@ package io.datakernel.async;
 
 import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.util.ref.IntRef;
+import io.datakernel.util.ref.RefInt;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -68,7 +68,7 @@ public final class QuorumTest {
 		assertThat(e.getMessage(), containsString("Not enough successful completions, 4 were required, only 3 succeeded"));
 	}
 
-	private static Promise<String> work(long millis, IntRef calls, int maxCalls, String res) {
+	private static Promise<String> work(long millis, RefInt calls, int maxCalls, String res) {
 		return Promise.ofCallback(cb -> {
 			assertTrue("More parrallel calls than the limit!", calls.inc() <= maxCalls);
 			getCurrentEventloop().delay(millis, () -> {
@@ -81,7 +81,7 @@ public final class QuorumTest {
 	@Test
 	public void parallel() {
 		int maxParallelCalls = 4;
-		IntRef calls = new IntRef(0);
+		RefInt calls = new RefInt(0);
 		Iterator<Function<Integer, Promise<String>>> functions = Stream.<Function<Integer, Promise<String>>>of(
 				i -> work(50, calls, maxParallelCalls, "" + i),
 				i -> work(40, calls, maxParallelCalls, "" + (i + 1)),

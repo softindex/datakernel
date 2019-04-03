@@ -1,10 +1,10 @@
 package io.datakernel.util.ref;
 
 public final class Ref<T> {
-	private T peer;
+	public T value;
 
-	public Ref(T peer) {
-		this.peer = peer;
+	public Ref(T value) {
+		this.value = value;
 	}
 
 	public Ref() {
@@ -12,19 +12,19 @@ public final class Ref<T> {
 	}
 
 	public T get() {
-		return peer;
+		return value;
 	}
 
 	public void set(T peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	public void unset() {
-		this.peer = null;
+		this.value = null;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }

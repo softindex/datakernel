@@ -23,7 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -94,7 +94,7 @@ public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl,
 								ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.create(buffer.getSupplier())
 										.lenient();
 
-								BooleanRef localCompleted = new BooleanRef(false);
+								RefBoolean localCompleted = new RefBoolean(false);
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
 											.withAcknowledgement(ack ->

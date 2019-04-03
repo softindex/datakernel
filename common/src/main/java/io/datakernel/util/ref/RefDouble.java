@@ -1,39 +1,39 @@
 package io.datakernel.util.ref;
 
-public final class DoubleRef {
-	private double peer;
+public final class RefDouble {
+	public double value;
 
-	public DoubleRef(double peer) {
-		this.peer = peer;
+	public RefDouble(double value) {
+		this.value = value;
 	}
 
 	public double inc() {
-		return ++peer;
+		return ++value;
 	}
 
 	public double inc(double add) {
-		return peer += add;
+		return value += add;
 	}
 
 	public double dec() {
-		return --peer;
+		return --value;
 	}
 
 	public double dec(double sub) {
-		return peer -= sub;
+		return value -= sub;
 	}
 
 	public double get() {
-		return peer;
+		return value;
 	}
 
 	public void set(double peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }
 

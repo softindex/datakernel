@@ -24,7 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.inspector.AbstractInspector;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.RequiresInternetConnection;
-import io.datakernel.util.ref.IntRef;
+import io.datakernel.util.ref.RefInt;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -132,7 +132,7 @@ public final class AsyncDnsClientTest {
 				DnsCache.create(eventloop)
 		);
 
-		IntRef index = new IntRef(-1);
+		RefInt index = new RefInt(-1);
 		IntStream.range(0, threadCount)
 				.mapToObj($ -> (Runnable) () -> {
 					eventloop.startExternalTask();

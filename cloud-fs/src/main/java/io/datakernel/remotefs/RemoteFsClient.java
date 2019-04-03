@@ -33,7 +33,7 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
-import io.datakernel.util.ref.LongRef;
+import io.datakernel.util.ref.RefLong;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -156,7 +156,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 									logger.trace("download size for file {} is {}: {}", name, receivingSize, this);
 
-									LongRef size = new LongRef(0);
+									RefLong size = new RefLong(0);
 									return Promise.of(messaging.receiveBinaryStream()
 											.peek(buf -> size.inc(buf.readRemaining()))
 											.withEndOfStream(eos -> eos

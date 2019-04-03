@@ -1,39 +1,39 @@
 package io.datakernel.util.ref;
 
-public final class ByteRef {
-	private byte peer;
+public final class RefByte {
+	public byte value;
 
-	public ByteRef(byte peer) {
-		this.peer = peer;
+	public RefByte(byte value) {
+		this.value = value;
 	}
 
 	public byte inc() {
-		return ++peer;
+		return ++value;
 	}
 
 	public byte inc(byte add) {
-		return peer += add;
+		return value += add;
 	}
 
 	public byte dec() {
-		return --peer;
+		return --value;
 	}
 
 	public byte dec(byte sub) {
-		return peer -= sub;
+		return value -= sub;
 	}
 
 	public byte get() {
-		return peer;
+		return value;
 	}
 
 	public void set(byte peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }
 

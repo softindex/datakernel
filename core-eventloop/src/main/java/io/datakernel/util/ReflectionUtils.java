@@ -18,7 +18,7 @@ package io.datakernel.util;
 
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.*;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.MXBean;
@@ -259,7 +259,7 @@ public final class ReflectionUtils {
 						.filter(ReflectionUtils::isGetter)
 						.map(Method::getName))
 				.collect(toSet());
-		BooleanRef changed = new BooleanRef(false);
+		RefBoolean changed = new RefBoolean(false);
 		Arrays.stream(instance.getClass().getMethods())
 				.filter(method -> isGetter(method) && (attributeNames.contains(method.getName())
 						|| Arrays.stream(method.getAnnotations()).anyMatch(a -> a.annotationType() == JmxAttribute.class)))

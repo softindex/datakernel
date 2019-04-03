@@ -24,7 +24,7 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Rule;
@@ -97,7 +97,7 @@ public class TriggersModuleTest {
 		injector.getInstance(Key.get(WorkerPool.class, named("first"))).getInstances(String.class);
 		injector.getInstance(Key.get(WorkerPool.class, named("second"))).getInstances(String.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-		BooleanRef wasExecuted = new BooleanRef(false);
+		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
 			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
@@ -149,7 +149,7 @@ public class TriggersModuleTest {
 				}
 		);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-		BooleanRef wasExecuted = new BooleanRef(false);
+		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
 			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);

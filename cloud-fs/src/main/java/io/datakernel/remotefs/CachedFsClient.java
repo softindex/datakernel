@@ -27,7 +27,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.ref.LongRef;
+import io.datakernel.util.ref.RefLong;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -283,7 +283,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 		if (totalCacheSize + downloadingNowSize <= cacheSizeLimit.toLong()) {
 			return Promise.complete();
 		}
-		LongRef size = new LongRef(0);
+		RefLong size = new RefLong(0);
 		return cacheClient.list("**")
 				.map(list -> list
 						.stream()

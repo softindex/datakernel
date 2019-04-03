@@ -3,7 +3,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -24,7 +24,7 @@ public class StreamSuspendBufferTest {
 
 		SettablePromise<List<String>> result = new SettablePromise<>();
 
-		BooleanRef suspended = new BooleanRef(false);
+		RefBoolean suspended = new RefBoolean(false);
 
 		StreamSupplier<String> supplier = StreamSupplier.ofIterable(items)
 				.transformWith(suspendingModifier)

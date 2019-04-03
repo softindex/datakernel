@@ -1,7 +1,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.util.ref.IntRef;
+import io.datakernel.util.ref.RefInt;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -53,7 +53,7 @@ public class StreamSuppliersTest {
 	@Test
 	public void testSupplierSupplier() {
 		List<Integer> actual = new ArrayList<>();
-		IntRef count = new IntRef(-1);
+		RefInt count = new RefInt(-1);
 		await(StreamSupplier.ofSupplier(
 				() -> {
 					if (count.get() == 10) {

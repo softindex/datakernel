@@ -36,7 +36,7 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ReflectionUtils;
-import io.datakernel.util.ref.IntRef;
+import io.datakernel.util.ref.RefInt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -215,8 +215,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	public Promise<Void> cleanup(Set<C> preserveChunks, @Nullable Instant instant) {
 		long timestamp = instant != null ? instant.toEpochMilli() : -1;
 
-		IntRef skipped = new IntRef(0);
-		IntRef deleted = new IntRef(0);
+		RefInt skipped = new RefInt(0);
+		RefInt deleted = new RefInt(0);
 		return client.list("*" + LOG)
 				.then(list -> Promises.all(list.stream()
 						.filter(file -> {

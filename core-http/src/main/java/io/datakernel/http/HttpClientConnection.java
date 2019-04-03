@@ -61,10 +61,10 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  *     "keep-alive"
  *     "taken(null)"
  *
- *     "writing" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset/write timeout"]
- *     "reading" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset/read timeout"]
- *     "keep-alive" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset"]
- *     "taken(null)" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset"]
+ *     "writing" -> "closed(null)" [color="#ff8080", style=dashed, label="value reset/write timeout"]
+ *     "reading" -> "closed(null)" [color="#ff8080", style=dashed, label="value reset/read timeout"]
+ *     "keep-alive" -> "closed(null)" [color="#ff8080", style=dashed, label="value reset"]
+ *     "taken(null)" -> "closed(null)" [color="#ff8080", style=dashed, label="value reset"]
  *
  *     "open(null)" -> "writing" [label="send request"]
  *     "writing" -> "reading"
@@ -274,7 +274,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		}
 
-		// pool will be null if socket was closed by the peer just before connection.send() invocation
+		// pool will be null if socket was closed by the value just before connection.send() invocation
 		// (eg. if connection was in open(null) or taken(null) states)
 		pool.removeNode(this);
 		pool = null;

@@ -3,6 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.util.ref.Ref;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import static io.datakernel.ot.DiffsReducer.toSquashedList;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -49,9 +51,11 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
-		return repository.createCommit(parent, diffs, level)
-				.map(commitToObject)
-				.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level));
+		return repository.loadCommit(parent)
+				.then(parentCommit ->
+						repository.createCommit(parent, diffs, level)
+								.map(commitToObject)
+								.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level)));
 	}
 
 	@Override
@@ -71,7 +75,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
-		@SuppressWarnings("unchecked") List<D>[] cachedSnapshotRef = new List[]{null};
+		Ref<List<D>> cachedSnapshot = new Ref<>();
 		return repository.getHeads()
 				.then(heads -> algorithms.findParent(
 						heads,
@@ -79,13 +83,13 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 						commit -> commit.getSnapshotHint() == Boolean.FALSE ?
 								Promise.of(false) :
 								repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshotRef[0] = maybeSnapshot.orElse(null)) != null)
+										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null)
 				))
 				.then(findResult -> Promise.of(
 						new FetchData<>(
 								findResult.getChild(),
 								findResult.getChildLevel(),
-								concat(cachedSnapshotRef[0], findResult.getAccumulatedDiffs()))))
+								concat(cachedSnapshot.value, findResult.getAccumulatedDiffs()))))
 				.then(checkoutData -> fetch(checkoutData.getCommitId())
 						.map(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
@@ -113,7 +117,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	private Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
 		return algorithms.findParent(
 				heads,
-				DiffsReducer.toList(),
+				toSquashedList(algorithms.getOtSystem()),
 				AsyncPredicate.of(commit -> commit.getId().equals(currentCommitId)))
 				.map(findResult -> new FetchData<>(
 						findResult.getChild(),

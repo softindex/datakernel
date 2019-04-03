@@ -9,7 +9,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.ContentTypes;
 import io.datakernel.http.HttpHeaderValue;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.util.ref.LongRef;
+import io.datakernel.util.ref.RefLong;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -30,7 +30,7 @@ public final class HttpUploadResetTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request ->
 				httpUpload(request, (name, offset, revision) -> {
 					System.out.println("name = " + name + ", offset = " + offset + ", revision = " + revision);
-					LongRef size = new LongRef(0);
+					RefLong size = new RefLong(0);
 					return Promise.of(ChannelConsumers.<ByteBuf>recycling().mapAsync(buf -> {
 						if (size.inc(buf.readRemaining()) > 10 * 1024 * 1024 /* 10 MB*/) {
 							// could be tested by Content-Length ofc, but here we are testing what happens

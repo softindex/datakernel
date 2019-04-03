@@ -23,7 +23,7 @@ import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -134,7 +134,7 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 								ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
 
-								BooleanRef localCompleted = new BooleanRef(false);
+								RefBoolean localCompleted = new RefBoolean(false);
 								if (doesUploadCaching || consumers.isEmpty()) {
 									splitter.addOutput()
 											.set(ChannelConsumer.ofPromise(ns.upload(filename, offset, revision))

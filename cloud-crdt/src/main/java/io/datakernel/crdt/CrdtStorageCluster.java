@@ -37,7 +37,7 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +200,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 								.whenException(err -> markDead(entry.getKey(), err))
 								.toTry()))
 				.then(tries -> {
-					BooleanRef anyConnection = new BooleanRef(false);
+					RefBoolean anyConnection = new RefBoolean(false);
 					List<StreamConsumer<CrdtData<K, S>>> successes = tries.stream()
 							.map(t -> {
 								anyConnection.or(t.isSuccess());

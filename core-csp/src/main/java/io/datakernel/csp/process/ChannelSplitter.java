@@ -24,8 +24,8 @@ import io.datakernel.csp.dsl.WithChannelInput;
 import io.datakernel.csp.dsl.WithChannelOutputs;
 import io.datakernel.exception.Exceptions;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.util.ref.BooleanRef;
-import io.datakernel.util.ref.IntRef;
+import io.datakernel.util.ref.RefBoolean;
+import io.datakernel.util.ref.RefInt;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,8 +79,8 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		};
 	}
 
-	public MaterializedPromise<Void> splitInto(List<ChannelConsumer<T>> consumers, int requiredSuccesses, BooleanRef extraCondition) {
-		IntRef up = new IntRef(consumers.size());
+	public MaterializedPromise<Void> splitInto(List<ChannelConsumer<T>> consumers, int requiredSuccesses, RefBoolean extraCondition) {
+		RefInt up = new RefInt(consumers.size());
 
 		consumers.forEach(output ->
 				outputs.add(sanitize(output

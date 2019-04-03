@@ -3,7 +3,7 @@ package io.datakernel.trigger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,7 +62,7 @@ public class TriggersTest {
 	public void testDuplicateTriggersResume() {
 		triggers = Triggers.create();
 		triggers.now = CurrentTimeProvider.ofTimeSequence(System.currentTimeMillis(), Triggers.CACHE_TIMEOUT.toMillis());
-		BooleanRef condition = new BooleanRef(true);
+		RefBoolean condition = new RefBoolean(true);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", () -> {
@@ -87,7 +87,7 @@ public class TriggersTest {
 	public void testResumeTrigger() {
 		triggers = Triggers.create();
 		triggers.now = CurrentTimeProvider.ofTimeSequence(System.currentTimeMillis(), Triggers.CACHE_TIMEOUT.toMillis());
-		BooleanRef condition = new BooleanRef(true);
+		RefBoolean condition = new RefBoolean(true);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", () -> {
 			if (!condition.get()) {
 				return TriggerResult.none();

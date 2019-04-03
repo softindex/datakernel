@@ -1,39 +1,39 @@
 package io.datakernel.util.ref;
 
-public final class IntRef {
-	private int peer;
+public final class RefInt {
+	public int value;
 
-	public IntRef(int peer) {
-		this.peer = peer;
+	public RefInt(int value) {
+		this.value = value;
 	}
 
 	public int inc() {
-		return ++peer;
+		return ++value;
 	}
 
 	public int inc(int add) {
-		return peer += add;
+		return value += add;
 	}
 
 	public int dec() {
-		return --peer;
+		return --value;
 	}
 
 	public int dec(int sub) {
-		return peer -= sub;
+		return value -= sub;
 	}
 
 	public int get() {
-		return peer;
+		return value;
 	}
 
 	public void set(int peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }
 

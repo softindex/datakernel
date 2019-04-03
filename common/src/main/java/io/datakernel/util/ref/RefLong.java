@@ -1,39 +1,39 @@
 package io.datakernel.util.ref;
 
-public final class LongRef {
-	private long peer;
+public final class RefLong {
+	public long value;
 
-	public LongRef(long peer) {
-		this.peer = peer;
+	public RefLong(long value) {
+		this.value = value;
 	}
 
 	public long inc() {
-		return ++peer;
+		return ++value;
 	}
 
 	public long inc(long add) {
-		return peer += add;
+		return value += add;
 	}
 
 	public long dec() {
-		return --peer;
+		return --value;
 	}
 
 	public long dec(long sub) {
-		return peer -= sub;
+		return value -= sub;
 	}
 
 	public long get() {
-		return peer;
+		return value;
 	}
 
 	public void set(long peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }
 

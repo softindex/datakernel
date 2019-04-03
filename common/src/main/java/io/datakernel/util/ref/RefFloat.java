@@ -1,39 +1,39 @@
 package io.datakernel.util.ref;
 
-public final class FloatRef {
-	private float peer;
+public final class RefFloat {
+	public float value;
 
-	public FloatRef(float peer) {
-		this.peer = peer;
+	public RefFloat(float value) {
+		this.value = value;
 	}
 
 	public float inc() {
-		return ++peer;
+		return ++value;
 	}
 
 	public float inc(float add) {
-		return peer += add;
+		return value += add;
 	}
 
 	public float dec() {
-		return --peer;
+		return --value;
 	}
 
 	public float dec(float sub) {
-		return peer -= sub;
+		return value -= sub;
 	}
 
 	public float get() {
-		return peer;
+		return value;
 	}
 
 	public void set(float peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }
 

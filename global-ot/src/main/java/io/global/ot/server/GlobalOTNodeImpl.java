@@ -26,7 +26,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.CollectorsEx;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.BooleanRef;
+import io.datakernel.util.ref.RefBoolean;
 import io.global.common.*;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
@@ -322,7 +322,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 								ChannelZeroBuffer<CommitEntry> buffer = new ChannelZeroBuffer<>();
 								ChannelSplitter<CommitEntry> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
 
-								BooleanRef localCompleted = new BooleanRef(false);
+								RefBoolean localCompleted = new RefBoolean(false);
 								splitter.addOutput()
 										.set(ChannelConsumer.ofPromise(uploadLocal(repositoryId))
 												.withAcknowledgement(ack -> ack

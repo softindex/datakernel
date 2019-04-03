@@ -1,35 +1,35 @@
 package io.datakernel.util.ref;
 
-public final class BooleanRef {
-	private boolean peer;
+public final class RefBoolean {
+	public boolean value;
 
-	public BooleanRef(boolean peer) {
-		this.peer = peer;
+	public RefBoolean(boolean value) {
+		this.value = value;
 	}
 
 	public boolean get() {
-		return peer;
+		return value;
 	}
 
 	public void set(boolean peer) {
-		this.peer = peer;
+		this.value = peer;
 	}
 
 	public boolean flip() {
-		return peer = !peer;
+		return value = !value;
 	}
 
 	public boolean or(boolean other) {
-		return peer |= other;
+		return value |= other;
 	}
 
 	public boolean and(boolean other) {
-		return peer &= other;
+		return value &= other;
 	}
 
 	@Override
 	public String toString() {
-		return "→" + peer;
+		return "→" + value;
 	}
 }
 
