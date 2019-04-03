@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -62,18 +61,18 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	// region creators
 	private GlobalFsNodeImpl(RawServerId id, DiscoveryService discoveryService,
-							 Function<RawServerId, GlobalFsNode> nodeFactory,
-							 Function<PubKey, FsClient> storageFactory,
-							 Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
+			Function<RawServerId, GlobalFsNode> nodeFactory,
+			Function<PubKey, FsClient> storageFactory,
+			Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 		this.checkpointStorageFactory = checkpointStorageFactory;
 	}
 
 	public static GlobalFsNodeImpl create(RawServerId id, DiscoveryService discoveryService,
-										  Function<RawServerId, GlobalFsNode> nodeFactory,
-										  Function<PubKey, FsClient> storageFactory,
-										  Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
+			Function<RawServerId, GlobalFsNode> nodeFactory,
+			Function<PubKey, FsClient> storageFactory,
+			Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
 		return new GlobalFsNodeImpl(id, discoveryService, nodeFactory, storageFactory, checkpointStorageFactory);
 	}
 
@@ -246,32 +245,22 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
-	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpImpl));
+	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 
 	public Promise<Void> catchUp() {
-		return catchUpImpl.get()
+		return catchUp.get()
 				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
-	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
-		long started = now.currentTimeMillis();
-		Promise<Boolean> fetchPromise = fetch();
-		if (fetchPromise.isResult()) {
-			cb.set(null);
-		} else if (fetchPromise.isException()) {
-			cb.setException(fetchPromise.materialize().getException());
-		} else {
-			fetchPromise
-					.whenResult((Consumer<? super Boolean>) didAnything -> {
-						long timestampEnd = now.currentTimeMillis();
-						if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
-							cb.set(null);
-						} else {
-							catchUpImpl(cb);
-						}
-					})
-					.whenException(cb::setException);
-		}
+	private Promise<Void> doCatchUp() {
+		return Promises.until(
+				$1 -> {
+					long timestampBegin = now.currentTimeMillis();
+					return fetch()
+							.map(didAnything ->
+									!didAnything || now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
+
+				});
 	}
 
 	@Override

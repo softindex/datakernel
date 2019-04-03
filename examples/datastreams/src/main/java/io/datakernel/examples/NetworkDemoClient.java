@@ -60,7 +60,8 @@ public final class NetworkDemoClient {
 						.transformWith(ChannelDeserializer.create(UTF8_SERIALIZER))
 						.streamTo(consumer);
 
-				consumer.getResult().whenResult(list -> list.forEach(System.out::println));
+				consumer.getResult()
+						.whenResult(list -> list.forEach(System.out::println));
 			}
 
 			@Override

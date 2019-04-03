@@ -92,11 +92,12 @@ public class AsyncExecutors {
 					AsyncSupplier<Object> supplier = (AsyncSupplier<Object>) deque.pollFirst();
 					SettableCallback<Object> cb = (SettableCallback<Object>) deque.pollFirst();
 					pendingCalls++;
-					supplier.get().whenComplete((result, e) -> {
-						pendingCalls--;
-						processBuffer();
-						cb.accept(result, e);
-					});
+					supplier.get()
+							.whenComplete((result, e) -> {
+								pendingCalls--;
+								processBuffer();
+								cb.accept(result, e);
+							});
 				}
 			}
 

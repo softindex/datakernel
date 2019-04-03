@@ -64,7 +64,8 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 						.map(master -> AsyncSupplier.cast(() ->
 								master.list(space))))
 						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))
-				.whenResult((Consumer<? super Set<String>>) repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name)))).whenResult((Consumer<? super Set<String>>) $ -> updateRepositoriesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
+				.whenResult((Consumer<? super Set<String>>) repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name))))
+				.whenResult((Consumer<? super Set<String>>) $ -> updateRepositoriesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
 				.toVoid();
 	}
 

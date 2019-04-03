@@ -32,12 +32,10 @@ import io.global.common.api.DiscoveryService;
 import io.global.db.GlobalDbNamespace.Repo;
 import io.global.db.api.DbStorage;
 import io.global.db.api.GlobalDbNode;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -54,15 +52,15 @@ public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl,
 
 	// region creators
 	private GlobalDbNodeImpl(RawServerId id, DiscoveryService discoveryService,
-							 Function<RawServerId, GlobalDbNode> nodeFactory,
-							 BiFunction<PubKey, String, DbStorage> storageFactory) {
+			Function<RawServerId, GlobalDbNode> nodeFactory,
+			BiFunction<PubKey, String, DbStorage> storageFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 	}
 
 	public static GlobalDbNodeImpl create(RawServerId id, DiscoveryService discoveryService,
-										  Function<RawServerId, GlobalDbNode> nodeFactory,
-										  BiFunction<PubKey, String, DbStorage> storageFactory) {
+			Function<RawServerId, GlobalDbNode> nodeFactory,
+			BiFunction<PubKey, String, DbStorage> storageFactory) {
 		return new GlobalDbNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
 	// endregion
@@ -198,31 +196,21 @@ public final class GlobalDbNodeImpl extends AbstractGlobalNode<GlobalDbNodeImpl,
 		return ensureNamespace(space).push();
 	}
 
-	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpImpl));
+	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 
 	public Promise<Void> catchUp() {
-		return catchUpImpl.get();
+		return catchUp.get();
 	}
 
-	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
-		long started = now.currentTimeMillis();
-		Promise<Void> fetchPromise = fetch();
-		if (fetchPromise.isResult()) {
-			cb.set(fetchPromise.materialize().getResult());
-		} else if (fetchPromise.isException()) {
-			cb.setException(fetchPromise.materialize().getException());
-		} else {
-			fetchPromise
-					.whenResult((Consumer<? super Void>) $ -> {
-						long timestampEnd = now.currentTimeMillis();
-						if (timestampEnd - started > latencyMargin.toMillis()) {
-							catchUpImpl(cb);
-						} else {
-							cb.set(null);
-						}
-					})
-					.whenException(cb::setException);
-		}
+	private Promise<Void> doCatchUp() {
+		return Promises.until(
+				$1 -> {
+					long timestampBegin = now.currentTimeMillis();
+					return fetch()
+							.map($2 ->
+									now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
+
+				});
 	}
 
 	@Override

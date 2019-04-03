@@ -1110,6 +1110,10 @@ public final class Promises {
 		return until(null, $ -> action.get(), loopCondition.negate()).toVoid();
 	}
 
+	public static Promise<Void> loop(@NotNull AsyncPredicate<Void> loopCondition) {
+		return loop(loopCondition, Promise::complete);
+	}
+
 	private static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
 		if (breakCondition.test(seed)) return Promise.of(seed);
 		return Promise.ofCallback(cb ->
@@ -1146,6 +1150,10 @@ public final class Promises {
 		}
 		return Promise.ofCallback(cb ->
 				loopImpl(null, $ -> next.get(), breakCondition, cb));
+	}
+
+	public static Promise<Void> until(@NotNull AsyncPredicate<Void> breakCondition) {
+		return until(Promise::complete, breakCondition);
 	}
 
 	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,

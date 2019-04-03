@@ -68,17 +68,17 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	private int minimumSuccesses = 0;
 
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
-							 DiscoveryService discoveryService,
-							 @Nullable CommitStorage commitStorage,
-							 Function<RawServerId, GlobalOTNode> nodeFactory) {
+			DiscoveryService discoveryService,
+			@Nullable CommitStorage commitStorage,
+			Function<RawServerId, GlobalOTNode> nodeFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.eventloop = checkNotNull(eventloop);
 		this.commitStorage = checkNotNull(commitStorage);
 	}
 
 	public static GlobalOTNodeImpl create(Eventloop eventloop, RawServerId id,
-										  DiscoveryService discoveryService, CommitStorage commitStorage,
-										  Function<RawServerId, GlobalOTNode> nodeFactory) {
+			DiscoveryService discoveryService, CommitStorage commitStorage,
+			Function<RawServerId, GlobalOTNode> nodeFactory) {
 		return new GlobalOTNodeImpl(eventloop, id, discoveryService, commitStorage, nodeFactory);
 	}
 
@@ -213,13 +213,13 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	}
 
 	private Promise<@Nullable RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-																 Set<CommitId> required, Set<CommitId> existing) {
+			Set<CommitId> required, Set<CommitId> existing) {
 		return Promise.ofCallback(cb -> getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb));
 	}
 
 	private void getNextStreamEntryImpl(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-										Set<CommitId> required, Set<CommitId> existing,
-										SettableCallback<@Nullable RawCommitEntry> cb) {
+			Set<CommitId> required, Set<CommitId> existing,
+			SettableCallback<@Nullable RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;
@@ -450,32 +450,22 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 				.whenComplete(toLogger(logger, "getPullRequests", repositoryId, this));
 	}
 
-	private final AsyncSupplier<Void> catchUp = reuse(() -> Promise.ofCallback(this::catchUpImpl));
+	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 
 	public Promise<Void> catchUp() {
 		return catchUp.get()
 				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
-	private void catchUpImpl(SettableCallback<@Nullable Void> cb) {
-		long timestampBegin = now.currentTimeMillis();
-		Promise<Void> fetchPromise = fetch();
-		if (fetchPromise.isResult()) {
-			cb.set(fetchPromise.materialize().getResult());
-		} else if (fetchPromise.isException()) {
-			cb.setException(fetchPromise.materialize().getException());
-		} else {
-			fetchPromise
-					.whenResult((Consumer<? super Void>) $ -> {
-						long timestampEnd = now.currentTimeMillis();
-						if (timestampEnd - timestampBegin > latencyMargin.toMillis()) {
-							catchUpImpl(cb);
-						} else {
-							cb.set(null);
-						}
-					})
-					.whenException(cb::setException);
-		}
+	private Promise<Void> doCatchUp() {
+		return Promises.until(
+				$1 -> {
+					long timestampBegin = now.currentTimeMillis();
+					return fetch()
+							.map($2 ->
+									now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
+
+				});
 	}
 
 	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
