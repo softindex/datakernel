@@ -183,9 +183,9 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
-		return simpleCommand(new Move(name, target, targetRevision, removeRevision), MoveFinished.class, $ -> (Void) null)
-				.whenComplete(toLogger(logger, "move", name, target, targetRevision, removeRevision, this))
+	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+		return simpleCommand(new Move(name, target, targetRevision, tombstoneRevision), MoveFinished.class, $ -> (Void) null)
+				.whenComplete(toLogger(logger, "move", name, target, targetRevision, tombstoneRevision, this))
 				.whenComplete(movePromise.recordStats());
 	}
 

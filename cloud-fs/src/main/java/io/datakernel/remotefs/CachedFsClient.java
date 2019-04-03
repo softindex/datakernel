@@ -219,8 +219,8 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
-		return mainClient.move(name, target, targetRevision, removeRevision);
+	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+		return mainClient.move(name, target, targetRevision, tombstoneRevision);
 	}
 
 	@Override

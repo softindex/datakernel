@@ -156,7 +156,8 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 								MaterializedPromise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
 								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 							});
-				}).whenComplete(toLogger(logger, "upload", space, filename, offset, this));
+				})
+				.whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
 
 	@Override
@@ -198,7 +199,8 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 														.withEndOfStream(eos -> eos.both(splitter.getProcessCompletion()));
 											}))
 									.iterator()));
-				}).whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
+				})
+				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
 	@Override

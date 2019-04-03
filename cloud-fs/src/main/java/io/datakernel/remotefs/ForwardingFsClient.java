@@ -90,8 +90,8 @@ public abstract class ForwardingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String target, long targetRevision, long removeRevision) {
-		return peer.move(filename, target, targetRevision, removeRevision);
+	public Promise<Void> move(String filename, String target, long targetRevision, long tombstoneRevision) {
+		return peer.move(filename, target, targetRevision, tombstoneRevision);
 	}
 
 	@Override

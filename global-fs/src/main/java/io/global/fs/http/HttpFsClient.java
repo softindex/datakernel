@@ -135,7 +135,7 @@ public final class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
 		return client.request(
 				HttpRequest.get(
 						url + UrlBuilder.relative()
@@ -143,7 +143,7 @@ public final class HttpFsClient implements FsClient {
 								.appendQuery("name", name)
 								.appendQuery("target", target)
 								.appendQuery("revision", targetRevision)
-								.appendQuery("removeRevision", removeRevision)
+								.appendQuery("removeRevision", tombstoneRevision)
 								.build()))
 				.then(checkResponse)
 				.toVoid();

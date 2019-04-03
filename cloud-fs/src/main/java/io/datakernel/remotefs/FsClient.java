@@ -176,9 +176,9 @@ public interface FsClient {
 	 * @param name   file to be moved
 	 * @param target new file name
 	 */
-	default Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+	default Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
 		return copy(name, target, targetRevision)
-				.then($ -> delete(name, removeRevision));
+				.then($ -> delete(name, tombstoneRevision));
 	}
 
 	default Promise<Void> move(String name, String target) {

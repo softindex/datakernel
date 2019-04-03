@@ -198,7 +198,7 @@ public final class GlobalFsTest {
 				.resolve(folderFor(FIRST_ID))
 				.resolve("data")
 				.resolve(alice.getPubKey().asString())
-				.resolve(FILENAME + "#0"));
+				.resolve(FILENAME + "@0"));
 
 		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), data);
 	}
