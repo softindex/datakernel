@@ -26,7 +26,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
- * This is a POJO for holding name, size and timestamp of some file
+ * This is a POJO for holding name, size, timestamp and revision of some file
  */
 public final class FileMetadata {
 	public static final Comparator<FileMetadata> COMPARATOR =
@@ -102,8 +102,12 @@ public final class FileMetadata {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
 
 		FileMetadata that = (FileMetadata) o;
 
@@ -120,7 +124,7 @@ public final class FileMetadata {
 
 	@Nullable
 	public static FileMetadata getMoreCompleteFile(@Nullable FileMetadata first, @Nullable FileMetadata second) {
-		return first == null ? second : second == null ? first : COMPARATOR.compare(first, second) < 0 ? first : second;
+		return first == null ? second : second == null ? first : COMPARATOR.compare(first, second) > 0 ? first : second;
 	}
 
 	public static List<FileMetadata> flatten(Stream<List<FileMetadata>> streamOfLists) {

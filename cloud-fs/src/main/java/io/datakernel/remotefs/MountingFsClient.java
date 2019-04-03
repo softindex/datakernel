@@ -72,11 +72,11 @@ final class MountingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
 		FsClient first = findMount(name);
 		FsClient second = findMount(target);
 		if (first == second) {
-			return first.move(name, target, targetRevision, removeRevision);
+			return first.move(name, target, targetRevision, tombstoneRevision);
 		}
 		return first.download(name)
 				.then(supplier ->

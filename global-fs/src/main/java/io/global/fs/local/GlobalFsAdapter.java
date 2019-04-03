@@ -120,7 +120,7 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long revision, long removeRevision) {
+	public Promise<Void> move(String name, String target, long revision, long tombstoneRevision) {
 		throw new UnsupportedOperationException("No file moving in GlobalFS yet");
 	}
 

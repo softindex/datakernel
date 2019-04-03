@@ -46,7 +46,7 @@ public final class EmptyFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String target, long targetRevision, long removeRevision) {
+	public Promise<Void> move(String filename, String target, long targetRevision, long tombstoneRevision) {
 		return Promise.complete();
 	}
 

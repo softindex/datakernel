@@ -39,6 +39,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
@@ -48,7 +49,7 @@ public final class ChannelFileReaderWriterTest {
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	@Test
-	public void testStreamFileReader() throws IOException {
+	public void streamFileReader() throws IOException {
 		ByteBuf byteBuf = await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), Paths.get("test_data/in.dat"))
 				.withBufferSize(MemSize.of(1))
 				.toCollector(ByteBufQueue.collector()));
@@ -57,7 +58,7 @@ public final class ChannelFileReaderWriterTest {
 	}
 
 	@Test
-	public void testStreamFileReaderWithDelay() throws IOException {
+	public void streamFileReaderWithDelay() throws IOException {
 		ByteBuf byteBuf = await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), Paths.get("test_data/in.dat"))
 				.withBufferSize(MemSize.of(1))
 				.mapAsync(buf -> Promise.<ByteBuf>ofCallback(cb -> getCurrentEventloop().delay(10, () -> cb.set(buf))))
@@ -67,7 +68,7 @@ public final class ChannelFileReaderWriterTest {
 	}
 
 	@Test
-	public void testStreamFileWriter() throws IOException {
+	public void streamFileWriter() throws IOException {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
@@ -78,7 +79,7 @@ public final class ChannelFileReaderWriterTest {
 	}
 
 	@Test
-	public void testStreamFileWriterRecycle() throws IOException {
+	public void streamFileWriterRecycle() throws IOException {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
@@ -94,7 +95,7 @@ public final class ChannelFileReaderWriterTest {
 	}
 
 	@Test
-	public void testStreamFileReaderWhenFileMultipleOfBuffer() throws IOException {
+	public void streamFileReaderWhenFileMultipleOfBuffer() throws IOException {
 		Path folder = tempFolder.newFolder().toPath();
 		byte[] data = new byte[3 * ChannelFileReader.DEFAULT_BUFFER_SIZE.toInt()];
 		for (int i = 0; i < data.length; i++) {
@@ -112,7 +113,7 @@ public final class ChannelFileReaderWriterTest {
 	}
 
 	@Test
-	public void testClose() throws Exception {
+	public void close() throws Exception {
 		File file = tempFolder.newFile("2Mb");
 		byte[] data = new byte[2 * 1024 * 1024]; // the larger the file the less chance that it will be read fully before close completes
 		ThreadLocalRandom.current().nextBytes(data);
@@ -125,5 +126,15 @@ public final class ChannelFileReaderWriterTest {
 		serialFileReader.close(testException);
 
 		assertSame(testException, awaitException(serialFileReader.toList()));
+	}
+
+	@Test
+	public void readOverFile() throws IOException {
+		ByteBuf byteBuf = await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), Paths.get("test_data/in.dat"))
+				.withOffset(Files.size(Paths.get("test_data/in.dat")) + 100)
+				.withBufferSize(MemSize.of(1))
+				.toCollector(ByteBufQueue.collector()));
+
+		assertEquals("", byteBuf.asString(UTF_8));
 	}
 }

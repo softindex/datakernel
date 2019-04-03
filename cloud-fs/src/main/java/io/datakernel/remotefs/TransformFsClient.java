@@ -62,8 +62,8 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
-		return renamingOp(name, target, () -> parent.move(name, target, targetRevision, removeRevision));
+	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+		return renamingOp(name, target, () -> parent.move(name, target, targetRevision, tombstoneRevision));
 	}
 
 	@Override

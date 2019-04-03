@@ -394,7 +394,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long removeRevision) {
+	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
 		checkNotNull(name, "name");
 		checkNotNull(target, "target");
 
@@ -403,7 +403,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
 		}
 
-		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().move(name, target, targetRevision, removeRevision).thenEx(wrapDeath(e.getKey()))))
+		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().move(name, target, targetRevision, tombstoneRevision).thenEx(wrapDeath(e.getKey()))))
 				.whenComplete(movePromise.recordStats());
 	}
 
