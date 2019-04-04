@@ -35,6 +35,7 @@ import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.ot.demo.util.Utils.*;
+import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTStateServlet implements WithMiddleware {
@@ -87,7 +88,7 @@ public final class OTStateServlet implements WithMiddleware {
 					if (manager != null) {
 						return algorithms.getRepository()
 								.getHeads()
-								.then(heads -> algorithms.loadGraph(heads, ID_TO_STRING, DIFF_TO_STRING))
+								.then(heads -> algorithms.loadGraph(heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
 								.map(graph -> {
 									String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
 									Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(

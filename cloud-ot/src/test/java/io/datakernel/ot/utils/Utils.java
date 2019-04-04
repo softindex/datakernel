@@ -68,6 +68,7 @@ public class Utils {
 				.withSquashFunction(TestAdd.class, TestAdd.class, (op1, op2) -> add(op1.getDelta() + op2.getDelta()))
 				.withSquashFunction(TestSet.class, TestSet.class, (op1, op2) -> set(op1.getPrev(), op2.getNext()))
 				.withSquashFunction(TestAdd.class, TestSet.class, (op1, op2) -> set(op1.inverse().apply(op2.getPrev()), op2.getNext()))
+				.withSquashFunction(TestSet.class, TestAdd.class, (op1, op2) -> set(op1.getPrev(), op1.getNext() + op2.getDelta()))
 				.withEmptyPredicate(TestAdd.class, add -> add.getDelta() == 0)
 				.withEmptyPredicate(TestSet.class, set -> set.getPrev() == set.getNext())
 				.withInvertFunction(TestAdd.class, op -> asList(op.inverse()))

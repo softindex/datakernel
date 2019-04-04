@@ -42,7 +42,6 @@ import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
 import io.global.ot.demo.util.ManagerProvider;
 import io.global.ot.http.GlobalOTNodeHttpClient;
-import io.global.ot.util.Bootstrap;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -102,8 +101,8 @@ final class GlobalOTDemoModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTRepository<CommitId, Operation> provideRepository(Bootstrap<Operation> bootstrap, MyRepositoryId<Operation> myRepositoryId) {
-		return new OTRepositoryAdapter<>(bootstrap.getDriver(), myRepositoryId, emptySet());
+	OTRepository<CommitId, Operation> provideRepository(OTDriver driver, MyRepositoryId<Operation> myRepositoryId) {
+		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 
 	@Provides
@@ -126,13 +125,8 @@ final class GlobalOTDemoModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	Bootstrap<Operation> provideBootstrap(Eventloop eventloop, OTDriver driver, MyRepositoryId<Operation> myRepositoryId) {
-		return new Bootstrap<>(eventloop, driver, myRepositoryId);
-	}
-
-	@Provides
-	@Singleton
 	OTAlgorithms<CommitId, Operation> provide(Eventloop eventloop, OTRepository<CommitId, Operation> repository) {
 		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
 	}
+
 }

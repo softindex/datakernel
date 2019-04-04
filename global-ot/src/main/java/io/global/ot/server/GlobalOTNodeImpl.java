@@ -386,12 +386,18 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@Override
 	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshotIds) {
 		return ensureMasterNodes(repositoryId)
-				.then(masters -> isMasterFor(repositoryId.getOwner()) ?
+				.then($ -> isMasterFor(repositoryId.getOwner()) ?
 						Promise.complete() :
 						ensureRepository(repositoryId)
 								.updateSnapshots())
-				.then($ -> commitStorage.listSnapshotIds(repositoryId))
-				.map(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds))
+				.thenEx(($, e) -> commitStorage.listSnapshotIds(repositoryId)
+						.then(localSnapshotIds -> {
+							if (e == null || !localSnapshotIds.isEmpty()) {
+								return Promise.of(difference(localSnapshotIds, remoteSnapshotIds));
+							} else {
+								return Promise.ofException(e);
+							}
+						}))
 				.whenComplete(toLogger(logger, "listSnapshots", repositoryId, remoteSnapshotIds, this));
 	}
 
@@ -403,10 +409,17 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@Override
 	public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return ensureMasterNodes(repositoryId)
-				.then(masters -> isMasterFor(repositoryId.getOwner()) ?
+				.then($ -> isMasterFor(repositoryId.getOwner()) ?
 						Promise.complete() :
 						ensureRepository(repositoryId).update())
-				.then($ -> commitStorage.getHeads(repositoryId))
+				.thenEx(($, e) -> commitStorage.getHeads(repositoryId)
+						.then(heads -> {
+							if (e == null || !heads.isEmpty()) {
+								return Promise.of(heads);
+							} else {
+								return Promise.ofException(e);
+							}
+						}))
 				.map(map -> (Set<SignedData<RawCommitHead>>) new HashSet<>(map.values()))
 				.whenComplete(toLogger(logger, "getHeads", repositoryId));
 	}
@@ -442,11 +455,18 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		return ensureMasterNodes(repositoryId)
-				.then(masters -> isMasterFor(repositoryId.getOwner()) ?
+				.then($ -> isMasterFor(repositoryId.getOwner()) ?
 						Promise.complete() :
 						ensureRepository(repositoryId)
 								.updatePullRequests())
-				.then($ -> commitStorage.getPullRequests(repositoryId))
+				.thenEx(($, e) -> commitStorage.getPullRequests(repositoryId)
+						.then(pullRequests -> {
+							if (e == null || !pullRequests.isEmpty()) {
+								return Promise.of(pullRequests);
+							} else {
+								return Promise.ofException(e);
+							}
+						}))
 				.whenComplete(toLogger(logger, "getPullRequests", repositoryId, this));
 	}
 

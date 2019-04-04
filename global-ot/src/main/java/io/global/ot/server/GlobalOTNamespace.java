@@ -9,7 +9,10 @@ import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
-import io.global.ot.api.*;
+import io.global.ot.api.CommitId;
+import io.global.ot.api.GlobalOTNode;
+import io.global.ot.api.RawCommitHead;
+import io.global.ot.api.RepoID;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -234,12 +237,10 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 				return Promise.complete();
 			}
 			return ensureMasterNodes()
-					.then(masters -> node.getCommitStorage().getHeads(repositoryId)
-							.then(heads -> firstSuccessful(masters.stream()
-									.map(master -> AsyncSupplier.cast(() ->
-											master.getHeads(repositoryId)))))
-							.mapEx((result, e) -> e == null ? result : Collections.<SignedData<RawCommitHead>>emptySet())
-							.then(this::saveHeads))
+					.then(masters -> firstSuccessful(masters.stream()
+							.map(master -> AsyncSupplier.cast(() ->
+									master.getHeads(repositoryId)))))
+					.then(this::saveHeads)
 					.whenResult($ -> updateHeadsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
@@ -257,8 +258,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 													.then(newSnapshotIds -> Promises.toList(
 															newSnapshotIds.stream()
 																	.map(snapshotId -> master.loadSnapshot(repositoryId, snapshotId)
-																			.then(Promise::ofOptional)))))))
-									.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawSnapshot>>emptyList())))
+																			.then(Promise::ofOptional))))))))
 							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot))))
 					.whenResult($ -> updateSnapshotsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
@@ -272,8 +272,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return ensureMasterNodes()
 					.then(masters -> firstSuccessful(masters.stream()
 							.map(master -> AsyncSupplier.cast(() ->
-									master.getPullRequests(repositoryId))))
-							.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<SignedData<RawPullRequest>>emptySet())))
+									master.getPullRequests(repositoryId)))))
 					.then(pullRequests -> Promises.all(
 							pullRequests.stream().map(node.getCommitStorage()::savePullRequest)))
 					.whenResult($ -> updatePullRequestsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
@@ -354,7 +353,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					.map(head -> node.loadCommit(repositoryId, head)
 							.whenResult(commit ->
 									queue.add(new RawCommitEntry(head, commit)))))
-					.then(value -> Promise.<Set<CommitId>>ofCallback(cb ->
+					.then($ -> Promise.<Set<CommitId>>ofCallback(cb ->
 							doExcludeParents(
 									queue,
 									queue.stream().mapToLong(entry -> entry.commit.getLevel()).min().orElse(0L),
@@ -374,7 +373,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			Promises.all(
 					entry.commit.getParents()
 							.stream()
-							.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
+							.filter(commitId -> !commitId.isRoot() && queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 							.map(parentId ->
 									node.loadCommit(repositoryId, parentId)
 											.whenResult(parentRawCommit ->

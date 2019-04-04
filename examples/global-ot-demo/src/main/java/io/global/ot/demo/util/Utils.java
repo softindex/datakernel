@@ -44,7 +44,6 @@ import static java.util.Collections.singletonList;
 
 @SuppressWarnings("WeakerAccess")
 public final class Utils {
-	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
 	public static final Function<Operation, String> DIFF_TO_STRING = operation -> {
 		int value = operation.getValue();
 		return (value > 0 ? "+" : "-") + value;

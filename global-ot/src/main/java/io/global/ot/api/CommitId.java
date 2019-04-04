@@ -71,6 +71,9 @@ public final class CommitId {
 
 	@Override
 	public String toString() {
+		if (isRoot()) {
+			return "ROOT";
+		}
 		return CryptoUtils.toHexString(bytes);
 	}
 }

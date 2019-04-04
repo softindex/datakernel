@@ -16,6 +16,8 @@
 
 package io.datakernel.util;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -356,5 +358,10 @@ public final class StringFormatUtils {
 	public static Instant parseInstant(String string) {
 		string = string.trim();
 		return Instant.parse(string.replace(' ', 'T') + "Z");
+	}
+
+	@NotNull
+	public static String limit(@NotNull String string, int maxLength) {
+		return string.substring(0, Math.min(maxLength, string.length()));
 	}
 }

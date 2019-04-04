@@ -223,6 +223,9 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 						}
 						int incompleteCount = 0;
 						for (CommitId parentId : rawCommit.getParents()) {
+							if (parentId.isRoot()) {
+								continue;
+							}
 							Integer incompleteParents = get(txn, ro, incompleteParentsCount, parentId);
 							if ((incompleteParents != null && incompleteParents != 0) || get(txn, ro, commits, parentId) == null) {
 								incompleteCount++;

@@ -19,16 +19,13 @@ package io.global.ot.chat.operations;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
-import io.global.ot.api.CommitId;
 
 import java.util.function.Function;
 
-import static io.global.common.CryptoUtils.toHexString;
 import static java.util.Collections.singletonList;
 
 public final class Utils {
 	public static final int CONTENT_MAX_LENGTH = 10;
-	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
 	public static final Function<ChatOperation, String> DIFF_TO_STRING = op -> {
 		String author = op.getAuthor();
 		String allContent = op.getContent();

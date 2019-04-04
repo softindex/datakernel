@@ -41,6 +41,7 @@ import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -178,7 +179,8 @@ public final class OTDriver {
 								signedCommitHead.verify(repositoryId.getOwner().getEcPublicKey()))
 						.map(SignedData::getValue)
 						.map(RawCommitHead::getCommitId)
-						.collect(toSet()));
+						.collect(toSet()))
+				.map(heads -> heads.isEmpty() ? singleton(CommitId.ofRoot()) : heads);
 	}
 
 	public AsyncSupplier<Set<CommitId>> pollHeads(RepoID repositoryId) {
@@ -188,7 +190,8 @@ public final class OTDriver {
 								signedCommitHead.verify(repositoryId.getOwner().getEcPublicKey()))
 						.map(SignedData::getValue)
 						.map(RawCommitHead::getCommitId)
-						.collect(toSet()));
+						.collect(toSet()))
+				.map(heads -> heads.isEmpty() ? singleton(CommitId.ofRoot()) : heads);
 	}
 
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
@@ -237,6 +240,7 @@ public final class OTDriver {
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
 			RepoID repositoryId, CommitId commitId) {
+		if (commitId.isRoot()) return Promise.of(Optional.of(emptyList()));
 		return service.loadSnapshot(repositoryId, commitId)
 				.then(optionalRawSnapshot -> {
 					if (!optionalRawSnapshot.isPresent()) {

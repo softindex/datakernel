@@ -77,7 +77,7 @@ public class CommitStorageStub implements CommitStorage {
 			parentToChildren.computeIfAbsent(parentId, $ -> new HashSet<>()).add(commitId);
 		}
 		int incompleteParents = (int) rawCommit.getParents().stream()
-				.filter(parentId -> incompleteParentsCount.getOrDefault(parentId, 0) != 0 || !commits.containsKey(parentId))
+				.filter(parentId -> !parentId.isRoot() && (incompleteParentsCount.getOrDefault(parentId, 0) != 0 || !commits.containsKey(parentId)))
 				.count();
 		if (incompleteParents == 0) {
 			pendingCompleteCommits.add(commitId);

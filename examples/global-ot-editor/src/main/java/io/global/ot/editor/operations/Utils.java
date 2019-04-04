@@ -18,16 +18,11 @@ package io.global.ot.editor.operations;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.global.ot.api.CommitId;
 
-import java.util.function.Function;
-
-import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.editor.operations.DeleteOperation.DELETE_CODEC;
 import static io.global.ot.editor.operations.InsertOperation.INSERT_CODEC;
 
 public final class Utils {
-	public static final Function<CommitId, String> ID_TO_STRING = commitId -> toHexString(commitId.toBytes()).substring(0, 7);
 	public static final StructuredCodec<EditorOperation> OPERATION_CODEC = StructuredCodec.ofObject(
 			in -> {
 				in.readKey("type");

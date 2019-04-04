@@ -4,6 +4,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.http.*;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTLoadedGraph;
+import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -14,10 +15,13 @@ import java.util.function.Function;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.util.StringFormatUtils.limit;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTGraphServlet<K, D> implements AsyncServlet {
 	private static final Logger logger = LoggerFactory.getLogger(OTGraphServlet.class);
+
+	public static final Function<CommitId, String> COMMIT_ID_TO_STRING = commitId -> limit(commitId.toString(), 7);
 
 	@NotNull
 	private final OTAlgorithms<K, D> algorithms;

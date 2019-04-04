@@ -29,7 +29,6 @@ import io.global.ot.common.DelayedPushNode;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 import io.global.ot.http.OTNodeServlet;
-import io.global.ot.util.Bootstrap;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -47,7 +46,9 @@ import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
 import static io.global.ot.chat.operations.ChatOperation.OPERATION_CODEC;
-import static io.global.ot.chat.operations.Utils.*;
+import static io.global.ot.chat.operations.Utils.DIFF_TO_STRING;
+import static io.global.ot.chat.operations.Utils.createOTSystem;
+import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -107,7 +108,7 @@ public final class ChatClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	OTGraphServlet<CommitId, ChatOperation> provideGraphServlet(OTAlgorithms<CommitId, ChatOperation> algorithms) {
-		return OTGraphServlet.create(algorithms, ID_TO_STRING, DIFF_TO_STRING)
+		return OTGraphServlet.create(algorithms, COMMIT_ID_TO_STRING, DIFF_TO_STRING)
 				.withCurrentCommit(request -> {
 					try {
 						return Promise.of(fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id")));
@@ -133,20 +134,14 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	Bootstrap<ChatOperation> provideBootstrap(Eventloop eventloop, OTDriver driver, MyRepositoryId<ChatOperation> myRepositoryId) {
-		return new Bootstrap<>(eventloop, driver, myRepositoryId);
-	}
-
-	@Provides
-	@Singleton
 	OTAlgorithms<CommitId, ChatOperation> provideAlgorithms(Eventloop eventloop, OTRepositoryAdapter<ChatOperation> repository) {
 		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
 	}
 
 	@Provides
 	@Singleton
-	OTRepositoryAdapter<ChatOperation> provideRepository(Eventloop eventloop, Bootstrap<ChatOperation> bootstrap) {
-		return new OTRepositoryAdapter<>(bootstrap.getDriver(), bootstrap.getMyRepositoryId(), emptySet());
+	OTRepositoryAdapter<ChatOperation> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<ChatOperation> myRepositoryId) {
+		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 
 	@Provides

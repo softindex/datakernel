@@ -44,7 +44,6 @@ import io.global.ot.editor.operations.EditorOperation;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 import io.global.ot.http.OTNodeServlet;
-import io.global.ot.util.Bootstrap;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -62,8 +61,8 @@ import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
 import static io.global.ot.editor.operations.EditorOTSystem.createOTSystem;
-import static io.global.ot.editor.operations.Utils.ID_TO_STRING;
 import static io.global.ot.editor.operations.Utils.OPERATION_CODEC;
+import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -121,7 +120,7 @@ public final class GlobalEditorModule extends AbstractModule {
 	@Provides
 	@Singleton
 	OTGraphServlet<CommitId, EditorOperation> provideGraphServlet(OTAlgorithms<CommitId, EditorOperation> algorithms) {
-		return OTGraphServlet.create(algorithms, ID_TO_STRING, Object::toString)
+		return OTGraphServlet.create(algorithms, COMMIT_ID_TO_STRING, Object::toString)
 				.withCurrentCommit(request -> {
 					try {
 						return Promise.of(fromJson(REGISTRY.get(CommitId.class), request.getQueryParameter("id")));
@@ -147,20 +146,14 @@ public final class GlobalEditorModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	Bootstrap<EditorOperation> provideBootstrap(Eventloop eventloop, OTDriver driver, MyRepositoryId<EditorOperation> myRepositoryId) {
-		return new Bootstrap<>(eventloop, driver, myRepositoryId);
-	}
-
-	@Provides
-	@Singleton
 	OTAlgorithms<CommitId, EditorOperation> provideAlgorithms(Eventloop eventloop, OTRepositoryAdapter<EditorOperation> repository) {
 		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
 	}
 
 	@Provides
 	@Singleton
-	OTRepositoryAdapter<EditorOperation> provideRepository(Eventloop eventloop, Bootstrap<EditorOperation> bootstrap) {
-		return new OTRepositoryAdapter<>(bootstrap.getDriver(), bootstrap.getMyRepositoryId(), emptySet());
+	OTRepositoryAdapter<EditorOperation> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<EditorOperation> myRepositoryId) {
+		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 
 	@Provides
