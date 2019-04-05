@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package io.global.launchers.db;
+package io.global.launchers;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.db.GlobalDbNodeImpl;
+import io.global.common.api.AbstractGlobalNamespace;
+import io.global.common.api.AbstractGlobalNode;
 
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofList;
-import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_LATENCY_MARGIN;
+import static io.global.common.api.AbstractGlobalNode.DEFAULT_LATENCY_MARGIN;
 import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static java.util.Collections.emptyList;
 
@@ -33,9 +34,10 @@ public class Initializers {
 		throw new AssertionError();
 	}
 
-	public static Initializer<GlobalDbNodeImpl> ofLocalGlobalDbNode(Config config) {
+	public static <S extends AbstractGlobalNode<S, L, N>, L extends AbstractGlobalNamespace<L, S, N>, N> Initializer<S>
+	ofAbstractGlobalNode(Config config) {
 		return node -> node
-				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
-				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
+				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN))
+				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())));
 	}
 }

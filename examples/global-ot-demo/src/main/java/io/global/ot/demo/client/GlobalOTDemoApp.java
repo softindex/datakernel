@@ -18,22 +18,28 @@ package io.global.ot.demo.client;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
+import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import io.global.common.ExampleCommonModule;
+import io.global.launchers.GlobalNodesModule;
 
 import java.util.Collection;
 
+import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static java.util.Arrays.asList;
 
 public final class GlobalOTDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
+	public static final String DEFAULT_SERVER_ID = "OT Demo";
 
 	@Inject
+	@Named("OT Demo")
 	AsyncHttpServer server;
 
 	@Override
@@ -43,10 +49,12 @@ public final class GlobalOTDemoApp extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
+								.with("ot.serverId", DEFAULT_SERVER_ID)
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new GlobalOTDemoModule()
+				override(new GlobalOTDemoModule(), new GlobalNodesModule())
+						.with(new ExampleCommonModule())
 		);
 	}
 

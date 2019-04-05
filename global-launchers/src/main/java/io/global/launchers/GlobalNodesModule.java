@@ -48,8 +48,8 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
+import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
-import io.global.ot.stub.CommitStorageStub;
 
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
@@ -60,7 +60,7 @@ import static io.datakernel.dns.RemoteAsyncDnsClient.GOOGLE_PUBLIC_DNS;
 import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
 import static io.datakernel.launchers.initializers.Initializers.*;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
-import static io.global.launchers.db.Initializers.ofLocalGlobalDbNode;
+import static io.global.launchers.Initializers.ofAbstractGlobalNode;
 import static io.global.launchers.fs.Initializers.ofLocalGlobalFsNode;
 import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 
@@ -77,6 +77,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Singleton
 	GlobalOTNodeImpl provide(Eventloop eventloop, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, commitStorage, factory)
+				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
 	}
 
@@ -84,6 +85,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Singleton
 	GlobalFsNodeImpl provide(Config config, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory, FsClient fsClient) {
 		return GlobalFsNodeImpl.create(config.get(ofRawServerId(), "fs.serverId"), discoveryService, factory, fsClient)
+				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
 				.initialize(ofLocalGlobalFsNode(config.getChild("fs")));
 	}
 
@@ -91,7 +93,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Singleton
 	GlobalDbNodeImpl provide(Config config, DiscoveryService discoveryService, Function<RawServerId, GlobalDbNode> factory) {
 		return GlobalDbNodeImpl.create(config.get(ofRawServerId(), "db.serverId"), discoveryService, factory, ($1, $2) -> new RuntimeDbStorageStub())
-				.initialize(ofLocalGlobalDbNode(config.getChild("ot")));
+				.initialize(ofAbstractGlobalNode(config.getChild("db")));
 	}
 
 	@Provides
@@ -152,8 +154,8 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	CommitStorage provideCommitStorage() {
-		return new CommitStorageStub();
+	CommitStorage provideCommitStorage(Eventloop eventloop, Config config) {
+		return CommitStorageRocksDb.create(eventloop, config.get("ot.storage"));
 	}
 
 	@Provides

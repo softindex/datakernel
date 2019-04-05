@@ -1,33 +1,32 @@
-package io.global.ot.chat.client;
+package io.global.common;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
-import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.global.common.ExampleCommonModule;
 import io.global.launchers.GlobalNodesModule;
 
+import java.nio.file.Paths;
 import java.util.Collection;
 
 import static com.google.inject.util.Modules.override;
-import static io.datakernel.config.Config.ofProperties;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
-public final class GlobalChatDemoApp extends Launcher {
+public final class MasterNodeLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
-	public static final String PROPERTIES_FILE = "client.properties";
-	public static final String CREDENTIALS_FILE = "credentials.properties";
-	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
-	public static final String DEFAULT_SERVER_ID = "Chat Node";
+	public static final String DEFAULT_LISTEN_ADDRESSES = "*:9000";
+	public static final String DEFAULT_OT_SERVER_ID = "http://127.0.0.1:9000/ot/";
+	public static final String DEFAULT_FS_SERVER_ID = "http://127.0.0.1:9000/fs/";
+	public static final String DEFAULT_DB_SERVER_ID = "http://127.0.0.1:9000/db/";
+	public static final String DEFAULT_FS_STORAGE = Paths.get(System.getProperty("java.io.tmpdir"))
+			.resolve("fs_storage").toString();
 
 	@Inject
-	@Named("Chat")
-	AsyncHttpServer chatServer;
+	AsyncHttpServer server;
 
 	@Override
 	protected Collection<Module> getModules() {
@@ -36,12 +35,12 @@ public final class GlobalChatDemoApp extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
-								.with("ot.serverId", DEFAULT_SERVER_ID)
-								.override(Config.ofProperties(PROPERTIES_FILE, true)
-										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.with("ot.serverId", DEFAULT_OT_SERVER_ID)
+								.with("fs.serverId", DEFAULT_FS_SERVER_ID)
+								.with("db.serverId", DEFAULT_DB_SERVER_ID)
+								.with("fs.storage", DEFAULT_FS_STORAGE))
 						.printEffectiveConfig(),
-				override(new ChatClientModule(), new GlobalNodesModule())
+				override(new GlobalNodesModule())
 						.with(new ExampleCommonModule())
 		);
 	}
@@ -52,6 +51,7 @@ public final class GlobalChatDemoApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalChatDemoApp().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new MasterNodeLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
+
 }

@@ -27,7 +27,7 @@
     <module>global-ot-demo</module>
     <module>global-ot-editor</module>
     <module>global-ot-chat</module>
-    <module>global-ot-common</module>
+    <module>global-examples-common</module>
     <module>global-db-demo</module>
     <module>http</module>
     <module>http-helloworld</module>

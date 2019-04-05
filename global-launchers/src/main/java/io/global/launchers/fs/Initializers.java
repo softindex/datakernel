@@ -20,12 +20,7 @@ import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
 import io.global.fs.local.GlobalFsNodeImpl;
 
-import java.util.HashSet;
-
-import static io.datakernel.config.ConfigConverters.*;
-import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_LATENCY_MARGIN;
-import static io.global.launchers.GlobalConfigConverters.ofPubKey;
-import static java.util.Collections.emptyList;
+import static io.datakernel.config.ConfigConverters.ofBoolean;
 
 public class Initializers {
 	private Initializers() {
@@ -34,9 +29,7 @@ public class Initializers {
 
 	public static Initializer<GlobalFsNodeImpl> ofLocalGlobalFsNode(Config config) {
 		return node -> node
-				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))
-				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false))
-				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
+				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false));
 	}
 }

@@ -18,14 +18,18 @@ package io.global.ot.editor.server;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
+import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import io.global.common.ExampleCommonModule;
+import io.global.launchers.GlobalNodesModule;
 
 import java.util.Collection;
 
+import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
@@ -35,8 +39,10 @@ public final class GlobalEditorLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "server.properties";
 	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
+	public static final String DEFAULT_SERVER_ID = "Editor Node";
 
 	@Inject
+	@Named("Editor")
 	AsyncHttpServer server;
 
 	@Override
@@ -46,12 +52,13 @@ public final class GlobalEditorLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
+								.with("ot.serverId", DEFAULT_SERVER_ID)
 								.override(Config.ofProperties(PROPERTIES_FILE, true)
 										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new GlobalEditorModule()
-		);
+				override(new GlobalEditorModule(), new GlobalNodesModule())
+						.with(new ExampleCommonModule()));
 	}
 
 	@Override

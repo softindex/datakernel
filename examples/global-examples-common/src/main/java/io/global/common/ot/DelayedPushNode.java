@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.ot.common;
+package io.global.common.ot;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;

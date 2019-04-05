@@ -19,9 +19,9 @@ package io.global.ot.demo.client;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
@@ -32,7 +32,6 @@ import io.datakernel.ot.OTRepository;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
-import io.global.ot.api.GlobalOTNode;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
@@ -41,12 +40,11 @@ import io.global.ot.demo.api.OTStateServlet;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
 import io.global.ot.demo.util.ManagerProvider;
-import io.global.ot.http.GlobalOTNodeHttpClient;
+import io.global.ot.server.GlobalOTNodeImpl;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
@@ -65,26 +63,17 @@ final class GlobalOTDemoModule extends AbstractModule {
 	private static final MyRepositoryId<Operation> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, OPERATION_CODEC);
 	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
 
-	@Override
-	protected void configure() {
-		bind(ExecutorService.class).toInstance(newCachedThreadPool());
-	}
-
 	@Provides
 	@Singleton
-	Eventloop provide() {
-		return Eventloop.create();
-	}
-
-	@Provides
-	@Singleton
-	AsyncHttpServer provide(Eventloop eventloop, AsyncServlet servlet, Config config) {
+	@Named("OT Demo")
+	AsyncHttpServer provide(Eventloop eventloop, @Named("OT Demo") AsyncServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
 	@Provides
 	@Singleton
+	@Named("OT Demo")
 	AsyncServlet provideMainServlet(Eventloop eventloop, ManagerProvider<Operation> managerProvider, Config config) {
 		Path resources = Paths.get(DEFAULT_PATH_TO_RESOURCES);
 		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), resources);
@@ -107,13 +96,7 @@ final class GlobalOTDemoModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalOTNode provideGlobalOTNode(Eventloop eventloop, Config config) {
-		return GlobalOTNodeHttpClient.create(AsyncHttpClient.create(eventloop), config.get("node.serverId", DEMO_NODE_ADDRESS));
-	}
-
-	@Provides
-	@Singleton
-	OTDriver provideDriver(GlobalOTNode globalOTNode, Config config) {
+	OTDriver provideDriver(GlobalOTNodeImpl globalOTNode, Config config) {
 		return new OTDriver(globalOTNode, config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY));
 	}
 

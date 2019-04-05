@@ -1,4 +1,5 @@
 http.listenAddresses=
 resources.path=
-node.address=
+discovery.address=
+discovery.masters=
 push.delay=

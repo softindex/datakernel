@@ -16,7 +16,7 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>global-ot-common</artifactId>
+      <artifactId>global-examples-common</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

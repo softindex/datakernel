@@ -9,8 +9,8 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTState;
 import io.datakernel.ot.OTStateManager;
+import io.global.common.ot.DelayedPushNode;
 import io.global.ot.api.CommitId;
-import io.global.ot.common.DelayedPushNode;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -36,7 +36,7 @@ public final class ManagerProvider<D> implements EventloopService {
 			OTStateManager<CommitId, D> stateManager = OTStateManager.create(
 					algorithms.getEventloop(),
 					algorithms.getOtSystem(),
-					DelayedPushNode.create(algorithms.getOtNode(), Duration.ofSeconds(5)),
+					DelayedPushNode.create(algorithms.getOtNode(), Duration.ofSeconds(3)),
 					stateSupplier.get())
 					.withPoll();
 

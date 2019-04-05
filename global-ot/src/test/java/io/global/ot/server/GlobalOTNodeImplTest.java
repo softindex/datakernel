@@ -59,6 +59,7 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
@@ -137,7 +138,8 @@ public class GlobalOTNodeImplTest {
 						storage,
 						createFactory())
 						.withLatencyMargin(Duration.ZERO)
-						.withCurrentTimeProvider(timeProvider);
+						.withCurrentTimeProvider(timeProvider)
+						.withPollMasterRepositories(false);
 				masters.put(id, new Tuple2<>(storage, master));
 			} catch (IOException e) {
 				throw new AssertionError(e);
@@ -152,7 +154,7 @@ public class GlobalOTNodeImplTest {
 
 	@BeforeClass
 	public static void disableLogs() {
-		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+		enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
 	}
 
 	@Before
@@ -168,7 +170,8 @@ public class GlobalOTNodeImplTest {
 				intermediateStorage,
 				createFactory())
 				.withLatencyMargin(Duration.ZERO)
-				.withCurrentTimeProvider(now);
+				.withCurrentTimeProvider(now)
+				.withPollMasterRepositories(false);
 		initializeMasters(1);
 	}
 

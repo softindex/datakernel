@@ -39,6 +39,10 @@ public class InMemoryAnnouncementStorage implements AnnouncementStorage {
 		return Promise.of(announcements.get(space));
 	}
 
+	public void addAnnouncements(Map<PubKey, SignedData<AnnounceData>> announcements) {
+		this.announcements.putAll(announcements);
+	}
+
 	public void clear() {
 		announcements.clear();
 	}

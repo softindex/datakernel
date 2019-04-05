@@ -9,15 +9,22 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>global-ot-common</artifactId>
+  <artifactId>global-examples-common</artifactId>
 
-  <name>Global OT Common: Common classes for OT examples</name>
+  <name>Global Examples Common: Common classes for Global examples</name>
 
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>global-ot</artifactId>
       <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>global-launchers</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
     </dependency>
   </dependencies>
 

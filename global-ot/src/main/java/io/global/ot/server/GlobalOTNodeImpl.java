@@ -57,7 +57,7 @@ import static java.util.stream.Collectors.toSet;
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
-	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", false);
+	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
 
 	private final Eventloop eventloop;
 	private final CommitStorage commitStorage;
