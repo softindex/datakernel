@@ -126,7 +126,7 @@ public class HelloWorld {
         //setting a runnable task for it
 		eventloop.post(() -> System.out.println("Hello World"));
         
-        //starting the created eventlloop
+        //starting the created eventloop
 		eventloop.run();
     }
 }

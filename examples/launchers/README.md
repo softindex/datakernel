@@ -40,16 +40,16 @@ When you run the example, you will see *Hello World!* message right in your cons
 Let's have a closer look at the example and initialization of the launcher itself:
 ```java
 Launcher launcher = new Launcher() {
-			@Override
-			protected Collection<Module> getModules() {
-				return Collections.emptyList();
-			}
+	@Override
+	protected Collection<Module> getModules() {
+		return Collections.emptyList();
+	}
 
-			@Override
-			protected void run() {
-				System.out.println("Hello World!");
-			}
-		};
+	@Override
+	protected void run() {
+		System.out.println("Hello World!");
+	}
+};
 ```
 
 When creating launchers, you can override these methods:
@@ -101,10 +101,10 @@ You will see the following content:
 "Hello from HTTP server" 
 ```
 
-In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends *Launcher*. Just like 
+In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends `Launcher`. Just like 
 ["Hello World" Launcher](#hello-world) example, it also overrides *getModules()* and *run()* methods.
 
-**HTTP Simple Server** shows how simply an HTTP server can be created utilizing *HttpServerLauncher*. When using predefined 
+**HTTP Simple Server** shows how simply an HTTP server can be created utilizing `HttpServerLauncher`. When using predefined 
 launchers, you should override the following methods:
 * *getBusinessLogicModules()* - to specify the actual logic of your application
 * *getOverrideModules()* - to override default modules.
@@ -113,25 +113,25 @@ In the example we are overriding default port with our own and providing servlet
 @Override
 protected Collection<Module> getOverrideModules() {
 	return singletonList(
-			ConfigModule.create(Config.create()
-			    .with("http.listenAddresses", "" + SERVICE_PORT)
-				)
-			);
-        }
+		ConfigModule.create(Config.create()
+		    .with("http.listenAddresses", "" + SERVICE_PORT)
+			)
+		);
+    }
         
 @Override
 protected Collection<Module> getBusinessLogicModules() {
 	return singletonList(
-			new AbstractModule() {
-				@Singleton
-				@Provides
-				AsyncServlet rootServlet() {
-					return request -> {
-						logger.info("Connection received");
-						return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
-					};
-				}
-			});
-        }
+		new AbstractModule() {
+			@Singleton
+			@Provides
+			AsyncServlet rootServlet() {
+				return request -> {
+					logger.info("Connection received");
+					return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
+				};
+			}
+		});
+    }
 ```
 

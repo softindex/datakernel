@@ -45,7 +45,7 @@ for most of the DataKernel components along with use cases of their combinations
 ## DataKernel framework structure
 
 DataKernel framework consists of 30+ modules of different complexity and purposes. All of the components can be 
-logically split in 4 groups:
+conceptually split in 4 groups:
 
 * [Core components](#core-components) - building blocks of DataKernel framework and some core technologies
 * [Cloud components](#cloud-components) - modules designed for cloud solutions
@@ -95,7 +95,7 @@ that it downloads/uploads) or in pre-fetching mode (uploading data from master n
 | Global components |||
 |---|---|---|
 |**[Global Common](https://github.com/softindex/datakernel/tree/master/global-common)**| A foundation for other global components. Contains a `DiscoveryService` that conducts a DNS-like role for other global nodes. This module also contains cryptography tools and some common classes. Cryptography allows nodes to work with non-trusted servers. ||
-|**[Global-FS](https://github.com/softindex/datakernel/tree/master/global-fs)**| Allows to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.|[Global-FS CLI](https://github.com/softindex/datakernel/tree/master/examples/global-fs-cli), [Global-FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)|
+|**[Global-FS](https://github.com/softindex/datakernel/tree/master/global-fs)**| Allows to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.|[Global-FS CLI](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-cli), [Global-FS Demo](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-app)|
 |**[Global-OT](https://github.com/softindex/datakernel/tree/master/global-ot)**| Extends both OT and Blockchain technologies (representing the data as Git-like graph of individual immutable content-addressable commits, encrypted and signed with private key of its owner). Global-OT can work with non-trusted servers. | [Global-OT Demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo), [Global-OT Editor](https://github.com/softindex/datakernel/tree/master/examples/global-ot-editor), [Global-OT Chat](https://github.com/softindex/datakernel/tree/master/examples/global-ot-chat)|
 |**[Global-DB](https://github.com/softindex/datakernel/tree/master/global-db)**| This module is a variation of Global-FS, optimized for storing small binary key-value pairs and their synchronization. | [Global-DB Demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)|
 

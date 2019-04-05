@@ -300,6 +300,7 @@ ChannelSupplier.ofSocket(socket)
 Let's see how **Server #1** interacts with **Server #2**:
 ```java
 public static void main(String[] args) {
+	
 	//createing an Eventloop for connecting to our server	
 	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
     
@@ -311,29 +312,29 @@ public static void main(String[] args) {
 				//StreamSupplier allows to asynchronously stream send streams of data. of() defines what values will be sent
 				StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 				    
-				    //Transforms our data to ByteBufs
+				        //transforms our data to ByteBufs
 					.transformWith(ChannelSerializer.create(INT_SERIALIZER))
 					
-					//Streams ByteBufs to our Consumer - NetworkDemoServer
+					//streams ByteBufs to our Consumer - NetworkDemoServer
 					.streamTo(ChannelConsumer.ofSocket(socket));
 				
-				//Creating a consumer for processing responses from NetworkDemoServer
+				//creating a consumer for processing responses from NetworkDemoServer
 				StreamConsumerToList<String> consumer = StreamConsumerToList.create();
 				
-				//Receives ByteBufs from the network
+				//receives ByteBufs from the network
 				ChannelSupplier.ofSocket(socket)
-				
-				    //Deserializes ByteBufs
+
+				        //deserializes ByteBufs
 					.transformWith(ChannelDeserializer.create(UTF8_SERIALIZER))
 					
-					//Streams the result of deserialization to our consumer
+					//streams the result of deserialization to our consumer
 					.streamTo(consumer);
                 
-				//When consumer gets a result, it prints it out
+				//when consumer gets a result, it prints it out
 				consumer.getResult().whenResult(list -> list.forEach(System.out::println));
-			}
+	    }
+        }
     }
-}
 ```
 Please note that this example is very simple. Big graphs can span over numerous servers and process a lot of data in 
 various ways.
