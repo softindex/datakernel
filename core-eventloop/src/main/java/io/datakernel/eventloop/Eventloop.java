@@ -56,19 +56,21 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyIterator;
 
 /**
- * It is internal class for asynchronous programming. In asynchronous
+ * It is an internal class for asynchronous programming. In asynchronous
  * programming model, blocking operations (like I/O or long-running computations)
  * in {@code Eventloop} thread must be avoided. Async versions
  * of such operations should be used.
  * <p>
  * Eventloop represents infinite loop with only one blocking operation
  * {@code selector.select()} which selects a set of keys whose corresponding
- * channels are ready for I/O operations. With these keys and queues with
- * tasks, which was added to {@code Eventloop} from the outside, it begins
- * asynchronous executing from one thread it in method {@code run()} which is
- * overridden because it is implementation of {@link Runnable}. Working of this
- * eventloop will be ended, when it has not selected keys and its queues with
- * tasks are empty.
+ * channels are ready for I/O operations.
+ * <p>
+ * With these keys and queues with
+ * tasks, which were added to {@code Eventloop} from the outside, it begins
+ * asynchronous executing from one thread in method {@code run()} which is
+ * overridden because eventloop is an implementation of {@link Runnable}.
+ * Working of this eventloop will be ended when it has no selected keys
+ * and its queues with tasks are empty.
  */
 public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
@@ -82,28 +84,30 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
 	/**
-	 * Collection of local tasks which was added from this thread.
+	 * Collection of local tasks which were added from this thread.
 	 */
 	private final ArrayDeque<Runnable> localTasks = new ArrayDeque<>();
 
 	/**
-	 * Collection of concurrent tasks which was added from other threads.
+	 * Collection of concurrent tasks which were added from other threads.
 	 */
 	private final ConcurrentLinkedQueue<Runnable> concurrentTasks = new ConcurrentLinkedQueue<>();
 
 	/**
-	 * Collection of scheduled tasks that are scheduled at particular timestamp.
+	 * Collection of scheduled tasks that are scheduled
+	 * to be executed at particular timestamp.
 	 */
 	private final PriorityQueue<ScheduledRunnable> scheduledTasks = new PriorityQueue<>();
 
 	/**
 	 * Collection of background tasks,
-	 * which means that if eventloop contains only background tasks, it will be closed.
+	 * if eventloop contains only background tasks, it will be closed.
 	 */
 	private final PriorityQueue<ScheduledRunnable> backgroundTasks = new PriorityQueue<>();
 
 	/**
-	 * Count of concurrent operations in other threads, non-zero value prevents event loop from termination.
+	 * Amount of concurrent operations in other threads,
+	 * non-zero value prevents eventloop from termination.
 	 */
 	private final AtomicInteger externalTasksCount = new AtomicInteger(0);
 
@@ -111,8 +115,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private int tick;
 
 	/**
-	 * Current time, cached to avoid System.currentTimeMillis() system calls, and to facilitate unit testing.
-	 * It is being refreshed with each event loop execution.
+	 * Current time, cached to avoid System.currentTimeMillis()
+	 * system calls, and to facilitate unit testing.
+	 * It is being refreshed with each eventloop execution.
 	 */
 	private long timestamp;
 
@@ -120,7 +125,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private final CurrentTimeProvider timeProvider;
 
 	/**
-	 * The NIO selector which selects a set of keys whose corresponding channels are ready for I/O operations.
+	 * The NIO selector which selects a set of keys whose
+	 * corresponding channels are ready for I/O operations.
 	 */
 	@Nullable
 	private Selector selector;
@@ -134,7 +140,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private Executor defaultExecutor = DEFAULT_EXECUTOR;
 
 	/**
-	 * The thread where eventloop is running.
+	 * The thread in which eventloop is running.
 	 */
 	@Nullable
 	private Thread eventloopThread;
@@ -156,7 +162,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private Duration idleInterval = DEFAULT_IDLE_INTERVAL;
 
 	/**
-	 * Count of selected keys for last Selector.select()
+	 * Amount of selected keys for last Selector.select()
 	 */
 	private int lastSelectedKeys;
 	private int cancelledKeys;
@@ -270,7 +276,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Closes the selector if it has been opened.
+	 * Closes the selector if it is opened.
 	 */
 	private void closeSelector() {
 		if (selector != null) {
@@ -310,8 +316,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Sets the flag keep alive, if it is true it means that working of this Eventloop will be
-	 * continued even in case when all tasks have been executed and it doesn't have selected keys.
+	 * Sets the flag which (if set {@code true})
+	 * means that working of this Eventloop will
+	 * be continued even if all of the tasks
+	 * have been executed and it doesn't have
+	 * any selected keys.
 	 *
 	 * @param keepAlive flag for setting
 	 */
@@ -632,7 +641,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Executes tasks, scheduled for execution at particular timestamps
+	 * Executes tasks scheduled for execution at particular timestamps
 	 */
 	private int executeScheduledTasks() {
 		return executeScheduledTasks(scheduledTasks);
@@ -694,7 +703,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Accepts an incoming socketChannel connections without blocking event loop thread.
+	 * Accepts an incoming socketChannel connections without blocking eventloop thread.
 	 *
 	 * @param key key of this action.
 	 */
@@ -732,7 +741,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Processes newly established TCP connections without blocking event loop thread.
+	 * Processes newly established TCP connections
+	 * without blocking eventloop thread.
 	 *
 	 * @param key key of this action.
 	 */
@@ -762,7 +772,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Processes socketChannels available for read, without blocking event loop thread.
+	 * Processes socketChannels available for read
+	 * without blocking event loop thread.
 	 *
 	 * @param key key of this action.
 	 */
@@ -778,7 +789,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Processes socketChannels available for write, without blocking thread.
+	 * Processes socketChannels available for write
+	 * without blocking thread.
 	 *
 	 * @param key key of this action.
 	 */
@@ -796,9 +808,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * Creates {@link ServerSocketChannel} that listens on InetSocketAddress.
 	 *
-	 * @param address              InetSocketAddress that server will listen
+	 * @param address              InetSocketAddress that server will listen to
 	 * @param serverSocketSettings settings from this server channel
-	 * @param acceptCallback       callback that will be called when new incoming connection is being accepted. It can be called multiple times.
+	 * @param acceptCallback       callback that is called when new incoming connection is being accepted. It can be called multiple times.
 	 * @return server channel
 	 * @throws IOException If some I/O error occurs
 	 */
@@ -929,7 +941,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	/**
 	 * Posts a new task to the beginning of localTasks.
-	 * This method is recommended, since task will be executed as soon as possible without invalidating CPU cache.
+	 * This method is recommended, since task will be executed
+	 * as soon as possible without invalidating CPU cache.
 	 *
 	 * @param runnable runnable of this task
 	 */
@@ -939,7 +952,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Posts a new task to the end localTasks.
+	 * Posts a new task to the end of localTasks.
 	 *
 	 * @param runnable runnable of this task
 	 */
@@ -950,7 +963,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	/**
 	 * Posts a new task from other threads.
-	 * This is the preferred method of communicating with eventloop from another threads.
+	 * This is the preferred method of communicating
+	 * with eventloop from other threads.
 	 *
 	 * @param runnable runnable of this task
 	 */
@@ -1001,7 +1015,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Notifies the event loop about concurrent operation in other threads.
+	 * Notifies the eventloop about concurrent operation in other threads.
 	 * Eventloop will not exit until all external tasks are complete.
 	 */
 	public void startExternalTask() {
@@ -1009,8 +1023,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Notifies the event loop about completion of corrensponding operation in other threads.
-	 * Failure to call this method will prevent the event loop from exiting.
+	 * Notifies the eventloop about completion of corresponding operation in other threads.
+	 * Failure to call this method will prevent the eventloop from exiting.
 	 */
 	public void completeExternalTask() {
 		externalTasksCount.decrementAndGet();
