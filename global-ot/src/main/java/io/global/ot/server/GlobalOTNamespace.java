@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -67,8 +66,8 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 						.map(master -> AsyncSupplier.cast(() ->
 								master.list(space))))
 						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))
-				.whenResult((Consumer<? super Set<String>>) repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name))))
-				.whenResult((Consumer<? super Set<String>>) $ -> updateRepositoriesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
+				.whenResult(repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name))))
+				.whenResult($ -> updateRepositoriesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
 				.toVoid();
 	}
 

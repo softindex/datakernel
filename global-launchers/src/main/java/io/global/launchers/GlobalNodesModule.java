@@ -230,14 +230,6 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	@Named("OT update")
-	EventloopTaskScheduler provideOTUpdateScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::update)
-				.initialize(ofEventloopTaskScheduler(config.getChild("ot.update")));
-	}
-
-	@Provides
-	@Singleton
 	@Named("DB push")
 	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, GlobalDbNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)

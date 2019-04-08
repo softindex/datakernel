@@ -58,10 +58,6 @@ public class GlobalNodesLauncher extends Launcher {
 	EventloopTaskScheduler otCatchUpScheduler;
 
 	@Inject
-	@Named("OT update")
-	EventloopTaskScheduler otUppdateScheduler;
-
-	@Inject
 	@Named("DB push")
 	EventloopTaskScheduler dbPushScheduler;
 

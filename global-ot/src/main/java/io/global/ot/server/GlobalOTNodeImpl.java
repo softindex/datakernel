@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.Promises.asPromises;
@@ -481,7 +482,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return Promises.until(
 				$1 -> {
 					long timestampBegin = now.currentTimeMillis();
-					return fetch()
+					return tolerantCollectVoid(Stream.of(AsyncSupplier.cast(this::fetch), AsyncSupplier.cast(this::update)), AsyncSupplier::get)
 							.map($2 ->
 									now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
 
@@ -492,14 +493,14 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return tolerantCollectVoid(namespaces.values().stream().flatMap(entry -> entry.getRepositories().values().stream()), fn);
 	}
 
+	private Promise<Void> update() {
+		return tolerantCollectVoid(namespaces.values(), GlobalOTNamespace::updateRepositories)
+				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update));
+	}
+
 	public Promise<Void> fetch() {
 		return forEachRepository(RepositoryEntry::fetch)
 				.whenComplete(toLogger(logger, TRACE, "fetch", this));
-	}
-
-	public Promise<Void> update() {
-		return tolerantCollectVoid(namespaces.values(), GlobalOTNamespace::updateRepositories)
-				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update));
 	}
 
 	public Promise<Void> push() {
