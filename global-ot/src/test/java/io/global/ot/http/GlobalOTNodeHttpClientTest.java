@@ -58,7 +58,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	private static final LinkedList<Object> params = new LinkedList<>();
 	private final MiddlewareServlet servlet = MiddlewareServlet.create().with("/ot", getServlet());
-	private final GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost");
+	private final HttpGlobalOTNode client = HttpGlobalOTNode.create("http://localhost", servlet::serve);
 	private final KeyPair keys = KeyPair.generate();
 	private final PrivKey privKey = keys.getPrivKey();
 	private final PubKey pubKey = keys.getPubKey();

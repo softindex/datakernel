@@ -49,7 +49,7 @@ public final class GlobalOTDemoApp extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
-								.with("ot.serverId", DEFAULT_SERVER_ID)
+								.with("node.serverId", DEFAULT_SERVER_ID)
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),

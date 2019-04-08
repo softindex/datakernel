@@ -61,7 +61,6 @@ final class GlobalOTDemoModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Example");
 	private static final MyRepositoryId<Operation> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, OPERATION_CODEC);
-	private static final String DEMO_NODE_ADDRESS = "http://127.0.0.1:9000/ot/";
 
 	@Provides
 	@Singleton

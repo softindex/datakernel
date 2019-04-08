@@ -63,19 +63,19 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
-public class GlobalOTNodeHttpClient implements GlobalOTNode {
+public class HttpGlobalOTNode implements GlobalOTNode {
 	private static final String OT_NODE_SUFFIX = "/ot/";
 
 	private final IAsyncHttpClient httpClient;
 	private final String url;
 
-	private GlobalOTNodeHttpClient(IAsyncHttpClient httpClient, String url) {
-		this.httpClient = httpClient;
+	private HttpGlobalOTNode(String url, IAsyncHttpClient httpClient) {
 		this.url = url + OT_NODE_SUFFIX;
+		this.httpClient = httpClient;
 	}
 
-	public static GlobalOTNodeHttpClient create(IAsyncHttpClient httpClient, String url) {
-		return new GlobalOTNodeHttpClient(httpClient, url);
+	public static HttpGlobalOTNode create(String url, IAsyncHttpClient httpClient) {
+		return new HttpGlobalOTNode(url, httpClient);
 	}
 
 	@Override
@@ -90,7 +90,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SAVE, apiQuery(repositoryId))
 						.initialize(withJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), commits)))
-				.then(GlobalOTNodeHttpClient::processResult);
+				.then(HttpGlobalOTNode::processResult);
 	}
 
 	@Override
@@ -98,7 +98,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, UPDATE_HEADS, apiQuery(repositoryId))
 						.initialize(withJson(ofSet(SIGNED_COMMIT_HEAD_JSON), newHeads)))
-				.then(GlobalOTNodeHttpClient::processResult);
+				.then(HttpGlobalOTNode::processResult);
 	}
 
 	@Override
@@ -159,7 +159,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return httpClient.request(request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
 				.withBody(encode(SIGNED_SNAPSHOT_CODEC, encryptedSnapshot)))
-				.then(GlobalOTNodeHttpClient::processResult);
+				.then(HttpGlobalOTNode::processResult);
 	}
 
 	@Override
@@ -231,7 +231,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SHARE_KEY, receiver.asString())
 						.initialize(withJson(SIGNED_SHARED_KEY_JSON, simKey)))
-				.then(GlobalOTNodeHttpClient::processResult);
+				.then(HttpGlobalOTNode::processResult);
 	}
 
 	@Override
@@ -255,7 +255,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SEND_PULL_REQUEST, "")
 						.withBody(encode(SIGNED_PULL_REQUEST_CODEC, pullRequest)))
-				.then(GlobalOTNodeHttpClient::processResult);
+				.then(HttpGlobalOTNode::processResult);
 	}
 
 	@Override

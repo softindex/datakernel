@@ -33,8 +33,8 @@ import io.global.common.ExampleCommonModule;
 import io.global.common.KeyPair;
 import io.global.db.DbItem;
 import io.global.db.GlobalDbDriver;
-import io.global.db.GlobalDbNodeImpl;
 import io.global.db.api.DbClient;
+import io.global.db.api.GlobalDbNode;
 import io.global.launchers.GlobalNodesModule;
 
 import java.util.ArrayList;
@@ -79,7 +79,7 @@ public final class GlobalDbDemoApp extends Launcher {
 				override(new AbstractModule() {
 					@Provides
 					@Singleton
-					GlobalDbDriver provide(GlobalDbNodeImpl node) {
+					GlobalDbDriver provide(GlobalDbNode node) {
 						return GlobalDbDriver.create(node);
 					}
 

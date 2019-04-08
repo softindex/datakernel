@@ -35,6 +35,7 @@ import io.global.common.PrivKey;
 import io.global.common.SimKey;
 import io.global.common.ot.DelayedPushNode;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.GlobalOTNode;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
@@ -42,7 +43,6 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.editor.operations.EditorOperation;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.OTNodeServlet;
-import io.global.ot.server.GlobalOTNodeImpl;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -131,7 +131,7 @@ public final class GlobalEditorModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTDriver provideDriver(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
+	OTDriver provideDriver(Eventloop eventloop, GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);
 	}

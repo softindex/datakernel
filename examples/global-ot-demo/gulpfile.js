@@ -15,7 +15,7 @@ gulp.task('java:clean', shell.task(['mvn clean']));
 gulp.task('java:test', shell.task(['mvn test']));
 gulp.task('java:compile', shell.task(['mvn compile']));
 gulp.task('java:package', shell.task(['mvn package']));
-gulp.task('java:run', shell.task(['mvn exec:java -Dexec.mainClass=io.global.ot.chat.client.GlobalOTDemoApp']));
+gulp.task('java:run', shell.task(['mvn exec:java -Dexec.mainClass=io.global.ot.demo.client.GlobalOTDemoApp']));
 
 // General tasks
 gulp.task('clean', gulp.parallel('js:clean', 'java:clean'));

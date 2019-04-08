@@ -45,7 +45,7 @@ import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.api.GlobalOTNode;
-import io.global.ot.http.GlobalOTNodeHttpClient;
+import io.global.ot.http.HttpGlobalOTNode;
 import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
@@ -64,6 +64,13 @@ import static io.global.launchers.fs.Initializers.ofLocalGlobalFsNode;
 import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 
 public class GlobalNodesModule extends AbstractModule {
+	@Override
+	protected void configure() {
+		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
+		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
+		bind(GlobalDbNode.class).to(GlobalDbNodeImpl.class);
+	}
+
 	@Provides
 	@Singleton
 	Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
@@ -179,7 +186,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	Function<RawServerId, GlobalOTNode> provideOTNodeFactory(IAsyncHttpClient client) {
-		return id -> GlobalOTNodeHttpClient.create(client, id.getServerIdString());
+		return id -> HttpGlobalOTNode.create(id.getServerIdString(), client);
 	}
 
 	@Provides
