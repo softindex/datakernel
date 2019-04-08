@@ -19,9 +19,7 @@ import static java.util.Arrays.asList;
 public final class MasterNodeLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:9000";
-	public static final String DEFAULT_OT_SERVER_ID = "http://127.0.0.1:9000/ot/";
-	public static final String DEFAULT_FS_SERVER_ID = "http://127.0.0.1:9000/fs/";
-	public static final String DEFAULT_DB_SERVER_ID = "http://127.0.0.1:9000/db/";
+	public static final String DEFAULT_SERVER_ID = "http://127.0.0.1:9000";
 	public static final String DEFAULT_FS_STORAGE = Paths.get(System.getProperty("java.io.tmpdir"))
 			.resolve("fs_storage").toString();
 
@@ -35,9 +33,7 @@ public final class MasterNodeLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
-								.with("ot.serverId", DEFAULT_OT_SERVER_ID)
-								.with("fs.serverId", DEFAULT_FS_SERVER_ID)
-								.with("db.serverId", DEFAULT_DB_SERVER_ID)
+								.with("node.serverId", DEFAULT_SERVER_ID)
 								.with("fs.storage", DEFAULT_FS_STORAGE))
 						.printEffectiveConfig(),
 				override(new GlobalNodesModule())

@@ -18,6 +18,7 @@ package io.global.db;
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -96,7 +97,9 @@ public final class GlobalDbTest {
 			@Override
 			public GlobalDbNode apply(RawServerId serverId) {
 				GlobalDbNode node = nodes.computeIfAbsent(serverId, id -> GlobalDbNodeImpl.create(id, discoveryService, this, storageFactory));
-				StubHttpClient client = StubHttpClient.of(GlobalDbNodeServlet.create(node));
+				MiddlewareServlet servlet = MiddlewareServlet.create()
+						.with("/db", GlobalDbNodeServlet.create(node));
+				StubHttpClient client = StubHttpClient.of(servlet);
 				return HttpGlobalDbNode.create(serverId.getServerIdString(), client);
 			}
 		};
@@ -134,7 +137,7 @@ public final class GlobalDbTest {
 	public void uploadDownload() {
 		Set<DbItem> content = createContent();
 
-		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
+		await(ChannelSupplier.ofIterable(content).peek(System.out::println).streamTo(await(firstAliceAdapter.upload("test"))));
 		assertEquals(content, await(await(firstAliceAdapter.download("test")).toCollector(toSet())));
 	}
 

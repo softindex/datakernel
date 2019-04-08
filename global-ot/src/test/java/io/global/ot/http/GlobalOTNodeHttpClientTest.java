@@ -21,6 +21,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
@@ -56,8 +57,8 @@ public class GlobalOTNodeHttpClientTest {
 	}
 
 	private static final LinkedList<Object> params = new LinkedList<>();
-	private final RawServerServlet servlet = getServlet();
-	private final GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost/");
+	private final MiddlewareServlet servlet = MiddlewareServlet.create().with("/ot", getServlet());
+	private final GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost");
 	private final KeyPair keys = KeyPair.generate();
 	private final PrivKey privKey = keys.getPrivKey();
 	private final PubKey pubKey = keys.getPubKey();

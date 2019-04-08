@@ -46,11 +46,13 @@ import static io.global.fs.http.GlobalFsNodeServlet.SIGNED_CHECKPOINT_CODEC;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
+	private static final String FS_NODE_SUFFIX = "/fs/";
+
 	private final String url;
 	private final IAsyncHttpClient client;
 
 	private HttpGlobalFsNode(String url, IAsyncHttpClient client) {
-		this.url = url.endsWith("/") ? url : url + '/';
+		this.url = url + FS_NODE_SUFFIX;
 		this.client = client;
 	}
 

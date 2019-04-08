@@ -38,11 +38,13 @@ import static io.global.db.api.DbCommand.*;
 import static io.global.db.http.GlobalDbNodeServlet.*;
 
 public final class HttpGlobalDbNode implements GlobalDbNode {
+	private static final String DB_NODE_SUFFIX = "/db/";
+
 	public final String url;
 	private final IAsyncHttpClient client;
 
 	private HttpGlobalDbNode(String url, IAsyncHttpClient client) {
-		this.url = url.endsWith("/") ? url : url + '/';
+		this.url = url + DB_NODE_SUFFIX;
 		this.client = client;
 	}
 

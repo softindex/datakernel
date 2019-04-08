@@ -32,7 +32,7 @@ import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 public final class ExampleCommonModule extends AbstractModule {
 	private static final Logger logger = LoggerFactory.getLogger(ExampleCommonModule.class);
 
-	private static final PrivKey DEMO_OT_PRIVATE_KEY =
+	private static final PrivKey DEMO_PRIVATE_KEY =
 			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));
 
 	@Provides
@@ -47,16 +47,18 @@ public final class ExampleCommonModule extends AbstractModule {
 
 		List<RawServerId> masters = config.get(ofList(ofRawServerId()), "discovery.masters", new ArrayList<>());
 		if (masters.isEmpty()) {
-			RawServerId otServerId = config.get(ofRawServerId(), "ot.serverId", null);
-			if (otServerId != null) masters.add(otServerId);
+			logger.info("No remote master nodes specified, using local node as a master node");
+			masters.add(config.get(ofRawServerId(), "node.serverId"));
+		} else {
+			logger.info("Using servers " + masters + " as master servers");
 		}
 
 		InMemoryAnnouncementStorage announcementStorage = new InMemoryAnnouncementStorage();
 		InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
 
-		PubKey demoPubKey = DEMO_OT_PRIVATE_KEY.computePubKey();
+		PubKey demoPubKey = DEMO_PRIVATE_KEY.computePubKey();
 		AnnounceData announceData = AnnounceData.of(System.currentTimeMillis(), new HashSet<>(masters));
-		SignedData<AnnounceData> signedData = SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, DEMO_OT_PRIVATE_KEY);
+		SignedData<AnnounceData> signedData = SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, DEMO_PRIVATE_KEY);
 
 		announcementStorage.addAnnouncements(map(demoPubKey, signedData));
 

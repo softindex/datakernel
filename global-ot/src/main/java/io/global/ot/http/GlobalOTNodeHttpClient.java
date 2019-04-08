@@ -64,12 +64,14 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
 public class GlobalOTNodeHttpClient implements GlobalOTNode {
+	private static final String OT_NODE_SUFFIX = "/ot/";
+
 	private final IAsyncHttpClient httpClient;
 	private final String url;
 
 	private GlobalOTNodeHttpClient(IAsyncHttpClient httpClient, String url) {
 		this.httpClient = httpClient;
-		this.url = url;
+		this.url = url + OT_NODE_SUFFIX;
 	}
 
 	public static GlobalOTNodeHttpClient create(IAsyncHttpClient httpClient, String url) {

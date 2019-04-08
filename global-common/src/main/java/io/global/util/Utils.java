@@ -42,7 +42,7 @@ public class Utils {
 					}
 					return null;
 				},
-				a -> Try.of(a),
+				Try::of,
 				Cancellable::tryCancel);
 	}
 

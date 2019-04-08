@@ -52,7 +52,7 @@ public final class GlobalEditorLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
-								.with("ot.serverId", DEFAULT_SERVER_ID)
+								.with("node.serverId", DEFAULT_SERVER_ID)
 								.override(Config.ofProperties(PROPERTIES_FILE, true)
 										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))
