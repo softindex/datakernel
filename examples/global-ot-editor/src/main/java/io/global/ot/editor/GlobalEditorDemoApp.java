@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.ot.demo.client;
+package io.global.ot.editor;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
@@ -30,20 +30,25 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.demo.operations.Operation;
+import io.global.ot.editor.operations.EditorOperation;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.function.Function;
 
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static io.global.ot.demo.util.Utils.*;
+import static io.global.ot.editor.operations.EditorOTSystem.createOTSystem;
+import static io.global.ot.editor.operations.Utils.OPERATION_CODEC;
+import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
-public final class GlobalOTDemoApp extends Launcher {
-	public static final String PROPERTIES_FILE = "client.properties";
+public final class GlobalEditorDemoApp extends Launcher {
+	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
+	public static final String PROPERTIES_FILE = "server.properties";
+	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
-	public static final String DEFAULT_SERVER_ID = "OT Demo";
+	public static final String DEFAULT_SERVER_ID = "Editor Node";
 
 	@Inject
 	@Named("Example")
@@ -57,20 +62,20 @@ public final class GlobalOTDemoApp extends Launcher {
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.override(Config.ofProperties(PROPERTIES_FILE, true))
+								.override(Config.ofProperties(PROPERTIES_FILE, true)
+										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				override(new OTCommonModule<Operation>() {
+				new OTCommonModule<EditorOperation>() {
 					@Override
 					protected void configure() {
-						bind(new TypeLiteral<StructuredCodec<Operation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeLiteral<Function<Operation, String>>() {}).toInstance(DIFF_TO_STRING);
-						bind(new TypeLiteral<OTSystem<Operation>>() {}).toInstance(createOTSystem());
+						bind(new TypeLiteral<StructuredCodec<EditorOperation>>() {}).toInstance(OPERATION_CODEC);
+						bind(new TypeLiteral<Function<EditorOperation, String>>() {}).toInstance(Objects::toString);
+						bind(new TypeLiteral<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
 					}
-				}).with(new GlobalOTDemoModule()),
+				},
 				override(new GlobalNodesModule())
-						.with(new ExampleCommonModule())
-		);
+						.with(new ExampleCommonModule()));
 	}
 
 	@Override
@@ -79,7 +84,6 @@ public final class GlobalOTDemoApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalOTDemoApp().launch(false, args);
+		new GlobalEditorDemoApp().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
-
 }

@@ -50,7 +50,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.global.ot.chat.client.GlobalChatDemoApp</mainClass>
+              <mainClass>io.global.ot.chat.GlobalChatDemoApp</mainClass>
             </configuration>
           </execution>
         </executions>
@@ -76,7 +76,7 @@
                   <transformers>
                     <transformer
                       implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                      <mainClass>io.global.ot.chat.client.GlobalChatDemoApp</mainClass>
+                      <mainClass>io.global.ot.chat.GlobalChatDemoApp</mainClass>
                     </transformer>
                   </transformers>
                   <filters>

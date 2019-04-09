@@ -19,64 +19,22 @@ package io.global.ot.demo.client;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.StaticServlet;
-import io.datakernel.loader.StaticLoader;
-import io.datakernel.loader.StaticLoaders;
 import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTRepository;
-import io.global.common.PrivKey;
-import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
-import io.global.ot.api.RepoID;
-import io.global.ot.client.MyRepositoryId;
-import io.global.ot.client.OTDriver;
-import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.demo.api.OTStateServlet;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
 import io.global.ot.demo.util.ManagerProvider;
-import io.global.ot.server.GlobalOTNodeImpl;
-
-import java.math.BigInteger;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.launchers.GlobalConfigConverters.ofSimKey;
-import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
-import static io.global.ot.demo.util.Utils.OPERATION_CODEC;
-import static io.global.ot.demo.util.Utils.createOTSystem;
-import static java.util.Collections.emptySet;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 
 final class GlobalOTDemoModule extends AbstractModule {
-	private static final String DEFAULT_PATH_TO_RESOURCES = "src/main/resources/static";
-	private static final PrivKey DEMO_PRIVATE_KEY =
-			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));
-	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
-	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Example");
-	private static final MyRepositoryId<Operation> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, OPERATION_CODEC);
-
 	@Provides
 	@Singleton
-	@Named("OT Demo")
-	AsyncHttpServer provide(Eventloop eventloop, @Named("OT Demo") AsyncServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("http")));
-	}
-
-	@Provides
-	@Singleton
-	@Named("OT Demo")
-	AsyncServlet provideMainServlet(Eventloop eventloop, ManagerProvider<Operation> managerProvider, Config config) {
-		Path resources = Paths.get(DEFAULT_PATH_TO_RESOURCES);
-		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), resources);
-		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
+	MiddlewareServlet provideServlet(Eventloop eventloop, StaticServlet staticServlet,
+			ManagerProvider<Operation> managerProvider, Config config) {
 		return OTStateServlet.create(managerProvider).getMiddlewareServlet()
 				.withFallback(staticServlet);
 	}
@@ -85,30 +43,6 @@ final class GlobalOTDemoModule extends AbstractModule {
 	@Singleton
 	ManagerProvider<Operation> provideManager(OTAlgorithms<CommitId, Operation> algorithms) {
 		return new ManagerProvider<>(algorithms, OperationState::new);
-	}
-
-	@Provides
-	@Singleton
-	OTRepository<CommitId, Operation> provideRepository(OTDriver driver, MyRepositoryId<Operation> myRepositoryId) {
-		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-	}
-
-	@Provides
-	@Singleton
-	OTDriver provideDriver(GlobalOTNodeImpl globalOTNode, Config config) {
-		return new OTDriver(globalOTNode, config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY));
-	}
-
-	@Provides
-	@Singleton
-	MyRepositoryId<Operation> provideMyRepositoryId(Config config) {
-		return config.get(ofMyRepositoryId(OPERATION_CODEC), "credentials", DEMO_MY_REPOSITORY_ID);
-	}
-
-	@Provides
-	@Singleton
-	OTAlgorithms<CommitId, Operation> provide(Eventloop eventloop, OTRepository<CommitId, Operation> repository) {
-		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
 	}
 
 }

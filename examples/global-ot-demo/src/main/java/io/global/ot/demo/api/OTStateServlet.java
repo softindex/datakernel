@@ -19,7 +19,6 @@ package io.global.ot.demo.api;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
@@ -56,58 +55,48 @@ public final class OTStateServlet implements WithMiddleware {
 
 	private MiddlewareServlet getServlet() {
 		return MiddlewareServlet.create()
-				.with(GET, "/info", info())
-				.with(POST, "/add", add());
-	}
-
-	// region servlets
-	private AsyncServlet add() {
-		return request -> request.getBody()
-				.then(body -> getManager(provider, request)
+				.with(GET, "/info", request -> getManager(provider, request)
 						.then(manager -> {
 							if (manager != null) {
-								try {
-									Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
-									manager.add(operation);
-									return manager.sync()
-											.map($ -> okText());
-								} catch (ParseException e) {
-									return Promise.<HttpResponse>ofException(e);
-								} finally {
-									body.recycle();
-								}
+								return algorithms.getRepository()
+										.getHeads()
+										.then(heads -> algorithms.loadGraph(heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
+										.map(graph -> {
+											String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
+											Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(
+													manager.getCommitId(),
+													((OperationState) manager.getState()).getCounter(),
+													status,
+													graph.toGraphViz(manager.getCommitId())
+											);
+											return okJson().withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8));
+										});
 							} else {
-								return Promise.ofException(MANAGER_NOT_INITIALIZED);
+								return Promise.of(HttpResponse.redirect302("../?id=" + getNextId(provider)));
 							}
-						}));
-	}
-
-	private AsyncServlet info() {
-		return request -> getManager(provider, request)
-				.then(manager -> {
-					if (manager != null) {
-						return algorithms.getRepository()
-								.getHeads()
-								.then(heads -> algorithms.loadGraph(heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
-								.map(graph -> {
-									String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
-									Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(
-											manager.getCommitId(),
-											((OperationState) manager.getState()).getCounter(),
-											status,
-											graph.toGraphViz(manager.getCommitId())
-									);
-									return okJson().withBody(toJson(INFO_CODEC, infoTuple).getBytes(UTF_8));
-								});
-					} else {
-						return Promise.of(HttpResponse.redirect302("../?id=" + getNextId(provider)));
-					}
-				});
+						}))
+				.with(POST, "/add", request -> request.getBody()
+						.then(body -> getManager(provider, request)
+								.then(manager -> {
+									if (manager != null) {
+										try {
+											Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
+											manager.add(operation);
+											return manager.sync()
+													.map($ -> okText());
+										} catch (ParseException e) {
+											return Promise.<HttpResponse>ofException(e);
+										} finally {
+											body.recycle();
+										}
+									} else {
+										return Promise.<HttpResponse>ofException(MANAGER_NOT_INITIALIZED);
+									}
+								})));
 	}
 
 	@Override
 	public MiddlewareServlet getMiddlewareServlet() {
 		return servlet;
 	}
-	// endregion
 }

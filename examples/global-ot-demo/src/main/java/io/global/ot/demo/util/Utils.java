@@ -29,6 +29,7 @@ import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.AddOperation;
 import io.global.ot.demo.operations.Operation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
@@ -88,7 +89,7 @@ public final class Utils {
 				.withSquashFunction(AddOperation.class, AddOperation.class, (op1, op2) -> add(op1.getValue() + op2.getValue()));
 	}
 
-	public static Promise<OTStateManager<CommitId, Operation>> getManager(ManagerProvider<Operation> managerProvider, HttpRequest request) {
+	public static Promise<@Nullable OTStateManager<CommitId, Operation>> getManager(ManagerProvider<Operation> managerProvider, HttpRequest request) {
 		String id = request.getQueryParameterOrNull("id");
 		if (id == null || id.isEmpty()) {
 			return Promise.of(null);

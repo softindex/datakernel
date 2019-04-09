@@ -1,4 +1,4 @@
-package io.global.ot.chat.client;
+package io.global.ot.chat;
 
 import org.junit.Test;
 

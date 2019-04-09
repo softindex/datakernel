@@ -1,4 +1,4 @@
-package io.global.ot.chat.client;
+package io.global.common.ot;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -16,53 +16,42 @@ import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
-import io.global.common.PrivKey;
+import io.datakernel.ot.OTSystem;
 import io.global.common.SimKey;
-import io.global.common.ot.DelayedPushNode;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.api.RepoID;
-import io.global.ot.chat.operations.ChatOperation;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.OTNodeServlet;
 
-import java.math.BigInteger;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.function.Function;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.common.ExampleCommonModule.*;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
-import static io.global.ot.chat.operations.ChatOperation.OPERATION_CODEC;
-import static io.global.ot.chat.operations.Utils.DIFF_TO_STRING;
-import static io.global.ot.chat.operations.Utils.createOTSystem;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-public final class ChatClientModule extends AbstractModule {
-	private static final PrivKey DEMO_PRIVATE_KEY =
-			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));
+public class OTCommonModule<D> extends AbstractModule {
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
-
-	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Chat Example");
-	private static final MyRepositoryId<ChatOperation> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, OPERATION_CODEC);
-	private static final Path DEFAULT_RESOURCES_PATH = Paths.get("front/build");
 	private static final Duration DEFAULT_PUSH_DELAY_DURATION = Duration.ofSeconds(1);
 
 	@Provides
 	@Singleton
-	@Named("Chat")
+	@Named("Example")
 	AsyncHttpServer provideServer(Eventloop eventloop, MiddlewareServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
@@ -70,8 +59,8 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	MiddlewareServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, ChatOperation> graphServlet,
-			OTNodeServlet<CommitId, ChatOperation, OTCommit<CommitId, ChatOperation>> nodeServlet) {
+	MiddlewareServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
+			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
 		return MiddlewareServlet.create()
 				.with(GET, "/graph", graphServlet)
 				.with("/node", nodeServlet)
@@ -80,8 +69,8 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTGraphServlet<CommitId, ChatOperation> provideGraphServlet(OTAlgorithms<CommitId, ChatOperation> algorithms) {
-		return OTGraphServlet.create(algorithms, COMMIT_ID_TO_STRING, DIFF_TO_STRING)
+	OTGraphServlet<CommitId, D> provideGraphServlet(OTAlgorithms<CommitId, D> algorithms, Function<D, String> diffToString) {
+		return OTGraphServlet.create(algorithms, COMMIT_ID_TO_STRING, diffToString)
 				.withCurrentCommit(request -> {
 					try {
 						return Promise.of(fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id")));
@@ -94,26 +83,28 @@ public final class ChatClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	StaticServlet provideStaticServlet(Eventloop eventloop, Config config) {
-		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), config.get(ofPath(), "resources.path", DEFAULT_RESOURCES_PATH));
+		Path staticDir = config.get(ofPath(), "resources.path", DEFAULT_RESOURCES_PATH);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), staticDir);
 		return StaticServlet.create(eventloop, resourceLoader);
 	}
 
 	@Provides
 	@Singleton
-	OTNodeServlet<CommitId, ChatOperation, OTCommit<CommitId, ChatOperation>> provideNodeServlet(OTAlgorithms<CommitId, ChatOperation> algorithms, OTRepositoryAdapter<ChatOperation> repositoryAdapter, Config config) {
+	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> provideNodeServlet(OTAlgorithms<CommitId, D> algorithms,
+			StructuredCodec<D> diffCodec, OTRepositoryAdapter<D> repositoryAdapter, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
-		return OTNodeServlet.forGlobalNode(DelayedPushNode.create(algorithms.getOtNode(), delay), OPERATION_CODEC, repositoryAdapter);
+		return OTNodeServlet.forGlobalNode(DelayedPushNode.create(algorithms.getOtNode(), delay), diffCodec, repositoryAdapter);
 	}
 
 	@Provides
 	@Singleton
-	OTAlgorithms<CommitId, ChatOperation> provideAlgorithms(Eventloop eventloop, OTRepositoryAdapter<ChatOperation> repository) {
-		return OTAlgorithms.create(eventloop, createOTSystem(), repository);
+	OTAlgorithms<CommitId, D> provideAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRepositoryAdapter<D> repository) {
+		return OTAlgorithms.create(eventloop, otSystem, repository);
 	}
 
 	@Provides
 	@Singleton
-	OTRepositoryAdapter<ChatOperation> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<ChatOperation> myRepositoryId) {
+	OTRepositoryAdapter<D> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<D> myRepositoryId) {
 		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 
@@ -126,8 +117,9 @@ public final class ChatClientModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	MyRepositoryId<ChatOperation> provideMyRepositoryId(Config config) {
-		return config.get(ofMyRepositoryId(OPERATION_CODEC), "credentials", DEMO_MY_REPOSITORY_ID);
+	MyRepositoryId<D> provideMyRepositoryId(Config config, StructuredCodec<D> diffCodec) {
+		MyRepositoryId<D> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, diffCodec);
+		return config.get(ofMyRepositoryId(diffCodec), "credentials", DEMO_MY_REPOSITORY_ID);
 	}
 
 }

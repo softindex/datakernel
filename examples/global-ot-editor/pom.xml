@@ -44,7 +44,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.global.ot.editor.client.GlobalEditorDemoApp</mainClass>
+              <mainClass>io.global.ot.editor.GlobalEditorDemoApp</mainClass>
             </configuration>
           </execution>
         </executions>
@@ -70,7 +70,7 @@
                   <transformers>
                     <transformer
                       implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                      <mainClass>io.global.ot.editor.server.GlobalEditorLauncher</mainClass>
+                      <mainClass>io.global.ot.editor.GlobalEditorDemoApp</mainClass>
                     </transformer>
                   </transformers>
                   <filters>

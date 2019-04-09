@@ -5,8 +5,8 @@ const browserify = require('browserify');
 const fs = require('fs');
 const del = require('del');
 
-const SRC_PATH = './src/main/webapp/src';
-const BUNDLE_PATH = 'src/main/resources/static/js/bundle.js';
+const SRC_PATH = './webapp/src';
+const BUNDLE_PATH = 'build/js/bundle.js';
 
 function createBundle() {
 	return browserify(SRC_PATH)
