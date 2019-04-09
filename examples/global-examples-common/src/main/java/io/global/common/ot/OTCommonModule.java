@@ -45,9 +45,9 @@ import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class OTCommonModule<D> extends AbstractModule {
-	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
-	private static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Chat Example");
-	private static final Duration DEFAULT_PUSH_DELAY_DURATION = Duration.ofSeconds(1);
+	public static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
+	public static final RepoID DEMO_REPO_ID = RepoID.of(DEMO_PRIVATE_KEY.computePubKey(), "Chat Example");
+	public static final Duration DEFAULT_PUSH_DELAY_DURATION = Duration.ofSeconds(1);
 
 	@Provides
 	@Singleton

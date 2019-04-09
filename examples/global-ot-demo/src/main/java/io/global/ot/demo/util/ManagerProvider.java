@@ -25,10 +25,12 @@ public final class ManagerProvider<D> implements EventloopService {
 
 	private final OTAlgorithms<CommitId, D> algorithms;
 	private final Supplier<OTState<D>> stateSupplier;
+	private final Duration delay;
 
-	public ManagerProvider(OTAlgorithms<CommitId, D> algorithms, Supplier<OTState<D>> stateSupplier) {
+	public ManagerProvider(OTAlgorithms<CommitId, D> algorithms, Supplier<OTState<D>> stateSupplier, Duration delay) {
 		this.algorithms = algorithms;
 		this.stateSupplier = stateSupplier;
+		this.delay = delay;
 	}
 
 	public Promise<OTStateManager<CommitId, D>> get(String id) {
@@ -36,7 +38,7 @@ public final class ManagerProvider<D> implements EventloopService {
 			OTStateManager<CommitId, D> stateManager = OTStateManager.create(
 					algorithms.getEventloop(),
 					algorithms.getOtSystem(),
-					DelayedPushNode.create(algorithms.getOtNode(), Duration.ofSeconds(3)),
+					DelayedPushNode.create(algorithms.getOtNode(), delay),
 					stateSupplier.get())
 					.withPoll();
 

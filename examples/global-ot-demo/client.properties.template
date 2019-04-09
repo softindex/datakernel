@@ -1,5 +1,6 @@
 http.listenAddresses=
 repository.name=
-credentials.privKey=
+credentials.privateKey=
 credentials.simKey=
 node.serverId=
+push.delay=

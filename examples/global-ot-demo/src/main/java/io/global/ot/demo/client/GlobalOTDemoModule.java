@@ -30,6 +30,11 @@ import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
 import io.global.ot.demo.util.ManagerProvider;
 
+import java.time.Duration;
+
+import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.global.common.ot.OTCommonModule.DEFAULT_PUSH_DELAY_DURATION;
+
 final class GlobalOTDemoModule extends AbstractModule {
 	@Provides
 	@Singleton
@@ -41,8 +46,9 @@ final class GlobalOTDemoModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	ManagerProvider<Operation> provideManager(OTAlgorithms<CommitId, Operation> algorithms) {
-		return new ManagerProvider<>(algorithms, OperationState::new);
+	ManagerProvider<Operation> provideManager(OTAlgorithms<CommitId, Operation> algorithms, Config config) {
+		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
+		return new ManagerProvider<>(algorithms, OperationState::new, delay);
 	}
 
 }
