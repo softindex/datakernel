@@ -22,7 +22,8 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
-import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
@@ -33,6 +34,7 @@ import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.ot.OTAlgorithms.loadGraph;
 import static io.global.ot.demo.util.Utils.*;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -40,17 +42,19 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class OTStateServlet implements WithMiddleware {
 	private static final StacklessException MANAGER_NOT_INITIALIZED = new StacklessException(OTStateServlet.class, "Manager has not been initialized yet");
 	private final ManagerProvider<Operation> provider;
-	private final OTAlgorithms<CommitId, Operation> algorithms;
+	private final OTRepository<CommitId, Operation> repository;
+	private final OTSystem<Operation> otSystem;
 	private final MiddlewareServlet servlet;
 
-	private OTStateServlet(ManagerProvider<Operation> provider) {
+	private OTStateServlet(ManagerProvider<Operation> provider, OTRepository<CommitId, Operation> repository) {
 		this.provider = provider;
-		algorithms = provider.getAlgorithms();
+		this.otSystem = provider.getSystem();
+		this.repository = repository;
 		servlet = getServlet();
 	}
 
-	public static OTStateServlet create(ManagerProvider<Operation> provider) {
-		return new OTStateServlet(provider);
+	public static OTStateServlet create(ManagerProvider<Operation> provider, OTRepository<CommitId, Operation> repository) {
+		return new OTStateServlet(provider, repository);
 	}
 
 	private MiddlewareServlet getServlet() {
@@ -58,9 +62,9 @@ public final class OTStateServlet implements WithMiddleware {
 				.with(GET, "/info", request -> getManager(provider, request)
 						.then(manager -> {
 							if (manager != null) {
-								return algorithms.getRepository()
+								return repository
 										.getHeads()
-										.then(heads -> algorithms.loadGraph(heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
+										.then(heads -> loadGraph(repository, otSystem, heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
 										.map(graph -> {
 											String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
 											Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(

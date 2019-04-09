@@ -14,7 +14,6 @@ import io.datakernel.etl.LogDiff;
 import io.datakernel.etl.LogDiffCodec;
 import io.datakernel.etl.LogOT;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryMySql;
 import io.datakernel.ot.OTSystem;
@@ -44,10 +43,11 @@ import static java.util.Collections.emptyList;
 
 @RunWith(DatakernelRunner.class)
 public class CubeCleanerControllerTest {
+	private static final OTSystem<LogDiff<CubeDiff>> OT_SYSTEM = LogOT.createLogOT(CubeOT.createCubeOT());
+
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 	private Eventloop eventloop;
-	private OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms;
 	private OTRepositoryMySql<LogDiff<CubeDiff>> repository;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
 
@@ -69,9 +69,8 @@ public class CubeCleanerControllerTest {
 				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
 				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
-		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
-		algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
+		repository = OTRepositoryMySql.create(eventloop, executor, dataSource, OT_SYSTEM,
+				LogDiffCodec.create(CubeDiffCodec.create(cube)));
 		repository.initialize();
 		repository.truncateTables();
 	}
@@ -82,7 +81,7 @@ public class CubeCleanerControllerTest {
 		initializeRepo();
 
 		CubeCleanerController<Long, LogDiff<CubeDiff>, Long> cleanerController = CubeCleanerController.create(eventloop,
-				CubeDiffScheme.ofLogDiffs(), algorithms, (RemoteFsChunkStorage<Long>) aggregationChunkStorage)
+				CubeDiffScheme.ofLogDiffs(), repository, OT_SYSTEM, (RemoteFsChunkStorage<Long>) aggregationChunkStorage)
 				.withFreezeTimeout(Duration.ofMillis(0))
 				.withExtraSnapshotsCount(1000);
 
@@ -95,7 +94,7 @@ public class CubeCleanerControllerTest {
 		initializeRepo();
 
 		CubeCleanerController<Long, LogDiff<CubeDiff>, Long> cleanerController = CubeCleanerController.create(eventloop,
-				CubeDiffScheme.ofLogDiffs(), algorithms, (RemoteFsChunkStorage<Long>) aggregationChunkStorage)
+				CubeDiffScheme.ofLogDiffs(), repository, OT_SYSTEM, (RemoteFsChunkStorage<Long>) aggregationChunkStorage)
 				.withFreezeTimeout(Duration.ofSeconds(10));
 
 		await(cleanerController.cleanup());

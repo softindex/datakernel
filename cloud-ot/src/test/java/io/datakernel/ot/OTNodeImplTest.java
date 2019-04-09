@@ -1,6 +1,5 @@
 package io.datakernel.ot;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.utils.OTGraphBuilder;
@@ -8,6 +7,7 @@ import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.stream.processor.DatakernelRunner;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,8 +36,7 @@ public class OTNodeImplTest {
 	@Before
 	public void setUp() {
 		REPOSITORY.reset();
-		OTAlgorithms<Integer, TestOp> algorithms = OTAlgorithms.create(Eventloop.getCurrentEventloop(), createTestOp(), REPOSITORY);
-		node = algorithms.getOtNode();
+		node = OTNodeImpl.create(REPOSITORY, createTestOp());
 		resetRepo(null);
 
 	}
@@ -220,7 +219,7 @@ public class OTNodeImplTest {
 		assertEquals(expectedState, (Integer) state.getValue());
 	}
 
-	private void resetRepo(Consumer<OTGraphBuilder<Integer, TestOp>> builder) {
+	private void resetRepo(@Nullable Consumer<OTGraphBuilder<Integer, TestOp>> builder) {
 		// Initializing repo
 		REPOSITORY.reset();
 		REPOSITORY.doPushAndUpdateHeads(singleton(ofRoot(0)));

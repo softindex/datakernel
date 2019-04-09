@@ -8,12 +8,12 @@ import io.datakernel.util.ref.RefInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.ot.DiffsReducer.toSquashedList;
+import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -22,32 +22,26 @@ import static java.util.Collections.singleton;
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
 
-	private final OTAlgorithms<K, D> algorithms;
+	private final OTSystem<D> otSystem;
 	private final OTRepository<K, D> repository;
 	private final Function<OTCommit<K, D>, C> commitToObject;
 	private final Function<C, OTCommit<K, D>> objectToCommit;
 
-	private Duration pollInterval = PollSanitizer.DEFAULT_YIELD_INTERVAL;
-
-	private OTNodeImpl(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K, D>> objectToCommit) {
-		this.algorithms = algorithms;
-		this.repository = algorithms.getRepository();
+	private OTNodeImpl(OTRepository<K, D> repository, OTSystem<D> otSystem, Function<OTCommit<K, D>, C> commitToObject,
+			Function<C, OTCommit<K, D>> objectToCommit) {
+		this.otSystem = otSystem;
+		this.repository = repository;
 		this.commitToObject = commitToObject;
 		this.objectToCommit = objectToCommit;
 	}
 
-	public static <K, D, C> OTNodeImpl<K, D, C> create(OTAlgorithms<K, D> algorithms, Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K,
-			D>> objectToCommit) {
-		return new OTNodeImpl<>(algorithms, commitToObject, objectToCommit);
+	public static <K, D, C> OTNodeImpl<K, D, C> create(OTRepository<K, D> repository, OTSystem<D> otSystem,
+			Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K, D>> objectToCommit) {
+		return new OTNodeImpl<>(repository, otSystem, commitToObject, objectToCommit);
 	}
 
-	public static <K, D> OTNodeImpl<K, D, OTCommit<K, D>> create(OTAlgorithms<K, D> algorithms) {
-		return new OTNodeImpl<>(algorithms, commit -> commit, object -> object);
-	}
-
-	public OTNodeImpl<K, D, C> withPollInterval(Duration pollInterval) {
-		this.pollInterval = pollInterval;
-		return this;
+	public static <K, D> OTNodeImpl<K, D, OTCommit<K, D>> create(OTRepository<K, D> repository, OTSystem<D> otSystem) {
+		return new OTNodeImpl<>(repository, otSystem, commit -> commit, object -> object);
 	}
 
 	@Override
@@ -64,8 +58,8 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
 		return repository.push(otCommit)
 				.then($ -> repository.getHeads())
-				.then(initalHeads -> algorithms.excludeParents(union(initalHeads, singleton(otCommit.getId())))
-						.then(algorithms::merge)
+				.then(initalHeads -> excludeParents(repository, otSystem, union(initalHeads, singleton(otCommit.getId())))
+						.then(heads -> merge(repository, otSystem, heads))
 						.then(mergeHead -> {
 							Set<K> mergeHeadSet = singleton(mergeHead);
 							return repository.updateHeads(mergeHeadSet, difference(initalHeads, mergeHeadSet))
@@ -79,7 +73,9 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 		RefInt epoch = new RefInt(0);
 		Ref<List<D>> cachedSnapshot = new Ref<>();
 		return repository.getHeads()
-				.then(heads -> algorithms.findParent(
+				.then(heads -> findParent(
+						repository,
+						otSystem,
 						heads,
 						DiffsReducer.toList(),
 						commit -> repository.loadSnapshot(commit.getId())
@@ -94,7 +90,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 						.map(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),
 								fetchData.getLevel(),
-								algorithms.getOtSystem().squash(concat(checkoutData.getDiffs(), fetchData.getDiffs()))
+								otSystem.squash(concat(checkoutData.getDiffs(), fetchData.getDiffs()))
 						))
 				)
 				.whenComplete(toLogger(logger, thisMethod()));
@@ -115,14 +111,16 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	}
 
 	private Promise<FetchData<K, D>> doFetch(Set<K> heads, K currentCommitId) {
-		return algorithms.findParent(
+		return findParent(
+				repository,
+				otSystem,
 				heads,
-				toSquashedList(algorithms.getOtSystem()),
+				toSquashedList(otSystem),
 				AsyncPredicate.of(commit -> commit.getId().equals(currentCommitId)))
 				.map(findResult -> new FetchData<>(
 						findResult.getChild(),
 						findResult.getChildLevel(),
-						algorithms.getOtSystem().squash(findResult.getAccumulatedDiffs())
+						otSystem.squash(findResult.getAccumulatedDiffs())
 				))
 				.whenComplete(toLogger(logger, thisMethod(), currentCommitId));
 	}

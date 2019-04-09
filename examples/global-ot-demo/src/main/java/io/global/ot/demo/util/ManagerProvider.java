@@ -6,9 +6,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTState;
-import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.*;
 import io.global.common.ot.DelayedPushNode;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.NotNull;
@@ -23,12 +21,17 @@ import java.util.function.Supplier;
 public final class ManagerProvider<D> implements EventloopService {
 	private final Map<String, MaterializedPromise<OTStateManager<CommitId, D>>> entries = new HashMap<>();
 
-	private final OTAlgorithms<CommitId, D> algorithms;
+	private final Eventloop eventloop;
+	private final OTNode<CommitId, D, OTCommit<CommitId, D>> node;
+	private final OTSystem<D> system;
 	private final Supplier<OTState<D>> stateSupplier;
 	private final Duration delay;
 
-	public ManagerProvider(OTAlgorithms<CommitId, D> algorithms, Supplier<OTState<D>> stateSupplier, Duration delay) {
-		this.algorithms = algorithms;
+	public ManagerProvider(Eventloop eventloop, OTNode<CommitId, D, OTCommit<CommitId, D>> node,
+			OTSystem<D> system, Supplier<OTState<D>> stateSupplier, Duration delay) {
+		this.eventloop = eventloop;
+		this.node = node;
+		this.system = system;
 		this.stateSupplier = stateSupplier;
 		this.delay = delay;
 	}
@@ -36,9 +39,9 @@ public final class ManagerProvider<D> implements EventloopService {
 	public Promise<OTStateManager<CommitId, D>> get(String id) {
 		if (!entries.containsKey(id)) {
 			OTStateManager<CommitId, D> stateManager = OTStateManager.create(
-					algorithms.getEventloop(),
-					algorithms.getOtSystem(),
-					DelayedPushNode.create(algorithms.getOtNode(), delay),
+					eventloop,
+					system,
+					DelayedPushNode.create(node, delay),
 					stateSupplier.get())
 					.withPoll();
 
@@ -60,11 +63,11 @@ public final class ManagerProvider<D> implements EventloopService {
 	@NotNull
 	@Override
 	public Eventloop getEventloop() {
-		return algorithms.getEventloop();
+		return eventloop;
 	}
 
-	public OTAlgorithms<CommitId, D> getAlgorithms() {
-		return algorithms;
+	public OTSystem<D> getSystem() {
+		return system;
 	}
 
 	@NotNull

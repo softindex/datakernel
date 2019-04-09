@@ -1,6 +1,5 @@
 package io.datakernel.ot;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
@@ -14,7 +13,7 @@ import java.util.*;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.ot.OTAlgorithms.GRAPH_EXHAUSTED;
+import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.set;
@@ -29,13 +28,9 @@ public class OTAlgorithmsTest {
 	private static final Random RANDOM = new Random();
 	private static final OTSystem<TestOp> TEST_OP = Utils.createTestOp();
 	private static final OTRepositoryStub<Integer, TestOp> REPOSITORY = OTRepositoryStub.create();
-	private static Eventloop eventloop;
-	private static OTAlgorithms<Integer, TestOp> algorithms;
 
 	@Before
 	public void reset() {
-		eventloop = Eventloop.getCurrentEventloop();
-		algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 		REPOSITORY.reset();
 	}
 
@@ -47,7 +42,7 @@ public class OTAlgorithmsTest {
 		Integer id2 = await(REPOSITORY.createCommitId());
 		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(0, id2, id1, emptyList(), id1)));
 
-		Throwable exception = awaitException(algorithms.checkout(id2));
+		Throwable exception = awaitException(checkout(REPOSITORY, TEST_OP, id2));
 		assertSame(GRAPH_EXHAUSTED, exception);
 	}
 
@@ -59,7 +54,7 @@ public class OTAlgorithmsTest {
 		Integer id2 = await(REPOSITORY.createCommitId());
 		await(REPOSITORY.pushAndUpdateHead(OTCommit.ofCommit(0, id2, id1, emptyList(), id1)));
 
-		Throwable exception = awaitException(algorithms.findParent(singleton(id2), DiffsReducer.toVoid(),
+		Throwable exception = awaitException(findParent(REPOSITORY, TEST_OP, singleton(id2), DiffsReducer.toVoid(),
 				commit -> REPOSITORY.loadSnapshot(commit.getId())
 						.map(Optional::isPresent)));
 		assertSame(GRAPH_EXHAUSTED, exception);
@@ -75,12 +70,11 @@ public class OTAlgorithmsTest {
 			g.add(3, 4, add(1));
 			g.add(4, 5, add(1));
 		});
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 
 		await(REPOSITORY.saveSnapshot(0, asList(add(10))));
 
 		Set<Integer> heads = await(REPOSITORY.getHeads());
-		List<TestOp> changes = await(algorithms.checkout(getLast(heads)));
+		List<TestOp> changes = await(checkout(REPOSITORY, TEST_OP, getLast(heads)));
 		changes.forEach(opState::apply);
 
 		assertEquals(15, opState.getValue());
@@ -97,9 +91,8 @@ public class OTAlgorithmsTest {
 			g.add(3, 6, add(1));
 			g.add(6, 7, add(1));
 		});
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 
-		Map<Integer, List<TestOp>> result = await(algorithms.reduceEdges(set(5, 7), 0, DiffsReducer.toList()));
+		Map<Integer, List<TestOp>> result = await(reduceEdges(REPOSITORY, TEST_OP, set(5, 7), 0, DiffsReducer.toList()));
 
 		assertEquals(1, applyToState(result.get(5)));
 		assertEquals(5, applyToState(result.get(7)));
@@ -115,9 +108,8 @@ public class OTAlgorithmsTest {
 			g.add(2, 4, add(1));
 			g.add(2, 5, add(-1));
 		});
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 
-		Map<Integer, List<TestOp>> result = await(algorithms.reduceEdges(set(3, 4, 5), 0, DiffsReducer.toList()));
+		Map<Integer, List<TestOp>> result = await(reduceEdges(REPOSITORY, TEST_OP, set(3, 4, 5), 0, DiffsReducer.toList()));
 
 		assertEquals(2, applyToState(result.get(3)));
 		assertEquals(0, applyToState(result.get(4)));
@@ -161,29 +153,29 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testDiffBetween() {
 		graph1();
-		List<TestOp> diff = await(algorithms.diff(5, 9));
+		List<TestOp> diff = await(diff(REPOSITORY, TEST_OP, 5, 9));
 		assertEquals(applyToState(asList(add(10))), applyToState(diff)); // -2, +4, +4, +4
 
-		diff = await(algorithms.diff(5, 0));
+		diff = await(diff(REPOSITORY, TEST_OP, 5, 0));
 		assertEquals(applyToState(asList(add(-6))), applyToState(diff)); // -2, -1, -1, -1, -1
 
-		diff = await(algorithms.diff(5, 6));
+		diff = await(diff(REPOSITORY, TEST_OP, 5, 6));
 		assertEquals(applyToState(asList(add(+3))), applyToState(diff)); // +3
 
-		diff = await(algorithms.diff(5, 5));
+		diff = await(diff(REPOSITORY, TEST_OP, 5, 5));
 		assertEquals(emptyList(), diff); // 0
 
 		graph2();
-		diff = await(algorithms.diff(6, 3));
+		diff = await(diff(REPOSITORY, TEST_OP, 6, 3));
 		assertEquals(applyToState(asList(add(-2))), applyToState(diff)); // -1, -1
 
-		diff = await(algorithms.diff(0, 6));
+		diff = await(diff(REPOSITORY, TEST_OP, 0, 6));
 		assertEquals(applyToState(asList(add(5))), applyToState(diff)); // +1, +1, +1, +1, +1
 
-		diff = await(algorithms.diff(4, 5));
+		diff = await(diff(REPOSITORY, TEST_OP, 4, 5));
 		assertEquals(applyToState(emptyList()), applyToState(diff)); // +1, -1
 
-		diff = await(algorithms.diff(3, 2));
+		diff = await(diff(REPOSITORY, TEST_OP, 3, 2));
 		assertEquals(applyToState(asList(add(-1))), applyToState(diff)); // -1
 
 	}
@@ -191,14 +183,14 @@ public class OTAlgorithmsTest {
 	private void doTestCheckoutGraph1(int snapshotId, List<TestOp> snapshotDiffs) {
 		await(REPOSITORY.saveSnapshot(snapshotId, snapshotDiffs));
 
-		List<TestOp> diffs = await(algorithms.checkout(9));
+		List<TestOp> diffs = await(checkout(REPOSITORY, TEST_OP, 9));
 		assertEquals(16, applyToState(diffs));
 	}
 
 	private void doTestCheckoutGraph2(int snapshotId, List<TestOp> snapshotDiffs) {
 		await(REPOSITORY.saveSnapshot(snapshotId, snapshotDiffs));
 
-		List<TestOp> diffs = await(algorithms.checkout(6));
+		List<TestOp> diffs = await(checkout(REPOSITORY, TEST_OP, 6));
 		assertEquals(5, applyToState(diffs));
 	}
 

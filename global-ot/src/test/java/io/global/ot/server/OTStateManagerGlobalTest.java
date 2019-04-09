@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.CollectionUtils.map;
@@ -71,8 +70,8 @@ public class OTStateManagerGlobalTest {
 		MyRepositoryId<TestOp> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), TEST_OP_CODEC);
 		state = new TestOpState();
 		repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), OT_SYSTEM, repository);
-		stateManager = OTStateManager.create(eventloop, algorithms.getOtSystem(), algorithms.getOtNode(), state);
+		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(repository, OT_SYSTEM);
+		stateManager = OTStateManager.create(eventloop, OT_SYSTEM, node, state);
 	}
 
 	@Test

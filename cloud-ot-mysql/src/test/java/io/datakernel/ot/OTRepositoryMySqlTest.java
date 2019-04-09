@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
@@ -49,9 +50,9 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public class OTRepositoryMySqlTest {
+	private static final OTSystem<TestOp> SYSTEM = createTestOp();
 
 	private OTRepositoryMySql<TestOp> repository;
-	private OTAlgorithms<Long, TestOp> algorithms;
 
 	static {
 		Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -63,7 +64,6 @@ public class OTRepositoryMySqlTest {
 		repository = OTRepositoryMySql.create(Eventloop.getCurrentEventloop(), Executors.newFixedThreadPool(4), dataSource("test.properties"), Utils.createTestOp(), Utils.OP_CODEC);
 		repository.initialize();
 		repository.truncateTables();
-		algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), Utils.createTestOp(), repository);
 	}
 
 	@SafeVarargs
@@ -141,7 +141,7 @@ public class OTRepositoryMySqlTest {
 		assertEquals(3, heads.size());
 		assertEquals(set(2L, 3L, 4L), heads);
 
-		Long mergeId = await(algorithms.mergeAndUpdateHeads());
+		Long mergeId = await(mergeAndUpdateHeads(repository, SYSTEM));
 
 		Set<Long> headsAfterMerge = await(repository.getHeads());
 		assertEquals(1, headsAfterMerge.size());
@@ -225,7 +225,7 @@ public class OTRepositoryMySqlTest {
 					g.add(6, 8, add(1));
 				}))));
 
-		await(algorithms.mergeAndUpdateHeads());
+		await(mergeAndUpdateHeads(repository, SYSTEM));
 		//		assertEquals(searchSurface, rootNodesFuture.get());
 	}
 
@@ -243,8 +243,8 @@ public class OTRepositoryMySqlTest {
 					g.add(5, 7, add(1));
 				}))));
 
-		assertEquals(set(2L, 3L), await(algorithms.findAllCommonParents(set(6L, 7L))));
-		assertEquals(set(6L), await(algorithms.findAllCommonParents(set(6L))));
+		assertEquals(set(2L, 3L), await(findAllCommonParents(repository, SYSTEM, set(6L, 7L))));
+		assertEquals(set(6L), await(findAllCommonParents(repository, SYSTEM, set(6L))));
 	}
 
 	@Test
@@ -258,7 +258,7 @@ public class OTRepositoryMySqlTest {
 					g.add(4, 6, add(1));
 				}))));
 
-		assertEquals(set(4L), await(algorithms.findAllCommonParents(set(4L, 5L, 6L))));
+		assertEquals(set(4L), await(findAllCommonParents(repository, SYSTEM, set(4L, 5L, 6L))));
 	}
 
 	@Test
@@ -277,7 +277,7 @@ public class OTRepositoryMySqlTest {
 
 		Set<Long> searchSurface = set(2L, 3L);
 
-		Set<Long> rootNodes = await(algorithms.findCut(set(6L, 7L),
+		Set<Long> rootNodes = await(findCut(repository, SYSTEM, set(6L, 7L),
 				commits -> searchSurface.equals(commits.stream().map(OTCommit::getId).collect(toSet()))));
 
 		assertEquals(searchSurface, rootNodes);
@@ -296,12 +296,12 @@ public class OTRepositoryMySqlTest {
 				}))));
 		await(repository.saveSnapshot(1L, emptyList()));
 
-		List<TestOp> diffs = await(algorithms.checkout(5L));
+		List<TestOp> diffs = await(checkout(repository, SYSTEM, 5L));
 
 		await(repository.saveSnapshot(5L, diffs));
 		await(repository.cleanup(5L));
 
-		int result = apply(await(algorithms.checkout(7L)));
+		int result = apply(await(checkout(repository, SYSTEM, 7L)));
 		assertEquals(5, result);
 	}
 }

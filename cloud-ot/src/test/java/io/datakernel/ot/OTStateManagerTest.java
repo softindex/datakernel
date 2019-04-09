@@ -31,9 +31,10 @@ import static org.junit.Assert.*;
 @RunWith(DatakernelRunner.class)
 public class OTStateManagerTest {
 	private static final StacklessException FAILED = new StacklessException("Failed");
+	private static final OTSystem<TestOp> SYSTEM = createTestOp();
 
 	private OTRepositoryStub<Integer, TestOp> repository;
-	private OTAlgorithms<Integer, TestOp> algorithms;
+	private OTNodeImpl<Integer, TestOp, OTCommit<Integer, TestOp>> node;
 	private OTStateManager<Integer, TestOp> stateManager;
 	private TestOpState testOpState;
 	private boolean alreadyFailed = false;
@@ -43,17 +44,17 @@ public class OTStateManagerTest {
 		Random random = new Random();
 		repository = OTRepositoryStub.create();
 		repository.revisionIdSupplier = () -> random.nextInt(1000) + 1000;
-		algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), repository);
 		testOpState = new TestOpState();
-		stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), testOpState);
+		node = OTNodeImpl.create(this.repository, SYSTEM);
+		stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, node, testOpState);
 
-		initializeRepository(repository, stateManager);
+		initializeRepository(this.repository, stateManager);
 	}
 
 	@Test
 	public void testSyncBeforeSyncFinished() {
 		repository.revisionIdSupplier = () -> 2;
-		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
 				return super.fetch(currentCommitId).then(fetchData -> {
@@ -62,7 +63,7 @@ public class OTStateManagerTest {
 				});
 			}
 		};
-		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 
 		initializeRepository(repository, stateManager);
 		stateManager.add(add(1));
@@ -180,13 +181,13 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncAfterFailedCommit() {
 		repository.revisionIdSupplier = () -> 1;
-		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
 			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
 				return failOnce(() -> super.createCommit(parent, diffs, level));
 			}
 		};
-		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 		initializeRepository(repository, stateManager);
 
 		stateManager.add(add(1));
@@ -213,13 +214,13 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncAfterFailedPull() {
 		repository.revisionIdSupplier = () -> 3;
-		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
 				return failOnce(() -> super.fetch(currentCommitId));
 			}
 		};
-		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 		initializeRepository(repository, stateManager);
 		repository.setGraph(g -> {
 			g.add(0, 1, add(10));
@@ -250,13 +251,13 @@ public class OTStateManagerTest {
 	@Test
 	public void testSyncAfterFailedPush() {
 		repository.revisionIdSupplier = asList(3, 4, 5).iterator()::next;
-		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(algorithms.getOtNode()) {
+		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
 			public Promise<FetchData<Integer, TestOp>> push(OTCommit<Integer, TestOp> commit) {
 				return failOnce(() -> super.push(commit));
 			}
 		};
-		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), otNode, testOpState);
+		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 		initializeRepository(repository, stateManager);
 
 		stateManager.add(add(1));

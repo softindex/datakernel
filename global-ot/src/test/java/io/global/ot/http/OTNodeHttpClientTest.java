@@ -2,7 +2,6 @@ package io.global.ot.http;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.OTNodeImpl;
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.common.CryptoUtils.sha256;
@@ -58,8 +56,7 @@ public class OTNodeHttpClientTest {
 			g.add(getCommitId(2), getCommitId(3), add(-12));
 			g.add(getCommitId(3), getCommitId(4), set(4, 5));
 		});
-		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), OT_SYSTEM, repository);
-		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(algorithms);
+		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(repository, OT_SYSTEM);
 		OTNodeServlet<CommitId, TestOp, OTCommit<CommitId, TestOp>> servlet = OTNodeServlet.forGlobalNode(node, diffCodec, adapter);
 		client = OTNodeHttpClient.forGlobalNode(servlet::serve, "http://localhost/", diffCodec);
 	}

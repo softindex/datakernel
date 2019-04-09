@@ -14,9 +14,7 @@ import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.datakernel.ot.OTAlgorithms;
-import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTSystem;
+import io.datakernel.ot.*;
 import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.GlobalOTNode;
@@ -69,8 +67,9 @@ public class OTCommonModule<D> extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTGraphServlet<CommitId, D> provideGraphServlet(OTAlgorithms<CommitId, D> algorithms, Function<D, String> diffToString) {
-		return OTGraphServlet.create(algorithms, COMMIT_ID_TO_STRING, diffToString)
+	OTGraphServlet<CommitId, D> provideGraphServlet(OTRepository<CommitId, D> repository, OTSystem<D> otSystem,
+			Function<D, String> diffToString) {
+		return OTGraphServlet.create(repository, otSystem, COMMIT_ID_TO_STRING, diffToString)
 				.withCurrentCommit(request -> {
 					try {
 						return Promise.of(fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id")));
@@ -90,21 +89,21 @@ public class OTCommonModule<D> extends AbstractModule {
 
 	@Provides
 	@Singleton
-	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> provideNodeServlet(OTAlgorithms<CommitId, D> algorithms,
-			StructuredCodec<D> diffCodec, OTRepositoryAdapter<D> repositoryAdapter, Config config) {
+	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> provideNodeServlet(OTNode<CommitId, D, OTCommit<CommitId, D>> node,
+			StructuredCodec<D> diffCodec, OTRepository<CommitId, D> repository, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
-		return OTNodeServlet.forGlobalNode(DelayedPushNode.create(algorithms.getOtNode(), delay), diffCodec, repositoryAdapter);
+		return OTNodeServlet.forGlobalNode(DelayedPushNode.create(node, delay), diffCodec, (OTRepositoryAdapter<D>) repository);
 	}
 
 	@Provides
 	@Singleton
-	OTAlgorithms<CommitId, D> provideAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRepositoryAdapter<D> repository) {
-		return OTAlgorithms.create(eventloop, otSystem, repository);
+	OTNode<CommitId, D, OTCommit<CommitId, D>> provideNode(OTRepository<CommitId, D> repository, OTSystem<D> otSystem) {
+		return OTNodeImpl.create(repository, otSystem);
 	}
 
 	@Provides
 	@Singleton
-	OTRepositoryAdapter<D> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<D> myRepositoryId) {
+	OTRepository<CommitId, D> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<D> myRepositoryId) {
 		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 

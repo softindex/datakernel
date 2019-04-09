@@ -10,7 +10,7 @@ import org.junit.runner.RunWith;
 import java.util.Set;
 
 import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.ot.OTAlgorithms.loadGraph;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
@@ -20,14 +20,12 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public class OTLoadedGraphTest {
-	private OTAlgorithms<Integer, TestOp> algorithms;
+	private static final OTSystem<TestOp> SYSTEM = createTestOp();
 	private OTRepositoryStub<Integer, TestOp> repository;
-
 
 	@Before
 	public void setUp() {
 		repository = OTRepositoryStub.create();
-		algorithms = OTAlgorithms.create(getCurrentEventloop(), createTestOp(), repository);
 		await(repository.pushAndUpdateHead(ofRoot(0)), repository.saveSnapshot(0, emptyList()));
 	}
 
@@ -44,7 +42,7 @@ public class OTLoadedGraphTest {
 		});
 
 		Set<Integer> heads = await(repository.getHeads());
-		OTLoadedGraph<Integer, TestOp> graph = await(algorithms.loadGraph(heads));
+		OTLoadedGraph<Integer, TestOp> graph = await(loadGraph(repository, SYSTEM, heads));
 
 		assertEquals(set(7), graph.getTips());
 		assertEquals(set(0), graph.getRoots());
@@ -69,7 +67,7 @@ public class OTLoadedGraphTest {
 		});
 
 		Set<Integer> heads = await(repository.getHeads());
-		OTLoadedGraph<Integer, TestOp> graph = await(algorithms.loadGraph(heads));
+		OTLoadedGraph<Integer, TestOp> graph = await(loadGraph(repository, SYSTEM, heads));
 
 		assertEquals(set(4, 7), graph.getTips());
 		assertEquals(set(0), graph.getRoots());
@@ -93,16 +91,14 @@ public class OTLoadedGraphTest {
 		});
 
 		Set<Integer> heads = await(repository.getHeads());
-		OTLoadedGraph<Integer, TestOp> graph = await(algorithms.loadGraph(heads));
+		OTLoadedGraph<Integer, TestOp> graph = await(loadGraph(repository, SYSTEM, heads));
 
 		assertEquals(set(7), graph.getTips());
 
-		repository.addGraph(g -> {
-			g.add(7, 8, add(8));
-		});
+		repository.addGraph(g -> g.add(7, 8, add(8)));
 
 		heads = await(repository.getHeads());
-		await(algorithms.loadGraph(heads, graph));
+		await(loadGraph(repository, SYSTEM, heads, graph));
 
 		assertEquals(set(8), graph.getTips());
 	}

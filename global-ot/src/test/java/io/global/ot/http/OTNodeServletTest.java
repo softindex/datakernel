@@ -6,10 +6,10 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.UrlBuilder;
-import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.datakernel.ot.OTNode.FetchData;
+import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -29,7 +29,6 @@ import java.util.Set;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.http.HttpRequest.get;
 import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.ot.utils.Utils.*;
@@ -70,8 +69,7 @@ public class OTNodeServletTest {
 			g.add(getCommitId(2), getCommitId(3), add(-12));
 			g.add(getCommitId(3), getCommitId(4), set(4, 5));
 		});
-		OTAlgorithms<CommitId, TestOp> algorithms = OTAlgorithms.create(getCurrentEventloop(), OT_SYSTEM, repository);
-		OTNode<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = algorithms.getOtNode();
+		OTNode<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(repository, OT_SYSTEM);
 		servlet = OTNodeServlet.forGlobalNode(node, DIFF_CODEC, adapter);
 	}
 

@@ -1,6 +1,5 @@
 package io.datakernel.ot;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -13,6 +12,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.ot.OTAlgorithms.loadForMerge;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
 import static io.datakernel.util.CollectionUtils.list;
@@ -66,9 +66,8 @@ public class OTMergeAlgorithmTest {
 	private void doTestLoadAndMerge(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
 		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create();
 		repository.setGraph(graphBuilder);
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), system, repository);
 
-		OTLoadedGraph<String, TestOp> graph = await(algorithms.loadForMerge(heads));
+		OTLoadedGraph<String, TestOp> graph = await(loadForMerge(repository, system, heads));
 		Map<String, List<TestOp>> merge;
 		try {
 			merge = graph.merge(heads);

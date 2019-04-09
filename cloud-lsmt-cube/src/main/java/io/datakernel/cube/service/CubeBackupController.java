@@ -10,9 +10,9 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
+import io.datakernel.ot.OTSystem;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +23,7 @@ import java.util.Set;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.cube.Utils.chunksInDiffs;
+import static io.datakernel.ot.OTAlgorithms.checkout;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -35,7 +36,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
-	private final OTAlgorithms<K, D> algorithms;
+	private final OTSystem<D> otSystem;
 	private final OTRepositoryEx<K, D> repository;
 	private final RemoteFsChunkStorage<C> storage;
 
@@ -47,20 +48,22 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 
 	CubeBackupController(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
-			OTAlgorithms<K, D> algorithms,
-			OTRepositoryEx<K, D> repository, RemoteFsChunkStorage<C> storage) {
+			OTRepositoryEx<K, D> repository,
+			OTSystem<D> otSystem,
+			RemoteFsChunkStorage<C> storage) {
 		this.eventloop = eventloop;
 		this.cubeDiffScheme = cubeDiffScheme;
-		this.algorithms = algorithms;
+		this.otSystem = otSystem;
 		this.repository = repository;
 		this.storage = storage;
 	}
 
 	public static <K, D, C> CubeBackupController<K, D, C> create(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
-			OTAlgorithms<K, D> algorithms,
+			OTRepositoryEx<K, D> otRepository,
+			OTSystem<D> otSystem,
 			RemoteFsChunkStorage<C> storage) {
-		return new CubeBackupController<>(eventloop, cubeDiffScheme, algorithms, (OTRepositoryEx<K, D>) algorithms.getRepository(), storage);
+		return new CubeBackupController<>(eventloop, cubeDiffScheme, otRepository, otSystem, storage);
 	}
 
 	private final AsyncSupplier<Void> backup = reuse(this::backupHead);
@@ -82,7 +85,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	}
 
 	public Promise<Void> backup(K commitId) {
-		return Promises.toTuple(repository.loadCommit(commitId), algorithms.checkout(commitId))
+		return Promises.toTuple(repository.loadCommit(commitId), checkout(repository, otSystem, commitId))
 				.then(tuple -> Promises.sequence(
 						() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2())),
 						() -> backupDb(tuple.getValue1(), tuple.getValue2())))

@@ -23,7 +23,9 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.StaticServlet;
-import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTNode;
+import io.datakernel.ot.OTRepository;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.api.OTStateServlet;
 import io.global.ot.demo.operations.Operation;
@@ -34,21 +36,22 @@ import java.time.Duration;
 
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.global.common.ot.OTCommonModule.DEFAULT_PUSH_DELAY_DURATION;
+import static io.global.ot.demo.util.Utils.createOTSystem;
 
 final class GlobalOTDemoModule extends AbstractModule {
 	@Provides
 	@Singleton
-	MiddlewareServlet provideServlet(Eventloop eventloop, StaticServlet staticServlet,
+	MiddlewareServlet provideServlet(Eventloop eventloop, StaticServlet staticServlet, OTRepository<CommitId, Operation> repository,
 			ManagerProvider<Operation> managerProvider, Config config) {
-		return OTStateServlet.create(managerProvider).getMiddlewareServlet()
+		return OTStateServlet.create(managerProvider, repository).getMiddlewareServlet()
 				.withFallback(staticServlet);
 	}
 
 	@Provides
 	@Singleton
-	ManagerProvider<Operation> provideManager(OTAlgorithms<CommitId, Operation> algorithms, Config config) {
+	ManagerProvider<Operation> provideManager(Eventloop eventloop, OTNode<CommitId, Operation, OTCommit<CommitId, Operation>> node, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
-		return new ManagerProvider<>(algorithms, OperationState::new, delay);
+		return new ManagerProvider<>(eventloop, node, createOTSystem(), OperationState::new, delay);
 	}
 
 }

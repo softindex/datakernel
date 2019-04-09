@@ -28,44 +28,43 @@ import java.util.List;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.ot.OTAlgorithms.merge;
+import static io.datakernel.ot.OTAlgorithms.mergeAndUpdateHeads;
 import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument"})
 @RunWith(DatakernelRunner.class)
 public final class OTSystemTest {
+	private static final OTSystem<TestOp> SYSTEM = createTestOp();
 
 	@Test
 	public void testTransform1() throws Exception {
-		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), add(1));
 		List<? extends TestOp> right = asList(add(1), add(10), add(100));
-		TransformResult<TestOp> result = opSystem.transform(left, right);
+		TransformResult<TestOp> result = SYSTEM.transform(left, right);
 		System.out.println(result.left);
 		System.out.println(result.right);
 	}
 
 	@Test
 	public void testTransform2() throws Exception {
-		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), set(2, 1), add(2), add(10));
 		List<? extends TestOp> right = asList(set(0, -20), add(30), add(10));
-		TransformResult<TestOp> result = opSystem.transform(left, right);
+		TransformResult<TestOp> result = SYSTEM.transform(left, right);
 		System.out.println(result.left);
 		System.out.println(result.right);
 	}
 
 	@Test
 	public void testSimplify() {
-		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> arg = asList(add(2), set(2, 1), add(2), add(10));
-		List<TestOp> result = opSystem.squash(arg);
+		List<TestOp> result = SYSTEM.squash(arg);
 		System.out.println(result);
 	}
 
 	@Test
 	public void testOtSource2() {
-		OTSystem<TestOp> system = createTestOp();
 		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create(asList("m", "x", "y", "m2"));
 		repository.setGraph(g -> {
 			g.add("*", "a1", add(1));
@@ -76,8 +75,8 @@ public final class OTSystemTest {
 		});
 
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), system, repository);
-		OTStateManager<String, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), state);
+		OTNodeImpl<String, TestOp, OTCommit<String, TestOp>> node = OTNodeImpl.create(repository, SYSTEM);
+		OTStateManager<String, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, node, state);
 
 		await(stateManager.checkout());
 
@@ -85,7 +84,7 @@ public final class OTSystemTest {
 		System.out.println(stateManager);
 		System.out.println();
 
-		await(algorithms.mergeAndUpdateHeads());
+		await(mergeAndUpdateHeads(repository, SYSTEM));
 
 		System.out.println(await(repository.loadCommit("m")));
 		System.out.println(stateManager);
@@ -116,7 +115,7 @@ public final class OTSystemTest {
 		System.out.println();
 		System.out.println(repository);
 
-		await(algorithms.merge());
+		await(merge(repository, SYSTEM));
 		System.out.println(stateManager);
 		System.out.println();
 	}
@@ -131,8 +130,8 @@ public final class OTSystemTest {
 			g.add("a2", "b1", add(10));
 		});
 
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), otSource);
-		pullAndThenMergeAndPush(otSource, algorithms, OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
+		OTNodeImpl<String, TestOp, OTCommit<String, TestOp>> node = OTNodeImpl.create(otSource, SYSTEM);
+		pullAndThenMergeAndPush(otSource, OTStateManager.create(getCurrentEventloop(), SYSTEM, node, new TestOpState()));
 	}
 
 	@Test
@@ -147,19 +146,19 @@ public final class OTSystemTest {
 			g.add("b1", "b2", add(1));
 		});
 
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(getCurrentEventloop(), createTestOp(), otSource);
-		pullAndThenMergeAndPush(otSource, algorithms, OTStateManager.create(getCurrentEventloop(), algorithms.getOtSystem(), algorithms.getOtNode(), new TestOpState()));
+		OTNodeImpl<String, TestOp, OTCommit<String, TestOp>> node = OTNodeImpl.create(otSource, SYSTEM);
+		pullAndThenMergeAndPush(otSource, OTStateManager.create(getCurrentEventloop(), SYSTEM, node, new TestOpState()));
 	}
 
-	private void pullAndThenMergeAndPush(OTRepositoryStub<String, TestOp> otSource, OTAlgorithms<String, TestOp> algorithms, OTStateManager<String, TestOp> stateManager) {
+	private void pullAndThenMergeAndPush(OTRepository<String, TestOp> repository, OTStateManager<String, TestOp> stateManager) {
 		await(stateManager.checkout());
 
 		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
 
-		await(algorithms.merge());
-		System.out.println(otSource);
+		await(merge(repository, SYSTEM));
+		System.out.println(repository);
 		System.out.println(stateManager);
 	}
 }
