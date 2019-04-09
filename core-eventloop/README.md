@@ -26,10 +26,10 @@ Eventloop works with different types of tasks that are stored in separate queues
 | **Local tasks** | Tasks which were added from current Eventloop thread |
 | **Concurrent tasks** | Tasks which were added from other threads |
 | **Scheduled tasks** | Tasks which are scheduled to be executed later |
-| **Background tasks** | Same as *Scheduled*, but if there are only *Background* tasks left, Exentloop will be closed |
+| **Background tasks** | Same as *Scheduled*, but if there are only *Background* tasks left, Eventloop will be closed |
  
-Execution of an eventloop will be ended when its queues with tasks are empty, Selector has no selected keys and amount of 
-concurrent operations in other threads equals 0. To prevent Eventloop closing in such cases, you should use `keepAlive` flag 
-(when set **true**, Eventloop will continue running even without tasks).
+Execution of an eventloop will be ended when its queues with non-background tasks are empty, Selector has no selected 
+keys and amount of concurrent operations in other threads equals 0. To prevent Eventloop closing in such cases, you 
+should use `keepAlive` flag (when set **true**, Eventloop will continue running even without tasks).
 
 ### You can explore Eventloop examples [here](https://github.com/softindex/datakernel/tree/master/examples/eventloop)

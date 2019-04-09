@@ -57,6 +57,9 @@ Array of ByteBuf converted from ByteBuffer: [1, 2, 3]
 * The first six lines are result of wrapping byte array to ByteBuf wrapper for reading and then printing it:
 ```java
 byte[] data = new byte[]{0, 1, 2, 3, 4, 5};
+// wraps provided byte array into ByteBuf 
+// with *tail* equal to the length of the 
+// provided  array and *head* equal 0
 ByteBuf byteBuf = ByteBuf.wrapForReading(data);
 ```
 
@@ -64,6 +67,8 @@ ByteBuf byteBuf = ByteBuf.wrapForReading(data);
 writing. Then the ByteBuf was filled with bytes with the help of `while` loop:
 ```java
 byte[] data = new byte[6];
+// wraps provided byte array into ByteBuf 
+// with *tail* and *head* equal to 0
 ByteBuf byteBuf = ByteBuf.wrapForWriting(data);
 byte value = 0;
 while (byteBuf.canWrite()) {
@@ -250,7 +255,7 @@ Buf taken from queue: [3, 4, 5, 6, 7, 8]
 
 [1, 2, 3, 4]
 [5, 6, 7, 8]
-Queue is empty? true
+Is queue empty? true
 ```
 The first line represents our queue after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]` with `QUEUE.add()` method.
 Then method `QUEUE.take()` is applied and the first added buf, which is `[0, 1, 2, 3]`, is taken from the queue.

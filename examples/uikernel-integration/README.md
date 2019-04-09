@@ -1,7 +1,7 @@
 [UIKernel Integration Example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration/src/main/java/io/datakernel/examples) -
  integration of [UIKernel](http://uikernel.io) frontend JS library with DataKernel modules.
 
-<img src="datakernel.io/static/images/uikernel-integration-example.gif">
+<img src="http://datakernel.io/static/images/uikernel-integration-example.gif">
 
 You can launch this example in **4 steps**:
 
