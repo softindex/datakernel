@@ -1,84 +1,129 @@
 ## Global-OT demo application
 
 To understand how Global-OT module works and organizes data, you can run Global-OT demo application. It provides you with 
-ability to work with repository which represents the history of counter modifications and covers the following operations:
-* `Add` - saves your modification locally, so that it can be then committed and pushed.
-* `Push` - applies your changes to the commit graph.
-* `Pull` - updates your repository by downloading operations which were created by other participants. If there are 
-several heads, it will merge them into one and then move your changes on top of it.
-* `Merge Heads` - merges all available heads and receives an automatically-determined single result.
-* `Reset` - deletes all your uncommitted operations.
+ability to work with repository which represents the history of counter modifications with the help of `Add` operation, which 
+adds your modifications to commit graph.
 
-As you have probably noticed, these operations resemble Git API. The main advantage of Global-OT over Git is that there 
-are no conflicts while merging - you receive a single consistent result by simply clicking `Merge Heads` button without 
+As you might have already noticed, this approach resembles Git. The main advantage of Global-OT over Git is that there 
+are no conflicts while synchronizing, which is conducted in background - you receive a single consistent result without 
 any additional manual conflict resolution. Global-OT has already done it for you.
 
-Also, demo application has an additional operation:
-* `New Manager` - adds new virtual participant to repository (will be opened in new browser tab).
+Also, demo application has an additional operation `New Manager` which adds new virtual participant to repository 
+(will be opened in new browser tab).
 
-There are two values which help to work with the repository:
-* `Remote state` - shows remote value of the counter. 
-* `Uncommitted operations` - represents operations which were `Add`ed but not committed yet.
+There are two options for running this example: either with **Master Node** ([globally](#globally)), or without it 
+([locally](#locally)).
 
-All of the pushed commits are displayed in commit graph. Each commit is represented by hashcode of the operation and
-each edge on the graph represents applied operations. 
+### Locally
+You can run the example in **5 steps**
 
-You can run this application in **5 steps**:
-
-#### 1. Clone DataKernel project
-You can clone the project either in console:
+#### 1. Clone DataKernel from GitHub repository and install it:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-```
-Or with IDE tools.
-
-#### 2. Set up the project
-
-If you'd like to run the example in console, you need to install DataKernel:
-```
 $ cd datakernel
 $ mvn clean install -DskipTests
 ```
 
-To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
-work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
-
-In IntelliJ IDEA you can do it in the following way:
-`Run -> Edit configurations -> |Run/Debug Configurations -> |Templates -> Application| -> |Working directory -> 
-$MODULE_WORKING_DIR$||`.
-
-Then build the project (**Ctrl + F9** for IntelliJ IDEA).
-
-#### 3. Run Global Launchers
-
-In console:
+#### 2. Install nodejs and npm on your computer (if not installed):
 ```
-$ cd datakernel/global-launchers
-$ mvn exec:java@DiscoveryServiceLauncher
-$ # start another process
-$ cd datakernel/global-launchers
-$ mvn exec:java@GlobalNodesLauncher
+$ sudo apt install nodejs npm
+$ sudo apt install npm
 ```
-In an IDE:
+Please ensure that the version of installed nodejs is **8 or higher** by entering the following command:
 
-First, open *DiscoveryServiceLauncher* class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
-and run its *main()* method.
+```
+$ nodejs --version
+```
 
-Next, open *GlobalNodesLauncher* class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
-run its *main()* method.
+#### 3. Enter the following commands:
+```
+$ cd datakernel/examples/global-ot-demo/front
+$ npm i
+$ npm run-script build
+```
 
-#### 4. Run Global-OT demo app
-Note: **Do not terminate Launchers**.
+Please note that these 3 steps need to be executed only once: you **don't** need to repeat them on every launch.
 
-To run the app in console enter these commands:
+#### 4. Launch Demo application
 ```
 $ cd datakernel/examples/global-ot-demo
 $ mvn exec:java@GlobalOTDemoApp
 ```
-In IDE:
-Open `GlobalOTDemoApp` class, which is located at **datakernel -> examples -> global-ot-demo** and run its 
-*main()* method.
 
-#### 5. Open your favourite browser
+#### 5. Open your favorite browser
+Open your browser and go to [localhost:8080](http://localhost:8080). Now you can add modifications to the counter and add new users. 
 
-After you've started all of the needed classes, open your browser and go to [localhost:8899](http://localhost:8899). Enjoy!
+Note, that by default when you click on "Add" button, there is a 1 second delay before modification will be pushed to repository. 
+You can manage the durations of these delays and make them longer or remove them at all, which will make the app instant. 
+To do so, you should start `GlobalOTDemoApp` with the following argument:
+```
+$ mvn exec:java@GlobalEditorLauncher -Dconfig.push.delay=PT0S
+```
+`PT0S` determines the delay, so in this case the delay is 0 seconds.
+
+If you want to see forking and merging in edits history, make synchronization delay longer (for example, 20 seconds `PT20S`), and 
+make some modifications for both client applications, and you'll see something like this:
+
+<img src="http://datakernel.io/static/images/demo-history-graph.png">
+
+Also, pay attention that this application can work offline. So if you make modifications while there is no connection, they will 
+be successfully pushed when connection is restored.
+
+
+### Globally
+Another option is to start demo application globally, which means that your client applications will connect to **Master Node**. 
+You can start the application globally in **7 steps**
+
+#### 1. Clone DataKernel from GitHub repository and install it:
+```
+$ git clone https://github.com/softindex/datakernel.git
+$ cd datakernel
+$ mvn clean install -DskipTests
+```
+
+#### 2. Install nodejs and npm on your computer (if not installed):
+```
+$ sudo apt install nodejs npm
+$ sudo apt install npm
+```
+Please ensure that the version of installed nodejs is **8** or higher by entering the following command:
+
+```
+$ nodejs --version
+```
+
+Please note that these 2 steps need to be executed only once: you **don't** need to repeat them on every launch.
+
+#### 3. Launch Master Node
+```
+$ cd datakernel/examples/global-examples-common
+$ mvn exec:java@MasterNodeLauncher
+```
+
+#### 4. Enter the following commands:
+```
+$ cd datakernel/examples/global-ot-demo/front
+$ npm i
+$ npm run-script build
+```
+
+Step 4 also needs to be executed only once.
+
+#### 5. Start the first Demo application:
+```
+$ cd datakernel/examples/global-ot-demo
+$ mvn exec:java@GlobalOTDemoApp -Dconfig.discovery.masters=http://127.0.0.1:9000
+```
+
+#### 6. Start the second Demo application:
+```
+$ cd datakernel/examples/global-ot-demo
+$ mvn exec:java@GlobalOTDemoApp -Dconfig.discovery.masters=http://127.0.0.1:9000 -Dconfig.http.listenAddresses=*:8081
+```
+
+#### 7. Open your favorite browser
+Open your browser and go to [localhost:8080](http://localhost:8080) and [localhost:8081](http://localhost:8081). Just like 
+in case of *Local* launching, now you can modify the counter and explore the history of modifications, which is now synchronized and 
+stored on the *Master Node*.
+
+All the features described for *Local* launch work in *Global* mode too.

@@ -1,6 +1,6 @@
 [Global-DB Demo Application](https://github.com/softindex/datakernel/blob/master/examples/global-db-demo/src/main/java/io/global/db/demo/GlobalDbDemoApp.java)
 Global-DB demo application shows an example of uploading and downloading data within the network.
-You can run the demo application in **4 steps**:
+You can run the demo application in **3 steps**:
 
 #### 1. Clone DataKernel project
 You can clone the project either in console:
@@ -26,26 +26,7 @@ $MODULE_WORKING_DIR$||`.
 
 Then build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-#### 3. Run Global Launchers
-
-In console:
-```
-$ cd datakernel/global-launchers
-$ mvn exec:java@DiscoveryServiceLauncher
-$ # then start another process
-$ cd datakernel/global-launchers
-$ mvn exec:java@GlobalNodesLauncher
-```
-In an IDE:
-
-First, open *DiscoveryServiceLauncher* class, which is located at **datakernel -> global-launchers -> ... -> launchers** 
-and run its *main()* method.
-
-Next, open *GlobalNodesLauncher* class, which is located at **datakernel -> global-launchers -> ... -> discovery** and 
-run its *main()* method.
-
-#### 4. Run Global-DB demo app
-Note: **Both of the Launchers shouldn't be terminated**.
+#### 3. Run Global-DB demo app
 
 To run the app in console enter these commands:
 ```
