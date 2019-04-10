@@ -130,7 +130,13 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@NotNull
 	@Override
 	public MaterializedPromise<Void> stop() {
-		pollMasterRepositories = false;
+		if (pollMasterRepositories) {
+			pollMasterRepositories = false;
+			namespaces.values()
+					.stream()
+					.flatMap(ns -> ns.getRepositories().values().stream())
+					.forEach(RepositoryEntry::stopPolling);
+		}
 		return Promise.complete();
 	}
 

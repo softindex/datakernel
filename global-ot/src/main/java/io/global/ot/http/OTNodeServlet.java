@@ -1,6 +1,7 @@
 package io.global.ot.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.ContentType;
@@ -13,6 +14,7 @@ import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.util.ParserFunction;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.OTRepositoryAdapter;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
@@ -26,6 +28,7 @@ import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.http.MediaTypes.PLAIN_TEXT;
 import static io.global.ot.api.OTNodeCommand.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
+import static io.global.util.Utils.eitherComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class OTNodeServlet<K, D, C> implements WithMiddleware {
@@ -34,6 +37,8 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 	private final StructuredCodec<FetchData<K, D>> fetchDataCodec;
 	private final Function<C, byte[]> commitToBytes;
 	private final ParserFunction<byte[], C> bytesToCommit;
+
+	private Promise<@Nullable Void> closeNotification = new SettablePromise<>();
 
 	private OTNodeServlet(OTNode<K, D, C> node, StructuredCodec<K> revisionCodec, StructuredCodec<D> diffCodec,
 						  Function<C, byte[]> commitToBytes, ParserFunction<byte[], C> bytesToCommit) {
@@ -54,6 +59,10 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 		return new OTNodeServlet<>(node, REGISTRY.get(CommitId.class), diffCodec, OTCommit::getSerializedData, adapter::parseRawBytes);
 	}
 
+	public void setCloseNotification(Promise<Void> closeNotification) {
+		this.closeNotification = closeNotification;
+	}
+
 	private MiddlewareServlet getServlet(OTNode<K, D, C> node) {
 		return MiddlewareServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> node.checkout()
@@ -70,8 +79,12 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 				.with(GET, "/" + POLL, request -> {
 					try {
 						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
-						return node.poll(currentCommitId)
-								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+						return eitherComplete(
+								node.poll(currentCommitId)
+										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData)),
+								closeNotification
+										.map($2 -> HttpResponse.ofCode(503).withBody("Server closed".getBytes()))
+						);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

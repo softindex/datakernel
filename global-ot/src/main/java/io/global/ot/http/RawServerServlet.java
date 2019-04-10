@@ -19,6 +19,7 @@ package io.global.ot.http;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -34,6 +35,7 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -48,6 +50,7 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.ParserFunction.asFunction;
 import static io.global.ot.api.OTCommand.*;
 import static io.global.ot.util.HttpDataFormats.*;
+import static io.global.util.Utils.eitherComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -63,6 +66,7 @@ public final class RawServerServlet implements WithMiddleware {
 							.collect(toSet());
 
 	private final MiddlewareServlet middlewareServlet;
+	private Promise<@Nullable Void> closeNotification = new SettablePromise<>();
 
 	private RawServerServlet(GlobalOTNode node) {
 		middlewareServlet = servlet(node);
@@ -70,6 +74,10 @@ public final class RawServerServlet implements WithMiddleware {
 
 	public static RawServerServlet create(GlobalOTNode node) {
 		return new RawServerServlet(node);
+	}
+
+	public void setCloseNotification(Promise<Void> closeNotification) {
+		this.closeNotification = closeNotification;
 	}
 
 	private MiddlewareServlet servlet(GlobalOTNode node) {
@@ -172,16 +180,20 @@ public final class RawServerServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + POLL_HEADS + "/:pubKey/:name", req -> {
+				.with(GET, "/" + POLL_HEADS + "/:pubKey/:name", request -> {
 					try {
-						Set<CommitId> lastHeads = req.parseQueryParameter("lastHeads", COMMIT_IDS_PARSER);
-						return Promises.until(node.pollHeads(urlDecodeRepositoryId(req)),
-								AsyncPredicate.of(polledHeads ->
-										!polledHeads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet())
-												.equals(lastHeads)))
-								.map(heads -> HttpResponse.ok200()
-										.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))
-								);
+						Set<CommitId> lastHeads = request.parseQueryParameter("lastHeads", COMMIT_IDS_PARSER);
+						return eitherComplete(
+								Promises.until(node.pollHeads(urlDecodeRepositoryId(request)),
+										AsyncPredicate.of(polledHeads ->
+												!polledHeads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet())
+														.equals(lastHeads)))
+										.map(heads -> HttpResponse.ok200()
+												.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))),
+								closeNotification
+										.map($ -> HttpResponse.ofCode(503)
+												.withBody("Server closed".getBytes())
+										));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

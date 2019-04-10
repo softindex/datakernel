@@ -27,11 +27,11 @@ import io.global.ot.http.OTNodeServlet;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
-import static io.datakernel.config.ConfigConverters.ofDuration;
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.common.ExampleCommonModule.*;
@@ -40,7 +40,6 @@ import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class OTCommonModule<D> extends AbstractModule {
 	public static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
@@ -50,9 +49,15 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("Example")
-	AsyncHttpServer provideServer(Eventloop eventloop, MiddlewareServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, servlet)
+	AsyncHttpServer provideServer(Eventloop eventloop, MiddlewareServlet servlet,
+			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet, Config config) {
+
+		AsyncHttpServer asyncHttpServer = AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
+
+		nodeServlet.setCloseNotification(asyncHttpServer.getCloseNotification());
+
+		return asyncHttpServer;
 	}
 
 	@Provides
@@ -81,9 +86,9 @@ public class OTCommonModule<D> extends AbstractModule {
 
 	@Provides
 	@Singleton
-	StaticServlet provideStaticServlet(Eventloop eventloop, Config config) {
+	StaticServlet provideStaticServlet(Eventloop eventloop, Executor executor, Config config) {
 		Path staticDir = config.get(ofPath(), "resources.path", DEFAULT_RESOURCES_PATH);
-		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), staticDir);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, staticDir);
 		return StaticServlet.create(eventloop, resourceLoader);
 	}
 
@@ -121,4 +126,9 @@ public class OTCommonModule<D> extends AbstractModule {
 		return config.get(ofMyRepositoryId(diffCodec), "credentials", DEMO_MY_REPOSITORY_ID);
 	}
 
+	@Provides
+	@Singleton
+	Executor provideExecutor(Config config) {
+		return getExecutor(config.getChild("executor"));
+	}
 }

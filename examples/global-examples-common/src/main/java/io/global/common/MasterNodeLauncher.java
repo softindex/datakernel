@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 
 import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.Config.ofProperties;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
@@ -34,7 +35,8 @@ public final class MasterNodeLauncher extends Launcher {
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.with("fs.storage", DEFAULT_FS_STORAGE))
+								.with("fs.storage", DEFAULT_FS_STORAGE)
+								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				override(new GlobalNodesModule())
 						.with(new ExampleCommonModule())

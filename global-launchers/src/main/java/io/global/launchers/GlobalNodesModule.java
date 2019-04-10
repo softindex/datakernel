@@ -132,9 +132,13 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncHttpServer provide(Eventloop eventloop, AsyncServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, servlet)
+	AsyncHttpServer provide(Eventloop eventloop, AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
+
+		rawServerServlet.setCloseNotification(server.getCloseNotification());
+
+		return server;
 	}
 
 	@Provides

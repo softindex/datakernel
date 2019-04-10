@@ -3,6 +3,7 @@ package io.global.ot.server;
 import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ref.Ref;
 import io.global.common.PubKey;
@@ -33,6 +34,8 @@ import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNamespace, GlobalOTNodeImpl, GlobalOTNode> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNamespace.class);
+
+	public static final StacklessException POLLING_HAS_BEEN_STOPPED = new StacklessException(GlobalOTNodeImpl.class, "Polling has been stopped");
 
 	private final Map<RepoID, RepositoryEntry> repositories = new HashMap<>();
 
@@ -188,6 +191,14 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 				SettablePromise<@Nullable Void> pollNotifier = this.pollNotifier;
 				this.pollNotifier = null;
 				pollNotifier.set(null);
+			}
+		}
+
+		void stopPolling() {
+			if (pollNotifier != null) {
+				SettablePromise<@Nullable Void> pollNotifier = this.pollNotifier;
+				this.pollNotifier = null;
+				pollNotifier.setException(POLLING_HAS_BEEN_STOPPED);
 			}
 		}
 

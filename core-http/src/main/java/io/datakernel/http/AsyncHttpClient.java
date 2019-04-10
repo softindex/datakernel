@@ -415,7 +415,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@Nullable
-	private SettablePromise<Void> closePromise;
+	private SettablePromise<@Nullable Void> closePromise;
 
 	public void onConnectionClosed() {
 		if (getConnectionsCount() == 0 && closePromise != null) {
@@ -428,7 +428,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public MaterializedPromise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
-		SettablePromise<Void> promise = new SettablePromise<>();
+		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();

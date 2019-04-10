@@ -1,10 +1,8 @@
 package io.global.util;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.*;
 import io.datakernel.functional.Try;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,6 +62,15 @@ public class Utils {
 		return Promises.reduce(Try.voidReducer(), 1,
 				asPromises(items.map(item -> AsyncSupplier.cast(() -> fn.apply(item).toTry()))))
 				.then(Promise::ofTry);
+	}
+
+	@NotNull
+	@SuppressWarnings("unchecked")
+	public static <T> Promise<T> eitherComplete(@NotNull Promise<? extends T> promise1, @NotNull Promise<? extends T> promise2) {
+		SettablePromise<T> result = new SettablePromise<>();
+		promise1.whenComplete(result::trySet);
+		promise2.whenComplete(result::trySet);
+		return result;
 	}
 }
 

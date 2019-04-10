@@ -16,7 +16,9 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -192,6 +194,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
+	public AsyncHttpServer withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		return this;
+	}
+
+	// endregion
+
 	public Duration getKeepAliveTimeout() {
 		return Duration.ofMillis(keepAliveTimeoutMillis);
 	}
@@ -200,12 +209,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return Duration.ofMillis(readWriteTimeoutMillis);
 	}
 
-	public AsyncHttpServer withInspector(Inspector inspector) {
-		this.inspector = inspector;
-		return this;
+	public Promise<Void> getCloseNotification() {
+		return closeNotification;
 	}
-
-	// endregion
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
@@ -231,8 +237,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		connection.serve();
 	}
 
+	private final SettablePromise<@Nullable Void> closeNotification = new SettablePromise<>();
+
 	@Nullable
-	private SettableCallback<Void> closeCallback;
+	private SettableCallback<@Nullable Void> closeCallback;
 
 	void onConnectionClosed() {
 		if (getConnectionsCount() == 0 && closeCallback != null) {
@@ -242,7 +250,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@Override
-	protected void onClose(SettableCallback<Void> cb) {
+	protected void onClose(SettableCallback<@Nullable Void> cb) {
+		closeNotification.set(null);
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
 		if (getConnectionsCount() == 0) {
