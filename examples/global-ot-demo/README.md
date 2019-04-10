@@ -66,10 +66,6 @@ make some modifications for both client applications, and you'll see something l
 
 <img src="http://datakernel.io/static/images/demo-history-graph.png">
 
-Also, pay attention that this application can work offline. So if you make modifications while there is no connection, they will 
-be successfully pushed when connection is restored.
-
-
 ### Globally
 Another option is to start demo application globally, which means that your client applications will connect to **Master Node**. 
 You can start the application globally in **7 steps**

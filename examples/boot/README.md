@@ -38,9 +38,8 @@ This data was provided by properties file of the example and supplied by `Config
 usage of configs, so that they are not used in any part of lifecycle except for startup. `ConfigModule` was created in 
 the following way:
 
-```java 
-ConfigModule.create(Config.ofProperties(PROPERTIES_FILE))
-```
+https://github.com/softindex/datakernel/blob/f01e8587fc5e81b3e4b5e179d37fdbe7f1067978/examples/boot/src/main/java/io/datakernel/examples/ConfigModuleExample.java#L52
+
 There are also some other ways of initialization of `ConfigModule`, such as:
 * *ofMap()*
 * *ofConfigs()*

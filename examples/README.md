@@ -64,6 +64,8 @@ to DataKernel module structure, the working directory should be set to the modul
 In IntelliJ IDEA you can do it in the following way: `Run -> Edit configurations -> [Run/Debug Configurations -> 
 [Templates -> Application] -> [Working directory -> $MODULE_WORKING_DIR$]]`.
 
+<img src="http://datakernel.io/static/images/setup-working-dir.gif">
+
 Before running the examples, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 These instructions are repeated in each of the examples' description just to make sure that everything will work 
