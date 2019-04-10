@@ -94,7 +94,7 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 		return namespaces.computeIfAbsent(space, this::createNamespace);
 	}
 
-	protected boolean isMasterFor(PubKey space) {
+	public boolean isMasterFor(PubKey space) {
 		return managedPublicKeys.contains(space);
 	}
 

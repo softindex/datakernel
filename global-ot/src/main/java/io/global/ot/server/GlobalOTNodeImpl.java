@@ -482,10 +482,8 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return Promises.until(
 				$1 -> {
 					long timestampBegin = now.currentTimeMillis();
-					return tolerantCollectVoid(Stream.of(AsyncSupplier.cast(this::fetch), AsyncSupplier.cast(this::update)), AsyncSupplier::get)
-							.map($2 ->
-									now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
-
+					return tolerantCollectVoid(Stream.<AsyncSupplier>of(this::fetch, this::update), AsyncSupplier::get)
+							.map($2 -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
 				});
 	}
 

@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.Promises.firstSuccessful;
@@ -225,7 +226,11 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			if (updateTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
-			return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots())
+			Stream<AsyncSupplier> updates = Stream.of(this::updateHeads, this::updatePullRequests, this::updateSnapshots);
+			return ensureMasterNodes()
+					.then(masters -> masters.isEmpty() && node.isMasterFor(space) ?
+							Promise.complete() :
+							tolerantCollectVoid(updates, AsyncSupplier::get))
 					.whenResult($ -> updateTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
