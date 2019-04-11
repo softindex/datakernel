@@ -35,7 +35,8 @@ After you launch any of the servers, enter this command in console:
 ```
 telnet localhost 22233
 ```
-Now you can interact with your echo server.
+You've just connected to the echo server and can interact with it, try to write some messages. 
+To close the connection, press **Ctrl+5** and then type `close`.
 
 #### Explanation 
 Both of the examples utilize *eventloop.listen()* as the basis of server processing. This method creates 

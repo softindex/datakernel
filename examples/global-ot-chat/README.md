@@ -5,7 +5,7 @@ There are two options for running this example: either with **Master Node** ([gl
 ([locally](#locally)).
 
 ### Locally
-You can run the example in **5 steps**
+You can run the example in **5 steps**.
 
 #### 1. Clone DataKernel from GitHub repository and install it:
 ```
@@ -75,7 +75,7 @@ be successfully pushed when connection is restored.
 
 ### Globally
 Another option is to start chat application globally, which means that your client applications will connect to **Master Node**. 
-You can start the application globally in **7 steps**
+You can start the application globally in **7 steps**.
 
 #### 1. Clone DataKernel from GitHub repository and install it:
 ```

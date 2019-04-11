@@ -124,4 +124,13 @@ Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an 
 interface which describes asynchronous read and write operations.
 
 ### TCP Client
-This example should be launched after one of the [Echo Servers](#echo-servers) is started.
+This example should be launched after one of the [Echo Servers](#echo-servers) is started in order to connect to your server. 
+You can start TCP Client either in console:
+```
+$ cd datakernel/examples/net
+$ mvn exec:java@TcpClientExample
+```
+or in an IDE, by opening `TcpClientExample` class which is located at **datakernel -> examples -> net** and running its *main()* method.
+
+Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
+feel free to run multiple **TCP Client**s and check out how it works. 

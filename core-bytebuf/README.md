@@ -7,10 +7,12 @@ An extremely light-weight and efficient implementation compared to the Java NIO 
 which simplifies and improves `ByteBuf` performance. 
 
 ByteBuf is similar to a FIFO byte queue and has two positions: *head* and *tail*. When you write data to your 
-ByteBuf, its *tail* increases by the amount of bytes written. Similarly, when you read data from your ByteBuf,
-its *head* increases by the amount of bytes read. You can read bytes from ByteBuf only when *tail* is greater 
+ByteBuf, its *tail* position increases by the amount of bytes written. Similarly, when you read data from your ByteBuf,
+its *head* position increases by the amount of bytes read. 
+
+**Note:** You can read bytes from ByteBuf only when *tail* is greater 
 then *head*. Also, you can write bytes to ByteBuf until *tail* doesn't exceed the length of the wrapped 
-array. In this way, there is no need for `ByteBuffer.flip()` operations. 
+array. In this way, there is no need for `ByteBuffer.flip()` operations.
 
 ByteBuf supports concurrent processes: while some data is written to the `ByteBuf` by one process, another one can 
 read it. ByteBuf also has *slice()* operation and inner ref counts.
@@ -75,11 +77,11 @@ The core methods of `ByteBuf` are:
 | *limit()* | returns length of the `ByteBuf`|
 | *drainTo(ByteBuf buf, int length)* | drains `ByteBuf` to another `ByteBuf`, returns the number of elements to be drained |
 | *set(int index, byte b)* | sets byte `b` at the particular index of `ByteBuf` |
-| *put(byte b)* | puts given data in the `ByteBuf`|
+| *put(byte b)* | puts given data in the `ByteBuf` at *tail* and increases *tail* value by 1 |
 | *getArray()* | returns a byte array created from the `ByteBuf` from *head* to *tail*|
 | *asArray()* | returns a byte array created from the `ByteBuf` from *head* to *tail* and **recycles** the `ByteBuf`|
-| *readByte() / readBoolean() / readChar() / readDouble() / readFloat() / readInt() / readLong() / readShort() / readString()* | allows to read primitives and Strings from the `ByteBuf`. Returns the value of appropriate data type from current *head* and increases *head* by the amount of used by the data type bytes|
-| *writeByte(byte v) / writeBoolean(boolean v) / writeChar(char v) / writeDouble(double v) / writeFloat(float v) / writeInt(int v) / writeLong(long v) / writeShort(short v) / writeString(String s)* | allows to write primitives and Strings to the `ByteBuf`. Writes the value to the current *tail* and then increases it by the amount of used by the data type bytes.|
+| *readByte() / readBoolean() / readChar() / readDouble() / readFloat() / readInt() / readLong() / readShort() / readString()* | allows to read primitives and Strings from the `ByteBuf`. Returns the value of appropriate data type from current *head* and increases *head* position by the amount of used by the data type bytes|
+| *writeByte(byte v) / writeBoolean(boolean v) / writeChar(char v) / writeDouble(double v) / writeFloat(float v) / writeInt(int v) / writeLong(long v) / writeShort(short v) / writeString(String s)* | allows to write primitives and Strings to the `ByteBuf`. Writes the value to the current *tail* and then increases its position by the amount of used by the data type bytes.|
 | *slice() / slice (int length) / slice (int offset, int length)* | returns a new `SliceByteBuf` which is a slice of your `ByteBuf`. By default, length is the number of bytes between *head* and *tail*, offset is *head*.
 | *recycle()* | recycles your `ByteBuf` by returning it to `ByteBufPool`.|
 

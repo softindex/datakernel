@@ -61,14 +61,14 @@ $ mvn exec:java@GlobalEditorLauncher -Dconfig.push.delay=PT0S
 ```
 `PT0S` determines the delay, so in this case the delay is 0 seconds.
 
-If you want to see forking and merging in edits history, make synchronization delay longer (for example, 20 seconds `PT20S`), and 
+If you want to see forking and merging in edits history, make synchronization delay longer (for example, 20 seconds `PT20S`), 
 make some modifications for both client applications, and you'll see something like this:
 
 <img src="http://datakernel.io/static/images/demo-history-graph.png">
 
 ### Globally
 Another option is to start demo application globally, which means that your client applications will connect to **Master Node**. 
-You can start the application globally in **7 steps**
+You can start the application globally in **7 steps**.
 
 #### 1. Clone DataKernel from GitHub repository and install it:
 ```

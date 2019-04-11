@@ -1,11 +1,11 @@
 Global-OT editor application uses OT (operational transformation) algorithm to manage collaborative edits of several 
-users in one doc. 
+users in one document. 
 
 There are two options for running this example: either with **Master Node** ([globally](#globally)), or without it 
 ([locally](#locally)).
 
 ### Locally
-You can run the example in **5 steps**
+You can run the example in **5 steps**.
 
 #### 1. Clone DataKernel from GitHub repository and install it:
 ```
@@ -46,7 +46,7 @@ represented as commit graph on the right. To create a new user, simply duplicate
 collaboratively.
 
 Note, that by default there is a small delay between synchronizations, so if both users write edits while the delay, edits history 
-will first have two local versions for each of the users and these versions will be automatically merged during the next synchronization.
+will first have two local versions for each of the users. These versions will be automatically merged during the next synchronization.
 
 You can manage the durations of these delays and make them longer or remove them at all, which will make the editor instant. 
 To do so, you should start `GlobalEditorLauncher` with the following argument:
@@ -56,7 +56,7 @@ $ mvn exec:java@GlobalEditorLauncher -Dconfig.push.delay=PT0S
 `PT0S` determines the delay, so in this case the delay is 0 seconds.
 
 If you want to see forking and merging in edits history, make synchronization delay longer (for example, 20 seconds `PT20S`), 
-make some doc edits from both of the started clients during the delay, and you'll see something like this:
+make some edits from both of the started clients during the delay, and you'll see something like this:
 
 <img src="http://datakernel.io/static/images/editor-history-graph.png">
 
@@ -65,7 +65,7 @@ be successfully pushed when connection is restored.
 
 ### Globally
 Another option is to start editor application globally, which means that your client applications will connect to **Master Node**. 
-You can start the application globally in **7 steps**
+You can start the application globally in **7 steps**.
 
 #### 1. Clone DataKernel from GitHub repository and install it:
 ```
@@ -117,6 +117,6 @@ $ mvn exec:java@GlobalEditorLauncher -Dconfig.discovery.masters=http://127.0.0.1
 #### 7. Open your favorite browser
 Open your browser and go to [localhost:8080](http://localhost:8080) and [localhost:8081](http://localhost:8081). Just like 
 in case of *Local* launching, now you can collaboratively edit the document and explore the history of edits, which is now 
-synchronized and stored on the *Master Node*.
+synchronized and stored on the **Master Node**.
 
 All the features described for *Local* launch work in *Global* mode too.

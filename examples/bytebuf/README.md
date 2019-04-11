@@ -258,15 +258,63 @@ Buf taken from queue: [3, 4, 5, 6, 7, 8]
 Is queue empty? true
 ```
 The first line represents our queue after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]` with `QUEUE.add()` method.
+```java
+private static void addingBufsToQueue() {
+	QUEUE.add(ByteBuf.wrapForReading(new byte[]{0, 1, 2, 3}));
+	QUEUE.add(ByteBuf.wrapForReading(new byte[]{3, 4, 5}));
+
+	// queue consists of 2 Bufs at this moment
+	System.out.println(QUEUE);
+	System.out.println();
+}
+```
 Then method `QUEUE.take()` is applied and the first added buf, which is `[0, 1, 2, 3]`, is taken from the queue.
+```java
+private static void takingBufOutOfQueue() {
+	ByteBuf takenBuf = QUEUE.take();
+
+	// Buf that is taken is the one that was put in queue first
+	System.out.println("Buf taken from queue: " + Arrays.toString(takenBuf.asArray()));
+	System.out.println();
+}
+```
 The next line represents the consequence of two operations: adding a new `[6, 7, 8]` buf and then applying 
 `QUEUE.takeRemaining()` which takes all remaining bufs from the queue. 
+```java
+private static void takingEverythingOutOfQueue() {
+	// Adding one more ByteBuf to queue
+	QUEUE.add(ByteBuf.wrapForReading(new byte[]{6, 7, 8}));
 
-**Note: pay attention to the difference between *take()* and *poll()* `ByteBufQueue` methods.** When using *take()*, you 
-must be sure that there is at least one ByteBuf remaining in the queue, otherwise use *poll()*.
+	ByteBuf takenBuf = QUEUE.takeRemaining();
+
+	// Taken ByteBuf is combined of every ByteBuf that were in Queue
+	System.out.println("Buf taken from queue: " + Arrays.toString(takenBuf.asArray()));
+	System.out.println("Is queue empty? " + QUEUE.isEmpty());
+	System.out.println();
+}
+```
+
+**Note**: Pay attention to the difference between *take()* and *poll()* `ByteBufQueue` methods. When using *take()*, you 
+must be sure that there is at least one ByteBuf remaining in the queue, otherwise use *poll()* which can return `null`.
 
 Finally, the last three lines represent the following operations:
 
 * Creating two bufs: `[1, 2, 3, 4]` and `[5, 6, 7, 8]`.
 * Draining the queue to consumer which prints the bufs.
 * Then we check if the queue is empty now.
+
+```java
+private static void drainingQueue() {
+	QUEUE.add(ByteBuf.wrapForReading(new byte[]{1, 2, 3, 4}));
+	QUEUE.add(ByteBuf.wrapForReading(new byte[]{5, 6, 7, 8}));
+
+	// Draining queue to some ByteBuf consumer
+	// If the destination (buf) couldn't fit in all source (QUEUE), 
+	// only those bytes which can be placed in destination would be drained.
+	QUEUE.drainTo(buf -> System.out.println(Arrays.toString(buf.getArray())));
+
+	// Queue is empty after draining
+	System.out.println("Is queue empty? " + QUEUE.isEmpty());
+	System.out.println();
+}
+```
