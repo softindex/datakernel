@@ -40,8 +40,12 @@ public final class CrdtData<K extends Comparable<K>, S> implements Comparable<Cr
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
 
 		CrdtData<?, ?> crdtData = (CrdtData<?, ?>) o;
 

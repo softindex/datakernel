@@ -23,7 +23,7 @@ import io.datakernel.serializer.util.BinaryOutput;
 
 import static java.lang.Math.max;
 
-public final class GCounterLong {
+public final class GCounterLong implements CrdtMergable<GCounterLong> {
 	public static final BinarySerializer<GCounterLong> SERIALIZER = new Serializer();
 
 	private final long[] state;
@@ -48,6 +48,7 @@ public final class GCounterLong {
 		return v;
 	}
 
+	@Override
 	public GCounterLong merge(GCounterLong other) {
 		assert state.length == other.state.length;
 		long[] newState = new long[state.length];

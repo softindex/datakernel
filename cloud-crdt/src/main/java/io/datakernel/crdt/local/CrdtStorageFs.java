@@ -23,7 +23,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
+import io.datakernel.crdt.CrdtFunction;
 import io.datakernel.crdt.CrdtStorage;
+import io.datakernel.crdt.primitives.CrdtType;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelDeserializer;
@@ -36,10 +38,10 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.StreamFilter;
 import io.datakernel.stream.processor.StreamMapper;
 import io.datakernel.stream.processor.StreamReducerSimple;
 import io.datakernel.stream.processor.StreamReducers;
@@ -54,20 +56,19 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 
-public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements CrdtStorage<K, S>,
-		Initializable<CrdtStorageFileSystem<K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageFileSystem.class);
+public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStorage<K, S>,
+		Initializable<CrdtStorageFs<K, S>>, EventloopService, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageFs.class);
 
 	private final Eventloop eventloop;
 	private final FsClient client;
-	private final BinaryOperator<CrdtData<K, S>> combiner;
+	private final CrdtFunction<S> crdtFunction;
 	private final CrdtDataSerializer<K, S> serializer;
 
 	private Function<String, String> namingStrategy = ext -> UUID.randomUUID().toString() + "." + ext;
@@ -90,61 +91,60 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 	// endregion
 
 	// region creators
-	private CrdtStorageFileSystem(
+	private CrdtStorageFs(
 			Eventloop eventloop,
 			FsClient client,
-			BinaryOperator<CrdtData<K, S>> combiner,
-			CrdtDataSerializer<K, S> serializer,
-			FsClient consolidationFolderClient,
-			FsClient tombstoneFolderClient
+			FsClient consolidationFolderClient, FsClient tombstoneFolderClient, CrdtDataSerializer<K, S> serializer, CrdtFunction<S> crdtFunction
 	) {
 		this.eventloop = eventloop;
 		this.client = client;
-		this.combiner = combiner;
+		this.crdtFunction = crdtFunction;
 		this.serializer = serializer;
 		this.consolidationFolderClient = consolidationFolderClient;
 		this.tombstoneFolderClient = tombstoneFolderClient;
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageFileSystem<K, S> create(
-			Eventloop eventloop, FsClient client, BinaryOperator<S> combiner,
-			CrdtDataSerializer<K, S> serializer) {
-		return new CrdtStorageFileSystem<>(eventloop, client, (a, b) -> new CrdtData<>(a.getKey(), combiner.apply(a.getState(), b.getState())),
-				serializer, client.subfolder(".consolidation"), client.subfolder(".tombstones"));
+	public static <K extends Comparable<K>, S> CrdtStorageFs<K, S> create(
+			Eventloop eventloop, FsClient client,
+			CrdtDataSerializer<K, S> serializer,
+			CrdtFunction<S> crdtFunction
+	) {
+		return new CrdtStorageFs<>(eventloop, client, client.subfolder(".consolidation"), client.subfolder(".tombstones"), serializer, crdtFunction);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageFileSystem<K, S> create(
-			Eventloop eventloop, FsClient client, BinaryOperator<S> combiner,
-			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
-		return create(eventloop, client, combiner, new CrdtDataSerializer<>(keySerializer, stateSerializer));
+	public static <K extends Comparable<K>, S extends CrdtType<S>> CrdtStorageFs<K, S> create(
+			Eventloop eventloop, FsClient client,
+			CrdtDataSerializer<K, S> serializer
+	) {
+		return new CrdtStorageFs<>(eventloop, client, client.subfolder(".consolidation"), client.subfolder(".tombstones"), serializer, CrdtFunction.ofCrdtType());
 	}
 
-	public CrdtStorageFileSystem<K, S> withConsolidationMargin(Duration consolidationMargin) {
+	public CrdtStorageFs<K, S> withConsolidationMargin(Duration consolidationMargin) {
 		this.consolidationMargin = consolidationMargin;
 		return this;
 	}
 
-	public CrdtStorageFileSystem<K, S> withNamingStrategy(Function<String, String> namingStrategy) {
+	public CrdtStorageFs<K, S> withNamingStrategy(Function<String, String> namingStrategy) {
 		this.namingStrategy = namingStrategy;
 		return this;
 	}
 
-	public CrdtStorageFileSystem<K, S> withConsolidationFolder(String subfolder) {
+	public CrdtStorageFs<K, S> withConsolidationFolder(String subfolder) {
 		consolidationFolderClient = client.subfolder(subfolder);
 		return this;
 	}
 
-	public CrdtStorageFileSystem<K, S> withTombstoneFolder(String subfolder) {
+	public CrdtStorageFs<K, S> withTombstoneFolder(String subfolder) {
 		tombstoneFolderClient = client.subfolder(subfolder);
 		return this;
 	}
 
-	public CrdtStorageFileSystem<K, S> withConsolidationFolderClient(FsClient consolidationFolderClient) {
+	public CrdtStorageFs<K, S> withConsolidationFolderClient(FsClient consolidationFolderClient) {
 		this.consolidationFolderClient = consolidationFolderClient;
 		return this;
 	}
 
-	public CrdtStorageFileSystem<K, S> withTombstoneFolderClient(FsClient tombstoneFolderClient) {
+	public CrdtStorageFs<K, S> withTombstoneFolderClient(FsClient tombstoneFolderClient) {
 		this.tombstoneFolderClient = tombstoneFolderClient;
 		return this;
 	}
@@ -170,22 +170,29 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return Promises.toTuple(FileLists::new, client.list("*"), tombstoneFolderClient.list("*"))
 				.map(f -> {
-					StreamReducerSimple<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<K, S>> reducer =
-							StreamReducerSimple.create(crd -> crd.key, Comparator.naturalOrder(), new CrdtReducer<>(combiner));
+					StreamReducerSimple<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<S>> reducer =
+							StreamReducerSimple.create(x -> x.key, Comparator.naturalOrder(), new CrdtReducer<K, S>(crdtFunction));
 
 					Stream<FileMetadata> stream = f.files.stream();
-					(timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
-							.forEach(meta -> ChannelSupplier.ofPromise(client.download(meta.getName()))
+
+					Stream<Promise<Void>> files = (timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
+							.map(meta -> ChannelSupplier.ofPromise(client.download(meta.getName()))
 									.transformWith(ChannelDeserializer.create(serializer))
-									.transformWith(StreamMapper.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
+									.transformWith(StreamMapper.create(data -> {
+										S partial = crdtFunction.extract(data.getState(), timestamp);
+										return partial != null ? new CrdtReducingData<>(data.getKey(), partial, meta.getTimestamp()) : null;
+									}))
+									.transformWith(StreamFilter.create(Objects::nonNull))
 									.streamTo(reducer.newInput()));
 
 					stream = f.tombstones.stream();
-					(timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
-							.forEach(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getName()))
+					Stream<Promise<Void>> tombstones = (timestamp == 0 ? stream : stream.filter(m -> m.getTimestamp() >= timestamp))
+							.map(meta -> ChannelSupplier.ofPromise(tombstoneFolderClient.download(meta.getName()))
 									.transformWith(ChannelDeserializer.create(serializer.getKeySerializer()))
 									.transformWith(StreamMapper.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
 									.streamTo(reducer.newInput()));
+
+					Promise<Void> process = Promises.all(Stream.concat(files, tombstones));
 
 					return reducer.getOutput()
 							.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
@@ -272,42 +279,41 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 		}
 	}
 
-	static class CrdtAccumulator<K extends Comparable<K>, S> {
+	static class CrdtAccumulator<S> {
 		@Nullable
-		CrdtData<K, S> accumulated;
+		S state;
 		long maxAppendTimestamp;
 		long maxRemoveTimestamp;
 
-		CrdtAccumulator(@Nullable CrdtData<K, S> accumulated, long maxAppendTimestamp, long maxRemoveTimestamp) {
-			this.accumulated = accumulated;
+		CrdtAccumulator(@Nullable S state, long maxAppendTimestamp, long maxRemoveTimestamp) {
+			this.state = state;
 			this.maxAppendTimestamp = maxAppendTimestamp;
 			this.maxRemoveTimestamp = maxRemoveTimestamp;
 		}
 	}
 
-	static class CrdtReducer<K extends Comparable<K>, S> implements StreamReducers.Reducer<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<K, S>> {
+	static class CrdtReducer<K extends Comparable<K>, S> implements StreamReducers.Reducer<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<S>> {
 
-		private final BinaryOperator<CrdtData<K, S>> combiner;
+		private final CrdtFunction<S> crdtFunction;
 
-		public CrdtReducer(BinaryOperator<CrdtData<K, S>> combiner) {
-			this.combiner = combiner;
+		public CrdtReducer(CrdtFunction<S> crdtFunction) {
+			this.crdtFunction = crdtFunction;
 		}
 
 		@Override
-		public CrdtAccumulator<K, S> onFirstItem(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtReducingData<K, S> firstValue) {
+		public CrdtAccumulator<S> onFirstItem(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtReducingData<K, S> firstValue) {
 			if (firstValue.state != null) {
-				return new CrdtAccumulator<>(new CrdtData<>(firstValue.key, firstValue.state), firstValue.timestamp, 0);
+				return new CrdtAccumulator<>(firstValue.state, firstValue.timestamp, 0);
 			}
 			return new CrdtAccumulator<>(null, 0, firstValue.timestamp);
 		}
 
 		@Override
-		public CrdtAccumulator<K, S> onNextItem(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtReducingData<K, S> nextValue, CrdtAccumulator<K, S> accumulator) {
+		public CrdtAccumulator<S> onNextItem(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtReducingData<K, S> nextValue, CrdtAccumulator<S> accumulator) {
 			if (nextValue.state != null) {
-				CrdtData<K, S> next = new CrdtData<>(nextValue.key, nextValue.state);
-				accumulator.accumulated = accumulator.accumulated != null ?
-						combiner.apply(accumulator.accumulated, next) :
-						next;
+				accumulator.state = accumulator.state != null ?
+						crdtFunction.merge(accumulator.state, nextValue.state) :
+						nextValue.state;
 				if (nextValue.timestamp > accumulator.maxAppendTimestamp) {
 					accumulator.maxAppendTimestamp = nextValue.timestamp;
 				}
@@ -318,9 +324,9 @@ public final class CrdtStorageFileSystem<K extends Comparable<K>, S> implements 
 		}
 
 		@Override
-		public void onComplete(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtAccumulator<K, S> accumulator) {
-			if (accumulator.accumulated != null && accumulator.maxRemoveTimestamp < accumulator.maxAppendTimestamp) {
-				stream.accept(accumulator.accumulated);
+		public void onComplete(StreamDataAcceptor<CrdtData<K, S>> stream, K key, CrdtAccumulator<S> accumulator) {
+			if (accumulator.state != null && accumulator.maxRemoveTimestamp < accumulator.maxAppendTimestamp) {
+				stream.accept(new CrdtData<>(key, accumulator.state));
 			}
 		}
 	}

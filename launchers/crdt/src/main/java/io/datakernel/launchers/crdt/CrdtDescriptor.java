@@ -20,26 +20,25 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.crdt.CrdtDataSerializer;
-
-import java.util.function.BinaryOperator;
+import io.datakernel.crdt.CrdtFunction;
 
 @Singleton
 public final class CrdtDescriptor<K extends Comparable<K>, S> {
-	private final BinaryOperator<S> combiner;
+	private final CrdtFunction<S> crdtFunction;
 	private final CrdtDataSerializer<K, S> serializer;
 	private final StructuredCodec<K> keyCodec;
 	private final StructuredCodec<S> stateCodec;
 
 	@Inject
-	public CrdtDescriptor(BinaryOperator<S> combiner, CrdtDataSerializer<K, S> serializer, StructuredCodec<K> keyCodec, StructuredCodec<S> stateCodec) {
-		this.combiner = combiner;
+	public CrdtDescriptor(CrdtFunction<S> crdtFunction, CrdtDataSerializer<K, S> serializer, StructuredCodec<K> keyCodec, StructuredCodec<S> stateCodec) {
+		this.crdtFunction = crdtFunction;
 		this.serializer = serializer;
 		this.keyCodec = keyCodec;
 		this.stateCodec = stateCodec;
 	}
 
-	public BinaryOperator<S> getCombiner() {
-		return combiner;
+	public CrdtFunction<S> getCrdtFunction() {
+		return crdtFunction;
 	}
 
 	public CrdtDataSerializer<K, S> getSerializer() {

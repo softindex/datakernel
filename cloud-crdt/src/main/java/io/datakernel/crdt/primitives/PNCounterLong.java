@@ -21,7 +21,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
 
-public final class PNCounterLong {
+public final class PNCounterLong implements CrdtMergable<PNCounterLong> {
 	public static final BinarySerializer<PNCounterLong> SERIALIZER = new Serializer();
 
 	private final GCounterLong p;
@@ -33,8 +33,7 @@ public final class PNCounterLong {
 	}
 
 	public PNCounterLong(int nodes) {
-		p = new GCounterLong(nodes);
-		n = new GCounterLong(nodes);
+		this(new GCounterLong(nodes), new GCounterLong(nodes));
 	}
 
 	public void increment(int id) {
@@ -49,6 +48,7 @@ public final class PNCounterLong {
 		return p.value() - n.value();
 	}
 
+	@Override
 	public PNCounterLong merge(PNCounterLong other) {
 		return new PNCounterLong(p.merge(other.p), n.merge(other.n));
 	}

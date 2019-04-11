@@ -19,6 +19,7 @@ package io.datakernel.crdt;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.crdt.primitives.CrdtType;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
@@ -37,14 +38,12 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.RefBoolean;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.Map.Entry;
-import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
@@ -52,14 +51,12 @@ import static java.util.stream.Collectors.toList;
 public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class);
 
-	private final Comparator<Entry<I, CrdtStorage<K, S>>> comparingByKey = Comparator.comparing(Entry::getKey);
-
 	private final Eventloop eventloop;
 	private final Map<I, CrdtStorage<K, S>> clients;
 	private final Map<I, CrdtStorage<K, S>> aliveClients;
 	private final Map<I, CrdtStorage<K, S>> deadClients;
 
-	private final BinaryOperator<CrdtData<K, S>> combiner;
+	private final CrdtFunction<S> crdtFunction;
 	private final RendezvousHashSharder<I, K> shardingFunction;
 
 	private List<I> orderedIds;
@@ -78,19 +75,25 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	// endregion
 
 	// region creators
-	private CrdtStorageCluster(Eventloop eventloop, Map<I, CrdtStorage<K, S>> clients, BinaryOperator<S> combiner) {
+	private CrdtStorageCluster(Eventloop eventloop, Map<I, CrdtStorage<K, S>> clients, CrdtFunction<S> crdtFunction) {
 		this.eventloop = eventloop;
 		this.clients = clients;
 		this.aliveClients = new LinkedHashMap<>(clients); // to keep order for indexed sharding
 		this.deadClients = new HashMap<>();
-		this.combiner = (a, b) -> new CrdtData<>(a.getKey(), combiner.apply(a.getState(), b.getState()));
+		this.crdtFunction = crdtFunction;
 		shardingFunction = RendezvousHashSharder.create(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
 	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtStorageCluster<I, K, S> create(
-			Eventloop eventloop, Map<I, ? extends CrdtStorage<K, S>> clients, BinaryOperator<S> combiner
+			Eventloop eventloop, Map<I, ? extends CrdtStorage<K, S>> clients, CrdtFunction<S> crdtFunction
 	) {
-		return new CrdtStorageCluster<>(eventloop, new HashMap<>(clients), combiner);
+		return new CrdtStorageCluster<>(eventloop, new HashMap<>(clients), crdtFunction);
+	}
+
+	public static <I extends Comparable<I>, K extends Comparable<K>, S extends CrdtType<S>> CrdtStorageCluster<I, K, S> create(
+			Eventloop eventloop, Map<I, ? extends CrdtStorage<K, S>> clients
+	) {
+		return new CrdtStorageCluster<>(eventloop, new HashMap<>(clients), CrdtFunction.ofCrdtType());
 	}
 
 	public CrdtStorageCluster<I, K, S> withPartition(I partitionId, CrdtStorage<K, S> client) {
@@ -126,10 +129,6 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 
 	public MultiSharder<K> getShardingFunction() {
 		return shardingFunction;
-	}
-
-	public BinaryOperator<CrdtData<K, S>> getCombiner() {
-		return combiner;
 	}
 	// endregion
 
@@ -192,26 +191,33 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		shardingFunction.recompute(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
-	@Override
-	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
+	private <T> Promise<List<T>> connect(Function<CrdtStorage<K, S>, Promise<T>> method) {
 		return Promises.toList(
 				aliveClients.entrySet().stream()
-						.map(entry -> entry.getValue().upload()
-								.whenException(err -> markDead(entry.getKey(), err))
-								.toTry()))
+						.map(entry ->
+								method.apply(entry.getValue())
+										.whenException(err -> markDead(entry.getKey(), err))
+										.toTry()))
 				.then(tries -> {
-					RefBoolean anyConnection = new RefBoolean(false);
-					List<StreamConsumer<CrdtData<K, S>>> successes = tries.stream()
-							.map(t -> {
-								anyConnection.or(t.isSuccess());
-								return t.getOrSupply(StreamConsumer::idle);
-							})
+					List<T> successes = tries.stream()
+							.filter(Try::isSuccess)
+							.map(Try::get)
 							.collect(toList());
-					if (!anyConnection.get()) {
+					if (successes.isEmpty()) {
 						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
 					}
+					return Promise.of(successes);
+				});
+	}
+
+	@Override
+	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
+		return connect(CrdtStorage::upload)
+				.then(successes -> {
 					ShardingStreamSplitter<CrdtData<K, S>, K> shplitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);
+
 					successes.forEach(consumer -> shplitter.newOutput().streamTo(consumer));
+
 					return Promise.of(shplitter.getInput()
 							.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
 							.withLateBinding());
@@ -220,53 +226,28 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 
 	@Override
 	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
-		return Promises.toList(
-				aliveClients.entrySet().stream()
-						.map(entry ->
-								entry.getValue().download(timestamp)
-										.whenException(err -> markDead(entry.getKey(), err))
-										.toTry()))
-				.then(tries -> {
-					List<StreamSupplier<CrdtData<K, S>>> successes = tries.stream()
-							.filter(Try::isSuccess)
-							.map(Try::get)
-							.collect(toList());
-					if (successes.isEmpty()) {
-						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
-					}
-
+		return connect(storage -> storage.download(timestamp))
+				.then(successes -> {
 					StreamReducerSimple<K, CrdtData<K, S>, CrdtData<K, S>, CrdtData<K, S>> reducer =
-							StreamReducerSimple.create(CrdtData::getKey, Comparator.<K>naturalOrder(), new BinaryAccumulatorReducer<>(combiner));
+							StreamReducerSimple.create(CrdtData::getKey, Comparator.<K>naturalOrder(),
+									new BinaryAccumulatorReducer<>((a, b) -> new CrdtData<>(a.getKey(), crdtFunction.merge(a.getState(), b.getState()))));
 
-					return Promise.of(StreamSupplier.<CrdtData<K, S>>ofConsumer(consumer ->
-							reducer.getOutput()
-									.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
-									.streamTo(consumer
-											.withAcknowledgement(ack -> ack.both(Promises.all(successes.stream()
-													.map(producer -> producer.streamTo(reducer.newInput())))
-													.materialize()))))
+					successes.forEach(producer -> producer.streamTo(reducer.newInput()));
+
+					return Promise.of(reducer.getOutput()
+							.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 							.withLateBinding());
 				});
 	}
 
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
-		return Promises.toList(
-				aliveClients.entrySet().stream()
-						.sorted(comparingByKey)
-						.map(entry -> entry.getValue().remove()
-								.whenException(err -> markDead(entry.getKey(), err))
-								.toTry()))
-				.then(tries -> {
-					List<StreamConsumer<K>> successes = tries.stream()
-							.filter(Try::isSuccess)
-							.map(Try::get)
-							.collect(toList());
-					if (successes.isEmpty()) {
-						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
-					}
+		return connect(CrdtStorage::remove)
+				.then(successes -> {
 					StreamSplitter<K> splitter = StreamSplitter.create();
+
 					successes.forEach(consumer -> splitter.newOutput().streamTo(consumer));
+
 					return Promise.of(splitter.getInput()
 							.transformWith(detailedStats ? removeStats : removeStatsDetailed)
 							.withLateBinding());

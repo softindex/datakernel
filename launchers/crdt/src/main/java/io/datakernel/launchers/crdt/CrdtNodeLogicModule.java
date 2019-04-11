@@ -17,16 +17,16 @@
 package io.datakernel.launchers.crdt;
 
 import com.google.inject.*;
+import com.google.inject.util.Types;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtRepartitionController;
 import io.datakernel.crdt.CrdtServer;
 import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFileSystem;
-import io.datakernel.crdt.local.CrdtStorageTreeMap;
+import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.RecursiveType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -48,38 +48,37 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 	protected void configure() {
 		Type genericSuperclass = getClass().getGenericSuperclass();
 		Type[] typeArguments = ((ParameterizedType) genericSuperclass).getActualTypeArguments();
-		RecursiveType k = RecursiveType.of(typeArguments[0]);
-		RecursiveType s = RecursiveType.of(typeArguments[1]);
-		Type clientType = RecursiveType.of(CrdtStorage.class, k, s).getType();
 
-		bind((Key) Key.get(clientType, InMemory.class))
-				.to(Key.get(RecursiveType.of(CrdtStorageTreeMap.class, k, s).getType()));
-		bind((Key) Key.get(clientType, Persistent.class))
-				.to(Key.get(RecursiveType.of(CrdtStorageFileSystem.class, k, s).getType()));
-		bind((Key) Key.get(clientType, Cluster.class))
-				.to(Key.get(RecursiveType.of(CrdtStorageCluster.class, RecursiveType.of(String.class), k, s).getType()));
+		Type supertype = Types.newParameterizedType(CrdtStorage.class, typeArguments);
+
+		bind((Key) Key.get(supertype, InMemory.class))
+				.to(Key.get(Types.newParameterizedType(CrdtStorageMap.class, typeArguments)));
+		bind((Key) Key.get(supertype, Persistent.class))
+				.to(Key.get(Types.newParameterizedType(CrdtStorageFs.class, typeArguments)));
+		bind((Key) Key.get(supertype, Cluster.class))
+				.to(Key.get(Types.newParameterizedType(CrdtStorageCluster.class, String.class, typeArguments[0], typeArguments[1])));
 	}
 
 	@Provides
 	@Singleton
-	CrdtStorageTreeMap<K, S> provideRuntimeCrdtClient(Eventloop eventloop, CrdtDescriptor<K, S> descriptor) {
-		return CrdtStorageTreeMap.create(eventloop, descriptor.getCombiner());
+	CrdtStorageMap<K, S> provideRuntimeCrdtClient(Eventloop eventloop, CrdtDescriptor<K, S> descriptor) {
+		return CrdtStorageMap.create(eventloop, descriptor.getCrdtFunction());
 	}
 
 	@Provides
 	@Singleton
-	CrdtStorageFileSystem<K, S> provideFsCrdtClient(Eventloop eventloop, Config config, FsClient fsClient, CrdtDescriptor<K, S> descriptor) {
-		return CrdtStorageFileSystem.create(eventloop, fsClient, descriptor.getCombiner(), descriptor.getSerializer())
+	CrdtStorageFs<K, S> provideFsCrdtClient(Eventloop eventloop, Config config, FsClient fsClient, CrdtDescriptor<K, S> descriptor) {
+		return CrdtStorageFs.create(eventloop, fsClient, descriptor.getSerializer(), descriptor.getCrdtFunction())
 				.initialize(ofFsCrdtClient(config));
 	}
 
 	@Provides
 	@Singleton
-	CrdtStorageCluster<String, K, S> provideClusterCrdtClient(Config config, CrdtStorageTreeMap<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
+	CrdtStorageCluster<String, K, S> provideClusterCrdtClient(Config config, CrdtStorageMap<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
 		return CrdtStorageCluster.create(
 				localClient.getEventloop(),
 				singletonMap(config.get("crdt.cluster.localPartitionId"), localClient),
-				descriptor.getCombiner()
+				descriptor.getCrdtFunction()
 		).initialize(ofCrdtCluster(config.getChild("crdt.cluster"), localClient, descriptor));
 	}
 
@@ -91,7 +90,7 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 
 	@Provides
 	@Singleton
-	CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, CrdtStorageTreeMap<K, S> client, CrdtDescriptor<K, S> descriptor, Config config) {
+	CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, CrdtStorageMap<K, S> client, CrdtDescriptor<K, S> descriptor, Config config) {
 		return CrdtServer.create(eventloop, client, descriptor.getSerializer())
 				.initialize(ofAbstractServer(config.getChild("crdt.server")));
 	}

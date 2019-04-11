@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.CrdtStorageFileSystem;
+import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.local.CrdtStorageRocksDB;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
@@ -43,7 +43,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.function.BinaryOperator;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
@@ -53,7 +52,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunner.DatakernelRunnerFactory.class)
 public class CrdtStorageAPITest {
-	private static final CrdtDataSerializer<String, Integer> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER);
+	private static final CrdtDataSerializer<String, TimestampContainer<Integer>> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER));
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -62,28 +61,28 @@ public class CrdtStorageAPITest {
 	public String testName;
 
 	@Parameter(1)
-	public ICrdtClientFactory<String, Integer> clientFactory;
+	public ICrdtClientFactory<String, TimestampContainer<Integer>> clientFactory;
 
-	private CrdtStorage<String, Integer> client;
+	private CrdtStorage<String, TimestampContainer<Integer>> client;
 
 	@Before
 	public void setup() throws Exception {
 		Path folder = temporaryFolder.newFolder().toPath();
 		Files.createDirectories(folder);
-		client = clientFactory.create(Executors.newSingleThreadExecutor(), folder, Math::max);
+		client = clientFactory.create(Executors.newSingleThreadExecutor(), folder, TimestampContainer.createCrdtFunction(Integer::max));
 	}
 
 	@After
 	public void tearDown() {
 		if (client instanceof CrdtStorageRocksDB) {
-			//			((RocksDBCrdtClient) client).getDb().close();
+//			((RocksDBCrdtClient) client).getDb().close();
 		}
 	}
 
 	@FunctionalInterface
 	private interface ICrdtClientFactory<K extends Comparable<K>, S> {
 
-		CrdtStorage<K, S> create(Executor executor, Path testFolder, BinaryOperator<S> combiner) throws Exception;
+		CrdtStorage<K, S> create(Executor executor, Path testFolder, CrdtFunction<S> crdtFunction) throws Exception;
 	}
 
 	@Parameters(name = "{0}")
@@ -91,19 +90,19 @@ public class CrdtStorageAPITest {
 		return Arrays.asList(
 				new Object[]{
 						"FsCrdtClient",
-						(ICrdtClientFactory<String, Integer>) (executor, testFolder, combiner) -> {
+						(ICrdtClientFactory<String, TimestampContainer<Integer>>) (executor, testFolder, crdtFunction) -> {
 							Eventloop eventloop = Eventloop.getCurrentEventloop();
-							return CrdtStorageFileSystem.create(eventloop, LocalFsClient.create(eventloop, testFolder), combiner, serializer);
+							return CrdtStorageFs.create(eventloop, LocalFsClient.create(eventloop, testFolder), serializer, crdtFunction);
 						}
 				},
 				new Object[]{
 						"RocksDBCrdtClient",
-						(ICrdtClientFactory<String, Integer>) (executor, testFolder, combiner) -> {
+						(ICrdtClientFactory<String, TimestampContainer<Integer>>) (executor, testFolder, crdtFunction) -> {
 							Options options = new Options()
 									.setCreateIfMissing(true)
 									.setComparator(new CrdtStorageRocksDB.KeyComparator<>(UTF8_SERIALIZER));
-							RocksDB rocksdb = RocksDB.open(options, testFolder.resolve("rocksdb").normalize().toString());
-							return CrdtStorageRocksDB.create(Eventloop.getCurrentEventloop(), executor, rocksdb, combiner, serializer);
+							RocksDB rocksdb = RocksDB.open(options, testFolder.resolve("rocksdb").toString());
+							return CrdtStorageRocksDB.create(Eventloop.getCurrentEventloop(), executor, rocksdb, serializer, crdtFunction);
 						}
 				}
 		);
@@ -111,49 +110,49 @@ public class CrdtStorageAPITest {
 
 	@Test
 	public void testUploadDownload() {
-		List<CrdtData<String, Integer>> expected = Arrays.asList(
-				new CrdtData<>("test_0", 0),
-				new CrdtData<>("test_1", 345),
-				new CrdtData<>("test_2", 44),
-				new CrdtData<>("test_3", 74),
-				new CrdtData<>("test_4", -28)
+		List<CrdtData<String, TimestampContainer<Integer>>> expected = Arrays.asList(
+				new CrdtData<>("test_0", new TimestampContainer<>(123, 0)),
+				new CrdtData<>("test_1", new TimestampContainer<>(123, 345)),
+				new CrdtData<>("test_2", new TimestampContainer<>(123, 44)),
+				new CrdtData<>("test_3", new TimestampContainer<>(123, 74)),
+				new CrdtData<>("test_4", new TimestampContainer<>(123, -28))
 		);
 
 		await(StreamSupplier.of(
-				new CrdtData<>("test_1", 344),
-				new CrdtData<>("test_2", 24),
-				new CrdtData<>("test_3", -8)).streamTo(StreamConsumer.ofPromise(client.upload())));
+				new CrdtData<>("test_1", new TimestampContainer<>(123, 344)),
+				new CrdtData<>("test_2", new TimestampContainer<>(123, 24)),
+				new CrdtData<>("test_3", new TimestampContainer<>(123, -8))).streamTo(StreamConsumer.ofPromise(client.upload())));
 		await(StreamSupplier.of(
-				new CrdtData<>("test_2", 44),
-				new CrdtData<>("test_3", 74),
-				new CrdtData<>("test_4", -28)).streamTo(StreamConsumer.ofPromise(client.upload())));
+				new CrdtData<>("test_2", new TimestampContainer<>(123, 44)),
+				new CrdtData<>("test_3", new TimestampContainer<>(123, 74)),
+				new CrdtData<>("test_4", new TimestampContainer<>(123, -28))).streamTo(StreamConsumer.ofPromise(client.upload())));
 		await(StreamSupplier.of(
-				new CrdtData<>("test_0", 0),
-				new CrdtData<>("test_1", 345),
-				new CrdtData<>("test_2", -28)).streamTo(StreamConsumer.ofPromise(client.upload())));
+				new CrdtData<>("test_0", new TimestampContainer<>(123, 0)),
+				new CrdtData<>("test_1", new TimestampContainer<>(123, 345)),
+				new CrdtData<>("test_2", new TimestampContainer<>(123, -28))).streamTo(StreamConsumer.ofPromise(client.upload())));
 
-		List<CrdtData<String, Integer>> list = await(await(client.download()).toList());
+		List<CrdtData<String, TimestampContainer<Integer>>> list = await(await(client.download()).toList());
 		System.out.println(list);
 		assertEquals(expected, list);
 	}
 
 	@Test
 	public void testDelete() {
-		List<CrdtData<String, Integer>> expected = Arrays.asList(
-				new CrdtData<>("test_1", 2),
-				new CrdtData<>("test_3", 4)
+		List<CrdtData<String, TimestampContainer<Integer>>> expected = Arrays.asList(
+				new CrdtData<>("test_1", new TimestampContainer<>(123, 2)),
+				new CrdtData<>("test_3", new TimestampContainer<>(123, 4))
 		);
 		await(StreamSupplier.of(
-				new CrdtData<>("test_1", 1),
-				new CrdtData<>("test_2", 2),
-				new CrdtData<>("test_3", 4)).streamTo(StreamConsumer.ofPromise(client.upload())));
+				new CrdtData<>("test_1", new TimestampContainer<>(123, 1)),
+				new CrdtData<>("test_2", new TimestampContainer<>(123, 2)),
+				new CrdtData<>("test_3", new TimestampContainer<>(123, 4))).streamTo(client.upload()));
 		await(StreamSupplier.of(
-				new CrdtData<>("test_1", 2),
-				new CrdtData<>("test_2", 3),
-				new CrdtData<>("test_3", 2)).streamTo(StreamConsumer.ofPromise(client.upload())));
+				new CrdtData<>("test_1", new TimestampContainer<>(123, 2)),
+				new CrdtData<>("test_2", new TimestampContainer<>(123, 3)),
+				new CrdtData<>("test_3", new TimestampContainer<>(123, 2))).streamTo(client.upload()));
 		await(StreamSupplier.of("test_2").streamTo(StreamConsumer.ofPromise(client.remove())));
 
-		List<CrdtData<String, Integer>> list = await(await(client.download()).toList());
+		List<CrdtData<String, TimestampContainer<Integer>>> list = await(await(client.download()).toList());
 		System.out.println(list);
 		assertEquals(expected, list);
 	}

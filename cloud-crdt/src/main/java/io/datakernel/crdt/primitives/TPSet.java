@@ -20,22 +20,22 @@ import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Stream;
 
-public final class TPSet<E> implements Set<E> {
+public final class TPSet<E> implements Set<E>, CrdtMergable<TPSet<E>> {
 	private final GSet<E> adds;
 	private final GSet<E> removes;
-
-	public TPSet() {
-		adds = new GSet<>();
-		removes = new GSet<>();
-	}
 
 	private TPSet(GSet<E> adds, GSet<E> removes) {
 		this.adds = adds;
 		this.removes = removes;
+	}
+
+	public TPSet() {
+		this(new GSet<>(), new GSet<>());
 	}
 
 	@SafeVarargs
@@ -45,6 +45,7 @@ public final class TPSet<E> implements Set<E> {
 		return set;
 	}
 
+	@Override
 	public TPSet<E> merge(TPSet<E> other) {
 		return new TPSet<>(adds.merge(other.adds), removes.merge(other.removes));
 	}
@@ -81,8 +82,9 @@ public final class TPSet<E> implements Set<E> {
 		return stream().toArray();
 	}
 
+	@SuppressWarnings("SuspiciousToArrayCall")
 	@Override
-	public <T> T[] toArray(T[] a) {
+	public <T> T[] toArray(@NotNull T[] a) {
 		return stream().toArray($ -> a);
 	}
 
@@ -98,17 +100,17 @@ public final class TPSet<E> implements Set<E> {
 	}
 
 	@Override
-	public boolean containsAll(Collection<?> c) {
+	public boolean containsAll(@NotNull Collection<?> c) {
 		return adds.containsAll(c) && removes.stream().noneMatch(c::contains);
 	}
 
 	@Override
-	public boolean addAll(Collection<? extends E> c) {
+	public boolean addAll(@NotNull Collection<? extends E> c) {
 		return adds.addAll(c);
 	}
 
 	@Override
-	public boolean retainAll(Collection<?> c) {
+	public boolean retainAll(@NotNull Collection<?> c) {
 		boolean removed = false;
 		for (E item : adds) {
 			if (!c.contains(item)) {
@@ -121,7 +123,7 @@ public final class TPSet<E> implements Set<E> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public boolean removeAll(Collection<?> c) {
+	public boolean removeAll(@NotNull Collection<?> c) {
 		return removes.addAll((Collection<? extends E>) c);
 	}
 
