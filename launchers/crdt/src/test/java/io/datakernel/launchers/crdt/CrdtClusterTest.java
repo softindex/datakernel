@@ -28,6 +28,7 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
+import io.datakernel.crdt.TimestampContainer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
@@ -48,6 +49,7 @@ import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.IntStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
@@ -68,8 +70,10 @@ public final class CrdtClusterTest {
 
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
-		CrdtDescriptor<String, Integer> provideDescriptor() {
-			return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
+		CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+			return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+					new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+					tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
 		}
 
 		@Provides
@@ -80,7 +84,7 @@ public final class CrdtClusterTest {
 
 		@Provides
 		@Singleton
-		FsClient provideFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
+		FsClient provideFsClient(Eventloop eventloop, Config config) {
 			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}
 	}
@@ -161,8 +165,10 @@ public final class CrdtClusterTest {
 				return singletonList(new AbstractModule() {
 					@Provides
 					@Singleton
-					CrdtDescriptor<String, Integer> provideDescriptor() {
-						return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
+					CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
 					}
 				});
 			}
@@ -216,9 +222,6 @@ public final class CrdtClusterTest {
 	public void downloadStuff() {
 		CrdtStorageClient<String, Integer> client = CrdtStorageClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);
 
-		client.download()
-				.then(supplierWithResult -> supplierWithResult
-						.streamTo(StreamConsumer.of(System.out::println))
-						.whenComplete(assertComplete($ -> System.out.println("finished"))));
+		await(client.download().then(supplier -> supplier.streamTo(StreamConsumer.of(System.out::println))));
 	}
 }

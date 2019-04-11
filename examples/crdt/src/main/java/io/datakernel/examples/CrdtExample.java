@@ -20,7 +20,7 @@ import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFileSystem;
+import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.primitives.LWWSet;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
@@ -51,13 +51,13 @@ public final class CrdtExample {
 		Map<Integer, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
 
 		for (int i = 0; i < 8; i++) {
-			clients.put(i, createClient(eventloop, executor, i));
+			clients.put(i, createClient(eventloop, i));
 		}
 
-		CrdtStorageFileSystem<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
-		CrdtStorageFileSystem<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
+		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, 8);
+		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, 9);
 
-		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients, LWWSet::merge)
+		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients)
 				.withPartition(8, one)
 				.withPartition(9, two)
 				.withReplicationCount(5);
@@ -96,9 +96,9 @@ public final class CrdtExample {
 		eventloop.run();
 	}
 
-	private static CrdtStorageFileSystem<String, LWWSet<String>> createClient(Eventloop eventloop, ExecutorService executor, int n) {
+	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, int n) {
 		FsClient storage = LocalFsClient.create(eventloop, Paths.get("/tmp/TESTS/crdt_" + n));
-		return CrdtStorageFileSystem.create(eventloop, storage, LWWSet::merge, SERIALIZER);
+		return CrdtStorageFs.create(eventloop, storage, SERIALIZER);
 	}
 }
 

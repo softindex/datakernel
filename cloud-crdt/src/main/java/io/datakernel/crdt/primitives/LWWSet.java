@@ -21,14 +21,18 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
 import io.datakernel.time.CurrentTimeProvider;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.max;
+import static java.util.stream.Collectors.toMap;
 
-public final class LWWSet<E> implements Set<E> {
+public final class LWWSet<E> implements Set<E>, CrdtType<LWWSet<E>> {
 	private final Map<E, Timestamps> set;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
@@ -38,7 +42,7 @@ public final class LWWSet<E> implements Set<E> {
 	}
 
 	public LWWSet() {
-		set = new HashMap<>();
+		this(new HashMap<>());
 	}
 
 	@SafeVarargs
@@ -48,17 +52,30 @@ public final class LWWSet<E> implements Set<E> {
 		return set;
 	}
 
+	@Override
 	public LWWSet<E> merge(LWWSet<E> other) {
 		Map<E, Timestamps> newSet = new HashMap<>(set);
-		for (Map.Entry<E, Timestamps> entry : other.set.entrySet()) {
+		for (Entry<E, Timestamps> entry : other.set.entrySet()) {
 			newSet.merge(entry.getKey(), entry.getValue(), (ts1, ts2) -> new Timestamps(max(ts1.added, ts2.added), max(ts1.removed, ts2.removed)));
 		}
 		return new LWWSet<>(newSet);
 	}
 
 	@Override
+	@Nullable
+	public LWWSet<E> extract(long timestamp) {
+		Map<E, Timestamps> newSet = set.entrySet().stream()
+				.filter(entry -> entry.getValue().added > timestamp || entry.getValue().removed > timestamp)
+				.collect(toMap(Entry::getKey, Entry::getValue));
+		if (newSet.isEmpty()) {
+			return null;
+		}
+		return new LWWSet<>(newSet);
+	}
+
+	@Override
 	public Stream<E> stream() {
-		return set.entrySet().stream().filter(e -> e.getValue().exists()).map(Map.Entry::getKey);
+		return set.entrySet().stream().filter(e -> e.getValue().exists()).map(Entry::getKey);
 	}
 
 	@Override
@@ -90,8 +107,9 @@ public final class LWWSet<E> implements Set<E> {
 		return stream().toArray();
 	}
 
+	@SuppressWarnings("SuspiciousToArrayCall")
 	@Override
-	public <T> T[] toArray(T[] a) {
+	public <T> T[] toArray(@NotNull T[] a) {
 		return stream().toArray($ -> a);
 	}
 
@@ -137,7 +155,7 @@ public final class LWWSet<E> implements Set<E> {
 	}
 
 	@Override
-	public boolean retainAll(Collection<?> c) {
+	public boolean retainAll(@NotNull Collection<?> c) {
 		boolean removed = false;
 		for (E item : this) {
 			if (!c.contains(item)) {
@@ -194,7 +212,7 @@ public final class LWWSet<E> implements Set<E> {
 		@Override
 		public void encode(BinaryOutput out, LWWSet<T> item) {
 			out.writeVarInt(item.set.size());
-			for (Map.Entry<T, Timestamps> entry : item.set.entrySet()) {
+			for (Entry<T, Timestamps> entry : item.set.entrySet()) {
 				valueSerializer.encode(out, entry.getKey());
 				Timestamps timestamps = entry.getValue();
 				out.writeLong(timestamps.added);

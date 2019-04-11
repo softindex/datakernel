@@ -81,6 +81,10 @@ public interface StreamSupplier<T> extends Cancellable {
 		return Promises.all(supplier.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
+	default Promise<Void> streamTo(Promise<StreamConsumer<T>> consumerPromise) {
+		return streamTo(StreamConsumer.ofPromise(consumerPromise));
+	}
+
 	static <T> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		consumer.accept(forwarder.getInput());
@@ -194,7 +198,9 @@ public interface StreamSupplier<T> extends Cancellable {
 			"Alternatively, use .withLateBinding() modifier";
 
 	static <T> StreamSupplier<T> ofPromise(Promise<? extends StreamSupplier<T>> promise) {
-		if (promise.isResult()) return promise.materialize().getResult();
+		if (promise.isResult()) {
+			return promise.materialize().getResult();
+		}
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		promise.whenComplete((supplier, e) -> {
 			if (e == null) {
@@ -246,7 +252,9 @@ public interface StreamSupplier<T> extends Cancellable {
 	default StreamSupplier<T> withEndOfStream(Function<Promise<Void>, Promise<Void>> fn) {
 		Promise<Void> endOfStream = getEndOfStream();
 		Promise<Void> suppliedEndOfStream = fn.apply(endOfStream);
-		if (endOfStream == suppliedEndOfStream) return this;
+		if (endOfStream == suppliedEndOfStream) {
+			return this;
+		}
 		MaterializedPromise<Void> newEndOfStream = suppliedEndOfStream.materialize();
 		return new ForwardingStreamSupplier<T>(this) {
 			@Override

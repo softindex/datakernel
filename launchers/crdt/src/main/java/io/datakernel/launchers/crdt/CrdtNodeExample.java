@@ -23,18 +23,16 @@ import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
+import io.datakernel.crdt.TimestampContainer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
 import java.util.Collection;
-import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
@@ -46,29 +44,25 @@ public final class CrdtNodeExample {
 
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
-		CrdtDescriptor<String, Integer> provideDescriptor() {
-			return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
+		CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+			return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+					new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+					tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
 		}
 
 		@Provides
 		@Singleton
-		ExecutorService provideExecutor(Config config) {
-			return config.get(ofExecutor(), "crdt.local.executor");
-		}
-
-		@Provides
-		@Singleton
-		FsClient provideFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
+		FsClient provideFsClient(Eventloop eventloop, Config config) {
 			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}
 	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new CrdtNodeLauncher<String, Integer>() {
+		Launcher launcher = new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
 
 			@Override
-			protected CrdtNodeLogicModule<String, Integer> getLogicModule() {
-				return new CrdtNodeLogicModule<String, Integer>() {};
+			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
+				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};
 			}
 
 			@Override

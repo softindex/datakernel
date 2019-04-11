@@ -20,18 +20,19 @@ import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public final class GSet<E> implements Set<E> {
+public final class GSet<E> implements Set<E>, CrdtMergable<GSet<E>> {
 	private final Set<E> set;
-
-	public GSet() {
-		set = new HashSet<>();
-	}
 
 	private GSet(Set<E> newSet) {
 		set = newSet;
+	}
+
+	public GSet() {
+		this(new HashSet<>());
 	}
 
 	@SafeVarargs
@@ -41,6 +42,7 @@ public final class GSet<E> implements Set<E> {
 		return set;
 	}
 
+	@Override
 	public GSet<E> merge(GSet<E> other) {
 		Set<E> newSet = new HashSet<>(set);
 		newSet.addAll(other.set);
@@ -74,7 +76,7 @@ public final class GSet<E> implements Set<E> {
 
 	@Override
 	@SuppressWarnings("SuspiciousToArrayCall")
-	public <T> T[] toArray(T[] a) {
+	public <T> T[] toArray(@NotNull T[] a) {
 		return set.toArray(a);
 	}
 
@@ -84,12 +86,12 @@ public final class GSet<E> implements Set<E> {
 	}
 
 	@Override
-	public boolean containsAll(Collection<?> c) {
+	public boolean containsAll(@NotNull Collection<?> c) {
 		return set.containsAll(c);
 	}
 
 	@Override
-	public boolean addAll(Collection<? extends E> c) {
+	public boolean addAll(@NotNull Collection<? extends E> c) {
 		return set.addAll(c);
 	}
 
@@ -99,12 +101,12 @@ public final class GSet<E> implements Set<E> {
 	}
 
 	@Override
-	public boolean retainAll(Collection<?> c) {
+	public boolean retainAll(@NotNull Collection<?> c) {
 		throw new UnsupportedOperationException("GSet is a grow-only set");
 	}
 
 	@Override
-	public boolean removeAll(Collection<?> c) {
+	public boolean removeAll(@NotNull Collection<?> c) {
 		throw new UnsupportedOperationException("GSet is a grow-only set");
 	}
 

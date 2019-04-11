@@ -24,7 +24,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.local.CrdtStorageTreeMap;
+import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -57,7 +57,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 	@Singleton
 	AsyncServlet provideServlet(
 			CrdtDescriptor<K, S> descriptor,
-			CrdtStorageTreeMap<K, S> client,
+			CrdtStorageMap<K, S> client,
 			OptionalDependency<BackupService<K, S>> backupService
 	) {
 		StructuredCodec<K> keyCodec = descriptor.getKeyCodec();

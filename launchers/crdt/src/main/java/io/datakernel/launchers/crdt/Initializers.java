@@ -20,8 +20,8 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFileSystem;
-import io.datakernel.crdt.local.CrdtStorageTreeMap;
+import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.Initializer;
 
@@ -36,7 +36,7 @@ import static io.datakernel.util.Preconditions.checkState;
 public final class Initializers {
 	private Initializers() {}
 
-	public static <K extends Comparable<K>, S> Initializer<CrdtStorageFileSystem<K, S>> ofFsCrdtClient(Config config) {
+	public static <K extends Comparable<K>, S> Initializer<CrdtStorageFs<K, S>> ofFsCrdtClient(Config config) {
 		return fsCrdtClient ->
 				fsCrdtClient.withConsolidationFolder(config.get("metafolder.consolidation", ".consolidation"))
 						.withTombstoneFolder(config.get("metafolder.tombstones", ".tombstones"))
@@ -44,7 +44,7 @@ public final class Initializers {
 	}
 
 	public static <K extends Comparable<K>, S> Initializer<CrdtStorageCluster<String, K, S>> ofCrdtCluster(
-			Config config, CrdtStorageTreeMap<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
+			Config config, CrdtStorageMap<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
 		return cluster -> {
 			Eventloop eventloop = localClient.getEventloop();
 

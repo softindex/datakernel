@@ -20,8 +20,8 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.crdt.local.CrdtStorageFileSystem;
-import io.datakernel.crdt.local.CrdtStorageTreeMap;
+import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamConsumer;
@@ -34,8 +34,8 @@ import java.util.Set;
 @Singleton
 public final class BackupService<K extends Comparable<K>, S> implements EventloopService {
 	private final Eventloop eventloop;
-	private final CrdtStorageTreeMap<K, S> inMemory;
-	private final CrdtStorageFileSystem<K, S> localFiles;
+	private final CrdtStorageMap<K, S> inMemory;
+	private final CrdtStorageFs<K, S> localFiles;
 
 	private long lastTimestamp = 0;
 
@@ -43,7 +43,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	private Promise<Void> backupPromise = null;
 
 	@Inject
-	public BackupService(CrdtStorageTreeMap<K, S> inMemory, CrdtStorageFileSystem<K, S> localFiles) {
+	public BackupService(CrdtStorageMap<K, S> inMemory, CrdtStorageFs<K, S> localFiles) {
 		this.inMemory = inMemory;
 		this.localFiles = localFiles;
 		this.eventloop = localFiles.getEventloop();
@@ -65,7 +65,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		if (backupPromise != null) {
 			return backupPromise;
 		}
-		Set<K> removedKeys = inMemory.getRemovedKeys();
+		Set<K> removedKeys = inMemory.getRemoved();
 		long lastTimestamp = this.lastTimestamp;
 		this.lastTimestamp = eventloop.currentTimeMillis();
 		return backupPromise = inMemory.download(lastTimestamp)
@@ -74,7 +74,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 						.then($ -> StreamSupplier.ofIterable(removedKeys)
 								.streamTo(StreamConsumer.ofPromise(localFiles.remove())))
 						.whenComplete(($, e) -> {
-							inMemory.clearRemovedKeys();
+							inMemory.cleanup();
 							backupPromise = null;
 						}));
 	}

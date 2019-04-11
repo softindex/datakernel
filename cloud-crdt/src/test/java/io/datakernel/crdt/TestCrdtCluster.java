@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.CrdtStorageTreeMap;
+import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BinarySerializer;
@@ -30,7 +30,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.function.BinaryOperator;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
@@ -45,24 +44,26 @@ public final class TestCrdtCluster {
 	public void testUpload() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-		List<CrdtServer<String, Integer>> servers = new ArrayList<>();
-		Map<String, CrdtStorage<String, Integer>> clients = new HashMap<>();
-		Map<String, CrdtStorageTreeMap<String, Integer>> remoteStorages = new LinkedHashMap<>();
+		CrdtDataSerializer<String, TimestampContainer<Integer>> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER));
+
+		List<CrdtServer<String, TimestampContainer<Integer>>> servers = new ArrayList<>();
+		Map<String, CrdtStorage<String, TimestampContainer<Integer>>> clients = new HashMap<>();
+		Map<String, CrdtStorageMap<String, TimestampContainer<Integer>>> remoteStorages = new LinkedHashMap<>();
 		for (int i = 0; i < 10; i++) {
-			CrdtStorageTreeMap<String, Integer> storage = CrdtStorageTreeMap.create(eventloop, Math::max);
+			CrdtStorageMap<String, TimestampContainer<Integer>> storage = CrdtStorageMap.create(eventloop, TimestampContainer.createCrdtFunction(Integer::max));
 			InetSocketAddress address = new InetSocketAddress(5555 + i);
-			CrdtServer<String, Integer> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SERIALIZER);
+			CrdtServer<String, TimestampContainer<Integer>> server = CrdtServer.create(eventloop, storage, serializer);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
-			clients.put("server_" + i, CrdtStorageClient.create(eventloop, address, UTF8_SERIALIZER, INT_SERIALIZER));
+			clients.put("server_" + i, CrdtStorageClient.create(eventloop, address, serializer));
 			remoteStorages.put("server_" + i, storage);
 		}
 
-		CrdtStorageTreeMap<String, Integer> localStorage = CrdtStorageTreeMap.create(eventloop, Math::max);
+		CrdtStorageMap<String, TimestampContainer<Integer>> localStorage = CrdtStorageMap.create(eventloop, TimestampContainer.createCrdtFunction(Integer::max));
 		for (int i = 0; i < 25; i++) {
-			localStorage.put((char) (i + 97) + "", i + 1);
+			localStorage.put((char) (i + 97) + "", TimestampContainer.now(i + 1));
 		}
-		CrdtStorageCluster<String, String, Integer> cluster = CrdtStorageCluster.create(eventloop, clients, Math::max);
+		CrdtStorageCluster<String, String, TimestampContainer<Integer>> cluster = CrdtStorageCluster.create(eventloop, clients, TimestampContainer.createCrdtFunction(Integer::max));
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(cluster.upload()))
@@ -78,37 +79,41 @@ public final class TestCrdtCluster {
 	public void testDownload() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-		List<CrdtServer<String, Set<Integer>>> servers = new ArrayList<>();
-		Map<String, CrdtStorage<String, Set<Integer>>> clients = new HashMap<>();
-		Map<String, CrdtStorageTreeMap<String, Set<Integer>>> remoteStorages = new LinkedHashMap<>();
+		List<CrdtServer<String, TimestampContainer<Set<Integer>>>> servers = new ArrayList<>();
+		Map<String, CrdtStorage<String, TimestampContainer<Set<Integer>>>> clients = new HashMap<>();
+		Map<String, CrdtStorageMap<String, TimestampContainer<Set<Integer>>>> remoteStorages = new LinkedHashMap<>();
 
-		BinaryOperator<Set<Integer>> union = (a, b) -> {
+		CrdtFunction<TimestampContainer<Set<Integer>>> union = TimestampContainer.createCrdtFunction((a, b) -> {
 			a.addAll(b);
 			return a;
-		};
+		});
+		CrdtDataSerializer<String, TimestampContainer<Set<Integer>>> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SET_SERIALIZER));
 
 		for (int i = 0; i < 10; i++) {
-			CrdtStorageTreeMap<String, Set<Integer>> storage = CrdtStorageTreeMap.create(eventloop, union);
+			CrdtStorageMap<String, TimestampContainer<Set<Integer>>> storage = CrdtStorageMap.create(eventloop, union);
 
-			storage.put("test_1", new HashSet<>(singleton(i)));
-			storage.put("test_2", new HashSet<>(singleton(i / 2)));
-			storage.put("test_3", new HashSet<>(singleton(123)));
+			storage.put("test_1", TimestampContainer.now(new HashSet<>(singleton(i))));
+			storage.put("test_2", TimestampContainer.now(new HashSet<>(singleton(i / 2))));
+			storage.put("test_3", TimestampContainer.now(new HashSet<>(singleton(123))));
 
 			InetSocketAddress address = new InetSocketAddress(5555 + i);
-			CrdtServer<String, Set<Integer>> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SET_SERIALIZER);
+			CrdtServer<String, TimestampContainer<Set<Integer>>> server = CrdtServer.create(eventloop, storage, serializer);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
-			clients.put("server_" + i, CrdtStorageClient.create(eventloop, address, UTF8_SERIALIZER, INT_SET_SERIALIZER));
+			clients.put("server_" + i, CrdtStorageClient.create(eventloop, address, serializer));
 			remoteStorages.put("server_" + i, storage);
 		}
 
-		CrdtStorageTreeMap<String, Set<Integer>> localStorage = CrdtStorageTreeMap.create(eventloop, union);
-		CrdtStorageCluster<String, String, Set<Integer>> cluster = CrdtStorageCluster.create(eventloop, clients, union);
+		CrdtStorageMap<String, TimestampContainer<Set<Integer>>> localStorage = CrdtStorageMap.create(eventloop, union);
+		CrdtStorageCluster<String, String, TimestampContainer<Set<Integer>>> cluster = CrdtStorageCluster.create(eventloop, clients, union);
 
 		await(cluster.download()
-				.then(supplierWithResult -> supplierWithResult
+				.then(supplier -> supplier
 						.streamTo(StreamConsumer.of(localStorage::put))
-						.whenComplete(($, e) -> servers.forEach(AbstractServer::close))));
+						.whenComplete(($, e) -> {
+							System.out.println("!finish");
+							servers.forEach(AbstractServer::close);
+						})));
 
 		System.out.println("Data at 'local' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);
