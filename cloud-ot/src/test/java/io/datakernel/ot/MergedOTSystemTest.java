@@ -28,12 +28,13 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 
-import static io.datakernel.ot.OTSystem.mergeOtSystems;
+import static io.datakernel.ot.MergedOTSystem.mergeOtSystems;
 import static io.datakernel.ot.TransformResult.left;
 import static io.datakernel.ot.TransformResult.right;
 import static io.datakernel.ot.utils.TestSetName.setName;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.set;
+import static io.datakernel.util.CollectionUtils.concat;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -41,7 +42,7 @@ import static org.junit.Assert.*;
 
 @SuppressWarnings("ConstantConditions")
 @RunWith(DatakernelRunner.class)
-public final class OTSystemMergingTest {
+public final class MergedOTSystemTest {
 	private static final OTSystem<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> MERGED = mergeOtSystems(Tuple3::new,
 			Tuple3::getValue1, createAddIntSystem(),
 			Tuple3::getValue2, createTestSetSystem(),
@@ -147,6 +148,40 @@ public final class OTSystemMergingTest {
 		transform.right.forEach(stateRight::apply);
 
 		assertEquals(stateLeft, stateRight);
+	}
+
+	@Test
+	public void testTransformWithEmptyDiffs() throws OTTransformException {
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> diffs = asList(
+				new Tuple3<>(asList(add(12), add(13), add(-2)), emptyList(), emptyList()),
+				new Tuple3<>(emptyList(), asList(set(0, 10), set(10, 14)), emptyList())
+		);
+
+		TransformResult<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> transform1 = MERGED.transform(diffs, emptyList());
+		assertTrue(transform1.left.isEmpty());
+
+		TransformResult<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> transform2 = MERGED.transform(emptyList(), emptyList());
+		assertTrue(transform2.left.isEmpty());
+		assertTrue(transform2.right.isEmpty());
+	}
+
+	@Test
+	public void testSquashWithEmptyDiffs() {
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> squashed = MERGED.squash(emptyList());
+		assertTrue(squashed.isEmpty());
+
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> diffs = singletonList(
+				new Tuple3<>(asList(add(12), add(13), add(-2)), emptyList(), emptyList())
+		);
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> inverted = MERGED.invert(diffs);
+
+		assertTrue(MERGED.squash(concat(diffs, inverted)).isEmpty());
+	}
+
+	@Test
+	public void testInvertWithEmptyDiffs() {
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> invert = MERGED.invert(emptyList());
+		assertTrue(invert.isEmpty());
 	}
 
 	// region helpers
