@@ -21,18 +21,6 @@
     </license>
   </licenses>
 
-  <developers>
-    <developer>
-      <id>dvolvach</id>
-      <name>Dmitry Volvach</name>
-      <email>dmitry@datakernel.io</email>
-      <roles>
-        <role>owner</role>
-        <role>developer</role>
-      </roles>
-    </developer>
-  </developers>
-
   <modules>
     <module>core-eventloop</module>
     <module>core-bytebuf</module>
