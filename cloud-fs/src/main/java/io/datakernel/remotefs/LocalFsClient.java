@@ -450,6 +450,16 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		});
 	}
 
+	public Promise<Void> remove(String name) {
+		return ofBlockingCallable(executor, () -> {
+			FilenameInfo info = getInfo(name);
+			if (info != null) {
+				Files.deleteIfExists(info.getFilePath());
+			}
+			return null;
+		});
+	}
+
 	@Override
 	public String toString() {
 		return "LocalFsClient{storage=" + storage + '}';
@@ -477,7 +487,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private void doCopy(String name, String target, long targetRevision) throws StacklessException, IOException {
-
 		FilenameInfo info = getInfo(name);
 		if (info == null || info.isTombstone()) {
 			return;
@@ -568,9 +577,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			List<FilenameInfo> list = new ArrayList<>();
 			// optimization for listing all files
 			if ("**".equals(glob)) {
-				walkFiles(storage, path -> {
-					list.add(simpleFileInfo(path, defaultRevision));
-				});
+				walkFiles(storage, path -> list.add(simpleFileInfo(path, defaultRevision)));
 				return list;
 			}
 			// optimization for single-file requests
