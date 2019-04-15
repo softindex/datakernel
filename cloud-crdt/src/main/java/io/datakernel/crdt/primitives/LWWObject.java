@@ -15,6 +15,14 @@ public class LWWObject<T> implements CrdtType<LWWObject<T>> {
 		this.object = object;
 	}
 
+	public T getObject() {
+		return object;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
 	@Override
 	public LWWObject<T> merge(LWWObject<T> other) {
 		if (timestamp < other.timestamp) {

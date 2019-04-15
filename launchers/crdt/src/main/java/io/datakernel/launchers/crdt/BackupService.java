@@ -25,11 +25,8 @@ import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Set;
 
 @Singleton
 public final class BackupService<K extends Comparable<K>, S> implements EventloopService {
@@ -65,16 +62,12 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		if (backupPromise != null) {
 			return backupPromise;
 		}
-		Set<K> removedKeys = inMemory.getRemoved();
 		long lastTimestamp = this.lastTimestamp;
 		this.lastTimestamp = eventloop.currentTimeMillis();
 		return backupPromise = inMemory.download(lastTimestamp)
 				.then(supplierWithResult -> supplierWithResult
 						.streamTo(StreamConsumer.ofPromise(localFiles.upload()))
-						.then($ -> StreamSupplier.ofIterable(removedKeys)
-								.streamTo(StreamConsumer.ofPromise(localFiles.remove())))
 						.whenComplete(($, e) -> {
-							inMemory.cleanup();
 							backupPromise = null;
 						}));
 	}

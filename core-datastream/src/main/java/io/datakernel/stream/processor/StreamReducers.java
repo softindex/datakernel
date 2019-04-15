@@ -19,6 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.stream.StreamDataAcceptor;
 
 import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
 
 /**
  * Static utility methods pertaining to {@link Reducer}.
@@ -495,8 +496,15 @@ public final class StreamReducers {
 	public static class BinaryAccumulatorReducer<K, T> implements Reducer<K, T, T, T> {
 		private final BinaryOperator<T> combiner;
 
+		private Predicate<T> filter = $ -> true;
+
 		public BinaryAccumulatorReducer(BinaryOperator<T> combiner) {
 			this.combiner = combiner;
+		}
+
+		public BinaryAccumulatorReducer<K, T> withFilter(Predicate<T> filter) {
+			this.filter = filter;
+			return this;
 		}
 
 		@Override
@@ -511,7 +519,9 @@ public final class StreamReducers {
 
 		@Override
 		public void onComplete(StreamDataAcceptor<T> stream, K key, T accumulator) {
-			stream.accept(accumulator);
+			if (filter.test(accumulator)) {
+				stream.accept(accumulator);
+			}
 		}
 	}
 }

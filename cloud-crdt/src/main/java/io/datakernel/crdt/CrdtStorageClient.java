@@ -79,12 +79,12 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
-			CrdtDataSerializer<K, S> serializer) {
+																			  CrdtDataSerializer<K, S> serializer) {
 		return new CrdtStorageClient<>(eventloop, address, serializer);
 	}
 
 	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
-			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+																			  BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtStorageClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
@@ -100,6 +100,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 		return eventloop;
 	}
 
+	@SuppressWarnings("Duplicates") // see remove
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return connect()
@@ -145,6 +146,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 										.withLateBinding()));
 	}
 
+	@SuppressWarnings("Duplicates") // similar to upload but still to many different stuff
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return connect()
