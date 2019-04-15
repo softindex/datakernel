@@ -56,12 +56,13 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	private final Map<I, CrdtStorage<K, S>> aliveClients;
 	private final Map<I, CrdtStorage<K, S>> deadClients;
 
-	private final CrdtFunction<S> crdtFunction;
+	private final CrdtFunction<S> function;
 	private final RendezvousHashSharder<I, K> shardingFunction;
 
 	private List<I> orderedIds;
 
 	private int replicationCount = 1;
+	private CrdtFilter<S> filter = $ -> true;
 
 	// region JMX
 	private boolean detailedStats;
@@ -75,12 +76,12 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	// endregion
 
 	// region creators
-	private CrdtStorageCluster(Eventloop eventloop, Map<I, CrdtStorage<K, S>> clients, CrdtFunction<S> crdtFunction) {
+	private CrdtStorageCluster(Eventloop eventloop, Map<I, CrdtStorage<K, S>> clients, CrdtFunction<S> function) {
 		this.eventloop = eventloop;
 		this.clients = clients;
 		this.aliveClients = new LinkedHashMap<>(clients); // to keep order for indexed sharding
 		this.deadClients = new HashMap<>();
-		this.crdtFunction = crdtFunction;
+		this.function = function;
 		shardingFunction = RendezvousHashSharder.create(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
@@ -106,6 +107,11 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	public CrdtStorageCluster<I, K, S> withReplicationCount(int replicationCount) {
 		this.replicationCount = replicationCount;
 		recompute();
+		return this;
+	}
+
+	public CrdtStorageCluster<I, K, S> withFilter(CrdtFilter<S> filter) {
+		this.filter = filter;
 		return this;
 	}
 	// endregion
@@ -229,8 +235,9 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		return connect(storage -> storage.download(timestamp))
 				.then(successes -> {
 					StreamReducerSimple<K, CrdtData<K, S>, CrdtData<K, S>, CrdtData<K, S>> reducer =
-							StreamReducerSimple.create(CrdtData::getKey, Comparator.<K>naturalOrder(),
-									new BinaryAccumulatorReducer<>((a, b) -> new CrdtData<>(a.getKey(), crdtFunction.merge(a.getState(), b.getState()))));
+							StreamReducerSimple.create(CrdtData::getKey, Comparator.naturalOrder(),
+									new BinaryAccumulatorReducer<K, CrdtData<K, S>>((a, b) -> new CrdtData<>(a.getKey(), function.merge(a.getState(), b.getState())))
+											.withFilter(data -> filter.test(data.getState())));
 
 					successes.forEach(producer -> producer.streamTo(reducer.newInput()));
 

@@ -55,7 +55,7 @@ public interface CrdtStorage<K extends Comparable<K>, S> {
 
 	/**
 	 * Returns a consumer of keys to be removed from the CRDT storage.
-	 * Actual removal could be implemented differently, by actually deleting, or e.g. by timestamp tombstones.
+	 * This operation is not persistent and not guaranteed.
 	 *
 	 * @return stage of stream consumer of keys
 	 */

@@ -20,10 +20,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtFunction;
-import io.datakernel.crdt.CrdtStorage;
+import io.datakernel.crdt.*;
 import io.datakernel.crdt.primitives.CrdtType;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -52,7 +49,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	private final Eventloop eventloop;
 	private final Executor executor;
 	private final RocksDB db;
-	private final CrdtFunction<S> crdtFunction;
+	private final CrdtFunction<S> function;
 	private final BinarySerializer<K> keySerializer;
 	private final BinarySerializer<S> stateSerializer;
 
@@ -60,6 +57,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	private final WriteOptions writeOptions; // }
 
 	private MemSize bufferSize = MemSize.kilobytes(16);
+	private CrdtFilter<S> filter = $ -> true;
 
 	// region JMX
 	private boolean detailedStats;
@@ -77,11 +75,11 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	// endregion
 
 	private CrdtStorageRocksDB(Eventloop eventloop, Executor executor, RocksDB db,
-							   BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer, CrdtFunction<S> crdtFunction) {
+							   BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer, CrdtFunction<S> function) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.db = db;
-		this.crdtFunction = crdtFunction;
+		this.function = function;
 		this.keySerializer = keySerializer;
 		this.stateSerializer = stateSerializer;
 		flushOptions = new FlushOptions();
@@ -99,8 +97,13 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 		return new CrdtStorageRocksDB<>(eventloop, executor, db, serializer.getKeySerializer(), serializer.getStateSerializer(), CrdtFunction.ofCrdtType());
 	}
 
-	public CrdtStorageRocksDB withBufferSize(MemSize bufferSize) {
+	public CrdtStorageRocksDB<K, S> withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
+		return this;
+	}
+
+	public CrdtStorageRocksDB<K, S> withFilter(CrdtFilter<S> filter) {
+		this.filter = filter;
 		return this;
 	}
 
@@ -137,9 +140,17 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 
 		// custom merge operators in RocksJava are yet to come
 		if (possibleState != null) {
-			state = crdtFunction.merge(state, stateSerializer.decode(possibleState, 0));
+			state = function.merge(state, stateSerializer.decode(possibleState, 0));
+			if (!filter.test(state)) {
+				try {
+					db.delete(keyBytes);
+				} catch (RocksDBException e) {
+					throw new UncheckedException(e);
+				}
+				buf.recycle();
+				return;
+			}
 		}
-
 		buf.rewind();
 		buf.tail(stateSerializer.encode(buf.array(), buf.tail(), state));
 		try {
@@ -182,7 +193,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 								byte[] stateBytes = iterator.value();
 								iterator.next();
 
-								S partial = crdtFunction.extract(stateSerializer.decode(stateBytes, 0), timestamp);
+								S partial = function.extract(stateSerializer.decode(stateBytes, 0), timestamp);
 								if (partial != null) {
 									return new CrdtData<>(keySerializer.decode(keyBytes, 0), partial);
 								}

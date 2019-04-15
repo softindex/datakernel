@@ -46,12 +46,12 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 	}
 
 	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
-			CrdtDataSerializer<K, S> serializer) {
+																	   CrdtDataSerializer<K, S> serializer) {
 		return new CrdtServer<>(eventloop, client, serializer);
 	}
 
 	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
-			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+																	   BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
@@ -90,13 +90,13 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					}
 					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
 				})
-				.thenEx(($, e) -> {
+				.whenComplete(($, e) -> {
 					if (e == null) {
-						return Promise.complete();
+						return;
 					}
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
-					return messaging.send(new ServerError(prefix + e.getMessage()))
+					messaging.send(new ServerError(prefix + e.getMessage()))
 							.then($1 -> messaging.sendEndOfStream())
 							.whenResult($1 -> messaging.close());
 				});

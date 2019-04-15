@@ -19,6 +19,7 @@ package io.datakernel.crdt.local;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.CrdtData;
+import io.datakernel.crdt.CrdtFilter;
 import io.datakernel.crdt.CrdtFunction;
 import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.primitives.CrdtType;
@@ -38,7 +39,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
 
@@ -46,10 +49,11 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 	private static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
-	private final CrdtFunction<S> crdtFunction;
+	private final CrdtFunction<S> function;
+
+	private CrdtFilter<S> filter = $ -> true;
 
 	private final SortedMap<K, CrdtData<K, S>> storage = new ConcurrentSkipListMap<>();
-	private final Set<K> removed = new HashSet<>();
 
 	// region JMX
 	private boolean detailedStats;
@@ -66,9 +70,9 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 	private final EventStats singleRemoves = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 	// endregion
 
-	private CrdtStorageMap(Eventloop eventloop, CrdtFunction<S> crdtFunction) {
+	private CrdtStorageMap(Eventloop eventloop, CrdtFunction<S> function) {
 		this.eventloop = eventloop;
-		this.crdtFunction = crdtFunction;
+		this.function = function;
 	}
 
 	public static <K extends Comparable<K>, S> CrdtStorageMap<K, S> create(Eventloop eventloop, CrdtFunction<S> crdtFunction) {
@@ -103,11 +107,7 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
-		return Promise.of(StreamConsumer.<K>of(
-				key -> {
-					storage.remove(key);
-					removed.add(key);
-				})
+		return Promise.of(StreamConsumer.<K>of(storage::remove)
 				.transformWith(detailedStats ? removeStatsDetailed : removeStats)
 				.withLateBinding());
 	}
@@ -136,7 +136,7 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 		}
 		return stream
 				.map(data -> {
-					S partial = crdtFunction.extract(data.getState(), timestamp);
+					S partial = function.extract(data.getState(), timestamp);
 					return partial != null ? new CrdtData<>(data.getKey(), partial) : null;
 				})
 				.filter(Objects::nonNull);
@@ -144,8 +144,10 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 
 	private void doPut(CrdtData<K, S> data) {
 		K key = data.getKey();
-		removed.remove(key);
-		storage.merge(key, data, (a, b) -> new CrdtData<>(key, crdtFunction.merge(a.getState(), b.getState())));
+		storage.merge(key, data, (a, b) -> {
+			S merged = function.merge(a.getState(), b.getState());
+			return filter.test(merged) ? new CrdtData<>(key, merged) : null;
+		});
 	}
 
 	public void put(K key, S state) {
@@ -166,16 +168,7 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 
 	public boolean remove(K key) {
 		singleRemoves.recordEvent();
-		removed.add(key);
 		return storage.remove(key) != null;
-	}
-
-	public Set<K> getRemoved() {
-		return Collections.unmodifiableSet(removed);
-	}
-
-	public void cleanup() {
-		removed.clear();
 	}
 
 	public Iterator<CrdtData<K, S>> iterator(long timestamp) {

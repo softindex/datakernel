@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BinaryOperator;
 
-public class TimestampContainer<S> {
+public final class TimestampContainer<S> {
 	private final long timestamp;
 	private final S state;
 
