@@ -23,6 +23,8 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -38,11 +40,12 @@ import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.ot.OTAlgorithms.excludeParents;
+import static io.datakernel.ot.OTAlgorithms.merge;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -200,7 +203,9 @@ public final class OTDriver {
 		return Promises.firstSuccessful(
 				() -> service.loadCommit(myRepositoryId.getRepositoryId(), commitId),
 				() -> Promises.any(originRepositoryIds.stream()
-						.map(originRepositoryId -> service.loadCommit(originRepositoryId, commitId))))
+						.map(originRepositoryId -> service.loadCommit(originRepositoryId, commitId)))
+						.then(rawCommit -> service.save(myRepositoryId.getRepositoryId(), map(commitId, rawCommit))
+								.map($ -> rawCommit)))
 				.then(rawCommit -> ensureSimKey(myRepositoryId, originRepositoryIds, rawCommit.getSimKeyHash())
 						.map(simKey -> {
 							try {
@@ -282,6 +287,13 @@ public final class OTDriver {
 	public void changeCurrentSimKey(@NotNull SimKey currentSimKey) {
 		this.currentSimKey = currentSimKey;
 		simKeys.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
+	}
+
+	public static <D> Promise<Void> sync(OTRepository<CommitId, D> repository, OTSystem<D> system, Set<CommitId> otherHeads) {
+		return repository.getHeads()
+				.then(ourHeads -> excludeParents(repository, system, union(otherHeads, ourHeads))
+						.then(filtered -> merge(repository, system, filtered))
+						.then(mergeId -> repository.updateHeads(difference(singleton(mergeId), ourHeads), emptySet())));
 	}
 
 }
