@@ -46,7 +46,7 @@ public class AsyncFileServiceExample {
 
 	@NotNull
 	private static Promise<Void> writeToFile() {
-		FileChannel channel = null;
+		FileChannel channel;
 		try {
 			channel = FileChannel.open(PATH, set(WRITE, CREATE_NEW, APPEND));
 		} catch (IOException e) {
