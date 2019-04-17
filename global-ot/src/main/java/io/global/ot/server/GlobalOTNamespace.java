@@ -128,6 +128,11 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return ensureMasterRepositories.get();
 		}
 
+		public Promise<Void> ensureUpdated() {
+			return ensureMasterNodes()
+					.then($ -> node.isMasterFor(space) ? Promise.complete() : update().toTry().toVoid());
+		}
+
 		public Promise<Void> update() {
 			return update.get();
 		}
@@ -320,18 +325,20 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 				return node.getLocalHeadsInfo(repositoryId)
 						.then(headsInfo -> ChannelSupplier.ofPromise(master.download(repositoryId, headsInfo.getRequired(),
 								headsInfo.getExisting()))
-								.streamTo(ChannelConsumer.ofPromise(node.uploadLocal(repositoryId))));
+								.streamTo(node.uploadLocal(repositoryId)));
 			});
 		}
 
 		@NotNull
 		private Promise<Void> doPush() {
-			return forEachMaster(master -> {
-				logger.trace("{} pushing to {}", repositoryId, master);
-				return master.getHeadsInfo(repositoryId)
-						.then(headsInfo -> ChannelSupplier.ofPromise(node.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
-								.streamTo(ChannelConsumer.ofPromise(master.upload(repositoryId))));
-			});
+			return forEachMaster(this::doPush);
+		}
+
+		Promise<Void> doPush(GlobalOTNode master) {
+			logger.trace("{} pushing to {}", repositoryId, master);
+			return master.getHeadsInfo(repositoryId)
+					.then(headsInfo -> ChannelSupplier.ofPromise(node.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
+							.streamTo(ChannelConsumer.ofPromise(master.upload(repositoryId))));
 		}
 
 		@NotNull
