@@ -53,8 +53,14 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 
 	private MiddlewareServlet getServlet() {
 		return MiddlewareServlet.create()
-				.with(GET, "/" + CHECKOUT, request -> getNode(request).checkout()
-						.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
+				.with(GET, "/" + CHECKOUT, request -> {
+					try {
+						return getNode(request).checkout()
+								.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
 				.with(GET, "/" + FETCH, request -> {
 					try {
 						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id"));
@@ -111,8 +117,8 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 				.withBody(toJson(codec, item).getBytes(UTF_8));
 	}
 
-	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request) {
-		PrivKey privKey = request.get(PrivKey.class);
+	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request) throws ParseException {
+		PrivKey privKey = PrivKey.fromString(request.getCookie("Key"));
 		String suffix = request.getPathParameterOrNull("suffix");
 		String repositoryName = prefix + (suffix == null ? "" : ('/' + suffix));
 		RepoID repoID = RepoID.of(privKey, repositoryName);

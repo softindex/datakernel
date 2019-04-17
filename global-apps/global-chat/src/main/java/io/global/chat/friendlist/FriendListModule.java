@@ -10,7 +10,7 @@ import static io.global.chat.friendlist.FriendListOTSystem.createOTSystem;
 import static io.global.chat.friendlist.FriendListOperation.FRIEND_LIST_CODEC;
 
 public final class FriendListModule extends AbstractModule {
-	public static final String REPOSITORY_NAME = "friendList";
+	public static final String REPOSITORY_NAME = "chat/friends";
 
 	@Provides
 	@Singleton
