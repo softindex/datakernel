@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredEncoder;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
@@ -30,7 +31,11 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.putPositiveInt;
+import static io.datakernel.http.ContentTypes.JSON_UTF_8;
+import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
@@ -48,6 +53,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	private static final byte[] CODE_403_BYTES = encodeAscii("HTTP/1.1 403 Forbidden");
 	private static final byte[] CODE_404_BYTES = encodeAscii("HTTP/1.1 404 Not Found");
 	private static final byte[] CODE_500_BYTES = encodeAscii("HTTP/1.1 500 Internal Server Error");
+	private static final byte[] CODE_502_BYTES = encodeAscii("HTTP/1.1 502 Bad Gateway");
 	private static final byte[] CODE_503_BYTES = encodeAscii("HTTP/1.1 503 Service Unavailable");
 	private static final int LONGEST_FIRST_LINE_SIZE = CODE_500_BYTES.length;
 
@@ -69,14 +75,15 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return new HttpResponse(200);
 	}
 
+	@NotNull
 	public static HttpResponse ok201() {
 		return new HttpResponse(201);
 	}
 
+	@NotNull
 	public static HttpResponse ok206() {
 		return new HttpResponse(206);
 	}
-	// endregion
 
 	@NotNull
 	public static HttpResponse redirect302(@NotNull String url) {
@@ -93,8 +100,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		response.addHeader(WWW_AUTHENTICATE, challenge);
 		return response;
 	}
+	// endregion
 
-	// common builder methods
+	// region common builder methods
 	@NotNull
 	public HttpResponse withHeader(@NotNull HttpHeader header, @NotNull String value) {
 		addHeader(header, value);
@@ -160,6 +168,20 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		setBodyStream(stream);
 		return this;
 	}
+
+	@NotNull
+	public HttpResponse withPlainText(@NotNull String text) {
+		return withHeader(CONTENT_TYPE, ofContentType(PLAIN_TEXT_UTF_8))
+				.withBody(text.getBytes(UTF_8));
+	}
+
+	@NotNull
+	public <T> HttpResponse withJson(StructuredEncoder<T> encoder, T object) {
+		return withHeader(CONTENT_TYPE, ofContentType(JSON_UTF_8))
+				.withBody(JsonUtils.toJson(encoder, object).getBytes(UTF_8));
+	}
+
+	// endregion
 
 	public int getCode() {
 		assert !isRecycled();
@@ -231,6 +253,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				break;
 			case 500:
 				result = CODE_500_BYTES;
+				break;
+			case 502:
+				result = CODE_502_BYTES;
 				break;
 			case 503:
 				result = CODE_503_BYTES;

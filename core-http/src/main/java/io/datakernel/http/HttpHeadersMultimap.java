@@ -17,6 +17,9 @@ final class HttpHeadersMultimap<K, V> {
 		if (size++ > kvPairs.length / 4) {
 			resize();
 		}
+		// those -2's below are ok - first -1 is to get the modulo mask
+		// and second -1 is so that mask also floors the number to even
+		// (because we have flat array of pairs)
 		for (int i = key.hashCode() & (kvPairs.length - 2); ; i = (i + 2) & (kvPairs.length - 2)) {
 			if (kvPairs[i] == null) {
 				kvPairs[i] = key;
