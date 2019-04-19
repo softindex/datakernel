@@ -1,4 +1,4 @@
-package io.global.ot.editor.operations;
+package io.global.editor.document.edit;
 
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
@@ -7,17 +7,17 @@ import io.datakernel.ot.TransformResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.global.ot.editor.operations.DeleteOperation.delete;
-import static io.global.ot.editor.operations.InsertOperation.insert;
+import static io.global.editor.document.edit.DeleteOperation.delete;
+import static io.global.editor.document.edit.InsertOperation.insert;
 import static java.util.Collections.singletonList;
 
-public class EditorOTSystem {
-	private EditorOTSystem() {
+public class EditOTSystem {
+	private EditOTSystem() {
 		throw new AssertionError();
 	}
 
-	public static OTSystem<EditorOperation> createOTSystem() {
-		return OTSystemImpl.<EditorOperation>create()
+	public static OTSystem<EditOperation> createOTSystem() {
+		return OTSystemImpl.<EditOperation>create()
 				.withTransformFunction(InsertOperation.class, InsertOperation.class, transformInsertAndInsert())
 				.withTransformFunction(DeleteOperation.class, DeleteOperation.class, transformDeleteAndDelete())
 				.withTransformFunction(DeleteOperation.class, InsertOperation.class, transformDeleteAndInsert())
@@ -28,14 +28,14 @@ public class EditorOTSystem {
 				.withInvertFunction(InsertOperation.class, op -> singletonList(op.invert()))
 				.withInvertFunction(DeleteOperation.class, op -> singletonList(op.invert()))
 
-				.withSquashFunction(InsertOperation.class, InsertOperation.class, EditorOTSystem::squashInsertAndInsert)
-				.withSquashFunction(DeleteOperation.class, DeleteOperation.class, EditorOTSystem::squashDeleteAndDelete)
-				.withSquashFunction(DeleteOperation.class, InsertOperation.class, EditorOTSystem::squashDeleteAndInsert)
-				.withSquashFunction(InsertOperation.class, DeleteOperation.class, EditorOTSystem::squashInsertAndDelete);
+				.withSquashFunction(InsertOperation.class, InsertOperation.class, EditOTSystem::squashInsertAndInsert)
+				.withSquashFunction(DeleteOperation.class, DeleteOperation.class, EditOTSystem::squashDeleteAndDelete)
+				.withSquashFunction(DeleteOperation.class, InsertOperation.class, EditOTSystem::squashDeleteAndInsert)
+				.withSquashFunction(InsertOperation.class, DeleteOperation.class, EditOTSystem::squashInsertAndDelete);
 	}
 
 	@NotNull
-	private static TransformFunction<EditorOperation, InsertOperation, InsertOperation> transformInsertAndInsert() {
+	private static TransformFunction<EditOperation, InsertOperation, InsertOperation> transformInsertAndInsert() {
 		return (left, right) -> {
 			if (left.getPosition() == right.getPosition() && left.getContent().equals(right.getContent())) {
 				return TransformResult.empty();
@@ -52,11 +52,11 @@ public class EditorOTSystem {
 	}
 
 	@NotNull
-	private static TransformFunction<EditorOperation, DeleteOperation, DeleteOperation> transformDeleteAndDelete() {
+	private static TransformFunction<EditOperation, DeleteOperation, DeleteOperation> transformDeleteAndDelete() {
 		return (left, right) -> {
 			// Left operation always has lesser position
 			if (left.getPosition() > right.getPosition()) {
-				TransformResult<EditorOperation> result = doTransformDeleteAndDelete(right, left);
+				TransformResult<EditOperation> result = doTransformDeleteAndDelete(right, left);
 				return TransformResult.of(result.right, result.left);
 			} else {
 				return doTransformDeleteAndDelete(left, right);
@@ -65,7 +65,7 @@ public class EditorOTSystem {
 	}
 
 	@NotNull
-	private static TransformFunction<EditorOperation, DeleteOperation, InsertOperation> transformDeleteAndInsert() {
+	private static TransformFunction<EditOperation, DeleteOperation, InsertOperation> transformDeleteAndInsert() {
 		return (left, right) -> {
 			if (left.getPosition() == right.getPosition()) {
 				return TransformResult.of(right, delete(right.getPosition() + right.getLength(), left.getContent().substring(0, left.getLength())));
@@ -86,7 +86,7 @@ public class EditorOTSystem {
 		};
 	}
 
-	private static TransformResult<EditorOperation> doTransformDeleteAndDelete(DeleteOperation left, DeleteOperation right) {
+	private static TransformResult<EditOperation> doTransformDeleteAndDelete(DeleteOperation left, DeleteOperation right) {
 		if (left.equals(right)) {
 			return TransformResult.empty();
 		}
@@ -122,7 +122,7 @@ public class EditorOTSystem {
 	}
 
 	@Nullable
-	private static EditorOperation squashInsertAndInsert(InsertOperation first, InsertOperation second) {
+	private static EditOperation squashInsertAndInsert(InsertOperation first, InsertOperation second) {
 		if (first.getPosition() <= second.getPosition() && first.getPosition() + first.getLength() >= second.getPosition()) {
 			return insert(first.getPosition(),
 					first.getContent().substring(0, second.getPosition() - first.getPosition()) +
@@ -134,7 +134,7 @@ public class EditorOTSystem {
 	}
 
 	@Nullable
-	private static EditorOperation squashDeleteAndDelete(DeleteOperation first, DeleteOperation second) {
+	private static EditOperation squashDeleteAndDelete(DeleteOperation first, DeleteOperation second) {
 		// Second delete should overlap with first's position
 		if (second.getPosition() <= first.getPosition() && second.getPosition() + second.getLength() >= first.getPosition()) {
 			return delete(second.getPosition(),
@@ -147,7 +147,7 @@ public class EditorOTSystem {
 	}
 
 	@Nullable
-	private static EditorOperation squashInsertAndDelete(InsertOperation first, DeleteOperation second) {
+	private static EditOperation squashInsertAndDelete(InsertOperation first, DeleteOperation second) {
 		// Operations cancel each other
 		if (second.getPosition() == first.getPosition() && second.getContent().equals(first.getContent())) {
 			// Empty operation
@@ -172,7 +172,7 @@ public class EditorOTSystem {
 	}
 
 	@Nullable
-	private static EditorOperation squashDeleteAndInsert(DeleteOperation first, InsertOperation second) {
+	private static EditOperation squashDeleteAndInsert(DeleteOperation first, InsertOperation second) {
 		// if positions match
 		if (first.getPosition() == second.getPosition()) {
 			if (second.getLength() <= first.getLength()) {
@@ -194,14 +194,14 @@ public class EditorOTSystem {
 	}
 
 	@NotNull
-	private static DeleteOperation getDelete(EditorOperation first, EditorOperation second) {
+	private static DeleteOperation getDelete(EditOperation first, EditOperation second) {
 		return delete(second.getPosition(),
 				second.getContent().substring(0, first.getPosition() - second.getPosition()) +
 						second.getContent().substring(first.getPosition() - second.getPosition() + first.getLength()));
 	}
 
 	@Nullable
-	private static EditorOperation getInsert(EditorOperation first, EditorOperation second) {
+	private static EditOperation getInsert(EditOperation first, EditOperation second) {
 		assert second.getLength() > first.getLength();
 		assert first.getPosition() == second.getPosition();
 

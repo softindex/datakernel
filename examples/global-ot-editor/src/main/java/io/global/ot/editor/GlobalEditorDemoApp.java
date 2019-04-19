@@ -29,8 +29,8 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
+import io.global.editor.document.edit.EditOperation;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.editor.operations.EditorOperation;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -38,8 +38,8 @@ import java.util.function.Function;
 
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static io.global.ot.editor.operations.EditorOTSystem.createOTSystem;
-import static io.global.ot.editor.operations.Utils.OPERATION_CODEC;
+import static io.global.editor.Utils.EDIT_OPERATION_CODEC;
+import static io.global.editor.document.edit.EditOTSystem.createOTSystem;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
@@ -66,12 +66,12 @@ public final class GlobalEditorDemoApp extends Launcher {
 										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new OTCommonModule<EditorOperation>() {
+				new OTCommonModule<EditOperation>() {
 					@Override
 					protected void configure() {
-						bind(new TypeLiteral<StructuredCodec<EditorOperation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeLiteral<Function<EditorOperation, String>>() {}).toInstance(Objects::toString);
-						bind(new TypeLiteral<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
+						bind(new TypeLiteral<StructuredCodec<EditOperation>>() {}).toInstance(EDIT_OPERATION_CODEC);
+						bind(new TypeLiteral<Function<EditOperation, String>>() {}).toInstance(Objects::toString);
+						bind(new TypeLiteral<OTSystem<EditOperation>>() {}).toInstance(createOTSystem());
 					}
 				},
 				override(new GlobalNodesModule())

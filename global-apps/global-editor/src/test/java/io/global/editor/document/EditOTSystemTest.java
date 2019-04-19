@@ -1,22 +1,25 @@
-package io.global.ot.editor.operations;
+package io.global.editor.document;
 
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.exceptions.OTTransformException;
+import io.global.editor.document.edit.DeleteOperation;
+import io.global.editor.document.edit.EditOTSystem;
+import io.global.editor.document.edit.EditOperation;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
 import java.util.List;
 
-import static io.global.ot.editor.operations.DeleteOperation.delete;
-import static io.global.ot.editor.operations.InsertOperation.insert;
+import static io.global.editor.document.edit.DeleteOperation.delete;
+import static io.global.editor.document.edit.InsertOperation.insert;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
-public class EditorOTSystemTest {
-	private static final OTSystem<EditorOperation> SYSTEM = EditorOTSystem.createOTSystem();
+public class EditOTSystemTest {
+	private static final OTSystem<EditOperation> SYSTEM = EditOTSystem.createOTSystem();
 	private static final String INITIAL_STATE = "abcdefghij";
 
 	// region inserts
@@ -174,16 +177,16 @@ public class EditorOTSystemTest {
 	}
 	// endregion
 
-	private void test(EditorOperation left, EditorOperation right) {
+	private void test(EditOperation left, EditOperation right) {
 		doTestTransformation(left, right);
 		doTestTransformation(right, left);
 	}
 
-	private void doTestTransformation(EditorOperation left, EditorOperation right) {
+	private void doTestTransformation(EditOperation left, EditOperation right) {
 		try {
 			StringBuilder stateLeft = new StringBuilder(INITIAL_STATE);
 			StringBuilder stateRight = new StringBuilder(INITIAL_STATE);
-			TransformResult<EditorOperation> result = SYSTEM.transform(left, right);
+			TransformResult<EditOperation> result = SYSTEM.transform(left, right);
 
 			checkIfValid(left, stateLeft);
 			left.apply(stateLeft);
@@ -205,9 +208,9 @@ public class EditorOTSystemTest {
 		}
 	}
 
-	private void testSquash(@Nullable List<EditorOperation> expectedSquash, EditorOperation first, EditorOperation second) {
-		List<EditorOperation> ops = asList(first, second);
-		List<EditorOperation> actualSquash = SYSTEM.squash(ops);
+	private void testSquash(@Nullable List<EditOperation> expectedSquash, EditOperation first, EditOperation second) {
+		List<EditOperation> ops = asList(first, second);
+		List<EditOperation> actualSquash = SYSTEM.squash(ops);
 		if (expectedSquash == null) {
 			assertEquals(ops, actualSquash);
 		} else {
@@ -215,7 +218,7 @@ public class EditorOTSystemTest {
 		}
 	}
 
-	private void checkIfValid(EditorOperation operation, StringBuilder builder) {
+	private void checkIfValid(EditOperation operation, StringBuilder builder) {
 		if (operation instanceof DeleteOperation) {
 			int position = operation.getPosition();
 			String content = operation.getContent();

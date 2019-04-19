@@ -1,9 +1,9 @@
-package io.global.ot.editor.operations;
+package io.global.editor.document.edit;
 
-public interface EditorOperation {
+public interface EditOperation {
 	void apply(StringBuilder builder);
 
-	EditorOperation invert();
+	EditOperation invert();
 
 	int getPosition();
 

@@ -1,13 +1,13 @@
-package io.global.ot.editor.operations;
+package io.global.editor.document.edit;
 
 import io.datakernel.codec.StructuredCodec;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.global.ot.editor.operations.DeleteOperation.delete;
-import static io.global.ot.editor.operations.Utils.limit;
+import static io.datakernel.util.StringFormatUtils.limit;
+import static io.global.editor.document.edit.DeleteOperation.delete;
 
-public class InsertOperation implements EditorOperation {
+public class InsertOperation implements EditOperation {
 	public static final StructuredCodec<InsertOperation> INSERT_CODEC = object(InsertOperation::new,
 			"pos", InsertOperation::getPosition, INT_CODEC,
 			"content", InsertOperation::getContent, STRING_CODEC);
@@ -31,7 +31,7 @@ public class InsertOperation implements EditorOperation {
 	}
 
 	@Override
-	public EditorOperation invert() {
+	public EditOperation invert() {
 		return delete(position, content);
 	}
 

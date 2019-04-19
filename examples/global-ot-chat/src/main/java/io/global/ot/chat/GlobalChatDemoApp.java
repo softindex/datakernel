@@ -11,6 +11,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
+import io.global.chat.chatroom.messages.Message;
 import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
@@ -23,7 +24,6 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.global.chat.Utils.MESSAGE_OPERATION_CODEC;
 import static io.global.chat.chatroom.messages.MessagesOTSystem.createOTSystem;
-import static io.global.ot.chat.operations.Utils.DIFF_TO_STRING;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
@@ -33,6 +33,16 @@ public final class GlobalChatDemoApp extends Launcher {
 	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	public static final String DEFAULT_SERVER_ID = "Chat Node";
+	public static final int CONTENT_MAX_LENGTH = 10;
+	public static final Function<MessageOperation, String> DIFF_TO_STRING = op -> {
+		Message message = op.getMessage();
+		String author = message.getAuthor();
+		String allContent = message.getContent();
+		String content = allContent.length() > CONTENT_MAX_LENGTH ?
+				(allContent.substring(0, CONTENT_MAX_LENGTH) + "...") :
+				allContent;
+		return (op.isTombstone() ? "-" : "+") + '[' + author + ':' + content + ']';
+	};
 
 	@Inject
 	@Named("Example")

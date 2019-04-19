@@ -18,6 +18,7 @@
     <module>global-fs-app</module>
     <module>global-fs-cli</module>
     <module>global-chat</module>
+    <module>global-editor</module>
   </modules>
 
   <dependencies>
