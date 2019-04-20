@@ -7,14 +7,6 @@ creates a Worker Pool with 4 workers. [Launch](#3-worker-pool-module-example)
 
 ### 1. Config Module Example
 #### Launching
-To run the examples in console, you should execute these lines in appropriate folder:
-``` 
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/boot
-$ mvn exec:java@ConfigModuleExample
-```
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -47,14 +39,6 @@ There are also some other ways of initialization of `ConfigModule`, such as:
 
 ### 2. Service Graph Module Example
 #### Launching
-To run the examples in console, you should execute these lines in appropriate folder:
-``` 
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/boot
-$ mvn exec:java@ServiceGraphModuleExample
-```
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -74,14 +58,6 @@ You will see a `Hello World` output. This output is conducted via Eventloop, whi
 
 ### 3. Worker Pool Module Example
 #### Launching
-To run the examples in console, you should execute these lines in appropriate folder:
-``` 
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/boot
-$ mvn exec:java@WorkerPoolModuleExample
-```
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

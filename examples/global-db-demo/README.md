@@ -2,21 +2,9 @@
 Global-DB demo application shows an example of uploading and downloading data within the network.
 You can run the demo application in **3 steps**:
 
-#### 1. Clone DataKernel project
-You can clone the project either in console:
-```
-$ git clone https://github.com/softindex/datakernel.git
-```
-Or with IDE tools.
+#### 1. Clone DataKernel project with IDE tools
 
 #### 2. Set up the project
-
-If you'd like to run the example in console, you need to install DataKernel:
-```
-$ cd datakernel
-$ mvn clean install -DskipTests
-```
-
 To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
 work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
@@ -27,13 +15,6 @@ $MODULE_WORKING_DIR$||`.
 Then build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 #### 3. Run Global-DB demo app
-
-To run the app in console enter these commands:
-```
-$ cd datakernel/examples/global-db-demo
-$ mvn exec:java@GlobalDbDemoApp
-```
-In IDE:
 Open *GlobalDbDemoApp* class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
 *main()* method.
 

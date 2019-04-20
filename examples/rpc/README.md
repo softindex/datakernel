@@ -2,14 +2,6 @@
 shows a "Hello World" RPC client and and server interaction.
 
 #### Launch
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/rpc
-$ mvn exec:java@RpcExample
-```
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

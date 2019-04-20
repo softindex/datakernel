@@ -3,20 +3,9 @@ an example of conflict-free merging of two modified replicas.
 
 You can run the example in 3 steps:
 
-#### 1. Clone DataKernel project locally 
-You can do it either in console:
-```
-$ git clone https://github.com/softindex/datakernel.git
-```
-Or with IDE tools.
+#### 1. Clone DataKernel project locally with IDE tools
 
 #### 2. Set up the project
-If you'd like to run the example in console, you should install DataKernel:
-```
-$ cd datakernel
-$ mvn clean install -DskipTests
-```
-
 To run the example in an IDE, set up default working directory of run configurations in your IDE so that the example can 
 work correctly. In accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
@@ -27,12 +16,7 @@ $MODULE_WORKING_DIR$||`.
 Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 #### 3. Run `CrdtExample`
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ cd datakernel/examples/crdt
-$ mvn exec:java@CrdtExample
-```
-To run the example in IDE, open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its 
+Open `CrdtExample` class which is located at **datakernel -> examples -> crdt** and run its 
 *main()* method.
 
 #### Explanation

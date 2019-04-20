@@ -4,17 +4,6 @@ implementation of echo server that is looping infinitely while trying to get dat
 implementation of echo server utilizing `NioChannelEventHandler`.
 
 #### Launch 
-To run the examples in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/eventloop
-$ mvn exec:java@BusyWaitEventloopEchoServer
-$ # or
-$ mvn exec:java@SelectorEventloopEchoServer
-```
-
 To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

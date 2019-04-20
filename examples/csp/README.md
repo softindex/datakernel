@@ -9,15 +9,6 @@ represents communication between `ChannelSupplier` and `ChannelConsumer` utilizi
 
 ### 1. ByteBufs Parser Example
 #### Launch
-To run the example in console, you should enter these commands in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/csp
-$ mvn exec:java@ByteBufsParserExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -57,15 +48,6 @@ public class ByteBufsParserExample {
 
 ### 2. Channel Example
 #### Launch
-To run the example in console, you should enter these commands in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/csp
-$ mvn exec:java@ChannelExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

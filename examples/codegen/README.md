@@ -5,15 +5,6 @@ dynamically creates a class with method *sayHello()* which is described using ex
 
 ### 1. Dynamic Class Creation Example
 #### Launch
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/codegen
-$ mvn exec:java@DynamicClassCreationExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -71,15 +62,6 @@ Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Threa
 
 ### 2. Expressions Example
 #### Launch
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/codegen
-$ mvn exec:java@ExpressionsExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

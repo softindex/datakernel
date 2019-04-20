@@ -5,19 +5,6 @@ uploading file to `RemoteFsServer`.
 3. [File Download Example](https://github.com/softindex/datakernel/blob/master/examples/remotefs/src/main/java/io/datakernel/examples/FileDownloadExample.java) - 
 downloading file from `RemoteFsServer`.
 
-To run these three example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/remotefs
-$ mvn exec:java@ServerSetupExample
-$ # start another process
-$ mvn exec:java@FileUploadExample
-$ # start another process
-$ mvn exec:java@FileDownloadExample
-```
-
 To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

@@ -17,16 +17,6 @@ compatibility:
 
 ### 1. Simple Supplier
 #### Launch
-
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/datastreams
-$ mvn exec:java@SupplierExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -71,16 +61,6 @@ public static void main(String[] args) {
 
 ### 2. Simple Consumer
 #### Launch
-
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/datastreams
-$ mvn exec:java@ConsumerExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -108,15 +88,6 @@ overridden methods *onStarted()*, *onEndOfStream()* and *onError()*.
 
 ### 3. Custom Transformer
 #### Launch
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/datastreams
-$ mvn exec:java@TransformerExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -142,16 +113,6 @@ This is the result of transforming `StreamSupplier.of("testdata", "testdata1", "
 
 ### 4. Built-in Stream Nodes
 #### Launch
-
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/datastreams
-$ mvn exec:java@BuitinStreamNodesExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -250,18 +211,6 @@ private static void filter() {
 
 ### 5. Datasteams and CSP compatibility example
 #### Launch
-
-To run the example in console, you should execute these lines in appropriate folder in the order given here:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/datastreams
-$ mvn exec:java@NetworkDemoServer
-$ # then
-$ mvn exec:java@NetworkDemoClient
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

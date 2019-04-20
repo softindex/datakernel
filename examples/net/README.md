@@ -99,16 +99,8 @@ server.listen();
 
 ### TCP Ping Pong Socket Connection
 #### Launch
-To run **Ping Pong Socket Connection** example in console enter these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/net
-$ mvn exec:java@PingPongSocketConnection
-```
-To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
-set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
+To run **Ping Pong Socket Connection** example in an IDE, you need to clone DataKernel locally and import it as a Maven project. 
+Then you should set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
 
 In IntelliJ IDEA you can do it in the following way:
@@ -125,12 +117,8 @@ interface which describes asynchronous read and write operations.
 
 ### TCP Client
 This example should be launched after one of the [Echo Servers](#echo-servers) is started in order to connect to your server. 
-You can start TCP Client either in console:
-```
-$ cd datakernel/examples/net
-$ mvn exec:java@TcpClientExample
-```
-or in an IDE, by opening `TcpClientExample` class which is located at **datakernel -> examples -> net** and running its *main()* method.
+You can start TCP Client by opening `TcpClientExample` class which is located at **datakernel -> examples -> net** and 
+running its *main()* method.
 
 Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
 feel free to run multiple **TCP Client**s and check out how it works. 

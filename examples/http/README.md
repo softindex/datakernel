@@ -20,18 +20,6 @@ an example of `StaticServlet` utilizing.
 
 ### 1. "Hello World" Server Examples
 #### Launch
-
-To run the examples in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/http
-$ mvn exec:java@HttpServerExample
-$ # or
-$ mvn exec:java@HttpMultithreadedServerExample
-```
-
 To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -48,11 +36,7 @@ Then open one of the classes:
 which are located at **datakernel -> examples -> http** and run *main()* of the chosen example.
 
 To check how **HTTP Server Example** or **HTTP Multithreaded Server Example** works, you should start your client 
-either in console:
-```
-$ mvn exec:java@HttpClientExample
-```
-or in an IDE, by opening `HttpClientExample` class which is located at the same folder and running its *main()* method.
+by opening `HttpClientExample` class which is located at the same folder and running its *main()* method.
 
 #### Explanation
 
@@ -72,20 +56,6 @@ several worker threads for requests processing.
 
 ### 2. Servlet Examples
 #### Launch
-To run the examples in console, you should execute these lines in appropriate folder:
-
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/http
-$ mvn exec:java@MiddlewareServletExample
-$ # or
-$ mvn exec:java@RequestParametrExample
-$ # or
-$ mvn exec:java@StaticServletExample
-```
-
 To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

@@ -12,15 +12,6 @@ shows how queues of ByteBufs are created and processed. [Launch](#bytebuf-queue-
 
 ### ByteBuf Example
 #### Launch 
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/bytebuf
-$ mvn exec:java@ByteBufExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -107,15 +98,6 @@ byteBuf.ofWriteByteBuffer(buffer);
 
 ### ByteBuf Pool Example
 #### Launch 
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/bytebuf
-$ mvn exec:java@ByteBufPoolExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -223,15 +205,6 @@ public class ByteBufPoolExample {
 
 ### ByteBuf Queue Example
 #### Launch 
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/bytebuf
-$ mvn exec:java@ByteBufQueueExample
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 

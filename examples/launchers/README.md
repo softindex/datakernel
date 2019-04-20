@@ -13,15 +13,6 @@ an example of setting up a simple HTTP server utilizing `HttpServerLauncher`.
 
 ### "Hello World" 
 #### Launch
-To run the example in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/launchers
-$ mvn exec:java@HelloWorldLauncher
-```
-
 To run the example in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the example can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
@@ -65,17 +56,6 @@ When creating launchers, you can override these methods:
 
 ### HTTP
 #### Launch
-To run the examples in console, you should execute these lines in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel
-$ cd datakernel
-$ mvn clean install -DskipTests
-$ cd examples/launchers
-$ mvn exec:java@HttpServerScratch
-# or 
-$ mvn exec:java@HttpSimpleServer
-```
-
 To run the examples in an IDE, you need to clone DataKernel locally and import it as a Maven project. Then you should 
 set up default working directory of run configurations in your IDE so that the examples can work correctly. In 
 accordance to DataKernel module structure, the working directory should be set to the module folder. 
