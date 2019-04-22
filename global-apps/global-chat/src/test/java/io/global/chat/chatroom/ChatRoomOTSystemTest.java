@@ -28,7 +28,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.global.chat.Utils.CHAT_ROOM_CODEC;
 import static io.global.chat.Utils.createMergedOTSystem;
 import static io.global.chat.chatroom.messages.MessageOperation.insert;
-import static io.global.chat.chatroom.roomname.ChangeRoomName.changeName;
+import static io.global.ot.name.ChangeName.changeName;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.junit.Assert.*;

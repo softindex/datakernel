@@ -1,7 +1,7 @@
 package io.global.editor.document;
 
 import io.datakernel.ot.OTState;
-import io.global.editor.document.name.ChangeDocumentName;
+import io.global.ot.name.ChangeName;
 
 import java.util.List;
 
@@ -20,7 +20,7 @@ public final class DocumentOTState implements OTState<DocumentMultiOperation> {
 	@Override
 	public void apply(DocumentMultiOperation multiOperation) {
 		multiOperation.getEditOps().forEach(op -> op.apply(content));
-		List<ChangeDocumentName> documentNameOps = multiOperation.getDocumentNameOps();
+		List<ChangeName> documentNameOps = multiOperation.getDocumentNameOps();
 		if (!documentNameOps.isEmpty()) {
 			documentName = getLast(documentNameOps).getNext();
 		}

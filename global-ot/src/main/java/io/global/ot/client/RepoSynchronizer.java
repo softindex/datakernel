@@ -38,19 +38,17 @@ public final class RepoSynchronizer<D> implements EventloopService {
 
 	private RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
-	private RepoSynchronizer(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem,
-			StructuredCodec<D> diffCodec, String repoName, KeyPair keys) {
+	private RepoSynchronizer(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem, MyRepositoryId<D> myRepositoryId) {
 		this.eventloop = eventloop;
 		this.driver = driver;
 		this.otSystem = otSystem;
-		this.diffCodec = diffCodec;
-		this.repoName = repoName;
-		this.keys = keys;
+		this.diffCodec = myRepositoryId.getDiffCodec();
+		this.repoName = myRepositoryId.getRepositoryId().getName();
+		this.keys = myRepositoryId.getPrivKey().computeKeys();
 	}
 
-	public static <D> RepoSynchronizer<D> create(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem,
-			StructuredCodec<D> diffCodec, String repoName, KeyPair keys) {
-		return new RepoSynchronizer<>(eventloop, driver, otSystem, diffCodec, repoName, keys);
+	public static <D> RepoSynchronizer<D> create(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem, MyRepositoryId<D> myRepositoryId) {
+		return new RepoSynchronizer<>(eventloop, driver, otSystem, myRepositoryId);
 	}
 
 	public RepoSynchronizer<D> withRetryPolicy(RetryPolicy retryPolicy) {

@@ -3,32 +3,42 @@ package io.global.editor;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.TypeLiteral;
 import com.google.inject.name.Named;
-import io.datakernel.async.AsyncPredicate;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.util.guice.OptionalDependency;
-import io.global.common.PrivKey;
+import io.datakernel.ot.OTSystem;
 import io.global.common.SimKey;
 import io.global.editor.document.DocumentMultiOperation;
-import io.global.editor.documentlist.DocumentListOperation;
-import io.global.editor.friendlist.FriendListOperation;
-import io.global.editor.service.RoomListServiceHolder;
-import io.global.editor.service.ServiceEnsuringServlet;
+import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.client.OTDriver;
+import io.global.ot.friendlist.ContactsOperation;
 import io.global.ot.server.GlobalOTNodeImpl;
+import io.global.ot.service.ServiceEnsuringServlet;
+import io.global.ot.service.messaging.MessagingServlet;
+import io.global.ot.shared.SharedReposOperation;
 
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.editor.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
+import static io.global.editor.Utils.createMergedOTSystem;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
 public final class EditorModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 
+	@Override
+	protected void configure() {
+		bind(new TypeLiteral<OTSystem<DocumentMultiOperation>>() {}).toInstance(createMergedOTSystem());
+		bind(new TypeLiteral<StructuredCodec<DocumentMultiOperation>>() {}).toInstance(DOCUMENT_MULTI_OPERATION_CODEC);
+		super.configure();
+	}
+
 	@Provides
 	@Singleton
-	@Named("Chat")
+	@Named("Editor")
 	AsyncHttpServer provideServer(Eventloop eventloop, ServiceEnsuringServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
@@ -37,14 +47,16 @@ public final class EditorModule extends AbstractModule {
 	@Provides
 	@Singleton
 	MiddlewareServlet provideMainServlet(
-			DynamicOTNodeServlet<FriendListOperation> friendsListServlet,
-			DynamicOTNodeServlet<DocumentListOperation> roomListServlet,
-			DynamicOTNodeServlet<DocumentMultiOperation> roomServlet
+			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
+			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
+			DynamicOTNodeServlet<DocumentMultiOperation> roomServlet,
+			MessagingServlet messagingServlet
 	) {
 		return MiddlewareServlet.create()
-				.with("/friends", friendsListServlet)
+				.with("/contacts", contactsServlet)
 				.with("/index", roomListServlet)
-				.with("/room/:suffix", roomServlet);
+				.with("/document/:suffix", roomServlet)
+				.with("/documents", messagingServlet);
 	}
 
 	@Provides
@@ -54,19 +66,4 @@ public final class EditorModule extends AbstractModule {
 		return new OTDriver(node, simKey);
 	}
 
-	@Provides
-	@Singleton
-	ServiceEnsuringServlet providePrivKeyEnsuringServlet(RoomListServiceHolder serviceHolder, MiddlewareServlet servlet,
-			OptionalDependency<AsyncPredicate<PrivKey>> maybeKeyValidator) {
-
-		ServiceEnsuringServlet serviceEnsuringServlet = ServiceEnsuringServlet.create(serviceHolder, servlet);
-		maybeKeyValidator.ifPresent(serviceEnsuringServlet::withKeyValidator);
-		return serviceEnsuringServlet;
-	}
-
-	@Provides
-	@Singleton
-	RoomListServiceHolder provideRoomListServiceHolder(Eventloop eventloop, OTDriver driver) {
-		return RoomListServiceHolder.create(eventloop, driver);
-	}
 }

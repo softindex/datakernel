@@ -12,9 +12,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.global.chat.chatroom.RoomModule;
-import io.global.chat.friendlist.FriendListModule;
-import io.global.chat.roomlist.RoomListModule;
+import io.global.chat.chatroom.ChatMultiOperation;
 import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -26,8 +24,14 @@ import io.global.common.api.SharedKeyStorage;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.launchers.GlobalNodesModule;
+import io.global.ot.SharedRepoModule;
+import io.global.ot.friendlist.ContactsModule;
 import io.global.ot.server.CommitStorage;
+import io.global.ot.service.UserContainerModule;
+import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.stub.CommitStorageStub;
+import io.global.pm.MapMessageStorage;
+import io.global.pm.api.MessageStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,6 +49,8 @@ public final class ChatLauncher extends Launcher {
 	private static final String PROPERTIES_FILE = "chat.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	private static final String DEFAULT_SERVER_ID = "http://127.0.0.1:9000";
+	private static final String CHAT_REPO_PREFIX = "chat/room";
+	private static final String CHAT_INDEX_REPO = "chat/index";
 
 	@Inject
 	@Named("Chat")
@@ -61,10 +67,11 @@ public final class ChatLauncher extends Launcher {
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new RoomModule(),
 				new ChatModule(),
-				new FriendListModule(),
-				new RoomListModule(),
+				new ContactsModule(),
+				new IndexRepoModule(CHAT_INDEX_REPO),
+				new UserContainerModule<ChatMultiOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
+				new SharedRepoModule<ChatMultiOperation>(CHAT_REPO_PREFIX) {},
 				// override for debug purposes
 				override(new GlobalNodesModule())
 						.with(new AbstractModule() {
@@ -80,6 +87,12 @@ public final class ChatLauncher extends Launcher {
 							@Singleton
 							CommitStorage provideCommitStorage() {
 								return new CommitStorageStub();
+							}
+
+							@Provides
+							@Singleton
+							MessageStorage provideMessageStorage() {
+								return new MapMessageStorage();
 							}
 						})
 		);

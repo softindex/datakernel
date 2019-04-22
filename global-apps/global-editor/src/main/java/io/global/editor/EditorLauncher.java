@@ -22,12 +22,16 @@ import io.global.common.api.DiscoveryService;
 import io.global.common.api.SharedKeyStorage;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.stub.InMemorySharedKeyStorage;
-import io.global.editor.document.DocumentModule;
-import io.global.editor.documentlist.DocumentListModule;
-import io.global.editor.friendlist.FriendListModule;
+import io.global.editor.document.DocumentMultiOperation;
 import io.global.launchers.GlobalNodesModule;
+import io.global.ot.SharedRepoModule;
+import io.global.ot.friendlist.ContactsModule;
 import io.global.ot.server.CommitStorage;
+import io.global.ot.service.UserContainerModule;
+import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.stub.CommitStorageStub;
+import io.global.pm.MapMessageStorage;
+import io.global.pm.api.MessageStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,12 +46,14 @@ import static java.util.Collections.singleton;
 
 public final class EditorLauncher extends Launcher {
 	private static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
-	private static final String PROPERTIES_FILE = "chat.properties";
+	private static final String PROPERTIES_FILE = "editor.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	private static final String DEFAULT_SERVER_ID = "http://127.0.0.1:9000";
+	private static final String DOCUMENT_REPO_PREFIX = "editor/document";
+	private static final String EDITOR_INDEX_REPO = "editor/index";
 
 	@Inject
-	@Named("Chat")
+	@Named("Editor")
 	AsyncHttpServer server;
 
 	@Override
@@ -61,10 +67,11 @@ public final class EditorLauncher extends Launcher {
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new DocumentModule(),
 				new EditorModule(),
-				new FriendListModule(),
-				new DocumentListModule(),
+				new ContactsModule(),
+				new IndexRepoModule(EDITOR_INDEX_REPO),
+				new SharedRepoModule<DocumentMultiOperation>(DOCUMENT_REPO_PREFIX) {},
+				new UserContainerModule<DocumentMultiOperation>(EDITOR_INDEX_REPO, DOCUMENT_REPO_PREFIX) {},
 				// override for debug purposes
 				override(new GlobalNodesModule())
 						.with(new AbstractModule() {
@@ -80,6 +87,12 @@ public final class EditorLauncher extends Launcher {
 							@Singleton
 							CommitStorage provideCommitStorage() {
 								return new CommitStorageStub();
+							}
+
+							@Provides
+							@Singleton
+							MessageStorage provideMessageStorage() {
+								return new MapMessageStorage();
 							}
 						})
 		);

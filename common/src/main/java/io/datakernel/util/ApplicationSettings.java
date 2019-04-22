@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -26,6 +27,7 @@ public final class ApplicationSettings {
 	}
 
 	@Nullable
+	@Contract("_, _, !null -> !null")
 	public static String getString(Class<?> type, String name, @Nullable String defValue) {
 		String property;
 		property = System.getProperty(type.getName() + "." + name);
@@ -68,7 +70,8 @@ public final class ApplicationSettings {
 	}
 
 	@Nullable
-	public static Duration getDuration(Class<?> type, String name, Duration defValue) {
+	@Contract("_, _, !null -> !null")
+	public static Duration getDuration(Class<?> type, String name, @Nullable Duration defValue) {
 		String property = getString(type, name, null);
 		if (property != null) {
 			return StringFormatUtils.parseDuration(property);

@@ -24,7 +24,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.global.editor.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
 import static io.global.editor.Utils.createMergedOTSystem;
 import static io.global.editor.document.edit.InsertOperation.insert;
-import static io.global.editor.document.name.ChangeDocumentName.changeName;
+import static io.global.ot.name.ChangeName.changeName;
 import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
 

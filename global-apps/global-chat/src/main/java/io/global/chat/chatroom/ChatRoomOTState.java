@@ -2,7 +2,7 @@ package io.global.chat.chatroom;
 
 import io.datakernel.ot.OTState;
 import io.global.chat.chatroom.messages.Message;
-import io.global.chat.chatroom.roomname.ChangeRoomName;
+import io.global.ot.name.ChangeName;
 
 import java.util.Comparator;
 import java.util.List;
@@ -31,7 +31,7 @@ public final class ChatRoomOTState implements OTState<ChatMultiOperation> {
 				messages.add(op.getMessage());
 			}
 		});
-		List<ChangeRoomName> roomNameOps = multiOperation.getRoomNameOps();
+		List<ChangeName> roomNameOps = multiOperation.getRoomNameOps();
 		if (!roomNameOps.isEmpty()) {
 			roomName = getLast(roomNameOps).getNext();
 		}

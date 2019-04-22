@@ -1,8 +1,7 @@
 package io.global.chat.chatroom.messages;
 
-import io.global.chat.chatroom.ChatRoomOperation;
 
-public final class MessageOperation implements ChatRoomOperation {
+public final class MessageOperation {
 	public static final MessageOperation EMPTY = new MessageOperation(new Message(0, "", ""), false);
 
 	private final Message message;

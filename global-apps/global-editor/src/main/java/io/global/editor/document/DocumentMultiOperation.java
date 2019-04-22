@@ -1,7 +1,7 @@
 package io.global.editor.document;
 
 import io.global.editor.document.edit.EditOperation;
-import io.global.editor.document.name.ChangeDocumentName;
+import io.global.ot.name.ChangeName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,9 +10,9 @@ import static java.util.Arrays.asList;
 
 public final class DocumentMultiOperation {
 	private final List<EditOperation> editOps;
-	private final List<ChangeDocumentName> documentNameOps;
+	private final List<ChangeName> documentNameOps;
 
-	public DocumentMultiOperation(List<EditOperation> editOps, List<ChangeDocumentName> documentNameOps) {
+	public DocumentMultiOperation(List<EditOperation> editOps, List<ChangeName> documentNameOps) {
 		this.editOps = editOps;
 		this.documentNameOps = documentNameOps;
 	}
@@ -26,7 +26,7 @@ public final class DocumentMultiOperation {
 		return this;
 	}
 
-	public DocumentMultiOperation withDocumentNameOps(ChangeDocumentName... roomNameOps) {
+	public DocumentMultiOperation withDocumentNameOps(ChangeName... roomNameOps) {
 		this.documentNameOps.addAll(asList(roomNameOps));
 		return this;
 	}
@@ -35,7 +35,7 @@ public final class DocumentMultiOperation {
 		return editOps;
 	}
 
-	public List<ChangeDocumentName> getDocumentNameOps() {
+	public List<ChangeName> getDocumentNameOps() {
 		return documentNameOps;
 	}
 }
