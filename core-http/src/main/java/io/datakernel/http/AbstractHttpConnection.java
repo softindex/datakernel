@@ -376,6 +376,7 @@ public abstract class AbstractHttpConnection {
 	public static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
 		if (httpMessage.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
 			ByteBuf body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) httpMessage.bodySupplier).getValue();
+			httpMessage.flags |= HttpMessage.ACCESSED_BODY_STREAM;
 			if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
 				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
@@ -407,6 +408,7 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeHttpMessageAsChunkedStream(HttpMessage httpMessage) {
 		httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
+		httpMessage.flags |= HttpMessage.ACCESSED_BODY_STREAM;
 		if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
