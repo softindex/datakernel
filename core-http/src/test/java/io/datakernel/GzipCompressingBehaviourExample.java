@@ -25,6 +25,7 @@ import java.io.IOException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
+import static io.datakernel.test.TestUtils.getFreePort;
 
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
@@ -39,7 +40,7 @@ public final class GzipCompressingBehaviourExample {
 						request -> Promise.of(
 								HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
 
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(1234);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(getFreePort());
 
 		server.listen();
 		eventloop.run();

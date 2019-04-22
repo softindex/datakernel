@@ -28,17 +28,16 @@ import java.net.InetSocketAddress;
 import static io.datakernel.rpc.client.sender.Callbacks.assertNoCalls;
 import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.*;
 
 public class RpcStrategyRendezvousHashingTest {
 
 	private static final String HOST = "localhost";
-	private static final int PORT_1 = 10001;
-	private static final int PORT_2 = 10002;
-	private static final int PORT_3 = 10003;
-	private static final InetSocketAddress ADDRESS_1 = new InetSocketAddress(HOST, PORT_1);
-	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, PORT_2);
-	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
+
+	private static final InetSocketAddress ADDRESS_1 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, getFreePort());
 
 	@SuppressWarnings("ConstantConditions")
 	@Test

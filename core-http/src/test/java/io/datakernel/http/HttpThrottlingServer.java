@@ -25,13 +25,14 @@ import io.datakernel.eventloop.ThrottlingController;
 import java.util.Random;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public class HttpThrottlingServer {
 	private static final Random rand = new Random();
 	private static final int defaultLoadBusinessLogic = 0; // without load on the business logic
 	private static final String TEST_RESPONSE = "Hello, World!";
-	public static final int SERVER_PORT = 45566;
+	public static final int SERVER_PORT = getFreePort();
 
 	static class ServerOptions {
 		private int loadBusinessLogic;

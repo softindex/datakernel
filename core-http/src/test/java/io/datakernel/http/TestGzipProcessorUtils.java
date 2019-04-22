@@ -48,13 +48,14 @@ import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.assertEquals;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public final class TestGzipProcessorUtils {
-	private static final int PORT = 5595;
+	private static final int PORT = getFreePort();
 	public static final int CHARACTERS_COUNT = 10_000_000;
 
 	@Parameters

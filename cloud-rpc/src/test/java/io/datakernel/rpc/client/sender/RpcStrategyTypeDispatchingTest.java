@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.rpc.client.sender.Callbacks.*;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -34,14 +35,11 @@ import static org.junit.Assert.assertNull;
 public class RpcStrategyTypeDispatchingTest {
 
 	private static final String HOST = "localhost";
-	private static final int PORT_1 = 10001;
-	private static final int PORT_2 = 10002;
-	private static final int PORT_3 = 10003;
-	private static final int PORT_4 = 10004;
-	private static final InetSocketAddress ADDRESS_1 = new InetSocketAddress(HOST, PORT_1);
-	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, PORT_2);
-	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
-	private static final InetSocketAddress ADDRESS_4 = new InetSocketAddress(HOST, PORT_4);
+
+	private static final InetSocketAddress ADDRESS_1 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_4 = new InetSocketAddress(HOST, getFreePort());
 
 	@Test
 	public void itShouldChooseSubStrategyDependingOnRpcMessageDataType() {

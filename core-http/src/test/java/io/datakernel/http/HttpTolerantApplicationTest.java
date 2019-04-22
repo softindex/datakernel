@@ -37,6 +37,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.test.TestUtils.asserting;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -45,7 +46,7 @@ public final class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantServer() throws Exception {
-		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
+		int port = getFreePort();
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
@@ -80,7 +81,7 @@ public final class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantClient() throws Exception {
-		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
+		int port = getFreePort();
 
 		ServerSocket listener = new ServerSocket(port);
 		new Thread(() -> {

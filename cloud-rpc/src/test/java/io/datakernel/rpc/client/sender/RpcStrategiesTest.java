@@ -28,6 +28,7 @@ import java.util.List;
 import static io.datakernel.rpc.client.sender.Callbacks.assertNoCalls;
 import static io.datakernel.rpc.client.sender.Callbacks.ignore;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -35,16 +36,12 @@ import static org.junit.Assert.assertEquals;
 public class RpcStrategiesTest {
 
 	private static final String HOST = "localhost";
-	private static final int PORT_1 = 10001;
-	private static final int PORT_2 = 10002;
-	private static final int PORT_3 = 10003;
-	private static final int PORT_4 = 10004;
-	private static final int PORT_5 = 10005;
-	private static final InetSocketAddress ADDRESS_1 = new InetSocketAddress(HOST, PORT_1);
-	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, PORT_2);
-	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
-	private static final InetSocketAddress ADDRESS_4 = new InetSocketAddress(HOST, PORT_4);
-	private static final InetSocketAddress ADDRESS_5 = new InetSocketAddress(HOST, PORT_5);
+
+	private static final InetSocketAddress ADDRESS_1 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_4 = new InetSocketAddress(HOST, getFreePort());
+	private static final InetSocketAddress ADDRESS_5 = new InetSocketAddress(HOST, getFreePort());
 
 	@Test
 	public void testCombination1() {

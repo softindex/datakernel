@@ -50,8 +50,8 @@ public final class HttpMessageTest {
 		assertHttpMessageEquals("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(400));
 		assertHttpMessageEquals("HTTP/1.1 405 Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(405));
 		assertHttpMessageEquals("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(500));
-		assertHttpMessageEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
-				"Error 502", HttpResponse.ofCode(502).withBody("Error 502".getBytes(StandardCharsets.UTF_8)));
+		assertHttpMessageEquals("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 11\r\n\r\n" +
+				"Bad Gateway", HttpResponse.ofCode(502).withBody("Bad Gateway".getBytes(StandardCharsets.UTF_8)));
 		assertHttpMessageEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.ofCode(200).withCookies(Collections.singletonList(HttpCookie.of("cookie1", "value1"))));
 		assertHttpMessageEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1, cookie2=value2\r\nContent-Length: 0\r\n\r\n",

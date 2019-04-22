@@ -32,9 +32,10 @@ import java.util.List;
 import static com.google.inject.name.Names.named;
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
 import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
+import static io.datakernel.test.TestUtils.getFreePort;
 
 public final class WorkerNameTest {
-	public static final int PORT = 7583;
+	public static final int PORT = getFreePort();
 	public static final int WORKERS = 4;
 
 	@Rule

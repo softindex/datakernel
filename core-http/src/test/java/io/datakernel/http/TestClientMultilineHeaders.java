@@ -26,11 +26,12 @@ import java.io.IOException;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaders.ALLOW;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class TestClientMultilineHeaders {
-	private static final int PORT = 9595;
+	private static final int PORT = getFreePort();
 
 	@Test
 	public void testMultilineHeaders() throws IOException {

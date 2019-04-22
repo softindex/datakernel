@@ -40,13 +40,14 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.LENGTH_TOO_BIG;
 import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
 public final class TestPartialRemoteFs {
-	private static final int PORT = 5436;
+	private static final int PORT = getFreePort();
 	private static final String FILE = "file.txt";
 	private static final byte[] CONTENT = "test content of the file".getBytes(UTF_8);
 

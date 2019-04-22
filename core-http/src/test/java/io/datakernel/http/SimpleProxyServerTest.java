@@ -36,13 +36,14 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public final class SimpleProxyServerTest {
-	private static final int ECHO_SERVER_PORT = 9707;
-	private static final int PROXY_SERVER_PORT = 9444;
+	private static final int ECHO_SERVER_PORT = getFreePort();
+	private static final int PROXY_SERVER_PORT = getFreePort();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

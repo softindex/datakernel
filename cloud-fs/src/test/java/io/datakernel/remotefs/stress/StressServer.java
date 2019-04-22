@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
@@ -38,7 +39,7 @@ public class StressServer {
 	}
 
 	static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
-	private static final int PORT = 5560;
+	private static final int PORT = getFreePort();
 
 	private static final ExecutorService executor = newCachedThreadPool();
 	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();

@@ -45,6 +45,7 @@ import java.util.function.Predicate;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -52,7 +53,6 @@ import static org.junit.Assert.assertEquals;
 @RunWith(DatakernelRunner.class)
 public final class DatagraphServerTest {
 
-	private static int testPort = 1511;
 	private static DatagraphServer server1;
 	private static DatagraphServer server2;
 
@@ -61,8 +61,8 @@ public final class DatagraphServerTest {
 		DatagraphSerialization serialization = DatagraphSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
@@ -115,8 +115,8 @@ public final class DatagraphServerTest {
 		DatagraphSerialization serialization = DatagraphSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
@@ -175,8 +175,8 @@ public final class DatagraphServerTest {
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
 		DatagraphClient client = new DatagraphClient(serialization);
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
@@ -240,8 +240,8 @@ public final class DatagraphServerTest {
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
 		DatagraphClient client = new DatagraphClient(serialization);
 		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();

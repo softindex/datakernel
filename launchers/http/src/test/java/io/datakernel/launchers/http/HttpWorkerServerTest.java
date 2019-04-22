@@ -45,12 +45,13 @@ import static com.google.inject.Stage.DEVELOPMENT;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 public final class HttpWorkerServerTest {
-	public static final int PORT = 7124;
+	public static final int PORT = getFreePort();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

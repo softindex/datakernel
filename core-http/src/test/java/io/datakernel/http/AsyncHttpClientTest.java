@@ -45,13 +45,14 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.Eventloop.CONNECT_TIMEOUT;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.http.HttpClientConnection.INVALID_RESPONSE;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class AsyncHttpClientTest {
-	private static final int PORT = 45788;
+	private static final int PORT = getFreePort();
 
 	private static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 

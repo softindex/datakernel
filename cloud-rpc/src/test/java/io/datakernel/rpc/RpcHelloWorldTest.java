@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -127,7 +128,7 @@ public final class RpcHelloWorldTest {
 		}
 	}
 
-	private static final int PORT = 1234, TIMEOUT = 1500;
+	private static final int PORT = getFreePort(), TIMEOUT = 1500;
 	private RpcServer server;
 
 	@Rule

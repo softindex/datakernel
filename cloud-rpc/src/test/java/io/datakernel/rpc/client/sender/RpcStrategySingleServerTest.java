@@ -24,13 +24,14 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.rpc.client.sender.Callbacks.assertNoCalls;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.*;
 
 public class RpcStrategySingleServerTest {
 
 	private static final String HOST = "localhost";
-	private static final int PORT = 10000;
-	private static final InetSocketAddress ADDRESS = new InetSocketAddress(HOST, PORT);
+
+	private static final InetSocketAddress ADDRESS = new InetSocketAddress(HOST, getFreePort());
 
 	@Test
 	public void itShouldBeCreatedWhenThereIsConnectionInPool() {

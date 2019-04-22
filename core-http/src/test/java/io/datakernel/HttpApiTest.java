@@ -36,13 +36,14 @@ import java.util.List;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.time.ZoneOffset.UTC;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class HttpApiTest {
-	public static final int PORT = 5568;
+	public static final int PORT = getFreePort();
 
 	private AsyncHttpServer server;
 	private AsyncHttpClient client;

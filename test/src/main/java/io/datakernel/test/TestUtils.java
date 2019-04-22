@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -33,8 +35,16 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class TestUtils {
+public final class TestUtils {
 	private static int activePromises = 0;
+
+	public static synchronized int getFreePort() {
+		try(ServerSocket s = new ServerSocket(0)) {
+			return s.getLocalPort();
+		} catch (IOException e) {
+			throw new AssertionError(e);
+		}
+	}
 
 	public static DataSource dataSource(String databasePropertiesPath) throws IOException, SQLException {
 		Properties properties = new Properties();

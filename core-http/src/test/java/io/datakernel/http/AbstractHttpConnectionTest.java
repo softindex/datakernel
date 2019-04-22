@@ -34,13 +34,14 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 @RunWith(DatakernelRunner.class)
 public final class AbstractHttpConnectionTest {
-	private static final int PORT = 5050;
+	private static final int PORT = getFreePort();
 	private static final String URL = "http://127.0.0.1:" + PORT;
 
 	private AsyncHttpClient client;

@@ -49,6 +49,7 @@ import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codegen.DefiningClassLoader.create;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static io.datakernel.util.CollectionUtils.keysToMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -60,7 +61,7 @@ import static org.junit.Assert.*;
 @SuppressWarnings("rawtypes")
 @RunWith(DatakernelRunner.class)
 public final class CubeTest {
-	private static final int LISTEN_PORT = 45578;
+	private static final int LISTEN_PORT = getFreePort();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();

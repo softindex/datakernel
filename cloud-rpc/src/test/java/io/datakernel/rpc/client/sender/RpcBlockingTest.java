@@ -37,13 +37,14 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class RpcBlockingTest {
-	private static final int PORT_1 = 10001;
-	private static final int PORT_2 = 10002;
-	private static final int PORT_3 = 10003;
+	private static final int PORT_1 = getFreePort();
+	private static final int PORT_2 = getFreePort();
+	private static final int PORT_3 = getFreePort();
 	private static final int TIMEOUT = 1500;
 
 	private Thread thread;

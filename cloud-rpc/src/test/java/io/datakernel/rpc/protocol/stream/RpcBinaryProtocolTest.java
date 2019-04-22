@@ -40,6 +40,7 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
@@ -47,7 +48,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
 public final class RpcBinaryProtocolTest {
-	private static final int LISTEN_PORT = 12345;
+	private static final int LISTEN_PORT = getFreePort();
 
 	@Test
 	public void test() throws Exception {

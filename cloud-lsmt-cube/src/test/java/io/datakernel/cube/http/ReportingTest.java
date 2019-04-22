@@ -74,6 +74,7 @@ import static io.datakernel.cube.TestUtils.initializeRepository;
 import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -94,7 +95,7 @@ public final class ReportingTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static final int SERVER_PORT = 50001;
+	private static final int SERVER_PORT = getFreePort();
 
 	private static final Map<String, FieldType> DIMENSIONS_CUBE = entriesToMap(Stream.of(
 			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),

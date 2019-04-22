@@ -34,10 +34,11 @@ import java.util.concurrent.Executor;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.https.SslUtils.*;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class TestHttpsServer {
-	private static final int PORT = 5568;
+	private static final int PORT = getFreePort();
 
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -56,7 +57,7 @@ public class TestHttpsServer {
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT)
-				.withListenPort(5569);
+				.withListenPort(getFreePort());
 
 		System.out.println("https://127.0.0.1:" + PORT);
 

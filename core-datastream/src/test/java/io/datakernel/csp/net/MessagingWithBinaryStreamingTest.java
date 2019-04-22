@@ -37,12 +37,13 @@ import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.serializer.util.BinarySerializers.LONG_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class MessagingWithBinaryStreamingTest {
-	private static final int LISTEN_PORT = 4821;
+	private static final int LISTEN_PORT = getFreePort();
 	public static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", LISTEN_PORT);
 
 	private static ByteBufSerializer<Integer, Integer> INTEGER_SERIALIZER = ByteBufSerializer.ofJsonCodec(INT_CODEC, INT_CODEC);
@@ -97,9 +98,9 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
 					messaging.receive()
-							.then(msg -> {
+							.whenResult(msg -> {
 								assertEquals("start", msg);
-								return StreamSupplier.ofIterable(source)
+								StreamSupplier.ofIterable(source)
 										.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 												.withInitialBufferSize(MemSize.of(1)))
 										.streamTo(messaging.sendBinaryStream());
