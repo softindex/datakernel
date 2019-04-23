@@ -16,6 +16,8 @@
 
 package io.datakernel.examples;
 
+// [START EXAMPLE]
+
 import io.datakernel.async.Promise;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
@@ -40,3 +42,4 @@ public class SimpleServlet implements AsyncServlet {
 		return Promise.of(HttpResponse.ok200().withBody(message));
 	}
 }
+// [END EXAMPLE]

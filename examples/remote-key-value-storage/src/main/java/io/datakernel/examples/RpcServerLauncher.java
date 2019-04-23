@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.datakernel.examples;
 
+// [START EXAMPLE]
 import com.google.inject.Module;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
@@ -42,3 +42,4 @@ public class RpcServerLauncher extends Launcher {
 		launcher.launch(true, args);
 	}
 }
+// [END EXAMPLE]

@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.datakernel.examples;
 
+// [START EXAMPLE]
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,3 +31,4 @@ public class KeyValueStore {
 		return store.get(key);
 	}
 }
+// [END EXAMPLE]

@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.datakernel.examples;
-
+// [START EXAMPLE]
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
@@ -32,3 +31,4 @@ public class GetRequest {
 		return key;
 	}
 }
+// [END EXAMPLE]

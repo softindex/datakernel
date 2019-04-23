@@ -16,6 +16,8 @@
 
 package io.datakernel.examples;
 
+// [START EXAMPLE]
+
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import io.datakernel.config.Config;
@@ -61,3 +63,4 @@ public class HttpHelloWorldLauncher extends Launcher {
 		launcher.launch(true, args);
 	}
 }
+// example end

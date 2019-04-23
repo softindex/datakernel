@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.datakernel.examples;
 
+// [START EXAMPLE]
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -50,3 +50,4 @@ public class RpcClientModule extends AbstractModule {
 				.withStrategy(RpcStrategies.server(new InetSocketAddress("localhost", RPC_SERVER_PORT)));
 	}
 }
+// [END EXAMPLE]

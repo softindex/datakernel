@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// [START EXAMPLE]
 package io.datakernel.examples;
 
 import io.datakernel.eventloop.Eventloop;
@@ -27,3 +27,4 @@ public class HelloWorld {
 		eventloop.run();
 	}
 }
+// [END EXAMPLE]

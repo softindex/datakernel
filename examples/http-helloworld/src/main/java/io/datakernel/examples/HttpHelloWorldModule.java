@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+
 package io.datakernel.examples;
+// [START EXAMPLE]
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -65,3 +67,4 @@ public class HttpHelloWorldModule extends AbstractModule {
 		return AsyncHttpServer.create(eventloop, servlet);
 	}
 }
+// [END EXAMPLE]
