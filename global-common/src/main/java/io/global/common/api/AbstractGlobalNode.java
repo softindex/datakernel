@@ -107,7 +107,7 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 					}
 					return Promises.firstSuccessful(Stream.concat(
 							nodes.stream().map(globalFsNode -> () -> self.apply(globalFsNode)),
-							Stream.generate(() -> AsyncSupplier.cast(() -> local.apply(ns))).limit(1)));
+							Stream.of(() -> local.apply(ns))));
 				});
 	}
 }

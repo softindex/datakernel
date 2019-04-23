@@ -35,11 +35,11 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
-import io.global.db.GlobalDbNodeImpl;
-import io.global.db.api.GlobalDbNode;
-import io.global.db.http.GlobalDbNodeServlet;
-import io.global.db.http.HttpGlobalDbNode;
-import io.global.db.stub.RuntimeDbStorageStub;
+import io.global.kv.LocalGlobalKvNode;
+import io.global.kv.api.GlobalKvNode;
+import io.global.kv.http.GlobalKvNodeServlet;
+import io.global.kv.http.HttpGlobalKvNode;
+import io.global.kv.stub.RuntimeKvStorageStub;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
@@ -68,7 +68,7 @@ public class GlobalNodesModule extends AbstractModule {
 	protected void configure() {
 		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
-		bind(GlobalDbNode.class).to(GlobalDbNodeImpl.class);
+		bind(GlobalKvNode.class).to(LocalGlobalKvNode.class);
 	}
 
 	@Provides
@@ -97,9 +97,9 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalDbNodeImpl provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalDbNode> factory) {
-		return GlobalDbNodeImpl.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeDbStorageStub())
-				.initialize(ofAbstractGlobalNode(config.getChild("db")));
+	LocalGlobalKvNode provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
+		return LocalGlobalKvNode.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
+				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
 	}
 
 	@Provides
@@ -143,11 +143,11 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet, GlobalDbNodeServlet dbServlet) {
+	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet, GlobalKvNodeServlet kvServlet) {
 		return MiddlewareServlet.create()
 				.with("/ot", otServlet)
 				.with("/fs", fsServlet)
-				.with("/db", dbServlet);
+				.with("/kv", kvServlet);
 	}
 
 	@Provides
@@ -164,8 +164,8 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalDbNodeServlet provideGlobalDbServlet(GlobalDbNodeImpl node) {
-		return GlobalDbNodeServlet.create(node);
+	GlobalKvNodeServlet provideGlobalDbServlet(LocalGlobalKvNode node) {
+		return GlobalKvNodeServlet.create(node);
 	}
 
 	@Provides
@@ -195,8 +195,8 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	Function<RawServerId, GlobalDbNode> provideDbNodeFactory(IAsyncHttpClient client) {
-		return id -> HttpGlobalDbNode.create(id.getServerIdString(), client);
+	Function<RawServerId, GlobalKvNode> provideDbNodeFactory(IAsyncHttpClient client) {
+		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
 	}
 
 	// region schedulers
@@ -235,17 +235,17 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("DB push")
-	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, GlobalDbNodeImpl node, Config config) {
+	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, LocalGlobalKvNode node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("db.push")));
+				.initialize(ofEventloopTaskScheduler(config.getChild("kv.push")));
 	}
 
 	@Provides
 	@Singleton
 	@Named("DB catch up")
-	EventloopTaskScheduler provideDbCatchUpScheduler(Eventloop eventloop, GlobalDbNodeImpl node, Config config) {
+	EventloopTaskScheduler provideDbCatchUpScheduler(Eventloop eventloop, LocalGlobalKvNode node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("db.catchUp")));
+				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
 	}
 	//endregion
 

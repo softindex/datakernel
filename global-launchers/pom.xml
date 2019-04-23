@@ -29,7 +29,7 @@
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>global-db</artifactId>
+      <artifactId>global-kv</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

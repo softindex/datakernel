@@ -345,7 +345,7 @@
         <module>global-common</module>
         <module>global-ot</module>
         <module>global-fs</module>
-        <module>global-db</module>
+        <module>global-kv</module>
         <module>global-launchers</module>
         <module>global-apps</module>
       </modules>

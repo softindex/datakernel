@@ -59,11 +59,11 @@ public class GlobalNodesLauncher extends Launcher {
 
 	@Inject
 	@Named("DB push")
-	EventloopTaskScheduler dbPushScheduler;
+	EventloopTaskScheduler kvPushScheduler;
 
 	@Inject
 	@Named("DB catch up")
-	EventloopTaskScheduler dbCatchUpScheduler;
+	EventloopTaskScheduler kvCatchUpScheduler;
 
 	@Override
 	protected final Collection<com.google.inject.Module> getModules() {

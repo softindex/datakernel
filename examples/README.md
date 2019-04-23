@@ -150,5 +150,5 @@ replicated data type) algorithms manage merging of two replicas with conflicting
 * [Remote-FS](https://github.com/softindex/datakernel/tree/master/examples/remotefs)
 * [Global-FS demo](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-app)
 * [Global-FS CLI](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-cli)
-* [Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)
+* [Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-kv-demo)
 
