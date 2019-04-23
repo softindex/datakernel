@@ -20,8 +20,12 @@ import io.datakernel.exception.ParseException;
 import io.global.common.api.EncryptedData;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.asn1.x9.X9ECParameters;
-import org.spongycastle.crypto.*;
+import org.spongycastle.crypto.AsymmetricCipherKeyPair;
+import org.spongycastle.crypto.CipherParameters;
+import org.spongycastle.crypto.CryptoException;
+import org.spongycastle.crypto.InvalidCipherTextException;
 import org.spongycastle.crypto.agreement.ECDHBasicAgreement;
+import org.spongycastle.crypto.digests.GeneralDigest;
 import org.spongycastle.crypto.digests.SHA1Digest;
 import org.spongycastle.crypto.digests.SHA256Digest;
 import org.spongycastle.crypto.ec.CustomNamedCurves;
@@ -67,12 +71,19 @@ public final class CryptoUtils {
 		KEY_PAIR_GENERATOR.init(new ECKeyGenerationParameters(CURVE, SECURE_RANDOM));
 	}
 
-	public static byte[] sha256(byte[] encryptedData) {
-		Digest digest = new SHA256Digest();
-		digest.update(encryptedData, 0, encryptedData.length);
+	private static byte[] digest(GeneralDigest digest, byte[] bytes) {
+		digest.update(bytes, 0, bytes.length);
 		byte[] hash = new byte[digest.getDigestSize()];
 		digest.doFinal(hash, 0);
 		return hash;
+	}
+
+	public static byte[] sha1(byte[] bytes) {
+		return digest(new SHA1Digest(), bytes);
+	}
+
+	public static byte[] sha256(byte[] bytes) {
+		return digest(new SHA256Digest(), bytes);
 	}
 
 	public static byte[] toSha256PackedState(SHA256Digest sha256Digest) {
@@ -113,14 +124,6 @@ public final class CryptoUtils {
 			return false;
 		}
 		return Arrays.equals(first.getEncodedState(), second.getEncodedState());
-	}
-
-	public static byte[] sha1(byte[] bytes) {
-		Digest digest = new SHA1Digest();
-		digest.update(bytes, 0, bytes.length);
-		byte[] hash = new byte[digest.getDigestSize()];
-		digest.doFinal(hash, 0);
-		return hash;
 	}
 
 	public static EncryptedData encryptAES(byte[] plainBytes, CipherParameters aesKey) {
@@ -183,10 +186,14 @@ public final class CryptoUtils {
 		return Signature.of(components[0], components[1]).toCanonicalised();
 	}
 
+	public static byte[] randomBytes(int size) {
+		byte[] bs = new byte[size];
+		SECURE_RANDOM.nextBytes(bs);
+		return bs;
+	}
+
 	public static KeyParameter generateCipherKey(int size) {
-		byte[] aesKeyBytes = new byte[size];
-		SECURE_RANDOM.nextBytes(aesKeyBytes);
-		return new KeyParameter(aesKeyBytes);
+		return new KeyParameter(randomBytes(size));
 	}
 
 	public static AsymmetricCipherKeyPair generateKeyPair() {
@@ -194,11 +201,11 @@ public final class CryptoUtils {
 	}
 
 	public static byte[] nonceFromString(String string) {
-		return Arrays.copyOf(sha1(string.getBytes(UTF_8)), 16);
+		return Arrays.copyOf(sha1(string.getBytes(UTF_8)), BLOCK_SIZE);
 	}
 
 	public static byte[] nonceFromBytes(byte[] bytes) {
-		return Arrays.copyOf(sha1(bytes), 16);
+		return Arrays.copyOf(sha1(bytes), BLOCK_SIZE);
 	}
 
 	public static byte[] generateNonce() {
@@ -215,7 +222,7 @@ public final class CryptoUtils {
 		StringBuilder sb = new StringBuilder(bytes.length * 2);
 		for (byte b : bytes) {
 			int x = b & 0xFF;
-			if (x < 16) {
+			if (x < 0x10) {
 				sb.append('0');
 			}
 			sb.append(Integer.toHexString(x));
