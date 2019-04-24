@@ -1,7 +1,6 @@
 package io.global.pn;
 
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.csp.ChannelConsumer;
@@ -15,14 +14,11 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.pn.api.GlobalPmNode;
 import io.global.pn.api.Message;
+import io.global.pn.api.PmClient;
 import io.global.pn.api.RawMessage;
 import io.global.pn.util.BinaryDataFormats;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
-
-import java.io.IOException;
-import java.io.Writer;
 
 import static io.datakernel.codec.StructuredCodecs.LONG64_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
@@ -58,18 +54,15 @@ public final class GlobalPmDriver<T> {
 		}
 	}
 
-	@NotNull
 	public Promise<Void> send(PrivKey sender, PubKey receiver, Message<T> message) {
 		return node.send(receiver, encrypt(sender, receiver, message));
 	}
 
-	@NotNull
 	public Promise<ChannelConsumer<Message<T>>> multisend(PrivKey sender, PubKey receiver) {
 		return node.multisend(receiver)
 				.map(consumer -> consumer.map(message -> encrypt(sender, receiver, message)));
 	}
 
-	@NotNull
 	public Promise<@Nullable Message<T>> poll(KeyPair keys) {
 		return node.poll(keys.getPubKey())
 				.then(signedRawMessage -> signedRawMessage != null ? decrypt(keys.getPrivKey(), signedRawMessage) : Promise.of(null));
@@ -85,10 +78,17 @@ public final class GlobalPmDriver<T> {
 		return node.drop(keys.getPubKey(), SignedData.sign(LONG64_CODEC, id, keys.getPrivKey()));
 	}
 
-	@NotNull
 	public Promise<ChannelConsumer<Long>> multidrop(KeyPair keys) {
 		PrivKey privKey = keys.getPrivKey();
 		return node.multidrop(keys.getPubKey())
 				.map(consumer -> consumer.map(id -> SignedData.sign(LONG64_CODEC, id, privKey)));
+	}
+
+	public PmClient<T> adapt(PrivKey privKey, PubKey pubKey) {
+		return new GlobalPmAdapter<>(this, privKey, pubKey);
+	}
+
+	public PmClient<T> adapt(KeyPair keys) {
+		return new GlobalPmAdapter<>(this, keys.getPrivKey(), keys.getPubKey());
 	}
 }

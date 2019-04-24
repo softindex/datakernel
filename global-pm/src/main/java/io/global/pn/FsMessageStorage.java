@@ -21,9 +21,13 @@ public final class FsMessageStorage implements MessageStorage {
 		this.storage = storage;
 	}
 
+	private String getFileName(PubKey space, long id) {
+		return space.asString() + '/' + Long.toHexString(id) + EXT;
+	}
+
 	@Override
 	public Promise<Void> store(PubKey space, SignedData<RawMessage> message) {
-		return storage.upload(space.asString() + '/' + message.getValue().getId() + EXT)
+		return storage.upload(getFileName(space, message.getValue().getId()))
 				.then(consumer -> consumer.accept(BinaryUtils.encode(BinaryDataFormats.SIGNED_RAW_MSG_CODEC, message), null));
 	}
 
@@ -48,6 +52,6 @@ public final class FsMessageStorage implements MessageStorage {
 
 	@Override
 	public Promise<Void> delete(PubKey space, long id) {
-		return storage.delete(space.asString() + '/' + Long.toBinaryString(id) + EXT);
+		return storage.delete(getFileName(space, id));
 	}
 }

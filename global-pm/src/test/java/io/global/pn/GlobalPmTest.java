@@ -19,6 +19,9 @@ package io.global.pn;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -29,6 +32,8 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.pn.api.GlobalPmNode;
 import io.global.pn.api.Message;
 import io.global.pn.api.MessageStorage;
+import io.global.pn.http.GlobalPmNodeServlet;
+import io.global.pn.http.HttpGlobalPmNode;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,15 +43,18 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
-public final class GlobalPnTest {
+public final class GlobalPmTest {
 
 	private static final RawServerId FIRST_ID = new RawServerId("http://127.0.0.1:1001");
 
@@ -77,9 +85,11 @@ public final class GlobalPnTest {
 			@Override
 			public GlobalPmNode apply(RawServerId serverId) {
 				GlobalPmNode node = nodes.computeIfAbsent(serverId, id -> new LocalGlobalPmNode(serverId, discovery, this, messageStorage));
-				// StubHttpClient client = StubHttpClient.of(GlobalPnNodeServlet.create(node));
-				// return HttpGlobalPnNode.create(serverId.getServerIdString(), client);
-				return node;
+
+				AsyncServlet servlet = GlobalPmNodeServlet.create(node);
+				StubHttpClient client = StubHttpClient.of(MiddlewareServlet.create().with("/pm", servlet));
+				return HttpGlobalPmNode.create(serverId.getServerIdString(), client);
+//				return node;
 			}
 		};
 	}
@@ -89,19 +99,27 @@ public final class GlobalPnTest {
 		GlobalPmNode node = clientFactory.apply(FIRST_ID);
 		GlobalPmDriver<String> driver = new GlobalPmDriver<>(node, STRING_CODEC);
 
+		Set<Message<String>> sent = new HashSet<>();
+
 		for (int i = 0; i < 5; i++) {
 			KeyPair keys = KeyPair.generate();
-			await(driver.send(keys.getPrivKey(), bob.getPubKey(), Message.now(keys.getPubKey(), "hello! #" + i)));
+			Message<String> message = Message.now(keys.getPubKey(), "hello! #" + i);
+			sent.add(message);
+			await(driver.send(keys.getPrivKey(), bob.getPubKey(), message));
 		}
 
-		await(driver.send(alice.getPrivKey(), bob.getPubKey(), Message.now(alice.getPubKey(), "hello!")));
+		Message<String> msg = Message.now(alice.getPubKey(), "hello!");
+		sent.add(msg);
+		await(driver.send(alice.getPrivKey(), bob.getPubKey(), msg));
 
-		System.out.println(await(storage.list("**")));
+		Set<Message<String>> received = new HashSet<>();
 
 		await(ChannelSupplier.ofPromise(driver.multipoll(bob))
 				.streamTo(ChannelConsumer.of(message -> {
-					System.out.println(message);
+					received.add(message);
 					return driver.drop(bob, message.getId());
 				})));
+
+		assertEquals(sent, received);
 	}
 }

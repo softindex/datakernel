@@ -35,7 +35,7 @@ public interface GlobalPmNode {
 	}
 
 	@NotNull
-	Promise<@Nullable SignedData<RawMessage>> poll(PubKey receiver);
+	Promise<@Nullable SignedData<RawMessage>> poll(PubKey space);
 
 	default Promise<ChannelSupplier<SignedData<RawMessage>>> multipoll(PubKey receiver) {
 		return Promise.of(ChannelSupplier.of(() -> poll(receiver)));
