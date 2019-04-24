@@ -30,7 +30,7 @@
     <module>global-examples-common</module>
     <module>global-kv-demo</module>
     <module>http</module>
-    <module>http-helloworld</module>
+    <module>http-workers</module>
     <module>launchers</module>
     <module>net</module>
     <module>promise</module>
@@ -39,6 +39,10 @@
     <module>rpc</module>
     <module>serializer</module>
     <module>uikernel-integration</module>
+    <module>poll-tutorial</module>
+    <module>auth-tutorial</module>
+    <module>todo-list-tutorial</module>
+    <module>react-getting-started</module>
   </modules>
 
   <dependencies>

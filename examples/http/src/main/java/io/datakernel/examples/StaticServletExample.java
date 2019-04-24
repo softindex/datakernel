@@ -16,33 +16,41 @@
 
 package io.datakernel.examples;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Module;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
-import io.datakernel.loader.StaticLoaders;
+import io.datakernel.launcher.Launcher;
+import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 
+import static io.datakernel.loader.StaticLoaders.ofPath;
+import static io.datakernel.util.CollectionUtils.list;
+import static java.lang.Boolean.parseBoolean;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-public class StaticServletExample {
+public final class StaticServletExample extends HttpServerLauncher {
 	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/site");
 
-	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withCurrentThread();
+	@Override
+	protected Collection<Module> getBusinessLogicModules() {
+		return list(new AbstractModule() {
+			@Provides
+			@Singleton
+			AsyncServlet staticServlet(Eventloop eventloop) {
+				return StaticServlet.create(eventloop, ofPath(newCachedThreadPool(), RESOURCE_DIR));
+			}
+		});
+	}
 
-		StaticServlet staticServlet = StaticServlet.create(eventloop, StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR));
-
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, staticServlet)
-				.withListenPort(8080);
-
-		server.listen();
-
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:8080/'");
-
-		eventloop.run();
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new StaticServletExample();
+		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

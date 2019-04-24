@@ -40,7 +40,7 @@ import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings("unused")
-public class HttpBenchmark extends Launcher {
+public final class HttpBenchmark extends Launcher {
 
 	private final static int MAX_REQUESTS = 1000000;
 	private final static int WARMUP_ROUNDS = 3;

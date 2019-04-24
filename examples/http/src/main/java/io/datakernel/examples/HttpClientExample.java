@@ -32,14 +32,14 @@ import java.util.Collection;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.util.CollectionUtils.list;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.asList;
 
 /**
  * HTTP client example.
  * You can launch HttpServerExample to test this.
  */
-public class HttpClientExample extends Launcher {
+public final class HttpClientExample extends Launcher {
 	@Inject
 	AsyncHttpClient httpClient;
 
@@ -53,11 +53,11 @@ public class HttpClientExample extends Launcher {
 
 	@Override
 	protected Collection<Module> getModules() {
-		return asList(
+		return list(
 				ConfigModule.create(Config.create()
 						.with("http.client.googlePublicDns", "8.8.8.8")
 						.with("http.client.timeout", "3 seconds")
-						.with("http.client.port", "5588")
+						.with("http.client.host", "http://127.0.0.1:5588")
 				),
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
@@ -82,14 +82,13 @@ public class HttpClientExample extends Launcher {
 								.withDnsServerAddress(config.get(ofInetAddress(), "http.client.googlePublicDns"))
 								.withTimeout(config.get(ofDuration(), "http.client.timeout"));
 					}
-
 				}
 		);
 	}
 
 	@Override
 	protected void onStart() {
-		addr = "http://127.0.0.1:" + config.get(ofInteger(), "http.client.port");
+		addr = config.get("http.client.host");
 	}
 
 	@Override
@@ -100,7 +99,7 @@ public class HttpClientExample extends Launcher {
 			HttpRequest request = HttpRequest.post(addr).withBody(encodeAscii(msg));
 
 			httpClient.request(request)
-					.then(response -> response.getBody()
+					.whenResult(response -> response.getBody()
 							.whenComplete((body, e) -> {
 								try {
 									if (e == null) {

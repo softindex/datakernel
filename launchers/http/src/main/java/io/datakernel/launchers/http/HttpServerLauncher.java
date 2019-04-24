@@ -99,7 +99,7 @@ public abstract class HttpServerLauncher extends Launcher {
 		awaitShutdown();
 	}
 
-	public static void main(String[] args) throws Exception {
+	protected static void main(String[] args) throws Exception {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		com.google.inject.Module businessLogicModule = businessLogicModuleName != null ?
 				(com.google.inject.Module) Class.forName(businessLogicModuleName).newInstance() :

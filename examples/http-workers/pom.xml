@@ -9,9 +9,9 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>http-helloworld</artifactId>
+  <artifactId>http-workers</artifactId>
 
-  <name>Datakernel Examples: Hello World</name>
+  <name>Datakernel Examples: Workers</name>
 
   <dependencies>
     <dependency>
@@ -22,6 +22,11 @@
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-http</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>http-launchers</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

@@ -37,7 +37,7 @@ import static java.util.Collections.singletonList;
  * HTTP multithreaded server example.
  * Sends back a greeting and the number of worker which served the connection.
  */
-public class HttpMultithreadedServerExample extends MultithreadedHttpServerLauncher {
+public final class HttpMultithreadedServerExample extends MultithreadedHttpServerLauncher {
 	public static final int PORT = 7583;
 	public static final int WORKERS = 4;
 

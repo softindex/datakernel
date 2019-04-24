@@ -41,40 +41,39 @@ import static java.util.Collections.singletonList;
  * HTTP simple server example.
  * Sends back a greeting and received data.
  */
-public class HttpServerExample {
+public final class HttpServerExample extends HttpServerLauncher {
+	@Override
+	protected Collection<Module> getOverrideModules() {
+		return asList(
+				ConfigModule.create(Config.create()
+						.with("http.listenAddresses", "5588")
+				),
+				ServiceGraphModule.defaultInstance()
+		);
+	}
+
+	@Override
+	protected Collection<Module> getBusinessLogicModules() {
+		return singletonList(
+				new AbstractModule() {
+					@Provides
+					@Singleton
+					AsyncServlet servlet() {
+						return request -> Promise.of(HttpResponse.ok200()
+								.withBody(encodeAscii("Hello World!")));
+					}
+				}
+		);
+	}
+
+	@Override
+	protected void onStart() {
+		System.out.println("Server is running");
+		System.out.println("You can connect from browser by visiting 'http://localhost:5588/' or by running HttpClientExample");
+	}
+
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new HttpServerLauncher() {
-			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(
-						new AbstractModule() {
-							@Provides
-							@Singleton
-							AsyncServlet servlet() {
-								return request -> Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello World!")));
-							}
-						}
-				);
-			}
-
-			@Override
-			protected Collection<Module> getOverrideModules() {
-				return asList(
-						ConfigModule.create(Config.create()
-								.with("http.listenAddresses", "5588")
-						),
-						ServiceGraphModule.defaultInstance()
-				);
-			}
-
-			@Override
-			protected void run() throws Exception {
-				System.out.println("Server is running");
-				System.out.println("You can connect from browser by visiting 'http://localhost:5588/' or by running HttpClientExample");
-				super.run();
-			}
-		};
-
+		Launcher launcher = new HttpServerExample();
 		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

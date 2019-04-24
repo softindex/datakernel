@@ -80,7 +80,7 @@ public final class MediaTypes {
 	public static final MediaType GIF = register("image/gif", "gif");
 	public static final MediaType JPEG = register("image/jpeg", "jpeg", "jpg");
 	public static final MediaType PNG = register("image/png", "png");
-	public static final MediaType SVG = register("image/svg+xml", ", g");
+	public static final MediaType SVG = register("image/svg+xml", "svg");
 	public static final MediaType TIFF = register("image/tiff", "tiff", "tif");
 	public static final MediaType OGG_AUDIO = register("audio/ogg", "oga");
 	public static final MediaType MP4_AUDIO = register("audio/mp4", "mp4a");

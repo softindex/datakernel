@@ -13,9 +13,13 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 	private final Executor executor;
 	private final Path root;
 
-	public SimpleStaticLoaderAsync(Executor executor, Path root) {
+	private SimpleStaticLoaderAsync(Executor executor, Path root) {
 		this.executor = executor;
 		this.root = root;
+	}
+
+	public static SimpleStaticLoaderAsync create(Executor executor, Path root) {
+		return new SimpleStaticLoaderAsync(executor, root);
 	}
 
 	@Override

@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.util.*;
+import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
@@ -237,8 +239,12 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	@Nullable
-	public String getCookieOrNull(@NotNull String cookie) throws ParseException {
-		return getCookies().get(cookie);
+	public String getCookieOrNull(@NotNull String cookie) {
+		try {
+			return getCookies().get(cookie);
+		} catch (ParseException e) {
+			return null;
+		}
 	}
 
 	@NotNull
@@ -369,6 +375,22 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return parser.parseOrDefault(getPathParameterOrNull(key), defaultValue);
 	}
 
+	public Promise<Void> getFiles(Function<String, Promise<ChannelConsumer<ByteBuf>>> uploader) {
+		try {
+			String contentType = getHeader(CONTENT_TYPE);
+			if (!contentType.startsWith("multipart/form-data; boundary=")) {
+				return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
+			}
+			String boundary = contentType.substring(30);
+			if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
+				boundary = boundary.substring(1, boundary.length() - 1);
+			}
+			return MultipartParser.create(boundary).splitByFiles(getBodyStream(), name -> ChannelConsumer.ofPromise(uploader.apply(name)));
+		} catch (ParseException e) {
+			return Promise.ofException(e);
+		}
+	}
+
 	int getPos() {
 		return url.pos;
 	}
@@ -385,7 +407,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> T get(Class<T> type) {
+	public <T> T getAttachment(Class<T> type) {
 		assert attachments != null;
 		Object res = attachments.get(type);
 		assert res != null;

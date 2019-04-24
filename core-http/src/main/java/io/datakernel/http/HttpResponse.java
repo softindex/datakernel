@@ -15,6 +15,7 @@
  */
 package io.datakernel.http;
 
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.json.JsonUtils;
@@ -35,6 +36,7 @@ import static io.datakernel.http.ContentTypes.JSON_UTF_8;
 import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.MediaTypes.OCTET_STREAM;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -215,6 +217,45 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	@Nullable
 	public HttpCookie getCookieOrNull(@NotNull String cookie) throws ParseException {
 		return getCookies().get(cookie);
+	}
+
+	@FunctionalInterface
+	public interface HttpDownloader {
+
+		Promise<ChannelSupplier<ByteBuf>> download(long offset, long limit);
+	}
+
+	public HttpResponse withFile(HttpRequest request, HttpDownloader downloader, String name, long size) throws HttpException {
+		String localName = name.substring(name.lastIndexOf('/') + 1);
+		String headerRange = request.getHeaderOrNull(HttpHeaders.RANGE);
+		if (headerRange == null) {
+			return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+					.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
+					.withHeader(ACCEPT_RANGES, "bytes")
+					.withHeader(CONTENT_LENGTH, Long.toString(size))
+					.withBodyStream(ChannelSupplier.ofPromise(downloader.download(0, -1)));
+		}
+		if (!headerRange.startsWith("bytes=")) {
+			throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
+		}
+		headerRange = headerRange.substring(6);
+		if (!headerRange.matches("(\\d+)?-(\\d+)?")) {
+			throw HttpException.ofCode(416, "Only single part ranges are allowed");
+		}
+		String[] parts = headerRange.split("-", 2);
+		long offset = parts[0].isEmpty() ? 0 : Long.parseLong(parts[0]);
+		long endOffset = parts[1].isEmpty() ? -1 : Long.parseLong(parts[1]);
+		if (endOffset != -1 && offset > endOffset) {
+			throw HttpException.ofCode(416, "Invalid range");
+		}
+		long length = (endOffset == -1 ? size : endOffset) - offset + 1;
+
+		return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+				.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + localName + "\""))
+				.withHeader(ACCEPT_RANGES, "bytes")
+				.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
+				.withHeader(CONTENT_LENGTH, "" + length)
+				.withBodyStream(ChannelSupplier.ofPromise(downloader.download(offset, length)));
 	}
 
 	private static void writeCodeMessageEx(@NotNull ByteBuf buf, int code) {

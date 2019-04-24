@@ -7,7 +7,6 @@ import io.datakernel.http.*;
 import io.global.common.*;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.local.GlobalFsDriver;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
@@ -20,7 +19,8 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.global.fs.util.HttpDataFormats.*;
+import static io.global.fs.util.HttpDataFormats.httpUpload;
+import static io.global.fs.util.HttpDataFormats.parseRevision;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class GlobalFsDriverServlet {
@@ -62,12 +62,16 @@ public final class GlobalFsDriverServlet {
 						return driver.getMetadata(space, name)
 								.then(meta -> {
 									if (meta != null) {
-										return httpDownload(request,
-												(offset, limit) ->
-														driver.download(space, name, offset, limit)
-																.map(supplier -> supplier
-																		.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
-												name, meta.getPosition());
+										try {
+											return Promise.of(HttpResponse.ok200()
+													.withFile(request, (offset, limit) ->
+															driver.download(space, name, offset, limit)
+																	.map(supplier -> supplier
+																			.transformWith(CipherTransformer.create(simKey,
+																					CryptoUtils.nonceFromString(name), offset))), name, meta.getPosition()));
+										} catch (HttpException e) {
+											return Promise.<HttpResponse>ofException(e);
+										}
 									}
 									return Promise.ofException(FILE_NOT_FOUND);
 								});

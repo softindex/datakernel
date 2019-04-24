@@ -141,8 +141,18 @@ public final class StaticServletsTest {
 	}
 
 	@Test
+	public void testRelativeClassPathWithInnerPath() {
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), getClass(), "/dir/");
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/test.txt/")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
+	}
+
+	@Test
 	public void testFileNotFoundRelativeClassPath() {
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), StaticServlet.class);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), StaticServlet.class, "/");
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
 

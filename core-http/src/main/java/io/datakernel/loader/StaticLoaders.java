@@ -10,18 +10,26 @@ public class StaticLoaders {
 	}
 
 	public static StaticLoader ofClassPath(Executor executor) {
-		return new StaticLoaderClassPath(executor, null);
+		return StaticLoaderClassPath.create(executor, null);
 	}
 
 	public static StaticLoader ofClassPath(Executor executor, Class<?> relativeClass) {
-		return new StaticLoaderClassPath(executor, relativeClass);
+		return StaticLoaderClassPath.create(executor, relativeClass);
+	}
+
+	public static StaticLoader ofClassPath(Executor executor, String relativePath) {
+		return StaticLoaderClassPath.create(executor, null, relativePath);
+	}
+
+	public static StaticLoader ofClassPath(Executor executor, Class<?> relativeClass, String relativePath) {
+		return StaticLoaderClassPath.create(executor, relativeClass, relativePath);
 	}
 
 	public static StaticLoader ofPath(Executor executor, Path dir) {
-		return new SimpleStaticLoaderAsync(executor, dir);
+		return SimpleStaticLoaderAsync.create(executor, dir);
 	}
 
 	public static StaticLoader ofFile(Executor executor, File dir) {
-		return new SimpleStaticLoaderAsync(executor, dir.toPath());
+		return SimpleStaticLoaderAsync.create(executor, dir.toPath());
 	}
 }
