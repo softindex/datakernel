@@ -1,5 +1,5 @@
-[Global-DB Demo Application](https://github.com/softindex/datakernel/blob/master/examples/global-db-demo/src/main/java/io/global/db/demo/GlobalDbDemoApp.java)
-Global-DB demo application shows an example of uploading and downloading data within the network.
+[Global-KV Demo Application](https://github.com/softindex/datakernel/blob/master/examples/global-kv-demo/src/main/java/io/global/kv/demo/GlobalKvDemoApp.java)
+Global-KV demo application shows an example of uploading and downloading data within the network.
 You can run the demo application in **3 steps**:
 
 #### 1. Clone DataKernel project with IDE tools
@@ -14,8 +14,8 @@ $MODULE_WORKING_DIR$||`.
 
 Then build the project (**Ctrl + F9** for IntelliJ IDEA).
 
-#### 3. Run Global-DB demo app
-Open *GlobalDbDemoApp* class, which is located at **datakernel -> examples -> global-db-demo** and also run its 
+#### 3. Run Global-KV demo app
+Open *GlobalKvDemoApp* class, which is located at **datakernel -> examples -> global-kv-demo** and also run its 
 *main()* method.
 
 After you start all of the needed classes, the upload of 10 data items to database and their download back will begin; 

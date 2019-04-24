@@ -15,10 +15,10 @@
  */
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 import java.util.HashMap;
 import java.util.Map;
 
+// [START EXAMPLE]
 public class KeyValueStore {
 
 	private final Map<String, String> store = new HashMap<>();

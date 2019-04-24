@@ -149,5 +149,5 @@ of different scales, representing most of the framework's capabilities.
 Depending on your objectives, you can explore [basic modules examples](https://github.com/softindex/datakernel/tree/master/examples#basic-modules), 
 [simple web applications examples](https://github.com/softindex/datakernel/tree/master/examples#simple-web-applications) 
 or go directly to [advanced web applications examples](https://github.com/softindex/datakernel/tree/master/examples#simple-web-applications). 
-If you would like to explore Global technologies (Global-FS, Global-OT, Global-DB), please take a look at 
+If you would like to explore Global technologies (Global-FS, Global-OT, Global-KV), please take a look at 
 [global web applications examples](https://github.com/softindex/datakernel/tree/master/examples#global-web-applications). 

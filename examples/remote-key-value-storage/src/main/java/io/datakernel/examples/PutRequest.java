@@ -15,10 +15,10 @@
  */
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
+// [START EXAMPLE]
 public class PutRequest {
 
 	private final String key;

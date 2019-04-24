@@ -11,12 +11,12 @@
 
   <artifactId>global-kv-demo</artifactId>
 
-  <name>Global DB Examples: Demo App</name>
+  <name>Global KV Examples: Demo App</name>
 
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>global-db</artifactId>
+      <artifactId>global-kv</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -38,12 +38,12 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>GlobalDbDemoApp</id>
+            <id>GlobalKvDemoApp</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.global.kv.demo.GlobalDbDemoApp</mainClass>
+              <mainClass>io.global.kv.demo.GlobalKvDemoApp</mainClass>
             </configuration>
           </execution>
         </executions>

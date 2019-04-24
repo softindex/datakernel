@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// [START EXAMPLE]
 package io.datakernel.examples;
 
 import io.datakernel.eventloop.Eventloop;
 
+// [START EXAMPLE]
 public class HelloWorld {
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create();

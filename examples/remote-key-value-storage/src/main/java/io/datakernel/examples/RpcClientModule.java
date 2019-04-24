@@ -15,7 +15,6 @@
  */
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -29,6 +28,7 @@ import java.time.Duration;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
+// [START EXAMPLE]
 public class RpcClientModule extends AbstractModule {
 	private static final int RPC_SERVER_PORT = 5353;
 

@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
@@ -30,6 +29,7 @@ import java.util.Collection;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static java.util.Arrays.asList;
 
+// [START EXAMPLE]
 public class HttpHelloWorldLauncher extends Launcher {
 	@Inject
 	Config config;
@@ -63,4 +63,4 @@ public class HttpHelloWorldLauncher extends Launcher {
 		launcher.launch(true, args);
 	}
 }
-// example end
+// [END EXAMPLE]

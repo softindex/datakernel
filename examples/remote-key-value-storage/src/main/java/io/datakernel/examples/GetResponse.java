@@ -15,11 +15,11 @@
  */
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 
+// [START EXAMPLE]
 public class GetResponse {
 
 	private final String value;

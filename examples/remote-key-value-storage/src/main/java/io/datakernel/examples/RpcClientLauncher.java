@@ -15,7 +15,6 @@
  */
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import io.datakernel.launcher.Args;
@@ -27,6 +26,7 @@ import java.util.Collection;
 
 import static java.util.Arrays.asList;
 
+// [START EXAMPLE]
 public class RpcClientLauncher extends Launcher {
 	@Inject
 	private RpcClient client;

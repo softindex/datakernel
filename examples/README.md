@@ -29,7 +29,7 @@
     * Global-OT chat
     * Global-FS demo
     * Global-FS CLI
-    * Global-DB demo
+    * Global-KV demo
 
 ### Purpose of the examples
 These examples aim to represent core DataKernel technologies and show how they can be used for both common and advanced 
@@ -150,5 +150,5 @@ replicated data type) algorithms manage merging of two replicas with conflicting
 * [Remote-FS](https://github.com/softindex/datakernel/tree/master/examples/remotefs)
 * [Global-FS demo](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-app)
 * [Global-FS CLI](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-cli)
-* [Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-kv-demo)
+* [Global-KV demo](https://github.com/softindex/datakernel/tree/master/examples/global-kv-demo)
 

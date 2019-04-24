@@ -16,7 +16,6 @@
 
 
 package io.datakernel.examples;
-// [START EXAMPLE]
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -32,6 +31,7 @@ import io.datakernel.worker.WorkerPool;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
+// [START EXAMPLE]
 public class HttpHelloWorldModule extends AbstractModule {
 	@Provides
 	@Singleton

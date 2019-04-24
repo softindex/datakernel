@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 package io.datakernel.examples;
-// [START EXAMPLE]
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
+// [START EXAMPLE]
 public class GetRequest {
 
 	private final String key;

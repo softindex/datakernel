@@ -15,7 +15,6 @@
  */
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 import com.google.inject.Module;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
@@ -24,6 +23,7 @@ import java.util.Collection;
 
 import static java.util.Arrays.asList;
 
+// [START EXAMPLE]
 public class RpcServerLauncher extends Launcher {
 	@Override
 	protected Collection<Module> getModules() {

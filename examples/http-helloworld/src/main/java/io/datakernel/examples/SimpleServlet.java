@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-// [START EXAMPLE]
 
 import io.datakernel.async.Promise;
 import io.datakernel.http.AsyncServlet;
@@ -26,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
+// [START EXAMPLE]
 public class SimpleServlet implements AsyncServlet {
 	private final int workerId;
 	private final String responseMessage;
