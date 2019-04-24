@@ -1,7 +1,9 @@
 import React from 'react';
+import localforage from 'localforage';
 import checkAuth from './HOC/checkAuth';
 import FSService from '../modules/fs/FSService';
 import GlobalFS from '../common/GlobalFS';
+import OfflineGlobalFS from '../common/OfflineGlobalFS';
 import ItemList from './ItemList';
 import SideBar from './SideBar/SideBar';
 import Uploading from './Uploading';
@@ -29,7 +31,16 @@ const styles = theme => {
 class MainScreen extends React.Component {
   constructor(props) {
     super(props);
-    this.fsService = new FSService(new GlobalFS(props.publicKey));
+
+    const globalFS = new GlobalFS(props.publicKey);
+    localforage.config({
+      driver: localforage.INDEXEDDB,
+      name: 'OperationsStore',
+      storeName: 'OperationsStore'
+    });
+    const offlineGlobalFS = new OfflineGlobalFS(globalFS, localforage, window.navigator);
+    offlineGlobalFS.init();
+    this.fsService = new FSService(offlineGlobalFS);
     this.state = {
       isDrawerOpen: false
     };
@@ -49,25 +60,20 @@ class MainScreen extends React.Component {
 
   render() {
     return (
-      < FSContext.Provider;
-    value = {this.fsService} >
-      < div;
-    className = {this.props.classes.root} >
-      < Header;
-    openDrawer = {this.openDrawer};
-    />
-    < div;
-    className = {this.props.classes.row} >
-      < SideBar;
-    isDrawerOpen = {this.state.isDrawerOpen};
-    onDrawerClose = {this.closeDrawer};
-    />
-    < ItemList / >
-    < /div>
-    < /div>
-    < Uploading / >
-    < /FSContext.Provider>;
-  )
+      <FSContext.Provider value={this.fsService}>
+        <div className={this.props.classes.root}>
+          <Header openDrawer={this.openDrawer}/>
+          <div className={this.props.classes.row}>
+            <SideBar
+              isDrawerOpen={this.state.isDrawerOpen}
+              onDrawerClose={this.closeDrawer}
+            />
+            <ItemList/>
+          </div>
+        </div>
+        <Uploading/>
+      </FSContext.Provider>
+    );
   }
 }
 

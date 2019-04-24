@@ -4,13 +4,13 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -18,35 +18,49 @@ import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.Tuple2;
-import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.*;
+import io.global.common.api.AnnounceData;
+import io.global.common.api.AnnouncementStorage;
+import io.global.common.api.DiscoveryService;
+import io.global.common.discovery.HttpDiscoveryService;
+import io.global.common.discovery.LocalDiscoveryService;
+import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsDriverServlet;
-import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
+import io.global.launchers.GlobalNodesModule;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
+import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.inject.util.Modules.override;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.getExecutor;
-import static io.datakernel.config.ConfigConverters.ofLong;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.lang.Boolean.parseBoolean;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 
 public final class GlobalFsApp extends Launcher {
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
+
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
-
+	public static final String DEFAULT_SERVER_ID = "Global FS";
+	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";
 
 	private static final StructuredCodec<PubKey> PUB_KEY_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
 	private static final StructuredCodec<PrivKey> PRIV_KEY_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
@@ -67,6 +81,7 @@ public final class GlobalFsApp extends Launcher {
 	private static final HttpHeaderValue CONTENT_TYPE_JSON = HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON));
 
 	@Inject
+	@Named("App")
 	AsyncHttpServer server;
 
 	@Override
@@ -75,18 +90,12 @@ public final class GlobalFsApp extends Launcher {
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
+								.with("node.serverId", DEFAULT_SERVER_ID)
+								.with("fs.storage", DEFAULT_FS_STORAGE)
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new AbstractModule() {
-					@Provides
-					@Singleton
-					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
-					}
-
 					@Provides
 					@Singleton
 					ExecutorService provide(Config config) {
@@ -95,18 +104,7 @@ public final class GlobalFsApp extends Launcher {
 
 					@Provides
 					@Singleton
-					IAsyncHttpClient provide(Eventloop eventloop) {
-						return AsyncHttpClient.create(eventloop);
-					}
-
-					@Provides
-					@Singleton
-					GlobalFsNode provide(IAsyncHttpClient httpClient, Config config) {
-						return HttpGlobalFsNode.create(config.get("app.globalFsId"), httpClient);
-					}
-
-					@Provides
-					@Singleton
+					@Named("App")
 					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, StaticLoader resourceLoader) {
 						return MiddlewareServlet.create()
 								.with("", new GlobalFsDriverServlet(driver))
@@ -141,11 +139,41 @@ public final class GlobalFsApp extends Launcher {
 
 					@Provides
 					@Singleton
-					AsyncHttpServer provide(Eventloop eventloop, Config config, AsyncServlet servlet) {
+					@Named("App")
+					AsyncHttpServer provide(Eventloop eventloop, Config config, @Named("App") AsyncServlet servlet) {
 						return AsyncHttpServer.create(eventloop, servlet)
 								.initialize(ofHttpServer(config.getChild("app.http")));
 					}
-				});
+				},
+				override(new GlobalNodesModule())
+						.with(new AbstractModule() {
+							@Provides
+							@Singleton
+							DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
+								InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
+								if (discoveryAddress != null) {
+									logger.info("Using remote discovery service at " + discoveryAddress);
+									return HttpDiscoveryService.create(discoveryAddress, client);
+								} else {
+									logger.warn("No discovery.address config found, using discovery stub");
+									PrivKey stubPK = PrivKey.of(BigInteger.ONE);
+									AnnouncementStorage announcementStorage = new AnnouncementStorage() {
+										@Override
+										public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
+											throw new UnsupportedOperationException();
+										}
+
+										@Override
+										public Promise<@Nullable SignedData<AnnounceData>> load(PubKey space) {
+											AnnounceData announceData = AnnounceData.of(System.currentTimeMillis(), singleton(new RawServerId(DEFAULT_SERVER_ID)));
+											return Promise.of(SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, stubPK));
+										}
+									};
+									InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
+									return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
+								}
+							}
+						}));
 	}
 
 	@Override

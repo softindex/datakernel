@@ -83,22 +83,22 @@ class ItemList extends React.Component {
 
       if (item.isDirectory) {
         folders.push(
-        < ItemCard;
-        name = {item.name};
-        isDirectory = {true};
-        path = {this.props.path};
-        onContextMenu = {this.handleContextMenu.bind(null, item.name, item.isDirectory)};
-        />;
-      )
+            <ItemCard
+              name={item.name}
+              isDirectory={true}
+              path={this.props.path}
+              onContextMenu={this.handleContextMenu.bind(null, item.name, item.isDirectory)}
+            />
+        )
       } else {
         files.push(
-        < ItemCard;
-        name = {item.name};
-        isDirectory = {false};
-        onClick = {this.openFileViewer.bind(null, item)};
-        onContextMenu = {this.handleContextMenu.bind(null, item.name, item.isDirectory)};
-        />;
-      )
+          <ItemCard
+            name={item.name}
+            isDirectory={false}
+            onClick={this.openFileViewer.bind(null, item)}
+            onContextMenu={this.handleContextMenu.bind(null, item.name, item.isDirectory)}
+          />
+        )
       }
     }
 
@@ -113,39 +113,29 @@ class ItemList extends React.Component {
     const items = this.getItemsByType();
 
     return (
-      < React.Fragment >
-      {
-        items.folders.length > 0 && (
-          < div className = {this.props.classes.section} >
-        < Typography variant = "h6" gutterBottom >
-      Folders
-      < /Typography>
-      < div;
-    className = {this.props.classes.listWrapper} >
-      {items.folders}
-      < /div>
-      < /div>;
-  )
-  }
-    {
-      items.files.length > 0 && (
-      < div;
-      className = {this.props.classes.section} >
-        < Typography;
-      variant = "h6";
-      gutterBottom >
-      Files
-      < /Typography>
-      < div;
-      className = {this.props.classes.listWrapper} >
-        {items.files}
-        < /div>
-        < /div>;
-    )
-    }
-  <
-    /React.Fragment>;
-  )
+      <React.Fragment>
+        {items.folders.length > 0 && (
+          <div className={this.props.classes.section}>
+            <Typography variant="h6" gutterBottom>
+              Folders
+            </Typography>
+            <div className={this.props.classes.listWrapper}>
+              {items.folders}
+            </div>
+          </div>
+        )}
+        {items.files.length > 0 && (
+          <div className={this.props.classes.section}>
+            <Typography variant="h6" gutterBottom>
+              Files
+            </Typography>
+            <div className={this.props.classes.listWrapper}>
+              {items.files}
+            </div>
+          </div>
+        )}
+      </React.Fragment>
+    );
   };
 
   openFileViewer = (item) => {
@@ -164,62 +154,41 @@ class ItemList extends React.Component {
 
   render() {
     return (
-      < div;
-    className = {this.props.classes.root} >
+      <div className={this.props.classes.root}>
 
-      < Breadcrumbs;
-    fsService = {this.props.fsService};
-    />
-    < Divider / >
+        <Breadcrumbs fsService={this.props.fsService}/>
+        <Divider/>
 
-    {
-      this.props.loading && (
-        < div className = {this.props.classes.wrapper} >
-      < CircularProgress / >
-      < /div>;
-  )
-  }
+        {this.props.loading && (
+          <div className={this.props.classes.wrapper}>
+            <CircularProgress/>
+          </div>
+        )}
 
-    {
-      this.props.fileList.length > 0 && !this.props.loading && this.getItemContainer()
-    }
+        {this.props.fileList.length > 0 && !this.props.loading && this.getItemContainer()}
 
-    {
-      this.props.fileList.length <= 0 && !this.props.loading && (
-      < div;
-      className = {this.props.classes.wrapper} >
-        < FolderIcon;
-      className = {this.props.classes.emptyIndicator};
-      />
-      < Typography;
-      variant = "h5" >
-        Directory;
-      is;
-      empty
-      < /Typography>
-      < /div>;
-    )
-    }
+        {this.props.fileList.length <= 0 && !this.props.loading && (
+          <div className={this.props.classes.wrapper}>
+            <FolderIcon className={this.props.classes.emptyIndicator}/>
+            <Typography variant="h5">
+              Directory is empty
+            </Typography>
+          </div>
+        )}
 
-    {
-      this.state.selectedItem && this.state.isFileViewerOpen && (
-      < FileViewer;
-      open = {this.state.isFileViewerOpen};
-      file = {this.state.selectedItem};
-      onClose = {this.onFileViewerClose};
-      onDelete = {this.onDeleteItem};
-      />;
-    )
-    }
+        {this.state.selectedItem && this.state.isFileViewerOpen && (
+          <FileViewer
+            open={this.state.isFileViewerOpen}
+            file={this.state.selectedItem}
+            onClose={this.onFileViewerClose}
+            onDelete={this.onDeleteItem}
+          />
+        )}
 
-  <
-    ContextMenu;
-    deleteHandler = {this.onDeleteItem};
-    style = {this.state.contextStyles};
-    />
+        <ContextMenu deleteHandler={this.onDeleteItem} style={this.state.contextStyles}/>
 
-    < /div>;
-  )
+      </div>
+    );
   }
 }
 

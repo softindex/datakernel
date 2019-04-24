@@ -72,71 +72,48 @@ class Header extends React.Component {
 
   render() {
     return (
-      < AppBar;
-    position = "static";
-    color = "inherit";
-    classes = {;
-    {
-      this.props.classes.root
-    }
-  }
-  >
-  <
-    Toolbar >
-    < IconButton;
-    onClick = {this.props.openDrawer};
-    color = "inherit";
-    className = {this.props.classes.drawerTrigger} >
-      < MenuIcon / >
-      < /IconButton>
-      < Typography;
-    variant = "h5";
-    color = "inherit";
-    className = {this.props.classes.logo} >
-      Global;
-    Cloud
-    < /Typography>
-    < div;
-    className = {this.props.classes.grow};
-    />
-    < IconButton;
-    onClick = {this.openMenu};
-    color = "inherit";
-    aria - label = "Menu" >
-      < AccountCircleIcon / >
-      < /IconButton>
-      < /Toolbar>
-      < Menu;
-    disableAutoFocusItem;
-    anchorEl = {this.state.menuAnchor};
-    open = {Boolean(this.state.menuAnchor;
-  )
-  }
-    onClose = {this.closeMenu}
+      <AppBar
+        position="static"
+        color="inherit"
+        classes={{
+          root: this.props.classes.root
+        }}
       >
-      < MenuList >
-      < MenuItem;
-    onClick = {this.downloadKey} >
-      < ListItemIcon >
-      < DownloadIcon / >
-      < /ListItemIcon>
-      < ListItemText;
-    inset;
-    primary = "Download key" / >
-      < /MenuItem>
-      < MenuItem;
-    onClick = {this.logout} >
-      < ListItemIcon >
-      < ExitIcon / >
-      < /ListItemIcon>
-      < ListItemText;
-    inset;
-    primary = "Logout" / >
-      < /MenuItem>
-      < /MenuList>
-      < /Menu>
-      < /AppBar>;
-  )
+        <Toolbar>
+          <IconButton onClick={this.props.openDrawer} color="inherit" className={this.props.classes.drawerTrigger}>
+            <MenuIcon/>
+          </IconButton>
+          <Typography variant="h5" color="inherit" className={this.props.classes.logo}>
+            Global Cloud
+          </Typography>
+          <div className={this.props.classes.grow}/>
+          <IconButton onClick={this.openMenu} color="inherit" aria-label="Menu">
+            <AccountCircleIcon/>
+          </IconButton>
+        </Toolbar>
+        <Menu
+          disableAutoFocusItem
+          anchorEl={this.state.menuAnchor}
+          open={Boolean(this.state.menuAnchor)}
+          onClose={this.closeMenu}
+        >
+          <MenuList>
+            <MenuItem onClick={this.downloadKey}>
+              <ListItemIcon>
+                <DownloadIcon/>
+              </ListItemIcon>
+              <ListItemText inset primary="Download key"/>
+            </MenuItem>
+            <MenuItem onClick={this.logout}>
+              <ListItemIcon>
+                <ExitIcon/>
+              </ListItemIcon>
+              <ListItemText inset primary="Logout"/>
+            </MenuItem>
+          </MenuList>
+        </Menu>
+      </AppBar>
+    );
   }
 }
 

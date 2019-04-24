@@ -1,7 +1,9 @@
 import path from 'path';
+import EventEmitter from 'events';
 
-class GlobalFS {
+class GlobalFS extends EventEmitter {
   constructor(publicKey, url = '/') {
+    super();
     this._publicKey = publicKey;
     this._url = url;
   }
@@ -10,7 +12,7 @@ class GlobalFS {
     const response = await fetch(path.join(this._url, `list/${this._publicKey}`));
     const parsedResponse = await response.json();
     return parsedResponse
-      .filter(item => item[2])
+      .filter(item => !!item[3])
       .map(item => ({
         name: item[0],
         size: item[1],
@@ -18,16 +20,29 @@ class GlobalFS {
       }));
   }
 
-  upload(filepath, file, onProgress = null) {
+  upload(filepath, file) {
+    const formData = new FormData();
+    const fileName = filepath === '/' ? file.name : filepath + '/' + file.name;
+    const url = path.join(this._url, 'upload');
+    formData.append('file', file, fileName);
+
+    if (typeof window === 'undefined') {
+      return fetch(url, {
+        method: 'POST',
+        body: formData
+      })
+        .then(() => {
+          this.emit('progress', {progress: 100, fileName});
+        });
+    }
+
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.upload.addEventListener('progress', (event) => {
         const progress = Math.round(event.loaded / event.total * 100);
-        if (onProgress) {
-          onProgress(progress);
-        }
+        this.emit('progress', {progress, fileName});
       });
-      xhr.open('POST', path.join(this._url, 'upload'));
+      xhr.open('POST', path.join(this._url, 'upload?revision=' + GlobalFS.getRevision()));
       xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
           // if there is an error
@@ -39,24 +54,24 @@ class GlobalFS {
         }
       };
 
-      const formData = new FormData();
-      const fileName = filepath === '/' ? file.name : filepath + '/' + file.name;
-      formData.append('file', file, fileName);
-
       xhr.send(formData);
     });
   }
 
-  async download() {
-
+  async removeFile(fileName) {
+    await fetch(path.join(this._url, 'delete/' + fileName), {method: 'POST'});
   }
 
   async remove(fileName) {
-    await fetch(path.join(this._url, 'delete/?glob=' + fileName), {method: 'POST'});
+    await fetch(path.join(this._url, 'delete/' + fileName + '?revision=' + GlobalFS.getRevision()), {method: 'POST'});
   }
 
   _getDownloadLink(filepath) {
     return path.join(this._url, 'download', this._publicKey, filepath);
+  }
+
+  static getRevision() {
+    return new Date().getTime();
   }
 }
 

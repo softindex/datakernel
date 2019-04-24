@@ -26,6 +26,7 @@ class FSService extends Store {
       loading: true
     });
     this._globalFSGateway = globalFSGateway;
+    this._subscribeForProgress();
   }
 
   async fetch(path) {
@@ -86,8 +87,7 @@ class FSService extends Store {
       throw new Error('Such folder exists');
     }
 
-    const file = new Blob();
-    file.name = PREFIX_TO_IGNORE;
+    const file = new File([], PREFIX_TO_IGNORE);
     const fullDirName = this.store.path === '/' ? dirName : this.store.path.match(/^\/?(.*?)\/?$/)[1] + '/' + dirName;
 
     await this._globalFSGateway.upload(fullDirName, file);
@@ -108,7 +108,7 @@ class FSService extends Store {
     path = path === '/' ? '' : path;
 
     const fileToDelete = path + fileName;
-    await this._globalFSGateway.remove(escapeSpecialChars(fileToDelete));
+    await this._globalFSGateway.removeFile(escapeSpecialChars(fileToDelete));
     this.setStore({files: this.store.files.filter(file => file.name !== fileName)});
   }
 
@@ -117,7 +117,7 @@ class FSService extends Store {
     let path = this.store.path.match(/^\/?(.*?)\/?$/)[1] + '/';
     path = path === '/' ? '' : path;
     const dirToDelete = escapeSpecialChars(path + dirName) + (dirName ? '/**' : '**');
-    await this._globalFSGateway.remove(dirToDelete);
+    await this._globalFSGateway.removeDir(dirToDelete);
     this.setStore({
       directories: this.store.directories.filter(directory => directory.name !== dirName)
     });
@@ -171,6 +171,21 @@ class FSService extends Store {
         }))
         .sort(ascStringComparator)
     };
+  }
+
+  _subscribeForProgress() {
+    this._globalFSGateway.addListener('progress', ({progress, fileName}) => {
+      let uploads = new Map(this.store.uploads);
+      const file = uploads.get(fileName);
+
+      // if it's folder
+      if (!file) {
+        return;
+      }
+
+      file.upload = progress;
+      this.setStore({uploads});
+    });
   }
 }
 

@@ -12,17 +12,22 @@ RUN git clone --depth 1 https://github.com/softindex/datakernel \
  && cd ..
 
 # app-server layer
-COPY src src
 COPY pom.xml ./
+COPY src src
 #
-RUN sed -i '/<parent>/,/<\/parent>/d;/<\/name>/a<groupId>io.global.fs</groupId>' pom.xml
+RUN sed -i '/<parent>/,/<\/parent>/d;/<\/name>/a<groupId>io.global.fs</groupId>\n<version>3.0.0-SNAPSHOT</version>' pom.xml
+RUN sed -i '/<\/dependencies>/i\
+    <dependency>\
+        <groupId>ch.qos.logback</groupId>\
+        <artifactId>logback-classic</artifactId>\
+        <version>1.2.3</version>\
+    </dependency>' pom.xml
 RUN mvn package
 
 
 
 FROM node:11-alpine as build-js
 WORKDIR /build
-ARG SSH_KEY
 
 # tool layer
 RUN apk --update add --no-cache git
@@ -32,10 +37,10 @@ COPY front/package.json ./
 RUN npm i
 
 # front-end layer
-COPY front/config-overrides.js ./
+COPY front/*.* ./
 COPY front/public ./public
 COPY front/src ./src
-RUN npm run-script build
+RUN npm run build
 
 
 

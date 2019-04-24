@@ -39,7 +39,7 @@ class SideBar extends React.Component {
       try {
         await this.props.fsService.writeFile(file)
       } catch (e) {
-        // Errors possible to get from FS Service
+        console.error(e);
       }
     }));
   };
@@ -96,124 +96,90 @@ class SideBar extends React.Component {
 
   render() {
     return (
-      < Drawer;
-    classes = {;
-    {
-      this.props.classes.root
-    }
-  }
-    variant = {isWidthDown('md', this.props.width;
-  )
-      ? 'persistant' : 'permanent'
-  }
-    open = {this.props.isDrawerOpen};
-    onClose = {this.props.onDrawerClose}
+      <Drawer
+        classes={{
+          paper: this.props.classes.root
+        }}
+        variant={isWidthDown('md', this.props.width) ? 'persistant' : 'permanent'}
+        open={this.props.isDrawerOpen}
+        onClose={this.props.onDrawerClose}
       >
-      < Fab;
-    variant = "extended";
-    aria - label = "Add";
-    className = {this.props.classes.fab};
-    onClick = {this.openFabMenu}
-      >
-      < AddIcon;
-    className = {this.props.classes.icon};
-    />
-    Create
-    < /Fab>
-    < Menu;
-    open = {Boolean(this.state.fabElement;
-  )
-  }
-    onClose = {this.closeFabMenu};
-    disableAutoFocusItem;
-    anchorEl = {this.state.fabElement}
-      >
-      < MenuList >
-      < MenuItem;
-    onClick = {this.formOpen} >
-      < ListItemIcon >
-      < CreateFolderIcon / >
-      < /ListItemIcon>
-      < ListItemText;
-    inset;
-    primary = "Create folder" / >
-      < /MenuItem>
-      < Divider / >
-      < input;
-    onChange = {this.onFileUpload};
-    ref = {ref;
-  =>
-    this.input = ref
-  }
-    multiple;
-    type = "file";
-    id = "file";
-    className = {this.props.classes.uploadInput};
-    />
-    < label;
-    htmlFor = "file" >
-      < MenuItem >
-      < ListItemIcon >
-      < FileIcon / >
-      < /ListItemIcon>
-      < ListItemText;
-    inset;
-    primary = "Upload File" / >
-      < /MenuItem>
-      < /label>
-      < /MenuList>
-      < /Menu>
-      < List;
-    className = {this.props.classes.menuList} >
-      < Link;
-    to = "/folders";
-    style = {;
-    {
-      'none'
-    }
-  }>
-  <
-    ListItem;
-    button;
-    selected = {true};
-    onClick = {this.props.onDrawerClose};
-    classes = {;
-    {
-      this.props.classes.listItem,
-        selected;
-    :
-      this.props.classes.listItemSelected
-    }
-  }
-  >
-  <
-    ListItemIcon >
-    < StorageIcon / >
-    < /ListItemIcon>
-    < ListItemText;
-    primaryTypographyProps = {;
-    {
-      {
-        this.props.classes.listTypography
-      }
-    }
-  }
-    primary = "My files"
-      / >
-      < /ListItem>
-      < /Link>
-      < /List>
-      < PromptDialog;
-    title = "Create folder";
-    open = {this.state.folderFormIsOpen};
-    onClose = {this.formClose};
-    onSubmit = {this.formSubmit};
-    />
-    < Snackbar;
-    error = {this.state.error};
-    />
-    < /Drawer>;
-  )
+        <Fab
+          variant="extended"
+          aria-label="Add"
+          className={this.props.classes.fab}
+          onClick={this.openFabMenu}
+        >
+          <AddIcon className={this.props.classes.icon}/>
+          Create
+        </Fab>
+        <Menu
+          open={Boolean(this.state.fabElement)}
+          onClose={this.closeFabMenu}
+          disableAutoFocusItem
+          anchorEl={this.state.fabElement}
+        >
+          <MenuList>
+            <MenuItem onClick={this.formOpen}>
+              <ListItemIcon>
+                <CreateFolderIcon/>
+              </ListItemIcon>
+              <ListItemText inset primary="Create folder"/>
+            </MenuItem>
+            <Divider/>
+            <input
+              onChange={this.onFileUpload}
+              ref={ref => this.input = ref}
+              multiple type="file"
+              id="file"
+              className={this.props.classes.uploadInput}
+            />
+            <label htmlFor="file">
+              <MenuItem>
+                <ListItemIcon>
+                  <FileIcon/>
+                </ListItemIcon>
+                <ListItemText inset primary="Upload File"/>
+              </MenuItem>
+            </label>
+          </MenuList>
+        </Menu>
+        <List className={this.props.classes.menuList}>
+          <Link to="/folders" style={{textDecoration: 'none'}}>
+            <ListItem
+              button
+              selected={true}
+              onClick={this.props.onDrawerClose}
+              classes={{
+                root: this.props.classes.listItem,
+                selected: this.props.classes.listItemSelected
+              }}
+            >
+              <ListItemIcon>
+                <StorageIcon/>
+              </ListItemIcon>
+              <ListItemText
+                primaryTypographyProps={{
+                  classes: {
+                    root: this.props.classes.listTypography
+                  }
+                }}
+                primary="My files"
+              />
+            </ListItem>
+          </Link>
+        </List>
+        <PromptDialog
+          title="Create folder"
+          open={this.state.folderFormIsOpen}
+          onClose={this.formClose}
+          onSubmit={this.formSubmit}
+        />
+        <Snackbar
+          error={this.state.error}
+        />
+      </Drawer>
+    );
   }
 }
 

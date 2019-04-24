@@ -1,4 +1,4 @@
-import {Component} from 'react';
+import React, {Component} from 'react';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
 import cookies from 'js-cookie';
 import MainScreen from './MainScreen';
@@ -17,36 +17,20 @@ authService.init();
 class App extends Component {
   render() {
     return (
-      < AuthContext.Provider;
-    value = {authService} >
-      < CssBaseline / >
-      < MuiThemeProvider;
-    theme = {theme} >
-      < Router >
-      < Switch >
-      < Route;
-    path = "/folders/**";
-    component = {MainScreen};
-    />
-    < Route;
-    path = "/folders";
-    component = {MainScreen};
-    />
-    < Route;
-    exact = {true};
-    path = "/sign-up";
-    component = {SignUp};
-    />
-    < Route;
-    exact = {true};
-    path = "/";
-    component = {Authorization};
-    />
-    < /Switch>
-    < /Router>
-    < /MuiThemeProvider>
-    < /AuthContext.Provider>;
-  )
+      <AuthContext.Provider value={authService}>
+        <CssBaseline/>
+        <MuiThemeProvider theme={theme}>
+          <Router>
+            <Switch>
+              <Route path="/folders/**" component={MainScreen}/>
+              <Route path="/folders" component={MainScreen}/>
+              <Route exact={true} path="/sign-up" component={SignUp}/>
+              <Route exact={true} path="/" component={Authorization}/>
+            </Switch>
+          </Router>
+        </MuiThemeProvider>
+      </AuthContext.Provider>
+    );
   }
 }
 

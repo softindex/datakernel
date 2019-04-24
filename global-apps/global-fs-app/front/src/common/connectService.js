@@ -30,12 +30,8 @@ function connectService(ServiceContext, mapStateToProps) {
         };
 
         return (
-          < Component;
-        {...
-          props
-        }
-        />;
-      )
+          <Component {...props}/>
+        );
       }
     }
   };

@@ -24,24 +24,18 @@ class Snackbar extends React.Component {
 
   render() {
     return (
-      < SnackbarMaterial;
-    {...
-      this.props
-    }
-    anchorOrigin = {;
-    {
-      'top',
-        horizontal;
-    :
-      'right',
-    }
-  }
-    autoHideDuration = {5000};
-    open = {this.state.isOpen};
-    message = {this.props.error};
-    onClose = {this.onClose};
-    />;
-  )
+      <SnackbarMaterial
+        {...this.props}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        autoHideDuration={5000}
+        open={this.state.isOpen}
+        message={this.props.error}
+        onClose={this.onClose}
+      />
+    )
   }
 }
 

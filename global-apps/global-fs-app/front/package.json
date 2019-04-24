@@ -8,7 +8,9 @@
     "classnames": "2.2.6",
     "elliptic": "^6.4.1",
     "file-saver": "^2.0.0",
+    "idb": "^3.0.2",
     "js-cookie": "^2.2.0",
+    "localforage": "^1.7.3",
     "react": "^16.7.0",
     "react-app-rewire-workbox": "^2.0.1",
     "react-app-rewired": "^2.0.2",
@@ -20,7 +22,7 @@
   },
   "scripts": {
     "start": "react-app-rewired start",
-    "build": "react-app-rewired build",
+    "build": "react-app-rewired build && webpack --mode production",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
@@ -34,6 +36,8 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "@babel/plugin-proposal-decorators": "^7.3.0"
+    "@babel/plugin-proposal-decorators": "^7.3.0",
+    "webpack": "^4.29.3",
+    "webpack-cli": "^3.2.3"
   }
 }

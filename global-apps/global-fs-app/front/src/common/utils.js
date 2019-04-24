@@ -19,4 +19,4 @@ function getFileTypeByName(name) {
   }
 }
 
-export {getFileTypeByName}
+export { getFileTypeByName }

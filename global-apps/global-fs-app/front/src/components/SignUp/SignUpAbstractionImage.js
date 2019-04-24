@@ -1,5 +1,5 @@
-import {Component} from 'react';
-import {getRandomArrayElement, getRandomNumberInRange} from './utils'
+import React, {Component} from 'react';
+import {getRandomNumberInRange, getRandomArrayElement} from './utils'
 
 let ctx;
 
@@ -33,7 +33,7 @@ class SignUpAbstractionImage extends Component {
   }
 
   renderAnimation() {
-    const {nodesCount, nodesSize, size} = this.props;
+    const { nodesCount, nodesSize, size } = this.props;
 
     let viewWidth = window.innerHeight * 1.6;
     let viewHeight = window.innerHeight * 1.6;
@@ -97,14 +97,8 @@ class SignUpAbstractionImage extends Component {
 
   render() {
     return (
-      < canvas;
-    className = {this.props.className};
-    ref = {c;
-  =>
-    this._canvas = c
-  }
-    />;
-  )
+      <canvas className={this.props.className} ref={c => this._canvas = c}/>
+    );
   }
 }
 

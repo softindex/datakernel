@@ -28,38 +28,32 @@ class PromptDialog extends React.Component {
 
   render() {
     return (
-      < Dialog;
-    open = {this.props.open};
-    onClose = {this.state.handleClose};
-    aria - labelledby = "form-dialog-title"
+      <Dialog
+        open={this.props.open}
+        onClose={this.state.handleClose}
+        aria-labelledby="form-dialog-title"
       >
-      < DialogTitle;
-    id = "form-dialog-title" > {this.props.title} < /DialogTitle>
-      < DialogContent >
-      < TextField;
-    autoFocus;
-    margin = "dense";
-    label = "Folder name";
-    type = "text";
-    onChange = {this.handleChange};
-    fullWidth
-    / >
-    < /DialogContent>
-    < DialogActions >
-    < Button;
-    onClick = {this.props.onClose};
-    color = "primary" >
-      Cancel
-      < /Button>
-      < Button;
-    onClick = {this.submit};
-    color = "primary";
-    variant = "contained" >
-      Create
-      < /Button>
-      < /DialogActions>
-      < /Dialog>;
-  )
+        <DialogTitle id="form-dialog-title">{this.props.title}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Folder name"
+            type="text"
+            onChange={this.handleChange}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={this.props.onClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={this.submit} color="primary" variant="contained">
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+    )
   }
 }
 

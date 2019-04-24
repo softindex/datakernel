@@ -1,4 +1,4 @@
-import {Component} from 'react';
+import React, {Component} from 'react';
 import MaterialButton from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import {withStyles} from "@material-ui/core";
@@ -46,31 +46,16 @@ class Button extends Component {
     const loading = this.props.loading || this.state.isLoading;
 
     return (
-      < MaterialButton;
-    {...
-      this.props
-    }
-    onClick = {this.onClick};
-    className = {classes}
+      <MaterialButton
+        {...this.props}
+        onClick={this.onClick}
+        className={classes}
       >
-      {;
-    !loading && this.props.children
+        {!loading && this.props.children}
+        {loading && (<CircularProgress color="inherit" size={22}/>)}
+      </MaterialButton>
+    );
   }
-    {
-      loading && ( < CircularProgress;
-      color = "inherit";
-      size = {22};
-      />)}
-      < /MaterialButton>;
-    )
-    }
-  }
+}
 
-  export;
-  default;
-
-  withStyles(buttonStyles)
-
-(
-  Button;
-)
+export default withStyles(buttonStyles)(Button);

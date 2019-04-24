@@ -11,27 +11,20 @@ class CircularProgress extends React.Component {
     } = this.props;
 
     if (this.props.isError) {
-      return;
-    <
-      ErrorIcon;
-      color = "error" / >
+      return <ErrorIcon color="error"/>
     }
 
     if (this.props.success) {
-      return;
-    <
-      CompleteIcon / >
+      return <CompleteIcon/>
     }
 
     return (
-      < CircularProgressMaterial;
-    {...
-      this.props
-    }
-    variant = {variant};
-    size = {size};
-    />;
-  )
+      <CircularProgressMaterial
+        {...this.props}
+        variant={variant}
+        size={size}
+      />
+    )
   }
 }
 
