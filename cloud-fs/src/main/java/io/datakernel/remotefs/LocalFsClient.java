@@ -625,7 +625,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 		walkFiles(storage.resolve(folder.toString()), path -> {
 			FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
-			if (info != null && (includeTombstones || !info.isTombstone()) && matcher.matches(Paths.get(info.getName()))) {
+			if (info != null && (includeTombstones || !info.isTombstone()) && matcher.matches(Paths.get(info.getName().substring(folder.length())))) {
 				files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
 			}
 		});
