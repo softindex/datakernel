@@ -17,8 +17,12 @@ public final class FsMessageStorage implements MessageStorage {
 
 	private final FsClient storage;
 
-	public FsMessageStorage(FsClient storage) {
+	private FsMessageStorage(FsClient storage) {
 		this.storage = storage;
+	}
+
+	public static FsMessageStorage create(FsClient storage) {
+		return new FsMessageStorage(storage);
 	}
 
 	private String getFileName(PubKey space, long id) {

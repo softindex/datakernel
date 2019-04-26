@@ -78,13 +78,13 @@ public final class GlobalPmTest {
 		RawServerId self = new RawServerId("test");
 		discovery = LocalDiscoveryService.create(getCurrentEventloop(), storage.subfolder("discovery"));
 
-		MessageStorage messageStorage = new FsMessageStorage(storage.subfolder("messages"));
+		MessageStorage messageStorage = FsMessageStorage.create(storage.subfolder("messages"));
 		Map<RawServerId, GlobalPmNode> nodes = new HashMap<>();
 
 		clientFactory = new Function<RawServerId, GlobalPmNode>() {
 			@Override
 			public GlobalPmNode apply(RawServerId serverId) {
-				GlobalPmNode node = nodes.computeIfAbsent(serverId, id -> new LocalGlobalPmNode(serverId, discovery, this, messageStorage));
+				GlobalPmNode node = nodes.computeIfAbsent(serverId, id -> GlobalPmNodeImpl.create(serverId, discovery, this, messageStorage));
 
 				AsyncServlet servlet = GlobalPmNodeServlet.create(node);
 				StubHttpClient client = StubHttpClient.of(MiddlewareServlet.create().with("/pm", servlet));

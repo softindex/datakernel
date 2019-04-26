@@ -7,8 +7,8 @@ import io.datakernel.csp.ChannelSupplier;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
-import io.global.kv.api.KvStorage;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
 
 import java.util.HashMap;
@@ -16,10 +16,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNamespace, LocalGlobalKvNode, GlobalKvNode> {
+public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNamespace, GlobalKvNodeImpl, GlobalKvNode> {
 	private final Map<String, Repo> repos = new HashMap<>();
 
-	public GlobalKvNamespace(LocalGlobalKvNode node, PubKey space) {
+	public GlobalKvNamespace(GlobalKvNodeImpl node, PubKey space) {
 		super(node, space);
 	}
 

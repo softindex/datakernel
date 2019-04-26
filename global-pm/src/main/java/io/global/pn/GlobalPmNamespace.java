@@ -8,8 +8,8 @@ import io.global.pn.api.GlobalPmNode;
 import io.global.pn.api.RawMessage;
 import org.jetbrains.annotations.Nullable;
 
-public final class LocalGlobalPmNamespace extends AbstractGlobalNamespace<LocalGlobalPmNamespace, LocalGlobalPmNode, GlobalPmNode> {
-	public LocalGlobalPmNamespace(LocalGlobalPmNode node, PubKey space) {
+public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNamespace, GlobalPmNodeImpl, GlobalPmNode> {
+	public GlobalPmNamespace(GlobalPmNodeImpl node, PubKey space) {
 		super(node, space);
 	}
 

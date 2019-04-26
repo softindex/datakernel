@@ -13,20 +13,25 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
-public final class LocalGlobalPmNode extends AbstractGlobalNode<LocalGlobalPmNode, LocalGlobalPmNamespace, GlobalPmNode> implements GlobalPmNode {
+public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl, GlobalPmNamespace, GlobalPmNode> implements GlobalPmNode {
 
 	private final MessageStorage storage;
 
-	public LocalGlobalPmNode(RawServerId id, DiscoveryService discoveryService,
+	private GlobalPmNodeImpl(RawServerId id, DiscoveryService discoveryService,
 							 Function<RawServerId, GlobalPmNode> nodeFactory,
 							 MessageStorage storage) {
 		super(id, discoveryService, nodeFactory);
 		this.storage = storage;
 	}
 
+	public static GlobalPmNodeImpl create(RawServerId id, DiscoveryService discoveryService,
+			Function<RawServerId, GlobalPmNode> nodeFactory, MessageStorage storage) {
+		return new GlobalPmNodeImpl(id, discoveryService, nodeFactory, storage);
+	}
+
 	@Override
-	protected LocalGlobalPmNamespace createNamespace(PubKey space) {
-		return new LocalGlobalPmNamespace(this, space);
+	protected GlobalPmNamespace createNamespace(PubKey space) {
+		return new GlobalPmNamespace(this, space);
 	}
 
 	public MessageStorage getStorage() {
@@ -40,7 +45,7 @@ public final class LocalGlobalPmNode extends AbstractGlobalNode<LocalGlobalPmNod
 
 	@Override
 	public @NotNull Promise<SignedData<RawMessage>> poll(PubKey space) {
-		return simpleMethod(space, node -> node.poll(space), LocalGlobalPmNamespace::poll);
+		return simpleMethod(space, node -> node.poll(space), GlobalPmNamespace::poll);
 	}
 
 	@Override

@@ -6,7 +6,6 @@ import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
@@ -29,7 +28,7 @@ public class GlobalPmNodeServlet implements WithMiddleware {
 		this.servlet = servlet(node);
 	}
 
-	public static AsyncServlet create(GlobalPmNode node) {
+	public static GlobalPmNodeServlet create(GlobalPmNode node) {
 		return new GlobalPmNodeServlet(node);
 	}
 

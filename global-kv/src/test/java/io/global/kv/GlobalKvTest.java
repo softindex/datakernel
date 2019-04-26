@@ -27,7 +27,10 @@ import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.kv.api.*;
+import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvClient;
+import io.global.kv.api.KvItem;
+import io.global.kv.api.KvStorage;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
@@ -68,7 +71,7 @@ public final class GlobalKvTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private LocalGlobalKvNode rawSecondClient;
+	private GlobalKvNodeImpl rawSecondClient;
 
 	private GlobalKvDriver<String, String> firstDriver;
 	private GlobalKvAdapter<String, String> firstAliceAdapter;
@@ -94,7 +97,7 @@ public final class GlobalKvTest {
 		nodeFactory = new Function<RawServerId, GlobalKvNode>() {
 			@Override
 			public GlobalKvNode apply(RawServerId serverId) {
-				GlobalKvNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalKvNode.create(id, discoveryService, this, storageFactory));
+				GlobalKvNode node = nodes.computeIfAbsent(serverId, id -> GlobalKvNodeImpl.create(id, discoveryService, this, storageFactory));
 				MiddlewareServlet servlet = MiddlewareServlet.create()
 						.with("/kv", GlobalKvNodeServlet.create(node));
 				StubHttpClient client = StubHttpClient.of(servlet);
@@ -105,7 +108,7 @@ public final class GlobalKvTest {
 		GlobalKvNode firstNode = nodeFactory.apply(FIRST_ID);
 		GlobalKvNode secondNode = nodeFactory.apply(SECOND_ID);
 
-		rawSecondClient = (LocalGlobalKvNode) nodes.get(SECOND_ID);
+		rawSecondClient = (GlobalKvNodeImpl) nodes.get(SECOND_ID);
 
 		firstDriver = GlobalKvDriver.create(firstNode, STRING_CODEC, STRING_CODEC);
 		GlobalKvDriver<String, String> secondDriver = GlobalKvDriver.create(secondNode, STRING_CODEC, STRING_CODEC);
@@ -172,7 +175,7 @@ public final class GlobalKvTest {
 		Set<KvItem<String, String>> content = createContent();
 
 		RawServerId serverId = new RawServerId("localhost:432");
-		GlobalKvNode other = LocalGlobalKvNode.create(serverId, discoveryService, nodeFactory, storageFactory);
+		GlobalKvNode other = GlobalKvNodeImpl.create(serverId, discoveryService, nodeFactory, storageFactory);
 		GlobalKvDriver<String, String> otherDriver = GlobalKvDriver.create(other, STRING_CODEC, STRING_CODEC);
 		KvClient<String, String> otherClient = otherDriver.adapt(alice.getPubKey());
 
@@ -188,7 +191,7 @@ public final class GlobalKvTest {
 		Set<KvItem<String, String>> content = createContent();
 
 		RawServerId serverId = new RawServerId("localhost:432");
-		GlobalKvNode other = LocalGlobalKvNode.create(serverId, discoveryService, nodeFactory, storageFactory);
+		GlobalKvNode other = GlobalKvNodeImpl.create(serverId, discoveryService, nodeFactory, storageFactory);
 		GlobalKvDriver<String, String> otherDriver = GlobalKvDriver.create(other, STRING_CODEC, STRING_CODEC);
 		KvClient<String, String> otherClient = otherDriver.adapt(alice.getPubKey());
 

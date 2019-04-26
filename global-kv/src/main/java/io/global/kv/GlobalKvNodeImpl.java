@@ -41,7 +41,7 @@ import java.util.function.Function;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.global.util.Utils.nSuccessesOrLess;
 
-public final class LocalGlobalKvNode extends AbstractGlobalNode<LocalGlobalKvNode, GlobalKvNamespace, GlobalKvNode> implements GlobalKvNode, Initializable<LocalGlobalKvNode> {
+public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl, GlobalKvNamespace, GlobalKvNode> implements GlobalKvNode, Initializable<GlobalKvNodeImpl> {
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
 
@@ -51,17 +51,17 @@ public final class LocalGlobalKvNode extends AbstractGlobalNode<LocalGlobalKvNod
 	private final BiFunction<PubKey, String, KvStorage> storageFactory;
 
 	// region creators
-	private LocalGlobalKvNode(RawServerId id, DiscoveryService discoveryService,
+	private GlobalKvNodeImpl(RawServerId id, DiscoveryService discoveryService,
 							  Function<RawServerId, GlobalKvNode> nodeFactory,
 							  BiFunction<PubKey, String, KvStorage> storageFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 	}
 
-	public static LocalGlobalKvNode create(RawServerId id, DiscoveryService discoveryService,
+	public static GlobalKvNodeImpl create(RawServerId id, DiscoveryService discoveryService,
 										   Function<RawServerId, GlobalKvNode> nodeFactory,
 										   BiFunction<PubKey, String, KvStorage> storageFactory) {
-		return new LocalGlobalKvNode(id, discoveryService, nodeFactory, storageFactory);
+		return new GlobalKvNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
 	// endregion
 
