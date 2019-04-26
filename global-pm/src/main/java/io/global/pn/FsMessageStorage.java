@@ -25,19 +25,19 @@ public final class FsMessageStorage implements MessageStorage {
 		return new FsMessageStorage(storage);
 	}
 
-	private String getFileName(PubKey space, long id) {
-		return space.asString() + '/' + Long.toHexString(id) + EXT;
+	private String getFileName(PubKey space, String mailBox, long id) {
+		return space.asString() + '/' + mailBox + '/' + Long.toHexString(id) + EXT;
 	}
 
 	@Override
-	public Promise<Void> store(PubKey space, SignedData<RawMessage> message) {
-		return storage.upload(getFileName(space, message.getValue().getId()))
+	public Promise<Void> store(PubKey space, String mailBox, SignedData<RawMessage> message) {
+		return storage.upload(getFileName(space, mailBox, message.getValue().getId()))
 				.then(consumer -> consumer.accept(BinaryUtils.encode(BinaryDataFormats.SIGNED_RAW_MSG_CODEC, message), null));
 	}
 
 	@Override
-	public Promise<@Nullable SignedData<RawMessage>> load(PubKey space) {
-		return storage.list(space.asString() + "/*" + EXT)
+	public Promise<@Nullable SignedData<RawMessage>> load(PubKey space, String mailBox) {
+		return storage.list(space.asString() + '/' + mailBox + "/*" + EXT)
 				.then(list -> {
 					if (list.isEmpty()) {
 						return Promise.of(null);
@@ -55,7 +55,7 @@ public final class FsMessageStorage implements MessageStorage {
 	}
 
 	@Override
-	public Promise<Void> delete(PubKey space, long id) {
-		return storage.delete(getFileName(space, id));
+	public Promise<Void> delete(PubKey space, String mailBox, long id) {
+		return storage.delete(getFileName(space, mailBox, id));
 	}
 }

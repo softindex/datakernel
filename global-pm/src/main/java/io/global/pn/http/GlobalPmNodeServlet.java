@@ -14,8 +14,6 @@ import io.global.common.SignedData;
 import io.global.pn.api.GlobalPmNode;
 import io.global.pn.api.RawMessage;
 
-import java.util.Arrays;
-
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.pn.http.PmCommand.*;
@@ -34,14 +32,15 @@ public class GlobalPmNodeServlet implements WithMiddleware {
 
 	private MiddlewareServlet servlet(GlobalPmNode node) {
 		return MiddlewareServlet.create()
-				.with(POST, "/" + SEND + "/:space", request -> {
+				.with(POST, "/" + SEND + "/:space/:mailbox", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String mailBox = request.getPathParameter("mailbox");
 						return request.getBody()
 								.then(body -> {
 									try {
 										SignedData<RawMessage> message = BinaryUtils.decode(SIGNED_RAW_MSG_CODEC, body);
-										return node.send(space, message)
+										return node.send(space, mailBox, message)
 												.map($ -> HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.<HttpResponse>ofException(e);
@@ -51,31 +50,36 @@ public class GlobalPmNodeServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + MULTISEND + "/:space", request -> {
+				.with(POST, "/" + MULTISEND + "/:space/:mailbox", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String mailBox = request.getPathParameter("mailbox");
 						return BinaryChannelSupplier.of(request.getBodyStream())
 								.parseStream(SIGNED_RAW_MSG_PARSER)
-								.streamTo(node.multisend(space))
+								.streamTo(node.multisend(space, mailBox))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + POLL + "/:space", request -> {
+				.with(GET, "/" + POLL + "/:space/:mailbox", request -> {
 					try {
-						return node.poll(PubKey.fromString(request.getPathParameter("space")))
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String mailBox = request.getPathParameter("mailbox");
+						return node.poll(space, mailBox)
 								.map(message -> HttpResponse.ok200()
 										.withBody(BinaryUtils.encode(SIGNED_RAW_MSG_CODEC.nullable(), message)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + MULTIPOLL + "/:space", request -> {
+				.with(GET, "/" + MULTIPOLL + "/:space/:mailbox", request -> {
 					try {
 						ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
 
-						Promise<Void> process = node.multipoll(PubKey.fromString(request.getPathParameter("space")))
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String mailBox = request.getPathParameter("mailbox");
+						Promise<Void> process = node.multipoll(space, mailBox)
 								.then(supplier -> supplier
 										.map(message -> BinaryUtils.encode(SIGNED_RAW_MSG_CODEC, message))
 										.streamTo(buffer.getConsumer()));
@@ -87,30 +91,31 @@ public class GlobalPmNodeServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + DROP + "/:space", request -> {
+				.with(POST, "/" + DROP + "/:space/:mailbox", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String mailBox = request.getPathParameter("mailbox");
 						return request.getBody()
 								.then(body -> {
 									try {
-										System.out.println("decoding " + Arrays.toString(body.getArray()));
 										SignedData<Long> id = BinaryUtils.decode(SIGNED_LONG_CODEC, body);
-										return node.drop(space, id)
+										return node.drop(space, mailBox, id)
 												.map($ -> HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.<HttpResponse>ofException(e);
 									}
 								});
-					} catch(ParseException e){
+					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + MULTIDROP + "/:space", request -> {
+				.with(POST, "/" + MULTIDROP + "/:space/:mailbox", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String mailBox = request.getPathParameter("mailbox");
 						return BinaryChannelSupplier.of(request.getBodyStream())
 								.parseStream(SIGNED_LONG_PARSER)
-								.streamTo(node.multidrop(space))
+								.streamTo(node.multidrop(space, mailBox))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);

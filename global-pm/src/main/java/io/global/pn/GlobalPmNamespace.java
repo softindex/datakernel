@@ -13,15 +13,15 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 		super(node, space);
 	}
 
-	public Promise<Void> send(SignedData<RawMessage> message) {
-		return node.getStorage().store(space, message);
+	public Promise<Void> send(String mailBox, SignedData<RawMessage> message) {
+		return node.getStorage().store(space, mailBox, message);
 	}
 
-	public Promise<@Nullable SignedData<RawMessage>> poll() {
-		return node.getStorage().load(space);
+	public Promise<@Nullable SignedData<RawMessage>> poll(String mailBox) {
+		return node.getStorage().load(space, mailBox);
 	}
 
-	public Promise<Void> drop(SignedData<Long> id) {
-		return node.getStorage().delete(space, id.getValue());
+	public Promise<Void> drop(String mailBox, SignedData<Long> id) {
+		return node.getStorage().delete(space, mailBox, id.getValue());
 	}
 }

@@ -57,6 +57,7 @@ import static org.junit.Assert.assertEquals;
 public final class GlobalPmTest {
 
 	private static final RawServerId FIRST_ID = new RawServerId("http://127.0.0.1:1001");
+	private static final String MAIL_BOX = "test mail box";
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -105,19 +106,19 @@ public final class GlobalPmTest {
 			KeyPair keys = KeyPair.generate();
 			Message<String> message = Message.now(keys.getPubKey(), "hello! #" + i);
 			sent.add(message);
-			await(driver.send(keys.getPrivKey(), bob.getPubKey(), message));
+			await(driver.send(keys.getPrivKey(), bob.getPubKey(), MAIL_BOX, message));
 		}
 
 		Message<String> msg = Message.now(alice.getPubKey(), "hello!");
 		sent.add(msg);
-		await(driver.send(alice.getPrivKey(), bob.getPubKey(), msg));
+		await(driver.send(alice.getPrivKey(), bob.getPubKey(), MAIL_BOX, msg));
 
 		Set<Message<String>> received = new HashSet<>();
 
-		await(ChannelSupplier.ofPromise(driver.multipoll(bob))
+		await(ChannelSupplier.ofPromise(driver.multipoll(bob, MAIL_BOX))
 				.streamTo(ChannelConsumer.of(message -> {
 					received.add(message);
-					return driver.drop(bob, message.getId());
+					return driver.drop(bob, MAIL_BOX, message.getId());
 				})));
 
 		assertEquals(sent, received);

@@ -1,27 +1,14 @@
 package io.global.pn;
 
 import io.datakernel.async.Promise;
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.util.Tuple2;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.common.SignedData;
-import io.global.pn.api.GlobalPmNode;
 import io.global.pn.api.Message;
 import io.global.pn.api.PmClient;
-import io.global.pn.api.RawMessage;
-import io.global.pn.util.BinaryDataFormats;
 import org.jetbrains.annotations.Nullable;
-import org.spongycastle.crypto.CryptoException;
-
-import static io.datakernel.codec.StructuredCodecs.LONG64_CODEC;
-import static io.datakernel.codec.StructuredCodecs.tuple;
 
 public final class GlobalPmAdapter<T> implements PmClient<T> {
 	private final GlobalPmDriver<T> driver;
@@ -38,32 +25,32 @@ public final class GlobalPmAdapter<T> implements PmClient<T> {
 	}
 
 	@Override
-	public Promise<Void> send(PubKey receiver, long timestamp, T payload) {
-		return driver.send(privKey, receiver, Message.of(timestamp, pubKey, payload));
+	public Promise<Void> send(PubKey receiver, String mailBox, long timestamp, T payload) {
+		return driver.send(privKey, receiver, mailBox, Message.of(timestamp, pubKey, payload));
 	}
 
 	@Override
-	public Promise<ChannelConsumer<Message<T>>> multisend(PubKey receiver) {
-		return driver.multisend(privKey, receiver);
+	public Promise<ChannelConsumer<Message<T>>> multisend(PubKey receiver, String mailBox) {
+		return driver.multisend(privKey, receiver, mailBox);
 	}
 
 	@Override
-	public Promise<@Nullable Message<T>> poll() {
-		return driver.poll(keys);
+	public Promise<@Nullable Message<T>> poll(String mailBox) {
+		return driver.poll(keys, mailBox);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<Message<T>>> multipoll() {
-		return driver.multipoll(keys);
+	public Promise<ChannelSupplier<Message<T>>> multipoll(String mailBox) {
+		return driver.multipoll(keys, mailBox);
 	}
 
 	@Override
-	public Promise<Void> drop(long id) {
-		return driver.drop(keys, id);
+	public Promise<Void> drop(String mailBox, long id) {
+		return driver.drop(keys, mailBox, id);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<Long>> multidrop() {
-		return driver.multidrop(keys);
+	public Promise<ChannelConsumer<Long>> multidrop(String mailBox) {
+		return driver.multidrop(keys, mailBox);
 	}
 }

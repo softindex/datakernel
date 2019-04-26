@@ -7,9 +7,9 @@ import org.jetbrains.annotations.Nullable;
 
 public interface MessageStorage {
 
-	Promise<Void> store(PubKey space, SignedData<RawMessage> message);
+	Promise<Void> store(PubKey space, String mailBox, SignedData<RawMessage> message);
 
-	Promise<@Nullable SignedData<RawMessage>> load(PubKey space);
+	Promise<@Nullable SignedData<RawMessage>> load(PubKey space, String mailBox);
 
-	Promise<Void> delete(PubKey space, long id);
+	Promise<Void> delete(PubKey space, String mailBox, long id);
 }

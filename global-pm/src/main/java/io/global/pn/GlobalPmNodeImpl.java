@@ -39,17 +39,17 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	}
 
 	@Override
-	public @NotNull Promise<Void> send(PubKey space, SignedData<RawMessage> message) {
-		return simpleMethod(space, node -> node.send(space, message), ns -> ns.send(message));
+	public @NotNull Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
+		return simpleMethod(space, node -> node.send(space, mailBox, message), ns -> ns.send(mailBox, message));
 	}
 
 	@Override
-	public @NotNull Promise<SignedData<RawMessage>> poll(PubKey space) {
-		return simpleMethod(space, node -> node.poll(space), GlobalPmNamespace::poll);
+	public @NotNull Promise<SignedData<RawMessage>> poll(PubKey space, String mailBox) {
+		return simpleMethod(space, node -> node.poll(space, mailBox), ns -> ns.poll(mailBox));
 	}
 
 	@Override
-	public Promise<Void> drop(PubKey space, SignedData<Long> id) {
-		return simpleMethod(space, node -> node.drop(space, id), ns -> ns.drop(id));
+	public Promise<Void> drop(PubKey space, String mailBox, SignedData<Long> id) {
+		return simpleMethod(space, node -> node.drop(space, mailBox, id), ns -> ns.drop(mailBox, id));
 	}
 }

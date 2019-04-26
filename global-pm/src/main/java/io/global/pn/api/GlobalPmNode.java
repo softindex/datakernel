@@ -27,24 +27,24 @@ import org.jetbrains.annotations.Nullable;
 public interface GlobalPmNode {
 
 	@NotNull
-	Promise<Void> send(PubKey space, SignedData<RawMessage> message);
+	Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message);
 
 	@NotNull
-	default Promise<ChannelConsumer<SignedData<RawMessage>>> multisend(PubKey receiver) {
-		return Promise.of(ChannelConsumer.of(message -> send(receiver, message)));
+	default Promise<ChannelConsumer<SignedData<RawMessage>>> multisend(PubKey receiver, String mailBox) {
+		return Promise.of(ChannelConsumer.of(message -> send(receiver, mailBox, message)));
 	}
 
 	@NotNull
-	Promise<@Nullable SignedData<RawMessage>> poll(PubKey space);
+	Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox);
 
-	default Promise<ChannelSupplier<SignedData<RawMessage>>> multipoll(PubKey receiver) {
-		return Promise.of(ChannelSupplier.of(() -> poll(receiver)));
+	default Promise<ChannelSupplier<SignedData<RawMessage>>> multipoll(PubKey receiver, String mailBox) {
+		return Promise.of(ChannelSupplier.of(() -> poll(receiver, mailBox)));
 	}
 
-	Promise<Void> drop(PubKey space, SignedData<Long> id);
+	Promise<Void> drop(PubKey space, String mailBox, SignedData<Long> id);
 
 	@NotNull
-	default Promise<ChannelConsumer<SignedData<Long>>> multidrop(PubKey receiver) {
-		return Promise.of(ChannelConsumer.of(id -> drop(receiver, id)));
+	default Promise<ChannelConsumer<SignedData<Long>>> multidrop(PubKey receiver, String mailBox) {
+		return Promise.of(ChannelConsumer.of(id -> drop(receiver, mailBox, id)));
 	}
 }

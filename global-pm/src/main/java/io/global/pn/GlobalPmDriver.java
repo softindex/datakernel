@@ -54,33 +54,33 @@ public final class GlobalPmDriver<T> {
 		}
 	}
 
-	public Promise<Void> send(PrivKey sender, PubKey receiver, Message<T> message) {
-		return node.send(receiver, encrypt(sender, receiver, message));
+	public Promise<Void> send(PrivKey sender, PubKey receiver, String mailBox, Message<T> message) {
+		return node.send(receiver, mailBox, encrypt(sender, receiver, message));
 	}
 
-	public Promise<ChannelConsumer<Message<T>>> multisend(PrivKey sender, PubKey receiver) {
-		return node.multisend(receiver)
+	public Promise<ChannelConsumer<Message<T>>> multisend(PrivKey sender, PubKey receiver, String mailBox) {
+		return node.multisend(receiver, mailBox)
 				.map(consumer -> consumer.map(message -> encrypt(sender, receiver, message)));
 	}
 
-	public Promise<@Nullable Message<T>> poll(KeyPair keys) {
-		return node.poll(keys.getPubKey())
+	public Promise<@Nullable Message<T>> poll(KeyPair keys, String mailBox) {
+		return node.poll(keys.getPubKey(), mailBox)
 				.then(signedRawMessage -> signedRawMessage != null ? decrypt(keys.getPrivKey(), signedRawMessage) : Promise.of(null));
 	}
 
-	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys) {
+	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys, String mailBox) {
 		PrivKey privKey = keys.getPrivKey();
-		return node.multipoll(keys.getPubKey())
+		return node.multipoll(keys.getPubKey(), mailBox)
 				.map(supplier -> supplier.mapAsync(signedRawMessage -> decrypt(privKey, signedRawMessage)));
 	}
 
-	public Promise<Void> drop(KeyPair keys, long id) {
-		return node.drop(keys.getPubKey(), SignedData.sign(LONG64_CODEC, id, keys.getPrivKey()));
+	public Promise<Void> drop(KeyPair keys, String mailBox, long id) {
+		return node.drop(keys.getPubKey(), mailBox, SignedData.sign(LONG64_CODEC, id, keys.getPrivKey()));
 	}
 
-	public Promise<ChannelConsumer<Long>> multidrop(KeyPair keys) {
+	public Promise<ChannelConsumer<Long>> multidrop(KeyPair keys, String mailBox) {
 		PrivKey privKey = keys.getPrivKey();
-		return node.multidrop(keys.getPubKey())
+		return node.multidrop(keys.getPubKey(), mailBox)
 				.map(consumer -> consumer.map(id -> SignedData.sign(LONG64_CODEC, id, privKey)));
 	}
 

@@ -1,36 +1,22 @@
 package io.global.pn.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.util.Tuple2;
-import io.global.common.KeyPair;
-import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.common.SignedData;
-import io.global.pn.util.BinaryDataFormats;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.spongycastle.crypto.CryptoException;
-
-import static io.datakernel.codec.StructuredCodecs.LONG64_CODEC;
-import static io.datakernel.codec.StructuredCodecs.tuple;
 
 public interface PmClient<T> {
 
-	Promise<Void> send(PubKey receiver, long timestamp, T payload);
+	Promise<Void> send(PubKey receiver, String mailBox, long timestamp, T payload);
 
-	Promise<ChannelConsumer<Message<T>>> multisend(PubKey receiver);
+	Promise<ChannelConsumer<Message<T>>> multisend(PubKey receiver, String mailBox);
 
-	Promise<@Nullable Message<T>> poll();
+	Promise<@Nullable Message<T>> poll(String mailBox);
 
-	Promise<ChannelSupplier<Message<T>>> multipoll();
+	Promise<ChannelSupplier<Message<T>>> multipoll(String mailBox);
 
-	Promise<Void> drop(long id);
+	Promise<Void> drop(String mailBox, long id);
 
-	Promise<ChannelConsumer<Long>> multidrop();
+	Promise<ChannelConsumer<Long>> multidrop(String mailBox);
 }

@@ -15,8 +15,6 @@ import io.global.pn.api.RawMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
-
 import static io.global.pn.http.PmCommand.*;
 import static io.global.pn.util.BinaryDataFormats.SIGNED_LONG_CODEC;
 import static io.global.pn.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
@@ -37,11 +35,12 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 	}
 
 	@Override
-	public @NotNull Promise<Void> send(PubKey space, SignedData<RawMessage> message) {
+	public @NotNull Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
 		return client.request(HttpRequest.post(url +
 				UrlBuilder.relative()
 						.appendPathPart(SEND)
 						.appendPathPart(space.asString())
+						.appendPathPart(mailBox)
 						.build())
 				.withBody(BinaryUtils.encode(SIGNED_RAW_MSG_CODEC, message)))
 				.then(response -> response.getCode() == 200 ?
@@ -51,11 +50,12 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 	}
 
 	@Override
-	public @NotNull Promise<@Nullable SignedData<RawMessage>> poll(PubKey space) {
+	public @NotNull Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
 		return client.request(HttpRequest.get(url +
 				UrlBuilder.relative()
 						.appendPathPart(POLL)
 						.appendPathPart(space.asString())
+						.appendPathPart(mailBox)
 						.build()))
 				.then(response -> {
 					if (response.getCode() == 200) {
@@ -76,13 +76,13 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 	}
 
 	@Override
-	public Promise<Void> drop(PubKey space, SignedData<Long> id) {
+	public Promise<Void> drop(PubKey space, String mailBox, SignedData<Long> id) {
 		ByteBuf buf = BinaryUtils.encode(SIGNED_LONG_CODEC, id);
-		System.out.println("encoded " + id + " as " + Arrays.toString(buf.getArray()));
 		return client.request(HttpRequest.post(url +
 				UrlBuilder.relative()
 						.appendPathPart(DROP)
 						.appendPathPart(space.asString())
+						.appendPathPart(mailBox)
 						.build())
 				.withBody(buf))
 				.then(response -> response.getCode() == 200 ?

@@ -28,13 +28,14 @@ public final class GlobalPmDriverServlet<T> implements WithMiddleware {
 
 	private static <T> MiddlewareServlet getServlet(GlobalPmDriver<T> driver, StructuredCodec<Message<T>> codec) {
 		return MiddlewareServlet.create()
-				.with(POST, "/" + SEND + "/:receiver", request -> request.getBody()
+				.with(POST, "/" + SEND + "/:receiver/:mailbox", request -> request.getBody()
 						.then(body -> {
 							try {
 								PrivKey sender = PrivKey.fromString(request.getCookie("Key"));
 								PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
+								String mailBox = request.getPathParameter("mailbox");
 								Message<T> message = fromJson(codec, body.getString(UTF_8));
-								return driver.send(sender, receiver, message)
+								return driver.send(sender, receiver, mailBox, message)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
@@ -42,21 +43,23 @@ public final class GlobalPmDriverServlet<T> implements WithMiddleware {
 								body.recycle();
 							}
 						}))
-				.with(GET, "/" + POLL, request -> {
+				.with(GET, "/" + POLL + "/:mailbox", request -> {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
-						return driver.poll(keys)
+						String mailBox = request.getPathParameter("mailbox");
+						return driver.poll(keys, mailBox)
 								.map(message -> HttpResponse.ok200()
 										.withJson(codec.nullable(), message));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + DROP + "/:id", request -> {
+				.with(POST, "/" + DROP + "/:mailbox/:id", request -> {
 					try {
 						long id = Long.parseLong(request.getPathParameter("id"));
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
-						return driver.drop(keys, id)
+						String mailBox = request.getPathParameter("mailbox");
+						return driver.drop(keys, mailBox, id)
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException | NumberFormatException e) {
 						return Promise.ofException(e);
