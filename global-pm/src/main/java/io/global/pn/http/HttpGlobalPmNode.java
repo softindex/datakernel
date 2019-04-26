@@ -17,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 
-import static io.global.pn.http.KvCommand.*;
+import static io.global.pn.http.PmCommand.*;
 import static io.global.pn.util.BinaryDataFormats.SIGNED_LONG_CODEC;
 import static io.global.pn.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
 

@@ -19,7 +19,7 @@ import java.util.Arrays;
 
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.global.pn.http.KvCommand.*;
+import static io.global.pn.http.PmCommand.*;
 import static io.global.pn.util.BinaryDataFormats.*;
 
 public class GlobalPmNodeServlet implements WithMiddleware {
