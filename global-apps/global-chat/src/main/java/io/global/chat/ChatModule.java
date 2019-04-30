@@ -10,6 +10,9 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.StaticServlet;
+import io.datakernel.loader.StaticLoader;
+import io.datakernel.loader.StaticLoaders;
 import io.datakernel.ot.OTSystem;
 import io.global.chat.chatroom.ChatMultiOperation;
 import io.global.common.SimKey;
@@ -21,6 +24,11 @@ import io.global.ot.service.ServiceEnsuringServlet;
 import io.global.ot.service.messaging.MessagingServlet;
 import io.global.ot.shared.SharedReposOperation;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.Executor;
+
+import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.chat.Utils.CHAT_ROOM_CODEC;
 import static io.global.chat.Utils.createMergedOTSystem;
@@ -28,6 +36,7 @@ import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
 public final class ChatModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
+	public static final String RESOURCES_PATH = "front/build";
 
 	@Override
 	protected void configure() {
@@ -50,13 +59,23 @@ public final class ChatModule extends AbstractModule {
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
 			DynamicOTNodeServlet<ChatMultiOperation> roomServlet,
-			MessagingServlet messagingServlet
+			MessagingServlet messagingServlet,
+			StaticServlet staticServlet
 	) {
 		return MiddlewareServlet.create()
 				.with("/contacts", contactsServlet)
 				.with("/index", roomListServlet)
 				.with("/room/:suffix", roomServlet)
-				.with("/rooms", messagingServlet);
+				.with("/rooms", messagingServlet)
+				.withFallback(staticServlet);
+	}
+
+	@Provides
+	@Singleton
+	StaticServlet provideStaticServlet(Eventloop eventloop, Executor executor) {
+		Path staticDir = Paths.get(RESOURCES_PATH);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, staticDir);
+		return StaticServlet.create(eventloop, resourceLoader, "index.html");
 	}
 
 	@Provides
@@ -65,4 +84,11 @@ public final class ChatModule extends AbstractModule {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);
 	}
+
+	@Provides
+	@Singleton
+	Executor provideExecutor(Config config) {
+		return getExecutor(config.getChild("executor"));
+	}
+
 }
