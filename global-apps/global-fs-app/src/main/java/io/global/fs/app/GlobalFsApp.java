@@ -18,24 +18,16 @@ import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.Tuple2;
+import io.global.LocalNodeCommonModule;
 import io.global.common.*;
-import io.global.common.api.AnnounceData;
-import io.global.common.api.AnnouncementStorage;
-import io.global.common.api.DiscoveryService;
-import io.global.common.discovery.HttpDiscoveryService;
-import io.global.common.discovery.LocalDiscoveryService;
-import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigInteger;
-import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
@@ -44,15 +36,14 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.getExecutor;
+import static io.datakernel.config.ConfigConverters.ofLong;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.lang.Boolean.parseBoolean;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
 
 public final class GlobalFsApp extends Launcher {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
@@ -146,34 +137,7 @@ public final class GlobalFsApp extends Launcher {
 					}
 				},
 				override(new GlobalNodesModule())
-						.with(new AbstractModule() {
-							@Provides
-							@Singleton
-							DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
-								InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
-								if (discoveryAddress != null) {
-									logger.info("Using remote discovery service at " + discoveryAddress);
-									return HttpDiscoveryService.create(discoveryAddress, client);
-								} else {
-									logger.warn("No discovery.address config found, using discovery stub");
-									PrivKey stubPK = PrivKey.of(BigInteger.ONE);
-									AnnouncementStorage announcementStorage = new AnnouncementStorage() {
-										@Override
-										public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
-											throw new UnsupportedOperationException();
-										}
-
-										@Override
-										public Promise<@Nullable SignedData<AnnounceData>> load(PubKey space) {
-											AnnounceData announceData = AnnounceData.of(System.currentTimeMillis(), singleton(new RawServerId(DEFAULT_SERVER_ID)));
-											return Promise.of(SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, stubPK));
-										}
-									};
-									InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
-									return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
-								}
-							}
-						}));
+						.with(new LocalNodeCommonModule(DEFAULT_SERVER_ID)));
 	}
 
 	@Override
