@@ -444,7 +444,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	default ChannelSupplier<T> withEndOfStream(Function<Promise<Void>, Promise<Void>> fn) {
 		SettablePromise<Void> endOfStream = new SettablePromise<>();
 		MaterializedPromise<Void> newEndOfStream = fn.apply(endOfStream).materialize();
-		return new AbstractChannelSupplier<T>() {
+		return new AbstractChannelSupplier<T>(this) {
 			@SuppressWarnings("unchecked")
 			@Override
 			protected Promise<T> doGet() {
