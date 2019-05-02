@@ -1,22 +1,20 @@
+import ChatMessage from "./ChatMessage";
+
 class ChatOTOperation {
-  constructor(timestamp, author, content, isDeleted) {
-    this.timestamp = timestamp;
-    this.author = author;
-    this.content = content;
-    this.isDeleted = isDeleted;
+  constructor(message, remove) {
+    this.message = message;
+    this.remove = remove;
   }
 
-  static EMPTY = new ChatOTOperation(0, '', '', false);
+  static EMPTY = new ChatOTOperation(new ChatMessage(0, '', ''), false);
 
   apply(state) {
     const key = JSON.stringify({
-      timestamp: this.timestamp,
-      author: this.author,
-      content: this.content,
-      isDeleted: this.isDeleted
+      message: this.message,
+      remove: this.remove
     });
 
-    if (this.isDeleted) {
+    if (this.remove) {
       state.delete(key);
     } else {
       state.add(key);
@@ -26,20 +24,15 @@ class ChatOTOperation {
   }
 
   isEmpty() {
-    return !this.author || !this.content;
+    return this.message.isEmpty();
   }
 
   invert() {
-    return new ChatOTOperation(this.timestamp, this.author, this.content, !this.isDeleted);
+    return new ChatOTOperation(this.message, !this.remove);
   }
 
   isEqual(chatOTOperation) {
-    return (
-      chatOTOperation.timestamp === this.timestamp
-      && chatOTOperation.author === this.author
-      && chatOTOperation.content === this.content
-      && chatOTOperation.isDeleted === this.isDeleted
-    );
+    return chatOTOperation.message.isEqual(this.message) && chatOTOperation.remove === this.remove;
   }
 }
 

@@ -1,5 +1,6 @@
 import Service from '../../common/Service';
 import ChatOTOperation from './ot/ChatOTOperation';
+import ChatMessage from "./ot/ChatMessage";
 
 const RETRY_CHECKOUT_TIMEOUT = 1000;
 
@@ -38,7 +39,8 @@ class ChatService extends Service {
 
   async sendMessage(author, content) {
     const timestamp = Date.now();
-    const operation = new ChatOTOperation(timestamp, author, content, false);
+    const message = new ChatMessage(timestamp, author, content);
+    const operation = new ChatOTOperation(message, false);
     this._chatOTStateManager.add([operation]);
 
     await this._sync();
@@ -64,6 +66,7 @@ class ChatService extends Service {
     const otState = this._chatOTStateManager.getState();
     return [...otState]
       .map(key => JSON.parse(key))
+      .map(op => op.message)
       .sort((left, right) => left.timestamp - right.timestamp);
   }
 
