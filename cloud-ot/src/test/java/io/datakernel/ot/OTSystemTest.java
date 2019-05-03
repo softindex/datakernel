@@ -20,9 +20,9 @@ import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 
@@ -34,9 +34,11 @@ import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument"})
-@RunWith(DatakernelRunner.class)
 public final class OTSystemTest {
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void testTransform1() throws Exception {

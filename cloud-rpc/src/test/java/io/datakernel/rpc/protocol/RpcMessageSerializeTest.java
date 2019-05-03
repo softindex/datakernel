@@ -20,7 +20,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 

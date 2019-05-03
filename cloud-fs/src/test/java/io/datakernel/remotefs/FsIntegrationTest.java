@@ -26,13 +26,14 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.Tuple2;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -59,7 +60,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class FsIntegrationTest {
 	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private static final byte[] BIG_FILE = new byte[2 * 1024 * 1024]; // 2 MB
@@ -68,6 +68,12 @@ public final class FsIntegrationTest {
 	static {
 		ThreadLocalRandom.current().nextBytes(BIG_FILE);
 	}
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();

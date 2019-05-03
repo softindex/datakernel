@@ -20,9 +20,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -30,8 +31,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class AsyncServletTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testEnsureRequestBody() {
 		AsyncServlet servlet = request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body));

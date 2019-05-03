@@ -8,7 +8,8 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -22,8 +23,8 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.stub.CommitStorageStub;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.time.Duration;
 import java.util.Set;
@@ -42,9 +43,14 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public class GlobalOTNodeSynchronizationTest {
 	private static final OTSystem<TestOp> otSystem = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private final CommitStorage commitStorage1 = new CommitStorageStub();
 	private final CommitStorage commitStorage2 = new CommitStorageStub();

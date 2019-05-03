@@ -22,17 +22,14 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 
@@ -50,12 +47,17 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
-@UseParametersRunnerFactory(DatakernelRunner.DatakernelRunnerFactory.class)
 public class CrdtStorageAPITest {
 	private static final CrdtDataSerializer<String, TimestampContainer<Integer>> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER));
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Parameter()
 	public String testName;

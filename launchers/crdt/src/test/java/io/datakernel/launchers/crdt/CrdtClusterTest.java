@@ -37,11 +37,15 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.Manual;
-import io.datakernel.test.TestUtils;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
+import io.datakernel.test.rules.LoggingRule.LoggerConfig;
+import org.junit.ClassRule;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -61,12 +65,20 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
-@Manual("manual demos")
-@RunWith(DatakernelRunner.class)
+@Ignore("manual demos")
+@LoggerConfig("TRACE")
 public final class CrdtClusterTest {
-	static {
-		TestUtils.enableLogging();
-	}
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final LoggingRule loggingRule = new LoggingRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides

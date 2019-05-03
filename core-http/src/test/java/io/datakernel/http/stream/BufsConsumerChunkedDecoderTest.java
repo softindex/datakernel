@@ -22,11 +22,12 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import sun.net.www.http.ChunkedOutputStream;
 
 import java.io.ByteArrayOutputStream;
@@ -44,8 +45,14 @@ import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHU
 import static java.lang.System.arraycopy;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class BufsConsumerChunkedDecoderTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	public final String[] plainText = {
 			"Suspendisse faucibus enim curabitur tempus leo viverra massa accumsan nisl nunc\n",
 			"Interdum sapien vehicula\nOrnare odio feugiat fringilla ",

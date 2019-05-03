@@ -17,10 +17,10 @@
 package io.datakernel.async;
 
 import io.datakernel.exception.StacklessException;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.ref.RefInt;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.Iterator;
 import java.util.function.Function;
@@ -33,8 +33,9 @@ import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class QuorumTest {
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void simple() {

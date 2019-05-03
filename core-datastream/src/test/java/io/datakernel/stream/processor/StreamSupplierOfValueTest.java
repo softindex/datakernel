@@ -18,8 +18,9 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.LinkedList;
 
@@ -28,12 +29,15 @@ import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-@RunWith(DatakernelRunner.class)
 public class StreamSupplierOfValueTest {
-	String TEST_STRING = "Hello consumer";
-	Integer TEST_INT = 777;
-	DataItem1 TEST_OBJECT = new DataItem1(1, 1, 8, 8);
-	Object TEST_NULL = null;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	private final String TEST_STRING = "Hello consumer";
+	private final Integer TEST_INT = 777;
+	private final DataItem1 TEST_OBJECT = new DataItem1(1, 1, 8, 8);
+	private final Object TEST_NULL = null;
 
 	@Test
 	public void test1() {

@@ -22,7 +22,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
@@ -31,15 +32,14 @@ import io.global.ot.api.GlobalOTNode.CommitEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.stream.processor.ByteBufRule.initByteBufPool;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.ot.server.GlobalOTNodeImplTest.createCommitEntry;
@@ -50,13 +50,15 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public class GlobalOTNodeHttpClientTest {
-	static {
-		initByteBufPool();
-	}
-
 	private static final LinkedList<Object> params = new LinkedList<>();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private final MiddlewareServlet servlet = MiddlewareServlet.create().with("/ot", getServlet());
 	private final HttpGlobalOTNode client = HttpGlobalOTNode.create("http://localhost", servlet::serve);
 	private final KeyPair keys = KeyPair.generate();

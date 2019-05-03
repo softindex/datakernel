@@ -4,17 +4,17 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.test.rules.ByteBufRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Collection;
 
-import static io.datakernel.stream.processor.ByteBufRule.initByteBufPool;
 import static java.util.Collections.singletonList;
 
 public class HttpServerLauncherTest {
-	static {
-		initByteBufPool();
-	}
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testsInjector() {

@@ -28,7 +28,7 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.service.ServiceGraph;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import org.junit.Rule;

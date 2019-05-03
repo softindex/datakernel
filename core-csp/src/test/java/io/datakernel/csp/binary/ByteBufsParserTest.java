@@ -19,7 +19,7 @@ package io.datakernel.csp.binary;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 

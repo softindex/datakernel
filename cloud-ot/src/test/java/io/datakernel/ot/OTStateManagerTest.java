@@ -7,10 +7,10 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Random;
@@ -28,10 +28,12 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-@RunWith(DatakernelRunner.class)
 public class OTStateManagerTest {
 	private static final StacklessException FAILED = new StacklessException("Failed");
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private OTRepositoryStub<Integer, TestOp> repository;
 	private OTNodeImpl<Integer, TestOp, OTCommit<Integer, TestOp>> node;

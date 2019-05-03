@@ -24,10 +24,10 @@ import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.RequiresInternetConnection;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import javax.net.ssl.SSLContext;
 import java.security.NoSuchAlgorithmException;
@@ -41,9 +41,13 @@ import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
-@RequiresInternetConnection
 public final class TestHttpsClient {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testClient() throws NoSuchAlgorithmException {

@@ -24,13 +24,14 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -57,9 +58,14 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class TestLocalFsClient {
 	private static final MemSize BUFFER_SIZE = MemSize.of(2);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();

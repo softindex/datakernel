@@ -1,8 +1,8 @@
 package io.datakernel.async;
 
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import static io.datakernel.async.AsyncSuppliers.coalesce;
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -10,8 +10,11 @@ import static io.datakernel.async.TestUtils.await;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class AsyncSuppliersTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	@Test
 	public void testReuse() {
 		AsyncSupplier<Void> reuse = reuse(() -> Promise.complete().async());

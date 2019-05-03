@@ -21,10 +21,10 @@ import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -48,9 +48,11 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class OTRepositoryMySqlTest {
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private OTRepositoryMySql<TestOp> repository;
 

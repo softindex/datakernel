@@ -1,13 +1,15 @@
 package io.global.common;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 import io.global.common.discovery.MySqlAnnouncementStorage;
 import io.global.common.discovery.RocksDbAnnouncementStorage;
 import io.global.common.stub.InMemoryAnnouncementStorage;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -15,7 +17,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
@@ -35,13 +36,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 @RunWith(Parameterized.class)
-@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public class AnnouncementStorageTest {
 	private static final StructuredCodec<AnnounceData> ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class);
 	private static final String MY_SQL_PROPERTIES = "test_announcements.properties";
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Parameter()
 	public Function<Path, AnnouncementStorage> storageFn;

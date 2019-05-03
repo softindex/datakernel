@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.test.rules;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;

@@ -23,9 +23,9 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinarySerializers;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -36,9 +36,11 @@ import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.Collections.singleton;
 
-@RunWith(DatakernelRunner.class)
 public final class TestCrdtCluster {
 	private static final BinarySerializer<Set<Integer>> INT_SET_SERIALIZER = BinarySerializers.ofSet(INT_SERIALIZER);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void testUpload() throws IOException {

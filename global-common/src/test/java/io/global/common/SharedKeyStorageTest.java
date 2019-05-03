@@ -1,12 +1,14 @@
 package io.global.common;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.api.SharedKeyStorage;
 import io.global.common.discovery.MySqlSharedKeyStorage;
 import io.global.common.discovery.RocksDbSharedKeyStorage;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -14,7 +16,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
@@ -32,10 +33,15 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
-@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public class SharedKeyStorageTest {
 	private static final StructuredCodec<SharedSimKey> SHARED_KEY_CODEC = REGISTRY.get(SharedSimKey.class);
 	private static final String MY_SQL_PROPERTIES = "test_sharedKeys.properties";
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufPool = new ByteBufRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();

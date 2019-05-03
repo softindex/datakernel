@@ -20,7 +20,7 @@ import com.google.inject.*;
 import com.google.inject.name.Named;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;

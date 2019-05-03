@@ -22,8 +22,10 @@ import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
-import io.datakernel.stream.processor.LoggingRule.LoggerConfig;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
+import io.datakernel.test.rules.LoggingRule.LoggerConfig;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.datakernel.util.Tuple2;
@@ -47,7 +49,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -69,10 +70,18 @@ import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
-@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public class GlobalOTNodeImplTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final LoggingRule loggingRule = new LoggingRule();
 
 	private static final InMemoryAnnouncementStorage ANNOUNCEMENT_STORAGE = new InMemoryAnnouncementStorage();
 	private static final InMemorySharedKeyStorage SHARED_KEY_STORAGE = new InMemorySharedKeyStorage();

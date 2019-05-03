@@ -3,9 +3,10 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.ref.RefBoolean;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -17,8 +18,11 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-@RunWith(DatakernelRunner.class)
 public class StreamSuspendBufferTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	private void testImmediateSuspend(StreamSupplierTransformer<String, StreamSupplier<String>> suspendingModifier) {
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());
 

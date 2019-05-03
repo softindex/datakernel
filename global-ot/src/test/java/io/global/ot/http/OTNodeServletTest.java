@@ -13,15 +13,16 @@ import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Set;
@@ -44,7 +45,6 @@ import static java.util.Base64.getEncoder;
 import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class OTNodeServletTest {
 	private static final String HOST = "http://localhost/";
 	private static final StructuredCodec<CommitId> REVISION_CODEC = REGISTRY.get(CommitId.class);
@@ -52,6 +52,12 @@ public class OTNodeServletTest {
 	private static final SimKey SIM_KEY = SimKey.generate();
 	private static final StructuredCodec<FetchData<CommitId, TestOp>> FETCH_DATA_CODEC = FetchData.codec(REVISION_CODEC, DIFF_CODEC);
 	private static final OTSystem<TestOp> OT_SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private OTRepositoryAdapter<TestOp> adapter;
 	private OTRepositoryStub<CommitId, TestOp> repository;

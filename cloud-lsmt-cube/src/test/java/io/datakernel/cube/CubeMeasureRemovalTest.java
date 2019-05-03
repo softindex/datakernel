@@ -33,13 +33,14 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -71,13 +72,18 @@ import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-@RunWith(DatakernelRunner.class)
 public class CubeMeasureRemovalTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Rule
 	public final ExpectedException exception = ExpectedException.none();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private Eventloop eventloop;
 	private Executor executor;

@@ -23,10 +23,13 @@ import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.MemSize;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -41,13 +44,21 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class MessagingWithBinaryStreamingTest {
 	private static final int LISTEN_PORT = getFreePort();
 	public static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", LISTEN_PORT);
 
 	private static ByteBufSerializer<Integer, Integer> INTEGER_SERIALIZER = ByteBufSerializer.ofJsonCodec(INT_CODEC, INT_CODEC);
 	private static ByteBufSerializer<String, String> STRING_SERIALIZER = ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private static void pong(Messaging<Integer, Integer> messaging) {
 		messaging.receive()

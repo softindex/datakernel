@@ -18,12 +18,13 @@ package io.datakernel.file;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.Manual;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +43,14 @@ import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public final class AsyncFileTest {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncFileTest.class);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -67,7 +73,7 @@ public final class AsyncFileTest {
 	}
 
 	@Test
-	@Manual("This test may fail if read finishes before close, hence big file size")
+	@Ignore("This test may fail if read finishes before close, hence big file size")
 	public void testClose() throws Exception {
 		File file = temporaryFolder.newFile("100Mb");
 		byte[] data = new byte[100 * 1024 * 1024]; // the larger the file the less chance that it will be read fully before close completes

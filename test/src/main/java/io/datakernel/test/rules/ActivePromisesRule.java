@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.test.rules;
 
 import io.datakernel.test.TestUtils;
 import org.junit.rules.TestRule;

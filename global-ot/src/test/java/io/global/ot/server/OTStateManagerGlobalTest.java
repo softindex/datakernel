@@ -4,7 +4,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -24,8 +25,8 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.stub.CommitStorageStub;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Map;
@@ -42,9 +43,14 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public class OTStateManagerGlobalTest {
 	private static final OTSystem<TestOp> OT_SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private TestOpState state;
 	private OTRepository<CommitId, TestOp> repository;

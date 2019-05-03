@@ -23,13 +23,14 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,7 +46,6 @@ import static io.datakernel.async.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class TestCachedFsClient {
 
 	public static final Function<ChannelSupplier<ByteBuf>, Promise<Void>> RECYCLING_FUNCTION = supplier ->
@@ -53,6 +53,12 @@ public final class TestCachedFsClient {
 
 	public static final Function<ChannelSupplier<ByteBuf>, Promise<String>> TO_STRING = supplier ->
 			supplier.toCollector(ByteBufQueue.collector()).map(buf -> buf.asString(UTF_8));
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();

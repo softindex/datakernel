@@ -28,10 +28,10 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.RequiresInternetConnection;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -50,11 +50,16 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class AsyncHttpClientTest {
 	private static final int PORT = getFreePort();
 
 	private static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static void startServer() throws IOException {
 		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request ->
@@ -83,7 +88,6 @@ public final class AsyncHttpClientTest {
 	}
 
 	@Test
-	@RequiresInternetConnection
 	public void testClientTimeoutConnect() {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.withConnectTimeout(Duration.ofMillis(1));

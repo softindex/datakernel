@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;

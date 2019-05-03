@@ -19,8 +19,9 @@ package io.datakernel.stream.processor;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +38,9 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class StreamMapperTest {
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void testFunction() {

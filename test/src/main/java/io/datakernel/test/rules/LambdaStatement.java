@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.test.rules;
 
 import org.junit.runners.model.Statement;
 

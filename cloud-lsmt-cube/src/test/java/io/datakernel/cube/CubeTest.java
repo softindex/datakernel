@@ -28,12 +28,13 @@ import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -59,12 +60,17 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("rawtypes")
-@RunWith(DatakernelRunner.class)
 public final class CubeTest {
 	private static final int LISTEN_PORT = getFreePort();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private final DefiningClassLoader classLoader = create();
 	private final Executor executor = newSingleThreadExecutor();

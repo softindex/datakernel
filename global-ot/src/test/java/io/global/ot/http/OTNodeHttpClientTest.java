@@ -8,15 +8,16 @@ import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Set;
@@ -33,11 +34,16 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("unchecked")
-@RunWith(DatakernelRunner.class)
 public class OTNodeHttpClientTest {
 	private static final StructuredCodec<TestOp> diffCodec = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();
 	private static final OTSystem<TestOp> OT_SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private OTNodeHttpClient<CommitId, TestOp> client;
 	private OTRepositoryStub<CommitId, TestOp> repository;

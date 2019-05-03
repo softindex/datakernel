@@ -20,17 +20,18 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.DiscoveryServlet;
 import io.global.common.discovery.HttpDiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;
@@ -43,11 +44,16 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryService.REJECTED_OUTDATED_ANNOUNCE_DATA;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class DiscoveryHttpTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() throws IOException, CryptoException {

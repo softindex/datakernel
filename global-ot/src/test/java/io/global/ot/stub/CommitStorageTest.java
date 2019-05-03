@@ -1,7 +1,8 @@
 package io.global.ot.stub;
 
 import io.datakernel.async.Promise;
-import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.Hash;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
@@ -10,6 +11,7 @@ import io.global.ot.api.RawCommit;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -17,7 +19,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -37,13 +38,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
-@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public class CommitStorageTest {
 	public static final SimKey SIM_KEY = SimKey.generate();
 	public static final byte[] DATA = {1};
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Parameter()
 	public Function<Path, CommitStorage> storageFn;

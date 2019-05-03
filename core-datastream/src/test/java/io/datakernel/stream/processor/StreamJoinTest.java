@@ -21,8 +21,9 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.StreamJoin.ValueJoiner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,80 +38,10 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class StreamJoinTest {
-	private static final class DataItemMaster {
-		int id;
-		int detailId;
-		String master;
 
-		private DataItemMaster(int id, int detailId, String master) {
-			this.id = id;
-			this.detailId = detailId;
-			this.master = master;
-		}
-
-		@Override
-		public String toString() {
-			return "DataItemMaster{" +
-					"id=" + id +
-					", detailId=" + detailId +
-					", master='" + master + '\'' +
-					'}';
-		}
-	}
-
-	private static final class DataItemDetail {
-		int id;
-		String detail;
-
-		private DataItemDetail(int id, String detail) {
-			this.id = id;
-			this.detail = detail;
-		}
-
-		@Override
-		public String toString() {
-			return "DataItemDetail{" +
-					"id=" + id +
-					", detail='" + detail + '\'' +
-					'}';
-		}
-	}
-
-	private static final class DataItemMasterDetail {
-		int id;
-		int detailId;
-		String master;
-		String detail;
-
-		private DataItemMasterDetail(int id, int detailId, String master, String detail) {
-			this.id = id;
-			this.detailId = detailId;
-			this.master = master;
-			this.detail = detail;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			DataItemMasterDetail that = (DataItemMasterDetail) o;
-			if (id != that.id) return false;
-			if (detailId != that.detailId) return false;
-			if (!Objects.equals(detail, that.detail)) return false;
-			if (!Objects.equals(master, that.master)) return false;
-			return true;
-		}
-
-		@Override
-		public String toString() {
-			return "DataItemMasterDetail{" +
-					"id=" + id +
-					", detailId=" + detailId +
-					", master='" + master + '\'' +
-					", detail='" + detail + '\'' +
-					'}';
-		}
-	}
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void test1() {
@@ -266,5 +197,78 @@ public class StreamJoinTest {
 		assertEquals(0, list.size());
 		assertClosedWithError(source1);
 		assertClosedWithError(source2);
+	}
+
+	private static final class DataItemMaster {
+		int id;
+		int detailId;
+		String master;
+
+		private DataItemMaster(int id, int detailId, String master) {
+			this.id = id;
+			this.detailId = detailId;
+			this.master = master;
+		}
+
+		@Override
+		public String toString() {
+			return "DataItemMaster{" +
+					"id=" + id +
+					", detailId=" + detailId +
+					", master='" + master + '\'' +
+					'}';
+		}
+	}
+
+	private static final class DataItemDetail {
+		int id;
+		String detail;
+
+		private DataItemDetail(int id, String detail) {
+			this.id = id;
+			this.detail = detail;
+		}
+
+		@Override
+		public String toString() {
+			return "DataItemDetail{" +
+					"id=" + id +
+					", detail='" + detail + '\'' +
+					'}';
+		}
+	}
+
+	private static final class DataItemMasterDetail {
+		int id;
+		int detailId;
+		String master;
+		String detail;
+
+		private DataItemMasterDetail(int id, int detailId, String master, String detail) {
+			this.id = id;
+			this.detailId = detailId;
+			this.master = master;
+			this.detail = detail;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			DataItemMasterDetail that = (DataItemMasterDetail) o;
+			if (id != that.id) return false;
+			if (detailId != that.detailId) return false;
+			if (!Objects.equals(detail, that.detail)) return false;
+			if (!Objects.equals(master, that.master)) return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "DataItemMasterDetail{" +
+					"id=" + id +
+					", detailId=" + detailId +
+					", master='" + master + '\'' +
+					", detail='" + detail + '\'' +
+					'}';
+		}
 	}
 }

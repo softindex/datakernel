@@ -20,9 +20,12 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -34,7 +37,6 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class PingPongSocketConnectionTest {
 	private static final int ITERATIONS = 100;
 
@@ -45,6 +47,15 @@ public final class PingPongSocketConnectionTest {
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
 			.andThen(buf -> buf.asString(UTF_8));
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Test
 	public void test() throws IOException {

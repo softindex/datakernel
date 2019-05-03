@@ -23,10 +23,13 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.stream.IntStream;
 
@@ -39,10 +42,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-@RunWith(DatakernelRunner.class)
 public final class AbstractHttpConnectionTest {
 	private static final int PORT = getFreePort();
 	private static final String URL = "http://127.0.0.1:" + PORT;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private AsyncHttpClient client;
 

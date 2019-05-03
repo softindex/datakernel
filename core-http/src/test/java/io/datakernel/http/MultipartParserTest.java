@@ -19,9 +19,10 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,6 @@ import static java.util.stream.Collectors.mapping;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-@RunWith(DatakernelRunner.class)
 public final class MultipartParserTest {
 	private static final String BOUNDARY = "--test-boundary-123";
 	private static final String CRLF = "\r\n";
@@ -58,6 +58,12 @@ public final class MultipartParserTest {
 			CRLF +
 			"line, huh\n" +
 			CRLF + BOUNDARY + "--" + CRLF;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() {

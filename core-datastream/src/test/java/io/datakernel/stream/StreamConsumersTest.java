@@ -20,10 +20,10 @@ import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.StreamTransformer;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +38,10 @@ import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public class StreamConsumersTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void testErrorDecorator() {

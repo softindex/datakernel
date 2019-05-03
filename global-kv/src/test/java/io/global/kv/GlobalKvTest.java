@@ -22,20 +22,24 @@ import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.kv.api.*;
+import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvClient;
+import io.global.kv.api.KvItem;
+import io.global.kv.api.KvStorage;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -55,13 +59,18 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public final class GlobalKvTest {
 	private static final RawServerId FIRST_ID = new RawServerId("http://127.0.0.1:1001");
 	private static final RawServerId SECOND_ID = new RawServerId("http://127.0.0.1:1002");
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private DiscoveryService discoveryService;
 

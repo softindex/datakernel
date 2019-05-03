@@ -24,14 +24,14 @@ import io.datakernel.loader.FileNamesLoadingService;
 import io.datakernel.loader.ResourcesNameLoadingService;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,12 +47,17 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class StaticServletsTest {
 	public static final String EXPECTED_CONTENT = "Test";
 
 	@Rule
 	public ExpectedException exception = ExpectedException.none();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@ClassRule
 	public static final TemporaryFolder tmpFolder = new TemporaryFolder();

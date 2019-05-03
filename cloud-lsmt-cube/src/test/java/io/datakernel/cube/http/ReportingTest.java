@@ -40,14 +40,12 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
 import org.jetbrains.annotations.Nullable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.nio.file.Path;
@@ -83,7 +81,6 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("rawtypes")
-@RunWith(DatakernelRunner.class)
 public final class ReportingTest {
 	public static final double DELTA = 1E-3;
 

@@ -21,7 +21,7 @@ import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 

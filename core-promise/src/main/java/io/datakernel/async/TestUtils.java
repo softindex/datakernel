@@ -52,7 +52,7 @@ public class TestUtils {
 		return awaitException(Promises.all(promises));
 	}
 
-	public static <T> T compute(Promise<T> promise) throws ExecutionException {
+	private static <T> T compute(Promise<T> promise) throws ExecutionException {
 		Future<T> future = promise.toCompletableFuture();
 		Eventloop.getCurrentEventloop().run();
 		try {

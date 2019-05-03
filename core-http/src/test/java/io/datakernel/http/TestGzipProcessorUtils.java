@@ -22,7 +22,10 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -30,7 +33,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -53,7 +55,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.assertEquals;
 
 @RunWith(Parameterized.class)
-@UseParametersRunnerFactory(DatakernelRunnerFactory.class)
 public final class TestGzipProcessorUtils {
 	private static final int PORT = getFreePort();
 	public static final int CHARACTERS_COUNT = 10_000_000;
@@ -71,8 +72,17 @@ public final class TestGzipProcessorUtils {
 	@Parameter
 	public String text;
 
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Test
 	public void testEncodeDecode() throws ParseException {

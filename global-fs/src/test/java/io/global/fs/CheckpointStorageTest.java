@@ -18,16 +18,17 @@ package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.local.RemoteFsCheckpointStorage;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
@@ -40,11 +41,17 @@ import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public final class CheckpointStorageTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private RemoteFsCheckpointStorage storage;
 
 	@Before

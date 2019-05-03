@@ -20,10 +20,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,8 +33,14 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 
-@RunWith(DatakernelRunner.class)
 public final class BufsConsumerChunkedEncoderTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private final List<ByteBuf> list = new ArrayList<>();
 	private final AssertingConsumer consumer = new AssertingConsumer();
 	private final BufsConsumerChunkedEncoder chunkedEncoder = BufsConsumerChunkedEncoder.create();

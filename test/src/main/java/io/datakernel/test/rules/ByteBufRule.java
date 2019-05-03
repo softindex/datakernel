@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.test.rules;
 
 import io.datakernel.bytebuf.ByteBufPool;
 import org.junit.rules.TestRule;
@@ -35,10 +35,6 @@ import static org.junit.Assert.assertEquals;
  */
 public final class ByteBufRule implements TestRule {
 	static {
-		initByteBufPool();
-	}
-
-	public static void initByteBufPool() {
 		System.setProperty("ByteBufPool.stats", "true");
 		System.setProperty("ByteBufPool.registry", "true");
 		System.setProperty("ByteBufPool.minSize", "0");

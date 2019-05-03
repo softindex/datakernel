@@ -21,9 +21,9 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.Iterator;
 import java.util.List;
@@ -34,10 +34,12 @@ import static io.datakernel.async.TestUtils.await;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class LogDataConsumerSplitterTest {
 	private static final List<Integer> VALUES_1 = IntStream.range(1, 100).boxed().collect(Collectors.toList());
 	private static final List<Integer> VALUES_2 = IntStream.range(-100, 0).boxed().collect(Collectors.toList());
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private <T> void assertStreamResult(List<T> values, StreamConsumerWithResult<T, List<T>> consumer, Promise<List<T>> result) {
 		await(StreamSupplier.ofIterable(values).streamTo(consumer.getConsumer()));

@@ -19,10 +19,11 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.util.IdGeneratorSql;
 import io.datakernel.aggregation.util.SqlAtomicSequence;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -35,10 +36,15 @@ import static io.datakernel.util.SqlUtils.executeScript;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class IdGeneratorSqlTest {
 	private DataSource dataSource;
 	private SqlAtomicSequence sequence;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void before() throws IOException, SQLException {

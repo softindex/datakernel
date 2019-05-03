@@ -2,10 +2,10 @@ package io.datakernel.ot;
 
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.Set;
 
@@ -18,9 +18,12 @@ import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class OTLoadedGraphTest {
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	private OTRepositoryStub<Integer, TestOp> repository;
 
 	@Before

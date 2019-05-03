@@ -25,13 +25,10 @@ import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.stream.processor.DatakernelRunner;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -53,12 +50,17 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-@RunWith(DatakernelRunner.class)
 public final class TestRemoteFsClusterClient {
 	public static final int CLIENT_SERVER_PAIRS = 10;
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 
