@@ -1,4 +1,4 @@
-package io.global.pn;
+package io.global.pm;
 
 import io.datakernel.async.Promise;
 import io.global.common.PubKey;
@@ -6,9 +6,9 @@ import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.MessageStorage;
-import io.global.pn.api.RawMessage;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.MessageStorage;
+import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;

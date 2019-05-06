@@ -1,4 +1,4 @@
-package io.global.pn.http;
+package io.global.pm.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -11,13 +11,13 @@ import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.RawMessage;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.RawMessage;
 
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.global.pn.http.PmCommand.*;
-import static io.global.pn.util.BinaryDataFormats.*;
+import static io.global.pm.http.PmCommand.*;
+import static io.global.pm.util.BinaryDataFormats.*;
 
 public class GlobalPmNodeServlet implements WithMiddleware {
 	private final MiddlewareServlet servlet;

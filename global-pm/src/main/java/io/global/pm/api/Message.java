@@ -1,9 +1,7 @@
-package io.global.pn.api;
+package io.global.pm.api;
 
 import io.datakernel.exception.ParseException;
 import io.global.common.PubKey;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ThreadLocalRandom;
 

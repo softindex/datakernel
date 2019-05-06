@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.pn;
+package io.global.pm;
 
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -29,11 +29,11 @@ import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.Message;
-import io.global.pn.api.MessageStorage;
-import io.global.pn.http.GlobalPmNodeServlet;
-import io.global.pn.http.HttpGlobalPmNode;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.Message;
+import io.global.pm.api.MessageStorage;
+import io.global.pm.http.GlobalPmNodeServlet;
+import io.global.pm.http.HttpGlobalPmNode;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

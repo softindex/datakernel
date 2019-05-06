@@ -1,4 +1,4 @@
-package io.global.pn;
+package io.global.pm;
 
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
@@ -6,8 +6,8 @@ import io.datakernel.csp.ChannelSupplier;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.pn.api.Message;
-import io.global.pn.api.PmClient;
+import io.global.pm.api.Message;
+import io.global.pm.api.PmClient;
 import org.jetbrains.annotations.Nullable;
 
 public final class GlobalPmAdapter<T> implements PmClient<T> {

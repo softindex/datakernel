@@ -1,11 +1,11 @@
-package io.global.pn;
+package io.global.pm;
 
 import io.datakernel.async.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.RawMessage;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.Nullable;
 
 public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNamespace, GlobalPmNodeImpl, GlobalPmNode> {

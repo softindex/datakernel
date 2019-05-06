@@ -1,4 +1,4 @@
-package io.global.pn.http;
+package io.global.pm.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
@@ -9,14 +9,14 @@ import io.datakernel.http.WithMiddleware;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.pn.GlobalPmDriver;
-import io.global.pn.api.Message;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.Message;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.global.pn.http.PmCommand.*;
-import static io.global.pn.util.HttpDataFormats.getMessageCodec;
+import static io.global.pm.http.PmCommand.*;
+import static io.global.pm.util.HttpDataFormats.getMessageCodec;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class GlobalPmDriverServlet<T> implements WithMiddleware {

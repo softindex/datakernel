@@ -50,12 +50,12 @@ import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
-import io.global.pn.FsMessageStorage;
-import io.global.pn.GlobalPmNodeImpl;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.MessageStorage;
-import io.global.pn.http.GlobalPmNodeServlet;
-import io.global.pn.http.HttpGlobalPmNode;
+import io.global.pm.FsMessageStorage;
+import io.global.pm.GlobalPmNodeImpl;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.MessageStorage;
+import io.global.pm.http.GlobalPmNodeServlet;
+import io.global.pm.http.HttpGlobalPmNode;
 
 import java.util.function.Function;
 

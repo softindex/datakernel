@@ -1,8 +1,8 @@
-package io.global.pn.util;
+package io.global.pm.util;
 
 import io.datakernel.codec.StructuredCodec;
 import io.global.common.PubKey;
-import io.global.pn.api.Message;
+import io.global.pm.api.Message;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 

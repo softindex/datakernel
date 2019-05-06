@@ -1,4 +1,4 @@
-package io.global.pn.http;
+package io.global.pm.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -10,14 +10,14 @@ import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.http.UrlBuilder;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.RawMessage;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.global.pn.http.PmCommand.*;
-import static io.global.pn.util.BinaryDataFormats.SIGNED_LONG_CODEC;
-import static io.global.pn.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
+import static io.global.pm.http.PmCommand.*;
+import static io.global.pm.util.BinaryDataFormats.SIGNED_LONG_CODEC;
+import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
 
 public class HttpGlobalPmNode implements GlobalPmNode {
 	private static final String PM_NODE_SUFFIX = "/pm/";

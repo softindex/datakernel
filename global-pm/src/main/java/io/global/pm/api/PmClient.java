@@ -1,4 +1,4 @@
-package io.global.pn.api;
+package io.global.pm.api;
 
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;

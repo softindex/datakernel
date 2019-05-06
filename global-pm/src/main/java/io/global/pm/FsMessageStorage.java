@@ -1,4 +1,4 @@
-package io.global.pn;
+package io.global.pm;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -7,9 +7,9 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.pn.api.MessageStorage;
-import io.global.pn.api.RawMessage;
-import io.global.pn.util.BinaryDataFormats;
+import io.global.pm.api.MessageStorage;
+import io.global.pm.api.RawMessage;
+import io.global.pm.util.BinaryDataFormats;
 import org.jetbrains.annotations.Nullable;
 
 public final class FsMessageStorage implements MessageStorage {

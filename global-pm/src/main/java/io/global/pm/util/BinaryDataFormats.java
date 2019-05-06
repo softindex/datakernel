@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.pn.util;
+package io.global.pm.util;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
@@ -22,7 +22,7 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.pn.api.RawMessage;
+import io.global.pm.api.RawMessage;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.common.BinaryDataFormats.createGlobal;

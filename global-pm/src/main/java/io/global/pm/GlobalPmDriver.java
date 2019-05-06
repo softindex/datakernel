@@ -1,4 +1,4 @@
-package io.global.pn;
+package io.global.pm;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
@@ -12,11 +12,11 @@ import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.pn.api.GlobalPmNode;
-import io.global.pn.api.Message;
-import io.global.pn.api.PmClient;
-import io.global.pn.api.RawMessage;
-import io.global.pn.util.BinaryDataFormats;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.Message;
+import io.global.pm.api.PmClient;
+import io.global.pm.api.RawMessage;
+import io.global.pm.util.BinaryDataFormats;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 

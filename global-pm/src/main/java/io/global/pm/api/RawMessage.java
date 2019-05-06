@@ -1,4 +1,4 @@
-package io.global.pn.api;
+package io.global.pm.api;
 
 public final class RawMessage {
 	private final long id;
