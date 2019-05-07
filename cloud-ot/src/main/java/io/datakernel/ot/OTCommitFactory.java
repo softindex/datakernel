@@ -18,15 +18,52 @@ package io.datakernel.ot;
 
 import io.datakernel.async.Promise;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
+import static io.datakernel.util.CollectorsEx.throwingMerger;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toMap;
 
 public interface OTCommitFactory<K, D> {
-	Promise<OTCommit<K, D>> createCommit(int epoch, Map<K, ? extends List<? extends D>> parentDiffs, long level);
+	final class DiffsWithLevel<D> {
+		private final long level;
+		private final List<D> diffs;
 
-	default Promise<OTCommit<K, D>> createCommit(int epoch, K parent, List<? extends D> parentDiff, long level) {
-		return createCommit(epoch, singletonMap(parent, parentDiff), level);
+		public DiffsWithLevel(long level, List<D> diffs) {
+			this.level = level;
+			this.diffs = diffs;
+		}
+
+		public long getLevel() {
+			return level;
+		}
+
+		public List<D> getDiffs() {
+			return diffs;
+		}
+	}
+
+	Promise<OTCommit<K, D>> createCommit(Map<K, DiffsWithLevel<D>> parentDiffs);
+
+	default Promise<OTCommit<K, D>> createCommit(K parent, DiffsWithLevel<D> parentDiff) {
+		return createCommit(singletonMap(parent, parentDiff));
+	}
+
+	default Promise<OTCommit<K, D>> createCommit(Set<K> parents, Function<K, List<D>> diffs, Function<K, Long> level) {
+		return createCommit(
+				parents.stream()
+						.collect(toMap(
+								parent -> parent,
+								parent -> new DiffsWithLevel<>(level.apply(parent), diffs.apply(parent)),
+								throwingMerger(),
+								LinkedHashMap::new)));
+	}
+
+	default Promise<OTCommit<K, D>> createCommit(K parent, List<D> diffs, long level) {
+		return createCommit(parent, new DiffsWithLevel<>(level, diffs));
 	}
 }

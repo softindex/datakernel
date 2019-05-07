@@ -79,8 +79,8 @@ public class OTLoadedGraph<K, D> {
 	private final OTSystem<D> otSystem;
 
 	private final Map<K, Long> levels = new HashMap<>();
-	private final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
-	private final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
+	private final Map<K, Map<K, List<? extends D>>> child2parent = new HashMap<>();
+	private final Map<K, Map<K, List<? extends D>>> parent2child = new HashMap<>();
 	private Function<K, String> idToString = Objects::toString;
 	private Function<D, String> diffToString = Objects::toString;
 
@@ -88,7 +88,7 @@ public class OTLoadedGraph<K, D> {
 		levels.put(node, level);
 	}
 
-	void addEdge(K parent, K child, List<D> diff) {
+	void addEdge(K parent, K child, List<? extends D> diff) {
 		child2parent.computeIfAbsent(child, $ -> new HashMap<>()).put(parent, diff);
 		parent2child.computeIfAbsent(parent, $ -> new HashMap<>()).put(child, diff);
 	}
@@ -109,7 +109,7 @@ public class OTLoadedGraph<K, D> {
 		return levels.keySet().contains(node);
 	}
 
-	public Map<K, List<D>> getParents(K child) {
+	public Map<K, List<? extends D>> getParents(K child) {
 		return child2parent.get(child);
 	}
 
@@ -141,7 +141,7 @@ public class OTLoadedGraph<K, D> {
 			List<D> node2child = result.remove(node);
 			if (!visited.add(node)) continue;
 			assert node2child != null;
-			Map<K, List<D>> nodeParents = nullToEmpty(getParents(node));
+			Map<K, List<? extends D>> nodeParents = nullToEmpty(getParents(node));
 			for (K nodeParent : nodeParents.keySet()) {
 				if (!visited.contains(nodeParent) && !result.containsKey(nodeParent)) {
 					List<D> parent2child = concat(nodeParents.get(nodeParent), node2child);
@@ -209,7 +209,7 @@ public class OTLoadedGraph<K, D> {
 					break;
 				}
 			}
-			Map<K, List<D>> parentsMap = nullToEmpty(getParents(node));
+			Map<K, List<? extends D>> parentsMap = nullToEmpty(getParents(node));
 			for (K parent : parentsMap.keySet()) {
 				if (visited.contains(parent) || paths.containsKey(parent)) continue;
 				paths.put(parent, concat(parentsMap.get(parent), path));
@@ -227,11 +227,11 @@ public class OTLoadedGraph<K, D> {
 
 		K pivotNode = nodes.stream().min(comparingInt((K node) -> findRoots(node).size())).get();
 
-		Map<K, List<D>> pivotNodeParents = getParents(pivotNode);
+		Map<K, List<? extends D>> pivotNodeParents = getParents(pivotNode);
 		Set<K> recursiveMergeNodes = union(pivotNodeParents.keySet(), difference(nodes, singleton(pivotNode)));
 		K mergeNode = doMerge(excludeParents(recursiveMergeNodes));
 		K parentNode = first(pivotNodeParents.keySet());
-		List<D> parentToPivotNode = pivotNodeParents.get(parentNode);
+		List<? extends D> parentToPivotNode = pivotNodeParents.get(parentNode);
 		List<D> parentToMergeNode = findParent(parentNode, mergeNode);
 
 		if (pivotNodeParents.size() > 1) {
@@ -263,10 +263,10 @@ public class OTLoadedGraph<K, D> {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n");
 		for (K child : child2parent.keySet()) {
-			Map<K, List<D>> parent2diffs = child2parent.get(child);
+			Map<K, List<? extends D>> parent2diffs = child2parent.get(child);
 			String color = (parent2diffs.size() == 1) ? "color=blue; " : "";
 			for (K parent : parent2diffs.keySet()) {
-				List<D> diffs = parent2diffs.get(parent);
+				List<? extends D> diffs = parent2diffs.get(parent);
 				sb.append("\t" +
 						nodeToGraphViz(child) +
 						" -> " + nodeToGraphViz(parent) +
@@ -306,7 +306,7 @@ public class OTLoadedGraph<K, D> {
 		return "\"" + idToString.apply(node) + "\"";
 	}
 
-	private String diffsToGraphViz(List<D> diffs) {
+	private String diffsToGraphViz(List<? extends D> diffs) {
 		return diffs.isEmpty() ? "∅" : diffs.stream().map(diffToString).collect(joining(",\n"));
 	}
 

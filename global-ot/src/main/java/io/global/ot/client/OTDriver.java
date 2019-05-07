@@ -23,9 +23,11 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.CollectorsEx;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
@@ -46,8 +48,7 @@ import static io.datakernel.util.CollectionUtils.*;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.*;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 public final class OTDriver {
 	private static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
@@ -75,26 +76,30 @@ public final class OTDriver {
 		return currentSimKey;
 	}
 
-	@SuppressWarnings("unchecked")
 	public <D> OTCommit<CommitId, D> createCommit(int epoch, MyRepositoryId<D> myRepositoryId,
-			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
+			Map<CommitId, DiffsWithLevel<D>> parentDiffs) {
 		long timestamp = now.currentTimeMillis();
 		EncryptedData encryptedDiffs = encryptAES(
 				encodeAsArray(COMMIT_DIFFS_CODEC,
 						parentDiffs.values()
 								.stream()
-								.map(value -> encodeAsArray(myRepositoryId.getDiffsCodec(), (List<D>) value))
+								.map(value -> encodeAsArray(myRepositoryId.getDiffsCodec(), (List<D>) value.getDiffs()))
 								.collect(toList())),
 				currentSimKey.getAesKey());
 		byte[] rawCommitBytes = encodeAsArray(COMMIT_CODEC,
 				RawCommit.of(epoch,
-						parentDiffs.keySet(),
+						parentDiffs.entrySet()
+								.stream()
+								.collect(toMap(
+										Map.Entry::getKey,
+										entry -> entry.getValue().getLevel(),
+										CollectorsEx.throwingMerger(),
+										LinkedHashMap::new)),
 						encryptedDiffs,
 						Hash.sha1(currentSimKey.getAesKey().getKey()),
-						level,
 						timestamp));
 		CommitId commitId = CommitId.ofBytes(sha256(rawCommitBytes));
-		return OTCommit.of(epoch, commitId, parentDiffs, level)
+		return OTCommit.of(epoch, commitId, parentDiffs)
 				.withTimestamp(timestamp)
 				.withSerializedData(rawCommitBytes);
 	}
@@ -224,13 +229,13 @@ public final class OTDriver {
 			throw new ParseException();
 		}
 
-		Map<CommitId, List<? extends D>> parents = new HashMap<>();
+		Map<CommitId, List<D>> parents = new HashMap<>();
 		Iterator<byte[]> it = list.iterator();
 		for (CommitId parent : rawCommit.getParents()) {
 			parents.put(parent, decode(myRepositoryId.getDiffsCodec(), it.next()));
 		}
 
-		return OTCommit.of(rawCommit.getEpoch(), commitId, parents, rawCommit.getLevel())
+		return OTCommit.of(rawCommit.getEpoch(), commitId, parents.keySet(), parents::get, rawCommit.getParentLevels()::get)
 				.withTimestamp(rawCommit.getTimestamp());
 	}
 

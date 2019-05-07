@@ -37,8 +37,6 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.stub.InMemoryAnnouncementStorage;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.CommitEntry;
-import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.stub.CommitStorageStub;
 import io.global.ot.util.FailingDiscoveryService;
 import io.global.ot.util.FailingGlobalOTNode;

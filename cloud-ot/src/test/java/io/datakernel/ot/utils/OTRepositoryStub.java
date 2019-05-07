@@ -72,11 +72,11 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	}
 
 	@Override
-	public Promise<OTCommit<K, D>> createCommit(int epoch, Map<K, ? extends List<? extends D>> parentDiffs, long level) {
+	public Promise<OTCommit<K, D>> createCommit(Map<K, DiffsWithLevel<D>> parentDiffs) {
 		return commitFactory != null ?
-				commitFactory.createCommit(epoch, parentDiffs, level) :
+				commitFactory.createCommit(parentDiffs) :
 				createCommitId()
-						.map(newId -> OTCommit.of(0, newId, parentDiffs, level));
+						.map(newId -> OTCommit.of(0, newId, parentDiffs));
 	}
 
 	@Override
@@ -103,19 +103,22 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 		return revisionIdSupplier.get();
 	}
 
+	@NotNull
 	@Override
-	public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
+	public Promise<OTCommit<K, D>> loadCommit(@NotNull K revisionId) {
 		return Promise.of(doLoadCommit(revisionId));
 	}
 
+	@NotNull
 	@Override
-	public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
+	public Promise<Void> saveSnapshot(@NotNull K revisionId, @NotNull List<D> diffs) {
 		doSaveSnapshot(revisionId, diffs);
 		return Promise.complete();
 	}
 
+	@NotNull
 	@Override
-	public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
+	public Promise<Optional<List<D>>> loadSnapshot(@NotNull K revisionId) {
 		return Promise.of(Optional.ofNullable(snapshots.get(revisionId)));
 	}
 
@@ -152,7 +155,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	public OTCommit<K, D> doLoadCommit(K revisionId) {
 		OTCommit<K, D> commit = commits.get(revisionId);
 		checkNotNull(commit);
-		return OTCommit.of(0, commit.getId(), commit.getParents(), commit.getLevel())
+		return OTCommit.of(0, commit.getId(), commit.getParentsWithLevels())
 				.withTimestamp(commit.getTimestamp());
 	}
 

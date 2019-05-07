@@ -3,6 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.util.ref.Ref;
 import io.datakernel.util.ref.RefInt;
 import org.slf4j.Logger;
@@ -45,10 +46,10 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	}
 
 	@Override
-	public Promise<C> createCommit(K parent, List<? extends D> diffs, long level) {
+	public Promise<C> createCommit(K parent, List<D> diffs, long level) {
 		return repository.loadCommit(parent)
 				.then(parentCommit ->
-						repository.createCommit(parentCommit.getEpoch(), parent, diffs, level)
+						repository.createCommit(parent, new DiffsWithLevel<>(level, diffs))
 								.map(commitToObject)
 								.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level)));
 	}

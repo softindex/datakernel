@@ -20,12 +20,10 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
-import io.global.common.SignedData;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.CommitEntry;
 
-import java.util.Set;
+import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.global.common.BinaryDataFormats.createGlobal;
@@ -36,12 +34,6 @@ public final class BinaryDataFormats {
 	}
 
 	public static final CodecFactory REGISTRY = createGlobal()
-			.with(CommitEntry.class, registry ->
-					tuple(CommitEntry::parse,
-							CommitEntry::getCommitId, registry.get(CommitId.class),
-							CommitEntry::getCommit, registry.get(RawCommit.class),
-							CommitEntry::getHead, registry.get(new TypeT<SignedData<RawCommitHead>>() {}).nullable()))
-
 			.with(CommitId.class, registry ->
 					registry.get(byte[].class)
 							.transform(CommitId::parse, CommitId::toBytes))
@@ -72,9 +64,8 @@ public final class BinaryDataFormats {
 			.with(RawCommit.class, registry ->
 					tuple(RawCommit::parse,
 							RawCommit::getEpoch, registry.get(Integer.class),
-							RawCommit::getParents, registry.get(new TypeT<Set<CommitId>>() {}),
+							RawCommit::getParentLevels, registry.get(new TypeT<Map<CommitId, Long>>() {}),
 							RawCommit::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawCommit::getSimKeyHash, registry.get(Hash.class),
-							RawCommit::getLevel, registry.get(Long.class),
 							RawCommit::getTimestamp, registry.get(Long.class)));
 }

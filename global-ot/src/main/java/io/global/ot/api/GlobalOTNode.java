@@ -20,11 +20,9 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyManager;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Optional;
@@ -44,52 +42,6 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
 
-	final class HeadsInfo {
-		private final Set<CommitId> existing;
-		private final Set<CommitId> required;
-
-		public HeadsInfo(Set<CommitId> existing, Set<CommitId> required) {
-			this.required = required;
-			this.existing = existing;
-		}
-
-		public Set<CommitId> getExisting() {
-			return existing;
-		}
-
-		public Set<CommitId> getRequired() {
-			return required;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-			HeadsInfo that = (HeadsInfo) o;
-			if (!existing.equals(that.existing)) {
-				return false;
-			}
-			if (!required.equals(that.required)) {
-				return false;
-			}
-			return true;
-		}
-
-		@Override
-		public int hashCode() {
-			int result = 0;
-			result = 31 * result + existing.hashCode();
-			result = 31 * result + required.hashCode();
-			return result;
-		}
-	}
-
-	Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId);
-
 	Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot);
 
 	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id);
@@ -106,43 +58,8 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 	Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId);
 
-	final class CommitEntry {
-		public final CommitId commitId;
-		public final RawCommit commit;
-		@Nullable
-		public final SignedData<RawCommitHead> head;
+	Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> startNodes);
 
-		public CommitEntry(CommitId commitId, RawCommit commit, @Nullable SignedData<RawCommitHead> head) {
-			this.commitId = commitId;
-			this.commit = commit;
-			this.head = head;
-		}
-
-		public static CommitEntry parse(CommitId commitId, RawCommit commit, @Nullable SignedData<RawCommitHead> head) throws ParseException {
-			return new CommitEntry(commitId, commit, head); // TODO
-		}
-
-		public CommitId getCommitId() {
-			return commitId;
-		}
-
-		public RawCommit getCommit() {
-			return commit;
-		}
-
-		@Nullable
-		public SignedData<RawCommitHead> getHead() {
-			return head;
-		}
-
-		public boolean hasHead() {
-			return head != null;
-		}
-	}
-
-	Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId,
-												   Set<CommitId> required, Set<CommitId> existing);
-
-	Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId);
+	Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads);
 
 }

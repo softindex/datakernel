@@ -20,10 +20,6 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
-import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
@@ -42,7 +38,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.codec.binary.BinaryUtils.*;
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpMethod.GET;
@@ -119,17 +116,6 @@ public final class RawServerServlet implements WithMiddleware {
 						return node.loadCommit(urlDecodeRepositoryId(req), urlDecodeCommitId(req.getQueryParameter("commitId")))
 								.map(commit -> HttpResponse.ok200()
 										.withBody(toJson(COMMIT_JSON, commit).getBytes(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
-				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", req -> {
-					try {
-						return node.getHeadsInfo(
-								urlDecodeRepositoryId(req))
-								.map(headsInfo -> HttpResponse.ok200()
-										.withBody(toJson(HEADS_INFO_JSON, headsInfo).getBytes(UTF_8))
-								);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -251,34 +237,7 @@ public final class RawServerServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
-					try {
-						return node.download(
-								urlDecodeRepositoryId(req),
-								req.parseQueryParameter("required", COMMIT_IDS_PARSER),
-								req.parseQueryParameter("existing", COMMIT_IDS_PARSER))
-								.map(downloader -> HttpResponse.ok200()
-										.withBodyStream(downloader
-												.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
-												.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
-										)
-								);
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
-				.with(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
-					try {
-						RepoID repoID = urlDecodeRepositoryId(req);
-						return BinaryChannelSupplier.of(req.getBodyStream())
-								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
-								.streamTo(ChannelConsumer.ofPromise(node.upload(repoID)))
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				});
+				;
 	}
 
 	@Override

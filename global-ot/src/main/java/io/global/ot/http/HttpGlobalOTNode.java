@@ -18,15 +18,10 @@ package io.global.ot.http;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.csp.process.ChannelByteChunker;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Initializer;
@@ -45,7 +40,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.codec.binary.BinaryUtils.*;
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
@@ -56,7 +52,6 @@ import static io.datakernel.http.HttpUtils.renderQueryString;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.ot.api.OTCommand.*;
-import static io.global.ot.http.RawServerServlet.DEFAULT_CHUNK_SIZE;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
@@ -109,50 +104,13 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
-				.then(res -> res.getBody()
-						.then(body -> processResult(res, body, HEADS_INFO_JSON)));
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> startNodes) {
+		return null; // TODO
 	}
 
 	@Override
-	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
-		return httpClient.request(
-				request(GET, DOWNLOAD,
-						apiQuery(repositoryId, map(
-								"required", required.stream()
-										.map(HttpDataFormats::urlEncodeCommitId)
-										.collect(joining(","))
-								,
-								"existing", existing.stream()
-										.map(HttpDataFormats::urlEncodeCommitId)
-										.collect(joining(","))
-								)
-						)
-				))
-				.map(res ->
-						BinaryChannelSupplier.of(res.getBodyStream())
-								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
-				);
-	}
-
-	@Override
-	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
-		SettablePromise<Void> done = new SettablePromise<>();
-		ChannelZeroBuffer<CommitEntry> queue = new ChannelZeroBuffer<>();
-		httpClient.request(
-				request(POST, UPLOAD, apiQuery(repositoryId))
-						.withBodyStream(
-								queue.getSupplier()
-										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
-										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
-						))
-				.then(response -> response.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.toVoid()
-				.whenComplete(done);
-		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.then($ -> done)));
+	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
+		return null; // TODO
 	}
 
 	@Override

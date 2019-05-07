@@ -16,21 +16,27 @@
 
 package io.datakernel.ot;
 
+import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
+import static io.datakernel.util.CollectorsEx.throwingMerger;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toMap;
 
-public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
+public final class OTCommit<K, D> {
 	public static final int INITIAL_EPOCH = 0;
 	private final int epoch;
 	private final K id;
+	private final Map<K, DiffsWithLevel<D>> parentsWithLevels;
 	private final Map<K, List<D>> parents;
 	private final long level;
 
@@ -38,40 +44,45 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	@Nullable
 	private byte[] serializedData;
 
-	private OTCommit(int epoch, K id, Map<K, List<D>> parents, long level) {
+	private OTCommit(int epoch, K id, Map<K, DiffsWithLevel<D>> parents) {
 		this.epoch = epoch;
 		this.id = id;
-		this.parents = parents;
-		this.level = level;
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <K, D> OTCommit<K, D> of(int epoch, K id, Map<K, ? extends List<? extends D>> parents, long level) {
-		checkNotNull(id);
-		checkArgument(level, v -> v > 0, "Level should be greater than 0");
-		checkArgument(parents != null, "Cannot create OTCommit with parents that is null");
-		return new OTCommit<>(epoch, id, (Map<K, List<D>>) parents, level);
+		this.parentsWithLevels = parents;
+		this.parents = parentsWithLevels.entrySet()
+				.stream()
+				.collect(toMap(Map.Entry::getKey, entry -> entry.getValue().getDiffs(), throwingMerger(), LinkedHashMap::new));
+		this.level = parents.values().stream().mapToLong(DiffsWithLevel::getLevel).max().orElse(0L) + 1L;
 	}
 
 	public static <K, D> OTCommit<K, D> ofRoot(K id) {
 		checkNotNull(id);
-		return new OTCommit<>(INITIAL_EPOCH, id, emptyMap(), 1L);
+		return new OTCommit<>(INITIAL_EPOCH, id, emptyMap());
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <K, D> OTCommit<K, D> ofCommit(int epoch, K id, K parent, List<? extends D> diffs, long parentLevel) {
+	public static <K, D> OTCommit<K, D> of(int epoch, K id, Map<K, DiffsWithLevel<D>> parents) {
+		checkNotNull(id);
+		checkArgument(parents != null, "Cannot create OTCommit with parents that is null");
+		return new OTCommit<>(epoch, id, parents);
+	}
+
+	public static <K, D> OTCommit<K, D> of(int epoch, K id, Set<K> parents, Function<K, List<D>> diffs, Function<K, Long> levels) {
+		return of(epoch, id,
+				parents.stream()
+						.collect(toMap(
+								parent -> parent,
+								parent -> new DiffsWithLevel<>(levels.apply(parent), diffs.apply(parent)),
+								throwingMerger(),
+								LinkedHashMap::new)));
+	}
+
+	public static <K, D> OTCommit<K, D> ofCommit(int epoch, K id, K parent, DiffsWithLevel<D> diffs) {
 		checkNotNull(id);
 		checkNotNull(parent);
-		checkArgument(parentLevel, v -> v > 0, "Level should be greater than 0");
-		Map<K, ? extends List<? extends D>> parentMap = singletonMap(parent, diffs);
-		return new OTCommit<>(epoch, id, (Map<K, List<D>>) parentMap, parentLevel + 1L);
+		return new OTCommit<>(epoch, id, singletonMap(parent, diffs));
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <K, D> OTCommit<K, D> ofMerge(int epoch, K id, Map<K, ? extends List<? extends D>> parents, long maxParentLevel) {
-		checkNotNull(id);
-		checkArgument(maxParentLevel, v -> v > 0, "Level should be greater than 0");
-		return new OTCommit<>(epoch, id, (Map<K, List<D>>) parents, maxParentLevel + 1L);
+	public static <K, D> OTCommit<K, D> ofCommit(int epoch, K id, K parent, List<D> diffs, long level) {
+		return ofCommit(epoch, id, parent, new DiffsWithLevel<>(level, diffs));
 	}
 
 	public OTCommit<K, D> withTimestamp(long timestamp) {
@@ -112,6 +123,10 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 		return parents;
 	}
 
+	public Map<K, DiffsWithLevel<D>> getParentsWithLevels() {
+		return parentsWithLevels;
+	}
+
 	public Set<K> getParentIds() {
 		return parents.keySet();
 	}
@@ -132,11 +147,6 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 
 	public void setSerializedData(@Nullable byte[] serializedData) {
 		this.serializedData = serializedData;
-	}
-
-	@Override
-	public int compareTo(OTCommit<?, ?> o) {
-		return Long.compare(this.level, o.level);
 	}
 
 	@Override

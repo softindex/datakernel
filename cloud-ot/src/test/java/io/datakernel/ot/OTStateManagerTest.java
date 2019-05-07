@@ -185,7 +185,7 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = () -> 1;
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
-			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long level) {
 				return failOnce(() -> super.createCommit(parent, diffs, level));
 			}
 		};
@@ -296,7 +296,7 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
+		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long level) {
 			return node.createCommit(parent, diffs, level);
 		}
 

@@ -170,9 +170,9 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	@Override
-	public Promise<OTCommit<Long, D>> createCommit(int epoch, Map<Long, ? extends List<? extends D>> parentDiffs, long level) {
+	public Promise<OTCommit<Long, D>> createCommit(Map<Long, DiffsWithLevel<D>> parentDiffs) {
 		return createCommitId()
-				.map(newId -> OTCommit.of(epoch, newId, parentDiffs, level));
+				.map(newId -> OTCommit.of(0, newId, parentDiffs));
 	}
 
 	private String toJson(List<D> diffs) {
@@ -275,8 +275,9 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
+	@NotNull
 	@Override
-	public Promise<Optional<List<D>>> loadSnapshot(Long revisionId) {
+	public Promise<Optional<List<D>>> loadSnapshot(@NotNull Long revisionId) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
@@ -290,7 +291,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 							String str = resultSet.getString(1);
 							if (str == null) return Optional.<List<D>>empty();
-							List<D> snapshot = fromJson(str);
+							List<? extends D> snapshot = fromJson(str);
 							return Optional.of(otSystem.squash(snapshot));
 						}
 					}
@@ -299,12 +300,13 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
+	@NotNull
 	@Override
-	public Promise<OTCommit<Long, D>> loadCommit(Long revisionId) {
+	public Promise<OTCommit<Long, D>> loadCommit(@NotNull Long revisionId) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
-						Map<Long, List<D>> parentDiffs = new HashMap<>();
+						Map<Long, DiffsWithLevel<D>> parentDiffs = new HashMap<>();
 
 						int epoch = 0;
 						long level = 0L;
@@ -332,7 +334,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 								String diffString = resultSet.getString(5);
 								if (diffString != null) {
 									List<D> diff = fromJson(diffString);
-									parentDiffs.put(parentId, diff);
+									parentDiffs.put(parentId, new DiffsWithLevel<>(level - 1, diff));
 								}
 							}
 						}
@@ -341,7 +343,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 							throw new IOException("No commit with id: " + revisionId);
 						}
 
-						return OTCommit.of(epoch, revisionId, parentDiffs, level)
+						return OTCommit.of(epoch, revisionId, parentDiffs)
 								.withTimestamp(timestamp);
 					}
 				})
@@ -349,8 +351,9 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
+	@NotNull
 	@Override
-	public Promise<Void> saveSnapshot(Long revisionId, List<D> diffs) {
+	public Promise<Void> saveSnapshot(@NotNull Long revisionId, @NotNull List<D> diffs) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {

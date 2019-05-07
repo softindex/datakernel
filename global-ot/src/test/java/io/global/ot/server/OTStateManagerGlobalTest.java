@@ -93,7 +93,7 @@ public class OTStateManagerGlobalTest {
 
 	@Test
 	public void testCheckout() {
-		OTCommit<CommitId, TestOp> newCommit = await(repository.createCommit(0, CommitId.ofRoot(), asList(add(12), set(12, 23), add(-2)), 2));
+		OTCommit<CommitId, TestOp> newCommit = await(repository.createCommit(CommitId.ofRoot(), asList(add(12), set(12, 23), add(-2)), 2));
 		await(repository.pushAndUpdateHead(newCommit));
 
 		await(stateManager.checkout());

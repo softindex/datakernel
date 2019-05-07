@@ -28,7 +28,6 @@ import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.CommitEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.BeforeClass;
@@ -67,10 +66,10 @@ public class GlobalOTNodeHttpClientTest {
 	private final SimKey simKey = SimKey.generate();
 	private final SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
 	private final RepoID repository = RepoID.of(pubKey, "test");
-	private final RawCommit rootCommit = RawCommit.of(0, emptySet(),
+	private final RawCommit rootCommit = RawCommit.of(0, emptyMap(),
 			EncryptedData.encrypt(new byte[0], simKey),
 			Hash.sha1(simKey.getBytes()),
-			0, 0L);
+			0);
 	private final CommitId rootCommitId = CommitId.ofCommitData(encode(REGISTRY.get(RawCommit.class), rootCommit).asArray());
 	private final RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
 	private final SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);

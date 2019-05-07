@@ -10,10 +10,7 @@ import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
-import io.global.ot.api.CommitId;
-import io.global.ot.api.GlobalOTNode;
-import io.global.ot.api.RawCommitHead;
-import io.global.ot.api.RepoID;
+import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -24,6 +21,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
@@ -320,12 +318,21 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doFetch() {
-			return forEachMaster(master -> {
-				logger.trace("{} fetching from {}", repositoryId, master);
-				return node.getLocalHeadsInfo(repositoryId)
-						.then(headsInfo -> ChannelSupplier.ofPromise(master.download(repositoryId, headsInfo.getRequired(),
-								headsInfo.getExisting()))
-								.streamTo(node.uploadLocal(repositoryId)));
+			return forEachMaster(sourceNode -> {
+				logger.trace("{} fetching from {}", repositoryId, sourceNode);
+				return sourceNode.getHeads(repositoryId)
+						.then(heads -> ChannelSupplier.ofPromise(
+								sourceNode.download(
+										repositoryId,
+										heads.stream()
+												.map(signedHead -> signedHead.getValue().getCommitId())
+												.collect(toSet())
+								))
+								.streamTo(node.upload(repositoryId, heads))
+								.thenEx(($, e) -> e == CANCEL_EXCEPTION ? Promise.complete() : Promise.of($, e))
+								.then($ -> node.getCommitStorage().markCompleteCommits())
+								.then($ -> ensureRepository(repositoryId).saveHeads(heads))
+						);
 			});
 		}
 
@@ -334,11 +341,23 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return forEachMaster(this::doPush);
 		}
 
-		Promise<Void> doPush(GlobalOTNode master) {
-			logger.trace("{} pushing to {}", repositoryId, master);
-			return master.getHeadsInfo(repositoryId)
-					.then(headsInfo -> ChannelSupplier.ofPromise(node.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
-							.streamTo(ChannelConsumer.ofPromise(master.upload(repositoryId))));
+		public Promise<Void> doPush(GlobalOTNode targetNode) {
+			return node.getCommitStorage()
+					.getHeads(repositoryId)
+					.map(Map::values)
+					.then(signedHeads -> ChannelSupplier.ofPromise(
+							node.download(
+									repositoryId,
+									signedHeads.stream()
+											.map(signedHead -> signedHead.getValue().getCommitId())
+											.collect(toSet())
+							))
+							.streamTo(ChannelConsumer.ofPromise(
+									targetNode.upload(
+											repositoryId,
+											new HashSet<>(signedHeads)
+									))))
+					.toVoid();
 		}
 
 		@NotNull
@@ -370,36 +389,36 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		// region Helper methods
 		public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
-			PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(Collections.reverseOrder());
+			PriorityQueue<CommitEntry> queue = new PriorityQueue<>(Collections.reverseOrder());
 			return Promises.all(heads.stream()
 					.map(head -> node.loadCommit(repositoryId, head)
 							.whenResult(commit ->
-									queue.add(new RawCommitEntry(head, commit)))))
+									queue.add(new CommitEntry(head, commit)))))
 					.then($ -> Promise.<Set<CommitId>>ofCallback(cb ->
 							doExcludeParents(
 									queue,
-									queue.stream().mapToLong(entry -> entry.commit.getLevel()).min().orElse(0L),
+									queue.stream().mapToLong(CommitEntry::getLevel).min().orElse(0L),
 									new HashSet<>(heads),
 									cb)))
 					.whenComplete(toLogger(logger, "excludeParents", heads, this));
 		}
 
-		private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
-									  Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
-			RawCommitEntry entry = queue.poll();
-			if (entry == null || entry.commit.getLevel() < minLevel) {
+		private void doExcludeParents(PriorityQueue<CommitEntry> queue, long minLevel,
+				Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
+			CommitEntry entry = queue.poll();
+			if (entry == null || entry.getLevel() < minLevel) {
 				cb.set(resultHeads);
 				return;
 			}
-			resultHeads.removeAll(entry.commit.getParents());
+			resultHeads.removeAll(entry.getParents());
 			Promises.all(
-					entry.commit.getParents()
+					entry.getParents()
 							.stream()
-							.filter(commitId -> !commitId.isRoot() && queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
+							.filter(commitId -> !commitId.isRoot() && queue.stream().map(CommitEntry::getCommitId).noneMatch(commitId::equals))
 							.map(parentId ->
 									node.loadCommit(repositoryId, parentId)
 											.whenResult(parentRawCommit ->
-													queue.add(new RawCommitEntry(parentId, parentRawCommit)))))
+													queue.add(new CommitEntry(parentId, parentRawCommit)))))
 					.whenResult($ -> doExcludeParents(
 							queue, minLevel,
 							resultHeads,
