@@ -41,4 +41,8 @@ public interface AsyncServlet {
 	default AsyncServlet map(UnaryOperator<HttpResponse> fn) {
 		return request -> serve(request).map(fn);
 	}
+
+	default AsyncServlet mapAsync(Function<HttpResponse, Promise<HttpResponse>> fn) {
+		return request -> serve(request).then(fn);
+	}
 }

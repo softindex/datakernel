@@ -19,16 +19,14 @@ package io.global.ot.demo.api;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.WithMiddleware;
+import io.datakernel.http.*;
 import io.datakernel.ot.OTRepository;
-import io.datakernel.ot.OTSystem;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
 import io.global.ot.demo.util.ManagerProvider;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -39,32 +37,20 @@ import static io.global.ot.demo.util.Utils.*;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class OTStateServlet implements WithMiddleware {
+public final class OTStateServlet {
 	private static final StacklessException MANAGER_NOT_INITIALIZED = new StacklessException(OTStateServlet.class, "Manager has not been initialized yet");
-	private final ManagerProvider<Operation> provider;
-	private final OTRepository<CommitId, Operation> repository;
-	private final OTSystem<Operation> otSystem;
-	private final MiddlewareServlet servlet;
 
-	private OTStateServlet(ManagerProvider<Operation> provider, OTRepository<CommitId, Operation> repository) {
-		this.provider = provider;
-		this.otSystem = provider.getSystem();
-		this.repository = repository;
-		servlet = getServlet();
+	private OTStateServlet() {
 	}
 
-	public static OTStateServlet create(ManagerProvider<Operation> provider, OTRepository<CommitId, Operation> repository) {
-		return new OTStateServlet(provider, repository);
-	}
-
-	private MiddlewareServlet getServlet() {
-		return MiddlewareServlet.create()
+	public static RoutingServlet create(ManagerProvider<Operation> provider, OTRepository<CommitId, Operation> repository) {
+		return RoutingServlet.create()
 				.with(GET, "/info", request -> getManager(provider, request)
 						.then(manager -> {
 							if (manager != null) {
 								return repository
 										.getHeads()
-										.then(heads -> loadGraph(repository, otSystem, heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
+										.then(heads -> loadGraph(repository, provider.getSystem(), heads, COMMIT_ID_TO_STRING, DIFF_TO_STRING))
 										.map(graph -> {
 											String status = manager.hasPendingCommits() || manager.hasWorkingDiffs() ? "Syncing" : "Synced";
 											Tuple4<CommitId, Integer, String, String> infoTuple = new Tuple4<>(
@@ -97,10 +83,5 @@ public final class OTStateServlet implements WithMiddleware {
 										return Promise.<HttpResponse>ofException(MANAGER_NOT_INITIALIZED);
 									}
 								})));
-	}
-
-	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
 	}
 }

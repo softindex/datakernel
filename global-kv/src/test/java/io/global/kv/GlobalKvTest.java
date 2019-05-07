@@ -18,7 +18,7 @@ package io.global.kv;
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -35,10 +35,7 @@ import io.global.kv.api.KvStorage;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
@@ -104,8 +101,8 @@ public final class GlobalKvTest {
 			@Override
 			public GlobalKvNode apply(RawServerId serverId) {
 				GlobalKvNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalKvNode.create(id, discoveryService, this, storageFactory));
-				MiddlewareServlet servlet = MiddlewareServlet.create()
-						.with("/kv", GlobalKvNodeServlet.create(node));
+				RoutingServlet servlet = RoutingServlet.create()
+						.with("/kv/*", GlobalKvNodeServlet.create(node));
 				StubHttpClient client = StubHttpClient.of(servlet);
 				return HttpGlobalKvNode.create(serverId.getServerIdString(), client);
 			}

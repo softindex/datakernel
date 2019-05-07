@@ -21,7 +21,7 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
@@ -41,10 +41,9 @@ import static io.global.ot.demo.util.Utils.createOTSystem;
 final class GlobalOTDemoModule extends AbstractModule {
 	@Provides
 	@Singleton
-	MiddlewareServlet provideServlet(Eventloop eventloop, StaticServlet staticServlet, OTRepository<CommitId, Operation> repository,
-			ManagerProvider<Operation> managerProvider, Config config) {
-		return OTStateServlet.create(managerProvider, repository).getMiddlewareServlet()
-				.withFallback(staticServlet);
+	RoutingServlet provideServlet(StaticServlet staticServlet, OTRepository<CommitId, Operation> repository, ManagerProvider<Operation> managerProvider) {
+		return OTStateServlet.create(managerProvider, repository)
+				.with("/*", staticServlet);
 	}
 
 	@Provides
@@ -53,5 +52,4 @@ final class GlobalOTDemoModule extends AbstractModule {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
 		return new ManagerProvider<>(eventloop, node, createOTSystem(), OperationState::new, delay);
 	}
-
 }

@@ -30,7 +30,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public final class MiddlewareServletTest {
+public final class RoutingServletTest {
 	private static final String TEMPLATE = "http://www.site.org";
 	private static final String DELIM = "*****************************************************************************";
 
@@ -54,7 +54,7 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void testBase() {
-		MiddlewareServlet servlet1 = MiddlewareServlet.create();
+		RoutingServlet servlet1 = RoutingServlet.create();
 
 		AsyncServlet subservlet = request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8)));
 
@@ -65,7 +65,7 @@ public final class MiddlewareServletTest {
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c/d")), "", 404);
 		check(servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 
-		MiddlewareServlet servlet2 = MiddlewareServlet.create();
+		RoutingServlet servlet2 = RoutingServlet.create();
 		servlet2.with(HttpMethod.HEAD, "/a/b/c", subservlet);
 
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
@@ -75,7 +75,7 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void testProcessWildCardRequest() {
-		MiddlewareServlet servlet = MiddlewareServlet.create();
+		RoutingServlet servlet = RoutingServlet.create();
 		servlet.with("/a/b/c/d", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")), "", 200);
@@ -99,19 +99,19 @@ public final class MiddlewareServletTest {
 			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
-		MiddlewareServlet a = MiddlewareServlet.create()
+		RoutingServlet a = RoutingServlet.create()
 				.with(GET, "/c", action)
 				.with(GET, "/d", action)
 				.with(GET, "/", action);
 
-		MiddlewareServlet b = MiddlewareServlet.create()
+		RoutingServlet b = RoutingServlet.create()
 				.with(GET, "/f", action)
 				.with(GET, "/g", action);
 
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/", action)
-				.with(GET, "/a", a)
-				.with(GET, "/b", b);
+				.with(GET, "/a/*", a)
+				.with(GET, "/b/*", b);
 
 		System.out.println("Micro mapping" + DELIM);
 		check(main.serve(request1), "Executed: /", 200);
@@ -144,7 +144,7 @@ public final class MiddlewareServletTest {
 			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/", action)
 				.with(GET, "/a", action)
 				.with(GET, "/a/c", action)
@@ -168,16 +168,6 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testOverrideHandler() {
-		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("Can't map. Servlet already exists");
-
-		MiddlewareServlet.create()
-				.with(GET, "/", request -> null)
-				.with(GET, "/", request -> null);
-	}
-
-	@Test
 	public void testMerge() {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");         // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");        // ok
@@ -192,12 +182,12 @@ public final class MiddlewareServletTest {
 			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/a", action)
 				.with(GET, "/a/c", action)
 				.with(GET, "/a/d", action)
 				.with(GET, "/b", action)
-				.with(GET, "/", MiddlewareServlet.create()
+				.merge(RoutingServlet.create()
 						.with(GET, "/", action)
 						.with(GET, "/a/e", action)
 						.with(GET, "/a/c/f", action));
@@ -227,16 +217,16 @@ public final class MiddlewareServletTest {
 			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
-		MiddlewareServlet main;
+		RoutingServlet main;
 		try {
-			main = MiddlewareServlet.create()
+			main = RoutingServlet.create()
 					.with(GET, "/", action)
 					.with(GET, "/a/e", action)
 					.with(GET, "/a/c/f", action)
-					.with(GET, "/", MiddlewareServlet.create()
+					.with(GET, "/", RoutingServlet.create()
 							.with(GET, "/a/c/f", anotherAction));
 		} catch (IllegalArgumentException e) {
-			assertEquals("Can't map. Servlet for this method already exists", e.getMessage());
+			assertEquals("Already mapped", e.getMessage());
 			return;
 		}
 
@@ -257,7 +247,7 @@ public final class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/:id/a/:uid/b/:eid", printParameters)
 				.with(GET, "/:id/a/:uid", printParameters);
 
@@ -272,7 +262,7 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void testMultiParameters() {
-		MiddlewareServlet ms = MiddlewareServlet.create()
+		RoutingServlet ms = RoutingServlet.create()
 				.with(GET, "/serve/:cid/wash", request -> {
 					try {
 						ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
@@ -302,7 +292,7 @@ public final class MiddlewareServletTest {
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
-		MiddlewareServlet servlet = MiddlewareServlet.create()
+		RoutingServlet servlet = RoutingServlet.create()
 				.with("/a/b/c/action", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD"))))
 				.with(POST, "/a/b/c/action", request -> Promise.of(
@@ -322,10 +312,10 @@ public final class MiddlewareServletTest {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
 
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/html/admin/action", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed"))))
-				.withFallback("/html/admin", request -> Promise.of(
+				.with("/html/admin/*", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath()))));
 
 		System.out.println("Default stop " + DELIM);
@@ -336,7 +326,7 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void test404() {
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with("/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("All OK"))));
 
@@ -348,7 +338,7 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void test405() {
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))));
 
@@ -358,42 +348,20 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void test405WithFallback() {
-		MiddlewareServlet main = MiddlewareServlet.create()
+		RoutingServlet main = RoutingServlet.create()
 				.with(GET, "/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))))
-				.withFallback("/a/:id/b/d", request -> Promise.of(
+				.with("/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed"))));
 		check(main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")), "Fallback executed", 200);
 	}
 
 	@Test
-	public void testFallbackTail() {
-		AsyncServlet servlet = request -> Promise.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getRelativePath())));
-
-		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/method/:var", MiddlewareServlet.create().withFallback(servlet));
-
-		check(main.serve(HttpRequest.get(TEMPLATE + "/method/byhjgngtgh/oneArg")), "Success: oneArg", 200);
-		check(main.serve(HttpRequest.get(TEMPLATE + "/method/aedscvv/first/second")), "Success: first/second", 200);
-		check(main.serve(HttpRequest.get(TEMPLATE + "/method/muimkik/")), "Success: ", 200);
-		check(main.serve(HttpRequest.get(TEMPLATE + "/method/fyju")), "Success: ", 200);
-	}
-
-	@Test(expected = AssertionError.class)
-	public void testTailFail() {
-		MiddlewareServlet.create().with(GET, "/method/:var*/:tail", request -> Promise.of(HttpResponse.ok200()));
-	}
-
-	@Test
 	public void testTail() {
-		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/method/:var/:tail*", request -> {
-					try {
-						ByteBuf body = wrapUtf8("Success: " + request.getPathParameter("tail"));
-						return Promise.of(HttpResponse.ofCode(200).withBody(body));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
+		RoutingServlet main = RoutingServlet.create()
+				.with(GET, "/method/:var/*", request -> {
+					ByteBuf body = wrapUtf8("Success: " + request.getRelativePath());
+					return Promise.of(HttpResponse.ofCode(200).withBody(body));
 				});
 
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/dfbdb/oneArg")), "Success: oneArg", 200);

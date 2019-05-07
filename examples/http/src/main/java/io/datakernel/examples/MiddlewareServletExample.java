@@ -21,7 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 
 import java.io.IOException;
 
@@ -32,24 +32,22 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.MediaTypes.HTML;
 
 public class MiddlewareServletExample {
-	private static final String HTML_MESSAGE = "<ul>" +
-			"<li><a href=\"/path1\">Path 1</a></li>" +
-			"<li><a href=\"/path2\">Path 2</a></li>" +
-			"</ul>";
 
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 
-		MiddlewareServlet dispatcher = MiddlewareServlet.create()
+		RoutingServlet dispatcher = RoutingServlet.create()
 				.with(GET, "/", request -> Promise.of(HttpResponse.ok200()
-						.withBody(wrapUtf8(HTML_MESSAGE))
+						.withBody(wrapUtf8("<center><h2>Go to some pages:</h2><a href=\"/path1\">Path 1</a><br><a href=\"/path2\">Path 2</a></center>"))
 						.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(HTML)))))
 				.with(GET, "/path1", request -> Promise.of(HttpResponse.ok200()
-						.withBody(wrapUtf8("<center><h2>Hello from first path!</h2></center>"))))
+						.withBody(wrapUtf8("<center><h2>Hello from the first path!</h2><a href=\"/\">Go home</a></center></center>"))
+						.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(HTML)))))
 				.with(GET, "/path2", request -> Promise.of(HttpResponse.ok200()
-						.withBody(wrapUtf8("<center><h2>Hello from second path!</h2></center>"))))
-				.withFallback(request -> Promise.of(HttpResponse.ofCode(404)
-						.withBody(wrapUtf8("<center><h1>404</h1><p>Path '" + request.getPath() + "' not found</p><a href=\"/\">Go home</a></center>"))
+						.withBody(wrapUtf8("<center><h2>Hello from the second path!</h2><a href=\"/\">Go home</a></center></center>"))
+						.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(HTML)))))
+				.with("/*", request -> Promise.of(HttpResponse.ofCode(404)
+						.withBody(wrapUtf8("<center><h1>404</h1><p>Path '" + request.getRelativePath() + "' not found</p><a href=\"/\">Go home</a></center>"))
 						.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(HTML)))));
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher)

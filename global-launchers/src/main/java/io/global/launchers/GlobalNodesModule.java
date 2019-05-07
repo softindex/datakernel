@@ -144,7 +144,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet, GlobalKvNodeServlet kvServlet) {
-		return MiddlewareServlet.create()
+		return RoutingServlet.create()
 				.with("/ot", otServlet)
 				.with("/fs", fsServlet)
 				.with("/kv", kvServlet);

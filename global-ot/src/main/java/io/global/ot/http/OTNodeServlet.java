@@ -4,16 +4,14 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.ContentType;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.WithMiddleware;
+import io.datakernel.http.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.util.ParserFunction;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.OTRepositoryAdapter;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -31,8 +29,8 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.util.Utils.eitherComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class OTNodeServlet<K, D, C> implements WithMiddleware {
-	private final MiddlewareServlet servlet;
+public class OTNodeServlet<K, D, C> implements AsyncServlet {
+	private final RoutingServlet servlet;
 	private final StructuredCodec<K> revisionCodec;
 	private final StructuredCodec<FetchData<K, D>> fetchDataCodec;
 	private final Function<C, byte[]> commitToBytes;
@@ -63,8 +61,8 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 		this.closeNotification = closeNotification;
 	}
 
-	private MiddlewareServlet getServlet(OTNode<K, D, C> node) {
-		return MiddlewareServlet.create()
+	private RoutingServlet getServlet(OTNode<K, D, C> node) {
+		return RoutingServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> node.checkout()
 						.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
 				.with(GET, "/" + FETCH, request -> {
@@ -123,8 +121,9 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 				.withBody(toJson(codec, item).getBytes(UTF_8));
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+		return servlet.serve(request);
 	}
 }

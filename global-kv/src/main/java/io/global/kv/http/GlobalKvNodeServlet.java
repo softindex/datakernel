@@ -23,14 +23,13 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.WithMiddleware;
+import io.datakernel.http.*;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.kv.api.RawKvItem;
 import io.global.kv.api.GlobalKvNode;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
@@ -41,19 +40,19 @@ import static io.datakernel.http.HttpMethod.*;
 import static io.global.kv.api.KvCommand.*;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 
-public final class GlobalKvNodeServlet implements WithMiddleware {
+public final class GlobalKvNodeServlet implements AsyncServlet {
 	static final StructuredCodec<SignedData<RawKvItem>> KV_ITEM_CODEC = REGISTRY.get(new TypeT<SignedData<RawKvItem>>() {});
 	static final ByteBufsParser<SignedData<RawKvItem>> KV_ITEM_PARSER = ofDecoder(KV_ITEM_CODEC);
 	static final StructuredCodec<Set<String>> SET_STRING_CODEC = ofSet(STRING_CODEC);
 
-	private final MiddlewareServlet servlet;
+	private final RoutingServlet servlet;
 
 	public static GlobalKvNodeServlet create(GlobalKvNode node) {
 		return new GlobalKvNodeServlet(node);
 	}
 
 	private GlobalKvNodeServlet(GlobalKvNode node) {
-		servlet = MiddlewareServlet.create()
+		servlet = RoutingServlet.create()
 				.with(POST, "/" + UPLOAD + "/:space/:table", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
@@ -125,8 +124,9 @@ public final class GlobalKvNodeServlet implements WithMiddleware {
 				});
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+		return servlet.serve(request);
 	}
 }

@@ -24,7 +24,7 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
@@ -61,9 +61,9 @@ public class UIKernelWebAppModule extends AbstractModule {
 		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
 		AsyncServlet usersApiServlet = UiKernelServlets.apiServlet(model, gson);
 
-		MiddlewareServlet dispatcher = MiddlewareServlet.create()
-				.withFallback(staticServlet)                 // serves request if no other servlet matches
-				.with("/api/users", usersApiServlet);        // our rest crud servlet that would serve the grid
+		RoutingServlet dispatcher = RoutingServlet.create()
+				.with("/*", staticServlet)              // serves request if no other servlet matches
+				.with("/api/users/*", usersApiServlet); // our rest crud servlet that would serve the grid
 
 		// configuring server
 		return AsyncHttpServer.create(eventloop, dispatcher).withListenPort(port);

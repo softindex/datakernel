@@ -66,7 +66,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 		StructuredCodec<CrdtData<K, S>> codec = tuple(CrdtData::new,
 				CrdtData::getKey, descriptor.getKeyCodec(),
 				CrdtData::getState, descriptor.getStateCodec());
-		MiddlewareServlet servlet = MiddlewareServlet.create()
+		RoutingServlet servlet = RoutingServlet.create()
 				.with(HttpMethod.POST, "/", request -> request.getBody().then(body -> {
 					try {
 						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));

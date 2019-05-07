@@ -4,12 +4,10 @@ import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpHeaderValue;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.WithMiddleware;
+import io.datakernel.http.*;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
@@ -20,18 +18,18 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
-public final class DiscoveryServiceDriverServlet implements WithMiddleware {
+public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 	static final StructuredCodec<AnnounceData> ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class);
 	static final StructuredCodec<@Nullable AnnounceData> NULLABLE_ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class).nullable();
 
-	private final MiddlewareServlet servlet;
+	private final RoutingServlet servlet;
 
 	public DiscoveryServiceDriverServlet(DiscoveryServiceDriver driver) {
 		servlet = servlet(driver);
 	}
 
-	private static MiddlewareServlet servlet(DiscoveryServiceDriver driver) {
-		return MiddlewareServlet.create()
+	private static RoutingServlet servlet(DiscoveryServiceDriver driver) {
+		return RoutingServlet.create()
 				.with(POST, "/announce", request -> {
 					try {
 						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
@@ -110,8 +108,9 @@ public final class DiscoveryServiceDriverServlet implements WithMiddleware {
 				});
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+		return servlet.serve(request);
 	}
 }

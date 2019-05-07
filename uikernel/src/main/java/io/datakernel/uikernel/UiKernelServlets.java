@@ -40,8 +40,8 @@ public class UiKernelServlets {
 
 	private static final String ID_PARAMETER_NAME = "id";
 
-	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel<K, R> model, Gson gson) {
-		return MiddlewareServlet.create()
+	public static <K, R extends AbstractRecord<K>> RoutingServlet apiServlet(GridModel<K, R> model, Gson gson) {
+		return RoutingServlet.create()
 				.with(POST, "/", create(model, gson))
 				.with(GET, "/", read(model, gson))
 				.with(PUT, "/", update(model, gson))

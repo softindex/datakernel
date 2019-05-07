@@ -27,6 +27,7 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -36,8 +37,8 @@ import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryCommand.*;
 
-public final class DiscoveryServlet implements WithMiddleware {
-	private final MiddlewareServlet servlet;
+public final class DiscoveryServlet implements AsyncServlet {
+	private final RoutingServlet servlet;
 
 	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
@@ -52,8 +53,8 @@ public final class DiscoveryServlet implements WithMiddleware {
 		return new DiscoveryServlet(discoveryService);
 	}
 
-	private MiddlewareServlet servlet(DiscoveryService discoveryService) {
-		return MiddlewareServlet.create()
+	private RoutingServlet servlet(DiscoveryService discoveryService) {
+		return RoutingServlet.create()
 				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", request -> request.getBody().then(body -> {
 					try {
 						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
@@ -116,8 +117,9 @@ public final class DiscoveryServlet implements WithMiddleware {
 				});
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+		return servlet.serve(request);
 	}
 }

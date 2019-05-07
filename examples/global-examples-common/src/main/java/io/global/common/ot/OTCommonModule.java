@@ -10,7 +10,7 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
@@ -49,7 +49,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Provides
 	@Singleton
 	@Named("Example")
-	AsyncHttpServer provideServer(Eventloop eventloop, MiddlewareServlet servlet,
+	AsyncHttpServer provideServer(Eventloop eventloop, RoutingServlet servlet,
 			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet, Config config) {
 
 		AsyncHttpServer asyncHttpServer = AsyncHttpServer.create(eventloop, servlet)
@@ -62,12 +62,12 @@ public class OTCommonModule<D> extends AbstractModule {
 
 	@Provides
 	@Singleton
-	MiddlewareServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
-			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
-		return MiddlewareServlet.create()
-				.with(GET, "/graph", graphServlet)
-				.with("/node", nodeServlet)
-				.withFallback(staticServlet);
+	RoutingServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
+											OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
+		return RoutingServlet.create()
+				.with(GET, "/graph/*", graphServlet)
+				.with("/node/*", nodeServlet)
+				.with("/*", staticServlet);
 	}
 
 	@Provides

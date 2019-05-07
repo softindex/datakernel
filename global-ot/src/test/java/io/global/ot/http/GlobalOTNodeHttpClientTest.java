@@ -21,7 +21,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.time.SteppingCurrentTimeProvider;
@@ -59,7 +59,7 @@ public class GlobalOTNodeHttpClientTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	private final MiddlewareServlet servlet = MiddlewareServlet.create().with("/ot", getServlet());
+	private final RoutingServlet servlet = RoutingServlet.create().with("/ot/*", getServlet());
 	private final HttpGlobalOTNode client = HttpGlobalOTNode.create("http://localhost", servlet::serve);
 	private final KeyPair keys = KeyPair.generate();
 	private final PrivKey privKey = keys.getPrivKey();

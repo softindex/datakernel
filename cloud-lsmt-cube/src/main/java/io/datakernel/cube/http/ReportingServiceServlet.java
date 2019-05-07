@@ -65,13 +65,13 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		return new ReportingServiceServlet(eventloop, cube, CUBE_TYPES);
 	}
 
-	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
+	public static RoutingServlet createRootServlet(Eventloop eventloop, ICube cube) {
 		return createRootServlet(
 				ReportingServiceServlet.create(eventloop, cube));
 	}
 
-	public static MiddlewareServlet createRootServlet(ReportingServiceServlet reportingServiceServlet) {
-		return MiddlewareServlet.create()
+	public static RoutingServlet createRootServlet(ReportingServiceServlet reportingServiceServlet) {
+		return RoutingServlet.create()
 				.with(GET, "/", reportingServiceServlet);
 	}
 

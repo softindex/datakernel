@@ -25,9 +25,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.WithMiddleware;
+import io.datakernel.http.*;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 import io.global.common.Hash;
@@ -35,6 +33,7 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -55,7 +54,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
-public final class RawServerServlet implements WithMiddleware {
+public final class RawServerServlet implements AsyncServlet {
 	public static final MemSize DEFAULT_CHUNK_SIZE = MemSize.kilobytes(128);
 
 	private static final ParserFunction<String, Set<CommitId>> COMMIT_IDS_PARSER = s ->
@@ -65,11 +64,11 @@ public final class RawServerServlet implements WithMiddleware {
 							.map(asFunction(HttpDataFormats::urlDecodeCommitId))
 							.collect(toSet());
 
-	private final MiddlewareServlet middlewareServlet;
+	private final AsyncServlet servlet;
 	private Promise<@Nullable Void> closeNotification = new SettablePromise<>();
 
 	private RawServerServlet(GlobalOTNode node) {
-		middlewareServlet = servlet(node);
+		servlet = servlet(node);
 	}
 
 	public static RawServerServlet create(GlobalOTNode node) {
@@ -80,8 +79,8 @@ public final class RawServerServlet implements WithMiddleware {
 		this.closeNotification = closeNotification;
 	}
 
-	private MiddlewareServlet servlet(GlobalOTNode node) {
-		return MiddlewareServlet.create()
+	private AsyncServlet servlet(GlobalOTNode node) {
+		return RoutingServlet.create()
 				.with(GET, "/" + LIST + "/:pubKey", req -> {
 					try {
 						return node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
@@ -281,8 +280,9 @@ public final class RawServerServlet implements WithMiddleware {
 				});
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return middlewareServlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+		return servlet.serve(request);
 	}
 }
