@@ -46,8 +46,8 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 	}
 
 	@Override
-	public Promise<byte[]> createCommit(K parent, List<D> diffs, long level) {
-		FetchData<K, D> fetchData = new FetchData<>(parent, level, (List<D>) diffs);
+	public Promise<byte[]> createCommit(K parent, List<D> diffs, long parentLevel) {
+		FetchData<K, D> fetchData = new FetchData<>(parent, parentLevel, diffs);
 		return httpClient.request(post(url + CREATE_COMMIT)
 				.withBody(toJson(fetchDataCodec, fetchData).getBytes(UTF_8)))
 				.then(HttpMessage::getBody)

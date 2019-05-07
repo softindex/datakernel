@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
@@ -39,8 +40,7 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.server.GlobalOTNodeImplTest.createCommitEntry;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
@@ -58,6 +58,8 @@ public class GlobalOTNodeHttpClientTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	private static final CurrentTimeProvider now = SteppingCurrentTimeProvider.create(10, 10);
+
 	private final MiddlewareServlet servlet = MiddlewareServlet.create().with("/ot", getServlet());
 	private final HttpGlobalOTNode client = HttpGlobalOTNode.create("http://localhost", servlet::serve);
 	private final KeyPair keys = KeyPair.generate();
@@ -74,9 +76,9 @@ public class GlobalOTNodeHttpClientTest {
 	private final RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
 	private final SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
 	private final List<CommitEntry> commitEntries = asList(
-			createCommitEntry(emptySet(), 0, false),
-			createCommitEntry(set(1), 1, false),
-			createCommitEntry(set(3), 2, true)
+			createCommitEntry(emptyMap()),
+			createCommitEntry(map(1, 1)),
+			createCommitEntry(map(2, 2))
 	);
 
 	@BeforeClass
@@ -104,11 +106,6 @@ public class GlobalOTNodeHttpClientTest {
 	@Test
 	public void loadCommit() {
 		doTest(client.loadCommit(repository, rootCommitId), repository, rootCommitId);
-	}
-
-	@Test
-	public void getHeadsInfo() {
-		doTest(client.getHeadsInfo(repository), repository);
 	}
 
 	@Test
@@ -171,18 +168,18 @@ public class GlobalOTNodeHttpClientTest {
 	public void upload() {
 		List<CommitId> commitIds = commitEntries.stream().map(CommitEntry::getCommitId).collect(toList());
 		MaterializedPromise<Void> uploadFinished = ChannelSupplier.ofIterable(commitEntries)
-				.streamTo(ChannelConsumer.ofPromise(client.upload(repository)));
+				.streamTo(ChannelConsumer.ofPromise(client.upload(repository, singleton(toSignedHead(getLast(commitIds))))));
 		doTest(uploadFinished, repository, commitIds);
 	}
 
 	@Test
 	public void download() {
-		Set<CommitId> required = emptySet();
-		Set<CommitId> existing = emptySet();
+		CommitId head = getLast(commitEntries).getCommitId();
 		List<CommitId> commitIds = new ArrayList<>();
-		MaterializedPromise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, required, existing))
+		Set<CommitId> heads = singleton(head);
+		MaterializedPromise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, heads))
 				.streamTo(ChannelConsumer.ofConsumer(entry -> commitIds.add(entry.getCommitId())));
-		doTest(downloadFinished, repository, required, existing, commitIds);
+		doTest(downloadFinished, repository, heads, commitIds);
 	}
 
 	@Test
@@ -218,60 +215,6 @@ public class GlobalOTNodeHttpClientTest {
 			@Override
 			public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 				return resultOf(rootCommit, repository, id);
-			}
-
-			@Override
-			public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-				return resultOf(new HeadsInfo(set(rootCommitId), set(rootCommitId)), repositoryId);
-			}
-
-			@Override
-			public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
-				return Promise.of(
-						new ChannelSupplier<CommitEntry>() {
-							private List<CommitEntry> entries = asList(
-									createCommitEntry(emptySet(), 0, false),
-									createCommitEntry(set(1), 1, false),
-									createCommitEntry(set(3), 2, true)
-							);
-							private int index = -1;
-
-							@NotNull
-							@Override
-							public Promise<CommitEntry> get() {
-								index++;
-								return index == 3 ?
-										resultOf(null, repositoryId, required, existing, entries.stream().map(CommitEntry::getCommitId).collect(Collectors.toList())) :
-										Promise.of(entries.get(index));
-							}
-
-							@Override
-							public void close(@NotNull Throwable e) {
-							}
-						}
-				);
-			}
-
-			@Override
-			public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
-				return Promise.of(new ChannelConsumer<CommitEntry>() {
-					List<CommitId> commitIds = new ArrayList<>();
-
-					@NotNull
-					@Override
-					public Promise<Void> accept(@Nullable CommitEntry value) {
-						if (value != null) {
-							commitIds.add(value.getCommitId());
-							return Promise.complete();
-						} else {
-							return resultOf(null, repositoryId, commitIds);
-						}
-					}
-
-					@Override
-					public void close(@NotNull Throwable e) {
-					}
-				});
 			}
 
 			@Override
@@ -337,6 +280,50 @@ public class GlobalOTNodeHttpClientTest {
 						RawPullRequest.of(repositoryId, RepoID.of(pubKey, "fork")), privKey)),
 						repositoryId);
 			}
+
+			@Override
+			public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> startNodes) {
+				return Promise.of(
+						new ChannelSupplier<CommitEntry>() {
+							private int index = -1;
+
+							@NotNull
+							@Override
+							public Promise<CommitEntry> get() {
+								index++;
+								return index == 3 ?
+										resultOf(null, repositoryId, startNodes, commitEntries.stream().map(CommitEntry::getCommitId).collect(Collectors.toList())) :
+										Promise.of(commitEntries.get(index));
+							}
+
+							@Override
+							public void close(@NotNull Throwable e) {
+							}
+						}
+				);
+			}
+
+			@Override
+			public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
+				return Promise.of(new ChannelConsumer<CommitEntry>() {
+					List<CommitId> commitIds = new ArrayList<>();
+
+					@NotNull
+					@Override
+					public Promise<Void> accept(@Nullable CommitEntry value) {
+						if (value != null) {
+							commitIds.add(value.getCommitId());
+							return Promise.complete();
+						} else {
+							return resultOf(null, repositoryId, commitIds);
+						}
+					}
+
+					@Override
+					public void close(@NotNull Throwable e) {
+					}
+				});
+			}
 		});
 	}
 
@@ -347,6 +334,13 @@ public class GlobalOTNodeHttpClientTest {
 			assertEquals(params.remove(), param);
 		}
 		assertTrue(params.isEmpty());
+	}
+
+	private SignedData<RawCommitHead> toSignedHead(CommitId commitId) {
+		return SignedData.sign(
+				REGISTRY.get(RawCommitHead.class),
+				RawCommitHead.of(repository, commitId, now.currentTimeMillis()),
+				privKey);
 	}
 	// endregion
 }

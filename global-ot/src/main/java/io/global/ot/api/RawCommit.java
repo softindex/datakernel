@@ -62,7 +62,7 @@ public final class RawCommit {
 	}
 
 	public Map<CommitId, Long> getParentLevels() {
-		throw new UnsupportedOperationException();
+		return parents;
 	}
 
 	public EncryptedData getEncryptedDiffs() {

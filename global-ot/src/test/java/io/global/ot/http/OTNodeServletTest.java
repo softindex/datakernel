@@ -110,27 +110,27 @@ public class OTNodeServletTest {
 	@Test
 	public void testCreateCommit() throws ParseException {
 		CommitId parent = getCommitId(4);
-		int level = 6;
+		int parentLevel = 5;
 		List<TestOp> diffs = singletonList(add(100));
 
-		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, level, diffs);
+		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, parentLevel, diffs);
 		HttpResponse response = await(servlet.serve(post(HOST + CREATE_COMMIT)
 				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8))));
 		ByteBuf body = await(response.getBody());
 		byte[] bytes = body.asArray();
 		OTCommit<CommitId, TestOp> otCommit = adapter.parseRawBytes(bytes);
-		assertEquals(otCommit.getLevel(), level);
-		assertEquals(otCommit.getParents(), map(parent, diffs));
+		assertEquals(parentLevel + 1, otCommit.getLevel());
+		assertEquals(map(parent, diffs), otCommit.getParents());
 		assertEquals(CommitId.ofBytes(sha256(bytes)), otCommit.getId());
 	}
 
 	@Test
 	public void testPush() throws ParseException {
 		CommitId parent = getCommitId(4);
-		int level = 6;
+		int parentLevel = 5;
 		List<TestOp> diffs = singletonList(add(100));
 
-		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, level, diffs);
+		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, parentLevel, diffs);
 		HttpResponse response = await(servlet.serve(post(HOST + CREATE_COMMIT)
 				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8))));
 		byte[] bytes = await(response.getBody()).asArray();
@@ -148,7 +148,7 @@ public class OTNodeServletTest {
 
 		OTCommit<CommitId, TestOp> headCommit = await(repository.loadCommit(commitId));
 		assertEquals(map(parent, diffs), headCommit.getParents());
-		assertEquals(level, headCommit.getLevel());
+		assertEquals(parentLevel + 1, headCommit.getLevel());
 	}
 
 }

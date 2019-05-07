@@ -43,8 +43,8 @@ public final class DelayedPushNode<D> implements OTNode<CommitId, D, OTCommit<Co
 	}
 
 	@Override
-	public Promise<OTCommit<CommitId, D>> createCommit(CommitId parent, List<? extends D> diffs, long level) {
-		return node.createCommit(parent, diffs, level);
+	public Promise<OTCommit<CommitId, D>> createCommit(CommitId parent, List<D> diffs, long parentLevel) {
+		return node.createCommit(parent, diffs, parentLevel);
 	}
 
 	@Override

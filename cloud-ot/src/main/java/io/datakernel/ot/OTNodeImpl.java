@@ -46,12 +46,10 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	}
 
 	@Override
-	public Promise<C> createCommit(K parent, List<D> diffs, long level) {
-		return repository.loadCommit(parent)
-				.then(parentCommit ->
-						repository.createCommit(parent, new DiffsWithLevel<>(level, diffs))
-								.map(commitToObject)
-								.whenComplete(toLogger(logger, thisMethod(), parent, diffs, level)));
+	public Promise<C> createCommit(K parent, List<D> diffs, long parentLevel) {
+		return repository.createCommit(parent, new DiffsWithLevel<>(parentLevel, diffs))
+				.map(commitToObject)
+				.whenComplete(toLogger(logger, thisMethod(), parent, diffs, parentLevel));
 	}
 
 	@Override

@@ -87,12 +87,12 @@ public class OTNodeHttpClientTest {
 	public void testCreateCommit() throws ParseException {
 		CommitId parent = getCommitId(4);
 		List<TestOp> diffs = asList(add(100), set(90, -34));
-		long level = 6;
+		long parentLevel = 5;
 
-		byte[] rawData = await(client.createCommit(parent, diffs, level));
+		byte[] rawData = await(client.createCommit(parent, diffs, parentLevel));
 		OTCommit<CommitId, TestOp> otCommit = adapter.parseRawBytes(rawData);
 		assertEquals(map(parent, diffs), otCommit.getParents());
-		assertEquals(level, otCommit.getLevel());
+		assertEquals(parentLevel + 1, otCommit.getLevel());
 		assertEquals(CommitId.ofBytes(sha256(rawData)), otCommit.getId());
 	}
 
@@ -100,9 +100,9 @@ public class OTNodeHttpClientTest {
 	public void testPush() throws ParseException {
 		CommitId parent = getCommitId(4);
 		List<TestOp> diffs = asList(add(100), set(90, -34));
-		long level = 6;
+		long parentLevel = 5;
 
-		byte[] commit = await(client.createCommit(parent, diffs, level));
+		byte[] commit = await(client.createCommit(parent, diffs, parentLevel));
 		FetchData<CommitId, TestOp> fetchData = await(client.push(commit));
 		CommitId commitId = fetchData.getCommitId();
 		assertEquals(adapter.parseRawBytes(commit).getId(), commitId);
@@ -112,7 +112,7 @@ public class OTNodeHttpClientTest {
 		OTCommit<CommitId, TestOp> headCommit = await(repository.loadCommit(commitId));
 
 		assertEquals(map(parent, diffs), headCommit.getParents());
-		assertEquals(level, headCommit.getLevel());
+		assertEquals(parentLevel + 1, headCommit.getLevel());
 	}
 
 }

@@ -33,8 +33,7 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.check;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -157,12 +156,12 @@ public class Utils {
 			if (roots.size() == 1) {
 				graph.put(first(roots), emptyMap()); // true root
 			} else {
-				roots.forEach(root -> graph.put(root, singletonMap((K) INVALID_KEY, null))); // intermediate node
+				roots.forEach(root -> graph.put(root, singletonMap((K) INVALID_KEY, emptyList()))); // intermediate node
 			}
 		}
 		return graph.entrySet()
 				.stream()
-				.map(entry -> OTCommit.of(0, entry.getKey(), entry.getValue().keySet(), entry.getValue()::get, id -> initialLevel + levels.get(id) - 1L)
+				.map(entry -> OTCommit.of(0, entry.getKey(), entry.getValue().keySet(), entry.getValue()::get, id -> initialLevel + levels.getOrDefault(id, 0L) - 1L)
 						.withTimestamp(initialLevel - 1L + levels.get(entry.getKey())))
 				.collect(toList());
 	}

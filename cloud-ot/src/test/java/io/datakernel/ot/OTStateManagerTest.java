@@ -185,8 +185,8 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = () -> 1;
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
-			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long level) {
-				return failOnce(() -> super.createCommit(parent, diffs, level));
+			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
+				return failOnce(() -> super.createCommit(parent, diffs, parentLevel));
 			}
 		};
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
@@ -296,8 +296,8 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long level) {
-			return node.createCommit(parent, diffs, level);
+		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
+			return node.createCommit(parent, diffs, parentLevel);
 		}
 
 		@Override
