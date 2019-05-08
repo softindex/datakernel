@@ -61,7 +61,10 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
-import static java.util.Collections.*;
+import static io.global.ot.util.TestUtils.getCommitId;
+import static io.global.ot.util.TestUtils.getCommitIds;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
@@ -99,7 +102,7 @@ public class GlobalOTNodeImplTest {
 	private DiscoveryService discoveryService;
 	private CommitStorage intermediateStorage;
 	private GlobalOTNode intermediateNode;
-	private static byte COMMIT_ID;
+	private static int COMMIT_ID;
 
 	@Parameter()
 	public Function<Path, CommitStorage> storageFn;
@@ -184,7 +187,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	public void testList() {
 		GlobalOTNode masterNode = getMasterNode(1);
-		addSingleCommit(emptyMap(), masterNode);
+		addSingleCommit(emptySet(), masterNode);
 
 		Set<String> listMaster = await(masterNode.list(PUB_KEY));
 		assertEquals(1, listMaster.size());
@@ -197,7 +200,7 @@ public class GlobalOTNodeImplTest {
 
 	@Test
 	public void testSaveRootCommit() {
-		addSingleCommit(emptyMap(), intermediateNode);
+		addSingleCommit(emptySet(), intermediateNode);
 		assertCommits(1);
 		assertHeads(1);
 	}
@@ -211,7 +214,7 @@ public class GlobalOTNodeImplTest {
 
 	@Test
 	public void testSaveRootCommitAndAfterThatSaveOtherCommits() {
-		addSingleCommit(emptyMap(), intermediateNode);
+		addSingleCommit(emptySet(), intermediateNode);
 		assertCommits(1);
 		assertHeads(1);
 
@@ -290,7 +293,9 @@ public class GlobalOTNodeImplTest {
 
 		Set<SignedData<RawCommitHead>> heads = await(intermediateNode.getHeads(REPO_ID));
 		Set<CommitId> headsCommitIds = heads.stream().map(head -> head.getValue().commitId).collect(toSet());
-		assertEquals(getCommitIds(3, 5), headsCommitIds);
+		CommitId commitId = getCommitId(2, 5);
+		System.out.println(commitId);
+		assertEquals(set(getCommitId(3, 3), commitId), headsCommitIds);
 	}
 
 	@Test
@@ -315,13 +320,13 @@ public class GlobalOTNodeImplTest {
 	@Test
 	public void testUpload() {
 		List<CommitEntry> entries = new ArrayList<>();
-		entries.add(createCommitEntry(emptyMap()));             // id - 1
-		entries.add(createCommitEntry(map(1, 1)));  // id - 2
-		entries.add(createCommitEntry(map(2, 2)));  // id - 3
-		entries.add(createCommitEntry(map(3, 3)));  // id - 4, head
-		entries.add(createCommitEntry(emptyMap()));            // id - 5
-		entries.add(createCommitEntry(map(5, 1)));  // id - 6
-		entries.add(createCommitEntry(map(6, 2)));  // id - 7, head
+		entries.add(createCommitEntry(emptySet()));             // id - 1
+		entries.add(createCommitEntry(getCommitIds(1)));  // id - 2
+		entries.add(createCommitEntry(getCommitIds(2)));  // id - 3
+		entries.add(createCommitEntry(getCommitIds(3)));  // id - 4, head
+		entries.add(createCommitEntry(getCommitIds(1)));            // id - 5
+		entries.add(createCommitEntry(set(getCommitId(1, 5))));  // id - 6
+		entries.add(createCommitEntry(set(getCommitId(2, 6))));  // id - 7, head
 
 		Set<SignedData<RawCommitHead>> heads = getCommitIds(4, 7).stream()
 				.map(GlobalOTNodeImplTest::toSignedHead)
@@ -536,11 +541,11 @@ public class GlobalOTNodeImplTest {
 		// ensuring pub key
 		((GlobalOTNodeImpl) intermediateNode).ensureRepository(REPO_ID);
 
-		intermediateStorage.saveCommit(getCommitId(1), RawCommit.of(0, emptyMap(),
+		intermediateStorage.saveCommit(getCommitId(1), RawCommit.of(0, emptySet(),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, now.currentTimeMillis()));
-		intermediateStorage.saveCommit(getCommitId(2), RawCommit.of(0, map(getCommitId(1), 1L),
+		intermediateStorage.saveCommit(getCommitId(2), RawCommit.of(0, set(getCommitId(1)),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, now.currentTimeMillis()));
-		SignedData<RawCommitHead> signedHead = toSignedHead(2);
+		SignedData<RawCommitHead> signedHead = toSignedHead(getCommitId(2));
 		intermediateStorage.updateHeads(REPO_ID, set(signedHead), emptySet());
 
 		// wait for previous saves to complete
@@ -576,19 +581,19 @@ public class GlobalOTNodeImplTest {
 			assertEquals(getCommitId(headCommit--), commitEntry.getCommitId());
 		}
 		assertEquals(0, headCommit);
-		assertCommits(intermediateStorage, 1, 2, 3, 4, numberOfCommits, headCommit);
+		assertCommits(intermediateStorage, IntStream.range(1, numberOfCommits).toArray());
 	}
 
 	@Test
 	public void testUploadCommitsNotPresentOnMaster() {
 		List<CommitEntry> entries = new ArrayList<>();
-		entries.add(createCommitEntry(emptyMap()));             // id - 1
-		entries.add(createCommitEntry(map(1, 1)));  // id - 2
-		entries.add(createCommitEntry(map(2, 2)));  // id - 3
-		entries.add(createCommitEntry(map(3, 3)));  // id - 4, head
-		entries.add(createCommitEntry(emptyMap()));            // id - 5
-		entries.add(createCommitEntry(map(5, 1)));  // id - 6
-		entries.add(createCommitEntry(map(6, 2)));  // id - 7, head
+		entries.add(createCommitEntry(emptySet()));             // id - 1
+		entries.add(createCommitEntry(getCommitIds(1)));  // id - 2
+		entries.add(createCommitEntry(getCommitIds(2)));  // id - 3
+		entries.add(createCommitEntry(getCommitIds(3)));  // id - 4, head
+		entries.add(createCommitEntry(getCommitIds(1)));            // id - 5
+		entries.add(createCommitEntry(set(getCommitId(1, 5))));  // id - 6
+		entries.add(createCommitEntry(set(getCommitId(2, 6))));  // id - 7, head
 
 		Set<SignedData<RawCommitHead>> heads = getCommitIds(4, 7).stream()
 				.map(GlobalOTNodeImplTest::toSignedHead)
@@ -608,7 +613,7 @@ public class GlobalOTNodeImplTest {
 		GlobalOTNode masterNode = getMasterNode(1);
 		assertTrue(masterNode instanceof FailingGlobalOTNode);
 
-		addCommits(3, intermediateNode); // commits with Ids 4, 5, 6
+		addCommits(3, 3, intermediateNode); // commits with Ids 4, 5, 6
 
 		// commits are still saved on local node
 		assertCommits(intermediateStorage, 1, 2, 3, 4, 5, 6);
@@ -624,7 +629,7 @@ public class GlobalOTNodeImplTest {
 		turnOn("master1");
 
 		// assume more commits has been added to master while it was offline for intermediate node
-		addSingleCommit(map(3, 3), getMasterNode(1)); // commit with Id 7
+		addSingleCommit(set(getCommitId(6, 3)), getMasterNode(1)); // commit with Id 7
 		assertCommits(masterStorage, 7); // present on master
 		assertCommitsAbsent(intermediateStorage, 7); // absent on intermediate
 
@@ -729,16 +734,14 @@ public class GlobalOTNodeImplTest {
 	}
 
 	private SignedData<RawSnapshot> createSnapshot() {
-		RawSnapshot rawSnapshot = RawSnapshot.of(REPO_ID, nextCommitId(), EncryptedData.encrypt(DATA, SIM_KEY), Hash.sha1(SIM_KEY.getAesKey().getKey()));
+		RawSnapshot rawSnapshot = RawSnapshot.of(REPO_ID, nextCommitId(COMMIT_ID), EncryptedData.encrypt(DATA, SIM_KEY), Hash.sha1(SIM_KEY.getAesKey().getKey()));
 		return SignedData.sign(REGISTRY.get(RawSnapshot.class), rawSnapshot, PRIV_KEY);
 	}
 
-	public static CommitEntry createCommitEntry(Map<Integer, Integer> parents) {
+	public static CommitEntry createCommitEntry(Set<CommitId> parents) {
 		EncryptedData encryptedData = EncryptedData.encrypt(DATA, SIM_KEY);
-		Map<CommitId, Long> parentMap = parents.entrySet().stream()
-				.collect(toMap(entry -> getCommitId(entry.getKey()), entry -> entry.getValue().longValue()));
-		RawCommit rawCommit = RawCommit.of(0, parentMap, encryptedData, HASH, now.currentTimeMillis());
-		CommitId commitId = nextCommitId();
+		RawCommit rawCommit = RawCommit.of(0, parents, encryptedData, HASH, now.currentTimeMillis());
+		CommitId commitId = nextCommitId(rawCommit.getLevel());
 		return new CommitEntry(commitId, rawCommit);
 	}
 
@@ -752,18 +755,18 @@ public class GlobalOTNodeImplTest {
 
 		Set<CommitEntry> entries = new LinkedHashSet<>();
 		for (int i = 0; i < numberOfCommits; i++) {
-			CommitEntry commitEntry = createCommitEntry(parentId == 0 ? emptyMap() : map(parentId, parentLevel));
-			parentId++;
+			CommitEntry commitEntry = createCommitEntry(parentId == 0 ? emptySet() : set(getCommitId(parentLevel, parentId)));
+			parentId = COMMIT_ID - 1;
 			parentLevel++;
 			entries.add(commitEntry);
 		}
 		Map<CommitId, RawCommit> commits = entries.stream().collect(toMap(CommitEntry::getCommitId, CommitEntry::getCommit));
-		Set<SignedData<RawCommitHead>> heads = singleton(toSignedHead(parentId));
+		Set<SignedData<RawCommitHead>> heads = singleton(toSignedHead(getCommitId(parentLevel, parentId)));
 
 		await(node.saveAndUpdateHeads(REPO_ID, commits, heads));
 	}
 
-	private void addSingleCommit(Map<Integer, Integer> parents, GlobalOTNode node) {
+	private void addSingleCommit(Set<CommitId> parents, GlobalOTNode node) {
 		CommitEntry commitEntry = createCommitEntry(parents);
 
 		await(node.saveAndUpdateHeads(REPO_ID,
@@ -782,26 +785,10 @@ public class GlobalOTNodeImplTest {
 						.orElseThrow(AssertionError::new);
 	}
 
-	private static CommitId nextCommitId() {
-		CommitId commitId = CommitId.ofBytes(new byte[]{COMMIT_ID});
+	private static CommitId nextCommitId(long level) {
+		CommitId commitId = getCommitId(level, COMMIT_ID);
 		COMMIT_ID++;
 		return commitId;
-	}
-
-	private static CommitId getCommitId(int id) {
-		return CommitId.ofBytes(new byte[]{(byte) id});
-	}
-
-	private Set<CommitId> getCommitIds(int... ids) {
-		Set<CommitId> commitIds = new HashSet<>();
-		for (int id : ids) {
-			commitIds.add(getCommitId(id));
-		}
-		return commitIds;
-	}
-
-	private static SignedData<RawCommitHead> toSignedHead(Integer id) {
-		return toSignedHead(getCommitId(id));
 	}
 
 	private static SignedData<RawCommitHead> toSignedHead(CommitId commitId) {

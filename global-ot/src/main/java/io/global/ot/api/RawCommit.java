@@ -20,20 +20,19 @@ import io.datakernel.exception.ParseException;
 import io.global.common.Hash;
 import io.global.common.api.EncryptedData;
 
-import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RawCommit {
 	private final int epoch;
-	private final Map<CommitId, Long> parents;
+	private final Set<CommitId> parents;
 	private final EncryptedData encryptedDiffs;
 	private final Hash simKeyHash;
 	private final long timestamp;
 
 	// region creators
-	private RawCommit(int epoch, Map<CommitId, Long> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	private RawCommit(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long timestamp) {
 		this.epoch = epoch;
 		this.parents = checkNotNull(parents);
@@ -42,12 +41,12 @@ public final class RawCommit {
 		this.timestamp = timestamp;
 	}
 
-	public static RawCommit of(int epoch, Map<CommitId, Long> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	public static RawCommit of(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long timestamp) {
 		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, timestamp);
 	}
 
-	public static RawCommit parse(int epoch, Map<CommitId, Long> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	public static RawCommit parse(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long timestamp) throws ParseException {
 		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, timestamp);
 	}
@@ -58,10 +57,6 @@ public final class RawCommit {
 	}
 
 	public Set<CommitId> getParents() {
-		return parents.keySet();
-	}
-
-	public Map<CommitId, Long> getParentLevels() {
 		return parents;
 	}
 
@@ -74,7 +69,7 @@ public final class RawCommit {
 	}
 
 	public long getLevel() {
-		return parents.values().stream().mapToLong(v -> v).max().orElse(0L) + 1L;
+		return parents.stream().mapToLong(CommitId::getLevel).max().orElse(0L) + 1L;
 	}
 
 	public long getTimestamp() {

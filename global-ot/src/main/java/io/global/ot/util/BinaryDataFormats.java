@@ -23,7 +23,7 @@ import io.global.common.PubKey;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
 
-import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.global.common.BinaryDataFormats.createGlobal;
@@ -64,7 +64,7 @@ public final class BinaryDataFormats {
 			.with(RawCommit.class, registry ->
 					tuple(RawCommit::parse,
 							RawCommit::getEpoch, registry.get(Integer.class),
-							RawCommit::getParentLevels, registry.get(new TypeT<Map<CommitId, Long>>() {}),
+							RawCommit::getParents, registry.get(new TypeT<Set<CommitId>>() {}),
 							RawCommit::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawCommit::getSimKeyHash, registry.get(Hash.class),
 							RawCommit::getTimestamp, registry.get(Long.class)));

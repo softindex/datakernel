@@ -43,6 +43,7 @@ import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.server.GlobalOTNodeImplTest.createCommitEntry;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
+import static io.global.ot.util.TestUtils.getCommitId;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -68,17 +69,17 @@ public class GlobalOTNodeHttpClientTest {
 	private final SimKey simKey = SimKey.generate();
 	private final SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
 	private final RepoID repository = RepoID.of(pubKey, "test");
-	private final RawCommit rootCommit = RawCommit.of(0, emptyMap(),
+	private final RawCommit rootCommit = RawCommit.of(0, emptySet(),
 			EncryptedData.encrypt(new byte[0], simKey),
 			Hash.sha1(simKey.getBytes()),
 			0);
-	private final CommitId rootCommitId = CommitId.ofCommitData(encode(REGISTRY.get(RawCommit.class), rootCommit).asArray());
+	private final CommitId rootCommitId = CommitId.ofCommitData(encode(REGISTRY.get(RawCommit.class), rootCommit).asArray(), 1);
 	private final RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
 	private final SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
 	private final List<CommitEntry> commitEntries = asList(
-			createCommitEntry(emptyMap()),
-			createCommitEntry(map(1, 1)),
-			createCommitEntry(map(2, 2))
+			createCommitEntry(emptySet()),
+			createCommitEntry(set(getCommitId(1))),
+			createCommitEntry(set(getCommitId(2)))
 	);
 
 	@BeforeClass
@@ -128,7 +129,6 @@ public class GlobalOTNodeHttpClientTest {
 
 	@Test
 	public void getHeads() {
-		Set<CommitId> commitSet = set(rootCommitId);
 		doTest(client.getHeads(repository), repository);
 	}
 
@@ -239,9 +239,9 @@ public class GlobalOTNodeHttpClientTest {
 			@Override
 			public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> snapshotIds) {
 				Set<CommitId> commitIds = set(
-						CommitId.ofBytes(new byte[]{1, 2, 3}),
-						CommitId.ofBytes(new byte[]{4, 5, 6}),
-						CommitId.ofBytes(new byte[]{7, 8, 9})
+						CommitId.of(1, new byte[]{1, 2, 3}),
+						CommitId.of(2, new byte[]{4, 5, 6}),
+						CommitId.of(3, new byte[]{7, 8, 9})
 				);
 				return resultOf(commitIds, repositoryId, snapshotIds);
 			}

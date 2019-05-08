@@ -21,18 +21,17 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.map;
+import static io.global.ot.util.TestUtils.getCommitId;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptyMap;
-import static java.util.stream.Collectors.toMap;
+import static java.util.Comparator.naturalOrder;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -93,10 +92,10 @@ public class CommitStorageTest {
 		Boolean saved = await(saveCommit(5, map(1, 1)));
 		assertTrue(saved);
 
-		Optional<RawCommit> maybeCommit = await(storage.loadCommit(getCommitId(5)));
+		Optional<RawCommit> maybeCommit = await(storage.loadCommit(getCommitId(2, 5)));
 		assertTrue(maybeCommit.isPresent());
 
-		Boolean isComplete = await(storage.isCompleteCommit(getCommitId(5)));
+		Boolean isComplete = await(storage.isCompleteCommit(getCommitId(2, 5)));
 		assertFalse(isComplete);
 	}
 
@@ -150,14 +149,11 @@ public class CommitStorageTest {
 	}
 
 	private Promise<Boolean> saveCommit(int id, Map<Integer, Integer> parents) {
-		CommitId commitId = CommitId.ofBytes(new byte[]{(byte) id});
-		Map<CommitId, Long> parentMap = parents.entrySet().stream().collect(toMap(entry -> getCommitId(entry.getKey()), entry -> entry.getValue().longValue()));
-		RawCommit rawCommit = RawCommit.of(0, parentMap, EncryptedData.encrypt(DATA, SIM_KEY), Hash.sha1(SIM_KEY.getAesKey().getKey()), currentTimeMillis());
+		int level = parents.values().stream().max(naturalOrder()).orElse(0) + 1;
+		CommitId commitId = getCommitId(level, id);
+		Set<CommitId> parentCommitIds = parents.entrySet().stream().map(entry -> getCommitId(entry.getKey(), entry.getValue())).collect(toSet());
+		RawCommit rawCommit = RawCommit.of(0, parentCommitIds, EncryptedData.encrypt(DATA, SIM_KEY), Hash.sha1(SIM_KEY.getAesKey().getKey()), currentTimeMillis());
 		return storage.saveCommit(commitId, rawCommit);
-	}
-
-	private CommitId getCommitId(int id) {
-		return CommitId.ofBytes(new byte[]{(byte) id});
 	}
 
 }

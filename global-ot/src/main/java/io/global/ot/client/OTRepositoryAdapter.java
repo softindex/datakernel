@@ -99,7 +99,13 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	@NotNull
 	public OTCommit<CommitId, D> parseRawBytes(byte[] rawBytes) throws ParseException {
 		RawCommit rawCommit = BinaryUtils.decode(REGISTRY.get(RawCommit.class), rawBytes);
-		return driver.getOTCommit(myRepositoryId, CommitId.ofBytes(sha256(rawBytes)), rawCommit, driver.getCurrentSimKey())
+		return driver.getOTCommit(myRepositoryId, CommitId.of(rawCommit.getLevel(), sha256(rawBytes)), rawCommit, driver.getCurrentSimKey())
 				.withSerializedData(rawBytes);
+	}
+
+	@NotNull
+	@Override
+	public Promise<Long> getLevel(@NotNull CommitId commitId) {
+		return Promise.of(commitId.getLevel());
 	}
 }

@@ -7,7 +7,9 @@ import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestSet;
 import io.global.ot.api.CommitId;
 
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.object;
@@ -26,10 +28,21 @@ public class TestUtils {
 	}
 
 	public static CommitId getCommitId(int seed) {
+		return getCommitId(seed, seed);
+	}
+
+	public static CommitId getCommitId(long level, int seed) {
 		byte[] bytes = new byte[32];
 		RANDOM.setSeed(seed);
 		RANDOM.nextBytes(bytes);
-		return CommitId.ofBytes(bytes);
+		return CommitId.of(level, bytes);
 	}
 
+	public static Set<CommitId> getCommitIds(int... ids) {
+		Set<CommitId> commitIds = new HashSet<>();
+		for (int id : ids) {
+			commitIds.add(getCommitId(id));
+		}
+		return commitIds;
+	}
 }

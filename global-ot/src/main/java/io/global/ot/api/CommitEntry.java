@@ -16,7 +16,6 @@
 
 package io.global.ot.api;
 
-import io.global.ot.util.CommitIdWithLevel;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
@@ -49,7 +48,7 @@ public final class CommitEntry implements Comparable<CommitEntry> {
 
 	@Override
 	public int compareTo(CommitEntry other) {
-		return CommitIdWithLevel.compare(this.getLevel(), this.getCommitId(), other.getLevel(), other.getCommitId());
+		return commitId.compareTo(other.getCommitId());
 	}
 
 	@Override

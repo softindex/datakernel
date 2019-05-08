@@ -14,9 +14,9 @@ import io.global.ot.api.RawCommit;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 import static java.util.Comparator.comparing;
 
@@ -70,7 +70,7 @@ public class RawCommitChannels {
 				commitChannel::get,
 				rawCommitEntry -> {
 					if (rawCommitEntry == null) return Promise.ofException(new StacklessException());
-					int compare = CommitIdWithLevel.compare(level, commitId, rawCommitEntry.getCommit().getLevel(), rawCommitEntry.getCommitId());
+					int compare = commitId.compareTo(rawCommitEntry.getCommitId());
 					if (compare < 0) return Promise.ofException(new StacklessException());
 					return Promise.of(compare == 0);
 				})
@@ -79,7 +79,6 @@ public class RawCommitChannels {
 
 	public static ChannelSupplier<CommitEntry> validateStream(ChannelSupplier<CommitEntry> channel) {
 		return new AbstractChannelSupplier<CommitEntry>(channel) {
-			long lastLevel;
 			CommitId lastCommitId;
 
 			@Override
@@ -89,7 +88,7 @@ public class RawCommitChannels {
 						.then(rawCommitEntry -> {
 							if (rawCommitEntry == null) return Promise.of(null);
 							if (lastCommitId != null) {
-								int compare = CommitIdWithLevel.compare(lastLevel, lastCommitId, rawCommitEntry.getLevel(), rawCommitEntry.getCommitId());
+								int compare = lastCommitId.compareTo(rawCommitEntry.getCommitId());
 								if (compare > 0) {
 									return Promise.ofException(new StacklessException());
 								}
@@ -101,11 +100,8 @@ public class RawCommitChannels {
 		};
 	}
 
-	public static ChannelSupplier<CommitEntry> validateStream(ChannelSupplier<CommitEntry> commitChannel, Map<CommitId, Long> heads) {
-		PriorityQueue<CommitIdWithLevel> queue = new PriorityQueue<>();
-		for (Map.Entry<CommitId, Long> entry : heads.entrySet()) {
-			queue.add(new CommitIdWithLevel(entry.getValue(), entry.getKey()));
-		}
+	public static ChannelSupplier<CommitEntry> validateStream(ChannelSupplier<CommitEntry> commitChannel, Set<CommitId> heads) {
+		PriorityQueue<CommitId> queue = new PriorityQueue<>(heads);
 
 		return new AbstractChannelSupplier<CommitEntry>(commitChannel) {
 			@Override
@@ -113,7 +109,7 @@ public class RawCommitChannels {
 				return commitChannel.get()
 						.thenEx(this::sanitize)
 						.then(entry -> {
-							CommitIdWithLevel expected = queue.poll();
+							CommitId expected = queue.poll();
 							if (entry == null && expected != null) {
 								return Promise.ofException(new StacklessException());
 							}
@@ -123,14 +119,13 @@ public class RawCommitChannels {
 							if (entry == null) {
 								return Promise.of(null);
 							}
-							if (entry.getLevel() != expected.getLevel() || !Objects.equals(entry.getCommitId(), expected.getCommitId())) {
+							if (!entry.getCommitId().equals(expected)) {
 								return Promise.ofException(new StacklessException());
 							}
 
-							for (Map.Entry<CommitId, Long> parentEntry : entry.getCommit().getParentLevels().entrySet()) {
-								CommitIdWithLevel item = new CommitIdWithLevel(parentEntry.getValue(), parentEntry.getKey());
-								if (!queue.contains(item)) {
-									queue.add(item);
+							for (CommitId parent : entry.getCommit().getParents()) {
+								if (!queue.contains(parent)) {
+									queue.add(parent);
 								}
 							}
 
