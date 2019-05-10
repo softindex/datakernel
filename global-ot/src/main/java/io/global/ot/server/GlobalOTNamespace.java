@@ -389,7 +389,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		// region Helper methods
 		public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
-			PriorityQueue<CommitEntry> queue = new PriorityQueue<>(Collections.reverseOrder());
+			PriorityQueue<CommitEntry> queue = new PriorityQueue<>();
 			return Promises.all(heads.stream()
 					.map(head -> node.loadCommit(repositoryId, head)
 							.whenResult(commit ->

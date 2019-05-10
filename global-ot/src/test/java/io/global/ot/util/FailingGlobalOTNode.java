@@ -107,11 +107,11 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 
 	@Override
 	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> startNodes) {
-		return null;
+		return Promise.ofException(ERROR);
 	}
 
 	@Override
 	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
-		return null;
+		return Promise.ofException(ERROR);
 	}
 }

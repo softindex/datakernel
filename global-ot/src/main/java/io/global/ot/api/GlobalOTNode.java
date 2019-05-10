@@ -28,10 +28,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.util.stream.Collectors.toMap;
+
 public interface GlobalOTNode extends SharedKeyManager {
 	Promise<Set<String>> list(PubKey pubKey);
 
 	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits);
+
+	default Promise<Void> save(RepoID repositoryId, Set<CommitEntry> commits) {
+		return save(repositoryId, commits.stream().collect(toMap(CommitEntry::getCommitId, CommitEntry::getCommit)));
+	}
 
 	Promise<Void> saveHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads);
 

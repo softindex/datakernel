@@ -137,9 +137,6 @@ public class GlobalOTNodeSynchronizationTest {
 
 		syncAll();
 
-		System.out.println(await(repository1.getHeads()));
-		System.out.println(await(repository2.getHeads()));
-
 		assertSynced(10);
 	}
 

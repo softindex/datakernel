@@ -40,6 +40,7 @@ import io.global.ot.api.*;
 import io.global.ot.stub.CommitStorageStub;
 import io.global.ot.util.FailingDiscoveryService;
 import io.global.ot.util.FailingGlobalOTNode;
+import io.global.ot.util.TestUtils;
 import org.jetbrains.annotations.Nullable;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -55,11 +56,14 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.CollectorsEx.toAll;
+import static io.datakernel.util.CollectorsEx.toAny;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.ot.util.TestUtils.getCommitId;
 import static io.global.ot.util.TestUtils.getCommitIds;
@@ -201,26 +205,28 @@ public class GlobalOTNodeImplTest {
 	@Test
 	public void testSaveRootCommit() {
 		addSingleCommit(emptySet(), intermediateNode);
-		assertCommits(1);
-		assertHeads(1);
+		assertCommits(getCommitId(1));
+		assertHeads(getCommitId(1));
 	}
 
 	@Test
 	public void testSaveRootCommitAndOtherCommits() {
 		addCommits(5, intermediateNode);
-		assertCommits(1, 2, 3, 4, 5);
-		assertHeads(5);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(commitIds);
+		assertHeads(getCommitId(5));
 	}
 
 	@Test
 	public void testSaveRootCommitAndAfterThatSaveOtherCommits() {
 		addSingleCommit(emptySet(), intermediateNode);
-		assertCommits(1);
-		assertHeads(1);
+		assertCommits(getCommitId(1));
+		assertHeads(getCommitId(1));
 
 		addCommits(1, 2, intermediateNode);
-		assertCommits(1, 2, 3);
-		assertHeads(3);
+
+		assertCommits(getCommitId(1), getCommitId(2), getCommitId(3));
+		assertHeads(getCommitId(3));
 	}
 
 	@Test
@@ -294,7 +300,6 @@ public class GlobalOTNodeImplTest {
 		Set<SignedData<RawCommitHead>> heads = await(intermediateNode.getHeads(REPO_ID));
 		Set<CommitId> headsCommitIds = heads.stream().map(head -> head.getValue().commitId).collect(toSet());
 		CommitId commitId = getCommitId(2, 5);
-		System.out.println(commitId);
 		assertEquals(set(getCommitId(3, 3), commitId), headsCommitIds);
 	}
 
@@ -325,18 +330,24 @@ public class GlobalOTNodeImplTest {
 		entries.add(createCommitEntry(getCommitIds(2)));  // id - 3
 		entries.add(createCommitEntry(getCommitIds(3)));  // id - 4, head
 		entries.add(createCommitEntry(getCommitIds(1)));            // id - 5
-		entries.add(createCommitEntry(set(getCommitId(1, 5))));  // id - 6
-		entries.add(createCommitEntry(set(getCommitId(2, 6))));  // id - 7, head
+		entries.add(createCommitEntry(set(getCommitId(2, 5))));  // id - 6
+		entries.add(createCommitEntry(set(getCommitId(3, 6))));  // id - 7, head
 
-		Set<SignedData<RawCommitHead>> heads = getCommitIds(4, 7).stream()
+		CommitId head1 = getCommitId(4, 4);
+		CommitId head2 = getCommitId(4, 7);
+		Set<SignedData<RawCommitHead>> heads = Stream.of(head1, head2)
 				.map(GlobalOTNodeImplTest::toSignedHead)
 				.collect(toSet());
 
 		await(ChannelSupplier.ofIterable(entries)
 				.streamTo(ChannelConsumer.ofPromise(getMasterNode(1).upload(REPO_ID, heads))));
 		CommitStorage masterStorage = getMasterStorage(1);
-		assertHeads(masterStorage, 4, 7);
-		assertCommits(masterStorage, 1, 2, 3, 4, 5, 6, 7);
+		assertHeads(masterStorage, head1, head2);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4);
+		commitIds.add(getCommitId(2, 5));
+		commitIds.add(getCommitId(3, 6));
+		commitIds.add(getCommitId(4, 7));
+		assertCommits(masterStorage, commitIds);
 	}
 
 	@Test
@@ -350,8 +361,13 @@ public class GlobalOTNodeImplTest {
 		await(ChannelSupplier.ofPromise(masterNode.download(REPO_ID, heads))
 				.streamTo(ChannelConsumer.ofPromise(intermediateNode.upload(REPO_ID, signedHeads))));
 
-		assertHeads(5, 9);
-		assertCommits(1, 2, 3, 4, 5, 6, 7, 8, 9);
+		assertHeads(getCommitId(5, 5), getCommitId(4, 9));
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		commitIds.add(getCommitId(1, 6));
+		commitIds.add(getCommitId(2, 7));
+		commitIds.add(getCommitId(3, 8));
+		commitIds.add(getCommitId(4, 9));
+		assertCommits(commitIds);
 	}
 
 	@Test
@@ -393,12 +409,14 @@ public class GlobalOTNodeImplTest {
 		await(((GlobalOTNodeImpl) firstMaster).fetch());
 		await(((GlobalOTNodeImpl) secondMaster).fetch());
 
-		assertHeads(intermediateStorage, 5);
-		assertHeads(firstMasterStorage, 5);
-		assertHeads(secondMasterStorage, 5);
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
-		assertCommits(firstMasterStorage, 1, 2, 3, 4, 5);
-		assertCommits(secondMasterStorage, 1, 2, 3, 4, 5);
+		CommitId head = getCommitId(5);
+		assertHeads(intermediateStorage, head);
+		assertHeads(firstMasterStorage, head);
+		assertHeads(secondMasterStorage, head);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(intermediateStorage, commitIds);
+		assertCommits(firstMasterStorage, commitIds);
+		assertCommits(secondMasterStorage, commitIds);
 	}
 
 	@Test
@@ -419,14 +437,16 @@ public class GlobalOTNodeImplTest {
 			await(((GlobalOTNodeImpl) tuple.getValue2()).fetch());
 		}
 
-		assertHeads(intermediateStorage, 5);
+		CommitId head = getCommitId(5);
+		assertHeads(intermediateStorage, head);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertHeads(tuple.getValue1(), 5);
+			assertHeads(tuple.getValue1(), head);
 		}
 
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(intermediateStorage, commitIds);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertCommits(tuple.getValue1(), 1, 2, 3, 4, 5);
+			assertCommits(tuple.getValue1(), commitIds);
 		}
 	}
 
@@ -449,12 +469,14 @@ public class GlobalOTNodeImplTest {
 		await(((GlobalOTNodeImpl) firstMaster).catchUp());
 		await(((GlobalOTNodeImpl) secondMaster).catchUp());
 
-		assertHeads(intermediateStorage, 5);
-		assertHeads(firstMasterStorage, 5);
-		assertHeads(secondMasterStorage, 5);
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
-		assertCommits(firstMasterStorage, 1, 2, 3, 4, 5);
-		assertCommits(secondMasterStorage, 1, 2, 3, 4, 5);
+		CommitId head = getCommitId(5);
+		assertHeads(intermediateStorage, head);
+		assertHeads(firstMasterStorage, head);
+		assertHeads(secondMasterStorage, head);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(intermediateStorage, commitIds);
+		assertCommits(firstMasterStorage, commitIds);
+		assertCommits(secondMasterStorage, commitIds);
 	}
 
 	@Test
@@ -475,14 +497,16 @@ public class GlobalOTNodeImplTest {
 			await(((GlobalOTNodeImpl) tuple.getValue2()).catchUp());
 		}
 
-		assertHeads(intermediateStorage, 5);
+		CommitId head = getCommitId(5);
+		assertHeads(intermediateStorage, head);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertHeads(tuple.getValue1(), 5);
+			assertHeads(tuple.getValue1(), head);
 		}
 
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(intermediateStorage, commitIds);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertCommits(tuple.getValue1(), 1, 2, 3, 4, 5);
+			assertCommits(tuple.getValue1(), commitIds);
 		}
 	}
 
@@ -501,12 +525,14 @@ public class GlobalOTNodeImplTest {
 		await(((GlobalOTNodeImpl) secondMaster).push());
 		await(((GlobalOTNodeImpl) firstMaster).push());
 
-		assertHeads(intermediateStorage, 5);
-		assertHeads(firstMasterStorage, 5);
-		assertHeads(secondMasterStorage, 5);
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
-		assertCommits(firstMasterStorage, 1, 2, 3, 4, 5);
-		assertCommits(secondMasterStorage, 1, 2, 3, 4, 5);
+		CommitId head = getCommitId(5);
+		assertHeads(intermediateStorage, head);
+		assertHeads(firstMasterStorage, head);
+		assertHeads(secondMasterStorage, head);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(intermediateStorage, commitIds);
+		assertCommits(firstMasterStorage, commitIds);
+		assertCommits(secondMasterStorage, commitIds);
 	}
 
 	@Test
@@ -522,14 +548,16 @@ public class GlobalOTNodeImplTest {
 			await(((GlobalOTNodeImpl) tuple.getValue2()).push());
 		}
 
-		assertHeads(intermediateStorage, 5);
+		CommitId head = getCommitId(5);
+		assertHeads(intermediateStorage, head);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertHeads(tuple.getValue1(), 5);
+			assertHeads(tuple.getValue1(), head);
 		}
 
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5);
+		assertCommits(intermediateStorage, commitIds);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertCommits(tuple.getValue1(), 1, 2, 3, 4, 5);
+			assertCommits(tuple.getValue1(), commitIds);
 		}
 	}
 
@@ -543,9 +571,10 @@ public class GlobalOTNodeImplTest {
 
 		intermediateStorage.saveCommit(getCommitId(1), RawCommit.of(0, emptySet(),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, now.currentTimeMillis()));
-		intermediateStorage.saveCommit(getCommitId(2), RawCommit.of(0, set(getCommitId(1)),
+		CommitId head = getCommitId(2);
+		intermediateStorage.saveCommit(head, RawCommit.of(0, set(getCommitId(1)),
 				EncryptedData.encrypt(new byte[]{1}, SIM_KEY), HASH, now.currentTimeMillis()));
-		SignedData<RawCommitHead> signedHead = toSignedHead(getCommitId(2));
+		SignedData<RawCommitHead> signedHead = toSignedHead(head);
 		intermediateStorage.updateHeads(REPO_ID, set(signedHead), emptySet());
 
 		// wait for previous saves to complete
@@ -554,14 +583,15 @@ public class GlobalOTNodeImplTest {
 		// Assume pushed new commits
 		await(((GlobalOTNodeImpl) intermediateNode).push());
 
-		assertHeads(intermediateStorage, 2);
+		assertHeads(intermediateStorage, head);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertHeads(tuple.getValue1(), 2);
+			assertHeads(tuple.getValue1(), head);
 		}
 
-		assertCommits(intermediateStorage, 1, 2);
+		Set<CommitId> commitIds = getCommitIds(1, 2);
+		assertCommits(intermediateStorage, commitIds);
 		for (Tuple2<CommitStorage, GlobalOTNode> tuple : masters.values()) {
-			assertCommits(tuple.getValue1(), 1, 2);
+			assertCommits(tuple.getValue1(), commitIds);
 		}
 	}
 
@@ -581,7 +611,8 @@ public class GlobalOTNodeImplTest {
 			assertEquals(getCommitId(headCommit--), commitEntry.getCommitId());
 		}
 		assertEquals(0, headCommit);
-		assertCommits(intermediateStorage, IntStream.range(1, numberOfCommits).toArray());
+		Set<CommitId> commitIds = IntStream.range(1, numberOfCommits + 1).mapToObj(TestUtils::getCommitId).collect(toSet());
+		assertCommits(intermediateStorage, commitIds);
 	}
 
 	@Test
@@ -592,17 +623,23 @@ public class GlobalOTNodeImplTest {
 		entries.add(createCommitEntry(getCommitIds(2)));  // id - 3
 		entries.add(createCommitEntry(getCommitIds(3)));  // id - 4, head
 		entries.add(createCommitEntry(getCommitIds(1)));            // id - 5
-		entries.add(createCommitEntry(set(getCommitId(1, 5))));  // id - 6
-		entries.add(createCommitEntry(set(getCommitId(2, 6))));  // id - 7, head
+		entries.add(createCommitEntry(set(getCommitId(2, 5))));  // id - 6
+		entries.add(createCommitEntry(set(getCommitId(3, 6))));  // id - 7, head
 
-		Set<SignedData<RawCommitHead>> heads = getCommitIds(4, 7).stream()
+		CommitId head1 = getCommitId(4, 4);
+		CommitId head2 = getCommitId(4, 7);
+		Set<SignedData<RawCommitHead>> heads = Stream.of(head1, head2)
 				.map(GlobalOTNodeImplTest::toSignedHead)
 				.collect(toSet());
 
 		await(ChannelSupplier.ofIterable(entries)
-				.streamTo(ChannelConsumer.ofPromise(getMasterNode(1).upload(REPO_ID, heads))));
-		assertHeads(4, 7);
-		assertCommits(1, 2, 3, 4, 5, 6, 7);
+				.streamTo(ChannelConsumer.ofPromise(intermediateNode.upload(REPO_ID, heads))));
+		assertHeads(intermediateStorage, head1, head2);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4);
+		commitIds.add(getCommitId(2, 5));
+		commitIds.add(getCommitId(3, 6));
+		commitIds.add(getCommitId(4, 7));
+		assertCommits(intermediateStorage, commitIds);
 	}
 
 	@Test
@@ -616,32 +653,38 @@ public class GlobalOTNodeImplTest {
 		addCommits(3, 3, intermediateNode); // commits with Ids 4, 5, 6
 
 		// commits are still saved on local node
-		assertCommits(intermediateStorage, 1, 2, 3, 4, 5, 6);
+		Set<CommitId> localCommits = getCommitIds(1, 2, 3, 4, 5, 6);
+		assertCommits(intermediateStorage, localCommits);
 
 		CommitStorage masterStorage = getStorage(masterNode);
 		// first 3 commits are saved on master node
-		assertCommits(masterStorage, 1, 2, 3);
+		Set<CommitId> savedCommits = getCommitIds(1, 2, 3);
+		assertCommits(masterStorage, savedCommits);
 
 		// last 3 commits are not saved on master node
-		assertCommitsAbsent(masterStorage, 4, 5, 6);
+		Set<CommitId> newCommitIds = getCommitIds(4, 5, 6);
+		assertCommitsAbsent(masterStorage, newCommitIds);
 
 		// master is back online
 		turnOn("master1");
 
 		// assume more commits has been added to master while it was offline for intermediate node
-		addSingleCommit(set(getCommitId(6, 3)), getMasterNode(1)); // commit with Id 7
-		assertCommits(masterStorage, 7); // present on master
-		assertCommitsAbsent(intermediateStorage, 7); // absent on intermediate
+		addSingleCommit(getCommitIds(3), getMasterNode(1)); // commit with Id 7
+		CommitId newCommitId = getCommitId(4, 7);
+		assertCommits(masterStorage, set(newCommitId)); // present on master
+		assertCommitsAbsent(intermediateStorage, set(newCommitId)); // absent on intermediate
 
 		// assume push iteration passed
 		await(((GlobalOTNodeImpl) intermediateNode).push());
 		// commits are now present on master node
-		assertCommits(masterStorage, 4, 5, 6);
+		assertCommits(masterStorage, newCommitIds);
 
 		// assume fetch iteration passed
 		await(((GlobalOTNodeImpl) intermediateNode).fetch());
 		// all commits are synced now
-		assertCommits(1, 2, 3, 4, 5, 6, 7);
+		Set<CommitId> commitIds = getCommitIds(1, 2, 3, 4, 5, 6);
+		commitIds.add(newCommitId);
+		assertCommits(commitIds);
 	}
 
 	@Test
@@ -826,34 +869,38 @@ public class GlobalOTNodeImplTest {
 
 	}
 
-	private void assertCommitsAbsent(int... ids) {
+	private void assertCommitsAbsent(Set<CommitId> ids) {
+		assertCommitsAbsent(intermediateStorage, ids);
+		assertCommitsAbsent(getMasterStorage(1), ids);
+	}
+
+	private void assertCommitsAbsent(CommitStorage storage, Set<CommitId> ids) {
+		Boolean hasCommits = await(Promises.reduce(toAny(), Integer.MAX_VALUE, ids.stream().map(storage::hasCommit).iterator()));
+		assertFalse(hasCommits);
+	}
+
+	private void assertCommits(CommitId... ids) {
+		assertCommits(new HashSet<>(Arrays.asList(ids)));
+	}
+
+	private void assertCommits(Set<CommitId> ids) {
 		assertCommits(intermediateStorage, ids);
 		assertCommits(getMasterStorage(1), ids);
 	}
 
-	private void assertCommitsAbsent(CommitStorage storage, int... ids) {
-		List<Boolean> hasCommits = await(Promises.toList(IntStream.of(ids).mapToObj(id -> storage.hasCommit(getCommitId(id)))));
-		hasCommits.forEach(Assert::assertFalse);
+	private void assertCommits(CommitStorage storage, Set<CommitId> ids) {
+		Boolean hasCommits = await(Promises.reduce(toAll(), Integer.MAX_VALUE, ids.stream().map(storage::hasCommit).iterator()));
+		assertTrue(hasCommits);
 	}
 
-	private void assertCommits(int... ids) {
-		assertCommits(intermediateStorage, ids);
-		assertCommits(getMasterStorage(1), ids);
-	}
-
-	private void assertCommits(CommitStorage storage, int... ids) {
-		List<Boolean> hasCommits = await(Promises.toList(IntStream.of(ids).mapToObj(id -> storage.hasCommit(getCommitId(id)))));
-		hasCommits.forEach(Assert::assertTrue);
-	}
-
-	private void assertHeads(int... ids) {
+	private void assertHeads(CommitId... ids) {
 		assertHeads(intermediateStorage, ids);
 		assertHeads(getMasterStorage(1), ids);
 	}
 
-	private void assertHeads(CommitStorage storage, int... ids) {
+	private void assertHeads(CommitStorage storage, CommitId... ids) {
 		Map<CommitId, SignedData<RawCommitHead>> heads = await(storage.getHeads(REPO_ID));
-		assertEquals(getCommitIds(ids), heads.keySet());
+		assertEquals(new HashSet<>(Arrays.asList(ids)), heads.keySet());
 	}
 
 	@SafeVarargs

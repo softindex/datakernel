@@ -219,7 +219,10 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
-		return null;
+		return Promise.of(ChannelConsumer.<CommitEntry>of(entry ->
+				commitStorage.saveCommit(entry.getCommitId(), entry.getCommit()).toVoid())
+				.withAcknowledgement(ack -> ack.then($ -> commitStorage.markCompleteCommits())
+						.then($ -> ensureRepository(repositoryId).saveHeads(heads))));
 	}
 
 	@Override
