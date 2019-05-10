@@ -58,7 +58,7 @@ public final class CommitId implements Comparable<CommitId> {
 		return new CommitId(level, Arrays.copyOfRange(bytes, 8, bytes.length));
 	}
 
-	public static CommitId ofCommitData(byte[] bytes, long level) {
+	public static CommitId ofCommitData(long level, byte[] bytes) {
 		return new CommitId(level, sha256(bytes));
 	}
 

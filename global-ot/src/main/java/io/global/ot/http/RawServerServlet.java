@@ -20,6 +20,11 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
@@ -38,8 +43,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpMethod.GET;
@@ -61,6 +65,12 @@ public final class RawServerServlet implements WithMiddleware {
 					Arrays.stream(s.split(","))
 							.map(asFunction(HttpDataFormats::urlDecodeCommitId))
 							.collect(toSet());
+
+	static final ParserFunction<ByteBuf, CommitEntry> COMMIT_ENTRIES_PARSER = byteBuf -> {
+		byte[] bytes = byteBuf.asArray();
+		RawCommit commit = decode(COMMIT_CODEC, bytes);
+		return new CommitEntry(CommitId.ofCommitData(commit.getLevel(), bytes), commit);
+	};
 
 	private final MiddlewareServlet middlewareServlet;
 	private Promise<@Nullable Void> closeNotification = new SettablePromise<>();
@@ -237,7 +247,35 @@ public final class RawServerServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				;
+				.with(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
+					try {
+						return node.download(
+								urlDecodeRepositoryId(req),
+								req.parseQueryParameter("startNodes", COMMIT_IDS_PARSER))
+								.map(downloader -> HttpResponse.ok200()
+										.withBodyStream(downloader
+												.map(commitEntry -> encodeWithSizePrefix(COMMIT_CODEC, commitEntry.getCommit()))
+												.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
+										)
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
+					try {
+						RepoID repoID = urlDecodeRepositoryId(req);
+						String headsQueryString = req.getQueryParameter("heads");
+						Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), headsQueryString);
+						return BinaryChannelSupplier.of(req.getBodyStream())
+								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
+										.andThen(COMMIT_ENTRIES_PARSER))
+								.streamTo(ChannelConsumer.ofPromise(node.upload(repoID, heads)))
+								.map($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				});
 	}
 
 	@Override
