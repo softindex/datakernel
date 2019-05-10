@@ -19,6 +19,7 @@ package io.global.ot.server;
 import ch.qos.logback.classic.Level;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
@@ -78,8 +79,8 @@ public class GlobalOTNodeImplTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@ClassRule
-	public static final EventloopRule eventloopRule = new EventloopRule();
+	@Rule
+	public final EventloopRule eventloopRule = new EventloopRule();
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
@@ -298,7 +299,7 @@ public class GlobalOTNodeImplTest {
 		addCommits(2, masterNode); // Heads - 3, 5
 
 		Set<SignedData<RawCommitHead>> heads = await(intermediateNode.getHeads(REPO_ID));
-		Set<CommitId> headsCommitIds = heads.stream().map(head -> head.getValue().commitId).collect(toSet());
+		Set<CommitId> headsCommitIds = heads.stream().map(head -> head.getValue().getCommitId()).collect(toSet());
 		CommitId commitId = getCommitId(2, 5);
 		assertEquals(set(getCommitId(3, 3), commitId), headsCommitIds);
 	}
@@ -333,8 +334,11 @@ public class GlobalOTNodeImplTest {
 		entries.add(createCommitEntry(set(getCommitId(2, 5))));  // id - 6
 		entries.add(createCommitEntry(set(getCommitId(3, 6))));  // id - 7, head
 
+		Collections.sort(entries);
+
 		CommitId head1 = getCommitId(4, 4);
 		CommitId head2 = getCommitId(4, 7);
+
 		Set<SignedData<RawCommitHead>> heads = Stream.of(head1, head2)
 				.map(GlobalOTNodeImplTest::toSignedHead)
 				.collect(toSet());
@@ -625,6 +629,7 @@ public class GlobalOTNodeImplTest {
 		entries.add(createCommitEntry(getCommitIds(1)));            // id - 5
 		entries.add(createCommitEntry(set(getCommitId(2, 5))));  // id - 6
 		entries.add(createCommitEntry(set(getCommitId(3, 6))));  // id - 7, head
+		Collections.sort(entries);
 
 		CommitId head1 = getCommitId(4, 4);
 		CommitId head2 = getCommitId(4, 7);
@@ -644,6 +649,7 @@ public class GlobalOTNodeImplTest {
 
 	@Test
 	public void testMasterGoingOffline() {
+		((GlobalOTNodeImpl) intermediateNode).withRetryPolicy(RetryPolicy.noRetry());
 		addCommits(3, intermediateNode); // commits with Ids 1, 2, 3
 
 		turnOff("master1");

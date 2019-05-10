@@ -16,16 +16,13 @@
 
 package io.global.ot.server;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.MaterializedPromise;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.*;
+import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.CollectorsEx;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
 import io.global.common.api.AbstractGlobalNode;
@@ -42,7 +39,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -55,15 +51,16 @@ import static java.util.stream.Collectors.toSet;
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
+	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry();
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
 
 	private final Eventloop eventloop;
 	private final CommitStorage commitStorage;
 
 	boolean pollMasterRepositories = DEFAULT_POLL_MASTER_REPOSITORIES;
+	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
 	private int propagations = 1;
-	private int minimumSuccesses = 0;
 
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
 			DiscoveryService discoveryService,
@@ -82,6 +79,11 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	public GlobalOTNodeImpl withPollMasterRepositories(boolean pollMasterRepositories) {
 		this.pollMasterRepositories = pollMasterRepositories;
+		return this;
+	}
+
+	public GlobalOTNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
+		this.retryPolicy = retryPolicy;
 		return this;
 	}
 
@@ -154,13 +156,9 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits) {
-		return Promises.reduce(CollectorsEx.toAny(), 1,
-				asPromises(newCommits.entrySet().stream().map(entry ->
-						() -> commitStorage.saveCommit(entry.getKey(), entry.getValue()))
-				))
-				.then(savedAny -> savedAny ?
-						toMaster(repositoryId, node -> node.save(repositoryId, newCommits)) :
-						Promise.complete())
+		return Promises.all(newCommits.entrySet()
+				.stream()
+				.map(entry -> commitStorage.saveCommit(entry.getKey(), entry.getValue())))
 				.whenComplete(toLogger(logger, "save", repositoryId, newCommits, this));
 	}
 
@@ -171,7 +169,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		}
 		RepositoryEntry repositoryEntry = ensureRepository(repositoryId);
 		return repositoryEntry.saveHeads(newHeads)
-				.then($ -> toMaster(repositoryId, repositoryEntry::doPush));
+				.whenResult($ -> repositoryEntry.push());
 	}
 
 	@Override
@@ -206,8 +204,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 					return Promises.all(
 							entry.getCommit().getParents()
 									.stream()
-									.filter(nextCommitId -> !nextCommitId.isRoot())
-									.filter(nextCommitId -> queue.stream().map(CommitEntry::getCommitId).noneMatch(nextCommitId::equals))
+									.filter(nextCommitId -> !nextCommitId.isRoot() && queue.stream().map(CommitEntry::getCommitId).noneMatch(nextCommitId::equals))
 									.map(nextCommitId -> tryGetCommit(repositoryId, nextCommitId)
 											.whenResult(maybeNextCommit -> maybeNextCommit.ifPresent(nextCommit ->
 													queue.add(new CommitEntry(nextCommitId, nextCommit))))))
@@ -219,10 +216,38 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
-		return Promise.of(ChannelConsumer.<CommitEntry>of(entry ->
-				commitStorage.saveCommit(entry.getCommitId(), entry.getCommit()).toVoid())
-				.withAcknowledgement(ack -> ack.then($ -> commitStorage.markCompleteCommits())
-						.then($ -> ensureRepository(repositoryId).saveHeads(heads))));
+		Set<CommitId> incomplete = new HashSet<>();
+		return getIncompleteCommits(heads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet()))
+				.whenResult(incomplete::addAll)
+				.map($ -> new AbstractChannelConsumer<CommitEntry>() {
+					@Override
+					protected Promise<Void> doAccept(@Nullable CommitEntry entry) {
+						if (entry == null) {
+							return Promise.complete();
+						}
+						if (incomplete.isEmpty()) {
+							cancel();
+							return Promise.ofException(CANCEL_EXCEPTION);
+						}
+
+						if (incomplete.remove(entry.getCommitId())) {
+							return commitStorage.saveCommit(entry.getCommitId(), entry.getCommit()).toVoid()
+									.then($ -> getIncompleteCommits(entry.getCommit().getParents())
+											.then(parents -> {
+												incomplete.addAll(parents);
+												if (incomplete.isEmpty()) {
+													return saveHeads(repositoryId, heads);
+												}
+												return Promise.complete();
+											}));
+						} else {
+							return Promise.complete();
+						}
+					}
+				})
+				.map(consumer -> consumer
+						.withAcknowledgement(ack -> ack
+								.whenComplete(($, e) -> commitStorage.markCompleteCommits())));
 	}
 
 	@Override
@@ -393,6 +418,17 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 							.map(master -> AsyncSupplier.cast(() -> fn.apply(master))))
 							.toVoid();
 				});
+	}
+
+	private Promise<Set<CommitId>> getIncompleteCommits(Set<CommitId> commitIds) {
+		Set<CommitId> incompleteCommits = new HashSet<>();
+		return Promises.all(commitIds.stream().map(commitId -> commitStorage.isIncompleteCommit(commitId)
+				.whenResult(isIncomplete -> {
+					if (isIncomplete) {
+						incompleteCommits.add(commitId);
+					}
+				})))
+				.map($ -> incompleteCommits);
 	}
 
 	@Override

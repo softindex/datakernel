@@ -35,15 +35,15 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
+import io.global.fs.api.GlobalFsNode;
+import io.global.fs.http.GlobalFsNodeServlet;
+import io.global.fs.http.HttpGlobalFsNode;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.kv.LocalGlobalKvNode;
 import io.global.kv.api.GlobalKvNode;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
-import io.global.fs.api.GlobalFsNode;
-import io.global.fs.http.GlobalFsNodeServlet;
-import io.global.fs.http.HttpGlobalFsNode;
-import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.http.HttpGlobalOTNode;
 import io.global.ot.http.RawServerServlet;
@@ -66,7 +66,6 @@ import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 public class GlobalNodesModule extends AbstractModule {
 	@Override
 	protected void configure() {
-		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
 		bind(GlobalKvNode.class).to(LocalGlobalKvNode.class);
 	}
@@ -81,7 +80,7 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalOTNodeImpl provide(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+	GlobalOTNode provide(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, commitStorage, factory)
 				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
@@ -152,19 +151,19 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	RawServerServlet provideRawServerServlet(GlobalOTNodeImpl node) {
+	RawServerServlet provideRawServerServlet(GlobalOTNode node) {
 		return RawServerServlet.create(node);
 	}
 
 	@Provides
 	@Singleton
-	GlobalFsNodeServlet provideGlobalFsServlet(GlobalFsNodeImpl node) {
+	GlobalFsNodeServlet provideGlobalFsServlet(GlobalFsNode node) {
 		return GlobalFsNodeServlet.create(node);
 	}
 
 	@Provides
 	@Singleton
-	GlobalKvNodeServlet provideGlobalDbServlet(LocalGlobalKvNode node) {
+	GlobalKvNodeServlet provideGlobalDbServlet(GlobalKvNode node) {
 		return GlobalKvNodeServlet.create(node);
 	}
 
@@ -214,22 +213,6 @@ public class GlobalNodesModule extends AbstractModule {
 	EventloopTaskScheduler provideFsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("fs.catchUp")));
-	}
-
-	@Provides
-	@Singleton
-	@Named("OT push")
-	EventloopTaskScheduler provideOTPushScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("ot.push")));
-	}
-
-	@Provides
-	@Singleton
-	@Named("OT catch up")
-	EventloopTaskScheduler provideOTCatchUpScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("ot.catchUp")));
 	}
 
 	@Provides

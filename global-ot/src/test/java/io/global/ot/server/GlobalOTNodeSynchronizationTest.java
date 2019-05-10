@@ -1,6 +1,7 @@
 package io.global.ot.server;
 
 import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.OTNodeImpl;
@@ -99,10 +100,10 @@ public class GlobalOTNodeSynchronizationTest {
 
 		master1 = GlobalOTNodeImpl.create(eventloop, master1ID, discoveryService, commitStorage1, $ -> {
 			throw new IllegalStateException();
-		});
+		}).withRetryPolicy(RetryPolicy.noRetry());
 		master2 = GlobalOTNodeImpl.create(eventloop, master2ID, discoveryService, commitStorage2, $ -> {
 			throw new IllegalStateException();
-		});
+		}).withRetryPolicy(RetryPolicy.noRetry());
 		GlobalOTNodeImpl intermediate = GlobalOTNodeImpl.create(eventloop, intermediateID, discoveryService, new CommitStorageStub(), serverId -> {
 			if (serverId.equals(master1ID)) return master1;
 			if (serverId.equals(master2ID)) return master2;

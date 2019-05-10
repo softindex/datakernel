@@ -138,7 +138,7 @@ public class CommitStorageStub implements CommitStorage {
 
 	@Override
 	public Promise<Boolean> isCompleteCommit(CommitId commitId) {
-		return Promise.of(incompleteParentsCount.getOrDefault(commitId, 0) == 0);
+		return Promise.of(commitId.isRoot() || commits.containsKey(commitId) && incompleteParentsCount.getOrDefault(commitId, 0) == 0);
 	}
 
 }

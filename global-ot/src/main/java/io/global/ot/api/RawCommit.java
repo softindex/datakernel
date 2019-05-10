@@ -27,6 +27,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class RawCommit {
 	private final int epoch;
 	private final Set<CommitId> parents;
+	private final long level;
 	private final EncryptedData encryptedDiffs;
 	private final Hash simKeyHash;
 	private final long timestamp;
@@ -36,6 +37,7 @@ public final class RawCommit {
 			long timestamp) {
 		this.epoch = epoch;
 		this.parents = checkNotNull(parents);
+		this.level = parents.stream().mapToLong(CommitId::getLevel).max().orElse(0L) + 1L;
 		this.encryptedDiffs = checkNotNull(encryptedDiffs);
 		this.simKeyHash = checkNotNull(simKeyHash);
 		this.timestamp = timestamp;
@@ -69,7 +71,7 @@ public final class RawCommit {
 	}
 
 	public long getLevel() {
-		return parents.stream().mapToLong(CommitId::getLevel).max().orElse(0L) + 1L;
+		return level;
 	}
 
 	public long getTimestamp() {

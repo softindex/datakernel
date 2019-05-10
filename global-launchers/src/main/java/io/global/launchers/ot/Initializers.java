@@ -21,7 +21,9 @@ import io.datakernel.util.Initializer;
 import io.global.ot.server.GlobalOTNodeImpl;
 
 import static io.datakernel.config.ConfigConverters.ofBoolean;
+import static io.datakernel.config.ConfigConverters.ofRetryPolicy;
 import static io.global.ot.server.GlobalOTNodeImpl.DEFAULT_POLL_MASTER_REPOSITORIES;
+import static io.global.ot.server.GlobalOTNodeImpl.DEFAULT_RETRY_POLICY;
 
 public class Initializers {
 	private Initializers() {
@@ -30,6 +32,7 @@ public class Initializers {
 
 	public static Initializer<GlobalOTNodeImpl> ofGlobalOTNodeImpl(Config config) {
 		return node -> node
-				.withPollMasterRepositories(config.get(ofBoolean(), "pollMasters", DEFAULT_POLL_MASTER_REPOSITORIES));
+				.withPollMasterRepositories(config.get(ofBoolean(), "pollMasters", DEFAULT_POLL_MASTER_REPOSITORIES))
+				.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy", DEFAULT_RETRY_POLICY));
 	}
 }

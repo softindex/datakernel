@@ -141,6 +141,7 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
+				.whenResult($ -> queue.cancel())
 				.whenComplete(done);
 		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.then($ -> done)));
 	}

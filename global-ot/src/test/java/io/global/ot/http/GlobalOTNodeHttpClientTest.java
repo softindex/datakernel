@@ -40,10 +40,9 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
-import static io.global.ot.util.HttpDataFormats.COMMIT_CODEC;
+import static io.global.ot.util.TestUtils.getCommitEntries;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -76,7 +75,7 @@ public class GlobalOTNodeHttpClientTest {
 	private final CommitId rootCommitId = CommitId.ofCommitData(1, encode(REGISTRY.get(RawCommit.class), rootCommit).asArray());
 	private final RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
 	private final SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
-	private final List<CommitEntry> commitEntries = getCommitEntries();
+	private final List<CommitEntry> commitEntries = getCommitEntries(10);
 
 	@BeforeClass
 	public static void disableLogs() {
@@ -288,7 +287,7 @@ public class GlobalOTNodeHttpClientTest {
 							@Override
 							public Promise<CommitEntry> get() {
 								index++;
-								return index == 4 ?
+								return index == commitEntries.size() ?
 										resultOf(null, repositoryId, startNodes, commitEntries.stream().map(CommitEntry::getCommitId).collect(Collectors.toList())) :
 										Promise.of(commitEntries.get(index));
 							}
@@ -340,20 +339,5 @@ public class GlobalOTNodeHttpClientTest {
 				privKey);
 	}
 
-	@NotNull
-	private List<CommitEntry> getCommitEntries() {
-		CommitEntry entry1 = nextCommitEntry(singleton(CommitId.ofRoot()));
-		CommitEntry entry2 = nextCommitEntry(singleton(entry1.getCommitId()));
-		CommitEntry entry3 = nextCommitEntry(singleton(entry2.getCommitId()));
-		CommitEntry entry4 = nextCommitEntry(singleton(entry3.getCommitId()));
-		return asList(entry1, entry2, entry3, entry4);
-	}
-
-	private CommitEntry nextCommitEntry(Set<CommitId> parents) {
-		RawCommit rawCommit = RawCommit.of(0, parents, EncryptedData.encrypt(new byte[]{1}, simKey),
-				Hash.sha1(simKey.getBytes()), now.currentTimeMillis());
-		long level = parents.stream().mapToLong(CommitId::getLevel).max().orElse(0) + 1L;
-		return new CommitEntry(CommitId.ofCommitData(level, encodeAsArray(COMMIT_CODEC, rawCommit)), rawCommit);
-	}
 	// endregion
 }

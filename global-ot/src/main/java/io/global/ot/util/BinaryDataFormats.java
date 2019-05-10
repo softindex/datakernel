@@ -16,6 +16,7 @@
 
 package io.global.ot.util;
 
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -26,6 +27,7 @@ import io.global.ot.api.*;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
+import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.global.common.BinaryDataFormats.createGlobal;
 
 public final class BinaryDataFormats {
@@ -34,6 +36,13 @@ public final class BinaryDataFormats {
 	}
 
 	public static final CodecFactory REGISTRY = createGlobal()
+			.with(CommitEntry.class, registry -> {
+				StructuredCodec<RawCommit> commitCodec = registry.get(RawCommit.class);
+				return commitCodec.transform(commit -> {
+					CommitId commitId = CommitId.ofCommitData(commit.getLevel(), encodeAsArray(commitCodec, commit));
+					return new CommitEntry(commitId, commit);
+				}, CommitEntry::getCommit);
+			})
 			.with(CommitId.class, registry ->
 					registry.get(byte[].class)
 							.transform(CommitId::parse, CommitId::toBytes))

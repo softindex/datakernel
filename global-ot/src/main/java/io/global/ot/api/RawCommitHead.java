@@ -68,4 +68,13 @@ public final class RawCommitHead {
 		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		return "RawCommitHead{" +
+				"repositoryId=" + repositoryId +
+				", commitId=" + commitId +
+				", timestamp=" + timestamp +
+				'}';
+	}
 }

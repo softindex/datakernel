@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
@@ -267,11 +268,20 @@ public final class RawServerServlet implements WithMiddleware {
 						RepoID repoID = urlDecodeRepositoryId(req);
 						String headsQueryString = req.getQueryParameter("heads");
 						Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), headsQueryString);
+
+						ChannelConsumer<CommitEntry> commitConsumer = ChannelConsumer.ofPromise(node.upload(repoID, heads))
+								.withAcknowledgement(ack -> ack
+										.thenEx(($, e) -> e == null || e == CANCEL_EXCEPTION ?
+												Promise.complete() :
+												Promise.ofException(e)
+										));
+
 						return BinaryChannelSupplier.of(req.getBodyStream())
 								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 										.andThen(COMMIT_ENTRIES_PARSER))
-								.streamTo(ChannelConsumer.ofPromise(node.upload(repoID, heads)))
-								.map($ -> HttpResponse.ok200());
+								.streamTo(commitConsumer)
+								.map($ -> HttpResponse.ok200())
+								.whenComplete(($, e) -> commitConsumer.cancel());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

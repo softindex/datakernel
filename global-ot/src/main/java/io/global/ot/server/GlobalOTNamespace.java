@@ -1,10 +1,10 @@
 package io.global.ot.server;
 
 import io.datakernel.async.*;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.util.CollectionUtils;
+import io.datakernel.util.Tuple2;
 import io.datakernel.util.ref.Ref;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.AsyncSuppliers.*;
 import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.difference;
@@ -100,7 +100,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
 		private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
 		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = reuse(this::doPush);
+		private final AsyncSupplier<Void> push = coalesce(retry(this::doPush, node.retryPolicy));
 		private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
 		private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
 		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(this::doSaveHeads, CollectionUtils::union);
@@ -118,7 +118,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		public void start() {
-			Promises.loop(AsyncPredicate.of($ -> node.pollMasterRepositories), this::doPollMasterHeads);
+			Promises.loop(AsyncPredicate.of($ -> node.pollMasterRepositories), retry(this::doPollMasterHeads, node.retryPolicy));
 		}
 
 		// region API methods
@@ -219,19 +219,23 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private Promise<Void> doPollMasterHeads() {
 			return ensureMasterRepositories()
 					.then(masterRepositories -> Promises.until(
-							() -> Promises.any(masterRepositories.values().stream().map(MasterRepository::poll))
-									.map($ -> masterRepositories.values()
+							() -> Promises.any(masterRepositories.values().stream().map(masterRepo -> masterRepo.poll()
+									.map($ -> masterRepo)))
+									.map(masterRepo -> new Tuple2<>(masterRepo.getNode(), masterRepositories.values()
 											.stream()
+											.filter(masterRepository -> masterRepository.getHeads() != null)
 											.map(MasterRepository::getHeads)
-											.filter(Objects::nonNull)
 											.flatMap(Collection::stream)
-											.collect(toSet())),
-							AsyncPredicate.of(polledHeads -> {
+											.collect(toSet()))),
+							AsyncPredicate.of(nodeAndHeads -> {
+								Set<SignedData<RawCommitHead>> polledHeads = nodeAndHeads.getValue2();
 								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads);
 								this.polledHeads = polledHeads;
 								return found;
 							})))
-					.then(this::saveHeads)
+					.then(nodeAndHeads -> node.isMasterFor(space) ?
+							doFetch(nodeAndHeads.getValue1()) :
+							saveHeads(nodeAndHeads.getValue2()))
 					.whenResult($ -> updateHeadsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
@@ -318,22 +322,13 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doFetch() {
-			return forEachMaster(sourceNode -> {
-				logger.trace("{} fetching from {}", repositoryId, sourceNode);
-				return sourceNode.getHeads(repositoryId)
-						.then(heads -> ChannelSupplier.ofPromise(
-								sourceNode.download(
-										repositoryId,
-										heads.stream()
-												.map(signedHead -> signedHead.getValue().getCommitId())
-												.collect(toSet())
-								))
-								.streamTo(node.upload(repositoryId, heads))
-								.thenEx(($, e) -> e == CANCEL_EXCEPTION ? Promise.complete() : Promise.of($, e))
-								.then($ -> node.getCommitStorage().markCompleteCommits())
-								.then($ -> ensureRepository(repositoryId).saveHeads(heads))
-						);
-			});
+			return forEachMaster(this::doFetch);
+		}
+
+		@NotNull
+		private Promise<Void> doFetch(GlobalOTNode targetNode) {
+			logger.trace("{} fetching from {}", repositoryId, targetNode);
+			return transfer(targetNode, node);
 		}
 
 		@NotNull
@@ -341,23 +336,22 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return forEachMaster(this::doPush);
 		}
 
-		public Promise<Void> doPush(GlobalOTNode targetNode) {
-			return node.getCommitStorage()
-					.getHeads(repositoryId)
-					.map(Map::values)
-					.then(signedHeads -> ChannelSupplier.ofPromise(
-							node.download(
+		private Promise<Void> doPush(GlobalOTNode targetNode) {
+			logger.trace("{} pushing to {}", repositoryId, targetNode);
+			return transfer(node, targetNode);
+		}
+
+		private Promise<Void> transfer(GlobalOTNode from, GlobalOTNode to) {
+			return from.getHeads(repositoryId)
+					.then(heads -> ChannelSupplier.ofPromise(
+							from.download(
 									repositoryId,
-									signedHeads.stream()
+									heads.stream()
 											.map(signedHead -> signedHead.getValue().getCommitId())
 											.collect(toSet())
 							))
-							.streamTo(ChannelConsumer.ofPromise(
-									targetNode.upload(
-											repositoryId,
-											new HashSet<>(signedHeads)
-									))))
-					.toVoid();
+							.streamTo(to.upload(repositoryId, new HashSet<>(heads))))
+					.thenEx(($, e) -> e == CANCEL_EXCEPTION ? Promise.complete() : Promise.of($, e));
 		}
 
 		@NotNull
