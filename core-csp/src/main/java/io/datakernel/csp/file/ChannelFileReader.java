@@ -20,17 +20,18 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.AbstractChannelSupplier;
-import io.datakernel.file.AsyncFile;
+import io.datakernel.exception.CloseException;
+import io.datakernel.file.AsyncFileService;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
-import java.util.concurrent.Executor;
 
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -46,22 +47,33 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
 
-	private final AsyncFile asyncFile;
+	private AsyncFileService fileService = AsyncFileService.DEFAULT_FILE_SERVICE;
+	private final FileChannel channel;
 
 	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private long position = 0;
 	private long limit = Long.MAX_VALUE;
 
-	private ChannelFileReader(AsyncFile asyncFile) {
-		this.asyncFile = asyncFile;
+	private ChannelFileReader(FileChannel channel) {
+		this.channel = channel;
 	}
 
-	public static ChannelFileReader readFile(Executor executor, Path path) throws IOException {
-		return new ChannelFileReader(AsyncFile.open(executor, path, READ_OPTIONS));
+	public static Promise<ChannelFileReader> readFile(Path path) {
+		try {
+			FileChannel channel = FileChannel.open(path, READ_OPTIONS);
+			return Promise.of(new ChannelFileReader(channel));
+		} catch (IOException e) {
+			return Promise.ofException(e);
+		}
 	}
 
-	public static ChannelFileReader readFile(AsyncFile asyncFile) {
-		return new ChannelFileReader(asyncFile);
+	public static Promise<ChannelFileReader> readFile(FileChannel channel) {
+		return Promise.of(new ChannelFileReader(channel));
+	}
+
+	public ChannelFileReader withAsyncFileService(AsyncFileService fileService) {
+		this.fileService = fileService;
+		return this;
 	}
 
 	public ChannelFileReader withBufferSize(MemSize bufferSize) {
@@ -95,19 +107,20 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 		}
 		int bufSize = (int) Math.min(bufferSize, limit);
 		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
-		return asyncFile.read(buf, position) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
-				.thenEx(($, e) -> {
+		return fileService.read(channel, position, buf.array(), buf.head(), buf.writeRemaining()) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
+				.thenEx((bytesRead, e) -> {
 					if (e != null) {
 						buf.recycle();
 						close(e);
 						return Promise.ofException(getException());
 					}
-					int bytesRead = buf.readRemaining();
 					if (bytesRead == 0) { // no data read, assuming end of file
 						buf.recycle();
 						close();
 						return Promise.of(null);
 					}
+
+					buf.moveTail(Math.toIntExact(bytesRead));
 					position += bytesRead;
 					if (limit != Long.MAX_VALUE) {
 						limit -= bytesRead; // bytesRead is always <= the limit (^ see the min call)
@@ -121,21 +134,25 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 		closeFile();
 	}
 
-	private void closeFile() {
-		asyncFile.close()
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						logger.trace(this + ": closed file");
-					} else {
-						logger.error(this + ": failed to close file", e);
-					}
-				});
+	private Promise<Void> closeFile() {
+		try {
+			if (!channel.isOpen()) {
+				throw new CloseException(ChannelFileReader.class, "File has been closed");
+			}
+
+			channel.close();
+			logger.trace(this + ": closed file");
+		    return Promise.complete();
+		} catch (IOException | CloseException e) {
+			logger.error(this + ": failed to close file", e);
+			return Promise.ofException(e);
+		}
 	}
 
 	@Override
 	public String toString() {
-		return "ChannelFileReader{" + asyncFile +
-				", pos=" + position +
+		return "ChannelFileReader{" +
+				"pos=" + position +
 				(limit == Long.MAX_VALUE ? "" : ", len=" + limit) +
 				'}';
 	}

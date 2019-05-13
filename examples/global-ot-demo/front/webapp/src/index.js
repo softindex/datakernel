@@ -82,7 +82,7 @@ $.urlParam = function (name) {
         return '';
     }
     return decodeURI(results[1]) || 0;
-}
+};
 
 function good(msg, color) {
     STATUS

@@ -414,7 +414,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 		return ChannelSuppliers.streamTo(this, consumer);
 	}
 
-	default MaterializedPromise<Void> streamTo(Promise<ChannelConsumer<T>> consumer) {
+	default MaterializedPromise<Void> streamTo(Promise<? extends ChannelConsumer<T>> consumer) {
 		return ChannelSuppliers.streamTo(this, ChannelConsumer.ofPromise(consumer));
 	}
 

@@ -28,7 +28,8 @@ import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.file.AsyncFile;
+import io.datakernel.exception.UncheckedException;
+import io.datakernel.file.AsyncFileService;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.time.CurrentTimeProvider;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
@@ -47,7 +49,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.Promise.ofBlockingCallable;
+import static io.datakernel.async.Promise.*;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.CollectionUtils.set;
@@ -120,7 +122,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private final Eventloop eventloop;
 	private final Path storage;
 	private final Executor executor;
-	private final Object lock;
+
+	private AsyncFileService fileService = AsyncFileService.DEFAULT_FILE_SERVICE;
 
 	private MemSize readerBufferSize = MemSize.kilobytes(256);
 	private boolean lazyOverrides = true;
@@ -148,37 +151,30 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	//endregion
 
 	// region creators
-	private LocalFsClient(Eventloop eventloop, Path storage, Executor executor, @Nullable Object lock) {
+	private LocalFsClient(Eventloop eventloop, Path storage, Executor executor) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.storage = storage;
-		this.lock = lock != null ? lock : this;
+
 
 		now = eventloop;
 	}
 
-	public static LocalFsClient create(Eventloop eventloop, Path storageDir) {
-		return new LocalFsClient(eventloop, storageDir, Executors.newSingleThreadExecutor(), null);
-	}
-
-	/**
-	 * Use this to synchronize multiple LocalFsClient's over some filesystem space
-	 * that they may all try to access (same storage folder, one storage is subfolder of another etc.)
-	 */
-	public static LocalFsClient create(Eventloop eventloop, Path storageDir, Object lock) {
-		return new LocalFsClient(eventloop, storageDir, Executors.newSingleThreadExecutor(), lock);
-	}
-
 	public static LocalFsClient create(Eventloop eventloop, Path storageDir, Executor executor) {
-		return new LocalFsClient(eventloop, storageDir, executor, null);
+		return new LocalFsClient(eventloop, storageDir, executor);
 	}
 
-	public static LocalFsClient create(Eventloop eventloop, Path storageDir, Executor executor, Object lock) {
-		return new LocalFsClient(eventloop, storageDir, executor, lock);
+	public static LocalFsClient create(Eventloop eventloop, Path storageDir) {
+		return create(eventloop, storageDir, Executors.newSingleThreadExecutor());
 	}
 
 	public LocalFsClient withLazyOverrides(boolean lazyOverrides) {
 		this.lazyOverrides = lazyOverrides;
+		return this;
+	}
+
+	public LocalFsClient withAsyncFileService(AsyncFileService fileService) {
+		this.fileService = fileService;
 		return this;
 	}
 
@@ -209,15 +205,17 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 	// endregion
 
-	private ChannelConsumer<ByteBuf> doUpload(Path path, long size, long offset) throws StacklessException, IOException {
+	private Promise<ChannelConsumer<ByteBuf>> doUpload(Path path, long size, long offset) throws StacklessException, IOException {
 		if (offset > size) {
 			throw OFFSET_TOO_BIG;
 		}
 		long skip = lazyOverrides ? size - offset : 0;
-		return ChannelFileWriter.create(AsyncFile.open(executor, path, set(CREATE, WRITE), this))
-				.withForceOnClose(true)
+
+		FileChannel channel = FileChannel.open(path, set(CREATE, WRITE));
+		return Promise.of(ChannelFileWriter.create(channel)
+				.withAsyncFileService(fileService)
 				.withOffset(offset + skip)
-				.transformWith(ChannelByteRanger.drop(skip));
+				.transformWith(ChannelByteRanger.drop(skip)));
 	}
 
 	@Override
@@ -226,35 +224,35 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		checkArgument(offset >= 0, "offset < 0");
 		checkArgument(defaultRevision == null || revision == defaultRevision, "unsupported revision");
 
-		return ofBlockingCallable(executor,
-				() -> {
-					FilenameInfo existing = getInfo(name);
-
-					if (existing == null) {
-						Path path = resolve(namingScheme.encode(name, revision, false));
-						Files.createDirectories(path.getParent());
-						return doUpload(path, 0, offset);
-					}
-
-					if (existing.getRevision() < revision) {
-
-						// cleanup existing file/tombstone with lower revision
-						Files.deleteIfExists(existing.getFilePath());
-
-						return doUpload(resolve(namingScheme.encode(name, revision, false)), 0, offset);
-					}
-
-					if (existing.getRevision() == revision) {
-						if (existing.isTombstone()) {
-							return ChannelConsumers.<ByteBuf>recycling();
+		return Promise.ofBlockingCallable(executor, () -> getInfo(name))
+				.then(existing -> {
+					try {
+						if (existing == null) {
+							Path path = resolve(namingScheme.encode(name, revision, false));
+							Files.createDirectories(path.getParent());
+							return doUpload(path, 0, offset);
 						}
-						Path path = existing.getFilePath();
-						return doUpload(path, Files.size(path), offset);
-					}
 
-					return ChannelConsumers.<ByteBuf>recycling();
-				})
-				.map(consumer -> consumer
+						if (existing.getRevision() < revision) {
+							// cleanup existing file/tombstone with lower revision
+							Files.deleteIfExists(existing.getFilePath());
+
+							return doUpload(resolve(namingScheme.encode(name, revision, false)), 0, offset);
+						}
+
+						if (existing.getRevision() == revision) {
+							if (existing.isTombstone()) {
+								return Promise.of(ChannelConsumers.<ByteBuf>recycling());
+							}
+							Path path = existing.getFilePath();
+							return doUpload(path, Files.size(path), offset);
+						}
+
+						return Promise.of(ChannelConsumers.<ByteBuf>recycling());
+					} catch (StacklessException | IOException e) {
+						return Promise.ofException(e);
+					}
+				}).map(consumer -> consumer
 						// calling withAcknowledgement in eventloop thread
 						.withAcknowledgement(ack -> ack
 								.whenComplete(writeFinishPromise.recordStats())
@@ -269,20 +267,19 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		checkArgument(offset >= 0, "offset < 0");
 		checkArgument(length >= -1, "length < -1");
 
-		return ofBlockingCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					FilenameInfo info = getInfo(name);
 					if (info == null || info.isTombstone()) {
 						throw FILE_NOT_FOUND;
 					}
-					Path path = info.getFilePath();
-
-					return ChannelFileReader.readFile(AsyncFile.open(executor, path, ChannelFileReader.READ_OPTIONS, this))
-							.withBufferSize(readerBufferSize)
-							.withOffset(offset)
-							.withLength(length == -1 ? Long.MAX_VALUE : length);
+					return info;
 				})
+				.then(info -> ChannelFileReader.readFile(info.getFilePath()))
 				.map(consumer -> consumer
+						.withBufferSize(readerBufferSize)
+						.withOffset(offset)
+						.withLength(length == -1 ? Long.MAX_VALUE : length)
 						// call withAcknowledgement in eventloop thread
 						.withEndOfStream(eos -> eos.whenComplete(readFinishPromise.recordStats())))
 				.whenComplete(toLogger(logger, TRACE, "download", name, offset, length, this))
@@ -291,14 +288,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
-		return ofBlockingCallable(executor, () -> doList(glob, true))
+		return Promise.ofBlockingCallable(executor, () -> doList(glob, true))
 				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
-		return ofBlockingCallable(executor, () -> doList(glob, false))
+		return Promise.ofBlockingCallable(executor, () -> doList(glob, false))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
@@ -308,7 +305,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		checkArgument(defaultRevision == null || targetRevision == defaultRevision, "unsupported revision");
 		checkArgument(defaultRevision == null || tombstoneRevision == defaultRevision, "unsupported revision");
 
-		return ofBlockingCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					if (defaultRevision == null) {
 						doCopy(name, target, targetRevision);
@@ -351,7 +348,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Promise<Void> copy(String name, String target, long targetRevision) {
 		checkArgument(defaultRevision == null || targetRevision == defaultRevision, "unsupported revision");
 
-		return ofBlockingCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					doCopy(name, target, targetRevision);
 					return (Void) null;
@@ -364,7 +361,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Promise<Void> delete(String name, long revision) {
 		checkArgument(defaultRevision == null || revision == defaultRevision, "unsupported revision");
 
-		return ofBlockingCallable(executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					doDelete(name, revision);
 					return (Void) null;
@@ -380,7 +377,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
-		return ofBlockingCallable(executor, () -> {
+		return Promise.ofBlockingCallable(executor, () -> {
 			FilenameInfo info = getInfo(name);
 			return info != null ? toFileMetadata(info) : null;
 		});
@@ -392,7 +389,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return this;
 		}
 		try {
-			LocalFsClient client = new LocalFsClient(eventloop, resolve(folder), executor, lock);
+			LocalFsClient client = new LocalFsClient(eventloop, resolve(folder), executor);
 			client.readerBufferSize = readerBufferSize;
 			client.lazyOverrides = lazyOverrides;
 			client.defaultRevision = defaultRevision;
@@ -414,7 +411,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	@NotNull
 	@Override
 	public MaterializedPromise<Void> start() {
-		return AsyncFile.createDirectories(executor, storage)
+		return Promise.ofBlockingRunnable(executor,
+				() -> {
+					try {
+						Files.createDirectories(storage);
+					} catch (IOException e) {
+						throw new UncheckedException(e);
+					}
+				})
 				.then($ -> cleanup())
 				.materialize();
 	}
@@ -451,7 +455,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	public Promise<Void> remove(String name) {
-		return ofBlockingCallable(executor, () -> {
+		return Promise.ofBlockingCallable(executor, () -> {
 			FilenameInfo info = getInfo(name);
 			if (info != null) {
 				Files.deleteIfExists(info.getFilePath());

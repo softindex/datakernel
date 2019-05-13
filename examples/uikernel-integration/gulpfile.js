@@ -8,8 +8,8 @@ var jsTasks = require('./src/main/webapp/gulp/javascript');
 
 // Javascript tasks
 gulp.task('js:clean', jsTasks.jsClean);
-gulp.task('js:bundle', jsTasks.createBundle)
-gulp.task('js:style', jsTasks.copyLess)
+gulp.task('js:bundle', jsTasks.createBundle);
+gulp.task('js:style', jsTasks.copyLess);
 
 // Java tasks
 gulp.task('java:clean', shell.task(['mvn clean']));

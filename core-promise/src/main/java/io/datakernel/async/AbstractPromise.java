@@ -67,8 +67,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	protected void complete(@Nullable T value) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
+			Callback<? super T> next = this.next;
+			this.next = COMPLETED_PROMISE;
 			next.accept(value, null);
-			next = COMPLETED_PROMISE;
 		}
 	}
 

@@ -2,7 +2,7 @@
 
 var _ = require('lodash');
 var React = require('react');
-var UIKernel = require('uikernel')
+var UIKernel = require('uikernel');
 var createClass = require('create-react-class');
 
 var defaultFilters = {

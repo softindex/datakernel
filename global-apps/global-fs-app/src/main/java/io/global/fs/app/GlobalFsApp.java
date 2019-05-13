@@ -97,7 +97,7 @@ public final class GlobalFsApp extends Launcher {
 					@Provides
 					@Singleton
 					StaticLoader provide(ExecutorService executor, Config config) {
-						return StaticLoaders.ofPath(executor, Paths.get(config.get("app.http.staticPath")));
+						return StaticLoaders.ofPath(Paths.get(config.get("app.http.staticPath")));
 					}
 
 					@Provides

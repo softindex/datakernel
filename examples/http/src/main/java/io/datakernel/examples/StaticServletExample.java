@@ -33,7 +33,6 @@ import java.util.Collection;
 import static io.datakernel.loader.StaticLoaders.ofPath;
 import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public final class StaticServletExample extends HttpServerLauncher {
 	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/site");
@@ -44,7 +43,7 @@ public final class StaticServletExample extends HttpServerLauncher {
 			@Provides
 			@Singleton
 			AsyncServlet staticServlet(Eventloop eventloop) {
-				return StaticServlet.create(eventloop, ofPath(newCachedThreadPool(), RESOURCE_DIR));
+				return StaticServlet.create(eventloop, ofPath(RESOURCE_DIR));
 			}
 		});
 	}

@@ -56,19 +56,18 @@ public final class ChannelFileReaderWriterTest {
 
 	@Test
 	public void streamFileReader() throws IOException {
-		ByteBuf byteBuf = await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), Paths.get("test_data/in.dat"))
-				.withBufferSize(MemSize.of(1))
-				.toCollector(ByteBufQueue.collector()));
+		ByteBuf byteBuf = await(ChannelFileReader.readFile(Paths.get("test_data/in.dat"))
+				.then(cfr -> cfr.toCollector(ByteBufQueue.collector())));
 
 		assertArrayEquals(Files.readAllBytes(Paths.get("test_data/in.dat")), byteBuf.asArray());
 	}
 
 	@Test
 	public void streamFileReaderWithDelay() throws IOException {
-		ByteBuf byteBuf = await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), Paths.get("test_data/in.dat"))
-				.withBufferSize(MemSize.of(1))
-				.mapAsync(buf -> Promise.<ByteBuf>ofCallback(cb -> getCurrentEventloop().delay(10, () -> cb.set(buf))))
-				.toCollector(ByteBufQueue.collector()));
+		ByteBuf byteBuf = await(ChannelFileReader.readFile(Paths.get("test_data/in.dat"))
+				.then(cfr -> cfr.withBufferSize(MemSize.of(1))
+						.mapAsync(buf -> Promise.<ByteBuf>ofCallback(cb -> getCurrentEventloop().delay(10, () -> cb.set(buf))))
+						.toCollector(ByteBufQueue.collector())));
 
 		assertArrayEquals(Files.readAllBytes(Paths.get("test_data/in.dat")), byteBuf.asArray());
 	}
@@ -79,7 +78,7 @@ public final class ChannelFileReaderWriterTest {
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		await(ChannelSupplier.of(ByteBuf.wrapForReading(bytes))
-				.streamTo(ChannelFileWriter.create(Executors.newSingleThreadExecutor(), tempPath)));
+				.streamTo(ChannelFileWriter.create(tempPath)));
 
 		assertArrayEquals(bytes, Files.readAllBytes(tempPath));
 	}
@@ -89,7 +88,7 @@ public final class ChannelFileReaderWriterTest {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		ChannelFileWriter writer = ChannelFileWriter.create(Executors.newSingleThreadExecutor(), tempPath);
+		ChannelFileWriter writer = await(ChannelFileWriter.create(tempPath));
 
 		Exception exception = new Exception("Test Exception");
 
@@ -110,12 +109,12 @@ public final class ChannelFileReaderWriterTest {
 		Path file = folder.resolve("test.bin");
 		Files.write(file, data);
 
-		await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), file)
-				.streamTo(ChannelConsumer.of(buf -> {
+		await(ChannelFileReader.readFile(file)
+				.then(cfr -> cfr.streamTo(ChannelConsumer.of(buf -> {
 					assertTrue("Received byte buffer is empty", buf.canRead());
 					buf.recycle();
 					return Promise.complete();
-				})));
+				}))));
 	}
 
 	@Test
@@ -128,16 +127,17 @@ public final class ChannelFileReaderWriterTest {
 		Files.write(srcPath, data);
 		Exception testException = new Exception("Test Exception");
 
-		ChannelFileReader serialFileReader = ChannelFileReader.readFile(Executors.newCachedThreadPool(), srcPath);
-		serialFileReader.close(testException);
+		ChannelFileReader serialFileReader = await(ChannelFileReader.readFile(srcPath));
 
+		serialFileReader.close(testException);
 		assertSame(testException, awaitException(serialFileReader.toList()));
 	}
 
 	@Test
 	public void readOverFile() throws IOException {
-		ByteBuf byteBuf = await(ChannelFileReader.readFile(Executors.newSingleThreadExecutor(), Paths.get("test_data/in.dat"))
-				.withOffset(Files.size(Paths.get("test_data/in.dat")) + 100)
+		ChannelFileReader cfr = await(ChannelFileReader.readFile(Paths.get("test_data/in.dat")));
+
+		ByteBuf byteBuf = await(cfr.withOffset(Files.size(Paths.get("test_data/in.dat")) + 100)
 				.withBufferSize(MemSize.of(1))
 				.toCollector(ByteBufQueue.collector()));
 

@@ -51,13 +51,8 @@ public final class HttpFileUploadExample extends HttpServerLauncher {
 				return RoutingServlet.create()
 						.with(GET, "/*", StaticServlet.create(eventloop, ofClassPath(executor, "static/multipart/")))
 						.with(POST, "/test", request ->
-								request.getFiles(name -> {
-									try {
-										return Promise.of(ChannelFileWriter.create(executor, PATH.resolve(name)));
-									} catch (IOException e) {
-										return Promise.ofException(e);
-									}
-								}).map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
+								request.getFiles(name -> ChannelFileWriter.create(PATH.resolve(name)))
+										.map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
 			}
 		});
 	}

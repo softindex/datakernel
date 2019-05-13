@@ -75,7 +75,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testPathLoader() {
-		StaticLoader resourceLoader = StaticLoaders.ofPath(Executors.newSingleThreadExecutor(), resourcesPath);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(resourcesPath);
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
 		ByteBuf body = await(response.getBody());
@@ -85,7 +85,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testFileNotFoundPathLoader() {
-		StaticLoader resourceLoader = StaticLoaders.ofPath(Executors.newSingleThreadExecutor(), resourcesPath);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(resourcesPath);
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
 
@@ -94,7 +94,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testFileLoader() {
-		StaticLoader resourceLoader = StaticLoaders.ofFile(Executors.newSingleThreadExecutor(), resourcesFile);
+		StaticLoader resourceLoader = StaticLoaders.ofFile(resourcesFile);
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
 		ByteBuf body = await(response.getBody());
@@ -104,7 +104,8 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testFileNotFoundCachedFileLoader() {
-		StaticLoader resourceLoader = StaticLoaders.ofFile(Executors.newSingleThreadExecutor(), resourcesFile);
+		StaticLoader resourceLoader = StaticLoaders.ofFile(
+				resourcesFile);
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
 

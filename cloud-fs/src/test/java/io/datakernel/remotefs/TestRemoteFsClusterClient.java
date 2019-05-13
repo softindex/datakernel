@@ -131,7 +131,7 @@ public final class TestRemoteFsClusterClient {
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
 		await(ChannelSupplier.ofPromise(client.download(file, 0))
-				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(file)))
+				.streamTo(ChannelFileWriter.create(clientStorage.resolve(file)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
 
 		assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content);

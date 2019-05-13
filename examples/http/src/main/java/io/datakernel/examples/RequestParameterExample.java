@@ -34,7 +34,6 @@ import java.util.Collection;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public final class RequestParameterExample extends HttpServerLauncher {
 	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/query");
@@ -59,7 +58,7 @@ public final class RequestParameterExample extends HttpServerLauncher {
 									.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
 						})
 						.with("/*", StaticServlet.create(eventloop,
-								StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR)));
+								StaticLoaders.ofPath(RESOURCE_DIR)));
 			}
 		});
 	}

@@ -51,9 +51,9 @@ public class UIKernelWebAppModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncHttpServer server(Eventloop eventloop, ExecutorService executor, Gson gson, PersonGridModel model, Config config) {
+	AsyncHttpServer server(Eventloop eventloop, Gson gson, PersonGridModel model, Config config) {
 		Path resources = Paths.get(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
-		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, resources);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(resources);
 		int port = config.get(ofInteger(), "port", DEFAULT_PORT);
 
 		// middleware used to map requests to appropriate asyncServlets

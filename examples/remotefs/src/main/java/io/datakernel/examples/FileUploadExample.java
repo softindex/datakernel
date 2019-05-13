@@ -17,11 +17,8 @@
 package io.datakernel.examples;
 
 import com.google.inject.*;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
@@ -29,7 +26,6 @@ import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -92,18 +88,10 @@ public class FileUploadExample extends Launcher {
 	@Override
 	protected void run() throws Exception {
 		eventloop.post(() -> {
-			ChannelFileReader producer = null;
-			try {
-				producer = ChannelFileReader.readFile(executor, CLIENT_STORAGE.resolve(FILE_NAME))
-						.withBufferSize(MemSize.kilobytes(16));
-			} catch (IOException e) {
-				throw new UncheckedException(e);
-			}
-
-			ChannelConsumer<ByteBuf> consumer = ChannelConsumer.ofPromise(client.upload(FILE_NAME));
 
 			// consumer result here is a marker of it being successfully uploaded
-			producer.streamTo(consumer)
+			ChannelFileReader.readFile(CLIENT_STORAGE.resolve(FILE_NAME))
+					.then(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)).streamTo(client.upload(FILE_NAME)))
 					.whenComplete(($, e) -> {
 						if (e != null) {
 							logger.error("Error while uploading file {}", FILE_NAME, e);

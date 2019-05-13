@@ -33,7 +33,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.datakernel.examples.AsyncFileExample</mainClass>
+              <mainClass>io.datakernel.examples.AsyncFileServiceExample</mainClass>
             </configuration>
           </execution>
           <execution>

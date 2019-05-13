@@ -18,50 +18,68 @@ package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.file.AsyncFile;
+import io.datakernel.file.AsyncFileService;
+import io.datakernel.file.ExecutorAsyncFileService;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
 @SuppressWarnings("Convert2MethodRef")
-public class AsyncFileExample {
+public class AsyncFileServiceExample {
 	private static final ExecutorService executorService = Executors.newCachedThreadPool();
 	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
+	private static final AsyncFileService fileService = new ExecutorAsyncFileService(executorService);
 
 	@NotNull
 	private static Promise<Void> writeToFile() {
+		FileChannel channel = null;
 		try {
-			AsyncFile asyncFile = AsyncFile.open(executorService, PATH, set(WRITE, CREATE_NEW, APPEND));
-			return asyncFile.write(wrapAscii("Hello\n"))
-					.then($ -> asyncFile.write(wrapAscii("This is test file\n")))
-					.then($ -> asyncFile.write(wrapAscii("This is the 3rd line in file")));
+			channel = FileChannel.open(PATH, set(WRITE, CREATE_NEW, APPEND));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
+
+		byte[] message1 = "Hello\n".getBytes();
+		byte[] message2 = "This is test file\n".getBytes();
+		byte[] message3 = "This is the 3rd line in file".getBytes();
+
+		FileChannel finalChannel = channel;
+		return fileService.write(channel, 0, message1, 0, message1.length)
+				.then($ -> fileService.write(finalChannel, 0, message2, 0, message2.length))
+				.then($ -> fileService.write(finalChannel, 0, message3, 0, message3.length))
+				.toVoid();
 	}
 
 	@NotNull
 	private static Promise<ByteBuf> readFromFile() {
+		byte[] array = new byte[1024];
+		FileChannel channel;
 		try {
-			return AsyncFile.open(executorService, PATH, set(READ))
-					.read()
-					.whenResult(buf -> System.out.println(buf.getString(UTF_8)));
+			channel = FileChannel.open(PATH, set(READ));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
+
+		return fileService.read(channel, 0, array, 0, array.length)
+				.map($ -> {
+					ByteBuf buf = ByteBuf.wrapForReading(array);
+					System.out.println(buf.getString(UTF_8));
+					return buf;
+				});
 	}
 
 	private static void cleanup() {

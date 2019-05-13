@@ -186,7 +186,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	@FunctionalInterface
 	public interface HttpDownloader {
 
-		Promise<ChannelSupplier<ByteBuf>> download(long offset, long limit);
+		Promise<? extends ChannelSupplier<ByteBuf>> download(long offset, long limit);
 	}
 
 	public HttpResponse withFile(HttpRequest request, HttpDownloader downloader, String name, long size) throws HttpException {

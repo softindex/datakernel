@@ -31,19 +31,11 @@ public class StaticLoaders {
 		return StaticLoaderClassPath.create(DEFAULT_EXECUTOR, relativeClass);
 	}
 
-	public static StaticLoader ofPath(Executor executor, Path dir) {
-		return SimpleStaticLoaderAsync.create(executor, dir);
-	}
-
 	public static StaticLoader ofPath(Path dir) {
-		return SimpleStaticLoaderAsync.create(DEFAULT_EXECUTOR, dir);
-	}
-
-	public static StaticLoader ofFile(Executor executor, File dir) {
-		return SimpleStaticLoaderAsync.create(executor, dir.toPath());
+		return SimpleStaticLoaderAsync.create(dir);
 	}
 
 	public static StaticLoader ofFile(File dir) {
-		return SimpleStaticLoaderAsync.create(DEFAULT_EXECUTOR, dir.toPath());
+		return SimpleStaticLoaderAsync.create(dir.toPath());
 	}
 }

@@ -22,8 +22,8 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 	private final OTSystem<D2> otSystem2;
 
 	private MergedOTSystem(TupleConstructor2<List<D1>, List<D2>, D> constructor,
-			Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
-			Function<D, List<D2>> getter2, OTSystem<D2> otSystem2) {
+						   Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
+						   Function<D, List<D2>> getter2, OTSystem<D2> otSystem2) {
 		this.constructor = constructor;
 		this.getter1 = getter1;
 		this.otSystem1 = otSystem1;
@@ -32,15 +32,15 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 	}
 
 	public static <D, D1, D2> OTSystem<D> mergeOtSystems(TupleConstructor2<List<D1>, List<D2>, D> constructor,
-			Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
-			Function<D, List<D2>> getter2, OTSystem<D2> otSystem2) {
+														 Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
+														 Function<D, List<D2>> getter2, OTSystem<D2> otSystem2) {
 		return new MergedOTSystem<>(constructor, getter1, otSystem1, getter2, otSystem2);
 	}
 
 	public static <D, D1, D2, D3> OTSystem<D> mergeOtSystems(TupleConstructor3<List<D1>, List<D2>, List<D3>, D> constructor,
-			Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
-			Function<D, List<D2>> getter2, OTSystem<D2> otSystem2,
-			Function<D, List<D3>> getter3, OTSystem<D3> otSystem3) {
+															 Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
+															 Function<D, List<D2>> getter2, OTSystem<D2> otSystem2,
+															 Function<D, List<D3>> getter3, OTSystem<D3> otSystem3) {
 
 		OTSystem<Tuple2<List<D1>, List<D2>>> premerged = mergeOtSystems(Tuple2::new,
 				Tuple2::getValue1, otSystem1,
@@ -53,10 +53,10 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 	}
 
 	public static <D, D1, D2, D3, D4> OTSystem<D> mergeOtSystems(TupleConstructor4<List<D1>, List<D2>, List<D3>, List<D4>, D> constructor,
-			Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
-			Function<D, List<D2>> getter2, OTSystem<D2> otSystem2,
-			Function<D, List<D3>> getter3, OTSystem<D3> otSystem3,
-			Function<D, List<D4>> getter4, OTSystem<D4> otSystem4) {
+																 Function<D, List<D1>> getter1, OTSystem<D1> otSystem1,
+																 Function<D, List<D2>> getter2, OTSystem<D2> otSystem2,
+																 Function<D, List<D3>> getter3, OTSystem<D3> otSystem3,
+																 Function<D, List<D4>> getter4, OTSystem<D4> otSystem4) {
 
 		OTSystem<Tuple2<List<D1>, List<D2>>> premerged1 = mergeOtSystems(Tuple2::new,
 				Tuple2::getValue1, otSystem1,
@@ -141,4 +141,3 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 				singletonList(constructor.create(list1, list2));
 	}
 }
-

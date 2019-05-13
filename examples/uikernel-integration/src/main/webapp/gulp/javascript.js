@@ -4,8 +4,8 @@ var gulp = require('gulp');
 var browserify = require('browserify');
 var fs = require('fs');
 var del = require('del');
-var less = require('gulp-less')
-var rename = require('gulp-rename')
+var less = require('gulp-less');
+var rename = require('gulp-rename');
 
 var BUNDLE_PATH = './src/main/resources/static/js/bundle.js';
 

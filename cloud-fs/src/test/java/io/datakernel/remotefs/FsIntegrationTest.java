@@ -81,11 +81,10 @@ public final class FsIntegrationTest {
 	private Path storage;
 	private RemoteFsServer server;
 	private FsClient client;
-	private Executor executor;
 
 	@Before
 	public void setup() throws IOException {
-		executor = newCachedThreadPool();
+		Executor executor = newCachedThreadPool();
 
 		storage = temporaryFolder.newFolder("server_storage").toPath();
 		server = RemoteFsServer.create(Eventloop.getCurrentEventloop(), executor, storage).withListenAddress(address);
@@ -216,7 +215,7 @@ public final class FsIntegrationTest {
 
 		for (int i = 0; i < 10; i++) {
 			tasks.add(ChannelSupplier.ofPromise(client.download(file))
-					.streamTo(ChannelFileWriter.create(executor, storage.resolve("file" + i))));
+					.streamTo(ChannelFileWriter.create(storage.resolve("file" + i))));
 		}
 
 		await(Promises.all(tasks)

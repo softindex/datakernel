@@ -19,6 +19,7 @@ package io.datakernel.remotefs.stress;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
+import io.datakernel.util.ref.RefInt;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -49,7 +50,7 @@ public class StressDownload {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		int[] failures = new int[1];
+		RefInt failures = new RefInt(1);
 
 		RemoteFsClient client = RemoteFsClient.create(eventloop, new InetSocketAddress("localhost", 5560));
 
@@ -59,23 +60,20 @@ public class StressDownload {
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
-			client.download(file, 0).whenComplete((supplier, e) -> {
-				if (e == null) {
-					try {
-						supplier.streamTo(ChannelFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
-					} catch (IOException ignored) {
-						failures[0]++;
-					}
-				} else {
-					failures[0]++;
-				}
-			});
+			client.download(file, 0)
+					.whenComplete((supplier, e) -> {
+						if (e == null) {
+							supplier.streamTo(ChannelFileWriter.create(CLIENT_STORAGE.resolve(file)));
+						} else {
+							failures.value++;
+						}
+					});
 
 			eventloop.run();
 		}
 
 		executor.shutdown();
-		System.out.println("Failures: " + failures[0]);
+		System.out.println("Failures: " + failures.value);
 	}
 
 	public static String createFile() throws IOException {

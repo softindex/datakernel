@@ -35,6 +35,12 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>23.6-android</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
 </project>

@@ -92,7 +92,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Singleton
 	StaticServlet provideStaticServlet(Eventloop eventloop, Executor executor, Config config) {
 		Path staticDir = config.get(ofPath(), "resources.path", DEFAULT_RESOURCES_PATH);
-		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, staticDir);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(staticDir);
 		return StaticServlet.create(eventloop, resourceLoader);
 	}
 

@@ -315,7 +315,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return pathParameters != null ? pathParameters.get(key) : null;
 	}
 
-	public Promise<Void> getFiles(Function<String, Promise<ChannelConsumer<ByteBuf>>> uploader) {
+	public Promise<Void> getFiles(Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
 		String contentType = getHeader(CONTENT_TYPE);
 		if (contentType == null) {
 			return Promise.ofException(new ParseException());
