@@ -107,7 +107,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@Override
 	public Throwable getException() {
 		if (isException()) {
-			assert exception != null;
 			return exception;
 		}
 		throw new IllegalStateException();
@@ -117,7 +116,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	public @NotNull Try<T> getTry() {
 		if (isResult()) return Try.of(result);
 		if (isException()) {
-			//noinspection ConstantConditions
 			return Try.ofException(exception);
 		}
 		throw new IllegalStateException();
@@ -174,6 +172,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		return super.then(fn);
 	}
 
+	@SuppressWarnings("unchecked")
 	@NotNull
 	@Override
 	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
@@ -211,7 +210,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		if (isComplete()) {
 			if (isException()) {
-				assert exception != null;
 				action.accept(exception);
 			}
 			return this;

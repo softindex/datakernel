@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -119,12 +118,9 @@ public final class TestGzipProcessorUtils {
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				request -> request.getBody(CHARACTERS_COUNT)
 						.map(body -> {
-							try {
-								assertEquals("gzip", request.getHeader(CONTENT_ENCODING));
-								assertEquals("gzip", request.getHeader(ACCEPT_ENCODING));
-							} catch (ParseException e) {
-								throw new UncheckedException(e);
-							}
+							assertEquals("gzip", request.getHeader(CONTENT_ENCODING));
+							assertEquals("gzip", request.getHeader(ACCEPT_ENCODING));
+
 							String receivedData = body.asString(UTF_8);
 							assertEquals(text, receivedData);
 							return HttpResponse.ok200()
@@ -143,7 +139,7 @@ public final class TestGzipProcessorUtils {
 		server.listen();
 
 		ByteBuf body = await(client.request(request)
-				.whenComplete(assertComplete(response -> assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING))))
+				.whenComplete(assertComplete(response -> assertEquals("gzip", response.getHeader(CONTENT_ENCODING))))
 				.then(response -> response.getBody(CHARACTERS_COUNT))
 				.whenComplete(($, e) -> {
 					server.close();

@@ -154,8 +154,6 @@ public final class ReportingTest {
 			switch (key) {
 				case 1:
 					return "first";
-				case 2:
-					return null;
 				case 3:
 					return "third";
 				default:
@@ -259,7 +257,6 @@ public final class ReportingTest {
 						LogItem.class,
 						and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
 
-				@SuppressWarnings("ConstantConditions")
 				@Override
 				public void accept(LogItem item) {
 					if (item.advertiser != EXCLUDE_ADVERTISER && item.campaign != EXCLUDE_CAMPAIGN && item.banner != EXCLUDE_BANNER) {

@@ -85,7 +85,7 @@ public class AuthLauncher extends HttpServerLauncher {
 										.with(GET, "/cookie", request -> Promise.of(HttpResponse.ok200()
 												.withBody(wrapUtf8(request.getAttachment(String.class)))))
 										.with(POST, "/logout", request -> {
-											String id = request.getCookieOrNull(sessionId);
+											String id = request.getCookie(sessionId);
 											if (id != null) {
 												return Promise.of(HttpResponse.redirect302("/")
 														.withCookie(HttpCookie.of(sessionId, id)

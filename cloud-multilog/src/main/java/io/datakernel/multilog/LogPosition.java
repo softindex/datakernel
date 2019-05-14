@@ -60,9 +60,7 @@ public final class LogPosition implements Comparable<LogPosition> {
 
 	@Override
 	public int hashCode() {
-		int result = logFile.hashCode();
-		result = 31 * result + (int) (position ^ (position >>> 32));
-		return result;
+		return 31 * logFile.hashCode() + (int) (position ^ (position >>> 32));
 	}
 
 	@Override
@@ -72,10 +70,7 @@ public final class LogPosition implements Comparable<LogPosition> {
 
 	@Override
 	public int compareTo(@NotNull LogPosition o) {
-		int result = 0;
-		result = this.logFile.compareTo(o.logFile);
-		if (result != 0)
-			return result;
-		return Long.compare(this.position, o.position);
+		int result = this.logFile.compareTo(o.logFile);
+		return result != 0 ? result : Long.compare(this.position, o.position);
 	}
 }

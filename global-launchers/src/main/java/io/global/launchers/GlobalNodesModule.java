@@ -50,6 +50,7 @@ import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
+import org.jetbrains.annotations.Async;
 
 import java.util.function.Function;
 
@@ -143,11 +144,11 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet, GlobalKvNodeServlet kvServlet) {
+	AsyncServlet provide(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet, @Named("kv") AsyncServlet kvServlet) {
 		return RoutingServlet.create()
-				.with("/ot", otServlet)
-				.with("/fs", fsServlet)
-				.with("/kv", kvServlet);
+				.with("/ot/*", otServlet)
+				.with("/fs/*", fsServlet)
+				.with("/kv/*", kvServlet);
 	}
 
 	@Provides
@@ -158,13 +159,15 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalFsNodeServlet provideGlobalFsServlet(GlobalFsNodeImpl node) {
+	@Named("fs")
+	AsyncServlet provideGlobalFsServlet(GlobalFsNodeImpl node) {
 		return GlobalFsNodeServlet.create(node);
 	}
 
 	@Provides
 	@Singleton
-	GlobalKvNodeServlet provideGlobalDbServlet(LocalGlobalKvNode node) {
+	@Named("kv")
+	AsyncServlet provideGlobalDbServlet(LocalGlobalKvNode node) {
 		return GlobalKvNodeServlet.create(node);
 	}
 

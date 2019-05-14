@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
@@ -34,7 +33,6 @@ import java.util.function.Function;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.object;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.http.MediaTypes.OCTET_STREAM;
 import static io.datakernel.remotefs.FsClient.DEFAULT_REVISION;
 import static io.datakernel.remotefs.RemoteFsUtils.getErrorCode;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -91,7 +89,10 @@ public final class HttpDataFormats {
 	}
 
 	public static long[] parseRange(HttpRequest request) throws ParseException {
-		String param = request.getQueryParameter("range", "");
+		String param = request.getQueryParameter("range");
+		if (param == null) {
+			throw INVALID_RANGE_FORMAT;
+		}
 		long[] range = {0, -1};
 		String[] parts = param.split("-");
 		switch (parts.length) {
@@ -121,7 +122,7 @@ public final class HttpDataFormats {
 	}
 
 	public static long parseOffset(HttpRequest request) throws ParseException {
-		String param = request.getQueryParameterOrNull("offset");
+		String param = request.getQueryParameter("offset");
 		try {
 			return param == null ? 0 : Long.parseLong(param);
 		} catch (NumberFormatException e) {
@@ -134,7 +135,7 @@ public final class HttpDataFormats {
 	}
 
 	public static long parseRevision(HttpRequest request, String paramName) throws ParseException {
-		String param = request.getQueryParameterOrNull(paramName);
+		String param = request.getQueryParameter(paramName);
 		try {
 			return param != null ? Long.parseLong(param) : DEFAULT_REVISION;
 		} catch (NumberFormatException e) {

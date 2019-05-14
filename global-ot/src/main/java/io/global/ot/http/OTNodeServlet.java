@@ -66,8 +66,12 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 				.with(GET, "/" + CHECKOUT, request -> node.checkout()
 						.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
 				.with(GET, "/" + FETCH, request -> {
+					String id = request.getQueryParameter("id");
+					if (id == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
+						K currentCommitId = fromJson(revisionCodec, id);
 						return node.fetch(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
@@ -75,8 +79,12 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 					}
 				})
 				.with(GET, "/" + POLL, request -> {
+					String id = request.getQueryParameter("id");
+					if (id == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
+						K currentCommitId = fromJson(revisionCodec, id);
 						return eitherComplete(
 								node.poll(currentCommitId)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData)),

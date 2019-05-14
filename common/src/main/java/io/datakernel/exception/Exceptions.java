@@ -30,7 +30,6 @@ public final class Exceptions {
 	}
 
 	public static Exception concat(String message, List<? extends Throwable> errors) {
-		//noinspection ConstantConditions
 		return concat(null, message, errors);
 	}
 }

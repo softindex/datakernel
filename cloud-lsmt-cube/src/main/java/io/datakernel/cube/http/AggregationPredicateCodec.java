@@ -155,9 +155,7 @@ final class AggregationPredicateCodec implements StructuredCodec<AggregationPred
 	@Override
 	public void encode(StructuredOutput writer, AggregationPredicate predicate) {
 		if (predicate instanceof PredicateEq) {
-			writer.writeObject(() -> {
-				writeEq(writer, (PredicateEq) predicate);
-			});
+			writer.writeObject(() -> writeEq(writer, (PredicateEq) predicate));
 		} else {
 			writer.writeTuple(() -> {
 				if (predicate instanceof PredicateNotEq) {

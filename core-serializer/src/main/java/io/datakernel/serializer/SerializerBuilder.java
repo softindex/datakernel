@@ -477,9 +477,7 @@ public final class SerializerBuilder {
 			if (result != 0)
 				return result;
 			result = getName().compareTo(o.getName());
-			if (result != 0)
-				return result;
-			return 0;
+			return result;
 		}
 
 		@Override
@@ -780,7 +778,7 @@ public final class SerializerBuilder {
 				Key key = (Key) o;
 
 				if (version != key.version) return false;
-				return !(serializerGen != null ? !serializerGen.equals(key.serializerGen) : key.serializerGen != null);
+				return !(!Objects.equals(serializerGen, key.serializerGen));
 
 			}
 

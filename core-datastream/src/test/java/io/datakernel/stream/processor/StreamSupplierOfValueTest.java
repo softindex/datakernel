@@ -34,10 +34,10 @@ public class StreamSupplierOfValueTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
-	private final String TEST_STRING = "Hello consumer";
-	private final Integer TEST_INT = 777;
-	private final DataItem1 TEST_OBJECT = new DataItem1(1, 1, 8, 8);
-	private final Object TEST_NULL = null;
+	private static final String TEST_STRING = "Hello consumer";
+	private static final Integer TEST_INT = 777;
+	private static final DataItem1 TEST_OBJECT = new DataItem1(1, 1, 8, 8);
+	private static final Object TEST_NULL = null;
 
 	@Test
 	public void test1() {

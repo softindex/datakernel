@@ -8,6 +8,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.Iterator;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.junit.Assert.*;
 
 public class OptimizedSetTest {
@@ -26,7 +27,7 @@ public class OptimizedSetTest {
 		for (int i = 0; i < size; i++) {
 			SimpleSelectionKey key = (SimpleSelectionKey) set.get(i);
 
-			assertEquals(i, key.id);
+			assertEquals(i, checkNotNull(key).id);
 		}
 	}
 

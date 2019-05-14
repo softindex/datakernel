@@ -4,6 +4,8 @@ import com.google.inject.Key;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 public final class KeyWithWorkerData {
 	private final Key<?> key;
 
@@ -43,7 +45,7 @@ public final class KeyWithWorkerData {
 
 		return workerId == that.workerId
 				&& key.equals(that.key)
-				&& (pool != null ? pool.equals(that.pool) : that.pool == null);
+				&& (Objects.equals(pool, that.pool));
 	}
 
 	@Override

@@ -31,8 +31,13 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 	private static RoutingServlet servlet(DiscoveryServiceDriver driver) {
 		return RoutingServlet.create()
 				.with(POST, "/announce", request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return Promise.ofException(new ParseException());
+					}
+
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
 						return request.getBody()
 								.then(body -> {
 									try {
@@ -48,8 +53,12 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 					}
 				})
 				.with(GET, "/find/:pubKey", request -> {
+					String parameterPubKey = request.getPathParameter("pubKey");
+					if (parameterPubKey == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
+						PubKey pubKey = PubKey.fromString(parameterPubKey);
 						return driver.find(pubKey)
 								.map(data -> HttpResponse.ok200()
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(JSON_UTF_8))
@@ -59,9 +68,14 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 					}
 				})
 				.with(POST, "/shareKey/:receiver", request -> {
+					String parameterReceiver = request.getPathParameter("receiver");
+					String key = request.getCookie("Key");
+					if (parameterReceiver == null || key == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-						PrivKey sender = PrivKey.fromString(request.getCookie("Key"));
+						PubKey receiver = PubKey.fromString(parameterReceiver);
+						PrivKey sender = PrivKey.fromString(key);
 						return request.getBody()
 								.then(body -> {
 									try {
@@ -76,9 +90,14 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 					}
 				})
 				.with(GET, "/getSharedKey/:hash", request -> {
+					String key = request.getCookie("Key");
+					String parameterHash = request.getPathParameter("hash");
+					if (key == null || parameterHash == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
-						Hash hash = Hash.fromString(request.getPathParameter("hash"));
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
+						Hash hash = Hash.fromString(parameterHash);
 						return driver.getSharedKey(keys, hash)
 								.map(simKey -> {
 									if (simKey == null) {
@@ -93,8 +112,12 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 					}
 				})
 				.with(GET, "/getSharedKeys", request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
 						return driver.getSharedKeys(keys)
 								.map(simKeys -> HttpResponse.ok200()
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(JSON_UTF_8))

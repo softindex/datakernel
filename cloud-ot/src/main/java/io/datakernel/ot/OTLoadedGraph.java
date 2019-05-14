@@ -225,7 +225,10 @@ public class OTLoadedGraph<K, D> {
 	private K doMerge(Set<K> nodes) throws OTException {
 		if (nodes.size() == 1) return first(nodes);
 
-		K pivotNode = nodes.stream().min(comparingInt((K node) -> findRoots(node).size())).get();
+
+		Optional<K> min = nodes.stream().min(comparingInt((K node) -> findRoots(node).size()));
+		assert min.isPresent();
+		K pivotNode = min.get();
 
 		Map<K, List<D>> pivotNodeParents = getParents(pivotNode);
 		Set<K> recursiveMergeNodes = union(pivotNodeParents.keySet(), difference(nodes, singleton(pivotNode)));

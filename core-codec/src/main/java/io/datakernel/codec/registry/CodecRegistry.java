@@ -37,7 +37,6 @@ public final class CodecRegistry implements CodecFactory {
 		return new CodecRegistry();
 	}
 
-	@SuppressWarnings("unchecked")
 	public static CodecRegistry createDefault() {
 		return create()
 				.with(void.class, VOID_CODEC)

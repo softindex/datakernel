@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
@@ -226,7 +227,7 @@ public final class TestCachedFsClient {
 
 		Files.write(serverStorage.resolve("newFile.txt"), "Appended data\n".getBytes(), StandardOpenOption.APPEND);
 
-		FileMetadata newMetadata = await(cacheRemote.getMetadata("newFile.txt"));
+		FileMetadata newMetadata = checkNotNull(await(cacheRemote.getMetadata("newFile.txt")));
 
 		assertTrue("New metadata is not greater than old one", newMetadata.getSize() > oldMetadata.getSize());
 	}

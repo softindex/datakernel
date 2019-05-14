@@ -18,7 +18,6 @@ package io.global.ot.util;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.util.TypeT;
 import io.global.common.CryptoUtils;
@@ -27,6 +26,7 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -82,9 +82,7 @@ public class HttpDataFormats {
 		return urlEncodePubKey(repositoryId.getOwner()) + '/' + urlEncode(repositoryId.getName(), "UTF-8");
 	}
 
-	public static RepoID urlDecodeRepositoryId(HttpRequest httpRequest) throws ParseException {
-		String pubKey = httpRequest.getPathParameter("pubKey");
-		String name = httpRequest.getPathParameter("name");
+	public static RepoID urlDecodeRepositoryId(@Nullable String pubKey, @Nullable String name) throws ParseException {
 		return RepoID.of(urlDecodePubKey(pubKey), HttpUtils.urlDecode(name, "UTF-8"));
 	}
 
@@ -95,7 +93,10 @@ public class HttpDataFormats {
 				Base64.getUrlEncoder().encodeToString(q.getYCoord().toBigInteger().toByteArray());
 	}
 
-	public static PubKey urlDecodePubKey(String str) throws ParseException {
+	public static PubKey urlDecodePubKey(@Nullable String str) throws ParseException {
+		if (str == null) {
+			throw new ParseException(HttpDataFormats.class, "No pubkey parameter string");
+		}
 		try {
 			int pos = str.indexOf(':');
 			BigInteger x = new BigInteger(Base64.getUrlDecoder().decode(str.substring(0, pos)));

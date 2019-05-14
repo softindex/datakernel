@@ -312,7 +312,7 @@ public class JmxHttpModule extends AbstractModule {
 		@SuppressWarnings("unchecked")
 		@Override
 		public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
-			String keyParam = request.getQueryParameterOrNull("key");
+			String keyParam = request.getQueryParameter("key");
 
 			if ("/favicon.ico".equals(request.getPath())) { // if somehow it got to this servlet
 				return Promise.ofException(HttpException.notFound404());

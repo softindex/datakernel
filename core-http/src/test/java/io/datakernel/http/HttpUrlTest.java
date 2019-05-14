@@ -145,6 +145,7 @@ public final class HttpUrlTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidPartialUrl() {
+		//noinspection ResultOfMethodCallIgnored
 		UrlParser.of("/path").isRelativePath();
 	}
 

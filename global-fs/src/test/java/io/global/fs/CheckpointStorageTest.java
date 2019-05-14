@@ -37,6 +37,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
@@ -91,12 +92,12 @@ public final class CheckpointStorageTest {
 		assertArrayEquals(new long[]{123, 321, 567}, positions);
 
 		SignedData<GlobalFsCheckpoint> checkpoint1 = await(storage.load("test.txt", 321));
-		assertTrue(checkpoint1.verify(keys.getPubKey()));
+		assertTrue(checkNotNull(checkpoint1).verify(keys.getPubKey()));
 
 		SignedData<GlobalFsCheckpoint> checkpoint2 = await(storage.load("test.txt", 567));
-		assertTrue(checkpoint2.verify(keys.getPubKey()));
+		assertTrue(checkNotNull(checkpoint2).verify(keys.getPubKey()));
 
 		SignedData<GlobalFsCheckpoint> checkpoint3 = await(storage.load("test.txt", 123));
-		assertTrue(checkpoint3.verify(keys.getPubKey()));
+		assertTrue(checkNotNull(checkpoint3).verify(keys.getPubKey()));
 	}
 }

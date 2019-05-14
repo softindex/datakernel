@@ -16,13 +16,9 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.loader.StaticLoaders;
 
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.HttpMethod.GET;
@@ -85,14 +81,14 @@ public final class TodoListLauncher extends HttpServerLauncher {
 									.withJson(ofMap(INT_CODEC, RECORD_CODEC), records));
 						})
 						.with(GET, "/delete/:recordId", request -> {
-							String stringId = request.getPathParameterOrNull("recordId");
+							String stringId = request.getPathParameter("recordId");
 							int id = parseInt(requireNonNull(stringId));
 							recordDAO.delete(id);
 							return Promise.of(HttpResponse.ok200());
 						})
 						.with(GET, "/toggle/:recordId/:planId", request -> {
-							String stringId = request.getPathParameterOrNull("recordId");
-							String stringPlanId = request.getPathParameterOrNull("planId");
+							String stringId = request.getPathParameter("recordId");
+							String stringPlanId = request.getPathParameter("planId");
 							int id = parseInt(requireNonNull(stringId));
 							int planId = parseInt(requireNonNull(stringPlanId));
 

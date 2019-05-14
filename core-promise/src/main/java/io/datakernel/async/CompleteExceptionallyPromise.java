@@ -101,6 +101,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		return (CompleteExceptionallyPromise<U>) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@NotNull
 	@Override
 	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {

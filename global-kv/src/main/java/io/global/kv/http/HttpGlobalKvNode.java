@@ -79,8 +79,8 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 								.appendPathPart(space.asString())
 								.appendPathPart(table)
 								.build()))
-				.then(response1 -> response1.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
+				.then(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.map(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(KV_ITEM_PARSER));
 	}
 
@@ -94,8 +94,8 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 								.appendPathPart(table)
 								.build())
 						.withBody(ByteBuf.wrapForReading(key)))
-				.then(response1 -> response1.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
+				.then(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.then(response -> response.getBody().map(body -> {
 					try {
 						return decode(KV_ITEM_CODEC, body.slice());
@@ -130,8 +130,8 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 								.appendPathPart(LIST)
 								.appendPath(space.asString())
 								.build()))
-				.then(response1 -> response1.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
+				.then(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.then(response -> response.getBody().then(body -> {
 					try {
 						return Promise.of(decode(SET_STRING_CODEC, body.slice()));

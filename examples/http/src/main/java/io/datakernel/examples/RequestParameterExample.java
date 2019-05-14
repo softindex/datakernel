@@ -54,7 +54,7 @@ public final class RequestParameterExample extends HttpServerLauncher {
 											.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>"));
 								}))
 						.with(HttpMethod.GET, "/hello", request -> {
-							String name = request.getQueryParameterOrNull("name");
+							String name = request.getQueryParameter("name");
 							return Promise.of(HttpResponse.ok200()
 									.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
 						})

@@ -21,21 +21,14 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.io.IOException;
 import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.http.HttpHeaderValue.ofContentType;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.MediaTypes.HTML;
 import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
 

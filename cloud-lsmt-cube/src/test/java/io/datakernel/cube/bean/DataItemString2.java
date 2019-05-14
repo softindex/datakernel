@@ -19,6 +19,8 @@ package io.datakernel.cube.bean;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 
+import java.util.Objects;
+
 public class DataItemString2 {
 	@Key
 	public String key1;
@@ -50,7 +52,7 @@ public class DataItemString2 {
 		if (key2 != that.key2) return false;
 		if (metric2 != that.metric2) return false;
 		if (metric3 != that.metric3) return false;
-		return !(key1 != null ? !key1.equals(that.key1) : that.key1 != null);
+		return !(!Objects.equals(key1, that.key1));
 
 	}
 

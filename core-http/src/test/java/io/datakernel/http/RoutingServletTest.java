@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
 import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -236,15 +235,11 @@ public final class RoutingServletTest {
 	@Test
 	public void testParameter() {
 		AsyncServlet printParameters = request -> {
-			try {
-				String body = request.getPathParameter("id")
-						+ " " + request.getPathParameter("uid")
-						+ " " + request.getPathParameter("eid");
-				ByteBuf bodyByteBuf = wrapUtf8(body);
-				return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
+			String body = request.getPathParameter("id")
+					+ " " + request.getPathParameter("uid")
+					+ " " + request.getPathParameter("eid");
+			ByteBuf bodyByteBuf = wrapUtf8(body);
+			return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
 		};
 
 		RoutingServlet main = RoutingServlet.create()
@@ -252,11 +247,9 @@ public final class RoutingServletTest {
 				.with(GET, "/:id/a/:uid", printParameters);
 
 		System.out.println("Parameter test " + DELIM);
-		check(main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789")), "123 456 789", 200);
-		Promise<HttpResponse> serve = main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"));
-		assertTrue(serve.materialize().getException() instanceof ParseException);
-		HttpRequest request = HttpRequest.get("http://www.coursera.org");
-		check(main.serve(request), "", 404);
+		check(main.serve(HttpRequest.get("http://example.com/123/a/456/b/789")), "123 456 789", 200);
+		check(main.serve(HttpRequest.get("http://example.com/555/a/777")), "555 777 null", 200);
+		check(main.serve(HttpRequest.get("http://example.com")), "", 404);
 		System.out.println();
 	}
 
@@ -264,20 +257,12 @@ public final class RoutingServletTest {
 	public void testMultiParameters() {
 		RoutingServlet ms = RoutingServlet.create()
 				.with(GET, "/serve/:cid/wash", request -> {
-					try {
-						ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
-						return Promise.of(HttpResponse.ofCode(200).withBody(body));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
+					ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
+					return Promise.of(HttpResponse.ofCode(200).withBody(body));
 				})
 				.with(GET, "/serve/:mid/feed", request -> {
-					try {
-						ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
-						return Promise.of(HttpResponse.ofCode(200).withBody(body));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
+					ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
+					return Promise.of(HttpResponse.ofCode(200).withBody(body));
 				});
 
 		System.out.println("Multi parameters " + DELIM);

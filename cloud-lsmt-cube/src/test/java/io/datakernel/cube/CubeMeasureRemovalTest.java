@@ -219,7 +219,7 @@ public class CubeMeasureRemovalTest {
 
 		// Aggregate manually
 		Map<Integer, Long> map = Stream.concat(listOfRandomLogItems1.stream(), listOfRandomLogItems2.stream())
-				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, (v, v2) -> v + v2)));
+				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, Long::sum)));
 
 		StreamConsumerToList<LogItem> queryResultConsumer2 = StreamConsumerToList.create();
 		await(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(

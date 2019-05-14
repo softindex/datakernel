@@ -2,8 +2,6 @@ package io.datakernel.examples;
 
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.list;
-
 public final class PollDaoImpl implements PollDao {
 	private Map<Integer, Poll> polls = new HashMap<>();
 	private Random random = new Random();

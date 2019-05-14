@@ -95,7 +95,6 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * Wraps provided default {@link Supplier} to ChannelSupplier.
 	 */
 	static <T> ChannelSupplier<T> ofSupplier(Supplier<? extends Promise<T>> supplier) {
-		//noinspection NullableProblems
 		return of(supplier::get);
 	}
 

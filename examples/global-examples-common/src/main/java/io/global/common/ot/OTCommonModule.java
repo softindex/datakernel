@@ -50,7 +50,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Singleton
 	@Named("Example")
 	AsyncHttpServer provideServer(Eventloop eventloop, RoutingServlet servlet,
-			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet, Config config) {
+								  OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet, Config config) {
 
 		AsyncHttpServer asyncHttpServer = AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
@@ -63,7 +63,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Provides
 	@Singleton
 	RoutingServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
-											OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
+											   OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
 		return RoutingServlet.create()
 				.with(GET, "/graph/*", graphServlet)
 				.with("/node/*", nodeServlet)
@@ -73,11 +73,15 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Provides
 	@Singleton
 	OTGraphServlet<CommitId, D> provideGraphServlet(OTRepository<CommitId, D> repository, OTSystem<D> otSystem,
-			Function<D, String> diffToString) {
+													Function<D, String> diffToString) {
 		return OTGraphServlet.create(repository, otSystem, COMMIT_ID_TO_STRING, diffToString)
 				.withCurrentCommit(request -> {
+					String id = request.getQueryParameter("id");
+					if (id == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return Promise.of(fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id")));
+						return Promise.of(fromJson(COMMIT_ID_CODEC, id));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -95,7 +99,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Provides
 	@Singleton
 	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> provideNodeServlet(OTNode<CommitId, D, OTCommit<CommitId, D>> node,
-			StructuredCodec<D> diffCodec, OTRepository<CommitId, D> repository, Config config) {
+																		 StructuredCodec<D> diffCodec, OTRepository<CommitId, D> repository, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
 		return OTNodeServlet.forGlobalNode(DelayedPushNode.create(node, delay), diffCodec, (OTRepositoryAdapter<D>) repository);
 	}

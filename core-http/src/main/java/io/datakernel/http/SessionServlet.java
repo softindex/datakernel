@@ -28,7 +28,7 @@ public class SessionServlet<T> implements AsyncServlet {
 
 	@Override
 	public @NotNull Promise<HttpResponse> serve(HttpRequest request) throws UncheckedException {
-		String id = request.getCookieOrNull(sessionId);
+		String id = request.getCookie(sessionId);
 
 		if (id == null) {
 			return noSessionServlet.serve(request);

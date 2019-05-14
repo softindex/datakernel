@@ -90,7 +90,7 @@ public final class Utils {
 	}
 
 	public static Promise<@Nullable OTStateManager<CommitId, Operation>> getManager(ManagerProvider<Operation> managerProvider, HttpRequest request) {
-		String id = request.getQueryParameterOrNull("id");
+		String id = request.getQueryParameter("id");
 		if (id == null || id.isEmpty()) {
 			return Promise.of(null);
 		} else {

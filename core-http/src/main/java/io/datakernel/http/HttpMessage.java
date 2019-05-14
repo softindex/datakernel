@@ -19,10 +19,8 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
@@ -36,10 +34,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static java.util.Arrays.copyOf;
 
 /**
@@ -79,11 +75,6 @@ public abstract class HttpMessage {
 		}
 	}
 
-	void addParsedHeader(@NotNull HttpHeader header, @NotNull byte[] array, int off, int len) {
-		assert !isRecycled();
-		headers.add(header, HttpHeaderValue.ofBytes(array, off, len));
-	}
-
 	public void addHeader(@NotNull HttpHeader header, @NotNull String string) {
 		assert !isRecycled();
 		addHeader(header, HttpHeaderValue.of(string));
@@ -94,29 +85,19 @@ public abstract class HttpMessage {
 		addHeader(header, HttpHeaderValue.ofBytes(value, 0, value.length));
 	}
 
+	public void addHeader(@NotNull HttpHeader header, @NotNull byte[] array, int off, int len) {
+		assert !isRecycled();
+		headers.add(header, HttpHeaderValue.ofBytes(array, off, len));
+	}
+
 	public void addHeader(@NotNull HttpHeader header, @NotNull HttpHeaderValue value) {
 		assert !isRecycled();
 		headers.add(header, value);
 	}
 
 	@NotNull
-	private ByteBuf getHeaderBuf(@NotNull HttpHeader header) throws ParseException {
-		HttpHeaderValue headerBuf = headers.get(header);
-		if (headerBuf != null) {
-			return headerBuf.getBuf();
-		}
-		throw new ParseException(HttpMessage.class, "There is no header: " + header);
-	}
-
-	@Nullable
-	private ByteBuf getHeaderBufOrNull(@NotNull HttpHeader header) {
-		HttpHeaderValue headerBuf = headers.get(header);
-		return headerBuf != null ? headerBuf.getBuf() : null;
-	}
-
-	@NotNull
 	public final Map<HttpHeader, String[]> getHeaders() {
-		LinkedHashMap<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
+		Map<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
 		for (int i = 0; i != headers.kvPairs.length; i += 2) {
 			HttpHeader k = (HttpHeader) headers.kvPairs[i];
 			if (k != null) {
@@ -134,55 +115,49 @@ public abstract class HttpMessage {
 	}
 
 	@NotNull
-	public final String getHeader(@NotNull HttpHeader header) throws ParseException {
-		HttpHeaderValue headerValue = headers.get(header);
-		if (headerValue != null) return headerValue.toString();
-		throw new ParseException(HttpMessage.class, "There is no header: " + header);
+	public final <T> List<T> getHeader(@NotNull HttpHeader header, @NotNull ParserIntoList<T> parser) {
+		try {
+			List<T> list = new ArrayList<>();
+			for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
+				HttpHeader k = (HttpHeader) headers.kvPairs[i];
+				if (k == null) {
+					break;
+				}
+				if (k.equals(header)) {
+					parser.parse(((HttpHeaderValue) headers.kvPairs[i + 1]).getBuf(), list);
+				}
+			}
+			return list;
+		} catch (ParseException e) {
+			return Collections.emptyList();
+		}
 	}
 
 	@Nullable
-	public final String getHeaderOrNull(@NotNull HttpHeader header) {
+	public <T> T getHeader(HttpHeader contentType, ParserFunction<ByteBuf, T> parser) {
+		return parser.parseOrDefault(getHeaderBuf(contentType), null);
+	}
+
+	@Nullable
+	public final String getHeader(@NotNull HttpHeader header) {
 		HttpHeaderValue headerValue = headers.get(header);
-		if (headerValue != null) return headerValue.toString();
-		return null;
+		return headerValue != null ? headerValue.toString() : null;
 	}
 
-	@NotNull
-	public <T> T parseHeader(@NotNull HttpHeader header, @NotNull ParserFunction<ByteBuf, T> parser) throws ParseException {
-		return parser.parse(getHeaderBuf(header));
-	}
-
-	public <T> T parseHeader(@NotNull HttpHeader header, @NotNull ParserFunction<ByteBuf, T> parser, @Nullable T defaultValue) throws ParseException {
-		return parser.parseOrDefault(getHeaderBufOrNull(header), defaultValue);
-	}
-
-	@NotNull
-	public <T> List<T> parseHeader(@NotNull HttpHeader header, @NotNull ParserIntoList<T> parser) throws ParseException {
-		List<T> list = new ArrayList<>();
-		for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
-			HttpHeader k = (HttpHeader) headers.kvPairs[i];
-			if (k == null) {
-				break;
-			}
-			if (k.equals(header)) {
-				parser.parse(((HttpHeaderValue) headers.kvPairs[i + 1]).getBuf(), list);
-			}
-		}
-		return list;
+	@Nullable
+	public final ByteBuf getHeaderBuf(@NotNull HttpHeader header) {
+		HttpHeaderValue headerBuf = headers.get(header);
+		return headerBuf != null ? headerBuf.getBuf() : null;
 	}
 
 	public abstract void addCookies(@NotNull List<HttpCookie> cookies);
 
 	public void addCookies(@NotNull HttpCookie... cookies) {
-		ArrayList<HttpCookie> list = new ArrayList<>(cookies.length);
-		Collections.addAll(list, cookies);
-		addCookies(list);
+		addCookies(Arrays.asList(cookies));
 	}
 
 	public void addCookie(@NotNull HttpCookie cookie) {
-		ArrayList<HttpCookie> list = new ArrayList<>(1);
-		list.add(cookie);
-		addCookies(list);
+		addCookies(Collections.singletonList(cookie));
 	}
 
 	public void setBodyStream(@NotNull ChannelSupplier<ByteBuf> bodySupplier) {

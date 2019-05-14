@@ -64,10 +64,10 @@ public final class TestRemoteFsClusterClient {
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 
-	private Executor executor;
 	private List<RemoteFsServer> servers;
 	private Path clientStorage;
 	private RemoteFsClusterClient client;
+	private Executor executor;
 
 	@Before
 	public void setup() throws IOException {

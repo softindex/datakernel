@@ -33,7 +33,6 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings("unchecked")
 public class OTNodeHttpClientTest {
 	private static final StructuredCodec<TestOp> diffCodec = TEST_OP_CODEC;
 	private static final SimKey SIM_KEY = SimKey.generate();

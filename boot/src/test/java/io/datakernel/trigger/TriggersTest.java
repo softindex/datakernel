@@ -55,7 +55,7 @@ public class TriggersTest {
 	public void testDuplicateTriggers() {
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.suppressTriggerByName("nameOne");
-		triggers.getResults().forEach(result -> assertTrue(!result.getTrigger().getName().equals("nameOne")));
+		triggers.getResults().forEach(result -> assertFalse(result.getTrigger().getName().equals("nameOne")));
 	}
 
 	@Test
@@ -110,21 +110,21 @@ public class TriggersTest {
 	public void testSuppressByName() {
 		assertEquals(11, triggers.getTriggers().size());
 		triggers.suppressTriggerByName("nameOne");
-		triggers.getResults().forEach(result -> assertTrue(!result.getTrigger().getName().equals("nameOne")));
+		triggers.getResults().forEach(result -> assertFalse(result.getTrigger().getName().equals("nameOne")));
 	}
 
 	@Test
 	public void testSuppressByComponent() {
 		assertEquals(11, triggers.getTriggers().size());
 		triggers.suppressTriggerByComponent("Component");
-		triggers.getResults().forEach(result -> assertTrue(!result.getTrigger().getComponent().equals("Component")));
+		triggers.getResults().forEach(result -> assertFalse(result.getTrigger().getComponent().equals("Component")));
 	}
 
 	@Test
 	public void testSuppressBySeverity() {
 		assertEquals(11, triggers.getTriggers().size());
 		triggers.suppressTriggerBySeverity("HIGH");
-		triggers.getResults().forEach(result -> assertTrue(!result.getTrigger().getSeverity().name().equals("nameOne")));
+		triggers.getResults().forEach(result -> assertFalse(result.getTrigger().getSeverity().name().equals("nameOne")));
 	}
 
 	@Test

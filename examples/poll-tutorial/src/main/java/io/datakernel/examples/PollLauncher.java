@@ -10,7 +10,6 @@ import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
@@ -54,7 +53,7 @@ public final class PollLauncher extends HttpServerLauncher {
 						.with(GET, "/", request -> Promise.of(HttpResponse.ok200()
 								.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
 						.with(GET, "/poll/:id", request -> {
-							String idString = request.getPathParameterOrNull("id");
+							String idString = request.getPathParameter("id");
 							if (idString == null) {
 								return Promise.of(HttpResponse.redirect302("/"));
 							}
@@ -74,7 +73,7 @@ public final class PollLauncher extends HttpServerLauncher {
 
 									question.vote(option);
 
-									String referer = request.getHeaderOrNull(REFERER);
+									String referer = request.getHeader(REFERER);
 									return HttpResponse.redirect302(referer != null ? referer : "/");
 								}))
 						.with(POST, "/add", request -> request.getPostParameters()

@@ -78,16 +78,16 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	private final class Output extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onSuspended() {
-			for (int i = 0; i < inputs.size(); i++) {
-				inputs.get(i).getSupplier().suspend();
+			for (Input input : inputs) {
+				input.getSupplier().suspend();
 			}
 		}
 
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			if (!inputs.isEmpty()) {
-				for (int i = 0; i < inputs.size(); i++) {
-					inputs.get(i).getSupplier().resume(dataAcceptor);
+				for (Input input : inputs) {
+					input.getSupplier().resume(dataAcceptor);
 				}
 			} else {
 				eventloop.post(this::sendEndOfStream);

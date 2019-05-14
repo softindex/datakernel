@@ -3,7 +3,6 @@ package io.datakernel.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 
-import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.codec.StructuredCodecs.*;

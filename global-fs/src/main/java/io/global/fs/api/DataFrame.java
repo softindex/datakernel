@@ -57,10 +57,7 @@ public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 
 	@Override
 	public DataFrame slice() {
-		if (buf == null) {
-			return this;
-		}
-		return new DataFrame(buf.slice(), null);
+		return isBuf() ? new DataFrame(buf.slice(), null) : this;
 	}
 
 	@Override
@@ -72,19 +69,16 @@ public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 
 	public ByteBuf getBuf() {
 		checkState(isBuf());
-		assert buf != null;
 		return buf;
 	}
 
 	public SignedData<GlobalFsCheckpoint> getCheckpoint() {
 		checkState(isCheckpoint());
-		assert checkpoint != null;
 		return checkpoint;
 	}
 
 	@Override
 	public String toString() {
-		assert !isBuf() || buf != null;
 		return "DataFrame{" + (isBuf() ? "buf='" + buf + '\'' : "checkpoint=" + checkpoint) + '}';
 	}
 }

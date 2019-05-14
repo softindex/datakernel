@@ -31,6 +31,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -74,8 +75,8 @@ public class InvertedIndexTest {
 
 			InvertedIndexQueryResult that = (InvertedIndexQueryResult) o;
 
-			if (word != null ? !word.equals(that.word) : that.word != null) return false;
-			return !(documents != null ? !documents.equals(that.documents) : that.documents != null);
+			if (!Objects.equals(word, that.word)) return false;
+			return !(!Objects.equals(documents, that.documents));
 
 		}
 

@@ -113,6 +113,7 @@ public final class GlobalFsTest {
 		Function<RawServerId, GlobalFsNode> clientFactory = new Function<RawServerId, GlobalFsNode>() {
 			@Override
 			public GlobalFsNode apply(RawServerId serverId) {
+				@SuppressWarnings("UnnecessaryLocalVariable")
 				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> GlobalFsNodeImpl.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
 				// StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
 				// return HttpGlobalFsNode.create(serverId.getServerIdString(), client);

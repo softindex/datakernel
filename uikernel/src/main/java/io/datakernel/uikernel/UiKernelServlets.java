@@ -67,6 +67,10 @@ public class UiKernelServlets {
 			try {
 				ReadSettings<K> settings = ReadSettings.from(gson, request);
 				K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
+				if (id == null) {
+					return Promise.ofException(new ParseException());
+				}
+
 				return model.read(id, settings).map(obj ->
 						createResponse(gson.toJson(obj, model.getRecordType())));
 			} catch (ParseException e) {
@@ -103,8 +107,12 @@ public class UiKernelServlets {
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
 		return request -> {
+			String idString = request.getPathParameter("id");
+			if (idString == null) {
+				return Promise.ofException(new ParseException());
+			}
 			try {
-				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
+				K id = fromJson(gson, idString, model.getIdType());
 				return model.delete(id).map(response -> {
 					HttpResponse res = HttpResponse.ok200();
 					if (response.hasErrors()) {

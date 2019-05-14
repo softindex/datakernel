@@ -45,6 +45,7 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 		return new OTNodeHttpClient<>(httpClient, url, REGISTRY.get(CommitId.class), diffCodec);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<byte[]> createCommit(K parent, List<? extends D> diffs, long level) {
 		FetchData<K, D> fetchData = new FetchData<>(parent, level, (List<D>) diffs);

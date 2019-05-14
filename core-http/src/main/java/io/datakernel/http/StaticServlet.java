@@ -20,11 +20,13 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
+import io.datakernel.loader.StaticLoaders;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
@@ -53,6 +55,10 @@ public final class StaticServlet implements AsyncServlet {
 
 	public static StaticServlet create(Eventloop eventloop, StaticLoader resourceLoader, String defaultResource) {
 		return new StaticServlet(eventloop, resourceLoader, defaultResource);
+	}
+
+	public static StaticServlet create(Eventloop eventloop, Path path) {
+		return new StaticServlet(eventloop, StaticLoaders.ofPath(path), null);
 	}
 
 	static ContentType getContentType(String path) {
@@ -94,7 +100,7 @@ public final class StaticServlet implements AsyncServlet {
 
 		return resourceLoader.getResource(path)
 				.thenEx((byteBuf, e) -> {
-					if (byteBuf != null) {
+					if (e == null) {
 						return Promise.of(createHttpResponse(byteBuf, finalPath));
 					}
 					if (defaultResource != null) {

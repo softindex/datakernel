@@ -161,7 +161,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onHeader(HttpHeader header, byte[] array, int off, int len) throws ParseException {
 		assert response != null;
 		if (response.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
-		response.addParsedHeader(header, array, off, len);
+		response.addHeader(header, array, off, len);
 	}
 
 	@Override

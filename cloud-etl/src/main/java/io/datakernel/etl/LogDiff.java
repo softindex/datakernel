@@ -19,6 +19,7 @@ package io.datakernel.etl;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -70,8 +71,8 @@ public class LogDiff<D> {
 
 		LogDiff<?> logDiff = (LogDiff<?>) o;
 
-		if (positions != null ? !positions.equals(logDiff.positions) : logDiff.positions != null) return false;
-		return diffs != null ? diffs.equals(logDiff.diffs) : logDiff.diffs == null;
+		if (!Objects.equals(positions, logDiff.positions)) return false;
+		return Objects.equals(diffs, logDiff.diffs);
 	}
 
 	@Override

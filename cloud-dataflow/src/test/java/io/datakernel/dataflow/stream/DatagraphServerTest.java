@@ -50,7 +50,6 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings({"Convert2Lambda", "Anonymous2MethodRef"})
 public final class DatagraphServerTest {
 
 	private static DatagraphServer server1;

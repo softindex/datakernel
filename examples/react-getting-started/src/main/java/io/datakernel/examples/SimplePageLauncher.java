@@ -8,11 +8,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.loader.StaticLoaders;
 
-import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.loader.StaticLoaders.ofClassPath;
 import static io.datakernel.util.CollectionUtils.list;

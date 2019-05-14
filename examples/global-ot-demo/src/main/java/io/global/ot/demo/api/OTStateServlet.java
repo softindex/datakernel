@@ -26,7 +26,6 @@ import io.global.ot.api.CommitId;
 import io.global.ot.demo.operations.Operation;
 import io.global.ot.demo.operations.OperationState;
 import io.global.ot.demo.util.ManagerProvider;
-import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;

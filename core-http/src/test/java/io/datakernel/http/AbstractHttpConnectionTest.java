@@ -21,7 +21,6 @@ import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
@@ -75,7 +74,7 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		ByteBuf body = await(client.request(HttpRequest.get(URL))
-				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
+				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeader(CONTENT_TYPE))))
 				.then(HttpMessage::getBody));
 
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
@@ -94,7 +93,7 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		ByteBuf body = await(client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.whenComplete(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
+				.whenComplete(assertComplete(response -> assertNotNull(response.getHeader(CONTENT_ENCODING))))
 				.then(HttpMessage::getBody));
 
 		assertEquals("Test message", body.asString(UTF_8));
@@ -128,13 +127,9 @@ public final class AbstractHttpConnectionTest {
 				.then(response -> response.getBody()
 						.whenComplete((body, e) -> {
 							if (e != null) throw new AssertionError(e);
-							try {
-								assertEquals(expectedHeader, response.getHeader(CONNECTION));
-								connectionCount.refresh(System.currentTimeMillis());
-								assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
-							} catch (ParseException e1) {
-								throw new AssertionError(e1);
-							}
+							assertEquals(expectedHeader, response.getHeader(CONNECTION));
+							connectionCount.refresh(System.currentTimeMillis());
+							assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
 						})
 						.map($ -> response));
 	}

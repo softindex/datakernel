@@ -16,7 +16,6 @@
 
 package io.global.ot.api;
 
-import io.datakernel.exception.ParseException;
 import io.global.common.CryptoUtils;
 
 import java.util.Arrays;
@@ -40,7 +39,7 @@ public final class CommitId {
 		return new CommitId(bytes);
 	}
 
-	public static CommitId parse(byte[] bytes) throws ParseException {
+	public static CommitId parse(byte[] bytes) {
 		return new CommitId(bytes);
 	}
 

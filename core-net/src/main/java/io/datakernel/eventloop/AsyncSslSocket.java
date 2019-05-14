@@ -319,7 +319,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			}
 		}
 
-		if (result != null && isOpen() && result.getStatus() == CLOSED) {
+		if (result != null && result.getStatus() == CLOSED) {
 			close();
 			return;
 		}

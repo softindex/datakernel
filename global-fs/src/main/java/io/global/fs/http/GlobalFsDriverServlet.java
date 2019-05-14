@@ -48,15 +48,19 @@ public final class GlobalFsDriverServlet {
 
 	@Nullable
 	private static SimKey getSimKey(HttpRequest request) throws ParseException {
-		String simKeyString = request.getCookieOrNull("Sim-Key");
+		String simKeyString = request.getCookie("Sim-Key");
 		return simKeyString != null ? SimKey.fromString(simKeyString) : null;
 	}
 
 	public static RoutingServlet create(GlobalFsDriver driver) {
 		return RoutingServlet.create()
 				.with(GET, "/download/:space/*", request -> {
+					String parameterSpace = request.getPathParameter("space");
+					if (parameterSpace == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						PubKey space = PubKey.fromString(parameterSpace);
 						SimKey simKey = getSimKey(request);
 						String name = request.getRelativePath();
 						return driver.getMetadata(space, name)
@@ -80,8 +84,13 @@ public final class GlobalFsDriverServlet {
 					}
 				})
 				.with(POST, "/upload", request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return Promise.ofException(new ParseException());
+					}
+
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
 						SimKey simKey = getSimKey(request);
 						return httpUpload(request, (name, offset, revision) -> driver.upload(keys, name, offset, revision, simKey));
 					} catch (ParseException e) {
@@ -89,8 +98,13 @@ public final class GlobalFsDriverServlet {
 					}
 				})
 				.with("/list/:space", request -> {
+					String space = request.getPathParameter("space");
+					if (space == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return driver.listEntities(PubKey.fromString(request.getPathParameter("space")), request.getQueryParameter("glob", "**"))
+						String glob = request.getQueryParameter("glob");
+						return driver.listEntities(PubKey.fromString(space), glob != null ? glob : "**")
 								.map(list -> HttpResponse.ok200()
 										.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
@@ -99,8 +113,13 @@ public final class GlobalFsDriverServlet {
 					}
 				})
 				.with("/getMetadata/:space/*", request -> {
+					String space = request.getPathParameter("space");
+					String name = request.getPathParameter("name");
+					if (space == null || name == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return driver.getMetadata(PubKey.fromString(request.getPathParameter("space")), request.getRelativePath())
+						return driver.getMetadata(PubKey.fromString(space), request.getRelativePath())
 								.map(list -> HttpResponse.ok200()
 										.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
@@ -109,8 +128,12 @@ public final class GlobalFsDriverServlet {
 					}
 				})
 				.with(POST, "/delete/*", request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
 						String name = request.getRelativePath();
 						return driver.delete(keys, name, parseRevision(request))
 								.map($ -> HttpResponse.ok200());

@@ -55,8 +55,9 @@ public final class RemoteFsServlet implements AsyncServlet {
 	private RoutingServlet servlet(FsClient client) {
 		return RoutingServlet.create()
 				.with(GET, "/" + LIST, request -> {
-					String glob = request.getQueryParameter("glob", "**");
-					return (request.getQueryParameterOrNull("tombstones") != null ? client.listEntities(glob) : client.list(glob))
+					String glob = request.getQueryParameter("glob");
+					glob = glob != null ? glob : "**";
+					return (request.getQueryParameter("tombstones") != null ? client.listEntities(glob) : client.list(glob))
 							.mapEx(errorHandler(list ->
 									HttpResponse.ok200()
 											.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
@@ -95,16 +96,26 @@ public final class RemoteFsServlet implements AsyncServlet {
 					}
 				})
 				.with(POST, "/" + COPY, request -> {
+					String name = request.getQueryParameter("name");
+					String target = request.getQueryParameter("target");
+					if (name == null || target == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return client.copy(request.getQueryParameter("name"), request.getQueryParameter("target"), parseRevision(request))
+						return client.copy(name, target, parseRevision(request))
 								.mapEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.with(POST, "/" + MOVE, request -> {
+					String name = request.getQueryParameter("name");
+					String target = request.getQueryParameter("target");
+					if (name == null || target == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return client.move(request.getQueryParameter("name"), request.getQueryParameter("target"), parseRevision(request), parseRevision(request, "tombstone"))
+						return client.move(name, target, parseRevision(request), parseRevision(request, "tombstone"))
 								.mapEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(e);

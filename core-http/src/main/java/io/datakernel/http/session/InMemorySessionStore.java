@@ -2,7 +2,6 @@ package io.datakernel.http.session;
 
 import io.datakernel.async.Promise;
 
-import java.rmi.NoSuchObjectException;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -20,12 +20,12 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -183,42 +183,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				.withBody(JsonUtils.toJson(encoder, object).getBytes(UTF_8));
 	}
 
-	// endregion
-
-	public int getCode() {
-		assert !isRecycled();
-		return code;
-	}
-
-	@Nullable
-	private Map<String, HttpCookie> parsedCookies;
-
-	@NotNull
-	public Map<String, HttpCookie> getCookies() throws ParseException {
-		if (parsedCookies != null) {
-			return parsedCookies;
-		}
-		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
-		for (HttpCookie cookie : parseHeader(SET_COOKIE, HttpHeaderValue::toFullCookies)) {
-			cookies.put(cookie.getName(), cookie);
-		}
-		return parsedCookies = cookies;
-	}
-
-	@NotNull
-	public HttpCookie getCookie(@NotNull String cookie) throws ParseException {
-		HttpCookie httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) {
-			return httpCookie;
-		}
-		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
-	}
-
-	@Nullable
-	public HttpCookie getCookieOrNull(@NotNull String cookie) throws ParseException {
-		return getCookies().get(cookie);
-	}
-
 	@FunctionalInterface
 	public interface HttpDownloader {
 
@@ -227,7 +191,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	public HttpResponse withFile(HttpRequest request, HttpDownloader downloader, String name, long size) throws HttpException {
 		String localName = name.substring(name.lastIndexOf('/') + 1);
-		String headerRange = request.getHeaderOrNull(HttpHeaders.RANGE);
+		String headerRange = request.getHeader(RANGE);
 		if (headerRange == null) {
 			return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
 					.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
@@ -256,6 +220,34 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
 				.withHeader(CONTENT_LENGTH, "" + length)
 				.withBodyStream(ChannelSupplier.ofPromise(downloader.download(offset, length)));
+	}
+
+	// endregion
+
+	public int getCode() {
+		assert !isRecycled();
+		return code;
+	}
+
+	@Nullable
+	private Map<String, HttpCookie> parsedCookies;
+
+	@NotNull
+	public Map<String, HttpCookie> getCookies() {
+		if (parsedCookies != null) {
+			return parsedCookies;
+		}
+		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
+		for (HttpCookie cookie : getHeader(SET_COOKIE, HttpHeaderValue::toFullCookies)) {
+			if (cookie == null) return Collections.emptyMap();
+			cookies.put(cookie.getName(), cookie);
+		}
+		return parsedCookies = cookies;
+	}
+
+	@Nullable
+	public HttpCookie getCookie(@NotNull String cookie) {
+		return getCookies().get(cookie);
 	}
 
 	private static void writeCodeMessageEx(@NotNull ByteBuf buf, int code) {

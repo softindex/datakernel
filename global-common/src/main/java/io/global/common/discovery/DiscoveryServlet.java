@@ -56,8 +56,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 	private RoutingServlet servlet(DiscoveryService discoveryService) {
 		return RoutingServlet.create()
 				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", request -> request.getBody().then(body -> {
+					String parameterOwner = request.getPathParameter("owner");
+					if (parameterOwner == null) {
+						return Promise.<HttpResponse>ofException(new ParseException());
+					}
 					try {
-						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+						PubKey owner = PubKey.fromString(parameterOwner);
 						SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, body.slice());
 						return discoveryService.announce(owner, announceData)
 								.map($ -> HttpResponse.ok201());
@@ -68,8 +72,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 					}
 				}))
 				.with(HttpMethod.GET, "/" + FIND + "/:owner", request -> {
+					String owner = request.getPathParameter("owner");
+					if (owner == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
+						return discoveryService.find(PubKey.fromString(owner))
 								.thenEx((data, e) -> {
 									if (e != null || data == null) {
 										return Promise.<HttpResponse>ofException(HttpException.notFound404());
@@ -82,8 +90,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 					}
 				})
 				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> request.getBody().then(body -> {
+					String parameterReceiver = request.getPathParameter("receiver");
+					if (parameterReceiver == null) {
+						return Promise.<HttpResponse>ofException(new ParseException());
+					}
 					try {
-						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
+						PubKey receiver = PubKey.fromString(parameterReceiver);
 						SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, body.slice());
 						return discoveryService.shareKey(receiver, simKey)
 								.map($ -> HttpResponse.ok201());
@@ -95,8 +107,13 @@ public final class DiscoveryServlet implements AsyncServlet {
 				}))
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					try {
-						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-						Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
+						String parameterReceiver = request.getPathParameter("receiver");
+						String parameterHash = request.getPathParameter("hash");
+						if (parameterReceiver == null || parameterHash == null) {
+							return Promise.ofException(new ParseException());
+						}
+						PubKey receiver = PubKey.fromString(parameterReceiver);
+						Hash simKeyHash = Hash.fromString(parameterHash);
 						return discoveryService.getSharedKey(receiver, simKeyHash)
 								.map(signedSharedKey ->
 										HttpResponse.ok200()
@@ -106,8 +123,9 @@ public final class DiscoveryServlet implements AsyncServlet {
 					}
 				})
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
+					String receiver = request.getPathParameter("receiver");
 					try {
-						return discoveryService.getSharedKeys(PubKey.fromString(request.getPathParameter("receiver")))
+						return discoveryService.getSharedKeys(PubKey.fromString(receiver))
 								.map(signedSharedKeys ->
 										HttpResponse.ok200()
 												.withBody(encode(LIST_OF_SIGNED_SHARED_SIM_KEYS, signedSharedKeys)));

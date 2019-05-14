@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.io.*;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Properties;

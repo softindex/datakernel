@@ -495,7 +495,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doClose() {
 		eventloop.closeChannel(channel, key);
-		//noinspection ConstantConditions - null only after close
 		channel = null;
 		CONNECTION_COUNT.decrementAndGet();
 	}

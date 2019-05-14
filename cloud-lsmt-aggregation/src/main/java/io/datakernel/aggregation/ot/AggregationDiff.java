@@ -19,6 +19,7 @@ package io.datakernel.aggregation.ot;
 import io.datakernel.aggregation.AggregationChunk;
 
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import static io.datakernel.util.CollectionUtils.union;
@@ -87,8 +88,8 @@ public final class AggregationDiff {
 
 		AggregationDiff that = (AggregationDiff) o;
 
-		if (addedChunks != null ? !addedChunks.equals(that.addedChunks) : that.addedChunks != null) return false;
-		return removedChunks != null ? removedChunks.equals(that.removedChunks) : that.removedChunks == null;
+		if (!Objects.equals(addedChunks, that.addedChunks)) return false;
+		return Objects.equals(removedChunks, that.removedChunks);
 	}
 
 	@Override

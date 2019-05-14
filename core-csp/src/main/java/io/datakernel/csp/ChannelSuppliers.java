@@ -254,7 +254,6 @@ public final class ChannelSuppliers {
 				});
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> ChannelSupplier<T> prefetch(int count, ChannelSupplier<T> actual) {
 		ChannelBuffer<T> buffer = new ChannelBuffer<>(count);
 		actual.streamTo(buffer.getConsumer());

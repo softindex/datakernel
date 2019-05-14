@@ -40,6 +40,7 @@ import java.net.InetSocketAddress;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryService.REJECTED_OUTDATED_ANNOUNCE_DATA;
 import static org.junit.Assert.*;
@@ -74,23 +75,23 @@ public final class DiscoveryHttpTest {
 		await(clientService.announce(bob.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, bob.getPrivKey())));
 
 		SignedData<AnnounceData> aliceData = await(clientService.find(alice.getPubKey()));
-		assertTrue(aliceData.verify(alice.getPubKey()));
+		assertTrue(checkNotNull(aliceData).verify(alice.getPubKey()));
 
 		SignedData<AnnounceData> bobData = await(clientService.find(bob.getPubKey()));
-		assertTrue(bobData.verify(bob.getPubKey()));
+		assertTrue(checkNotNull(bobData).verify(bob.getPubKey()));
 
 		StacklessException e = awaitException(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class),
 				AnnounceData.of(90, set()), alice.getPrivKey())));
 		assertSame(REJECTED_OUTDATED_ANNOUNCE_DATA, e);
 
 		aliceData = await(clientService.find(alice.getPubKey()));
-		assertTrue(aliceData.verify(alice.getPubKey()));
+		assertTrue(checkNotNull(aliceData).verify(alice.getPubKey()));
 		assertEquals(123, aliceData.getValue().getTimestamp());
 
 		await(clientService.shareKey(alice.getPubKey(), SignedData.sign(REGISTRY.get(SharedSimKey.class),
 				SharedSimKey.of(bobSimKey, alice.getPubKey()), bob.getPrivKey())));
 		SignedData<SharedSimKey> signedSharedSimKey = await(clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash));
-		assertTrue(signedSharedSimKey.verify(bob.getPubKey()));
+		assertTrue(checkNotNull(signedSharedSimKey).verify(bob.getPubKey()));
 		assertEquals(bobSimKey, signedSharedSimKey.getValue().decryptSimKey(alice.getPrivKey()));
 
 	}
