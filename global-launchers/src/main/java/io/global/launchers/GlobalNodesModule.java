@@ -50,6 +50,7 @@ import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
+import io.global.ot.server.ValidatingGlobalOTNode;
 
 import java.util.function.Function;
 
@@ -152,7 +153,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	RawServerServlet provideRawServerServlet(GlobalOTNode node) {
-		return RawServerServlet.create(node);
+		return RawServerServlet.create(ValidatingGlobalOTNode.create(node));
 	}
 
 	@Provides
@@ -189,7 +190,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	Function<RawServerId, GlobalOTNode> provideOTNodeFactory(IAsyncHttpClient client) {
-		return id -> HttpGlobalOTNode.create(id.getServerIdString(), client);
+		return id -> ValidatingGlobalOTNode.create(HttpGlobalOTNode.create(id.getServerIdString(), client));
 	}
 
 	@Provides
