@@ -16,6 +16,7 @@ import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
+//[START EXAMPLE]
 public class SimplePageLauncher extends HttpServerLauncher {
 	@Override
 	protected Collection<Module> getBusinessLogicModules() {
@@ -33,3 +34,4 @@ public class SimplePageLauncher extends HttpServerLauncher {
 		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }
+//[END EXAMPLE]

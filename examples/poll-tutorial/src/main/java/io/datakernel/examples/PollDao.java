@@ -2,6 +2,7 @@ package io.datakernel.examples;
 
 import java.util.*;
 
+//[START EXAMPLE]
 public interface PollDao {
 	Poll find(int id);
 	Map<Integer, Poll> findAll();
@@ -43,3 +44,4 @@ public interface PollDao {
 
 	}
 }
+//[END EXAMPLE]

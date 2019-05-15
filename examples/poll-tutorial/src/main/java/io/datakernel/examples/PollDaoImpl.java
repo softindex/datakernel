@@ -2,6 +2,7 @@ package io.datakernel.examples;
 
 import java.util.*;
 
+//[START EXAMPLE]
 public final class PollDaoImpl implements PollDao {
 	private Map<Integer, Poll> polls = new HashMap<>();
 	private Random random = new Random();
@@ -34,5 +35,5 @@ public final class PollDaoImpl implements PollDao {
 		polls.remove(id);
 	}
 }
-
+//[END EXAMPLE]
 

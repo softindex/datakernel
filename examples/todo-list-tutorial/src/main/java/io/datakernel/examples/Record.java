@@ -1,7 +1,7 @@
 package io.datakernel.examples;
 
 import java.util.List;
-
+//[START EXAMPLE]
 public final class Record {
 	private String title;
 	private List<Plan> plans;
@@ -23,3 +23,4 @@ public final class Record {
 		return plans;
 	}
 }
+//[END EXAMPLE]

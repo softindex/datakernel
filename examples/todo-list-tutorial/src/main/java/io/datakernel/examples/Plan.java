@@ -1,5 +1,6 @@
 package io.datakernel.examples;
 
+//[START EXAMPLE]
 public final class Plan {
 	private String text;
 	private boolean isComplete;
@@ -25,3 +26,4 @@ public final class Plan {
 		isComplete = !isComplete;
 	}
 }
+//[END EXAMPLE]

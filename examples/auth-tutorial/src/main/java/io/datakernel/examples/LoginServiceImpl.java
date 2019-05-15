@@ -2,7 +2,7 @@ package io.datakernel.examples;
 
 import java.util.HashMap;
 import java.util.Map;
-
+//[START EXAMPLE]
 public class LoginServiceImpl implements LoginService {
 	private Map<String, String> credentials = new HashMap<>();
 
@@ -17,3 +17,4 @@ public class LoginServiceImpl implements LoginService {
 		credentials.put(login, password);
 	}
 }
+//[END EXAMPLE]

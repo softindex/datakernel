@@ -2,6 +2,7 @@ package io.datakernel.examples;
 
 import java.util.Map;
 
+//[START EXAMPLE]
 public interface RecordDAO {
 	void add(Record record);
 
@@ -11,3 +12,4 @@ public interface RecordDAO {
 
 	Map<Integer, Record> findAll();
 }
+//[END EXAMPLE]

@@ -3,6 +3,7 @@ package io.datakernel.examples;
 import java.util.HashMap;
 import java.util.Map;
 
+//[START EXAMPLE]
 public final class RecordImplDAO implements RecordDAO {
 	private Map<Integer, Record> recordMap = new HashMap<>();
 	private int counter;
@@ -26,3 +27,4 @@ public final class RecordImplDAO implements RecordDAO {
 		return recordMap;
 	}
 }
+//[END EXAMPLE]

@@ -25,6 +25,7 @@ import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.map;
 import static java.lang.Boolean.parseBoolean;
 
+//[START EXAMPLE]
 public final class PollLauncher extends HttpServerLauncher {
 
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
@@ -50,8 +51,11 @@ public final class PollLauncher extends HttpServerLauncher {
 				Mustache listPolls = new DefaultMustacheFactory().compile("site/listPolls.html");
 
 				return RoutingServlet.create()
+						//[START REGION_1]
 						.with(GET, "/", request -> Promise.of(HttpResponse.ok200()
 								.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
+						//[END REGION_1]
+						//[START REGION_2]
 						.with(GET, "/poll/:id", request -> {
 							String idString = request.getPathParameter("id");
 							if (idString == null) {
@@ -61,6 +65,7 @@ public final class PollLauncher extends HttpServerLauncher {
 							return Promise.of(HttpResponse.ok200()
 									.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
 						})
+						//[END REGION_2]
 						.with(GET, "/create", request -> Promise.of(HttpResponse.ok200()
 								.withBody(applyTemplate(singlePollCreate, ImmutableMap.of()))))
 						.with(POST, "/vote", request -> request.getPostParameters()
@@ -103,3 +108,4 @@ public final class PollLauncher extends HttpServerLauncher {
 		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }
+//[END EXAMPLE]

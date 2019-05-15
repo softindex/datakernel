@@ -24,6 +24,7 @@ import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
+//[START EXAMPLE]
 public class AuthLauncher extends HttpServerLauncher {
 	@Override
 	protected Collection<Module> getBusinessLogicModules() {
@@ -48,7 +49,9 @@ public class AuthLauncher extends HttpServerLauncher {
 				String sessionId = "SESSION_ID";
 				return SessionServlet.create(store, sessionId,
 						RoutingServlet.create()
+								//[START REGION_1]
 								.with("/", request -> Promise.of(HttpResponse.redirect302("/login")))
+								//[END REGION_1]
 								.with(GET, "/signup", SingleResourceStaticServlet.create(eventloop, staticLoader, "signup.html"))
 								.with(GET, "/login", SingleResourceStaticServlet.create(eventloop, staticLoader, "login.html"))
 								.with(POST, "/login", request -> request.getPostParameters()
@@ -77,13 +80,18 @@ public class AuthLauncher extends HttpServerLauncher {
 											return Promise.of(HttpResponse.redirect302("/login"));
 										})),
 						RoutingServlet.create()
+								//[START REGION_2]
 								.with("/", request -> Promise.of(HttpResponse.redirect302("/members")))
+								//[END REGION_2]
+								//[START REGION_3]
 								.with("/members/*", RoutingServlet.create()
 										.with(GET, "/", $ -> staticLoader.getResource("index.html")
 												.then(body -> Promise.of(HttpResponse.ok200()
 														.withBody(body))))
+										//[START REGION_4]
 										.with(GET, "/cookie", request -> Promise.of(HttpResponse.ok200()
 												.withBody(wrapUtf8(request.getAttachment(String.class)))))
+										//[END REGION_4]
 										.with(POST, "/logout", request -> {
 											String id = request.getCookie(sessionId);
 											if (id != null) {
@@ -92,7 +100,10 @@ public class AuthLauncher extends HttpServerLauncher {
 																));
 											}
 											return Promise.of(HttpResponse.ofCode(404));
-										})));
+										}))
+								//[END REGION_3]
+				);
+
 			}
 		});
 	}
@@ -102,3 +113,4 @@ public class AuthLauncher extends HttpServerLauncher {
 		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }
+//[END EXAMPLE]

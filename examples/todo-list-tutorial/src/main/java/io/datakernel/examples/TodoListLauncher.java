@@ -30,7 +30,9 @@ import static java.lang.Integer.*;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
+//[START EXAMPLE]
 public final class TodoListLauncher extends HttpServerLauncher {
+	//[START REGION_1]
 	private static final StructuredCodec<Plan> PLAN_CODEC = object(Plan::new,
 			"text", Plan::getText, STRING_CODEC,
 			"isComplete", Plan::isComplete, BOOLEAN_CODEC);
@@ -38,7 +40,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 	private static final StructuredCodec<Record> RECORD_CODEC = object(Record::new,
 			"title", Record::getTitle, STRING_CODEC,
 			"plans", Record::getPlans, ofList(PLAN_CODEC));
-
+	//[END REGION_1]
 
 	@Override
 	protected Collection<Module> getBusinessLogicModules() {
@@ -61,7 +63,9 @@ public final class TodoListLauncher extends HttpServerLauncher {
 			@Provides
 			AsyncServlet servlet(RecordDAO recordDAO, @Named("static") AsyncServlet staticServlet) {
 				return RoutingServlet.create()
+						//[START REGION_2]
 						.with("/*", staticServlet)
+						//[END REGION_2]
 						.with(POST, "/add", request -> request.getBody()
 								.then(body -> {
 									try {
@@ -80,12 +84,14 @@ public final class TodoListLauncher extends HttpServerLauncher {
 							return Promise.of(HttpResponse.ok200()
 									.withJson(ofMap(INT_CODEC, RECORD_CODEC), records));
 						})
+						//[START REGION_3]
 						.with(GET, "/delete/:recordId", request -> {
 							String stringId = request.getPathParameter("recordId");
 							int id = parseInt(requireNonNull(stringId));
 							recordDAO.delete(id);
 							return Promise.of(HttpResponse.ok200());
 						})
+						//[END REGION_3]
 						.with(GET, "/toggle/:recordId/:planId", request -> {
 							String stringId = request.getPathParameter("recordId");
 							String stringPlanId = request.getPathParameter("planId");
@@ -102,8 +108,11 @@ public final class TodoListLauncher extends HttpServerLauncher {
 		});
 	}
 
+	//[START REGION_4]
 	public static void main(String[] args) throws Exception {
 		TodoListLauncher launcher = new TodoListLauncher();
 		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
+	//[END REGION_4]
 }
+//[END EXAMPLE]

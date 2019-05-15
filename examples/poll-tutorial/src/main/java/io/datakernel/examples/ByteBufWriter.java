@@ -10,6 +10,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
+//[START EXAMPLE]
 public final class ByteBufWriter extends Writer {
 	private ByteBuf byteBuf;
 	private final static int DEFAULT_SIZE = 1024;
@@ -41,3 +42,4 @@ public final class ByteBufWriter extends Writer {
 		return byteBuf;
 	}
 }
+//[END EXAMPLE]
