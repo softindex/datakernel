@@ -56,6 +56,7 @@ import static io.datakernel.http.HttpUtils.renderQueryString;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.ot.api.OTCommand.*;
+import static io.global.ot.http.RawServerServlet.COMMIT_ENTRIES_PARSER;
 import static io.global.ot.http.RawServerServlet.DEFAULT_CHUNK_SIZE;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -109,22 +110,11 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
-				.then(res -> res.getBody()
-						.then(body -> processResult(res, body, HEADS_INFO_JSON)));
-	}
-
-	@Override
-	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> startNodes) {
 		return httpClient.request(
 				request(GET, DOWNLOAD,
 						apiQuery(repositoryId, map(
-								"required", required.stream()
-										.map(HttpDataFormats::urlEncodeCommitId)
-										.collect(joining(","))
-								,
-								"existing", existing.stream()
+								"startNodes", startNodes.stream()
 										.map(HttpDataFormats::urlEncodeCommitId)
 										.collect(joining(","))
 								)
@@ -133,24 +123,25 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 				.map(res ->
 						BinaryChannelSupplier.of(res.getBodyStream())
 								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
+										.andThen(COMMIT_ENTRIES_PARSER))
 				);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
+	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
 		SettablePromise<Void> done = new SettablePromise<>();
 		ChannelZeroBuffer<CommitEntry> queue = new ChannelZeroBuffer<>();
 		httpClient.request(
-				request(POST, UPLOAD, apiQuery(repositoryId))
+				request(POST, UPLOAD, apiQuery(repositoryId, map("heads", toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads))))
 						.withBodyStream(
 								queue.getSupplier()
-										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
+										.map(commitEntry -> encodeWithSizePrefix(COMMIT_CODEC, commitEntry.getCommit()))
 										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
 						))
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
+				.whenResult($ -> queue.cancel())
 				.whenComplete(done);
 		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.then($ -> done)));
 	}

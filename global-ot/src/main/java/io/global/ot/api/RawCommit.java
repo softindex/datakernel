@@ -20,7 +20,6 @@ import io.datakernel.exception.ParseException;
 import io.global.common.Hash;
 import io.global.common.api.EncryptedData;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -28,30 +27,30 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class RawCommit {
 	private final int epoch;
 	private final Set<CommitId> parents;
+	private final long level;
 	private final EncryptedData encryptedDiffs;
 	private final Hash simKeyHash;
-	private final long level;
 	private final long timestamp;
 
 	// region creators
 	private RawCommit(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
-			long level, long timestamp) {
+			long timestamp) {
 		this.epoch = epoch;
 		this.parents = checkNotNull(parents);
+		this.level = parents.stream().mapToLong(CommitId::getLevel).max().orElse(0L) + 1L;
 		this.encryptedDiffs = checkNotNull(encryptedDiffs);
 		this.simKeyHash = checkNotNull(simKeyHash);
-		this.level = level;
 		this.timestamp = timestamp;
 	}
 
 	public static RawCommit of(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
-			long level, long timestamp) {
-		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, level, timestamp);
+			long timestamp) {
+		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, timestamp);
 	}
 
 	public static RawCommit parse(int epoch, Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
-			long level, long timestamp) throws ParseException {
-		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, level, timestamp);
+			long timestamp) throws ParseException {
+		return new RawCommit(epoch, parents, encryptedDiffs, simKeyHash, timestamp);
 	}
 	// endregion
 
@@ -60,7 +59,7 @@ public final class RawCommit {
 	}
 
 	public Set<CommitId> getParents() {
-		return new HashSet<>(parents);
+		return parents;
 	}
 
 	public EncryptedData getEncryptedDiffs() {
@@ -86,7 +85,6 @@ public final class RawCommit {
 
 		RawCommit rawCommit = (RawCommit) o;
 
-		if (level != rawCommit.level) return false;
 		if (timestamp != rawCommit.timestamp) return false;
 		if (!parents.equals(rawCommit.parents)) return false;
 		if (!encryptedDiffs.equals(rawCommit.encryptedDiffs)) return false;
@@ -98,7 +96,6 @@ public final class RawCommit {
 		int result = parents.hashCode();
 		result = 31 * result + encryptedDiffs.hashCode();
 		result = 31 * result + simKeyHash.hashCode();
-		result = 31 * result + (int) (level ^ (level >>> 32));
 		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
 		return result;
 	}

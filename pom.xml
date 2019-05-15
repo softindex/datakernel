@@ -39,7 +39,6 @@
     <module>cloud-multilog</module>
     <module>cloud-crdt</module>
     <module>cloud-ot</module>
-    <module>cloud-ot-mysql</module>
     <module>cloud-lsmt-aggregation</module>
     <module>cloud-lsmt-cube</module>
     <module>cloud-etl</module>

@@ -225,7 +225,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		if (workingDiffs.isEmpty()) return Promise.complete();
 		int originalSize = workingDiffs.size();
 		List<D> diffs = new ArrayList<>(otSystem.squash(workingDiffs));
-		return repository.createCommit(this.commitId, diffs, level + 1L)
+		return repository.createCommit(this.commitId, diffs, level)
 				.whenResult(commit -> {
 					assert pendingCommit == null;
 					pendingCommit = commit;

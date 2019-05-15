@@ -21,9 +21,9 @@ import io.datakernel.exception.ParseException;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RawCommitHead {
-	public final RepoID repositoryId;
-	public final CommitId commitId;
-	public final long timestamp;
+	private final RepoID repositoryId;
+	private final CommitId commitId;
+	private final long timestamp;
 
 	private RawCommitHead(RepoID repositoryId, CommitId commitId, long timestamp) {
 		this.repositoryId = checkNotNull(repositoryId);
@@ -67,5 +67,14 @@ public final class RawCommitHead {
 		result = 31 * result + commitId.hashCode();
 		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
 		return result;
+	}
+
+	@Override
+	public String toString() {
+		return "RawCommitHead{" +
+				"repositoryId=" + repositoryId +
+				", commitId=" + commitId +
+				", timestamp=" + timestamp +
+				'}';
 	}
 }

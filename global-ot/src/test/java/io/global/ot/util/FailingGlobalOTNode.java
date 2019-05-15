@@ -56,11 +56,6 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-		return Promise.ofException(ERROR);
-	}
-
-	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return Promise.ofException(ERROR);
 	}
@@ -111,13 +106,12 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> startNodes) {
 		return Promise.ofException(ERROR);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
+	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
 		return Promise.ofException(ERROR);
 	}
-
 }

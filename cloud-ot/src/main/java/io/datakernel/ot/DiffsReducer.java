@@ -11,15 +11,15 @@ import java.util.function.BinaryOperator;
 public interface DiffsReducer<A, D> {
 	A initialValue();
 
-	A accumulate(A accumulatedDiffs, List<D> diffs);
+	A accumulate(A accumulatedDiffs, List<? extends D> diffs);
 
 	A combine(A existing, A additional);
 
-	static <A, D> DiffsReducer<A, D> of(@Nullable A initialValue, BiFunction<A, List<D>, A> reduceFunction) {
+	static <A, D> DiffsReducer<A, D> of(@Nullable A initialValue, BiFunction<A, List<? extends D>, A> reduceFunction) {
 		return of(initialValue, reduceFunction, (existing, additional) -> existing);
 	}
 
-	static <A, D> DiffsReducer<A, D> of(@Nullable A initialValue, BiFunction<A, List<D>, A> reduceFunction, BinaryOperator<A> combiner) {
+	static <A, D> DiffsReducer<A, D> of(@Nullable A initialValue, BiFunction<A, List<? extends D>, A> reduceFunction, BinaryOperator<A> combiner) {
 		return new DiffsReducer<A, D>() {
 			@Nullable
 			@Override
@@ -28,7 +28,7 @@ public interface DiffsReducer<A, D> {
 			}
 
 			@Override
-			public A accumulate(A accumulatedDiffs, List<D> diffs) {
+			public A accumulate(A accumulatedDiffs, List<? extends D> diffs) {
 				return reduceFunction.apply(accumulatedDiffs, diffs);
 			}
 

@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -43,6 +44,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
@@ -66,6 +68,12 @@ public final class RawServerServlet implements AsyncServlet {
 					Arrays.stream(s.split(","))
 							.map(asFunction(HttpDataFormats::urlDecodeCommitId))
 							.collect(toSet());
+
+	static final ParserFunction<ByteBuf, CommitEntry> COMMIT_ENTRIES_PARSER = byteBuf -> {
+		byte[] bytes = byteBuf.asArray();
+		RawCommit commit = decode(COMMIT_CODEC, bytes);
+		return new CommitEntry(CommitId.ofCommitData(commit.getLevel(), bytes), commit);
+	};
 
 	private final AsyncServlet servlet;
 	private Promise<@Nullable Void> closeNotification = new SettablePromise<>();
@@ -145,24 +153,6 @@ public final class RawServerServlet implements AsyncServlet {
 								.map(commit -> HttpResponse.ok200()
 										.withBody(toJson(COMMIT_JSON, commit).getBytes(UTF_8)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-
-				})
-				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", req -> {
-					String pubKey = req.getPathParameter("pubKey");
-					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null) {
-						return parseException;
-					}
-
-					try {
-						return node.getHeadsInfo(
-								urlDecodeRepositoryId(pubKey, name))
-								.map(headsInfo -> HttpResponse.ok200()
-										.withBody(toJson(HEADS_INFO_JSON, headsInfo).getBytes(UTF_8))
-								);
-					} catch (Exception e) {
 						return Promise.ofException(e);
 					}
 				})
@@ -330,19 +320,20 @@ public final class RawServerServlet implements AsyncServlet {
 					}
 				})
 				.with(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
-					String required = req.getQueryParameter("required");
-					String existing = req.getQueryParameter("existing");
+					String startNodes = req.getQueryParameter("startNodes");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (required == null || existing == null || pubKey == null || name == null) {
+					if (startNodes == null || pubKey == null || name == null) {
 						return parseException;
 					}
 
 					try {
-						return node.download(urlDecodeRepositoryId(pubKey, name), COMMIT_IDS_PARSER.parse(required), COMMIT_IDS_PARSER.parse(existing))
+						return node.download(
+								urlDecodeRepositoryId(pubKey, name),
+								COMMIT_IDS_PARSER.parse(startNodes))
 								.map(downloader -> HttpResponse.ok200()
 										.withBodyStream(downloader
-												.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
+												.map(commitEntry -> encodeWithSizePrefix(COMMIT_CODEC, commitEntry.getCommit()))
 												.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
 										)
 								);
@@ -353,16 +344,28 @@ public final class RawServerServlet implements AsyncServlet {
 				.with(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null) {
+					String headsQueryString = req.getQueryParameter("heads");
+					if (pubKey == null || name == null || headsQueryString == null) {
 						return parseException;
 					}
 
 					try {
+						RepoID repoID = urlDecodeRepositoryId(pubKey, name);
+						Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), headsQueryString);
+
+						ChannelConsumer<CommitEntry> commitConsumer = ChannelConsumer.ofPromise(node.upload(repoID, heads))
+								.withAcknowledgement(ack -> ack
+										.thenEx(($, e) -> e == null || e == CANCEL_EXCEPTION ?
+												Promise.complete() :
+												Promise.ofException(e)
+										));
+
 						return BinaryChannelSupplier.of(req.getBodyStream())
 								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
-								.streamTo(ChannelConsumer.ofPromise(node.upload(urlDecodeRepositoryId(pubKey, name))))
-								.map($ -> HttpResponse.ok200());
+										.andThen(COMMIT_ENTRIES_PARSER))
+								.streamTo(commitConsumer)
+								.map($ -> HttpResponse.ok200())
+								.whenComplete(($, e) -> commitConsumer.cancel());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

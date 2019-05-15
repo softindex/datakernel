@@ -62,7 +62,7 @@ public final class Utils {
 			});
 
 	public static final StructuredCodec<CommitId> COMMIT_ID_HASH = StructuredCodec.of(
-			in -> CommitId.ofBytes(fromHexString(in.readString())),
+			in -> CommitId.parse(fromHexString(in.readString())),
 			(out, item) -> out.writeString(toHexString(item.toBytes()))
 	);
 

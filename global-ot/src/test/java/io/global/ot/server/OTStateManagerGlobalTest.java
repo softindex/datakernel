@@ -1,5 +1,6 @@
 package io.global.ot.server;
 
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
 import io.datakernel.ot.utils.TestOp;
@@ -70,7 +71,8 @@ public class OTStateManagerGlobalTest {
 				.announce(keys, AnnounceData.of(System.currentTimeMillis(), singleton(rawServerId))));
 		commitStorage = new CommitStorageStub();
 		GlobalOTNode globalNode = GlobalOTNodeImpl.create(eventloop, rawServerId, discoveryService,
-				commitStorage, id -> {throw new IllegalStateException();});
+				commitStorage, id -> {throw new IllegalStateException();})
+				.withRetryPolicy(RetryPolicy.noRetry());
 		OTDriver driver = new OTDriver(globalNode, SimKey.generate());
 		repoID = RepoID.of(keys.getPubKey(), "Test");
 		MyRepositoryId<TestOp> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), TEST_OP_CODEC);
@@ -93,7 +95,7 @@ public class OTStateManagerGlobalTest {
 
 	@Test
 	public void testCheckout() {
-		OTCommit<CommitId, TestOp> newCommit = await(repository.createCommit(0, CommitId.ofRoot(), asList(add(12), set(12, 23), add(-2)), 2));
+		OTCommit<CommitId, TestOp> newCommit = await(repository.createCommit(CommitId.ofRoot(), asList(add(12), set(12, 23), add(-2)), 2));
 		await(repository.pushAndUpdateHead(newCommit));
 
 		await(stateManager.checkout());
