@@ -19,15 +19,11 @@ package io.global.common;
 import io.datakernel.exception.ParseException;
 
 import java.util.Arrays;
-import java.util.Base64;
 
 /**
  * Thin holder/wrapper around hash of some object.
  */
 public final class Hash {
-	private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
-	private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
-
 	private final byte[] bytes;
 
 	// region creators

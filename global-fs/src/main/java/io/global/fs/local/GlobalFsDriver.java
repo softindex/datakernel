@@ -122,7 +122,7 @@ public final class GlobalFsDriver {
 				.whenComplete(toLogger(logger, INFO, INFO, "upload", filename, offset, revision, key, this));
 	}
 
-	public Promise<ChannelSupplier<ByteBuf>> download(PubKey space, String filename, long offset, long limit) {
+	public Promise<ChannelSupplier<ByteBuf>> download(PubKey space, String filename, long offset, long limit, @Nullable SimKey simKey) {
 		return node.getMetadata(space, filename)
 				.then(signedCheckpoint -> {
 					if (signedCheckpoint == null) {
@@ -133,7 +133,9 @@ public final class GlobalFsDriver {
 						return Promise.ofException(FILE_NOT_FOUND);
 					}
 					return node.download(space, filename, offset, limit)
-							.map(supplier -> supplier.transformWith(FrameVerifier.create(space, filename, offset, limit)));
+							.map(supplier -> supplier
+									.transformWith(FrameVerifier.create(space, filename, offset, limit))
+									.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(filename), offset)));
 				})
 				.whenComplete(toLogger(logger, INFO, INFO, "download", filename, offset, limit, this));
 	}

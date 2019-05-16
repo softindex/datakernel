@@ -65,9 +65,7 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 									if (meta != null) {
 										return httpDownload(request,
 												(offset, limit) ->
-														driver.download(space, name, offset, limit)
-																.map(supplier -> supplier
-																		.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
+														driver.download(space, name, offset, limit, simKey),
 												name, meta.getPosition());
 									}
 									return Promise.ofException(FILE_NOT_FOUND);

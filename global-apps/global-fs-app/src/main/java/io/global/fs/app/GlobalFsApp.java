@@ -27,9 +27,13 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
+import io.global.fs.app.container.FsMessagingServlet;
+import io.global.fs.app.container.UserContainerModule;
 import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
+import io.global.pm.MapMessageStorage;
+import io.global.pm.api.MessageStorage;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +99,7 @@ public final class GlobalFsApp extends Launcher {
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
+				new UserContainerModule(),
 				new AbstractModule() {
 					@Provides
 					@Singleton
@@ -105,7 +110,7 @@ public final class GlobalFsApp extends Launcher {
 					@Provides
 					@Singleton
 					@Named("App")
-					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, StaticLoader resourceLoader) {
+					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, FsMessagingServlet messagingServlet, StaticLoader resourceLoader) {
 						return MiddlewareServlet.create()
 								.with("", new GlobalFsDriverServlet(driver))
 								.with(GET, "/", MiddlewareServlet.create()
@@ -122,7 +127,8 @@ public final class GlobalFsApp extends Launcher {
 									return Promise.of(HttpResponse.ok200()
 											.withBody(JsonUtils.toJson(SIM_KEY_AND_HASH_CODEC, new Tuple2<>(simKey, hash)).getBytes(UTF_8))
 											.withHeader(CONTENT_TYPE, CONTENT_TYPE_JSON));
-								});
+								})
+								.with("/share/:dirName", messagingServlet);
 					}
 
 					@Provides
@@ -140,7 +146,7 @@ public final class GlobalFsApp extends Launcher {
 					@Provides
 					@Singleton
 					@Named("App")
-					AsyncHttpServer provide(Eventloop eventloop, Config config, @Named("App") AsyncServlet servlet) {
+					AsyncHttpServer provide(Eventloop eventloop, Config config, @Named("Service") AsyncServlet servlet) {
 						return AsyncHttpServer.create(eventloop, servlet)
 								.initialize(ofHttpServer(config.getChild("app.http")));
 					}
@@ -172,6 +178,12 @@ public final class GlobalFsApp extends Launcher {
 									InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
 									return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
 								}
+							}
+
+							@Provides
+							@Singleton
+							MessageStorage provideMessageStorage() {
+								return new MapMessageStorage();
 							}
 						}));
 	}

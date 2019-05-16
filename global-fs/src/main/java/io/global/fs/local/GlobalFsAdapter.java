@@ -24,7 +24,10 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
-import io.global.common.*;
+import io.global.common.KeyPair;
+import io.global.common.PrivKey;
+import io.global.common.PubKey;
+import io.global.common.SimKey;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -75,9 +78,7 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 
 	@Override
 	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long limit) {
-		return driver.download(space, name, offset, limit)
-				.map(supplier -> supplier
-						.transformWith(CipherTransformer.create(currentSimKey, CryptoUtils.nonceFromString(name), offset)));
+		return driver.download(space, name, offset, limit, currentSimKey);
 	}
 
 	private FileMetadata fromCheckpoint(GlobalFsCheckpoint checkpoint) {
