@@ -97,7 +97,8 @@ public class AuthLauncher extends HttpServerLauncher {
 											if (id != null) {
 												return Promise.of(HttpResponse.redirect302("/")
 														.withCookie(HttpCookie.of(sessionId, id)
-																));
+																.withPath("/")
+																.withMaxAge(0)));
 											}
 											return Promise.of(HttpResponse.ofCode(404));
 										}))
