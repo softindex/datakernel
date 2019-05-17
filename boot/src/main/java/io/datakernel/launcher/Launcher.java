@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Supplier;
 
 import static io.datakernel.di.module.Modules.combine;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -79,6 +80,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	protected String[] args = {};
 
 	@Inject(optional = true)
+	@Nullable
+	protected Supplier<ServiceGraph> serviceGraphSupplier;
+
 	@Nullable
 	protected ServiceGraph serviceGraph;
 
@@ -164,6 +168,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	private void doStart() throws Exception {
+		if (serviceGraphSupplier != null) {
+			serviceGraph = serviceGraphSupplier.get();
+			serviceGraphSupplier = null;
+		}
 		if (serviceGraph != null) {
 			logger.info("=== STARTING APPLICATION");
 			try {

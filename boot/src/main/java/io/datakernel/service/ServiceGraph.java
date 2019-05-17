@@ -16,14 +16,11 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.Key;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.RecursiveType;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.util.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +53,14 @@ import static java.util.stream.Collectors.toList;
  */
 public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
+
+	public interface Key<T> {
+		@NotNull
+		TypeT<T> getTypeT();
+
+		@Nullable
+		Annotation getAnnotation();
+	}
 
 	private Runnable startCallback;
 

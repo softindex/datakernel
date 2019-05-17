@@ -16,6 +16,7 @@
 
 package io.datakernel.worker;
 
+import io.datakernel.di.Binding;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 
 public final class WorkerPool {
@@ -41,7 +43,10 @@ public final class WorkerPool {
 		this.idx = idx;
 		this.scopeInjectors = new Injector[workers];
 		for (int i = 0; i < workers; i++) {
-			scopeInjectors[i] = injector.enterScope(scope);
+			Key<Integer> workerId = Key.of(Integer.class, WorkerId.class);
+			int finalI = i;
+			scopeInjectors[i] = injector.enterScope(scope,
+					singletonMap(workerId, new Binding<>(workerId, new Key[0], args -> finalI)));
 		}
 	}
 
