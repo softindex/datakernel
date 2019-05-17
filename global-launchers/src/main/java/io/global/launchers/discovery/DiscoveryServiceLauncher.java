@@ -19,14 +19,11 @@ package io.global.launchers.discovery;
 import com.google.inject.*;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.service.ServiceGraphModule;
 import io.global.common.api.AnnouncementStorage;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.SharedKeyStorage;
@@ -44,7 +41,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -136,6 +132,6 @@ public class DiscoveryServiceLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new DiscoveryServiceLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new DiscoveryServiceLauncher().launch(args);
 	}
 }

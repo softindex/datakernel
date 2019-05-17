@@ -24,10 +24,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
@@ -41,7 +39,6 @@ import java.net.Socket;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 
-import static com.google.inject.Stage.DEVELOPMENT;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
@@ -78,7 +75,7 @@ public final class HttpWorkerServerTest {
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))));
 			}
 		};
-		Injector injector = launcher.createInjector(DEVELOPMENT, new String[]{});
+		Injector injector = launcher.createInjector(new String[]{});
 
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try (Socket socket0 = new Socket(); Socket socket1 = new Socket()) {

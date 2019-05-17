@@ -22,13 +22,10 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsServer;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.Collection;
@@ -38,7 +35,6 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.remotefs.Initializers.ofRemoteFsServer;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -105,6 +101,6 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new RemoteFsServerLauncher() {};
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }

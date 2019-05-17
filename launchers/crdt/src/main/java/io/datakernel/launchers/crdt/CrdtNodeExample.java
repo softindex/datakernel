@@ -21,7 +21,6 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
 import io.datakernel.eventloop.Eventloop;
@@ -36,7 +35,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.singletonList;
 
 public final class CrdtNodeExample {
@@ -85,6 +83,6 @@ public final class CrdtNodeExample {
 				return singletonList(new BusinessLogicModule());
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }

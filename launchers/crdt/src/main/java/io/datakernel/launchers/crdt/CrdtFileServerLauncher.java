@@ -16,17 +16,12 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.*;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggersModule;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;

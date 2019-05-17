@@ -67,7 +67,7 @@ public class WorkerPoolsTest {
 
 	@Test
 	public void testAddWorkerPoolWithDuplicates() {
-		WorkerPools workerPools = new WorkerPools();
+		WorkerPools workerPools = new WorkerPools(injector);
 		workerPools.addWorkerPool(first);
 		expectedException.expect(IllegalArgumentException.class);
 		expectedException.expectMessage("WorkerPool has already been added");

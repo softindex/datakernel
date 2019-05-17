@@ -19,13 +19,9 @@ package io.datakernel.launchers.crdt;
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
-import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.crdt.CrdtNodeLogicModule.Cluster;
-import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggersModule;
 
 import java.util.Collection;
 

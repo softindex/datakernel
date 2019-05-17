@@ -16,13 +16,12 @@
 
 package io.datakernel.config;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.TypeLiteral;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.TypeT;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
@@ -142,21 +141,19 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Override
 	protected void configure() {
-		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<ConfigModuleService>>() {}).asEagerSingleton();
+		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).asSingleton();
+		bind(new TypeT<RequiredDependency<ConfigModuleService>>() {}).asSingleton();
 
 		bind(Config.class).to(EffectiveConfig.class);
 	}
 
 	@Provides
-	@Singleton
 	EffectiveConfig provideConfig() {
 		Config config = new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()));
 		return EffectiveConfig.wrap(config);
 	}
 
 	@Provides
-	@Singleton
 	ConfigModuleService service(EffectiveConfig config, OptionalInitializer<ConfigModule> optionalInitializer) {
 		optionalInitializer.accept(this);
 		return new ConfigModuleService() {

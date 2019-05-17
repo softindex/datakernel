@@ -1,14 +1,11 @@
 package io.datakernel.launchers.http;
 
-import com.google.inject.*;
 import com.google.inject.name.Names;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.jmx.JmxModule;
-import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.util.MemSize;

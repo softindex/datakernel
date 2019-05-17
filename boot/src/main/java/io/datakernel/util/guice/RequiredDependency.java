@@ -1,6 +1,6 @@
 package io.datakernel.util.guice;
 
-import com.google.inject.Inject;
+import io.datakernel.di.Inject;
 
 public final class RequiredDependency<T> {
 	@Inject

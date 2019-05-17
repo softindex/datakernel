@@ -16,7 +16,7 @@
 
 package io.datakernel.trigger;
 
-import com.google.inject.*;
+import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import io.datakernel.eventloop.Eventloop;
@@ -34,7 +34,6 @@ import org.junit.rules.ExpectedException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static com.google.inject.name.Names.named;
 import static org.junit.Assert.*;
 
 public class TriggersModuleTest {
@@ -45,7 +44,7 @@ public class TriggersModuleTest {
 	public void testDuplicatesRejection() {
 		exception.expect(IllegalArgumentException.class);
 		exception.expectMessage("Cannot assign duplicate triggers");
-		Guice.createInjector(
+		Injector.create(
 				ServiceGraphModule.defaultInstance(),
 				TriggersModule.create()
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
@@ -58,20 +57,18 @@ public class TriggersModuleTest {
 	public void testWithSeveralWorkerPools() throws Exception {
 		int firstPoolSize = 10;
 		int secondPoolSize = 5;
-		Injector injector = Guice.createInjector(
+		Injector injector = Injector.create(
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					int counter = 0;
 
 					@Provides
-					@Singleton
 					@Named("first")
 					WorkerPool provideFirstPool() {
 						return new WorkerPool(firstPoolSize);
 					}
 
 					@Provides
-					@Singleton
 					@Named("second")
 					WorkerPool provideSecondPool() {
 						return new WorkerPool(secondPoolSize);
@@ -84,7 +81,6 @@ public class TriggersModuleTest {
 					}
 
 					@Provides
-					@Singleton
 					Integer provide(@Named("first") WorkerPool workerPool1, @Named("second") WorkerPool workerPool2) {
 						workerPool1.getInstances(String.class);
 						workerPool2.getInstances(String.class);
@@ -94,8 +90,8 @@ public class TriggersModuleTest {
 				TriggersModule.create()
 						.with(String.class, Severity.HIGH, "test", s -> TriggerResult.create())
 		);
-		injector.getInstance(Key.get(WorkerPool.class, named("first"))).getInstances(String.class);
-		injector.getInstance(Key.get(WorkerPool.class, named("second"))).getInstances(String.class);
+		injector.getInstance(Key.of(WorkerPool.class, Name.of("first"))).getInstances(String.class);
+		injector.getInstance(Key.of(WorkerPool.class, Name.of("second"))).getInstances(String.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
@@ -113,7 +109,7 @@ public class TriggersModuleTest {
 
 	@Test
 	public void testMultiModule() throws ExecutionException, InterruptedException {
-		Injector injector = Guice.createInjector(
+		Injector injector = Injector.create(
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Override
@@ -122,7 +118,6 @@ public class TriggersModuleTest {
 					}
 
 					@Provides
-					@Singleton
 					Eventloop provide() {
 						return Eventloop.create();
 					}

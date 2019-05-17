@@ -1,6 +1,6 @@
 package io.datakernel.trigger;
 
-import com.google.inject.Key;
+import io.datakernel.di.Key;
 
 import java.util.function.Supplier;
 

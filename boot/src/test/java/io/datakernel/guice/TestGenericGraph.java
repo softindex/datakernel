@@ -22,7 +22,6 @@ import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerPool;
 import org.junit.Test;
 
 import java.util.List;

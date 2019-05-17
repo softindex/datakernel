@@ -33,6 +33,7 @@
     <module>core-net</module>
     <module>core-datastream</module>
     <module>core-http</module>
+    <module>core-di</module>
     <module>cloud-rpc</module>
     <module>cloud-memcache</module>
     <module>cloud-fs</module>
@@ -45,6 +46,7 @@
     <module>cloud-dataflow</module>
     <module>common</module>
     <module>boot</module>
+    <module>boot2</module>
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>

@@ -24,7 +24,6 @@ import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
@@ -138,7 +137,7 @@ public final class CrdtClusterTest {
 				.with("crdt.cluster.replicationCount", "2")
 				.with("crdt.cluster.partitions.second", "localhost:8001")
 				//				.with("crdt.cluster.partitions.file", "localhost:8002")
-		).launch(false, new String[0]);
+		).launch(new String[0]);
 	}
 
 	@Test
@@ -152,7 +151,7 @@ public final class CrdtClusterTest {
 				.with("crdt.cluster.replicationCount", "2")
 				.with("crdt.cluster.partitions.first", "localhost:8000")
 				//				.with("crdt.cluster.partitions.file", "localhost:8002")
-		).launch(false, new String[0]);
+		).launch(new String[0]);
 	}
 
 	@Test
@@ -184,7 +183,7 @@ public final class CrdtClusterTest {
 					}
 				});
 			}
-		}.launch(false, new String[0]);
+		}.launch(new String[0]);
 	}
 
 	@Test

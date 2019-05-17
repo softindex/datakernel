@@ -19,17 +19,13 @@ package io.global.launchers;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.service.ServiceGraphModule;
 
 import java.util.Collection;
 
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -87,7 +83,7 @@ public class GlobalNodesLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalNodesLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new GlobalNodesLauncher().launch(args);
 	}
 
 }

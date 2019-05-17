@@ -16,11 +16,11 @@
 
 package io.datakernel.launcher;
 
-import com.google.inject.Guice;
-import com.google.inject.Inject;
-import com.google.inject.Injector;
-import com.google.inject.Stage;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.service.ServiceGraph;
@@ -33,7 +33,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
 
-import static com.google.inject.util.Modules.combine;
+import static io.datakernel.di.module.Modules.combine;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -95,7 +95,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
 	 */
-	protected abstract Collection<com.google.inject.Module> getModules();
+	protected abstract Collection<Module> getModules();
 
 	/**
 	 * Creates a Guice injector with modules and overrides from this launcher and
@@ -105,7 +105,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 * which is highly for testing.
 	 */
 	public final void testInjector() {
-		createInjector(Stage.TOOL, new String[0]);
+		createInjector(new String[0]);
 	}
 
 	/**
@@ -118,12 +118,11 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 * </ul>
 	 * You can override methods mentioned above to execute your code in needed stage.
 	 *
-	 * @param args                program args that will be injected into @Args string array
-	 * @param eagerSingletonsMode passed to Guice
+	 * @param args program args that will be injected into @Args string array
 	 */
-	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
+	public void launch(String[] args) throws Exception {
 		instantOfStart = Instant.now();
-		createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
+		createInjector(args);
 		logger.info("=== INJECTING DEPENDENCIES");
 		try {
 			onStart();
@@ -150,13 +149,16 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		}
 	}
 
-	synchronized public Injector createInjector(Stage stage, String[] args) {
+	synchronized public Injector createInjector(String[] args) {
 		this.args = args;
-		return Guice.createInjector(stage,
+		return Injector.create(
 				combine(getModules()),
-				binder -> {
-					binder.bind(String[].class).annotatedWith(Args.class).toInstance(args);
-					binder.bind(Launcher.class).toInstance(this);
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(String[].class).annotatedWith(Args.class).toInstance(args);
+						bind(Launcher.class).toInstance(Launcher.this);
+					}
 				}
 		);
 	}

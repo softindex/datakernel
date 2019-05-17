@@ -18,7 +18,6 @@ package io.datakernel.launchers.remotefs;
 
 import com.google.inject.Module;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -63,7 +62,7 @@ public final class RemoteFsClusterLauncherTest {
 					.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
 					.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber)))));
 			}
-		}.launch(false, new String[0]);
+		}.launch(new String[0]);
 	}
 
 	@Test
@@ -86,7 +85,7 @@ public final class RemoteFsClusterLauncherTest {
 				}
 				return singleton(ConfigModule.create(config));
 			}
-		}.launch(false, new String[0]);
+		}.launch(new String[0]);
 	}
 
 	private static void createFiles(Path path, int n, int minSize, int maxSize) throws IOException {

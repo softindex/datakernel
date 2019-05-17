@@ -22,8 +22,6 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -103,7 +101,7 @@ public final class WorkerNameTest {
 
 		@Provides
 		@Worker
-		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId,
+		Element3 workerHttpServer(Element1 eventloop, int workerId,
 		                          @Named("Second") Element4 unusedString) {
 			return new Element3();
 		}

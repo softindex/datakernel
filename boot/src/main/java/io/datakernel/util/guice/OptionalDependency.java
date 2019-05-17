@@ -1,6 +1,6 @@
 package io.datakernel.util.guice;
 
-import com.google.inject.Inject;
+import io.datakernel.di.Inject;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;

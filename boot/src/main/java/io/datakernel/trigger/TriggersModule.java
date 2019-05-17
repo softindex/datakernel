@@ -16,19 +16,20 @@
 
 package io.datakernel.trigger;
 
-import com.google.inject.*;
-import com.google.inject.matcher.AbstractMatcher;
-import com.google.inject.spi.ProvisionListener;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.TypeT;
 import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 
 import java.util.*;
@@ -36,18 +37,12 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.util.CollectionUtils.getLast;
-import static io.datakernel.util.guice.GuiceUtils.*;
+import static io.datakernel.util.guice.GuiceUtils.prettyPrintSimpleKeyName;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
 	private Function<Key<?>, String> keyToString = GuiceUtils::prettyPrintSimpleKeyName;
-
-	private final Set<Key<?>> singletonKeys = new HashSet<>();
-	private final Set<Key<?>> workerKeys = new HashSet<>();
-
-	private final LinkedHashSet<Key<?>> currentlyProvidingSingletonKeys = new LinkedHashSet<>();
-	private final LinkedHashMap<Key<?>, KeyWithWorkerData> currentlyProvidingWorkerKeys = new LinkedHashMap<>();
 
 	private final Map<Key<?>, List<TriggerRegistryRecorder>> singletonRegistryRecords = new HashMap<>();
 	private final Map<KeyWithWorkerData, List<TriggerRegistryRecorder>> workerRegistryRecords = new HashMap<>();
@@ -155,8 +150,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Override
 	protected void configure() {
-		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<TriggersModuleService>>() {}).asEagerSingleton();
+		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).asSingleton();
+		bind(new TypeT<RequiredDependency<TriggersModuleService>>() {}).asSingleton();
 
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
@@ -231,7 +226,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@Provides
-	@Singleton
 	TriggersModuleService service(Injector injector, Triggers triggers,
 			OptionalInitializer<TriggersModule> optionalInitializer) {
 		optionalInitializer.accept(this);
@@ -248,7 +242,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@Provides
-	@Singleton
 	Triggers getTriggersWatcher(Injector injector) {
 		return Triggers.create();
 	}

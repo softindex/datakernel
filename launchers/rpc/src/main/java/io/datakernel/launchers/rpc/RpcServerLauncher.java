@@ -22,13 +22,10 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.OptionalDependency;
 
@@ -39,7 +36,6 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.rpc.Initializers.ofRpcServer;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -120,6 +116,6 @@ public abstract class RpcServerLauncher extends Launcher {
 				return singletonList(businessLogicModule);
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }
