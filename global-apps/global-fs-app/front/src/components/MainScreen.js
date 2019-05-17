@@ -65,6 +65,7 @@ class MainScreen extends React.Component {
           <Header openDrawer={this.openDrawer}/>
           <div className={this.props.classes.row}>
             <SideBar
+              inSharedFolder = {this.props.location.pathname === '/folders/_shared'}
               isDrawerOpen={this.state.isDrawerOpen}
               onDrawerClose={this.closeDrawer}
             />

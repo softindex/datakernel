@@ -136,7 +136,7 @@ class Breadcrumbs extends React.Component {
 
 export default withWidth()(withStyles(breadcrumbsStyles)(
   withBreadcrumbs(
-    [{path: '/folders', breadcrumb: 'My files'}],
+    [{path: '/folders', breadcrumb: 'My files'}, {path: '/folders/_shared', breadcrumb: 'Shared files'}],
     {excludePaths: ['/']}
   )(Breadcrumbs))
 );

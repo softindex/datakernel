@@ -21,11 +21,14 @@ import Snackbar from '../theme/Snackbar';
 import withWidth, {isWidthDown} from '@material-ui/core/withWidth';
 import Link from "react-router-dom/es/Link";
 import sideBarStyles from './sideBarStyles';
+import ShareDialog from "../theme/ShareDialog";
+import SharedDirService from "../../common/SharedDirService";
 
 class SideBar extends React.Component {
   state = {
     fabElement: null,
     folderFormIsOpen: false,
+    sharedFolderFormIsOpen: false,
     isOpen: false,
     error: null
   };
@@ -93,6 +96,50 @@ class SideBar extends React.Component {
       this.createFolder(name);
     }
   };
+  // endregion
+
+  //region create shared folder
+
+  createSharedFolder = async (dirName, participants) => {
+    this.props.onDrawerClose();
+
+    if (!participants || !dirName) {
+      return;
+    }
+
+    try {
+      await SharedDirService.share(dirName, participants);
+    } catch (e) {
+      console.log(e);
+      this.setState({
+        error: e.message
+      })
+    }
+  };
+
+  shareFormOpen = () => {
+    this.closeFabMenu();
+    this.setState({
+      sharedFolderFormIsOpen: true
+    });
+  };
+
+  shareFormClose = () => {
+    this.setState({
+      sharedFolderFormIsOpen: false
+    })
+  };
+
+  shareFormSubmit = (dirName, participants) => {
+    if (dirName && participants) {
+      this.setState({
+        sharedFolderFormIsOpen: false
+      });
+      this.createSharedFolder(dirName, participants);
+    }
+  };
+
+  // endregion
 
   render() {
     return (
@@ -120,28 +167,37 @@ class SideBar extends React.Component {
           anchorEl={this.state.fabElement}
         >
           <MenuList>
-            <MenuItem onClick={this.formOpen}>
+            {this.props.inSharedFolder ? null : <div>
+              <MenuItem onClick={this.formOpen}>
+                <ListItemIcon>
+                  <CreateFolderIcon/>
+                </ListItemIcon>
+                <ListItemText inset primary="Create folder"/>
+              </MenuItem>
+              <Divider/>
+              <input
+                onChange={this.onFileUpload}
+                ref={ref => this.input = ref}
+                multiple type="file"
+                id="file"
+                className={this.props.classes.uploadInput}
+              />
+              <label htmlFor="file">
+                <MenuItem>
+                  <ListItemIcon>
+                    <FileIcon/>
+                  </ListItemIcon>
+                  <ListItemText inset primary="Upload File"/>
+                </MenuItem>
+              </label>
+              <Divider/>
+            </div>}
+            <MenuItem onClick={this.shareFormOpen}>
               <ListItemIcon>
                 <CreateFolderIcon/>
               </ListItemIcon>
-              <ListItemText inset primary="Create folder"/>
+              <ListItemText inset primary="Create shared folder"/>
             </MenuItem>
-            <Divider/>
-            <input
-              onChange={this.onFileUpload}
-              ref={ref => this.input = ref}
-              multiple type="file"
-              id="file"
-              className={this.props.classes.uploadInput}
-            />
-            <label htmlFor="file">
-              <MenuItem>
-                <ListItemIcon>
-                  <FileIcon/>
-                </ListItemIcon>
-                <ListItemText inset primary="Upload File"/>
-              </MenuItem>
-            </label>
           </MenuList>
         </Menu>
         <List className={this.props.classes.menuList}>
@@ -168,6 +224,29 @@ class SideBar extends React.Component {
               />
             </ListItem>
           </Link>
+          <Link to="/folders/_shared" style={{textDecoration: 'none'}}>
+            <ListItem
+              button
+              selected={true}
+              onClick={this.props.onDrawerClose}
+              classes={{
+                root: this.props.classes.listItem,
+                selected: this.props.classes.listItemSelected
+              }}
+            >
+              <ListItemIcon>
+                <StorageIcon/>
+              </ListItemIcon>
+              <ListItemText
+                primaryTypographyProps={{
+                  classes: {
+                    root: this.props.classes.listTypography
+                  }
+                }}
+                primary="Shared files"
+              />
+            </ListItem>
+          </Link>
         </List>
         <PromptDialog
           title="Create folder"
@@ -175,6 +254,13 @@ class SideBar extends React.Component {
           onClose={this.formClose}
           onSubmit={this.formSubmit}
         />
+        <ShareDialog
+          title="Share folder"
+          open={this.state.sharedFolderFormIsOpen}
+          onClose={this.shareFormClose}
+          onSubmit={this.shareFormSubmit}
+        />
+
         <Snackbar
           error={this.state.error}
         />

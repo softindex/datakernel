@@ -1,6 +1,7 @@
 import Store from '../../common/Store';
 
 const PREFIX_TO_IGNORE = '.~#!HIDDEN!#~.';
+const SHARED_FOLDER = '_shared';
 
 function ascStringComparator(a, b) {
   return a.name.localeCompare(b.name);
@@ -21,6 +22,7 @@ class FSService extends Store {
     super({
       files: [],
       directories: [],
+      sharedDirectories: new Map(),
       uploads: new Map(),
       path: '',
       loading: true
@@ -34,7 +36,7 @@ class FSService extends Store {
       loading: true
     });
     const list = await this._globalFSGateway.list();
-    const {files, directories} = this._getFilesAndDirectories(list, path);
+    const {files, directories} = FSService._getFilesAndDirectories(list, path);
     this.setStore({
       path,
       files,
@@ -129,7 +131,7 @@ class FSService extends Store {
     });
   }
 
-  _getFilesAndDirectories(list, path) {
+  static _getFilesAndDirectories(list, path) {
     // Formatting path to 'foo/bar/'
     path = path.match(/^\/?(.*?)\/?$/)[1] + '/';
     path = path === '/' ? '' : path;
@@ -144,7 +146,10 @@ class FSService extends Store {
 
       let nextSlashPos = name.indexOf('/', path.length);
       if (nextSlashPos !== -1) {
-        directoriesSet.add(name.slice(path.length, nextSlashPos));
+        let directoryName = name.slice(path.length, nextSlashPos);
+        if (directoryName.indexOf(PREFIX_TO_IGNORE) !== 0 && directoryName !== SHARED_FOLDER) {
+          directoriesSet.add(directoryName);
+        }
         continue;
       }
 
