@@ -16,22 +16,25 @@
 
 package io.global.launchers;
 
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.service.ServiceGraphModule;
 
 import java.util.Collection;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.override;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public class GlobalNodesLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
 
 	@Inject
@@ -54,11 +57,11 @@ public class GlobalNodesLauncher extends Launcher {
 	EventloopTaskScheduler kvCatchUpScheduler;
 
 	@Override
-	protected final Collection<com.google.inject.Module> getModules() {
-		return singletonList(override(getBaseModules()).with(getOverrideModules()));
+	protected final Collection<Module> getModules() {
+		return singletonList(override(getBaseModules(), getOverrideModules()));
 	}
 
-	private Collection<com.google.inject.Module> getBaseModules() {
+	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -73,7 +76,7 @@ public class GlobalNodesLauncher extends Launcher {
 	/**
 	 * Override this method to override base modules supplied in launcher.
 	 */
-	protected Collection<com.google.inject.Module> getOverrideModules() {
+	protected Collection<Module> getOverrideModules() {
 		return emptyList();
 	}
 

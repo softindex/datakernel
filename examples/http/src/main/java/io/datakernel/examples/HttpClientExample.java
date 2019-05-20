@@ -16,9 +16,12 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -62,7 +65,6 @@ public final class HttpClientExample extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					Eventloop eventloop() {
 						return Eventloop.create()
 								.withFatalErrorHandler(rethrowOnAnyError())
@@ -70,13 +72,11 @@ public final class HttpClientExample extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					AsyncHttpClient client(Eventloop eventloop, AsyncDnsClient dnsClient) {
 						return AsyncHttpClient.create(eventloop).withDnsClient(dnsClient);
 					}
 
 					@Provides
-					@Singleton
 					AsyncDnsClient dnsClient(Eventloop eventloop, Config config) {
 						return RemoteAsyncDnsClient.create(eventloop)
 								.withDnsServerAddress(config.get(ofInetAddress(), "http.client.googlePublicDns"))
@@ -116,6 +116,6 @@ public final class HttpClientExample extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		HttpClientExample example = new HttpClientExample();
-		example.launch(true, args);
+		example.launch(args);
 	}
 }

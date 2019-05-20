@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
 import static io.datakernel.di.util.Utils.flattenMultimap;
@@ -26,7 +25,10 @@ public final class Injector {
 	private final Map<Key<?>, Binding<?>> bindings;
 	private final Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings;
 
-	private final ConcurrentHashMap<Key<?>, Object> instances = new ConcurrentHashMap<>();
+//	private final ConcurrentHashMap<Key<?>, Object> instances = new ConcurrentHashMap<>();
+
+	// cannot do recursive operations with concurrent hash map, need to do something different
+	private final HashMap<Key<?>, Object> instances = new HashMap<>();
 
 	private Injector(@Nullable Scope scope, @Nullable Injector parentInjector,
 			Map<Key<?>, Binding<?>> bindings, Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings) {
@@ -47,10 +49,13 @@ public final class Injector {
 
 	public static Injector create(Module... modules) {
 		Module module = Modules.combine(modules);
-		Function<Key<?>, BinaryOperator<Binding<?>>> conflictResolvers = flattenMultimap(module.getConflictResolvers(), (a, b) -> a)::get;
-		Map<Key<?>, Binding<?>> bindings = flattenMultimap(module.getBindings(), conflictResolvers);
+
+		Function<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolver = module.getConflictResolvers()::get;
+
+		Map<Key<?>, Binding<?>> bindings = flattenMultimap(module.getBindings(), conflictResolver);
 		Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings = module.getScopeBindings().entrySet().stream()
-				.collect(toMap(Entry::getKey, scopeEntry -> flattenMultimap(scopeEntry.getValue(), conflictResolvers)));
+				.collect(toMap(Entry::getKey, scopeEntry -> flattenMultimap(scopeEntry.getValue(), conflictResolver)));
+
 		return of(bindings, scopeBindings);
 	}
 
@@ -59,41 +64,50 @@ public final class Injector {
 		return scope;
 	}
 
+	@NotNull
 	public <T> T getInstance(@NotNull Class<T> type) {
 		return getInstance(Key.of(type));
 	}
 
 	@SuppressWarnings("unchecked")
+	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
+		return (T) instances.computeIfAbsent(key, k -> {
+			Object constructed = constructInstance(k);
+			if (constructed == null) {
+				throw new RuntimeException("cannot construct");
+			}
+			return constructed;
+		});
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public <T> T getOptionalInstance(@NotNull Key<T> key) {
 		return (T) instances.computeIfAbsent(key, this::constructInstance);
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	private <T> T constructInstance(@NotNull Key<T> key) {
 		Binding<T> binding = (Binding<T>) bindings.get(key);
-		if (binding != null) {
-			Object[] args = new Object[binding.getDependencies().length];
-			for (int i = 0; i < args.length; i++) {
-				args[i] = getInstance(binding.getDependencies()[i]);
-			}
-			return binding.getConstructor().construct(args);
-		}
-
-		return constructSpecialInstance(key);
+		return binding != null ?
+				binding.getConstructor().construct(constructDependencies(binding)) :
+				constructSpecialInstance(key);
 	}
 
 	@SuppressWarnings("unchecked")
+	@Nullable
 	private <T> T constructSpecialInstance(@NotNull Key<T> key) {
-		if (key.equals(Key.of(Injector.class))) return (T) this;
-		if (key.getTypeT().getType() == Provider.class) {
+		if (key.equals(Key.of(Injector.class))) {
+			return (T) this;
+		}
+		if (key.getTypeT().getRawType() == Provider.class) {
 			RecursiveType[] typeParams = RecursiveType.of(key.getTypeT()).getTypeParams();
 			checkArgument(typeParams.length == 1);
 			Binding<T> binding = (Binding<T>) bindings.get(new Key(typeParams[0].getTypeT(), key.getName()));
 			if (binding != null) {
-				Object[] args = new Object[binding.getDependencies().length];
-				for (int i = 0; i < args.length; i++) {
-					args[i] = getInstance(binding.getDependencies()[i]);
-				}
+				Object[] args = constructDependencies(binding);
 				Binding.Constructor<T> constructor = binding.getConstructor();
 				return (T) new Provider<T>() {
 					@Override
@@ -109,9 +123,22 @@ public final class Injector {
 			}
 		}
 
-		if (parentInjector != null) return parentInjector.constructInstance(key);
+		if (parentInjector != null) {
+			return parentInjector.constructInstance(key);
+		}
 
-		throw new IllegalArgumentException();
+		return null;
+	}
+
+	private Object[] constructDependencies(Binding<?> binding) {
+		Object[] deps = new Object[binding.getDependencies().length];
+		for (int i = 0; i < deps.length; i++) {
+			Dependency dependency = binding.getDependencies()[i];
+			deps[i] = dependency.isRequired() ?
+					getInstance(dependency.getKey()) :
+					getOptionalInstance(dependency.getKey());
+		}
+		return deps;
 	}
 
 	@Nullable
@@ -141,7 +168,7 @@ public final class Injector {
 		return unmodifiableMap(bindings);
 	}
 
-	public Map<Key<?>, Set<Key<?>>> getDependencies() {
+	public Map<Key<?>, Set<Dependency>> getDependencies() {
 		return bindings.entrySet().stream()
 				.collect(toMap(Entry::getKey, entry -> new HashSet<>(Arrays.asList(entry.getValue().getDependencies()))));
 	}
@@ -158,15 +185,15 @@ public final class Injector {
 		return unmodifiableMap(scopeBindings.get(scope));
 	}
 
-	public Map<Key<?>, Set<ScopedKey<?>>> getScopeDependencies(Scope scope) {
+	public Map<Key<?>, Set<ScopedDependency>> getScopeDependencies(Scope scope) {
 		Map<Key<?>, Binding<?>> map = scopeBindings.get(scope);
 		return map.entrySet().stream()
 				.collect(toMap(Entry::getKey,
 						entry -> Arrays.stream(entry.getValue().getDependencies())
 								.map(dependencyKey ->
-										map.containsKey(dependencyKey) ?
-												ScopedKey.ofScoped(scope, dependencyKey) :
-												ScopedKey.ofUnscoped(dependencyKey)
+										map.containsKey(dependencyKey.getKey()) ?
+												ScopedDependency.ofScoped(scope, dependencyKey) :
+												ScopedDependency.ofUnscoped(dependencyKey)
 								)
 								.collect(toSet())
 						)
@@ -190,5 +217,4 @@ public final class Injector {
 		bindings.putAll(extraBindings);
 		return new Injector(scope, this, bindings, scopeBindings);
 	}
-
 }

@@ -16,13 +16,12 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -47,14 +46,12 @@ public class HttpServerScratch extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT))),
 				new AbstractModule() {
-					@Singleton
 					@Provides
 					Eventloop eventloop() {
 						return Eventloop.create()
 								.withFatalErrorHandler(rethrowOnAnyError());
 					}
 
-					@Singleton
 					@Provides
 					AsyncServlet servlet() {
 						return request -> {
@@ -63,7 +60,6 @@ public class HttpServerScratch extends Launcher {
 						};
 					}
 
-					@Singleton
 					@Provides
 					AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet)
@@ -82,6 +78,6 @@ public class HttpServerScratch extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new HttpServerScratch();
-		launcher.launch(true, args);
+		launcher.launch(args);
 	}
 }

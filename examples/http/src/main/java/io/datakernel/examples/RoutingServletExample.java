@@ -16,11 +16,10 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
@@ -30,7 +29,6 @@ import java.util.Collection;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.util.CollectionUtils.list;
-import static java.lang.Boolean.parseBoolean;
 
 public final class RoutingServletExample extends HttpServerLauncher {
 
@@ -38,7 +36,6 @@ public final class RoutingServletExample extends HttpServerLauncher {
 	protected Collection<Module> getBusinessLogicModules() {
 		return list(new AbstractModule() {
 			@Provides
-			@Singleton
 			AsyncServlet mainServlet() {
 				return RoutingServlet.create()
 						.with(GET, "/", request -> Promise.of(HttpResponse.ok200()
@@ -60,6 +57,6 @@ public final class RoutingServletExample extends HttpServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new RoutingServletExample();
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }

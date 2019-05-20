@@ -16,18 +16,22 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.Module;
+import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.crdt.CrdtNodeLogicModule.Cluster;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.TriggersModule;
 
 import java.util.Collection;
 
-import static com.google.inject.util.Modules.combine;
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -45,7 +49,7 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 
 	@Override
 	protected Collection<Module> getModules() {
-		return asList(override(getBaseModules()).with(getOverrideModules()),
+		return asList(override(getBaseModules(), getOverrideModules()),
 				combine(getBusinessLogicModules()));
 	}
 

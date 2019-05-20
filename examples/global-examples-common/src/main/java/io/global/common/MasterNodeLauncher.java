@@ -1,9 +1,9 @@
 package io.global.common;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
@@ -12,10 +12,10 @@ import io.global.launchers.GlobalNodesModule;
 import java.nio.file.Paths;
 import java.util.Collection;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static java.lang.Boolean.parseBoolean;
+import static io.datakernel.di.module.Modules.override;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 public final class MasterNodeLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
@@ -38,8 +38,7 @@ public final class MasterNodeLauncher extends Launcher {
 								.with("fs.storage", DEFAULT_FS_STORAGE)
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				override(new GlobalNodesModule())
-						.with(new ExampleCommonModule())
+				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule()))
 		);
 	}
 
@@ -49,7 +48,7 @@ public final class MasterNodeLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new MasterNodeLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new MasterNodeLauncher().launch(args);
 	}
 
 }

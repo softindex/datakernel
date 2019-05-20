@@ -1,10 +1,10 @@
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import org.junit.Test;
 
 import java.util.Collection;

@@ -16,16 +16,18 @@
 
 package io.datakernel.launchers.http;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.google.inject.Provides;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;

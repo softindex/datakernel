@@ -16,17 +16,17 @@
 
 package io.global.ot.editor;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
-import com.google.inject.TypeLiteral;
-import com.google.inject.name.Named;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.TypeT;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
 import io.global.launchers.GlobalNodesModule;
@@ -36,12 +36,12 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.override;
 import static io.global.ot.editor.operations.EditorOTSystem.createOTSystem;
 import static io.global.ot.editor.operations.Utils.OPERATION_CODEC;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 public final class GlobalEditorDemoApp extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
@@ -69,13 +69,12 @@ public final class GlobalEditorDemoApp extends Launcher {
 				new OTCommonModule<EditorOperation>() {
 					@Override
 					protected void configure() {
-						bind(new TypeLiteral<StructuredCodec<EditorOperation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeLiteral<Function<EditorOperation, String>>() {}).toInstance(Objects::toString);
-						bind(new TypeLiteral<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
+						bind(new TypeT<StructuredCodec<EditorOperation>>() {}).toInstance(OPERATION_CODEC);
+						bind(new TypeT<Function<EditorOperation, String>>() {}).toInstance(Objects::toString);
+						bind(new TypeT<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
 					}
 				},
-				override(new GlobalNodesModule())
-						.with(new ExampleCommonModule()));
+				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule())));
 	}
 
 	@Override
@@ -84,6 +83,6 @@ public final class GlobalEditorDemoApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalEditorDemoApp().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new GlobalEditorDemoApp().launch(args);
 	}
 }

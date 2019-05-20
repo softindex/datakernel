@@ -16,12 +16,15 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
-import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -76,7 +79,6 @@ public final class HttpBenchmark extends Launcher {
 				),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					@Named("client")
 					Eventloop eventloopClient() {
 						return Eventloop.create()
@@ -84,7 +86,6 @@ public final class HttpBenchmark extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					@Named("server")
 					Eventloop eventloopServer() {
 						return Eventloop.create()
@@ -92,28 +93,24 @@ public final class HttpBenchmark extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					AsyncDnsClient dnsClient(@Named("client") Eventloop eventloop, Config config) {
 						return RemoteAsyncDnsClient.create(eventloop)
 								.withDnsServerAddress(config.get(ofInetAddress(), "http.googlePublicDns"));
 					}
 
 					@Provides
-					@Singleton
 					AsyncHttpClient httpClient(@Named("client") Eventloop eventloop, AsyncDnsClient dnsClient, Config config) {
 						return AsyncHttpClient.create(eventloop).withDnsClient(dnsClient)
 								.withSocketSettings(config.get(ofSocketSettings(), "client.http.socketSettings"));
 					}
 
 					@Provides
-					@Singleton
 					AsyncHttpServer httpServer(@Named("server") Eventloop eventloop, AsyncServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet)
 								.initialize(ofHttpServer(config.getChild("server.http")));
 					}
 
 					@Provides
-					@Singleton
 					AsyncServlet servlet() {
 						return ignored -> Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello world!")));
 					}
@@ -239,6 +236,6 @@ public final class HttpBenchmark extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		HttpBenchmark benchmark = new HttpBenchmark();
-		benchmark.launch(true, args);
+		benchmark.launch(args);
 	}
 }

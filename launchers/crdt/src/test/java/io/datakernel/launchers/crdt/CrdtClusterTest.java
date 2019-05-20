@@ -16,18 +16,18 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
@@ -88,13 +88,11 @@ public final class CrdtClusterTest {
 		}
 
 		@Provides
-		@Singleton
 		ExecutorService provideExecutor(Config config) {
 			return config.get(ofExecutor(), "crdt.local.executor");
 		}
 
 		@Provides
-		@Singleton
 		FsClient provideFsClient(Eventloop eventloop, Config config) {
 			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}
@@ -175,7 +173,6 @@ public final class CrdtClusterTest {
 			protected Collection<Module> getBusinessLogicModules() {
 				return singletonList(new AbstractModule() {
 					@Provides
-					@Singleton
 					CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
 						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
 								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,

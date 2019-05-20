@@ -70,5 +70,4 @@ public final class Name extends AbstractAnnotation {
 			return Named.class;
 		}
 	}
-
 }

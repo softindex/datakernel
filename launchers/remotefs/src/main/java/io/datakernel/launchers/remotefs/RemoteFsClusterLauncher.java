@@ -16,13 +16,20 @@
 
 package io.datakernel.launchers.remotefs;
 
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.*;
+import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.Collection;
@@ -31,8 +38,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
 import static io.datakernel.launchers.remotefs.Initializers.*;
@@ -58,7 +65,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 
 	@Override
 	protected final Collection<Module> getModules() {
-		return singletonList(override(getBaseModules()).with(getOverrideModules()));
+		return singletonList(override(getBaseModules(), getOverrideModules()));
 	}
 
 	private Collection<Module> getBaseModules() {
@@ -72,7 +79,6 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
@@ -80,7 +86,6 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					@Named("repartition")
 					EventloopTaskScheduler repartitionScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller) {
 						return EventloopTaskScheduler.create(eventloop, controller::repartition)
@@ -88,7 +93,6 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					@Named("clusterDeadCheck")
 					EventloopTaskScheduler deadCheckScheduler(Config config, Eventloop eventloop, RemoteFsClusterClient cluster) {
 						return EventloopTaskScheduler.create(eventloop, cluster::checkDeadPartitions)
@@ -96,18 +100,16 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					RemoteFsRepartitionController repartitionController(Config config,
-							RemoteFsServer localServer, RemoteFsClusterClient cluster) {
+																		RemoteFsServer localServer, RemoteFsClusterClient cluster) {
 						return RemoteFsRepartitionController.create(config.get("remotefs.repartition.localPartitionId"), cluster)
 								.initialize(ofRepartitionController(config.getChild("remotefs.repartition")));
 					}
 
 					@Provides
-					@Singleton
 					RemoteFsClusterClient remoteFsClusterClient(Config config,
-							RemoteFsServer localServer, Eventloop eventloop,
-							OptionalDependency<ServerSelector> maybeServerSelector) {
+																RemoteFsServer localServer, Eventloop eventloop,
+																OptionalDependency<ServerSelector> maybeServerSelector) {
 						Map<Object, FsClient> clients = new HashMap<>();
 						clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
 						return RemoteFsClusterClient.create(eventloop, clients)
@@ -116,14 +118,12 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					RemoteFsServer remoteFsServer(Config config, Eventloop eventloop, ExecutorService executor) {
 						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.path"))
 								.initialize(ofRemoteFsServer(config.getChild("remotefs.server")));
 					}
 
 					@Provides
-					@Singleton
 					public ExecutorService executorService() {
 						return Executors.newSingleThreadExecutor();
 					}

@@ -16,12 +16,11 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
@@ -29,8 +28,6 @@ import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
 import java.util.Collection;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.launchers.remotefs.RemoteFsServerLauncher.EAGER_SINGLETONS_MODE;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
 /**
@@ -48,7 +45,6 @@ public class ServerSetupExample {
 						),
 						new AbstractModule() {
 							@Provides
-							@Singleton
 							Eventloop eventloop() {
 								return Eventloop.create()
 										.withFatalErrorHandler(rethrowOnAnyError())
@@ -58,6 +54,6 @@ public class ServerSetupExample {
 				);
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }

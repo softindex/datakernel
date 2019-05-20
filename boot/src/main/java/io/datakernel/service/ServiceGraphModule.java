@@ -18,7 +18,7 @@ package io.datakernel.service;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
-import io.datakernel.di.ScopedKey;
+import io.datakernel.di.ScopedDependency;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
@@ -273,7 +273,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				Key<?> key = entry.getKey();
 				ServiceKey serviceKey = new ServiceKey(key);
 				instances.put(serviceKey, singletonList(entry.getValue()));
-				instanceDependencies.put(serviceKey, Arrays.stream(injector.getBindings().get(key).getDependencies()).map(ServiceKey::new).collect(toSet()));
+				instanceDependencies.put(serviceKey, Arrays.stream(injector.getBindings().get(key).getDependencies())
+						.map(d -> new ServiceKey(d.getKey()))
+						.collect(toSet()));
 			}
 
 
@@ -281,16 +283,16 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				for (int i = 0; i < pools.size(); i++) {
 					final int finalI = i;
 					WorkerPool pool = pools.get(i);
-					Map<Key<?>, Set<ScopedKey<?>>> scopeDependencies = injector.getScopeDependencies(pool.getScope());
+					Map<Key<?>, Set<ScopedDependency>> scopeDependencies = injector.getScopeDependencies(pool.getScope());
 					for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
 						Key<?> key = entry.getKey();
 						ServiceKey serviceKey = new ServiceKey(key, i);
 						instances.put(serviceKey, Arrays.asList(entry.getValue()));
 						instanceDependencies.put(serviceKey, scopeDependencies.get(key)
 								.stream()
-								.map(scopedKey -> scopedKey.isScoped() ?
-										new ServiceKey(scopedKey.getKey(), finalI) :
-										new ServiceKey(scopedKey.getKey()))
+								.map(scopedDependency -> scopedDependency.isScoped() ?
+										new ServiceKey(scopedDependency.getDependency().getKey(), finalI) :
+										new ServiceKey(scopedDependency.getDependency().getKey()))
 								.collect(toSet()));
 					}
 				}

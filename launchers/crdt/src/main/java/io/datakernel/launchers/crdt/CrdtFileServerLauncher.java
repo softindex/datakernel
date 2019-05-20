@@ -17,20 +17,28 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
 import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.TriggersModule;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.inject.util.Modules.combine;
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -43,7 +51,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 
 	@Override
 	protected Collection<Module> getModules() {
-		return asList(override(getBaseModules()).with(getOverrideModules()),
+		return asList(override(getBaseModules(), getOverrideModules()),
 				combine(getBusinessLogicModules()));
 	}
 
@@ -69,19 +77,16 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 				new AbstractModule() {
 
 					@Provides
-					@Singleton
 					Eventloop provideEventloop() {
 						return Eventloop.create();
 					}
 
 					@Provides
-					@Singleton
 					ExecutorService provideExecutor(Config config) {
 						return config.get(ofExecutor(), "executor");
 					}
 
 					@Provides
-					@Singleton
 					LocalFsClient provideLocalFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
 						return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.localPath"));
 					}
@@ -97,14 +102,12 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 	public abstract static class CrdtFileServerLogicModule<K extends Comparable<K>, S> extends AbstractModule {
 
 		@Provides
-		@Singleton
 		CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, CrdtStorageFs<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return CrdtServer.create(eventloop, crdtClient, descriptor.getSerializer())
 					.initialize(ofAbstractServer(config.getChild("crdt.server")));
 		}
 
 		@Provides
-		@Singleton
 		CrdtStorageFs<K, S> provideFsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return CrdtStorageFs.create(eventloop, localFsClient, descriptor.getSerializer(), descriptor.getCrdtFunction())
 					.initialize(Initializers.ofFsCrdtClient(config.getChild("crdt.files")));

@@ -7,11 +7,12 @@ import io.datakernel.di.Scope;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
 public interface Module {
 	Map<Key<?>, Set<Binding<?>>> getBindings();
 
 	Map<Scope, Map<Key<?>, Set<Binding<?>>>> getScopeBindings();
 
-	Map<Key<?>, Set<BinaryOperator<Binding<?>>>> getConflictResolvers();
+	Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers();
 }

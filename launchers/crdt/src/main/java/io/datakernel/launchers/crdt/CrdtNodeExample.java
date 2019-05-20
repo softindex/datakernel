@@ -16,13 +16,13 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
@@ -49,7 +49,6 @@ public final class CrdtNodeExample {
 		}
 
 		@Provides
-		@Singleton
 		FsClient provideFsClient(Eventloop eventloop, Config config) {
 			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}

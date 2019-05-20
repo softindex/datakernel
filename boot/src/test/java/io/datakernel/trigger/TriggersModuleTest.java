@@ -16,9 +16,13 @@
 
 package io.datakernel.trigger;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.ProvidesIntoSet;
-import com.google.inject.name.Named;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Name;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
+import io.datakernel.di.module.ProvidesIntoSet;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
@@ -62,17 +66,17 @@ public class TriggersModuleTest {
 				new AbstractModule() {
 					int counter = 0;
 
-					@Provides
-					@Named("first")
-					WorkerPool provideFirstPool() {
-						return new WorkerPool(firstPoolSize);
-					}
-
-					@Provides
-					@Named("second")
-					WorkerPool provideSecondPool() {
-						return new WorkerPool(secondPoolSize);
-					}
+//					@Provides
+//					@Named("first")
+//					WorkerPool provideFirstPool() {
+//						return new WorkerPool(firstPoolSize);
+//					}
+//
+//					@Provides
+//					@Named("second")
+//					WorkerPool provideSecondPool() {
+//						return new WorkerPool(secondPoolSize);
+//					}
 
 					@Provides
 					@Worker

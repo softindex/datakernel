@@ -16,7 +16,7 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.Module;
+import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Launcher;
 
 import java.util.Collection;
@@ -35,6 +35,6 @@ public class HelloWorldLauncher {
 				System.out.println("Hello World!");
 			}
 		};
-		launcher.launch(true, args);
+		launcher.launch(args);
 	}
 }

@@ -42,7 +42,6 @@ special `RemoteFsServerLauncher` from Launchers module. It allows to setup FS se
  					new AbstractModule() {
  						//creating an eventloop for our server
  						@Provides
- 						@Singleton
  						Eventloop eventloop() {
  							return Eventloop.create()
  								.withFatalErrorHandler(rethrowOnAnyError())

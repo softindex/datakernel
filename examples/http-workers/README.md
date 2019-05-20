@@ -200,21 +200,18 @@ So let's extend `AbstractModule` and write down all the dependencies needed for 
 ```java
 public class HttpHelloWorldModule extends AbstractModule {
 	@Provides
-	@Singleton
 	//returns a pool with 4 workers
 	WorkerPool workerPool(Config config) {
 		return new WorkerPool(config.get(ofInteger(), "workers", 4));
 	}
 
 	@Provides
-	@Singleton
 	@Primary
 	Eventloop primaryEventloop() {
 		return Eventloop.create();
 	}
 
 	@Provides
-	@Singleton
 	PrimaryServer primaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 		int port = config.get(ofInteger(), "port", 5577);
 		return PrimaryServer.create(primaryEventloop, workerPool.getInstances(AsyncHttpServer.class)).withListenPort(port);

@@ -16,8 +16,9 @@
 
 package io.datakernel.launchers.remotefs;
 
-import com.google.inject.Module;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.Module;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;

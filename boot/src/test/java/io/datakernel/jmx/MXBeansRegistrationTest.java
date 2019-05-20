@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import com.google.inject.Key;
+import io.datakernel.di.Key;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -43,7 +43,7 @@ public class MXBeansRegistrationTest {
 			oneOf(mBeanServer).registerMBean(with(service), with(objectname(domain + ":type=ServiceStub")));
 		}});
 
-		Key<?> key = Key.get(ServiceStub.class);
+		Key<?> key = Key.of(ServiceStub.class);
 		jmxRegistry.registerSingleton(key, service, null);
 	}
 
@@ -71,7 +71,7 @@ public class MXBeansRegistrationTest {
 			);
 		}});
 
-		Key<?> key = Key.get(ServiceTransitiveInterface.class);
+		Key<?> key = Key.of(ServiceTransitiveInterface.class);
 		jmxRegistry.registerSingleton(key, service, null);
 	}
 
@@ -104,7 +104,7 @@ public class MXBeansRegistrationTest {
 			);
 		}});
 
-		Key<?> key = Key.get(ServiceTransitiveClass.class);
+		Key<?> key = Key.of(ServiceTransitiveClass.class);
 		jmxRegistry.registerSingleton(key, service, null);
 	}
 
@@ -133,7 +133,7 @@ public class MXBeansRegistrationTest {
 			);
 		}});
 
-		Key<?> key = Key.get(ServiceWithMXBeanInterfaceAnnotation.class);
+		Key<?> key = Key.of(ServiceWithMXBeanInterfaceAnnotation.class);
 		jmxRegistry.registerSingleton(key, service, null);
 	}
 

@@ -1,6 +1,7 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.Binding;
+import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
 import io.datakernel.util.*;
@@ -8,21 +9,32 @@ import io.datakernel.util.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
+import static io.datakernel.di.util.Utils.bindingsFromProvidesAnnotations;
+import static io.datakernel.di.util.Utils.combineMultimap;
 import static java.util.Arrays.asList;
 
 public abstract class AbstractModule implements Module {
-	private final List<Module> installedModules = new ArrayList<>();
 	private final Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
 	private final Map<Scope, Map<Key<?>, Set<Binding<?>>>> scopeBindings = new HashMap<>();
-	private final Map<Key<?>, Set<BinaryOperator<Binding<?>>>> conflictResolvers = new HashMap<>();
+	private final Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
+
+	public AbstractModule() {
+		configure();
+		bindingsFromProvidesAnnotations(this)
+				.forEach(binding -> bindings.computeIfAbsent(binding.getKey(), $ -> new HashSet<>()).add(binding));
+	}
 
 	protected void configure() {
 	}
 
 	protected void install(Module module) {
-		installedModules.add(module);
+		combineMultimap(bindings, module.getBindings());
+		module.getConflictResolvers().forEach((k, v) -> conflictResolvers.merge(k, v, ($, $2) -> {
+			throw new RuntimeException("more than one conflict resolver per key");
+		}));
+		module.getScopeBindings().forEach((scope, bindings) -> combineMultimap(scopeBindings.computeIfAbsent(scope, $ -> new HashMap<>()), bindings));
 	}
 
 	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "unchecked"})
@@ -52,12 +64,12 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public void to(Binding.Constructor<T> constructor, List<Key<?>> dependencies) {
-			to(constructor, dependencies.toArray(new Key<?>[]{}));
+			to(constructor, dependencies.toArray(new Key[0]));
 		}
 
 		public void to(Binding.Constructor<T> constructor, Key<?>... dependencies) {
 			bindings.computeIfAbsent(key, $ -> new HashSet<>())
-					.add(new Binding<>(key, dependencies, constructor));
+					.add(new Binding<>(key, Arrays.stream(dependencies).map(k -> new Dependency(k, true)).toArray(Dependency[]::new), constructor));
 		}
 
 		public void to(Class<? extends T> implementation) {
@@ -77,62 +89,62 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public <T1> void to(TupleConstructor1<T1, T> constructor,
-				Key<T1> dependency1) {
+							Key<T1> dependency1) {
 			to(args -> constructor.create((T1) args[0]), asList(dependency1));
 		}
 
 		public <T1, T2> void to(TupleConstructor2<T1, T2, T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2) {
+								Key<T1> dependency1, Key<T2> dependency2) {
 			to(args -> constructor.create((T1) args[0], (T2) args[1]), asList(dependency1, dependency2));
 		}
 
 		public <T1, T2, T3> void to(TupleConstructor3<T1, T2, T3, T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
+									Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
 			to(args -> constructor.create((T1) args[0], (T2) args[1], (T3) args[2]), asList(dependency1, dependency2, dependency3));
 		}
 
 		public <T1, T2, T3, T4> void to(TupleConstructor4<T1, T2, T3, T4, T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
+										Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
 			to(args -> constructor.create((T1) args[0], (T2) args[1], (T3) args[2], (T4) args[3]), asList(dependency1, dependency2, dependency3, dependency4));
 		}
 
 		public <T1, T2, T3, T4, T5> void to(TupleConstructor5<T1, T2, T3, T4, T5, T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
+											Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
 			to(args -> constructor.create((T1) args[0], (T2) args[1], (T3) args[2], (T4) args[3], (T5) args[4]), asList(dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
 		public <T1, T2, T3, T4, T5, T6> void to(TupleConstructor6<T1, T2, T3, T4, T5, T6, T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
+												Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
 			to(args -> constructor.create((T1) args[0], (T2) args[1], (T3) args[2], (T4) args[3], (T5) args[4], (T6) args[5]), asList(dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
 		public <T1> void to(TupleConstructor1<T1, T> constructor,
-				Class<T1> dependency1) {
+							Class<T1> dependency1) {
 			to(constructor, Key.of(dependency1));
 		}
 
 		public <T1, T2> void to(TupleConstructor2<T1, T2, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2) {
+								Class<T1> dependency1, Class<T2> dependency2) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2));
 		}
 
 		public <T1, T2, T3> void to(TupleConstructor3<T1, T2, T3, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
+									Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3));
 		}
 
 		public <T1, T2, T3, T4> void to(TupleConstructor4<T1, T2, T3, T4, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
+										Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4));
 		}
 
 		public <T1, T2, T3, T4, T5> void to(TupleConstructor5<T1, T2, T3, T4, T5, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
+											Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5));
 		}
 
 		public <T1, T2, T3, T4, T5, T6> void to(TupleConstructor6<T1, T2, T3, T4, T5, T6, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
+												Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5), Key.of(dependency6));
 		}
 
@@ -170,8 +182,10 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected final <T> void resolveConflicts(Key<T> key, BinaryOperator<Binding<T>> conflictResolver) {
-		conflictResolvers.computeIfAbsent(key, $ -> new HashSet<>()).add((BinaryOperator) conflictResolver);
+	protected final <T> void resolveConflicts(Key<T> key, Function<Set<Binding<T>>, Binding<T>> conflictResolver) {
+		conflictResolvers.merge(key, (Function) conflictResolver, ($, $2) -> {
+			throw new RuntimeException("more than one conflict resolver per key");
+		});
 	}
 
 	@Override
@@ -185,7 +199,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Map<Key<?>, Set<BinaryOperator<Binding<?>>>> getConflictResolvers() {
+	public Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers() {
 		return conflictResolvers;
 	}
 }

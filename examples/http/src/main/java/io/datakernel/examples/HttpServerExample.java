@@ -16,13 +16,12 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
@@ -32,8 +31,6 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.launchers.http.HttpServerLauncher.EAGER_SINGLETONS_MODE;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
@@ -57,7 +54,6 @@ public final class HttpServerExample extends HttpServerLauncher {
 		return singletonList(
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					AsyncServlet servlet() {
 						return request -> Promise.of(HttpResponse.ok200()
 								.withBody(encodeAscii("Hello World!")));
@@ -74,6 +70,6 @@ public final class HttpServerExample extends HttpServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new HttpServerExample();
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }

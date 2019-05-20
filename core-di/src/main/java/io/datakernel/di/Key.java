@@ -5,6 +5,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
+import java.util.List;
+import java.util.Objects;
 
 public final class Key<T> {
 	@NotNull
@@ -75,5 +77,38 @@ public final class Key<T> {
 	@Nullable
 	public Name getName() {
 		return name;
+	}
+
+	public String getDisplayString() {
+		return (name != null ? name.getDisplayString() + " " : "") + type.getDisplayString();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+
+		Key<?> key = (Key<?>) o;
+
+		return Objects.equals(type, key.type) && Objects.equals(name, key.name);
+
+	}
+
+	@Override
+	public int hashCode() {
+		return 31 * type.hashCode() + (name != null ? name.hashCode() : 0);
+	}
+
+	@Override
+	public String toString() {
+		return (name != null ? name.toString() : "") + type;
+	}
+
+	public static void main(String[] args) {
+		System.out.println(Key.of(new TypeT<List<String>>(){}, Name.of("hello")).getDisplayString());
 	}
 }

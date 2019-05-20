@@ -1,26 +1,24 @@
 package io.datakernel.launchers.http;
 
-import com.google.inject.name.Names;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.config.Config;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.NameAnnotation;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpException;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.RecursiveType;
-import io.datakernel.util.ReflectionUtils;
-import io.datakernel.util.StringFormatUtils;
-import io.datakernel.util.guice.GuiceUtils;
-import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPools;
+import io.datakernel.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.lang.reflect.Type;
@@ -39,8 +37,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.guice.GuiceUtils.prettyPrintSimpleKeyName;
 import static java.lang.annotation.ElementType.*;
@@ -106,69 +102,67 @@ public class JmxHttpModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		JmxModule.bindKeyListeners(binder(), this, b -> singletons.add(b.getKey()), b -> {
-			Key<?> key = b.getKey();
-			WorkerPool workerPool = GuiceUtils.extractWorkerPool(b);
-			Integer workerId = GuiceUtils.extractWorkerId(b);
-			assert workerPool != null && workerId != null : b;
-			workers.add(new KeyWithWorkerData(key, workerPool, workerId));
-		});
+//		JmxModule.bindKeyListeners(binder(), this, b -> singletons.add(b.getKey()), b -> {
+//			Key<?> key = b.getKey();
+//			WorkerPool workerPool = GuiceUtils.extractWorkerPool(b);
+//			Integer workerId = GuiceUtils.extractWorkerId(b);
+//			assert workerPool != null && workerId != null : b;
+//			workers.add(new KeyWithWorkerData(key, workerPool, workerId));
+//		});
 
-		if (serverAddresses != null) {
-			install(new AbstractModule() {
-
-				@Inject
-				@JmxHttp
-				AsyncHttpServer jmxHttpServer;
-
-				@Override
-				protected void configure() {
-					requestInjection(this);
-				}
-
-				@Provides
-				@Singleton
-				@JmxHttp
-				Eventloop provideEventloop(Config config) {
-					return Eventloop.create()
-							.initialize(ofEventloop(config.getChild("jmx.httpServer.eventloop")));
-				}
-
-				@Provides
-				@Singleton
-				@JmxHttp
-				AsyncHttpServer provideJmxHttpServer(
-						@JmxHttp Eventloop eventloop,
-						@JmxHttp AsyncServlet jmxServlet,
-						OptionalDependency<Config> maybeConfig
-				) {
-					AsyncHttpServer server = AsyncHttpServer.create(eventloop, jmxServlet);
-					maybeConfig.ifPresent(config ->
-							server.initialize(ofHttpServer(config.getChild("jmx.httpServer")
-									.with("listenAddresses", serverAddresses.stream()
-											.map(s -> s.getHostString() + ":" + s.getPort())
-											.collect(joining(","))))));
-					return server;
-				}
-			});
-		}
+//		if (serverAddresses != null) {
+//			install(new AbstractModule() {
+//
+//				@Inject
+//				@JmxHttp
+//				AsyncHttpServer jmxHttpServer;
+//
+//				@Override
+//				protected void configure() {
+//					requestInjection(this);
+//				}
+//
+//				@Provides
+//
+//				@JmxHttp
+//				Eventloop provideEventloop(Config config) {
+//					return Eventloop.create()
+//							.initialize(ofEventloop(config.getChild("jmx.httpServer.eventloop")));
+//				}
+//
+//				@Provides
+//
+//				@JmxHttp
+//				AsyncHttpServer provideJmxHttpServer(
+//						@JmxHttp Eventloop eventloop,
+//						@JmxHttp AsyncServlet jmxServlet,
+//						OptionalDependency<Config> maybeConfig
+//				) {
+//					AsyncHttpServer server = AsyncHttpServer.create(eventloop, jmxServlet);
+//					maybeConfig.ifPresent(config ->
+//							server.initialize(ofHttpServer(config.getChild("jmx.httpServer")
+//									.with("listenAddresses", serverAddresses.stream()
+//											.map(s -> s.getHostString() + ":" + s.getPort())
+//											.collect(joining(","))))));
+//					return server;
+//				}
+//			});
+//		}
 	}
 
 	@Provides
-	@Singleton
 	@JmxHttp
 	ExecutorService provideExecutor() {
 		return Executors.newSingleThreadExecutor();
 	}
 
 	@Provides
-	@Singleton
 	@JmxHttp
 	AsyncServlet provideJmxServlet(@JmxHttp ExecutorService executor, Injector injector) {
 		return new JmxAsyncServlet(StaticLoaders.ofClassPath(executor), injector);
 	}
 
-	@BindingAnnotation
+	@NameAnnotation
 	@Target({FIELD, PARAMETER, METHOD})
 	@Retention(RUNTIME)
 	public @interface JmxHttp {}
@@ -323,12 +317,12 @@ public class JmxHttpModule extends AbstractModule {
 				Node<String, String> tree = new Node<>(null, null, null);
 
 				Stream.concat(singletons.stream().map(KeyWithWorkerData::new), workers.stream())
-						.filter(desc -> ReflectionUtils.isBean(desc.getKey().getTypeLiteral().getRawType()))
+						.filter(desc -> ReflectionUtils.isBean(desc.getKey().getTypeT().getRawType()))
 						.forEach(desc -> {
 							Key<?> key = desc.getKey();
-							TypeLiteral<?> literal = key.getTypeLiteral();
+							TypeT<?> literal = key.getTypeT();
 							String name = prettyPrintSimpleKeyName(key);
-							String pkg = RecursiveType.of(key.getTypeLiteral().getType()).getPackage();
+							String pkg = RecursiveType.of(key.getTypeT().getType()).getPackage();
 							String[] path = pkg != null ? pkg.split("\\.") : new String[]{"unknown_package"};
 
 							Node<String, String> subtree = tree;
@@ -377,48 +371,50 @@ public class JmxHttpModule extends AbstractModule {
 										.map(RecursiveType::of)
 										.collect(toList()))
 								.getType();
-						if (annotation == null) {
-							return Promise.of(Key.get(type));
-						}
-						if (annotation.startsWith("com.google.inject.name.Named(value=")) {
-							return Promise.of(Key.get(type, Names.named(annotation.substring(35, annotation.length() - 1))));
-						}
-						if (!annotation.endsWith("()")) {
-							return Promise.ofException(HttpException.ofCode(501, "Instance annotations except @Named are not supported"));
-						}
-						return JmxHttpModule.getClass(annotation.substring(0, annotation.length() - 2))
-								.map(annCls -> Key.get(type, (Class<Annotation>) annCls));
+//						if (annotation == null) {
+//							return Promise.of(Key.of(type));
+//						}
+//						if (annotation.startsWith("com.google.inject.name.Named(value=")) {
+//							return Promise.of(Key.of(type, Name.of(annotation.substring(35, annotation.length() - 1))));
+//						}
+//						if (!annotation.endsWith("()")) {
+//							return Promise.ofException(HttpException.ofCode(501, "Instance annotations except @Named are not supported"));
+//						}
+//						return JmxHttpModule.getClass(annotation.substring(0, annotation.length() - 2))
+//								.map(annCls -> Key.of(type, (Class<Annotation>) annCls));
+						return null;
 					})
 					.then(key -> {
-						Object instance = null;
-						if (workerId != null) {
-							Binding<WorkerPools> wpBinding = injector.getExistingBinding(Key.get(WorkerPools.class));
-							if (wpBinding == null) {
-								return Promise.ofException(HttpException.ofCode(404, "No worker pool exists"));
-							}
-							List<?> instances = wpBinding.getProvider().get().getAllObjects(key); // TODO: this will fail with multiple worker pools, fix it
-							int id = Integer.parseInt(workerId);
-							if (id >= instances.size()) {
-								return Promise.ofException(HttpException.ofCode(404, "Worker " + key + " with id " + id + " not found"));
-							}
-							instance = instances.get(id);
-						} else {
-							Binding<?> binding = injector.getExistingBinding(key);
-							if (binding != null) {
-								instance = binding.getProvider().get();
-							}
-						}
-						if (instance == null) {
-							return Promise.ofException(HttpException.ofCode(404, "Key " + key + " not found."));
-						}
-						Object finalInstance = instance;
-						return loader.getResource("table_template.html")
-								.map(buf -> HttpResponse.ok200()
-										.withBody(String.format(
-												buf.asString(UTF_8),
-												htmlEscape(prettyPrintSimpleKeyName(key)) + (workerId != null ? " (worker id: " + workerId + ")" : ""),
-												tableHTML(finalInstance)
-										).getBytes(UTF_8)));
+//						Object instance = null;
+//						if (workerId != null) {
+//							Binding<WorkerPools> wpBinding = injector.getExistingBinding(Key.of(WorkerPools.class));
+//							if (wpBinding == null) {
+//								return Promise.ofException(HttpException.ofCode(404, "No worker pool exists"));
+//							}
+//							List<?> instances = wpBinding.getProvider().get().getAllObjects(key); // TODO: this will fail with multiple worker pools, fix it
+//							int id = Integer.parseInt(workerId);
+//							if (id >= instances.size()) {
+//								return Promise.ofException(HttpException.ofCode(404, "Worker " + key + " with id " + id + " not found"));
+//							}
+//							instance = instances.get(id);
+//						} else {
+//							Binding<?> binding = injector.getExistingBinding(key);
+//							if (binding != null) {
+//								instance = binding.getProvider().get();
+//							}
+//						}
+//						if (instance == null) {
+//							return Promise.ofException(HttpException.ofCode(404, "Key " + key + " not found."));
+//						}
+//						Object finalInstance = instance;
+//						return loader.getResource("table_template.html")
+//								.map(buf -> HttpResponse.ok200()
+//										.withBody(String.format(
+//												buf.asString(UTF_8),
+//												htmlEscape(prettyPrintSimpleKeyName(key)) + (workerId != null ? " (worker id: " + workerId + ")" : ""),
+//												tableHTML(finalInstance)
+//										).getBytes(UTF_8)));
+						return null;
 					});
 		}
 	}

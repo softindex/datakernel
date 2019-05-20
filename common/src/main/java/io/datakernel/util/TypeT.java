@@ -51,4 +51,32 @@ public abstract class TypeT<T> {
 			throw new IllegalArgumentException(type.getTypeName());
 		}
 	}
+
+	public String getDisplayString() {
+		return type.getTypeName().replaceAll("(?:\\w+\\.)*(\\w+)", "$1");
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof TypeT)) {
+			return false;
+		}
+
+		TypeT<?> typeT = (TypeT<?>) o;
+
+		return type.equals(typeT.type);
+	}
+
+	@Override
+	public int hashCode() {
+		return type.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return type.getTypeName();
+	}
 }

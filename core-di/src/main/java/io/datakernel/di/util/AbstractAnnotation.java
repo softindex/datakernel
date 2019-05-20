@@ -22,6 +22,24 @@ public abstract class AbstractAnnotation {
 		return annotationType.getDeclaredMethods().length == 0;
 	}
 
+	@NotNull
+	public Class<? extends Annotation> getAnnotationType() {
+		return annotationType;
+	}
+
+	@Nullable
+	public Annotation getAnnotation() {
+		return annotation;
+	}
+
+	public String getDisplayString() {
+		if (annotation != null) {
+			String s = annotation.toString();
+			return "@" + s.substring(s.lastIndexOf('.') + 1);
+		}
+		return "@" + annotationType.getSimpleName() + "()";
+	}
+
 	@Override
 	public boolean equals(@Nullable Object o) {
 		if (this == o) return true;
@@ -36,13 +54,8 @@ public abstract class AbstractAnnotation {
 		return Objects.hash(annotationType, annotation);
 	}
 
-	@NotNull
-	public Class<? extends Annotation> getAnnotationType() {
-		return annotationType;
-	}
-
-	@Nullable
-	public Annotation getAnnotation() {
-		return annotation;
+	@Override
+	public String toString() {
+		return annotation != null ? annotation.toString() : "@" + annotationType.getName() + "()";
 	}
 }

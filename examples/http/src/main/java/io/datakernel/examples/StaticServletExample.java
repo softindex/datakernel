@@ -16,10 +16,9 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
@@ -32,7 +31,6 @@ import java.util.Collection;
 
 import static io.datakernel.loader.StaticLoaders.ofPath;
 import static io.datakernel.util.CollectionUtils.list;
-import static java.lang.Boolean.parseBoolean;
 
 public final class StaticServletExample extends HttpServerLauncher {
 	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/site");
@@ -41,7 +39,6 @@ public final class StaticServletExample extends HttpServerLauncher {
 	protected Collection<Module> getBusinessLogicModules() {
 		return list(new AbstractModule() {
 			@Provides
-			@Singleton
 			AsyncServlet staticServlet(Eventloop eventloop) {
 				return StaticServlet.create(eventloop, ofPath(RESOURCE_DIR));
 			}
@@ -50,6 +47,6 @@ public final class StaticServletExample extends HttpServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new StaticServletExample();
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }

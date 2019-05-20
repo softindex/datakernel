@@ -197,7 +197,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	/**
 	 * This method runs when application is stopping
 	 */
-	@SuppressWarnings("RedundantThrows")
 	protected void onStop() throws Exception {
 	}
 

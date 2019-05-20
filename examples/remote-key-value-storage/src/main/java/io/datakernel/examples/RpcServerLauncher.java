@@ -15,7 +15,7 @@
  */
 package io.datakernel.examples;
 
-import com.google.inject.Module;
+import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -39,7 +39,7 @@ public class RpcServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		RpcServerLauncher launcher = new RpcServerLauncher();
-		launcher.launch(true, args);
+		launcher.launch(args);
 	}
 }
 // [END EXAMPLE]

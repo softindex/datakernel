@@ -1,12 +1,11 @@
 package io.global.common.ot;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
@@ -47,7 +46,6 @@ public class OTCommonModule<D> extends AbstractModule {
 	public static final Duration DEFAULT_PUSH_DELAY_DURATION = Duration.ofSeconds(1);
 
 	@Provides
-	@Singleton
 	@Named("Example")
 	AsyncHttpServer provideServer(Eventloop eventloop, RoutingServlet servlet,
 								  OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet, Config config) {
@@ -61,7 +59,6 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	RoutingServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
 											   OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
 		return RoutingServlet.create()
@@ -71,7 +68,6 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	OTGraphServlet<CommitId, D> provideGraphServlet(OTRepository<CommitId, D> repository, OTSystem<D> otSystem,
 													Function<D, String> diffToString) {
 		return OTGraphServlet.create(repository, otSystem, COMMIT_ID_TO_STRING, diffToString)
@@ -89,7 +85,6 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	StaticServlet provideStaticServlet(Eventloop eventloop, Executor executor, Config config) {
 		Path staticDir = config.get(ofPath(), "resources.path", DEFAULT_RESOURCES_PATH);
 		StaticLoader resourceLoader = StaticLoaders.ofPath(staticDir);
@@ -97,7 +92,6 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> provideNodeServlet(OTNode<CommitId, D, OTCommit<CommitId, D>> node,
 																		 StructuredCodec<D> diffCodec, OTRepository<CommitId, D> repository, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
@@ -105,33 +99,28 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	OTNode<CommitId, D, OTCommit<CommitId, D>> provideNode(OTRepository<CommitId, D> repository, OTSystem<D> otSystem) {
 		return OTNodeImpl.create(repository, otSystem);
 	}
 
 	@Provides
-	@Singleton
 	OTRepository<CommitId, D> provideRepository(Eventloop eventloop, OTDriver driver, MyRepositoryId<D> myRepositoryId) {
 		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 
 	@Provides
-	@Singleton
 	OTDriver provideDriver(Eventloop eventloop, GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);
 	}
 
 	@Provides
-	@Singleton
 	MyRepositoryId<D> provideMyRepositoryId(Config config, StructuredCodec<D> diffCodec) {
 		MyRepositoryId<D> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, diffCodec);
 		return config.get(ofMyRepositoryId(diffCodec), "credentials", DEMO_MY_REPOSITORY_ID);
 	}
 
 	@Provides
-	@Singleton
 	Executor provideExecutor(Config config) {
 		return getExecutor(config.getChild("executor"));
 	}
