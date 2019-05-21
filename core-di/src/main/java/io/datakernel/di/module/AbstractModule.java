@@ -4,6 +4,7 @@ import io.datakernel.di.Binding;
 import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
+import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.util.*;
 
 import java.lang.annotation.Annotation;
@@ -11,7 +12,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.Function;
 
-import static io.datakernel.di.util.Utils.bindingsFromProvidesAnnotations;
 import static io.datakernel.di.util.Utils.combineMultimap;
 import static java.util.Arrays.asList;
 
@@ -22,7 +22,7 @@ public abstract class AbstractModule implements Module {
 
 	public AbstractModule() {
 		configure();
-		bindingsFromProvidesAnnotations(this)
+		ReflectionUtils.getDeclatativeBindings(this)
 				.forEach(binding -> bindings.computeIfAbsent(binding.getKey(), $ -> new HashSet<>()).add(binding));
 	}
 
@@ -157,13 +157,13 @@ public abstract class AbstractModule implements Module {
 			try {
 				constructor = (java.lang.reflect.Constructor<T>) key.getTypeT().getClass().getConstructor();
 			} catch (NoSuchMethodException e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException("no default constructor for " + key.getTypeT(), e);
 			}
 			to(args -> {
 				try {
 					return constructor.newInstance();
 				} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-					throw new RuntimeException(e);
+					throw new RuntimeException("failed to create instance of " + key.getTypeT(), e);
 				}
 			}, asList());
 		}

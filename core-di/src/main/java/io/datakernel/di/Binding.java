@@ -13,6 +13,8 @@ public final class Binding<T> {
 	private final Dependency[] dependencies;
 	private final Constructor<T> constructor;
 
+	private final LocationInfo location = LocationInfo.here(1);
+
 	public Binding(Key<T> key, Dependency[] dependencies, Constructor<T> constructor) {
 		this.key = key;
 		this.dependencies = dependencies;

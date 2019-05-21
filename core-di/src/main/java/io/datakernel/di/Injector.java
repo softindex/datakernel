@@ -2,13 +2,13 @@ package io.datakernel.di;
 
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.util.RecursiveType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static io.datakernel.di.util.Utils.flattenMultimap;
@@ -27,7 +27,7 @@ public final class Injector {
 
 //	private final ConcurrentHashMap<Key<?>, Object> instances = new ConcurrentHashMap<>();
 
-	// cannot do recursive operations with concurrent hash map, need to do something different
+	// cannot do recursive computeIfAbsent with concurrent hash map, need to do something different
 	private final HashMap<Key<?>, Object> instances = new HashMap<>();
 
 	private Injector(@Nullable Scope scope, @Nullable Injector parentInjector,
@@ -55,6 +55,14 @@ public final class Injector {
 		Map<Key<?>, Binding<?>> bindings = flattenMultimap(module.getBindings(), conflictResolver);
 		Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings = module.getScopeBindings().entrySet().stream()
 				.collect(toMap(Entry::getKey, scopeEntry -> flattenMultimap(scopeEntry.getValue(), conflictResolver)));
+
+		// TODO anton: scopes and errors, etc
+
+		Set<Binding<?>> additionalBindings;
+		do {
+			additionalBindings = ReflectionUtils.generateImplicitBindings(bindings);
+			additionalBindings.forEach(binding -> bindings.put(binding.getKey(), binding));
+		} while (!additionalBindings.isEmpty());
 
 		return of(bindings, scopeBindings);
 	}
@@ -179,6 +187,15 @@ public final class Injector {
 
 	public boolean hasBinding(@NotNull Key<?> type) {
 		return bindings.containsKey(type);
+	}
+
+	public <T> Binding<T> getBinding(@NotNull Class<T> type) {
+		return getBinding(Key.of(type));
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> Binding<T> getBinding(@NotNull Key<T> type) {
+		return (Binding<T>) bindings.get(type);
 	}
 
 	public Map<Key<?>, Binding<?>> getScopeBindings(Scope scope) {
