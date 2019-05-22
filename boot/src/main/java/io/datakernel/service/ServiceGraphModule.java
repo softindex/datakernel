@@ -20,6 +20,7 @@ import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.ScopedDependency;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -42,7 +43,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.difference;
@@ -231,8 +231,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
+			if (this == o) {
+				return true;
+			}
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
 			ServiceKey other = (ServiceKey) o;
 			return workerPoolId == other.workerPoolId &&
 					key.equals(other.key);
@@ -242,241 +246,243 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		public int hashCode() {
 			return Objects.hash(key, workerPoolId);
 		}
-	}
-
-	public final class ServiceGraphSupplier implements Supplier<ServiceGraph> {
-		private final Injector injector;
-
-//		private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
-
-		private ServiceGraphSupplier(Injector injector) {
-			this.injector = injector;
-		}
 
 		@Override
-		public ServiceGraph get() {
-			WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
-			List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
-			Map<ServiceKey, List<?>> instances = new HashMap<>();
-			Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
-			IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
+		public String toString() {
+			return key.toString() + (workerPoolId == -1 ? "" : ":" + workerPoolId);
+		}
+	}
 
-			ServiceGraph serviceGraph = ServiceGraph.create()
-					.withNodeSuffixes(key -> {
-						ServiceKey serviceKey = (ServiceKey) key;
-						if (!serviceKey.isWorker()) return null;
-						return pools.get(serviceKey.getWorkerPoolId()).getSize();
-					})
-					.initialize(initializer);
+	@Provides
+	ServiceGraph provideServiceGraph(Injector injector) {
+		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
+		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
+		Map<ServiceKey, List<?>> instances = new HashMap<>();
+		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
+		IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
 
-			for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
-				Key<?> key = entry.getKey();
-				ServiceKey serviceKey = new ServiceKey(key);
-				instances.put(serviceKey, singletonList(entry.getValue()));
-				instanceDependencies.put(serviceKey, Arrays.stream(injector.getBindings().get(key).getDependencies())
-						.map(d -> new ServiceKey(d.getKey()))
-						.collect(toSet()));
+		ServiceGraph serviceGraph = ServiceGraph.create()
+				.withNodeSuffixes(key -> {
+					ServiceKey serviceKey = (ServiceKey) key;
+					if (!serviceKey.isWorker()) {
+						return null;
+					}
+					return pools.get(serviceKey.getWorkerPoolId()).getSize();
+				})
+				.initialize(initializer);
+
+		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
+			Key<?> key = entry.getKey();
+			ServiceKey serviceKey = new ServiceKey(key);
+			instances.put(serviceKey, singletonList(entry.getValue()));
+			instanceDependencies.put(serviceKey, Arrays.stream(injector.getBindings().get(key).getDependencies())
+					.map(d -> new ServiceKey(d.getKey()))
+					.collect(toSet()));
+		}
+
+
+		if (workerPools != null) {
+			for (int i = 0; i < pools.size(); i++) {
+				final int finalI = i;
+				WorkerPool pool = pools.get(i);
+				Map<Key<?>, Set<ScopedDependency>> scopeDependencies = injector.getScopeDependencies(pool.getScope());
+				for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
+					Key<?> key = entry.getKey();
+					ServiceKey serviceKey = new ServiceKey(key, i);
+					instances.put(serviceKey, Arrays.asList(entry.getValue()));
+					instanceDependencies.put(serviceKey, scopeDependencies.get(key)
+							.stream()
+							.map(scopedDependency -> scopedDependency.isScoped() ?
+									new ServiceKey(scopedDependency.getDependency().getKey(), finalI) :
+									new ServiceKey(scopedDependency.getDependency().getKey()))
+							.collect(toSet()));
+				}
+			}
+		}
+
+		return populateServiceGraph(serviceGraph, instances, instanceDependencies, cache);
+	}
+
+
+	@NotNull
+	private ServiceGraph populateServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies, IdentityHashMap<Object, CachedService> cache) {
+		Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));
+		if (!unusedKeys.isEmpty()) {
+			logger.warn("Unused services : {}", unusedKeys);
+		}
+
+		for (Map.Entry<ServiceKey, List<?>> entry : instances.entrySet()) {
+			ServiceKey serviceKey = entry.getKey();
+			Service service = getWorkersServiceOrNull(cache, serviceKey, entry.getValue());
+			serviceGraph.add(serviceKey, service);
+		}
+
+		for (Map.Entry<ServiceKey, Set<ServiceKey>> entry : instanceDependencies.entrySet()) {
+			ServiceKey serviceKey = entry.getKey();
+			Key<?> key = serviceKey.getKey();
+			Set<ServiceKey> dependencies = new HashSet<>(entry.getValue());
+
+			if (!difference(removedDependencies.getOrDefault(key, emptySet()), dependencies).isEmpty()) {
+				logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.getOrDefault(key, emptySet()), dependencies));
 			}
 
+			if (!intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())).isEmpty()) {
+				logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())));
+			}
 
-			if (workerPools != null) {
-				for (int i = 0; i < pools.size(); i++) {
-					final int finalI = i;
-					WorkerPool pool = pools.get(i);
-					Map<Key<?>, Set<ScopedDependency>> scopeDependencies = injector.getScopeDependencies(pool.getScope());
-					for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
-						Key<?> key = entry.getKey();
-						ServiceKey serviceKey = new ServiceKey(key, i);
-						instances.put(serviceKey, Arrays.asList(entry.getValue()));
-						instanceDependencies.put(serviceKey, scopeDependencies.get(key)
-								.stream()
-								.map(scopedDependency -> scopedDependency.isScoped() ?
-										new ServiceKey(scopedDependency.getDependency().getKey(), finalI) :
-										new ServiceKey(scopedDependency.getDependency().getKey()))
-								.collect(toSet()));
+			Set<Key<?>> added = addedDependencies.getOrDefault(key, emptySet());
+			for (Key<?> k : added) {
+				List<ServiceKey> found = instances.keySet().stream().filter(s -> s.getKey().equals(k)).collect(toList());
+				if (found.isEmpty()) {
+					throw new IllegalArgumentException();
+				}
+				if (found.size() > 1) {
+					throw new IllegalArgumentException();
+				}
+				dependencies.add(found.get(0));
+			}
+
+			Set<Key<?>> removed = removedDependencies.getOrDefault(key, emptySet());
+			dependencies.removeIf(k -> removed.contains(k.getKey()));
+
+			for (ServiceKey dependency : dependencies) {
+				serviceGraph.add(serviceKey, dependency);
+			}
+		}
+
+		serviceGraph.removeIntermediateNodes();
+
+		return serviceGraph;
+	}
+
+	@Nullable
+	private Service getWorkersServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, List<?> instances) {
+		List<Service> services = new ArrayList<>();
+		boolean found = false;
+		for (Object instance : instances) {
+			Service service = getServiceOrNull(cache, key, instance);
+			services.add(service);
+			if (service != null) {
+				found = true;
+			}
+		}
+		if (!found) {
+			return null;
+		}
+		return new Service() {
+			@Override
+			public CompletableFuture<?> start() {
+				List<CompletableFuture<?>> futures = new ArrayList<>();
+				for (Service service : services) {
+					futures.add(service != null ? service.start() : null);
+				}
+				return combineFutures(futures, Runnable::run);
+			}
+
+			@Override
+			public CompletableFuture<?> stop() {
+				List<CompletableFuture<?>> futures = new ArrayList<>();
+				for (Service service : services) {
+					futures.add(service != null ? service.stop() : null);
+				}
+				return combineFutures(futures, Runnable::run);
+			}
+		};
+	}
+
+	private static Throwable getRootCause(Throwable e) {
+		Throwable cause;
+		while ((cause = e.getCause()) != null) {
+			e = cause;
+		}
+		return e;
+	}
+
+	private static CompletableFuture<?> combineFutures(List<CompletableFuture<?>> futures, Executor executor) {
+		CompletableFuture<?> resultFuture = new CompletableFuture<>();
+		AtomicInteger count = new AtomicInteger(futures.size());
+		AtomicReference<Throwable> exception = new AtomicReference<>();
+		for (CompletableFuture<?> future : futures) {
+			CompletableFuture<?> finalFuture = future != null ? future : completedFuture(null);
+			finalFuture.whenCompleteAsync((o, e) -> {
+				if (e != null) {
+					exception.set(getRootCause(e));
+				}
+				if (count.decrementAndGet() == 0) {
+					if (exception.get() != null) {
+						resultFuture.completeExceptionally(exception.get());
+					} else {
+						resultFuture.complete(null);
 					}
 				}
-			}
-
-			return populateServiceGraph(serviceGraph, instances, instanceDependencies, cache);
+			}, executor);
 		}
+		return resultFuture;
+	}
 
-		@NotNull
-		private ServiceGraph populateServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies, IdentityHashMap<Object, CachedService> cache) {
-			Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));
-			if (!unusedKeys.isEmpty()) {
-				logger.warn("Unused services : {}", unusedKeys);
-			}
-
-			for (Map.Entry<ServiceKey, List<?>> entry : instances.entrySet()) {
-				ServiceKey serviceKey = entry.getKey();
-				Service service = getWorkersServiceOrNull(cache, serviceKey, entry.getValue());
-				serviceGraph.add(serviceKey, service);
-			}
-
-			for (Map.Entry<ServiceKey, Set<ServiceKey>> entry : instanceDependencies.entrySet()) {
-				ServiceKey serviceKey = entry.getKey();
-				Key<?> key = serviceKey.getKey();
-				Set<ServiceKey> dependencies = new HashSet<>(entry.getValue());
-
-				if (!difference(removedDependencies.getOrDefault(key, emptySet()), dependencies).isEmpty()) {
-					logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.getOrDefault(key, emptySet()), dependencies));
-				}
-
-				if (!intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())).isEmpty()) {
-					logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())));
-				}
-
-				Set<Key<?>> added = addedDependencies.getOrDefault(key, emptySet());
-				for (Key<?> k : added) {
-					List<ServiceKey> found = instances.keySet().stream().filter(s -> s.getKey().equals(k)).collect(toList());
-					if (found.isEmpty()) throw new IllegalArgumentException();
-					if (found.size() > 1) throw new IllegalArgumentException();
-					dependencies.add(found.get(0));
-				}
-
-				Set<Key<?>> removed = removedDependencies.getOrDefault(key, emptySet());
-				dependencies.removeIf(k -> removed.contains(k.getKey()));
-
-				for (ServiceKey dependency : dependencies) {
-					serviceGraph.add(serviceKey, dependency);
-				}
-			}
-
-			serviceGraph.removeIntermediateNodes();
-
-			return serviceGraph;
+	@Nullable
+	@SuppressWarnings("unchecked")
+	private Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, Object instance) {
+		checkNotNull(instance);
+		CachedService service = cache.get(instance);
+		if (service != null) {
+			return service;
 		}
-
-		@Nullable
-		private Service getWorkersServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, List<?> instances) {
-			List<Service> services = new ArrayList<>();
-			boolean found = false;
-			for (Object instance : instances) {
-				Service service = getServiceOrNull(cache, key, instance);
-				services.add(service);
-				if (service != null) {
-					found = true;
+		if (excludedKeys.contains(key.getKey())) {
+			return null;
+		}
+		ServiceAdapter<?> serviceAdapter = keys.get(key.getKey());
+		if (serviceAdapter == null) {
+			List<Class<?>> foundRegisteredClasses = new ArrayList<>();
+			l1:
+			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : registeredServiceAdapters.entrySet()) {
+				Class<?> registeredClass = entry.getKey();
+				if (registeredClass.isAssignableFrom(instance.getClass())) {
+					Iterator<Class<?>> iterator = foundRegisteredClasses.iterator();
+					while (iterator.hasNext()) {
+						Class<?> foundRegisteredClass = iterator.next();
+						if (registeredClass.isAssignableFrom(foundRegisteredClass)) {
+							continue l1;
+						}
+						if (foundRegisteredClass.isAssignableFrom(registeredClass)) {
+							iterator.remove();
+						}
+					}
+					foundRegisteredClasses.add(registeredClass);
 				}
 			}
-			if (!found)
-				return null;
-			return new Service() {
+
+			if (foundRegisteredClasses.size() == 1) {
+				serviceAdapter = registeredServiceAdapters.get(foundRegisteredClasses.get(0));
+			}
+			if (foundRegisteredClasses.size() > 1) {
+				throw new IllegalArgumentException("Ambiguous services found for " + instance.getClass() +
+						" : " + foundRegisteredClasses + ". Use register() methods to specify service.");
+			}
+		}
+		if (serviceAdapter != null) {
+			ServiceAdapter<Object> finalServiceAdapter = (ServiceAdapter<Object>) serviceAdapter;
+			Service asyncService = new Service() {
 				@Override
 				public CompletableFuture<?> start() {
-					List<CompletableFuture<?>> futures = new ArrayList<>();
-					for (Service service : services) {
-						futures.add(service != null ? service.start() : null);
-					}
-					return combineFutures(futures, Runnable::run);
+					return finalServiceAdapter.start(instance, executor);
 				}
 
 				@Override
 				public CompletableFuture<?> stop() {
-					List<CompletableFuture<?>> futures = new ArrayList<>();
-					for (Service service : services) {
-						futures.add(service != null ? service.stop() : null);
-					}
-					return combineFutures(futures, Runnable::run);
+					return finalServiceAdapter.stop(instance, executor);
 				}
 			};
+			service = new CachedService(asyncService);
+			cache.put(instance, service);
+			return service;
 		}
-
-		private Throwable getRootCause(Throwable e) {
-			Throwable cause;
-			while ((cause = e.getCause()) != null) {
-				e = cause;
-			}
-			return e;
-		}
-
-		private CompletableFuture<?> combineFutures(List<CompletableFuture<?>> futures, Executor executor) {
-			CompletableFuture<?> resultFuture = new CompletableFuture<>();
-			AtomicInteger count = new AtomicInteger(futures.size());
-			AtomicReference<Throwable> exception = new AtomicReference<>();
-			for (CompletableFuture<?> future : futures) {
-				CompletableFuture<?> finalFuture = future != null ? future : completedFuture(null);
-				finalFuture.whenCompleteAsync((o, e) -> {
-					if (e != null) {
-						exception.set(getRootCause(e));
-					}
-					if (count.decrementAndGet() == 0) {
-						if (exception.get() != null) {
-							resultFuture.completeExceptionally(exception.get());
-						} else {
-							resultFuture.complete(null);
-						}
-					}
-				}, executor);
-			}
-			return resultFuture;
-		}
-
-		@Nullable
-		@SuppressWarnings("unchecked")
-		private Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, Object instance) {
-			checkNotNull(instance);
-			CachedService service = cache.get(instance);
-			if (service != null) {
-				return service;
-			}
-			if (excludedKeys.contains(key.getKey())) {
-				return null;
-			}
-			ServiceAdapter<?> serviceAdapter = keys.get(key.getKey());
-			if (serviceAdapter == null) {
-				List<Class<?>> foundRegisteredClasses = new ArrayList<>();
-				l1:
-				for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : registeredServiceAdapters.entrySet()) {
-					Class<?> registeredClass = entry.getKey();
-					if (registeredClass.isAssignableFrom(instance.getClass())) {
-						Iterator<Class<?>> iterator = foundRegisteredClasses.iterator();
-						while (iterator.hasNext()) {
-							Class<?> foundRegisteredClass = iterator.next();
-							if (registeredClass.isAssignableFrom(foundRegisteredClass))
-								continue l1;
-							if (foundRegisteredClass.isAssignableFrom(registeredClass))
-								iterator.remove();
-						}
-						foundRegisteredClasses.add(registeredClass);
-					}
-				}
-
-				if (foundRegisteredClasses.size() == 1) {
-					serviceAdapter = registeredServiceAdapters.get(foundRegisteredClasses.get(0));
-				}
-				if (foundRegisteredClasses.size() > 1) {
-					throw new IllegalArgumentException("Ambiguous services found for " + instance.getClass() +
-							" : " + foundRegisteredClasses + ". Use register() methods to specify service.");
-				}
-			}
-			if (serviceAdapter != null) {
-				ServiceAdapter<Object> finalServiceAdapter = (ServiceAdapter<Object>) serviceAdapter;
-				Service asyncService = new Service() {
-					@Override
-					public CompletableFuture<?> start() {
-						return finalServiceAdapter.start(instance, executor);
-					}
-
-					@Override
-					public CompletableFuture<?> stop() {
-						return finalServiceAdapter.stop(instance, executor);
-					}
-				};
-				service = new CachedService(asyncService);
-				cache.put(instance, service);
-				return service;
-			}
-			return null;
-		}
-
+		return null;
 	}
 
 	@Override
 	protected void configure() {
 		install(new WorkerPoolModule());
-		bind(new TypeT<Supplier<ServiceGraph>>() {}).to(ServiceGraphSupplier.class);
-		bind(ServiceGraphSupplier.class).to(ServiceGraphSupplier::new, Injector.class);
 	}
 
 	private static class CachedService implements Service {

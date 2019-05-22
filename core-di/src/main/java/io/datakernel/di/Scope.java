@@ -15,11 +15,13 @@ public final class Scope extends AbstractAnnotation {
 
 	public static Scope of(Class<? extends Annotation> annotationType) {
 		checkArgument(isMarker(annotationType));
+		checkArgument(annotationType.getAnnotation(ScopeAnnotation.class) != null);
 		return new Scope(annotationType, null);
 	}
 
 	public static Scope of(Annotation annotation) {
 		Class<? extends Annotation> annotationType = annotation.annotationType();
+		checkArgument(annotationType.getAnnotation(ScopeAnnotation.class) != null);
 		return isMarker(annotationType) ?
 				new Scope(annotationType, null) :
 				new Scope(annotationType, annotation);

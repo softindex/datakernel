@@ -27,6 +27,7 @@ public final class Utils {
 								case 1:
 									return value.iterator().next();
 								default:
+									System.out.println("value = " + value);
 									return reducers.apply(entry.getKey()).apply(entry.getValue());
 							}
 						})

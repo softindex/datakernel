@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+@Inject
 public final class OptionalDependency<T> {
 	@Inject(optional = true)
 	@Nullable

@@ -150,8 +150,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Override
 	protected void configure() {
-		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).asSingleton();
-		bind(new TypeT<RequiredDependency<TriggersModuleService>>() {}).asSingleton();
+		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).require();
+		bind(new TypeT<RequiredDependency<TriggersModuleService>>() {}).require();
 
 //		bindListener(new AbstractMatcher<Binding<?>>() {
 //			@Override

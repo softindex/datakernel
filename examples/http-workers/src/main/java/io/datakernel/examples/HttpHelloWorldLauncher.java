@@ -23,6 +23,7 @@ import io.datakernel.di.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.worker.WorkerPoolModule;
 
 import java.util.Collection;
 

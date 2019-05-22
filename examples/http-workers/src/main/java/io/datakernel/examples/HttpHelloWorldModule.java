@@ -26,15 +26,17 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPools;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 // [START EXAMPLE]
 public class HttpHelloWorldModule extends AbstractModule {
-//	@Provides
-//	WorkerPool workerPool(Config config) {
-//		return new WorkerPool(config.get(ofInteger(), "workers", 4));
-//	}
+
+	@Provides
+	WorkerPool workerPool(Config config, WorkerPools workerPools) {
+		return workerPools.createPool(config.get(ofInteger(), "workers", 4));
+	}
 
 	@Provides
 	Eventloop primaryEventloop() {

@@ -1,16 +1,22 @@
 package io.datakernel.di.util;
 
 import io.datakernel.di.*;
+import io.datakernel.di.Binding.Factory;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
+import io.datakernel.util.RecursiveType;
 import io.datakernel.util.TypeT;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.Function;
 
+import static io.datakernel.util.CollectorsEx.toMultimap;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class ReflectionUtils {
@@ -18,8 +24,7 @@ public final class ReflectionUtils {
 		throw new AssertionError("nope.");
 	}
 
-	@NotNull
-	public static Key<Object> keyOf(@NotNull Type type, Annotation[] annotations) {
+	private static Key<Object> keyOf(@NotNull Type type, Annotation[] annotations) {
 		Set<Annotation> names = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().getAnnotation(NameAnnotation.class) != null)
 				.collect(toSet());
@@ -31,11 +36,21 @@ public final class ReflectionUtils {
 				Key.of(TypeT.ofType(type), names.iterator().next());
 	}
 
-	public static Set<Binding<?>> getDeclatativeBindings(Object instance) {
-		return Arrays.stream(instance.getClass().getDeclaredMethods())
-				.filter(method -> method.getAnnotation(Provides.class) != null)
-				.map(method -> bindingForMethod(instance, method))
+	@Nullable
+	private static Scope scopeOf(Annotation[] annotations) {
+		Set<Annotation> scopes = Arrays.stream(annotations)
+				.filter(annotation -> annotation.annotationType().getAnnotation(ScopeAnnotation.class) != null)
 				.collect(toSet());
+		if (scopes.size() > 1) {
+			throw new RuntimeException("more than one scope annotation");
+		}
+		return scopes.isEmpty() ? null : Scope.of(scopes.iterator().next());
+	}
+
+	public static Map<Scope, Set<Binding<?>>> getDeclatativeBindings(Object module) {
+		return Arrays.stream(module.getClass().getDeclaredMethods())
+				.filter(method -> method.getAnnotation(Provides.class) != null)
+				.collect(toMultimap(method -> scopeOf(method.getDeclaredAnnotations()), method -> bindingForMethod(module, method)));
 	}
 
 	private static Field[] getInjectableFields(TypeT<?> type) {
@@ -55,20 +70,12 @@ public final class ReflectionUtils {
 
 	private static Dependency[] makeDependencies(TypeT<?> returnType, Parameter[] parameters, Field[] injectableFields) {
 		TypeVariable<?>[] typeParameters = returnType.getRawType().getTypeParameters();
-		Type[] actualTypeArguments;
-
-		if (returnType.getType() instanceof ParameterizedType) {
-			actualTypeArguments = ((ParameterizedType) returnType.getType()).getActualTypeArguments();
-		} else if (typeParameters.length > 0) {
-			throw new RuntimeException("generic return type");
-		} else {
-			actualTypeArguments = new Type[0];
-		}
+		RecursiveType[] actualTypeArguments = RecursiveType.of(returnType).getTypeParams();
 
 		Dependency[] dependencies = new Dependency[parameters.length + injectableFields.length];
 		for (int i = 0; i < parameters.length; i++) {
 			Parameter parameter = parameters[i];
-			dependencies[i] = new Dependency(keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations()), true);
+			dependencies[i] = new Dependency(keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations()), true, false);
 		}
 		for (int i = 0; i < injectableFields.length; i++) {
 			Field field = injectableFields[i];
@@ -76,19 +83,19 @@ public final class ReflectionUtils {
 			Type type = field.getGenericType();
 			for (int j = 0; j < typeParameters.length; j++) {
 				if (type == typeParameters[j]) {
-					type = actualTypeArguments[j];
+					type = actualTypeArguments[j].getType();
 					break;
 				}
 			}
 			boolean required = !field.getAnnotation(Inject.class).optional();
-			dependencies[parameters.length + i] = new Dependency(keyOf(type, field.getDeclaredAnnotations()), required);
+			dependencies[parameters.length + i] = new Dependency(keyOf(type, field.getDeclaredAnnotations()), required, true);
 		}
 		return dependencies;
 	}
 
-	private static Object inject(Object instance, Field[] injectableFields, Object[] args, int argOffset) {
+	private static void inject(Object instance, Field[] injectableFields, Object[] args) {
 		for (int i = 0; i < injectableFields.length; i++) {
-			Object arg = args[argOffset + i];
+			Object arg = args[i];
 			if (arg != null) {
 				try {
 					injectableFields[i].set(instance, arg);
@@ -97,45 +104,64 @@ public final class ReflectionUtils {
 				}
 			}
 		}
-		return instance;
 	}
 
-	private static Binding<?> bindingForMethod(Object instance, Method method) {
+	public static void inject(Object instance, Injector from) {
+		Field[] injectableFields = getInjectableFields(TypeT.of(instance.getClass()));
+		for (Field field : injectableFields) {
+			Key<Object> key = keyOf(field.getGenericType(), field.getAnnotations());
+			try {
+				field.setAccessible(true);
+				field.set(instance, field.getAnnotation(Inject.class).optional() ?
+						from.getOptionalInstance(key) :
+						from.getInstance(key));
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException("failed to inject field " + field, e);
+			}
+		}
+	}
+
+	private static Binding<?> bindingForMethod(@Nullable Object instance, Method method) {
 		TypeT<Object> returnType = TypeT.ofType(method.getGenericReturnType());
 
 		Field[] injectableFields = getInjectableFields(returnType);
 		Dependency[] dependencies = makeDependencies(returnType, method.getParameters(), injectableFields);
 
-		int parameterCount = method.getParameterCount();
 		method.setAccessible(true);
 
-		return new Binding<>(keyOf(method.getGenericReturnType(), method.getDeclaredAnnotations()), dependencies, args -> {
+		return Binding.of(keyOf(method.getGenericReturnType(), method.getDeclaredAnnotations()), dependencies, new InjectingFactory<>(args -> {
 			try {
-				return inject(method.invoke(instance, Arrays.copyOfRange(args, 0, parameterCount)), injectableFields, args, parameterCount);
+				return method.invoke(instance, args);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to call method for " + returnType, e);
 			}
-		});
+		}, injectableFields), new LocationInfo(instance != null ? instance.getClass() : null, method.toString()));
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Binding<?> bindingForConstructor(Key<?> key, Constructor constructor) {
+	private static Binding<?> bindingForConstructor(Key<?> key, Constructor<?> constructor) {
 		constructor.setAccessible(true);
 
 		Field[] injectableFields = getInjectableFields(key.getTypeT());
 		Dependency[] dependencies = makeDependencies(key.getTypeT(), constructor.getParameters(), injectableFields);
 
-		return new Binding<>((Key<Object>) key, dependencies, args -> {
+		return Binding.of((Key<Object>) key, dependencies, new InjectingFactory<>(args -> {
 			try {
-				return inject(((Constructor<?>) constructor).newInstance(), injectableFields, args, 0);
+				return constructor.newInstance();
 			} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to create " + key.getTypeT(), e);
 			}
-		});
+		}, injectableFields), new LocationInfo(null, constructor.toString()));
 	}
 
-	private static Binding<?> generateImplicitBinding(Key<?> key) {
-		Class<?> cls = key.getTypeT().getRawType();
+	@Nullable
+	public static Binding<?> generateImplicitBinding(Dependency dependency) {
+		Class<?> cls = dependency.getKey().getTypeT().getRawType();
+
+		if (cls == Provider.class || cls == Injector.class) {
+			return null; // those two are hardcoded in the injector class, do nothing here
+		}
+
 		Inject classInjectAnnotation = cls.getAnnotation(Inject.class);
 
 		if (classInjectAnnotation != null) {
@@ -143,7 +169,7 @@ public final class ReflectionUtils {
 				throw new RuntimeException("inject annotation on class cannot be optional");
 			}
 			try {
-				return bindingForConstructor(key, cls.getDeclaredConstructor());
+				return bindingForConstructor(dependency.getKey(), cls.getDeclaredConstructor());
 			} catch (NoSuchMethodException e) {
 				throw new RuntimeException("inject annotation on class with no default constructor", e);
 			}
@@ -156,18 +182,22 @@ public final class ReflectionUtils {
 				throw new RuntimeException("more than one inject constructor");
 			}
 			if (!injectConstructors.isEmpty()) {
-				return bindingForConstructor(key, injectConstructors.iterator().next());
+				return bindingForConstructor(dependency.getKey(), injectConstructors.iterator().next());
 			}
 		}
 
 		Set<Method> factoryMethods = Arrays.stream(cls.getDeclaredMethods())
-				.filter(method ->
-						Modifier.isStatic(method.getModifiers()) &&
-								Modifier.isPublic(method.getModifiers()) &&
-								method.getReturnType() == cls &&
-								method.getAnnotation(Inject.class) != null)
+				.filter(method -> method.getAnnotation(Inject.class) != null)
 				.collect(toSet());
 
+		boolean allOk = factoryMethods.stream()
+				.allMatch(method -> method.getReturnType() == cls
+						&& Modifier.isPublic(method.getModifiers())
+						&& Modifier.isStatic(method.getModifiers()));
+
+		if (!allOk) {
+			throw new RuntimeException("found methods with @Inject annotation that are not public static factory methods for key " + dependency.getKey());
+		}
 		if (factoryMethods.size() > 1) {
 			throw new RuntimeException("more than one inject factory method");
 		}
@@ -175,51 +205,91 @@ public final class ReflectionUtils {
 			return bindingForMethod(null, factoryMethods.iterator().next());
 		}
 
-		throw new RuntimeException("unsatisfied dependency with no implicit bindings");
+		if (dependency.isRequired()) {
+			throw new RuntimeException("unsatisfied dependency " + dependency.getKey() + " with no implicit bindings");
+		}
+		return null;
 	}
 
-	public static Set<Binding<?>> generateImplicitBindings(Map<Key<?>, Binding<?>> bindings) {
-		return bindings.values().stream()
-				.flatMap(binding -> Arrays.stream(binding.getDependencies()))
-				.filter(dependency -> dependency.isRequired() && !bindings.containsKey(dependency.getKey()))
-				.map(unsatisfied -> generateImplicitBinding(unsatisfied.getKey()))
-				.collect(toSet());
+	public static void addImplicitBindings(Map<Key<?>, Binding<?>> bindings) {
+		Collection<Binding<?>> bindingsToCheck = new HashSet<>(bindings.values());
+		do {
+			bindingsToCheck = bindingsToCheck.stream()
+					.flatMap(binding -> Arrays.stream(binding.getDependencies()))
+
+					.filter(dependency -> !bindings.containsKey(dependency.getKey()))
+
+					.map(ReflectionUtils::generateImplicitBinding)
+					.filter(Objects::nonNull)
+					.peek(binding -> bindings.put(binding.getKey(), binding))
+					.collect(toList());
+		} while (!bindingsToCheck.isEmpty());
 	}
 
-	private static void dfs(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<List<Key<?>>> cycles, Binding<?> node) {
+	// throws on unsatisfied dependencies, returns list of cycles
+	// this is a subject to change ofc
+	public static Set<Key<?>[]> checkBindingGraph(Map<Key<?>, Binding<?>> bindings) {
+		Set<Key<?>> visited = new HashSet<>();
+		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
+		Set<Key<?>[]> cycles = new HashSet<>();
+		bindings.forEach((key, binding) -> dfs(bindings, visited, visiting, cycles, new Dependency(key, true, false)));
+		return cycles;
+	}
+
+	private static void dfs(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<Key<?>[]> cycles, Dependency node) {
 		Key<?> key = node.getKey();
 		if (visited.contains(key)) {
 			return;
 		}
-		if (!visiting.add(key)) {
-			// so at this point visiting looks something like a -> b -> c -> d -> e -> g -> c,
-			// and in the code below we just get d -> e -> g -> c out of it
-			Iterator<Key<?>> backtracked = visiting.iterator();
-			int skipped = 0;
-			while (backtracked.hasNext() && backtracked.next() != key) {
-				skipped++;
+		Binding<?> binding = bindings.get(key);
+		if (binding != null) {
+			if (!visiting.add(key)) {
+				// postponed dependencies allow cycles
+				if (!node.isPostponed()) {
+					// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
+					// and in the code below we just get d -> e -> g -> c out of it
+					Iterator<Key<?>> backtracked = visiting.iterator();
+					int skipped = 0;
+					while (backtracked.hasNext() && !backtracked.next().equals(key)) { // reference equality doesn't always work here
+						skipped++;
+					}
+					Key<?>[] cycle = new Key[visiting.size() - skipped + 1];
+					for (int i = 0; i < cycle.length - 1; i++) {
+						cycle[i] = backtracked.next();
+					}
+					cycle[cycle.length - 1] = key;
+					cycles.add(cycle);
+					return;
+				}
 			}
-			List<Key<?>> cycle = new ArrayList<>(visiting.size() - skipped + 1);
-			backtracked.forEachRemaining(cycle::add);
-			cycle.add(key);
-			cycles.add(cycle);
-			return;
-		}
-		for (Dependency dependency : node.getDependencies()) {
-			if (dependency.isRequired()) {
-				dfs(bindings, visited, visiting, cycles, bindings.get(dependency.getKey()));
+			for (Dependency dependency : binding.getDependencies()) {
+				dfs(bindings, visited, visiting, cycles, dependency);
 			}
+			visiting.remove(key);
+		} else if (node.isRequired()) {
+			throw new RuntimeException("no binding for required key " + key);
 		}
-		visiting.remove(key);
 		visited.add(key);
 	}
 
-	public static Set<List<Key<?>>> findCyclicDependencies(Map<Key<?>, Binding<?>> bindings) {
-		Set<Key<?>> visited = new HashSet<>();
-		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
-		Set<List<Key<?>>> cycles = new HashSet<>();
-		bindings.values().forEach(binding -> dfs(bindings, visited, visiting, cycles, binding));
-		return cycles;
+	private static class InjectingFactory<T> implements Factory<T> {
+		private final Function<Object[], T> creator;
+		private final Field[] injectableFields;
+
+		public InjectingFactory(Function<Object[], T> creator, Field[] injectableFields) {
+			this.creator = creator;
+			this.injectableFields = injectableFields;
+		}
+
+		@Override
+		public T create(Object[] args) {
+			return creator.apply(args);
+		}
+
+		@Override
+		public void lateinit(T instance, Object[] args) {
+			inject(instance, injectableFields, args);
+		}
 	}
 
 	public static void main(String[] args) {
@@ -236,18 +306,19 @@ public final class ReflectionUtils {
 			}
 
 			@Provides
-			Integer provide1(Boolean b) {
-				return 31;
+			String provide2(Integer z) {
+				return "" + z;
 			}
 
 			@Provides
-			String provide2(Integer z) {
-				return "" + z;
+			Integer provide1(Boolean b) {
+				return 31;
 			}
 			//---
 
 
-			@Provides @Named("second")
+			@Provides
+			@Named("second")
 			Float provide123(@Named("second") Boolean b) {
 				return 33f;
 			}
@@ -272,6 +343,6 @@ public final class ReflectionUtils {
 		};
 
 		Injector injector = Injector.create(module);
-		findCyclicDependencies(injector.getBindings()).forEach(System.out::println);
+		checkBindingGraph(injector.getBindings()).forEach(x -> System.out.println(Arrays.toString(x)));
 	}
 }

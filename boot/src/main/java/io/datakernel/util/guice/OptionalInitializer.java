@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
+@Inject
 public final class OptionalInitializer<T extends Initializable<T>> implements Initializer<T> {
 	@Inject(optional = true)
 	@Nullable

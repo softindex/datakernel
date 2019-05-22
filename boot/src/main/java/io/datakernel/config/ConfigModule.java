@@ -141,8 +141,8 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Override
 	protected void configure() {
-		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).asSingleton();
-		bind(new TypeT<RequiredDependency<ConfigModuleService>>() {}).asSingleton();
+		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).require();
+		bind(new TypeT<RequiredDependency<ConfigModuleService>>() {}).require();
 
 		bind(Config.class).to(EffectiveConfig.class);
 	}

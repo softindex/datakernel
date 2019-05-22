@@ -21,10 +21,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.BinaryOperator;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+
+import static io.datakernel.util.CollectionUtils.set;
 
 public class CollectorsEx {
 
@@ -123,8 +127,12 @@ public class CollectorsEx {
 		return (u, v) -> { throw new IllegalStateException("Duplicate key " + u); };
 	}
 
-
 	public static <K, V> Collector<Entry<K, V>, ?, Map<K, V>> toMap() {
 		return Collectors.toMap(Entry::getKey, Entry::getValue);
+	}
+
+	public static <T, K, V> Collector<T, ?, Map<K, Set<V>>> toMultimap(Function<? super T, ? extends K> keyMapper,
+																	   Function<? super T, ? extends V> valueMapper) {
+		return Collectors.toMap(keyMapper, t -> set(valueMapper.apply(t)), CollectionUtils::union);
 	}
 }

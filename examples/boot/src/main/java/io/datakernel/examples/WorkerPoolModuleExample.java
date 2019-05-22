@@ -18,19 +18,20 @@ package io.datakernel.examples;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Provides;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.*;
 
 import java.util.List;
+import java.util.Set;
 
 public class WorkerPoolModuleExample extends AbstractModule {
-//	@Provides
-//	WorkerPool provideWorkerPool() {
-//		return new WorkerPool(4);
-//	}
+
+	@Provides
+	WorkerPool provideWorkerPool(WorkerPools workerPools) {
+		return workerPools.createPool(4);
+	}
 
 	@Provides
 	@Worker

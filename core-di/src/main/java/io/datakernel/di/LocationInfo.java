@@ -1,21 +1,24 @@
 package io.datakernel.di;
 
+import org.jetbrains.annotations.Nullable;
+
 public final class LocationInfo {
-	private final StackTraceElement position;
 
-	private LocationInfo(StackTraceElement position) {
-		this.position = position;
+	@Nullable
+	private final Class<?> moduleClass;
+	private final String declaration;
+
+	public LocationInfo(@Nullable Class<?> moduleClass, String declaration) {
+		this.moduleClass = moduleClass;
+		this.declaration = declaration;
 	}
 
-	public static LocationInfo here(int level) {
-		return new LocationInfo(Thread.currentThread().getStackTrace()[level + 2]);
+	@Nullable
+	public Class<?> getModuleClass() {
+		return moduleClass;
 	}
 
-	public static LocationInfo here() {
-		return here(1); // level is 1 because we are by one `here()` method call deeper, huh
-	}
-
-	public StackTraceElement getPosition() {
-		return position;
+	public String getDeclaration() {
+		return declaration;
 	}
 }

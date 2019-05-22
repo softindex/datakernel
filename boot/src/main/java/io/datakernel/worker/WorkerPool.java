@@ -16,10 +16,7 @@
 
 package io.datakernel.worker;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
-import io.datakernel.di.Scope;
+import io.datakernel.di.*;
 import io.datakernel.util.TypeT;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,10 +40,10 @@ public final class WorkerPool {
 		this.idx = idx;
 		this.scopeInjectors = new Injector[workers];
 		for (int i = 0; i < workers; i++) {
-			Key<Integer> workerId = Key.of(Integer.class, WorkerId.class);
+			Key<Integer> workerId = Key.of(int.class, WorkerId.class);
 			int finalI = i;
 			scopeInjectors[i] = injector.enterScope(scope,
-					singletonMap(workerId, new Binding<>(workerId, new Key[0], args -> finalI)));
+					singletonMap(workerId, Binding.of(workerId, new Dependency[0], args -> finalI)));
 		}
 	}
 

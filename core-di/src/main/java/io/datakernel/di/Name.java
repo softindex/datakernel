@@ -15,11 +15,13 @@ public final class Name extends AbstractAnnotation {
 
 	public static Name of(Class<? extends Annotation> annotationType) {
 		checkArgument(isMarker(annotationType));
+		checkArgument(annotationType.getAnnotation(NameAnnotation.class) != null);
 		return new Name(annotationType, null);
 	}
 
 	public static Name of(Annotation annotation) {
 		Class<? extends Annotation> annotationType = annotation.annotationType();
+		checkArgument(annotationType.getAnnotation(NameAnnotation.class) != null);
 		return isMarker(annotationType) ?
 				new Name(annotationType, null) :
 				new Name(annotationType, annotation);

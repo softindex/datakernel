@@ -172,8 +172,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	@Override
 	protected void configure() {
-		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).asSingleton();
-		bind(new TypeT<RequiredDependency<JmxModuleService>>() {}).asSingleton();
+		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).require();
+		bind(new TypeT<RequiredDependency<JmxModuleService>>() {}).require();
 
 //		bindKeyListeners(binder(), this, b -> singletonKeys.add(b.getKey()), b -> workerKeys.add(b.getKey()));
 	}

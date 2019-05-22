@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
 
@@ -79,10 +80,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 	protected String[] args = {};
 
-	@Inject(optional = true)
-	@Nullable
-	protected Supplier<ServiceGraph> serviceGraphSupplier;
-
 	@Nullable
 	protected ServiceGraph serviceGraph;
 
@@ -126,12 +123,13 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 */
 	public void launch(String[] args) throws Exception {
 		instantOfStart = Instant.now();
-		createInjector(args);
 		logger.info("=== INJECTING DEPENDENCIES");
+		Injector injector = createInjector(args);
+		injector.inject(this);
 		try {
 			onStart();
 			try {
-				doStart();
+				doStart(injector);
 				logger.info("=== RUNNING APPLICATION");
 				instantOfRun = Instant.now();
 				run();
@@ -167,18 +165,17 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		);
 	}
 
-	private void doStart() throws Exception {
-		if (serviceGraphSupplier != null) {
-			serviceGraph = serviceGraphSupplier.get();
-			serviceGraphSupplier = null;
+	private void doStart(Injector injector) throws Exception {
+		Optional<ServiceGraph> optionalServiceGraph = injector.getOptionalInstance(ServiceGraph.class);
+		if (!optionalServiceGraph.isPresent()) {
+			return;
 		}
-		if (serviceGraph != null) {
-			logger.info("=== STARTING APPLICATION");
-			try {
-				serviceGraph.startFuture().get();
-			} finally {
-				logger.info("Services graph: \n" + serviceGraph);
-			}
+		serviceGraph = optionalServiceGraph.get();
+		logger.info("=== STARTING APPLICATION");
+		try {
+			serviceGraph.startFuture().get();
+		} finally {
+			logger.info("Services graph: \n" + serviceGraph);
 		}
 	}
 

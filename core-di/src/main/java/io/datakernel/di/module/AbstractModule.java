@@ -1,19 +1,18 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Dependency;
-import io.datakernel.di.Key;
-import io.datakernel.di.Scope;
+import io.datakernel.di.*;
+import io.datakernel.di.Binding.Factory;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.util.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.di.util.Utils.combineMultimap;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 
 public abstract class AbstractModule implements Module {
 	private final Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
@@ -22,8 +21,14 @@ public abstract class AbstractModule implements Module {
 
 	public AbstractModule() {
 		configure();
+
 		ReflectionUtils.getDeclatativeBindings(this)
-				.forEach(binding -> bindings.computeIfAbsent(binding.getKey(), $ -> new HashSet<>()).add(binding));
+				.forEach((scope, subBindings) -> {
+					Map<Key<?>, Set<Binding<?>>> actualBindings = scope != null ?
+							scopeBindings.computeIfAbsent(scope, $ -> new HashMap<>()) :
+							bindings;
+					subBindings.forEach(binding -> actualBindings.computeIfAbsent(binding.getKey(), $ -> new HashSet<>()).add(binding));
+				});
 	}
 
 	protected void configure() {
@@ -35,6 +40,13 @@ public abstract class AbstractModule implements Module {
 			throw new RuntimeException("more than one conflict resolver per key");
 		}));
 		module.getScopeBindings().forEach((scope, bindings) -> combineMultimap(scopeBindings.computeIfAbsent(scope, $ -> new HashMap<>()), bindings));
+	}
+
+	private void addBinding(@Nullable Scope scope, Binding<?> binding) {
+		Map<Key<?>, Set<Binding<?>>> actualBindings = scope != null ?
+				scopeBindings.computeIfAbsent(scope, $ -> new HashMap<>()) :
+				bindings;
+		actualBindings.computeIfAbsent(binding.getKey(), $ -> new HashSet<>()).add(binding);
 	}
 
 	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "unchecked"})
@@ -63,13 +75,20 @@ public abstract class AbstractModule implements Module {
 			return in(Scope.of(annotationClass));
 		}
 
-		public void to(Binding.Constructor<T> constructor, List<Key<?>> dependencies) {
-			to(constructor, dependencies.toArray(new Key[0]));
+		public void to(Factory<T> factory, Key<?>... dependencies) {
+			addBinding(scope, Binding.of(key, Arrays.stream(dependencies).map(k -> new Dependency(k, true, false)).toArray(Dependency[]::new), factory, getLocation()));
 		}
 
-		public void to(Binding.Constructor<T> constructor, Key<?>... dependencies) {
-			bindings.computeIfAbsent(key, $ -> new HashSet<>())
-					.add(new Binding<>(key, Arrays.stream(dependencies).map(k -> new Dependency(k, true)).toArray(Dependency[]::new), constructor));
+		public void to(Factory<T> factory, List<Key<?>> dependencies) {
+			to(factory, dependencies.toArray(new Key[0]));
+		}
+
+		public void to(Function<Object[], T> factory, List<Key<?>> dependencies) {
+			to(Factory.of(factory), dependencies);
+		}
+
+		public void to(Function<Object[], T> factory, Key<?>... dependencies) {
+			to(Factory.of(factory), dependencies);
 		}
 
 		public void to(Class<? extends T> implementation) {
@@ -149,23 +168,51 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public void toInstance(T instance) {
-			to(args -> instance, asList());
+			to($ -> instance, asList());
 		}
 
-		public void asSingleton() {
-			java.lang.reflect.Constructor<T> constructor;
-			try {
-				constructor = (java.lang.reflect.Constructor<T>) key.getTypeT().getClass().getConstructor();
-			} catch (NoSuchMethodException e) {
-				throw new RuntimeException("no default constructor for " + key.getTypeT(), e);
+		public void overridenIn(Scope scope, Dependency... dependencies) {
+			addBinding(scope, Binding.of(key, dependencies, $ -> {
+				throw new RuntimeException("binding for " + key + " was not overriden when entering the scope as it was supposed to");
+			}, getLocation()));
+		}
+
+		public void overridenIn(Class<? extends Annotation> annotationClass, Dependency... dependencies) {
+			overridenIn(Scope.of(annotationClass), dependencies);
+		}
+
+		public void overridenIn(Scope scope, List<Dependency> dependencies) {
+			overridenIn(scope, dependencies.toArray(new Dependency[0]));
+		}
+
+		public void overridenIn(Class<? extends Annotation> annotationClass, List<Dependency> dependencies) {
+			overridenIn(Scope.of(annotationClass), dependencies.toArray(new Dependency[0]));
+		}
+
+		public void require() {
+			Binding<?> binding = ReflectionUtils.generateImplicitBinding(new Dependency(key, true, false));
+			if (binding != null) {
+				binding.setLocation(getLocation()); // overriding the location, eh
+				bindings.put(binding.getKey(), singleton(binding));
+			} else {
+				throw new RuntimeException("requested automatic creation of " + key + " but it had no implicit bindings");
 			}
-			to(args -> {
-				try {
-					return constructor.newInstance();
-				} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-					throw new RuntimeException("failed to create instance of " + key.getTypeT(), e);
-				}
-			}, asList());
+		}
+
+		@Nullable
+		private LocationInfo getLocation() {
+			return Arrays.stream(Thread.currentThread().getStackTrace())
+					.skip(2)
+					.filter(trace -> !trace.getClassName().equals(BindingBuilder.class.getName()))
+					.findFirst()
+					.flatMap(trace -> {
+						try {
+							return Optional.of(new LocationInfo(Class.forName(trace.getClassName()), trace.toString()));
+						} catch (ClassNotFoundException ignored) {
+							return Optional.empty();
+						}
+					})
+					.orElse(null);
 		}
 	}
 

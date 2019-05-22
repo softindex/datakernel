@@ -44,8 +44,8 @@ public class UIKernelWebAppModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(ExecutorService.class).toInstance(newCachedThreadPool());
-		bind(PersonGridModel.class).asSingleton();
-		bind(Gson.class).asSingleton();
+		bind(PersonGridModel.class).require();
+		bind(Gson.class).require();
 	}
 
 	@Provides

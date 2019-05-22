@@ -178,6 +178,35 @@ public final class TestDI {
 		assertEquals("str: 42", instance.string);
 	}
 
+	@Inject
+	static class RecursiveA {
+
+		@Inject
+		RecursiveB dependency;
+	}
+
+	@Inject
+	static class RecursiveB {
+
+		@Inject
+		RecursiveA dependency;
+	}
+
+	@Test
+	public void cyclicInjects() {
+		Injector injector = Injector.create(new AbstractModule() {{
+			bind(RecursiveA.class).require();
+		}});
+
+		RecursiveA instance = injector.getInstance(RecursiveA.class);
+
+		System.out.println(instance);
+		System.out.println(instance.dependency);
+		System.out.println(instance.dependency.dependency);
+
+		assertEquals(instance, instance.dependency.dependency);
+	}
+
 	@Test
 	public void optional() {
 		class ClassWithCustomDeps {
@@ -229,24 +258,23 @@ public final class TestDI {
 		assertEquals("str", instance2.string);
 		assertEquals(42, instance2.integer.intValue());
 
-		Injector injector3 = Injector.create(new AbstractModule() {
-
-			@Provides
-			ClassWithCustomDeps provide() {
-				return new ClassWithCustomDeps();
-			}
-
-			@Provides
-			String provide2() {
-				return "str";
-			}
-		});
-
 		try {
+			Injector injector3 = Injector.create(new AbstractModule() {
+
+				@Provides
+				ClassWithCustomDeps provide() {
+					return new ClassWithCustomDeps();
+				}
+
+				@Provides
+				String provide2() {
+					return "str";
+				}
+			});
 			injector3.getInstance(ClassWithCustomDeps.class);
 			fail("should've failed, but didn't");
 		} catch (RuntimeException e) {
-			assertEquals("cannot construct", e.getMessage());
+			assertEquals("unsatisfied dependency with no implicit bindings", e.getMessage());
 		}
 	}
 

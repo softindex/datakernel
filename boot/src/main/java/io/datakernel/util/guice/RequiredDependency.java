@@ -2,6 +2,7 @@ package io.datakernel.util.guice;
 
 import io.datakernel.di.Inject;
 
+@Inject
 public final class RequiredDependency<T> {
 	@Inject
 	private T value;

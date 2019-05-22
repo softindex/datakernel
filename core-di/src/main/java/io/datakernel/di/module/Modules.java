@@ -1,18 +1,13 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.Binding;
-import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
-import io.datakernel.util.CollectionUtils;
 
 import java.util.*;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.combineMultimap;
-import static java.util.Arrays.copyOfRange;
 
 public final class Modules {
 	private Modules() {
@@ -77,38 +72,38 @@ public final class Modules {
 		return (Function) ERRORS_ON_DUPLICATE;
 	}
 
-	public static <T> Function<Set<Binding<T>>, Binding<T>> resolverOfReducer(Function<Stream<T>, T> reducerFunction) {
-		return bindings -> {
-			if (bindings.size() == 1) {
-				return bindings.iterator().next();
-			}
-			List<Binding.Constructor<T>> constructors = new ArrayList<>();
-			List<Dependency> keys = new ArrayList<>();
-			for (Binding<T> binding : bindings) {
-				int offset = keys.size();
-				int count = binding.getDependencies().length;
-				Collections.addAll(keys, binding.getDependencies());
-				constructors.add(args -> binding.getConstructor().construct(copyOfRange(args, offset, count)));
-			}
-			return new Binding<>(
-					bindings.iterator().next().getKey(),
-					keys.toArray(new Dependency[0]),
-					args -> reducerFunction.apply(constructors.stream().map(constructor -> constructor.construct(args)))
-			);
-		};
-	}
-
-	@SuppressWarnings("OptionalGetWithoutIsPresent")
-	public static <T> Function<Set<Binding<T>>, Binding<T>> resolverOfBinaryOperator(BinaryOperator<T> binaryOperator) {
-		return resolverOfReducer(stream -> stream.reduce(binaryOperator).get());
-	}
-
-	private static final Function<Set<Binding<Set<Object>>>, Binding<Set<Object>>> MULTIBINDER_TO_SET = resolverOfBinaryOperator(CollectionUtils::union);
-
-	@SuppressWarnings("unchecked")
-	public static <T> Function<Set<Binding<Set<T>>>, Binding<Set<T>>> multibinderToSet() {
-		return (Function) MULTIBINDER_TO_SET;
-	}
+//	public static <T> Function<Set<Binding<T>>, Binding<T>> resolverOfReducer(Function<Stream<T>, T> reducerFunction) {
+//		return bindings -> {
+//			if (bindings.size() == 1) {
+//				return bindings.iterator().next();
+//			}
+//			List<Binding.Factory<T>> factories = new ArrayList<>();
+//			List<Dependency> keys = new ArrayList<>();
+//			for (Binding<T> binding : bindings) {
+//				int offset = keys.size();
+//				int count = binding.getDependencies().length;
+//				Collections.addAll(keys, binding.getDependencies());
+//				factories.add(args -> binding.getFactory().create(copyOfRange(args, offset, count)));
+//			}
+//			return Binding.of(
+//					bindings.iterator().next().getKey(),
+//					keys.toArray(new Dependency[0]),
+//					args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args)))
+//			);
+//		};
+//	}
+//
+//	@SuppressWarnings("OptionalGetWithoutIsPresent")
+//	public static <T> Function<Set<Binding<T>>, Binding<T>> resolverOfBinaryOperator(BinaryOperator<T> binaryOperator) {
+//		return resolverOfReducer(stream -> stream.reduce(binaryOperator).get());
+//	}
+//
+//	private static final Function<Set<Binding<Set<Object>>>, Binding<Set<Object>>> MULTIBINDER_TO_SET = resolverOfBinaryOperator(CollectionUtils::union);
+//
+//	@SuppressWarnings("unchecked")
+//	public static <T> Function<Set<Binding<Set<T>>>, Binding<Set<T>>> multibinderToSet() {
+//		return (Function) MULTIBINDER_TO_SET;
+//	}
 
 	private static class ModuleImpl implements Module {
 		private final Map<Key<?>, Set<Binding<?>>> bindings;
