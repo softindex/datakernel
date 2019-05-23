@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.di.util.Utils.checkArgument;
 
 public final class Scope extends AbstractAnnotation {
 	protected Scope(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {

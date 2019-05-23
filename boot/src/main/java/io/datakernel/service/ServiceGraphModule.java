@@ -218,10 +218,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 
 		@NotNull
-		@SuppressWarnings("unchecked")
 		@Override
 		public TypeT<Object> getTypeT() {
-			return (TypeT<Object>) key.getTypeT();
+			return TypeT.ofType(key.getType());
 		}
 
 		@Override

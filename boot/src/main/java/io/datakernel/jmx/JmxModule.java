@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.di.Binding;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.Name;
@@ -31,14 +30,10 @@ import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.StringFormatUtils;
-import io.datakernel.util.TypeT;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPools;
 
-import javax.management.DynamicMBean;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Type;
 import java.time.Duration;
@@ -46,7 +41,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -138,7 +132,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public JmxModule withGlobalMBean(Type type, String named) {
-		return withGlobalMBean(type, Key.of(TypeT.ofType(type), Name.of(named)));
+		return withGlobalMBean(type, Key.ofType(type, Name.of(named)));
 	}
 
 	public JmxModule withGlobalMBean(Type type, Key<?> key) {
@@ -172,8 +166,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	@Override
 	protected void configure() {
-		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).require();
-		bind(new TypeT<RequiredDependency<JmxModuleService>>() {}).require();
+		bind(new Key<OptionalDependency<ServiceGraph>>() {}).require();
+		bind(new Key<RequiredDependency<JmxModuleService>>() {}).require();
 
 //		bindKeyListeners(binder(), this, b -> singletonKeys.add(b.getKey()), b -> workerKeys.add(b.getKey()));
 	}
@@ -222,8 +216,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				if (keyToSettings.containsKey(key)) {
 					settings.merge(keyToSettings.get(key));
 				}
-				if (typeToSettings.containsKey(key.getTypeT().getType())) {
-					settings.merge(typeToSettings.get(key.getTypeT().getType()));
+				if (typeToSettings.containsKey(key.getType())) {
+					settings.merge(typeToSettings.get(key.getType()));
 				}
 				return settings;
 			}

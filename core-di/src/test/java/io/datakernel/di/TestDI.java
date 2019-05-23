@@ -194,17 +194,14 @@ public final class TestDI {
 
 	@Test
 	public void cyclicInjects() {
-		Injector injector = Injector.create(new AbstractModule() {{
-			bind(RecursiveA.class).require();
-		}});
-
-		RecursiveA instance = injector.getInstance(RecursiveA.class);
-
-		System.out.println(instance);
-		System.out.println(instance.dependency);
-		System.out.println(instance.dependency.dependency);
-
-		assertEquals(instance, instance.dependency.dependency);
+		try {
+			Injector injector = Injector.create(new AbstractModule() {{
+				bind(RecursiveA.class).require();
+			}});
+			fail("should've detected the cycle and fail");
+		} catch (RuntimeException e) {
+			assertEquals("cyclic dependencies detected:\nTestDI$RecursiveB -> TestDI$RecursiveA -> TestDI$RecursiveB -> ...", e.getMessage());
+		}
 	}
 
 	@Test
@@ -274,7 +271,7 @@ public final class TestDI {
 			injector3.getInstance(ClassWithCustomDeps.class);
 			fail("should've failed, but didn't");
 		} catch (RuntimeException e) {
-			assertEquals("unsatisfied dependency with no implicit bindings", e.getMessage());
+			assertEquals("unsatisfied dependency java.lang.Integer with no implicit bindings", e.getMessage());
 		}
 	}
 
@@ -305,30 +302,25 @@ public final class TestDI {
 		assertEquals("str: 42", injector.getInstance(String.class));
 	}
 
+	@SuppressWarnings("unused")
+	@Inject
+	static class Container<Z, T, U> {
+
+		@Inject
+		T something;
+
+		@Inject
+		U somethingElse;
+	}
+
 	@Test
 	public void simpleGeneric() {
 
-		@SuppressWarnings("unused")
-		class Container<Z, T, U> {
-
-			@Inject
-			T something;
-
-			@Inject
-			U somethingElse;
-		}
-		AbstractModule module = new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(String.class).toInstance("hello");
-				bind(Integer.class).toInstance(42);
-			}
-
-			@Provides
-			Container<Float, String, Integer> provide() {
-				return new Container<>();
-			}
-		};
+		AbstractModule module = new AbstractModule() {{
+			bind(String.class).toInstance("hello");
+			bind(Integer.class).toInstance(42);
+			bind(Key.of(new TypeT<Container<Float, String, Integer>>() {})).require();
+		}};
 
 		module.getBindings().values().forEach(binding -> System.out.println(binding.iterator().next().getDisplayString()));
 

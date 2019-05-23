@@ -5,12 +5,10 @@ import java.util.Objects;
 public final class Dependency {
 	private final Key<?> key;
 	private final boolean required;
-	private final boolean postponed;
 
-	public Dependency(Key<?> key, boolean required, boolean postponed) {
+	public Dependency(Key<?> key, boolean required) {
 		this.key = key;
 		this.required = required;
-		this.postponed = postponed;
 	}
 
 	public Key<?> getKey() {
@@ -19,10 +17,6 @@ public final class Dependency {
 
 	public boolean isRequired() {
 		return required;
-	}
-
-	public boolean isPostponed() {
-		return postponed;
 	}
 
 	@Override
@@ -45,11 +39,11 @@ public final class Dependency {
 	}
 
 	public String getDisplayString() {
-		return key.getDisplayString() + (required ? "" : "(required=false)") + (postponed ? "(postponed=true)" : "");
+		return key.getDisplayString() + (required ? "" : "(required=false)");
 	}
 
 	@Override
 	public String toString() {
-		return "Dependency{key=" + key + ", required=" + required + ", postponed=" + postponed + '}';
+		return "Dependency{key=" + key + ", required=" + required + '}';
 	}
 }

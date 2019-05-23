@@ -24,6 +24,6 @@ public final class WorkerPoolModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
-		bind(Key.of(int.class, WorkerId.class)).overridenIn(Worker.class);
+		bind(Key.of(int.class, WorkerId.class)).in(Worker.class).overridenLater();
 	}
 }

@@ -36,6 +36,7 @@ public final class WorkerPool {
 	private final Injector[] scopeInjectors;
 
 	WorkerPool(Injector injector, Scope scope, int idx, int workers) {
+
 		this.scope = scope;
 		this.idx = idx;
 		this.scopeInjectors = new Injector[workers];
@@ -43,7 +44,7 @@ public final class WorkerPool {
 			Key<Integer> workerId = Key.of(int.class, WorkerId.class);
 			int finalI = i;
 			scopeInjectors[i] = injector.enterScope(scope,
-					singletonMap(workerId, Binding.of(workerId, new Dependency[0], args -> finalI)));
+					singletonMap(workerId, Binding.of(new Dependency[0], args -> finalI)));
 		}
 	}
 

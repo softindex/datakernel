@@ -1,45 +1,58 @@
 package io.datakernel.di;
 
+import io.datakernel.di.Binding.Factory;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.ReflectionUtils;
-import io.datakernel.util.RecursiveType;
-import io.datakernel.util.ref.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.flattenMultimap;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 public final class Injector {
 	@Nullable
 	private final Scope scope;
 	@Nullable
 	private final Injector parentInjector;
-	private final Map<Key<?>, Binding<?>> bindings;
-	private final Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings;
+
+	private final ScopedBindings bindings;
+	private final Map<Key<?>, Binding<?>> localBindings;
 
 	private final HashMap<Key<?>, Object> instances = new HashMap<>();
 
-	private Injector(@Nullable Scope scope, @Nullable Injector parentInjector,
-					 Map<Key<?>, Binding<?>> bindings, Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings) {
+	private Injector(@Nullable Scope scope, @Nullable Injector parentInjector, ScopedBindings bindings, Map<Key<?>, Binding<?>> localBindings) {
 		this.scope = scope;
 		this.parentInjector = parentInjector;
 		this.bindings = bindings;
-		this.scopeBindings = scopeBindings;
+		this.localBindings = localBindings;
 
-		Binding<Injector> injectorBinding = Binding.of(Key.of(Injector.class), new Dependency[0], $ -> this);
-		bindings.put(injectorBinding.getKey(), injectorBinding);
+//		Binding<Injector> injectorBinding = Binding.of(new Dependency[0], $ -> this);
+//		bindings.put(Key.of(Injector.class), injectorBinding);
 	}
 
 	public static Injector of(Map<Key<?>, Binding<?>> bindings, Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings) {
+		ReflectionUtils.addImplicitBindings(bindings);
+
+		Set<Key<?>[]> cycles = ReflectionUtils.checkBindingGraph(bindings);
+
+		if (!cycles.isEmpty()) {
+			String detail = cycles.stream()
+					.map(cycle ->
+							Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
+									.map(Key::getDisplayString)
+									.collect(joining(" -> ", "", " -> ...")))
+					.collect(Collectors.joining("\n"));
+			throw new RuntimeException("cyclic dependencies detected:\n" + detail);
+		}
+
 		return new Injector(null, null, bindings, scopeBindings);
 	}
 
@@ -51,15 +64,15 @@ public final class Injector {
 	public static Injector create(Module... modules) {
 		Module module = Modules.combine(modules);
 
-		Function<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolver = module.getConflictResolvers()::get;
+//		Function<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolver = module.getConflictResolvers()::get;
+//
+//		Map<Key<?>, Binding<?>> bindings = flattenMultimap(module.getBindings(), conflictResolver);
+//
+//		Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings = module.getScopeBindings().entrySet().stream()
+//				.collect(toMap(Entry::getKey, scopeEntry -> flattenMultimap(scopeEntry.getValue(), conflictResolver)));
 
-		Map<Key<?>, Binding<?>> bindings = flattenMultimap(module.getBindings(), conflictResolver);
-
-		Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings = module.getScopeBindings().entrySet().stream()
-				.collect(toMap(Entry::getKey, scopeEntry -> flattenMultimap(scopeEntry.getValue(), conflictResolver)));
-
-		ReflectionUtils.addImplicitBindings(bindings);
-		return of(bindings, scopeBindings);
+//		return of(bindings, scopeBindings);
+		return null;
 	}
 
 	@Nullable
@@ -75,15 +88,11 @@ public final class Injector {
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public synchronized <T> T getInstance(@NotNull Key<T> key) {
-		Object instance = instances.get(key);
-		if (instance != null) {
-			return (T) instance;
-		}
-		T constructed = generateInstance(key);
-		if (constructed == null) {
+		T instance = (T) instances.computeIfAbsent(key, this::generateInstance);
+		if (instance == null) {
 			throw new RuntimeException("cannot construct " + key);
 		}
-		return constructed;
+		return instance;
 	}
 
 	public <T> Optional<T> getOptionalInstance(@NotNull Class<T> type) {
@@ -92,66 +101,59 @@ public final class Injector {
 
 	@SuppressWarnings("unchecked")
 	public synchronized <T> Optional<T> getOptionalInstance(@NotNull Key<T> key) {
-		Object instance = instances.get(key);
-		if (instance != null) {
-			return Optional.of((T) instance);
-		}
-		return Optional.ofNullable(generateInstance(key));
-	}
-
-	public void inject(Object instance) {
-		ReflectionUtils.inject(instance, this);
+		return Optional.ofNullable((T) instances.computeIfAbsent(key, this::generateInstance));
 	}
 
 	@SuppressWarnings("unchecked")
+	public void inject(Object instance) {
+		BindingInitializer<Object> initializer = ReflectionUtils.injectingInitializer(Key.of((Class<Object>) instance.getClass()));
+		initializer.getInitializer().apply(instance, generateDependencies(initializer.getDependencies()));
+	}
+
 	@Nullable
-	private <T> T generateInstance(@NotNull Key<T> key) {
-		if (key.getTypeT().getRawType() == Provider.class) {
+	private Object generateInstance(@NotNull Key<?> key) {
+		if (key.getRawType() == Provider.class) {
 			return generateProvider(key);
 		}
-		Binding<T> binding = (Binding<T>) bindings.get(key);
-		if (binding == null) {
-			return parentInjector != null ? parentInjector.generateInstance(key) : null;
+		Binding<?> binding = localBindings.get(key);
+		if (binding != null) {
+			return binding.getFactory().create(generateDependencies(binding.getDependencies()));
 		}
-		T instance = binding.getFactory().create(generateDependencies(binding, false));
-		instances.put(key, instance);
-		binding.getFactory().lateinit(instance, generateDependencies(binding, true));
-		return instance;
+		if (parentInjector != null) {
+			return parentInjector.generateInstance(key);
+		}
+		return null;
 	}
 
-	@SuppressWarnings("unchecked")
-	private <T> T generateProvider(Key<T> key) {
-		RecursiveType[] typeParams = RecursiveType.of(key.getTypeT()).getTypeParams();
+	@Nullable
+	private Object generateProvider(Key<?> key) {
+		Type[] typeParams = key.getTypeParams();
 		checkArgument(typeParams.length == 1);
-		Binding<T> binding = (Binding<T>) bindings.get(new Key(typeParams[0].getTypeT(), key.getName()));
+
+		Binding<?> binding = localBindings.get(Key.ofType(typeParams[0], key.getName()));
 		if (binding == null) {
 			return null;
 		}
-		Object[] args = generateDependencies(binding, false);
-		Ref<Object[]> lateinitArgs = new Ref<>(null);
-		Binding.Factory<T> factory = binding.getFactory();
-		T instance = (T) new Provider<T>() {
+		Object[] args = generateDependencies(binding.getDependencies());
+		Factory<?> factory = binding.getFactory();
+		return new Provider<Object>() {
 			@Override
-			public T provideNew() {
-				T instance = factory.create(args);
-				factory.lateinit(instance, lateinitArgs.get());
-				return instance;
+			public Object provideNew() {
+				return factory.create(args);
 			}
 
 			@Override
-			public synchronized T provideSingleton() {
-				return (T) instances.computeIfAbsent(key, $ -> provideNew());
+			public synchronized Object provideSingleton() {
+				return instances.computeIfAbsent(key, $ -> provideNew());
 			}
 		};
-		instances.put(key, instance);
-		lateinitArgs.set(generateDependencies(binding, true));
-		return instance;
 	}
 
-	private Object[] generateDependencies(Binding<?> binding, boolean lateinit) {
-		return Arrays.stream(binding.getDependencies())
-				.filter(dependency -> lateinit ^ !dependency.isPostponed())
-				.map(dependency -> dependency.isRequired() ? getInstance(dependency.getKey()) : getOptionalInstance(dependency.getKey()))
+	private Object[] generateDependencies(Dependency[] dependencies) {
+		return Arrays.stream(dependencies)
+				.map(dependency -> dependency.isRequired() ?
+						getInstance(dependency.getKey()) :
+						getOptionalInstance(dependency.getKey()).orElse(null))
 				.toArray(Object[]::new);
 	}
 

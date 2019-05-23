@@ -319,7 +319,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		if (keyToObjectNames.containsKey(key)) {
 			return keyToObjectNames.get(key);
 		}
-		Class<?> rawType = key.getTypeT().getRawType();
+		Class<?> rawType = key.getRawType();
 		Annotation annotation = key.getAnnotation();
 		String domain = rawType.getPackage().getName();
 		String name = domain + ":" + "type=" + rawType.getSimpleName();
@@ -343,7 +343,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	private static String addGenericParamsInfo(String srcName, Key<?> key) {
-		Type type = key.getTypeT().getType();
+		Type type = key.getType();
 		StringBuilder resultName = new StringBuilder(srcName);
 		if (type instanceof ParameterizedType) {
 			ParameterizedType pType = (ParameterizedType) type;

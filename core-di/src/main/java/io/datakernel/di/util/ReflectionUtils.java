@@ -1,21 +1,19 @@
 package io.datakernel.di.util;
 
+import io.datakernel.di.Scopes;
 import io.datakernel.di.*;
-import io.datakernel.di.Binding.Factory;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
-import io.datakernel.util.RecursiveType;
-import io.datakernel.util.TypeT;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import static io.datakernel.util.CollectorsEx.toMultimap;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -24,7 +22,7 @@ public final class ReflectionUtils {
 		throw new AssertionError("nope.");
 	}
 
-	private static Key<Object> keyOf(@NotNull Type type, Annotation[] annotations) {
+	private static <T> Key<T> keyOf(@NotNull Type type, Annotation[] annotations) {
 		Set<Annotation> names = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().getAnnotation(NameAnnotation.class) != null)
 				.collect(toSet());
@@ -32,29 +30,45 @@ public final class ReflectionUtils {
 			throw new RuntimeException("more than one name annotation");
 		}
 		return names.isEmpty() ?
-				Key.of(TypeT.ofType(type)) :
-				Key.of(TypeT.ofType(type), names.iterator().next());
+				Key.ofType(type) :
+				Key.ofType(type, names.iterator().next());
 	}
 
-	@Nullable
-	private static Scope scopeOf(Annotation[] annotations) {
+	private static Scope[] scopesFrom(Annotation[] annotations) {
 		Set<Annotation> scopes = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().getAnnotation(ScopeAnnotation.class) != null)
 				.collect(toSet());
+
+		Scopes nested = (Scopes) Arrays.stream(annotations).filter(annotation -> annotation.annotationType() == Scopes.class)
+				.findAny()
+				.orElse(null);
+
 		if (scopes.size() > 1) {
 			throw new RuntimeException("more than one scope annotation");
 		}
-		return scopes.isEmpty() ? null : Scope.of(scopes.iterator().next());
+		if (!scopes.isEmpty() && nested != null) {
+			throw new RuntimeException("cannot have both @Scoped and other scope annotations");
+		}
+		return nested != null ?
+				Arrays.stream(nested.value()).map(Scope::of).toArray(Scope[]::new) :
+				new Scope[]{Scope.of(scopes.iterator().next())};
 	}
 
-	public static Map<Scope, Set<Binding<?>>> getDeclatativeBindings(Object module) {
-		return Arrays.stream(module.getClass().getDeclaredMethods())
-				.filter(method -> method.getAnnotation(Provides.class) != null)
-				.collect(toMultimap(method -> scopeOf(method.getDeclaredAnnotations()), method -> bindingForMethod(module, method)));
+	public static ScopedBindings getDeclatativeBindings(Object module) {
+		ScopedBindings bindings = ScopedBindings.create();
+
+		for (Method method : module.getClass().getDeclaredMethods()) {
+			if (!method.isAnnotationPresent(Provides.class)) {
+				continue;
+			}
+			Annotation[] annotations = method.getDeclaredAnnotations();
+			Scope[] scopes = scopesFrom(annotations);
+			bindings.resolve(scopes).add(keyOf(method.getGenericReturnType(), annotations), bindingForMethod(module, method));
+		}
+		return bindings;
 	}
 
-	private static Field[] getInjectableFields(TypeT<?> type) {
-		Class<?> cls = type.getRawType();
+	private static Field[] getInjectableFields(Class<?> cls) {
 		List<Field> fields = new ArrayList<>();
 		while (cls != null) {
 			for (Field field : cls.getDeclaredFields()) {
@@ -68,46 +82,8 @@ public final class ReflectionUtils {
 		return fields.toArray(new Field[0]);
 	}
 
-	private static Dependency[] makeDependencies(TypeT<?> returnType, Parameter[] parameters, Field[] injectableFields) {
-		TypeVariable<?>[] typeParameters = returnType.getRawType().getTypeParameters();
-		RecursiveType[] actualTypeArguments = RecursiveType.of(returnType).getTypeParams();
-
-		Dependency[] dependencies = new Dependency[parameters.length + injectableFields.length];
-		for (int i = 0; i < parameters.length; i++) {
-			Parameter parameter = parameters[i];
-			dependencies[i] = new Dependency(keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations()), true, false);
-		}
-		for (int i = 0; i < injectableFields.length; i++) {
-			Field field = injectableFields[i];
-
-			Type type = field.getGenericType();
-			for (int j = 0; j < typeParameters.length; j++) {
-				if (type == typeParameters[j]) {
-					type = actualTypeArguments[j].getType();
-					break;
-				}
-			}
-			boolean required = !field.getAnnotation(Inject.class).optional();
-			dependencies[parameters.length + i] = new Dependency(keyOf(type, field.getDeclaredAnnotations()), required, true);
-		}
-		return dependencies;
-	}
-
-	private static void inject(Object instance, Field[] injectableFields, Object[] args) {
-		for (int i = 0; i < injectableFields.length; i++) {
-			Object arg = args[i];
-			if (arg != null) {
-				try {
-					injectableFields[i].set(instance, arg);
-				} catch (IllegalAccessException e) {
-					throw new RuntimeException("failed to inject field " + injectableFields[i], e);
-				}
-			}
-		}
-	}
-
 	public static void inject(Object instance, Injector from) {
-		Field[] injectableFields = getInjectableFields(TypeT.of(instance.getClass()));
+		Field[] injectableFields = getInjectableFields(instance.getClass());
 		for (Field field : injectableFields) {
 			Key<Object> key = keyOf(field.getGenericType(), field.getAnnotations());
 			try {
@@ -121,42 +97,84 @@ public final class ReflectionUtils {
 		}
 	}
 
-	private static Binding<?> bindingForMethod(@Nullable Object instance, Method method) {
-		TypeT<Object> returnType = TypeT.ofType(method.getGenericReturnType());
+	public static <T> BindingInitializer<T> injectingInitializer(Key<T> returnType) {
+		Field[] injectableFields = getInjectableFields(returnType.getRawType());
 
-		Field[] injectableFields = getInjectableFields(returnType);
-		Dependency[] dependencies = makeDependencies(returnType, method.getParameters(), injectableFields);
+		Type[] typeParameters = returnType.getRawType().getTypeParameters();
+		Type[] typeArguments = returnType.getTypeParams();
+		if (typeParameters.length != typeArguments.length) {
+			throw new RuntimeException(returnType.getType() + " has number of type parameters not equal to number of type arguments");
+		}
 
-		method.setAccessible(true);
+		Map<Type, Type> typevars = IntStream.range(0, typeParameters.length)
+				.boxed()
+				.collect(Collectors.toMap(i -> typeParameters[i], i -> typeArguments[i]));
 
-		return Binding.of(keyOf(method.getGenericReturnType(), method.getDeclaredAnnotations()), dependencies, new InjectingFactory<>(args -> {
-			try {
-				return method.invoke(instance, args);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException("failed to call method for " + returnType, e);
+		Dependency[] dependencies = Arrays.stream(injectableFields)
+				.map(field -> {
+					Type type = field.getGenericType();
+					Key<Object> key = keyOf(typevars.getOrDefault(type, type), field.getDeclaredAnnotations());
+					boolean required = !field.getAnnotation(Inject.class).optional();
+					return new Dependency(key, required);
+				})
+				.toArray(Dependency[]::new);
+
+		return new BindingInitializer<>(dependencies, (instance, args) -> {
+			for (int i = 0; i < injectableFields.length; i++) {
+				Object arg = args[i];
+				if (arg != null) {
+					try {
+						injectableFields[i].set(instance, arg);
+					} catch (IllegalAccessException e) {
+						throw new RuntimeException("failed to inject field " + injectableFields[i], e);
+					}
+				}
 			}
-		}, injectableFields), new LocationInfo(instance != null ? instance.getClass() : null, method.toString()));
+		});
+	}
+
+	@NotNull
+	private static Dependency[] toDependencies(Parameter[] parameters) {
+		return Arrays.stream(parameters)
+				.map(parameter -> new Dependency(keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations()), true))
+				.toArray(Dependency[]::new);
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Binding<?> bindingForConstructor(Key<?> key, Constructor<?> constructor) {
+	private static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
+		method.setAccessible(true);
+
+		Key<T> returnType = Key.ofType(method.getGenericReturnType());
+		Dependency[] dependencies = toDependencies(method.getParameters());
+
+		return Binding.of(dependencies, args -> {
+			try {
+				return (T) method.invoke(module, args);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new RuntimeException("failed to call method for " + returnType, e);
+			}
+		}, new LocationInfo(module != null ? module.getClass() : null, method.toString()))
+				.apply(injectingInitializer(returnType));
+	}
+	private static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
 
-		Field[] injectableFields = getInjectableFields(key.getTypeT());
-		Dependency[] dependencies = makeDependencies(key.getTypeT(), constructor.getParameters(), injectableFields);
+		Dependency[] dependencies = toDependencies(constructor.getParameters());
 
-		return Binding.of((Key<Object>) key, dependencies, new InjectingFactory<>(args -> {
+		return Binding.of(dependencies, args -> {
 			try {
-				return constructor.newInstance();
+				return constructor.newInstance(args);
 			} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException("failed to create " + key.getTypeT(), e);
+				throw new RuntimeException("failed to create " + key, e);
 			}
-		}, injectableFields), new LocationInfo(null, constructor.toString()));
+		}, new LocationInfo(null, constructor.toString()))
+				.apply(injectingInitializer(Key.of(constructor.getDeclaringClass())));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Nullable
-	public static Binding<?> generateImplicitBinding(Dependency dependency) {
-		Class<?> cls = dependency.getKey().getTypeT().getRawType();
+	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
+		Class<?> cls = key.getRawType();
 
 		if (cls == Provider.class || cls == Injector.class) {
 			return null; // those two are hardcoded in the injector class, do nothing here
@@ -169,7 +187,7 @@ public final class ReflectionUtils {
 				throw new RuntimeException("inject annotation on class cannot be optional");
 			}
 			try {
-				return bindingForConstructor(dependency.getKey(), cls.getDeclaredConstructor());
+				return bindingForConstructor(key, (Constructor<T>) cls.getDeclaredConstructor());
 			} catch (NoSuchMethodException e) {
 				throw new RuntimeException("inject annotation on class with no default constructor", e);
 			}
@@ -182,7 +200,7 @@ public final class ReflectionUtils {
 				throw new RuntimeException("more than one inject constructor");
 			}
 			if (!injectConstructors.isEmpty()) {
-				return bindingForConstructor(dependency.getKey(), injectConstructors.iterator().next());
+				return bindingForConstructor(key, (Constructor<T>) injectConstructors.iterator().next());
 			}
 		}
 
@@ -196,17 +214,13 @@ public final class ReflectionUtils {
 						&& Modifier.isStatic(method.getModifiers()));
 
 		if (!allOk) {
-			throw new RuntimeException("found methods with @Inject annotation that are not public static factory methods for key " + dependency.getKey());
+			throw new RuntimeException("found methods with @Inject annotation that are not public static factory methods for key " + key);
 		}
 		if (factoryMethods.size() > 1) {
 			throw new RuntimeException("more than one inject factory method");
 		}
 		if (!factoryMethods.isEmpty()) {
 			return bindingForMethod(null, factoryMethods.iterator().next());
-		}
-
-		if (dependency.isRequired()) {
-			throw new RuntimeException("unsatisfied dependency " + dependency.getKey() + " with no implicit bindings");
 		}
 		return null;
 	}
@@ -216,12 +230,18 @@ public final class ReflectionUtils {
 		do {
 			bindingsToCheck = bindingsToCheck.stream()
 					.flatMap(binding -> Arrays.stream(binding.getDependencies()))
-
 					.filter(dependency -> !bindings.containsKey(dependency.getKey()))
-
-					.map(ReflectionUtils::generateImplicitBinding)
+					.map(dependency -> {
+						Key<?> key = dependency.getKey();
+						Binding<?> binding = generateImplicitBinding(key);
+						if (binding != null) {
+							bindings.put(key, binding);
+						} else if (dependency.isRequired()) {
+							throw new RuntimeException("unsatisfied dependency " + key + " with no implicit bindings");
+						}
+						return binding;
+					})
 					.filter(Objects::nonNull)
-					.peek(binding -> bindings.put(binding.getKey(), binding))
 					.collect(toList());
 		} while (!bindingsToCheck.isEmpty());
 	}
@@ -232,7 +252,7 @@ public final class ReflectionUtils {
 		Set<Key<?>> visited = new HashSet<>();
 		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
 		Set<Key<?>[]> cycles = new HashSet<>();
-		bindings.forEach((key, binding) -> dfs(bindings, visited, visiting, cycles, new Dependency(key, true, false)));
+		bindings.forEach((key, binding) -> dfs(bindings, visited, visiting, cycles, new Dependency(key, true)));
 		return cycles;
 	}
 
@@ -244,51 +264,29 @@ public final class ReflectionUtils {
 		Binding<?> binding = bindings.get(key);
 		if (binding != null) {
 			if (!visiting.add(key)) {
-				// postponed dependencies allow cycles
-				if (!node.isPostponed()) {
-					// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
-					// and in the code below we just get d -> e -> g -> c out of it
-					Iterator<Key<?>> backtracked = visiting.iterator();
-					int skipped = 0;
-					while (backtracked.hasNext() && !backtracked.next().equals(key)) { // reference equality doesn't always work here
-						skipped++;
-					}
-					Key<?>[] cycle = new Key[visiting.size() - skipped + 1];
-					for (int i = 0; i < cycle.length - 1; i++) {
-						cycle[i] = backtracked.next();
-					}
-					cycle[cycle.length - 1] = key;
-					cycles.add(cycle);
-					return;
+				// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
+				// and in the code below we just get d -> e -> g -> c out of it
+				Iterator<Key<?>> backtracked = visiting.iterator();
+				int skipped = 0;
+				while (backtracked.hasNext() && !backtracked.next().equals(key)) { // reference equality doesn't always work here
+					skipped++;
 				}
+				Key<?>[] cycle = new Key[visiting.size() - skipped];
+				for (int i = 0; i < cycle.length - 1; i++) {
+					cycle[i] = backtracked.next(); // this should be ok
+				}
+				cycle[cycle.length - 1] = key;
+				cycles.add(cycle);
+				return;
 			}
 			for (Dependency dependency : binding.getDependencies()) {
 				dfs(bindings, visited, visiting, cycles, dependency);
 			}
 			visiting.remove(key);
+			visited.add(key);
 		} else if (node.isRequired()) {
+
 			throw new RuntimeException("no binding for required key " + key);
-		}
-		visited.add(key);
-	}
-
-	private static class InjectingFactory<T> implements Factory<T> {
-		private final Function<Object[], T> creator;
-		private final Field[] injectableFields;
-
-		public InjectingFactory(Function<Object[], T> creator, Field[] injectableFields) {
-			this.creator = creator;
-			this.injectableFields = injectableFields;
-		}
-
-		@Override
-		public T create(Object[] args) {
-			return creator.apply(args);
-		}
-
-		@Override
-		public void lateinit(T instance, Object[] args) {
-			inject(instance, injectableFields, args);
 		}
 	}
 

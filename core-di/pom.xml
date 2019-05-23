@@ -14,11 +14,6 @@
   <name>DataKernel: DI</name>
 
   <dependencies>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
   </dependencies>
 
 </project>

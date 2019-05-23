@@ -52,7 +52,7 @@ public final class GuiceUtils {
 	}
 
 	public static String prettyPrintSimpleKeyName(Key<?> key) {
-		Type type = key.getTypeT().getType();
+		Type type = key.getType();
 		return (key.getAnnotation() != null ?
 				prettyPrintAnnotation(key.getAnnotation()) + " " :
 				key.getAnnotationType() != null ?
@@ -61,7 +61,7 @@ public final class GuiceUtils {
 	}
 
 	public static String prettyPrintKeyName(Key<?> key) {
-		Type type = key.getTypeT().getType();
+		Type type = key.getType();
 		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
 				RecursiveType.of(type).getName();
 	}
