@@ -3,7 +3,7 @@ package io.datakernel.examples;
 import java.util.HashMap;
 import java.util.Map;
 //[START EXAMPLE]
-public class LoginServiceImpl implements LoginService {
+public class AuthServiceImpl implements AuthService {
 	private Map<String, String> credentials = new HashMap<>();
 
 	@Override

@@ -25,6 +25,7 @@ import org.junit.rules.ExpectedException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -43,9 +44,11 @@ public final class RoutingServletTest {
 		assertTrue(promise.isComplete());
 		if (promise.isResult()) {
 			HttpResponse result = promise.materialize().getResult();
-			assertEquals(expectedBody, result.getBody().materialize().getResult().asString(UTF_8));
-			assertEquals(expectedCode, result.getCode());
-			result.recycle();
+			result.loadBody()
+					.whenComplete(assertComplete($ -> {
+						assertEquals(expectedBody, result.getBody().asString(UTF_8));
+						assertEquals(expectedCode, result.getCode());
+					}));
 		} else {
 			assertEquals(expectedCode, ((HttpException) promise.materialize().getException()).getCode());
 		}

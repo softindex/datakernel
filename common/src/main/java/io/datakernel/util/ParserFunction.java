@@ -21,6 +21,16 @@ public interface ParserFunction<T, R> {
 		};
 	}
 
+	static <T, R> ParserFunction<T, R> of(Function<T, R> fn) {
+		return value -> {
+			try {
+				return fn.apply(value);
+			} catch (Exception e) {
+				throw new ParseException(e);
+			}
+		};
+	}
+
 	default R parseOrDefault(@Nullable T value, R defaultResult) {
 		try {
 			if (value != null) {

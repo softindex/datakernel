@@ -23,20 +23,21 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
 import static java.util.Collections.emptyMap;
-import static java.util.Objects.isNull;
 
 /**
  * Represents the HTTP request which {@link AsyncHttpClient} sends to
@@ -57,8 +58,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private InetAddress remoteAddress;
 	private Map<String, String> pathParameters;
 	private Map<String, String> queryParameters;
-
-	private Map<Class<?>, Object> attachments;
+	private Map<String, String> postParameters;
 
 	// region creators
 	HttpRequest(@NotNull HttpMethod method, @Nullable UrlParser url) {
@@ -266,41 +266,59 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.getQueryParametersIterable();
 	}
 
-	@NotNull
-	public Promise<Map<String, String>> getPostParameters() {
-		return getPostParameters(DEFAULT_LOAD_LIMIT_BYTES);
+	public Promise<Map<String, String>> loadPostParams() {
+		return postParameters != null ? Promise.of(postParameters) :
+				doLoadPostParams();
+	}
+
+	private Promise<Map<String, String>> doLoadPostParams() {
+		if (!hasPostParams()) {
+			return Promise.of(postParameters = emptyMap());
+		}
+		if (body == null) {
+			return loadBody()
+					.map(body -> postParameters = UrlParser.parseQueryIntoMap(
+							decodeAscii(body.array(), body.head(), body.readRemaining())));
+		} else {
+			return Promise.of(postParameters = UrlParser.parseQueryIntoMap(
+					decodeAscii(body.array(), body.head(), body.readRemaining())));
+		}
 	}
 
 	@NotNull
-	public Promise<Map<String, String>> getPostParameters(@NotNull MemSize memSize) {
-		return getPostParameters(memSize.toInt());
+	public Map<String, String> getPostParameters() {
+		return postParameters != null ? postParameters :
+				(postParameters = getParsedPostParameters());
 	}
 
-	@NotNull
-	public Promise<Map<String, String>> getPostParameters(int maxSize) {
-		assert !isRecycled();
+	@Nullable
+	public String getPostParameter(String name) {
+		return getParsedPostParameters().get(name);
+	}
+
+	private Map<String, String> getParsedPostParameters() {
+		if (!hasPostParams()) return emptyMap();
+		if (body == null) throw new NullPointerException("Body is not loaded to parse post params");
+		return UrlParser.parseQueryIntoMap(decodeAscii(body.array(),
+				body.head(),
+				body.readRemaining()));
+	}
+
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
+	private boolean hasPostParams() {
 		ByteBuf buf = getHeaderBuf(CONTENT_TYPE);
 		if (buf == null) {
-			return Promise.of(emptyMap());
+			return false;
 		}
-
 		try {
 			ContentType contentType = HttpHeaderValue.toContentType(buf);
 			if (method != POST || contentType.getMediaType() != MediaTypes.X_WWW_FORM_URLENCODED) {
-				return Promise.of(emptyMap());
+				return false;
 			}
 		} catch (ParseException e) {
-			return Promise.of(emptyMap());
+			return false;
 		}
-
-		return getBody(maxSize)
-				.map(body -> {
-					try {
-						return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining()));
-					} finally {
-						body.recycle();
-					}
-				});
+		return true;
 	}
 
 	@NotNull
@@ -345,14 +363,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return partialPath.startsWith("/") ? partialPath.substring(1) : partialPath; // strip first '/'
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> T getAttachment(Class<T> type) {
-		assert attachments != null;
-		Object res = attachments.get(type);
-		assert res != null;
-		return (T) res;
-	}
-
 	String pollUrlPart() {
 		assert !isRecycled();
 		return url.pollUrlPart();
@@ -367,13 +377,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 			pathParameters = new HashMap<>();
 		}
 		pathParameters.put(key, UrlParser.urlDecode(value));
-	}
-
-	void attach(Object extra) {
-		if (attachments == null) {
-			attachments = new HashMap<>();
-		}
-		attachments.put(extra.getClass(), extra);
 	}
 
 	@Override

@@ -21,7 +21,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.*;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -29,10 +30,10 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.fs.api.FsCommand.*;
@@ -113,23 +114,21 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + DELETE + "/:space", request ->
-						request.getBody()
-								.then(body -> {
-									String parameterSpace = request.getPathParameter("space");
-									if (parameterSpace == null) {
-										return Promise.<HttpResponse>ofException(new ParseException());
-									}
-									try {
-										PubKey space = PubKey.fromString(parameterSpace);
-										SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.getArray());
-										return node.delete(space, checkpoint)
-												.map($ -> HttpResponse.ok200());
-									} catch (ParseException e) {
-										return Promise.<HttpResponse>ofException(e);
-									} finally {
-										body.recycle();
-									}
-								}));
+				.with(POST, "/" + DELETE + "/:space", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							String parameterSpace = request.getPathParameter("space");
+							if (parameterSpace == null) {
+								return Promise.<HttpResponse>ofException(new ParseException());
+							}
+							try {
+								PubKey space = PubKey.fromString(parameterSpace);
+								SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.getArray());
+								return node.delete(space, checkpoint)
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}));
 	}
 }

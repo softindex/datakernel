@@ -30,7 +30,8 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.list;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -99,16 +100,13 @@ public final class HttpClientExample extends Launcher {
 			HttpRequest request = HttpRequest.post(addr).withBody(encodeAscii(msg));
 
 			httpClient.request(request)
-					.whenResult(response -> response.getBody()
+					.whenResult(response -> response.loadBody()
 							.whenComplete((body, e) -> {
-								try {
-									if (e == null) {
-										System.out.println("Server response: " + body.getString(UTF_8));
-									} else {
-										System.err.println("Server error: " + e);
-									}
-								} finally {
-									body.recycle();
+								if (e == null) {
+									body = response.getBody();
+									System.out.println("Server response: " + body.asString(UTF_8));
+								} else {
+									System.err.println("Server error: " + e);
 								}
 							}));
 		});

@@ -26,10 +26,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.*;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 import io.global.common.Hash;
@@ -49,6 +46,7 @@ import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.ParserFunction.asFunction;
@@ -106,40 +104,40 @@ public final class RawServerServlet implements AsyncServlet {
 							HttpResponse.ok200()
 									.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8)));
 				})
-				.with(POST, "/" + SAVE + "/:pubKey/:name", req -> req.getBody().then(body -> {
-					String pubKey = req.getPathParameter("pubKey");
-					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null) {
-						return parseException;
-					}
+				.with(POST, "/" + SAVE + "/:pubKey/:name", loadBody()
+						.then(req -> {
+							ByteBuf body = req.getBody();
+							String pubKey = req.getPathParameter("pubKey");
+							String name = req.getPathParameter("name");
+							if (pubKey == null || name == null) {
+								return parseException;
+							}
 
-					try {
-						Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), body.getString(UTF_8));
-						return node.save(urlDecodeRepositoryId(pubKey, name), commits)
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
-				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", req -> req.getBody().then(body -> {
-					String pubKey = req.getPathParameter("pubKey");
-					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null) {
-						return parseException;
-					}
+							try {
+								Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), body.getString(UTF_8));
+								return node.save(urlDecodeRepositoryId(pubKey, name), commits)
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}))
+				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", loadBody()
+						.then(req -> {
+							ByteBuf body = req.getBody();
+							String pubKey = req.getPathParameter("pubKey");
+							String name = req.getPathParameter("name");
+							if (pubKey == null || name == null) {
+								return parseException;
+							}
 
-					try {
-						Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), body.getString(UTF_8));
-						return node.saveHeads(urlDecodeRepositoryId(pubKey, name), heads)
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+							try {
+								Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), body.getString(UTF_8));
+								return node.saveHeads(urlDecodeRepositoryId(pubKey, name), heads)
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
 				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req -> {
 					String commitId = req.getQueryParameter("commitId");
 					String pubKey = req.getPathParameter("pubKey");
@@ -156,17 +154,17 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", req -> req.getBody().then(body -> {
-					try {
-						SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, body.slice());
-						return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							try {
+								SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, body.slice());
+								return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}))
 				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
 					String id = req.getQueryParameter("id");
 					String pubKey = req.getPathParameter("pubKey");
@@ -245,22 +243,22 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SHARE_KEY + "/:owner", req -> req.getBody().then(body -> {
-					String owner = req.getPathParameter("owner");
-					if (owner == null) {
-						return parseException;
-					}
+				.with(POST, "/" + SHARE_KEY + "/:owner", loadBody()
+						.then(req -> {
+							ByteBuf body = req.getBody();
+							String owner = req.getPathParameter("owner");
+							if (owner == null) {
+								return parseException;
+							}
 
-					try {
-						return node.shareKey(PubKey.fromString(owner),
-								fromJson(SIGNED_SHARED_KEY_JSON, body.getString(UTF_8)))
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+							try {
+								return node.shareKey(PubKey.fromString(owner),
+										fromJson(SIGNED_SHARED_KEY_JSON, body.getString(UTF_8)))
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}))
 				.with(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> {
 					PubKey owner;
 					Hash hash;
@@ -293,17 +291,17 @@ public final class RawServerServlet implements AsyncServlet {
 									.withBody(toJson(ofList(SIGNED_SHARED_KEY_JSON), sharedSimKeys).getBytes(UTF_8))
 							);
 				})
-				.with(POST, "/" + SEND_PULL_REQUEST, req -> req.getBody().then(body -> {
-					try {
-						SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, body.slice());
-						return node.sendPullRequest(pullRequest)
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+				.with(POST, "/" + SEND_PULL_REQUEST, loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							try {
+								SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, body.slice());
+								return node.sendPullRequest(pullRequest)
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}))
 				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");

@@ -25,14 +25,12 @@ import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ParserFunction;
-import io.datakernel.util.Recyclable;
+import io.datakernel.util.*;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -46,6 +44,9 @@ public abstract class HttpMessage {
 	final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
 	ChannelSupplier<ByteBuf> bodySupplier;
 	private Recyclable bufs;
+
+	protected ByteBuf body;
+	protected Map<Type, Object> attachments;
 
 	static final byte ACCESSED_BODY_STREAM = 1 << 0;
 	static final byte USE_GZIP = 1 << 1;
@@ -177,40 +178,88 @@ public abstract class HttpMessage {
 		setBody(ByteBuf.wrapForReading(body));
 	}
 
-	@NotNull
-	public final Promise<ByteBuf> getBody() {
-		return getBody(DEFAULT_LOAD_LIMIT_BYTES);
+	public final ByteBuf getBody() {
+		if (body == null) throw new NullPointerException("Body is not loaded");
+		return body;
 	}
 
-	@NotNull
-	public final Promise<ByteBuf> getBody(@NotNull MemSize loadLimit) {
-		return getBody(loadLimit.toInt());
+	public Promise<ByteBuf> loadBody() {
+		return loadBody(DEFAULT_LOAD_LIMIT_BYTES);
 	}
 
-	@NotNull
-	public final Promise<ByteBuf> getBody(int loadLimit) {
+	public Promise<ByteBuf> loadBody(@NotNull MemSize loadLimit) {
+		return loadBody(loadLimit.toInt());
+	}
+
+	public Promise<ByteBuf> loadBody(int loadLimit) {
 		if (this.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue<?>) {
 			flags |= ACCESSED_BODY_STREAM;
-			return Promise.of(((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
+			return Promise.of(body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
 		}
-		return ChannelSuppliers.collect(getBodyStream(),
-				new ByteBufQueue(),
-				(queue, buf) -> {
-					if (queue.hasRemainingBytes(loadLimit)) {
-						queue.recycle();
-						buf.recycle();
-						throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
-								"HTTP body size exceeds load limit " + loadLimit));
-					}
-					queue.add(buf);
-				},
-				ByteBufQueue::takeRemaining);
+		return body != null ?
+				Promise.of(body) :
+				ChannelSuppliers.collect(getBodyStream(),
+						new ByteBufQueue(),
+						(queue, buf) -> {
+							if (queue.hasRemainingBytes(loadLimit)) {
+								queue.recycle();
+								buf.recycle();
+								throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
+										"HTTP body size exceeds load limit " + loadLimit));
+							}
+							queue.add(buf);
+						}, ByteBufQueue::takeRemaining)
+						.whenComplete((collectedBody, e) -> {
+							if (e == null) {
+								body = collectedBody;
+							}
+						});
+	}
+
+	public <T> void attach(Type type, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(type, extra);
+	}
+
+	public <T> void attach(Class<T> type, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(type, extra);
+	}
+
+	public void attach(Object extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(extra.getClass(), extra);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(Class<T> type) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(type);
+		return (T) res;
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(Type type) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(type);
+		return (T) res;
 	}
 
 	public void setBodyGzipCompression() {
 		this.flags |= USE_GZIP;
 	}
 
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	boolean isRecycled() {
 		return (this.flags & RECYCLED) != 0;
 	}
@@ -221,6 +270,10 @@ public abstract class HttpMessage {
 		assert (this.flags |= RECYCLED) != 0;
 		if (bufs != null) {
 			bufs.recycle();
+		}
+		if (body != null) {
+			body.recycle();
+			body = null;
 		}
 	}
 

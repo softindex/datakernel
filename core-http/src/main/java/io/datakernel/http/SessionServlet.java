@@ -5,6 +5,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.session.SessionStore;
 import org.jetbrains.annotations.NotNull;
 
+
 public class SessionServlet<T> implements AsyncServlet {
 	public final String sessionId;
 

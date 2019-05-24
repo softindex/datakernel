@@ -4,7 +4,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.http.UrlBuilder;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
@@ -33,6 +32,7 @@ import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpRequest.get;
 import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.common.CryptoUtils.sha256;
 import static io.global.ot.api.OTNodeCommand.*;
@@ -79,29 +79,33 @@ public class OTNodeServletTest {
 	}
 
 	@Test
-	public void testCheckout() throws ParseException {
-		HttpResponse response = await(servlet.serve(get(HOST + CHECKOUT)));
-		ByteBuf body = await(response.getBody());
-		String bodyString = body.asString(UTF_8);
-		System.out.println(bodyString);
+	public void testCheckout() {
+		await(servlet.serve(get(HOST + CHECKOUT))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							String bodyString = body.asString(UTF_8);
+							System.out.println(bodyString);
 
-		FetchData<CommitId, TestOp> checkoutData = fromJson(FETCH_DATA_CODEC, bodyString);
-		assertEquals(getCommitId(5), checkoutData.getCommitId());
-		assertEquals(OT_SYSTEM.squash(asList(add(1), set(-12, 34), add(-12), set(4, 5))), checkoutData.getDiffs());
+							FetchData<CommitId, TestOp> checkoutData = fromJson(FETCH_DATA_CODEC, bodyString);
+							assertEquals(getCommitId(5), checkoutData.getCommitId());
+							assertEquals(OT_SYSTEM.squash(asList(add(1), set(-12, 34), add(-12), set(4, 5))), checkoutData.getDiffs());
+						}))));
 	}
 
 	@Test
-	public void testFetch() throws ParseException {
+	public void testFetch() {
 		String revisionFromJson = toJson(REGISTRY.get(CommitId.class), getCommitId(3));
 		String urlEncoded = UrlBuilder.urlEncode(revisionFromJson);
-		HttpResponse response = await(servlet.serve(get(HOST + FETCH + "?id=" + urlEncoded)));
-		ByteBuf body = await(response.getBody());
-		String bodyString = body.asString(UTF_8);
-		System.out.println(bodyString);
+		await(servlet.serve(get(HOST + FETCH + "?id=" + urlEncoded))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							String bodyString = body.asString(UTF_8);
+							System.out.println(bodyString);
 
-		FetchData<CommitId, TestOp> fetchData = fromJson(FETCH_DATA_CODEC, bodyString);
-		assertEquals(getCommitId(5), fetchData.getCommitId());
-		assertEquals(OT_SYSTEM.squash(asList(add(-12), set(4, 5))), fetchData.getDiffs());
+							FetchData<CommitId, TestOp> fetchData = fromJson(FETCH_DATA_CODEC, bodyString);
+							assertEquals(getCommitId(5), fetchData.getCommitId());
+							assertEquals(OT_SYSTEM.squash(asList(add(-12), set(4, 5))), fetchData.getDiffs());
+						}))));
 	}
 
 	@Test
@@ -110,39 +114,43 @@ public class OTNodeServletTest {
 		List<TestOp> diffs = singletonList(add(100));
 
 		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, parent.getLevel(), diffs);
-		HttpResponse response = await(servlet.serve(post(HOST + CREATE_COMMIT)
-				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8))));
-		ByteBuf body = await(response.getBody());
-		byte[] bytes = body.asArray();
-		OTCommit<CommitId, TestOp> otCommit = adapter.parseRawBytes(bytes);
-		assertEquals(map(parent, diffs), otCommit.getParents());
-		assertEquals(CommitId.of(parent.getLevel() + 1, sha256(bytes)), otCommit.getId());
+		await(servlet.serve(post(HOST + CREATE_COMMIT)
+				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8)))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							byte[] bytes = body.asArray();
+							OTCommit<CommitId, TestOp> otCommit = adapter.parseRawBytes(bytes);
+							assertEquals(map(parent, diffs), otCommit.getParents());
+							assertEquals(CommitId.of(parent.getLevel() + 1, sha256(bytes)), otCommit.getId());
+						}))));
 	}
 
 	@Test
-	public void testPush() throws ParseException {
+	public void testPush() {
 		CommitId parent = getCommitId(5);
 		List<TestOp> diffs = singletonList(add(100));
 
 		FetchData<CommitId, TestOp> commit = new FetchData<>(parent, parent.getLevel(), diffs);
-		HttpResponse response = await(servlet.serve(post(HOST + CREATE_COMMIT)
-				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8))));
-		byte[] bytes = await(response.getBody()).asArray();
-		response = await(servlet.serve(post(HOST + PUSH)
-				.withBody(bytes)));
+		byte[] bytes = await(servlet.serve(post(HOST + CREATE_COMMIT)
+				.withBody(toJson(FETCH_DATA_CODEC, commit).getBytes(UTF_8)))
+				.then(response -> response.loadBody()
+						.map(ByteBuf::asArray)));
 
-		ByteBuf body = await(response.getBody());
-		String bodyString = body.asString(UTF_8);
-		FetchData<CommitId, TestOp> fetchData = fromJson(FETCH_DATA_CODEC, bodyString);
-		CommitId commitId = fetchData.getCommitId();
-		assertEquals(adapter.parseRawBytes(bytes).getId(), commitId);
+		await(servlet.serve(post(HOST + PUSH)
+				.withBody(bytes))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							String bodyString = body.asString(UTF_8);
+							FetchData<CommitId, TestOp> fetchData = fromJson(FETCH_DATA_CODEC, bodyString);
+							CommitId commitId = fetchData.getCommitId();
+							assertEquals(adapter.parseRawBytes(bytes).getId(), commitId);
 
-		Set<CommitId> heads = await(repository.getHeads());
-		assertEquals(singleton(commitId), heads);
+							Set<CommitId> heads = await(repository.getHeads());
+							assertEquals(singleton(commitId), heads);
 
-		OTCommit<CommitId, TestOp> headCommit = await(repository.loadCommit(commitId));
-		assertEquals(map(parent, diffs), headCommit.getParents());
-		assertEquals(parent.getLevel() + 1, headCommit.getLevel());
+							OTCommit<CommitId, TestOp> headCommit = await(repository.loadCommit(commitId));
+							assertEquals(map(parent, diffs), headCommit.getParents());
+							assertEquals(parent.getLevel() + 1, headCommit.getLevel());
+						}))));
 	}
-
 }

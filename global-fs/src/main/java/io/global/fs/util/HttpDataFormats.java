@@ -32,7 +32,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.object;
-import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.remotefs.FsClient.DEFAULT_REVISION;
 import static io.datakernel.remotefs.RemoteFsUtils.getErrorCode;
 import static java.nio.charset.StandardCharsets.UTF_8;

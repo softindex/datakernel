@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventStats;
@@ -73,11 +72,12 @@ public final class AbstractHttpConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		ByteBuf body = await(client.request(HttpRequest.get(URL))
-				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeader(CONTENT_TYPE))))
-				.then(HttpMessage::getBody));
-
-		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
+		await(client.request(HttpRequest.get(URL))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals("text/           html", response.getHeader(CONTENT_TYPE));
+							assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.getString(UTF_8));
+						}))));
 	}
 
 	@Test
@@ -92,11 +92,13 @@ public final class AbstractHttpConnectionTest {
 
 		server.listen();
 
-		ByteBuf body = await(client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.whenComplete(assertComplete(response -> assertNotNull(response.getHeader(CONTENT_ENCODING))))
-				.then(HttpMessage::getBody));
-
-		assertEquals("Test message", body.asString(UTF_8));
+		await(client.request(HttpRequest.get(URL)
+				.withHeader(ACCEPT_ENCODING, "gzip"))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals("Test message", body.getString(UTF_8));
+							assertNotNull(response.getHeader(CONTENT_ENCODING));
+						}))));
 	}
 
 	@Test
@@ -124,14 +126,13 @@ public final class AbstractHttpConnectionTest {
 
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
-				.then(response -> response.getBody()
-						.whenComplete((body, e) -> {
-							if (e != null) throw new AssertionError(e);
-							assertEquals(expectedHeader, response.getHeader(CONNECTION));
-							connectionCount.refresh(System.currentTimeMillis());
-							assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
-						})
-						.map($ -> response));
+				.thenEx((response, e) -> {
+					if (e != null) throw new AssertionError(e);
+					assertEquals(expectedHeader, response.getHeader(CONNECTION));
+					connectionCount.refresh(System.currentTimeMillis());
+					assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
+					return Promise.of(response);
+				});
 	}
 
 	@SuppressWarnings("SameParameterValue")

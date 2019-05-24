@@ -61,6 +61,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	private final int code;
 
+	@Nullable
+	private Map<String, HttpCookie> parsedCookies;
+
 	// region creators
 	private HttpResponse(int code) {
 		this.code = code;
@@ -228,9 +231,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		assert !isRecycled();
 		return code;
 	}
-
-	@Nullable
-	private Map<String, HttpCookie> parsedCookies;
 
 	@NotNull
 	public Map<String, HttpCookie> getCookies() {

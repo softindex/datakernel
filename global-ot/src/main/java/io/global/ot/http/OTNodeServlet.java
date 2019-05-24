@@ -2,6 +2,7 @@ package io.global.ot.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -18,6 +19,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
@@ -95,8 +97,9 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + CREATE_COMMIT, request -> request.getBody()
-						.then(body -> {
+				.with(POST, "/" + CREATE_COMMIT, loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
 							try {
 								FetchData<K, D> fetchData = fromJson(fetchDataCodec, body.getString(UTF_8));
 								return node.createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
@@ -105,20 +108,17 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 												.withBody(commitToBytes.apply(commit)));
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
 							}
 						}))
-				.with(POST, "/" + PUSH, request -> request.getBody()
-						.then(body -> {
+				.with(POST, "/" + PUSH, loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
 							try {
 								C commit = bytesToCommit.parse(body.getArray());
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
 							}
 						}));
 	}

@@ -23,19 +23,21 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.*;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.kv.api.RawKvItem;
 import io.global.kv.api.GlobalKvNode;
-import org.jetbrains.annotations.NotNull;
+import io.global.kv.api.RawKvItem;
 
 import java.util.Set;
 
-import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.codec.StructuredCodecs.ofSet;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpMethod.*;
 import static io.global.kv.api.KvCommand.*;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
@@ -89,39 +91,39 @@ public final class GlobalKvNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + GET_ITEM + "/:space/:table", request -> request.getBody().then(body -> {
-					String parameterSpace = request.getPathParameter("space");
-					String table = request.getPathParameter("table");
-					if (parameterSpace == null || table == null) {
-						return Promise.<HttpResponse>ofException(new ParseException());
-					}
-					try {
-						PubKey space = PubKey.fromString(parameterSpace);
-						return node.get(space, table, body.asArray())
-								.map(item ->
-										HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC, item)));
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
-				.with(PUT, "/" + PUT_ITEM + "/:space/:table", request -> request.getBody().then(body -> {
-					String parameterSpace = request.getPathParameter("space");
-					String table = request.getPathParameter("table");
-					if (parameterSpace == null || table == null) {
-						return Promise.<HttpResponse>ofException(new ParseException());
-					}
-					try {
-						PubKey space = PubKey.fromString(parameterSpace);
-						return node.put(space, table, decode(KV_ITEM_CODEC, body.slice()))
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+				.with(GET, "/" + GET_ITEM + "/:space/:table", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							String parameterSpace = request.getPathParameter("space");
+							String table = request.getPathParameter("table");
+							if (parameterSpace == null || table == null) {
+								return Promise.ofException(new ParseException());
+							}
+							try {
+								PubKey space = PubKey.fromString(parameterSpace);
+								return node.get(space, table, body.asArray())
+										.map(item ->
+												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC, item)));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
+				.with(PUT, "/" + PUT_ITEM + "/:space/:table", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							String parameterSpace = request.getPathParameter("space");
+							String table = request.getPathParameter("table");
+							if (parameterSpace == null || table == null) {
+								return Promise.ofException(new ParseException());
+							}
+							try {
+								PubKey space = PubKey.fromString(parameterSpace);
+								return node.put(space, table, decode(KV_ITEM_CODEC, body.slice()))
+										.map($ -> HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
 				.with(GET, "/" + LIST + "/:space", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					if (parameterSpace == null) {

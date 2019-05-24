@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
 
@@ -45,12 +46,11 @@ public final class RequestParameterExample extends HttpServerLauncher {
 			@Singleton
 			AsyncServlet mainServlet(Eventloop eventloop) {
 				return RoutingServlet.create()
-						.with(HttpMethod.POST, "/hello", request -> request
-								.getPostParameters()
-								.map(postParameters -> {
-									String name = postParameters.get("name");
-									return HttpResponse.ok200()
-											.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>"));
+						.with(HttpMethod.POST, "/hello", loadBody()
+								.then(request -> {
+									String name = request.getPostParameters().get("name");
+									return Promise.of(HttpResponse.ok200()
+											.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>")));
 								}))
 						.with(HttpMethod.GET, "/hello", request -> {
 							String name = request.getQueryParameter("name");

@@ -7,26 +7,25 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.RoutingServlet;
-import io.datakernel.http.StaticServlet;
+import io.datakernel.http.*;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
 import java.util.Collection;
 import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoaders.ofClassPath;
 import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
-import static java.lang.Integer.*;
+import static java.lang.Integer.parseInt;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
@@ -66,8 +65,9 @@ public final class TodoListLauncher extends HttpServerLauncher {
 						//[START REGION_2]
 						.with("/*", staticServlet)
 						//[END REGION_2]
-						.with(POST, "/add", request -> request.getBody()
-								.then(body -> {
+						.with(POST, "/add", loadBody()
+								.then(request -> {
+									ByteBuf body = request.getBody();
 									try {
 										Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(Charsets.UTF_8));
 										recordDAO.add(record);
@@ -75,8 +75,6 @@ public final class TodoListLauncher extends HttpServerLauncher {
 										return Promise.of(HttpResponse.ok200());
 									} catch (ParseException e) {
 										return Promise.of(HttpResponse.ofCode(400));
-									} finally {
-										body.recycle();
 									}
 								}))
 						.with(GET, "/get/all", request -> {

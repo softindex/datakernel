@@ -20,6 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
@@ -35,6 +36,7 @@ import io.datakernel.util.guice.OptionalDependency;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -67,46 +69,46 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				CrdtData::getKey, descriptor.getKeyCodec(),
 				CrdtData::getState, descriptor.getStateCodec());
 		RoutingServlet servlet = RoutingServlet.create()
-				.with(HttpMethod.POST, "/", request -> request.getBody().then(body -> {
-					try {
-						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
-						S state = client.get(key);
-						if (state != null) {
-							return Promise.of(HttpResponse.ok200()
-									.withBody(JsonUtils.toJson(stateCodec, state).getBytes(UTF_8)));
-						}
-						return Promise.of(HttpResponse.ofCode(404)
-								.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
-				.with(HttpMethod.PUT, "/", request -> request.getBody().then(body -> {
-					try {
-						client.put(JsonUtils.fromJson(codec, body.getString(UTF_8)));
-						return Promise.of(HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
-				.with(HttpMethod.DELETE, "/", request -> request.getBody().then(body -> {
-					try {
-						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
-						if (client.remove(key)) {
-							return Promise.of(HttpResponse.ok200());
-						}
-						return Promise.of(HttpResponse.ofCode(404)
-								.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}));
+				.with(HttpMethod.POST, "/", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							try {
+								K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
+								S state = client.get(key);
+								if (state != null) {
+									return Promise.of(HttpResponse.ok200()
+											.withBody(JsonUtils.toJson(stateCodec, state).getBytes(UTF_8)));
+								}
+								return Promise.of(HttpResponse.ofCode(404)
+										.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}))
+				.with(HttpMethod.PUT, "/", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							try {
+								client.put(JsonUtils.fromJson(codec, body.getString(UTF_8)));
+								return Promise.of(HttpResponse.ok200());
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
+				.with(HttpMethod.DELETE, "/", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							try {
+								K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
+								if (client.remove(key)) {
+									return Promise.of(HttpResponse.ok200());
+								}
+								return Promise.of(HttpResponse.ofCode(404)
+										.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
+							} catch (ParseException e) {
+								return Promise.<HttpResponse>ofException(e);
+							}
+						}));
 		//		jmxServlet.ifPresent(s -> servlet.with(HttpMethod.GET, "/", s));
 		backupService.ifPresent(backup -> servlet
 				.with(HttpMethod.POST, "/backup", request -> {

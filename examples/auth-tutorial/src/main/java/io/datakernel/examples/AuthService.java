@@ -1,7 +1,7 @@
 package io.datakernel.examples;
 
 //[START EXAMPLE]
-public interface LoginService {
+public interface AuthService {
 
 	boolean authorize(String login, String password);
 

@@ -28,8 +28,8 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.kv.api.RawKvItem;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.RawKvItem;
 
 import java.util.Set;
 
@@ -86,25 +86,23 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 
 	@Override
 	public Promise<SignedData<RawKvItem>> get(PubKey space, String table, byte[] key) {
-		return client.request(
-				HttpRequest.get(
-						url + UrlBuilder.relative()
-								.appendPathPart(GET_ITEM)
-								.appendPathPart(space.asString())
-								.appendPathPart(table)
-								.build())
-						.withBody(ByteBuf.wrapForReading(key)))
+		return client.request(HttpRequest.get(
+				url + UrlBuilder.relative()
+						.appendPathPart(GET_ITEM)
+						.appendPathPart(space.asString())
+						.appendPathPart(table)
+						.build())
+				.withBody(ByteBuf.wrapForReading(key)))
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.then(response -> response.getBody().map(body -> {
-					try {
-						return decode(KV_ITEM_CODEC, body.slice());
-					} catch (ParseException e) {
-						throw new UncheckedException(e);
-					} finally {
-						body.recycle();
-					}
-				}));
+				.then(response -> response.loadBody()
+						.map(body -> {
+							try {
+								return decode(KV_ITEM_CODEC, body.slice());
+							} catch (ParseException e) {
+								throw new UncheckedException(e);
+							}
+						}));
 	}
 
 	@Override
@@ -132,15 +130,14 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 								.build()))
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.then(response -> response.getBody().then(body -> {
-					try {
-						return Promise.of(decode(SET_STRING_CODEC, body.slice()));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}));
+				.then(response -> response.loadBody()
+						.then(body -> {
+							try {
+								return Promise.of(decode(SET_STRING_CODEC, body.slice()));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}));
 	}
 
 	@Override
