@@ -13,10 +13,12 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.loader.StaticLoader;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoaders.ofClassPath;
@@ -31,8 +33,8 @@ public class AuthLauncher extends HttpServerLauncher {
 		return list(new AbstractModule() {
 			@Provides
 			@Singleton
-			LoginService loginService() {
-				return new LoginServiceImpl();
+			AuthService loginService() {
+				return new AuthServiceImpl();
 			}
 
 			@Provides
@@ -43,7 +45,7 @@ public class AuthLauncher extends HttpServerLauncher {
 
 			@Provides
 			@Singleton
-			AsyncServlet mainServlet(LoginService loginService, StaticLoader staticLoader, Eventloop eventloop) {
+			AsyncServlet mainServlet(AuthService authService, StaticLoader staticLoader, Eventloop eventloop) {
 				SessionStore<String> store = new InMemorySessionStore<>();
 				Supplier<String> sessionIdSupplier = () -> UUID.randomUUID().toString();
 				String sessionId = "SESSION_ID";
@@ -54,11 +56,12 @@ public class AuthLauncher extends HttpServerLauncher {
 								//[END REGION_1]
 								.with(GET, "/signup", SingleResourceStaticServlet.create(eventloop, staticLoader, "signup.html"))
 								.with(GET, "/login", SingleResourceStaticServlet.create(eventloop, staticLoader, "login.html"))
-								.with(POST, "/login", request -> request.getPostParameters()
-										.then(params -> {
+								.with(POST, "/login", loadBody()
+										.then(request -> {
+											Map<String, String> params = request.getPostParameters();
 											String username = params.get("username");
 											String password = params.get("password");
-											if (loginService.authorize(username, password)) {
+											if (authService.authorize(username, password)) {
 												String id = sessionIdSupplier.get();
 
 												store.save(id, "My saved object in session");
@@ -69,13 +72,14 @@ public class AuthLauncher extends HttpServerLauncher {
 													.then(body -> Promise.of(HttpResponse.ofCode(404)
 															.withBody(body)));
 										}))
-								.with(POST, "/signup", request -> request.getPostParameters()
-										.then(params -> {
+								.with(POST, "/signup", loadBody()
+										.then(request -> {
+											Map<String, String> params = request.getPostParameters();
 											String username = params.get("username");
 											String password = params.get("password");
 
 											if (username != null && password != null) {
-												loginService.register(username, password);
+												authService.register(username, password);
 											}
 											return Promise.of(HttpResponse.redirect302("/login"));
 										})),
@@ -102,7 +106,7 @@ public class AuthLauncher extends HttpServerLauncher {
 											}
 											return Promise.of(HttpResponse.ofCode(404));
 										}))
-								//[END REGION_3]
+						//[END REGION_3]
 				);
 
 			}

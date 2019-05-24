@@ -32,7 +32,6 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.launchers.http.HttpServerLauncher.EAGER_SINGLETONS_MODE;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

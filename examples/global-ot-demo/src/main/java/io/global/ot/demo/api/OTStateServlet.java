@@ -17,6 +17,7 @@
 package io.global.ot.demo.api;
 
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.http.*;
@@ -29,6 +30,7 @@ import io.global.ot.demo.util.ManagerProvider;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
@@ -64,9 +66,10 @@ public final class OTStateServlet {
 								return Promise.of(HttpResponse.redirect302("../?id=" + getNextId(provider)));
 							}
 						}))
-				.with(POST, "/add", request -> request.getBody()
-						.then(body -> getManager(provider, request)
+				.with(POST, "/add", loadBody()
+						.then(request -> getManager(provider, request)
 								.then(manager -> {
+									ByteBuf body = request.getBody();
 									if (manager != null) {
 										try {
 											Operation operation = fromJson(OPERATION_CODEC, body.getString(UTF_8));
@@ -75,8 +78,6 @@ public final class OTStateServlet {
 													.map($ -> okText());
 										} catch (ParseException e) {
 											return Promise.<HttpResponse>ofException(e);
-										} finally {
-											body.recycle();
 										}
 									} else {
 										return Promise.<HttpResponse>ofException(MANAGER_NOT_INITIALIZED);

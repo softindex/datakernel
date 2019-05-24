@@ -2,6 +2,7 @@ package io.global.ot.http;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.StubHttpClient;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.OTNodeImpl;
@@ -62,8 +63,8 @@ public class OTNodeHttpClientTest {
 			g.add(getCommitId(4), getCommitId(5), set(4, 5));
 		});
 		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(repository, OT_SYSTEM);
-		OTNodeServlet<CommitId, TestOp, OTCommit<CommitId, TestOp>> servlet = OTNodeServlet.forGlobalNode(node, diffCodec, adapter);
-		client = OTNodeHttpClient.forGlobalNode(servlet::serve, "http://localhost/", diffCodec);
+		StubHttpClient stubClient = StubHttpClient.of(OTNodeServlet.forGlobalNode(node, diffCodec, adapter));
+		client = OTNodeHttpClient.forGlobalNode(stubClient, "http://localhost/", diffCodec);
 	}
 
 	@Test

@@ -1,4 +1,4 @@
-package io.datakernel.examples;
+package io.datakernel.writer;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -10,13 +10,16 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
-//[START EXAMPLE]
 public final class ByteBufWriter extends Writer {
-	private ByteBuf byteBuf;
 	private final static int DEFAULT_SIZE = 1024;
+	private ByteBuf byteBuf;
 
 	public ByteBufWriter() {
 		byteBuf = ByteBufPool.allocate(DEFAULT_SIZE);
+	}
+
+	public ByteBufWriter(int sizeBuf) {
+		byteBuf = ByteBufPool.allocate(sizeBuf);
 	}
 
 	@Override
@@ -32,14 +35,15 @@ public final class ByteBufWriter extends Writer {
 
 	@Override
 	public void flush() {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void close() {
+		throw new UnsupportedOperationException();
 	}
 
 	public ByteBuf getBuf() {
 		return byteBuf;
 	}
 }
-//[END EXAMPLE]

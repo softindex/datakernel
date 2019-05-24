@@ -1,6 +1,7 @@
 package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.exception.ParseException;
@@ -10,6 +11,7 @@ import io.global.common.api.AnnounceData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
@@ -30,28 +32,27 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 
 	private static RoutingServlet servlet(DiscoveryServiceDriver driver) {
 		return RoutingServlet.create()
-				.with(POST, "/announce", request -> {
-					String key = request.getCookie("Key");
-					if (key == null) {
-						return Promise.ofException(new ParseException());
-					}
+				.with(POST, "/announce", loadBody()
+						.then(request -> {
+							String key = request.getCookie("Key");
+							if (key == null) {
+								return Promise.ofException(new ParseException());
+							}
 
-					try {
-						KeyPair keys = PrivKey.fromString(key).computeKeys();
-						return request.getBody()
-								.then(body -> {
-									try {
-										AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.asString(UTF_8));
-										return driver.announce(keys, data)
-												.map($ -> HttpResponse.ok200());
-									} catch (ParseException e) {
-										return Promise.<HttpResponse>ofException(e);
-									}
-								});
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
+							try {
+								KeyPair keys = PrivKey.fromString(key).computeKeys();
+								try {
+									ByteBuf body = request.getBody();
+									AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.asString(UTF_8));
+									return driver.announce(keys, data)
+											.map($ -> HttpResponse.ok200());
+								} catch (ParseException e) {
+									return Promise.ofException(e);
+								}
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
 				.with(GET, "/find/:pubKey", request -> {
 					String parameterPubKey = request.getPathParameter("pubKey");
 					if (parameterPubKey == null) {
@@ -67,28 +68,27 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/shareKey/:receiver", request -> {
-					String parameterReceiver = request.getPathParameter("receiver");
-					String key = request.getCookie("Key");
-					if (parameterReceiver == null || key == null) {
-						return Promise.ofException(new ParseException());
-					}
-					try {
-						PubKey receiver = PubKey.fromString(parameterReceiver);
-						PrivKey sender = PrivKey.fromString(key);
-						return request.getBody()
-								.then(body -> {
-									try {
-										return driver.shareKey(sender, receiver, SimKey.fromString(body.asString(UTF_8)))
-												.map($ -> HttpResponse.ok200());
-									} catch (ParseException e) {
-										return Promise.<HttpResponse>ofException(e);
-									}
-								});
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
+				.with(POST, "/shareKey/:receiver", loadBody()
+						.then(request -> {
+							String parameterReceiver = request.getPathParameter("receiver");
+							String key = request.getCookie("Key");
+							if (parameterReceiver == null || key == null) {
+								return Promise.ofException(new ParseException());
+							}
+							try {
+								PubKey receiver = PubKey.fromString(parameterReceiver);
+								PrivKey sender = PrivKey.fromString(key);
+								ByteBuf body = request.getBody();
+								try {
+									return driver.shareKey(sender, receiver, SimKey.fromString(body.asString(UTF_8)))
+											.map($ -> HttpResponse.ok200());
+								} catch (ParseException e) {
+									return Promise.ofException(e);
+								}
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
 				.with(GET, "/getSharedKey/:hash", request -> {
 					String key = request.getCookie("Key");
 					String parameterHash = request.getPathParameter("hash");

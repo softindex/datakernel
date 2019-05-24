@@ -13,21 +13,21 @@ public interface PollDao {
 	class Poll {
 		private String title;
 		private String message;
-		private Map<String, Integer> optionToVotes;
+		private Map<String, Integer> optionsToVote;
 
 		public Poll(String title, String message, List<String> options) {
 			this.title = title;
 			this.message = message;
-			this.optionToVotes = new LinkedHashMap<>();
+			this.optionsToVote = new LinkedHashMap<>();
 
 			for (String option : options) {
-				optionToVotes.put(option, 0);
+				optionsToVote.put(option, 0);
 			}
 		}
 
 		public void vote(String option) {
-			Integer votesCount = optionToVotes.get(option);
-			optionToVotes.put(option, ++votesCount);
+			Integer votesCount = optionsToVote.get(option);
+			optionsToVote.put(option, ++votesCount);
 		}
 
 		public String getTitle() {
@@ -39,7 +39,7 @@ public interface PollDao {
 		}
 
 		public Set<Map.Entry<String, Integer>> getOptions() {
-			return optionToVotes.entrySet();
+			return optionsToVote.entrySet();
 		}
 
 	}

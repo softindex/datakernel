@@ -45,6 +45,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.Eventloop.CONNECT_TIMEOUT;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.http.HttpClientConnection.INVALID_RESPONSE;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
@@ -81,10 +82,11 @@ public final class AsyncHttpClientTest {
 		startServer();
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
-		ByteBuf body = await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.then(HttpMessage::getBody));
-
-		assertEquals(decodeAscii(HELLO_WORLD), body.asString(UTF_8));
+		await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals(decodeAscii(HELLO_WORLD), body.getString(UTF_8));
+						}))));
 	}
 
 	@Test
@@ -103,7 +105,7 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		InvalidSizeException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.then(response -> response.getBody(maxBodySize)));
+				.then(response -> response.loadBody(maxBodySize)));
 		assertThat(e.getMessage(), containsString("HTTP body size exceeds load limit " + maxBodySize));
 	}
 
@@ -120,7 +122,8 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		UnknownFormatException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.then(HttpMessage::getBody));
+				.then(HttpMessage::loadBody));
+
 		assertSame(INVALID_RESPONSE, e);
 	}
 

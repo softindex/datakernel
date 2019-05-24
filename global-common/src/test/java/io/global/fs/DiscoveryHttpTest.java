@@ -18,6 +18,8 @@ package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.http.HttpException;
+import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
@@ -59,9 +61,8 @@ public final class DiscoveryHttpTest {
 	@Test
 	public void test() throws IOException, CryptoException {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath()).withRevisions();
-		DiscoveryServlet servlet = DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
-
-		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), servlet::serve);
+		StubHttpClient client = StubHttpClient.of(DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage)));
+		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), client);
 
 		KeyPair alice = KeyPair.generate();
 		KeyPair bob = KeyPair.generate();
@@ -80,7 +81,7 @@ public final class DiscoveryHttpTest {
 		SignedData<AnnounceData> bobData = await(clientService.find(bob.getPubKey()));
 		assertTrue(checkNotNull(bobData).verify(bob.getPubKey()));
 
-		StacklessException e = awaitException(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class),
+		HttpException e = awaitException(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class),
 				AnnounceData.of(90, set()), alice.getPrivKey())));
 		assertSame(REJECTED_OUTDATED_ANNOUNCE_DATA, e);
 

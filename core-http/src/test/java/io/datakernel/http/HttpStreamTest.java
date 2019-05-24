@@ -42,6 +42,7 @@ import static io.datakernel.async.Promise.ofCallback;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CRLF;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
@@ -150,7 +151,9 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testChunkedEncodingMessage() throws IOException {
-		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(loadBody()
+				.then(request -> Promise.of(HttpResponse.ok200()
+						.withBody(request.getBody().slice()))));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -178,7 +181,9 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testMalformedChunkedEncodingMessage() throws IOException {
-		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(loadBody()
+				.then(request -> Promise.of(HttpResponse.ok200()
+				.withBody(request.getBody()))));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -205,7 +210,9 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testTruncatedRequest() throws IOException {
-		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(loadBody()
+				.then(request -> Promise.of(HttpResponse.ok200()
+						.withBody(request.getBody()))));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -235,7 +242,9 @@ public final class HttpStreamTest {
 	public void testSendingErrors() throws IOException {
 		Exception exception = new Exception("Test Exception");
 
-		startTestServer(request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)));
+		startTestServer(loadBody()
+				.then(request -> Promise.of(HttpResponse.ok200()
+						.withBody(request.getBody()))));
 
 		Throwable e = awaitException(
 				AsyncHttpClient.create(Eventloop.getCurrentEventloop())

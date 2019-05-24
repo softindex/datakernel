@@ -17,6 +17,7 @@
 package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -34,6 +35,7 @@ import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryCommand.*;
 
@@ -55,22 +57,24 @@ public final class DiscoveryServlet implements AsyncServlet {
 
 	private RoutingServlet servlet(DiscoveryService discoveryService) {
 		return RoutingServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", request -> request.getBody().then(body -> {
-					String parameterOwner = request.getPathParameter("owner");
-					if (parameterOwner == null) {
-						return Promise.<HttpResponse>ofException(new ParseException());
-					}
-					try {
-						PubKey owner = PubKey.fromString(parameterOwner);
-						SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, body.slice());
-						return discoveryService.announce(owner, announceData)
-								.map($ -> HttpResponse.ok201());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", loadBody()
+						.then(request -> {
+									ByteBuf body = request.getBody();
+
+									String parameterOwner = request.getPathParameter("owner");
+									if (parameterOwner == null) {
+										return Promise.ofException(new ParseException());
+									}
+									try {
+										PubKey owner = PubKey.fromString(parameterOwner);
+										SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, body.slice());
+										return discoveryService.announce(owner, announceData)
+												.map($ -> HttpResponse.ok201());
+									} catch (ParseException e) {
+										return Promise.<HttpResponse>ofException(e);
+									}
+								}
+						))
 				.with(HttpMethod.GET, "/" + FIND + "/:owner", request -> {
 					String owner = request.getPathParameter("owner");
 					if (owner == null) {
@@ -89,22 +93,22 @@ public final class DiscoveryServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> request.getBody().then(body -> {
-					String parameterReceiver = request.getPathParameter("receiver");
-					if (parameterReceiver == null) {
-						return Promise.<HttpResponse>ofException(new ParseException());
-					}
-					try {
-						PubKey receiver = PubKey.fromString(parameterReceiver);
-						SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, body.slice());
-						return discoveryService.shareKey(receiver, simKey)
-								.map($ -> HttpResponse.ok201());
-					} catch (ParseException e) {
-						return Promise.<HttpResponse>ofException(e);
-					} finally {
-						body.recycle();
-					}
-				}))
+				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", loadBody()
+						.then(request -> {
+							ByteBuf body = request.getBody();
+							String parameterReceiver = request.getPathParameter("receiver");
+							if (parameterReceiver == null) {
+								return Promise.<HttpResponse>ofException(new ParseException());
+							}
+							try {
+								PubKey receiver = PubKey.fromString(parameterReceiver);
+								SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, body.slice());
+								return discoveryService.shareKey(receiver, simKey)
+										.map($ -> HttpResponse.ok201());
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					try {
 						String parameterReceiver = request.getPathParameter("receiver");
@@ -124,6 +128,9 @@ public final class DiscoveryServlet implements AsyncServlet {
 				})
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
 					String receiver = request.getPathParameter("receiver");
+					if (receiver == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
 						return discoveryService.getSharedKeys(PubKey.fromString(receiver))
 								.map(signedSharedKeys ->

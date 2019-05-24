@@ -78,7 +78,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofPath(resourcesPath);
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
@@ -97,7 +98,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofFile(resourcesFile);
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
@@ -117,7 +119,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor());
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
@@ -136,7 +139,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), getClass());
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
@@ -146,7 +150,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), getClass(), "/dir/");
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/test.txt/")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
@@ -175,7 +180,8 @@ public final class StaticServletsTest {
 
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(preDownloadResources::contains));
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/dir2/testFile.txt")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
@@ -195,7 +201,8 @@ public final class StaticServletsTest {
 
 		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(fileService::contains));
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
-		ByteBuf body = await(response.getBody());
+		await(response.loadBody());
+		ByteBuf body = response.getBody();
 
 		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}

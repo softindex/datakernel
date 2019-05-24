@@ -18,6 +18,7 @@ package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -25,6 +26,7 @@ import io.datakernel.http.*;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.*;
@@ -80,29 +82,33 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
-		return request -> request.getBody().then(body -> {
-			try {
-				String json = body.asString(UTF_8);
-				R obj = fromJson(gson, json, model.getRecordType());
-				return model.create(obj).map(response ->
-						createResponse(response.toJson(gson, model.getIdType())));
-			} catch (ParseException e) {
-				return Promise.ofException((Throwable) e);
-			}
-		});
+		return loadBody()
+				.then(request -> {
+					ByteBuf body = request.getBody();
+					try {
+						String json = body.asString(UTF_8);
+						R obj = fromJson(gson, json, model.getRecordType());
+						return model.create(obj).map(response ->
+								createResponse(response.toJson(gson, model.getIdType())));
+					} catch (ParseException e) {
+						return Promise.ofException((Throwable) e);
+					}
+				});
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
-		return request -> request.getBody().then(body -> {
-			try {
-				String json = body.asString(UTF_8);
-				List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
-				return model.update(list).map(result ->
-						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
-			} catch (ParseException e) {
-				return Promise.ofException((Throwable) e);
-			}
-		});
+		return loadBody()
+				.then(request -> {
+					ByteBuf body = request.getBody();
+					try {
+						String json = body.asString(UTF_8);
+						List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
+						return model.update(list).map(result ->
+								createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
+					} catch (ParseException e) {
+						return Promise.ofException((Throwable) e);
+					}
+				});
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
