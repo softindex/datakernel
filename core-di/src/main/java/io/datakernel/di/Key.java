@@ -131,7 +131,7 @@ public abstract class Key<T> {
 		if (this == o) {
 			return true;
 		}
-		if (o == null || getClass() != o.getClass()) {
+		if (!(o instanceof Key)) {
 			return false;
 		}
 
@@ -148,7 +148,7 @@ public abstract class Key<T> {
 
 	@Override
 	public String toString() {
-		return (name != null ? name.toString() : "") + type;
+		return (name != null ? name.toString() : "") + type.getTypeName();
 	}
 
 	public static void main(String[] args) {

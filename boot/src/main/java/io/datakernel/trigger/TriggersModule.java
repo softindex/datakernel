@@ -24,21 +24,15 @@ import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.TypeT;
 import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPools;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.datakernel.util.CollectionUtils.getLast;
-import static io.datakernel.util.guice.GuiceUtils.prettyPrintSimpleKeyName;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
@@ -150,8 +144,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Override
 	protected void configure() {
-		bind(new TypeT<OptionalDependency<ServiceGraph>>() {}).require();
-		bind(new TypeT<RequiredDependency<TriggersModuleService>>() {}).require();
+		bind(new Key<OptionalDependency<ServiceGraph>>() {}).require();
+		bind(new Key<RequiredDependency<TriggersModuleService>>() {}).require();
 
 //		bindListener(new AbstractMatcher<Binding<?>>() {
 //			@Override

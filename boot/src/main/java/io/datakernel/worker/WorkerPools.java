@@ -26,13 +26,15 @@ public final class WorkerPools {
 	private final Injector injector;
 	private final List<WorkerPool> workerPools = new ArrayList<>();
 
-	WorkerPools(Injector injector) {this.injector = injector;}
+	WorkerPools(Injector injector) {
+		this.injector = injector;
+	}
 
-	synchronized public WorkerPool createPool(int size) {
+	public synchronized WorkerPool createPool(int size) {
 		return createPool(Scope.of(Worker.class), size);
 	}
 
-	synchronized public WorkerPool createPool(Scope scope, int size) {
+	public synchronized WorkerPool createPool(Scope scope, int size) {
 		WorkerPool workerPool = new WorkerPool(injector, scope, workerPools.size() + 1, size);
 		workerPools.add(workerPool);
 		return workerPool;

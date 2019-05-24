@@ -4,17 +4,18 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
+import io.datakernel.di.Key;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.TypeT;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.chat.operations.ChatOperation;
+import io.global.ot.chat.operations.Utils;
 
 import java.util.Collection;
 import java.util.function.Function;
@@ -49,14 +50,11 @@ public final class GlobalChatDemoApp extends Launcher {
 										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new OTCommonModule<ChatOperation>() {
-					@Override
-					protected void configure() {
-						bind(new TypeT<StructuredCodec<ChatOperation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeT<Function<ChatOperation, String>>() {}).toInstance(DIFF_TO_STRING);
-						bind(new TypeT<OTSystem<ChatOperation>>() {}).toInstance(createOTSystem());
-					}
-				},
+				new OTCommonModule<ChatOperation>() {{
+					bind(new Key<StructuredCodec<ChatOperation>>() {}).toInstance(OPERATION_CODEC);
+					bind(new Key<Function<ChatOperation, String>>() {}).toInstance(DIFF_TO_STRING);
+					bind(new Key<OTSystem<ChatOperation>>() {}).to(Utils::createOTSystem);
+				}},
 				override(new GlobalNodesModule(), new ExampleCommonModule())
 		);
 	}

@@ -1,83 +1,80 @@
 package io.datakernel.di;
 
-import io.datakernel.di.Binding.Factory;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.ReflectionUtils;
+import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
 import java.util.*;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.checkArgument;
+import static io.datakernel.di.util.Utils.flattenMultimap;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.joining;
 
 public final class Injector {
 	@Nullable
 	private final Scope scope;
 	@Nullable
-	private final Injector parentInjector;
+	private final Injector parent;
 
-	private final ScopedBindings bindings;
+	private final Trie<Scope, Map<Key<?>, Binding<?>>> bindings;
 	private final Map<Key<?>, Binding<?>> localBindings;
+	private final Map<Key<?>, Object> instances = new HashMap<>();
 
-	private final HashMap<Key<?>, Object> instances = new HashMap<>();
-
-	private Injector(@Nullable Scope scope, @Nullable Injector parentInjector, ScopedBindings bindings, Map<Key<?>, Binding<?>> localBindings) {
+	private Injector(@Nullable Scope scope, @Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Binding<?>> localBindings) {
 		this.scope = scope;
-		this.parentInjector = parentInjector;
+		this.parent = parent;
 		this.bindings = bindings;
 		this.localBindings = localBindings;
-
-//		Binding<Injector> injectorBinding = Binding.of(new Dependency[0], $ -> this);
-//		bindings.put(Key.of(Injector.class), injectorBinding);
 	}
 
-	public static Injector of(Map<Key<?>, Binding<?>> bindings, Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings) {
+	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		Injector injector = new Injector(null, null, bindings, bindings.get());
+		bindings.get().put(Key.of(Injector.class), Binding.constant(injector));
+
 		ReflectionUtils.addImplicitBindings(bindings);
 
-		Set<Key<?>[]> cycles = ReflectionUtils.checkBindingGraph(bindings);
+		Set<Key<?>[]> cycles = ReflectionUtils.getCycles(bindings);
 
-		if (!cycles.isEmpty()) {
-			String detail = cycles.stream()
-					.map(cycle ->
-							Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
-									.map(Key::getDisplayString)
-									.collect(joining(" -> ", "", " -> ...")))
-					.collect(Collectors.joining("\n"));
-			throw new RuntimeException("cyclic dependencies detected:\n" + detail);
+		if (cycles.isEmpty()) {
+			return injector;
 		}
 
-		return new Injector(null, null, bindings, scopeBindings);
+		String detail = cycles.stream()
+				.map(cycle ->
+						Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
+								.map(Key::getDisplayString)
+								.collect(joining(" -> ", "", " -> ...")))
+				.collect(joining("\n"));
+		throw new RuntimeException("cyclic dependencies detected:\n" + detail);
 	}
 
-	public static Injector ofScope(@NotNull Scope scope, @NotNull Injector outerScopeInjector,
-								   Map<Key<?>, Binding<?>> bindings, Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings) {
-		return new Injector(scope, outerScopeInjector, bindings, scopeBindings);
+	public static Injector ofScope(@NotNull Scope scope, @NotNull Injector outerScopeInjector, @NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return new Injector(scope, outerScopeInjector, bindings, bindings.get());
 	}
 
 	public static Injector create(Module... modules) {
 		Module module = Modules.combine(modules);
-
-//		Function<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolver = module.getConflictResolvers()::get;
-//
-//		Map<Key<?>, Binding<?>> bindings = flattenMultimap(module.getBindings(), conflictResolver);
-//
-//		Map<Scope, Map<Key<?>, Binding<?>>> scopeBindings = module.getScopeBindings().entrySet().stream()
-//				.collect(toMap(Entry::getKey, scopeEntry -> flattenMultimap(scopeEntry.getValue(), conflictResolver)));
-
-//		return of(bindings, scopeBindings);
-		return null;
+		Function<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolver = module.getConflictResolvers()::get;
+		return of(module.getBindings().map(localBindings -> flattenMultimap(localBindings, conflictResolver)));
 	}
 
 	@Nullable
 	public Scope getScope() {
 		return scope;
+	}
+
+	@Nullable
+	public Injector getParent() {
+		return parent;
+	}
+
+	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
+		return bindings;
 	}
 
 	@NotNull
@@ -112,41 +109,14 @@ public final class Injector {
 
 	@Nullable
 	private Object generateInstance(@NotNull Key<?> key) {
-		if (key.getRawType() == Provider.class) {
-			return generateProvider(key);
-		}
 		Binding<?> binding = localBindings.get(key);
 		if (binding != null) {
 			return binding.getFactory().create(generateDependencies(binding.getDependencies()));
 		}
-		if (parentInjector != null) {
-			return parentInjector.generateInstance(key);
+		if (parent != null) {
+			return parent.generateInstance(key);
 		}
 		return null;
-	}
-
-	@Nullable
-	private Object generateProvider(Key<?> key) {
-		Type[] typeParams = key.getTypeParams();
-		checkArgument(typeParams.length == 1);
-
-		Binding<?> binding = localBindings.get(Key.ofType(typeParams[0], key.getName()));
-		if (binding == null) {
-			return null;
-		}
-		Object[] args = generateDependencies(binding.getDependencies());
-		Factory<?> factory = binding.getFactory();
-		return new Provider<Object>() {
-			@Override
-			public Object provideNew() {
-				return factory.create(args);
-			}
-
-			@Override
-			public synchronized Object provideSingleton() {
-				return instances.computeIfAbsent(key, $ -> provideNew());
-			}
-		};
 	}
 
 	private Object[] generateDependencies(Dependency[] dependencies) {
@@ -176,78 +146,31 @@ public final class Injector {
 		return instances.containsKey(type);
 	}
 
-	public boolean canProvide(@NotNull Class<?> type) {
-		return canProvide(Key.of(type));
-	}
-
-	public boolean canProvide(@NotNull Key<?> type) {
-		return instances.containsKey(type) || (parentInjector != null && parentInjector.canProvide(type));
-	}
-
 	public Map<Key<?>, Object> peekInstances() {
 		return unmodifiableMap(instances);
 	}
 
-	public Map<Key<?>, Binding<?>> getBindings() {
-		return unmodifiableMap(bindings);
-	}
-
-	public Map<Key<?>, Set<Dependency>> getDependencies() {
-		return bindings.entrySet().stream()
-				.collect(toMap(Entry::getKey, entry -> new HashSet<>(Arrays.asList(entry.getValue().getDependencies()))));
-	}
-
-	public boolean hasBinding(@NotNull Class<?> type) {
-		return hasBinding(Key.of(type));
-	}
-
-	public boolean hasBinding(@NotNull Key<?> type) {
-		return bindings.containsKey(type);
-	}
-
-	public <T> Binding<T> getBinding(@NotNull Class<T> type) {
-		return getBinding(Key.of(type));
-	}
-
 	@SuppressWarnings("unchecked")
-	public <T> Binding<T> getBinding(@NotNull Key<T> type) {
-		return (Binding<T>) bindings.get(type);
-	}
-
-	public Map<Key<?>, Binding<?>> getScopeBindings(Scope scope) {
-		return unmodifiableMap(scopeBindings.get(scope));
-	}
-
-	public Map<Key<?>, Set<ScopedDependency>> getScopeDependencies(Scope scope) {
-		Map<Key<?>, Binding<?>> map = scopeBindings.get(scope);
-		return map.entrySet().stream()
-				.collect(toMap(Entry::getKey,
-						entry -> Arrays.stream(entry.getValue().getDependencies())
-								.map(dependencyKey ->
-										map.containsKey(dependencyKey.getKey()) ?
-												ScopedDependency.ofScoped(scope, dependencyKey) :
-												ScopedDependency.ofUnscoped(dependencyKey)
-								)
-								.collect(toSet())
-						)
-				);
-	}
-
-	public Map<Scope, Map<Key<?>, Binding<?>>> getScopeBindings() {
-		return unmodifiableMap(scopeBindings);
-	}
-
-	public boolean hasScope(Scope scope) {
-		return scopeBindings.containsKey(scope);
+	@Nullable
+	public <T> Binding<T> getBinding(Key<T> key) {
+		return (Binding<T>) localBindings.get(key);
 	}
 
 	public Injector enterScope(Scope scope) {
-		return new Injector(scope, this, scopeBindings.get(scope), scopeBindings);
+		Trie<Scope, Map<Key<?>, Binding<?>>> sub = bindings.get(scope);
+		if (sub == null) {
+			throw new RuntimeException("tried to enter a scope " + scope + "that was not represented by any binding");
+		}
+		return new Injector(scope, this, sub, sub.get());
 	}
 
 	public Injector enterScope(Scope scope, Map<Key<?>, Binding<?>> extraBindings) {
-		Map<Key<?>, Binding<?>> bindings = new HashMap<>(scopeBindings.get(scope));
-		bindings.putAll(extraBindings);
-		return new Injector(scope, this, bindings, scopeBindings);
+		Trie<Scope, Map<Key<?>, Binding<?>>> sub = this.bindings.get(scope);
+		if (sub == null) {
+			throw new RuntimeException("tried to enter a scope " + scope + "that was not represented by any binding");
+		}
+		Map<Key<?>, Binding<?>> newLocalBindings = new HashMap<>(sub.get());
+		newLocalBindings.putAll(extraBindings);
+		return new Injector(scope, this, sub, newLocalBindings);
 	}
 }

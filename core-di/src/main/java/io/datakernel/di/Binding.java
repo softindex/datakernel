@@ -1,6 +1,7 @@
 package io.datakernel.di;
 
 import io.datakernel.di.BindingInitializer.Initializer;
+import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -8,11 +9,6 @@ import java.util.Arrays;
 import static java.util.stream.Collectors.joining;
 
 public final class Binding<T> {
-	@FunctionalInterface
-	public interface Factory<T> {
-		T create(Object[] args);
-	}
-
 	private final Dependency[] dependencies;
 	private final Factory<T> factory;
 
@@ -41,11 +37,15 @@ public final class Binding<T> {
 		return new Binding<>(Arrays.stream(dependencies).map(k -> new Dependency(k, true)).toArray(Dependency[]::new), factory, location);
 	}
 
+	public static <T> Binding<T> constant(T instance) {
+		return new Binding<>(new Dependency[0], $ -> instance, null);
+	}
+
 	public Binding<T> apply(BindingInitializer<T> bindingInitializer) {
 		Dependency[] addedDependencies = bindingInitializer.getDependencies();
 		Dependency[] combinedDependencies = new Dependency[this.dependencies.length + addedDependencies.length];
 		System.arraycopy(this.dependencies, 0, combinedDependencies, 0, this.dependencies.length);
-		System.arraycopy(addedDependencies, 0, this.dependencies, this.dependencies.length, addedDependencies.length);
+		System.arraycopy(addedDependencies, 0, combinedDependencies, this.dependencies.length, addedDependencies.length);
 
 		Initializer<T> initializer = bindingInitializer.getInitializer();
 		int depsLen = this.dependencies.length;
@@ -65,7 +65,7 @@ public final class Binding<T> {
 		return dependencies;
 	}
 
-	public Binding.Factory<T> getFactory() {
+	public Factory<T> getFactory() {
 		return factory;
 	}
 

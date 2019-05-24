@@ -5,8 +5,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 import static io.datakernel.di.util.Utils.checkArgument;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 public final class Scope extends AbstractAnnotation {
 	protected Scope(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {

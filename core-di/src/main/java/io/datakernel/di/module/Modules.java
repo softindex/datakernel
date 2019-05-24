@@ -1,6 +1,11 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.*;
+import io.datakernel.di.Binding;
+import io.datakernel.di.Dependency;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import io.datakernel.di.util.Constructors.Factory;
+import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 
 import java.util.*;
@@ -8,7 +13,7 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.combineMultimap;
+import static io.datakernel.di.util.Utils.multimapMerger;
 import static java.util.Arrays.copyOfRange;
 
 public final class Modules {
@@ -20,7 +25,7 @@ public final class Modules {
 	}
 
 	public static Module override(Module into, Module replacements) {
-		ScopedBindings bindings = ScopedBindings.merge(into.getBindings(), replacements.getBindings());
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindings(), replacements.getBindings());
 
 		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
 		conflictResolvers.putAll(replacements.getConflictResolvers());
@@ -43,8 +48,7 @@ public final class Modules {
 		if (modules.size() == 1) {
 			return modules.iterator().next();
 		}
-
-		ScopedBindings bindings = ScopedBindings.merge(modules.stream().map(Module::getBindings));
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindings));
 		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
 
 		for (Module module : modules) {
@@ -70,7 +74,7 @@ public final class Modules {
 			if (bindings.size() == 1) {
 				return bindings.iterator().next();
 			}
-			List<Binding.Factory<T>> factories = new ArrayList<>();
+			List<Factory<T>> factories = new ArrayList<>();
 			List<Dependency> keys = new ArrayList<>();
 			for (Binding<T> binding : bindings) {
 				int offset = keys.size();
@@ -95,16 +99,16 @@ public final class Modules {
 	}
 
 	private static class ModuleImpl implements Module {
-		private final ScopedBindings bindings;
+		private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
 		private final Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers;
 
-		private ModuleImpl(ScopedBindings bindings, Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers) {
+		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers) {
 			this.bindings = bindings;
 			this.conflictResolvers = conflictResolvers;
 		}
 
 		@Override
-		public ScopedBindings getBindings() {
+		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
 			return bindings;
 		}
 

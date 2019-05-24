@@ -17,7 +17,6 @@
 package io.datakernel.launcher;
 
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.Inject;
 import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
@@ -33,7 +32,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Supplier;
 
 import static io.datakernel.di.module.Modules.combine;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -141,7 +139,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				doStop();
 			}
 		} catch (Exception e) {
-			if (applicationError == null) applicationError = e;
+			if (applicationError == null) {
+				applicationError = e;
+			}
 			logger.error("Application failure", e);
 			throw e;
 		} finally {
@@ -155,13 +155,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		this.args = args;
 		return Injector.create(
 				combine(getModules()),
-				new AbstractModule() {
-					@Override
-					protected void configure() {
-						bind(String[].class).annotatedWith(Args.class).toInstance(args);
-						bind(Launcher.class).toInstance(Launcher.this);
-					}
-				}
+				new AbstractModule() {{
+					bind(String[].class).annotatedWith(Args.class).toInstance(args);
+					bind(Launcher.class).toInstance(Launcher.this);
+				}}
 		);
 	}
 
@@ -258,28 +255,36 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	@JmxAttribute
 	@Nullable
 	public final Duration getDurationOfStart() {
-		if (instantOfStart == null) return null;
+		if (instantOfStart == null) {
+			return null;
+		}
 		return Duration.between(instantOfStart, instantOfRun == null ? Instant.now() : instantOfRun);
 	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDurationOfRun() {
-		if (instantOfRun == null) return null;
+		if (instantOfRun == null) {
+			return null;
+		}
 		return Duration.between(instantOfRun, instantOfStop == null ? Instant.now() : instantOfStop);
 	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDurationOfStop() {
-		if (instantOfStop == null) return null;
+		if (instantOfStop == null) {
+			return null;
+		}
 		return Duration.between(instantOfStop, instantOfComplete == null ? Instant.now() : instantOfComplete);
 	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDuration() {
-		if (instantOfStart == null) return null;
+		if (instantOfStart == null) {
+			return null;
+		}
 		return Duration.between(instantOfStart, instantOfComplete == null ? Instant.now() : instantOfComplete);
 	}
 

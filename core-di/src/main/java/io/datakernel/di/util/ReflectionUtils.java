@@ -1,10 +1,10 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.Scopes;
 import io.datakernel.di.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
+import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +13,9 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -51,19 +53,24 @@ public final class ReflectionUtils {
 		}
 		return nested != null ?
 				Arrays.stream(nested.value()).map(Scope::of).toArray(Scope[]::new) :
-				new Scope[]{Scope.of(scopes.iterator().next())};
+				scopes.isEmpty() ?
+						new Scope[0] :
+						new Scope[]{Scope.of(scopes.iterator().next())};
 	}
 
-	public static ScopedBindings getDeclatativeBindings(Object module) {
-		ScopedBindings bindings = ScopedBindings.create();
+	public static Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getDeclatativeBindings(Object module) {
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
 
 		for (Method method : module.getClass().getDeclaredMethods()) {
 			if (!method.isAnnotationPresent(Provides.class)) {
 				continue;
 			}
 			Annotation[] annotations = method.getDeclaredAnnotations();
-			Scope[] scopes = scopesFrom(annotations);
-			bindings.resolve(scopes).add(keyOf(method.getGenericReturnType(), annotations), bindingForMethod(module, method));
+			Key<Object> key = keyOf(method.getGenericReturnType(), annotations);
+			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+					.get()
+					.computeIfAbsent(key, $ -> new HashSet<>())
+					.add(bindingForMethod(module, method).apply(injectingInitializer(key)));
 		}
 		return bindings;
 	}
@@ -80,21 +87,6 @@ public final class ReflectionUtils {
 			cls = cls.getSuperclass();
 		}
 		return fields.toArray(new Field[0]);
-	}
-
-	public static void inject(Object instance, Injector from) {
-		Field[] injectableFields = getInjectableFields(instance.getClass());
-		for (Field field : injectableFields) {
-			Key<Object> key = keyOf(field.getGenericType(), field.getAnnotations());
-			try {
-				field.setAccessible(true);
-				field.set(instance, field.getAnnotation(Inject.class).optional() ?
-						from.getOptionalInstance(key) :
-						from.getInstance(key));
-			} catch (IllegalAccessException e) {
-				throw new RuntimeException("failed to inject field " + field, e);
-			}
-		}
 	}
 
 	public static <T> BindingInitializer<T> injectingInitializer(Key<T> returnType) {
@@ -119,7 +111,7 @@ public final class ReflectionUtils {
 				})
 				.toArray(Dependency[]::new);
 
-		return new BindingInitializer<>(dependencies, (instance, args) -> {
+		return BindingInitializer.of(dependencies, (instance, args) -> {
 			for (int i = 0; i < injectableFields.length; i++) {
 				Object arg = args[i];
 				if (arg != null) {
@@ -153,9 +145,9 @@ public final class ReflectionUtils {
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to call method for " + returnType, e);
 			}
-		}, new LocationInfo(module != null ? module.getClass() : null, method.toString()))
-				.apply(injectingInitializer(returnType));
+		}, new LocationInfo(module != null ? module.getClass() : null, method.toString()));
 	}
+
 	private static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
 
@@ -167,8 +159,7 @@ public final class ReflectionUtils {
 			} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to create " + key, e);
 			}
-		}, new LocationInfo(null, constructor.toString()))
-				.apply(injectingInitializer(Key.of(constructor.getDeclaringClass())));
+		}, new LocationInfo(null, constructor.toString()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -176,8 +167,40 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Class<?> cls = key.getRawType();
 
-		if (cls == Provider.class || cls == Injector.class) {
-			return null; // those two are hardcoded in the injector class, do nothing here
+		if (cls == Provider.class) {
+			Type[] typeParams = key.getTypeParams();
+			checkArgument(typeParams.length == 1);
+
+			return (Binding<T>) Binding.of(new Key[]{Key.of(Injector.class)}, args -> {
+				Injector injector = (Injector) args[0];
+				Injector current = injector;
+				Binding<?> binding = null;
+				while (current != null && binding == null) {
+					binding = current.getBinding(Key.ofType(typeParams[0], key.getName()));
+					current = current.getParent();
+				}
+				if (binding == null) {
+					return null;
+				}
+				Factory<?> factory = binding.getFactory();
+				Object[] depInstances = Arrays.stream(binding.getDependencies())
+						.map(dependency -> dependency.isRequired() ?
+								injector.getInstance(dependency.getKey()) :
+								injector.getOptionalInstance(dependency.getKey()).orElse(null))
+						.toArray(Object[]::new);
+
+				return new Provider<Object>() {
+					@Override
+					public Object provideNew() {
+						return factory.create(depInstances);
+					}
+
+					@Override
+					public synchronized Object provideSingleton() {
+						return injector.getInstance(key);
+					}
+				};
+			});
 		}
 
 		Inject classInjectAnnotation = cls.getAnnotation(Inject.class);
@@ -225,17 +248,25 @@ public final class ReflectionUtils {
 		return null;
 	}
 
-	public static void addImplicitBindings(Map<Key<?>, Binding<?>> bindings) {
-		Collection<Binding<?>> bindingsToCheck = new HashSet<>(bindings.values());
+	public static void addImplicitBindings(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		addImplicitBindings(new HashSet<>(), bindings);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void addImplicitBindings(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		Map<Key<?>, Binding<?>> localBindings = bindings.get();
+		known.addAll(localBindings.keySet());
+		List<Binding<?>> bindingsToCheck = new ArrayList<>(localBindings.values());
 		do {
 			bindingsToCheck = bindingsToCheck.stream()
 					.flatMap(binding -> Arrays.stream(binding.getDependencies()))
-					.filter(dependency -> !bindings.containsKey(dependency.getKey()))
+					.filter(dependency -> !known.contains(dependency.getKey()))
 					.map(dependency -> {
-						Key<?> key = dependency.getKey();
-						Binding<?> binding = generateImplicitBinding(key);
+						Key<Object> key = (Key<Object>) dependency.getKey();
+						Binding<Object> binding = generateImplicitBinding(key);
 						if (binding != null) {
-							bindings.put(key, binding);
+							known.add(key);
+							localBindings.put(key, binding.apply(injectingInitializer(key)));
 						} else if (dependency.isRequired()) {
 							throw new RuntimeException("unsatisfied dependency " + key + " with no implicit bindings");
 						}
@@ -244,16 +275,26 @@ public final class ReflectionUtils {
 					.filter(Objects::nonNull)
 					.collect(toList());
 		} while (!bindingsToCheck.isEmpty());
+
+		bindings.getChildren().values().forEach(sub -> addImplicitBindings(known, sub));
 	}
 
 	// throws on unsatisfied dependencies, returns list of cycles
 	// this is a subject to change ofc
-	public static Set<Key<?>[]> checkBindingGraph(Map<Key<?>, Binding<?>> bindings) {
-		Set<Key<?>> visited = new HashSet<>();
+	public static Set<Key<?>[]> getCycles(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return getCycles(new HashSet<>(), bindings).collect(toSet());
+	}
+
+	private static Stream<Key<?>[]> getCycles(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		Map<Key<?>, Binding<?>> localBindings = bindings.get();
 		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
 		Set<Key<?>[]> cycles = new HashSet<>();
-		bindings.forEach((key, binding) -> dfs(bindings, visited, visiting, cycles, new Dependency(key, true)));
-		return cycles;
+		localBindings.forEach((key, binding) -> dfs(localBindings, visited, visiting, cycles, new Dependency(key, true)));
+
+		return Stream.concat(
+				cycles.stream(),
+				bindings.getChildren().values().stream().flatMap(sub -> getCycles(new HashSet<>(visited), bindings))
+		);
 	}
 
 	private static void dfs(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<Key<?>[]> cycles, Dependency node) {
@@ -285,7 +326,6 @@ public final class ReflectionUtils {
 			visiting.remove(key);
 			visited.add(key);
 		} else if (node.isRequired()) {
-
 			throw new RuntimeException("no binding for required key " + key);
 		}
 	}
@@ -341,6 +381,6 @@ public final class ReflectionUtils {
 		};
 
 		Injector injector = Injector.create(module);
-		checkBindingGraph(injector.getBindings()).forEach(x -> System.out.println(Arrays.toString(x)));
+//		checkBindingGraph(injector.getBindings()).forEach(x -> System.out.println(Arrays.toString(x)));
 	}
 }

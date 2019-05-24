@@ -17,11 +17,11 @@
 package io.datakernel.worker;
 
 import io.datakernel.di.*;
-import io.datakernel.util.TypeT;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -36,19 +36,15 @@ public final class WorkerPool {
 	private final Injector[] scopeInjectors;
 
 	WorkerPool(Injector injector, Scope scope, int idx, int workers) {
-
 		this.scope = scope;
 		this.idx = idx;
 		this.scopeInjectors = new Injector[workers];
 		for (int i = 0; i < workers; i++) {
-			Key<Integer> workerId = Key.of(int.class, WorkerId.class);
-			int finalI = i;
-			scopeInjectors[i] = injector.enterScope(scope,
-					singletonMap(workerId, Binding.of(new Dependency[0], args -> finalI)));
+			Map<Key<?>, Binding<?>> overrides = singletonMap(Key.of(int.class, WorkerId.class), Binding.constant(i));
+			scopeInjectors[i] = injector.enterScope(scope, overrides);
 		}
 	}
 
-	@NotNull
 	public Scope getScope() {
 		return scope;
 	}
@@ -67,18 +63,8 @@ public final class WorkerPool {
 		return getInstances(Key.of(type));
 	}
 
-	@NotNull
-	public <T> List<T> getInstances(TypeT<T> type) {
-		return getInstances(Key.of(type));
-	}
-
 	@Nullable
 	private <T> List<T> peekInstances(Class<T> type) {
-		return peekInstances(Key.of(type));
-	}
-
-	@Nullable
-	private <T> List<T> peekInstances(TypeT<T> type) {
 		return peekInstances(Key.of(type));
 	}
 
@@ -91,8 +77,7 @@ public final class WorkerPool {
 
 	@NotNull
 	public Map<Key<?>, Object[]> peekInstances() {
-		return scopeInjectors[0].peekInstances().keySet()
-				.stream()
+		return scopeInjectors[0].peekInstances().keySet().stream()
 				.collect(toMap(Function.identity(), this::doPeekInstances));
 	}
 
@@ -114,6 +99,6 @@ public final class WorkerPool {
 
 	@Override
 	public String toString() {
-		return "pool_" + idx;
+		return "WorkerPool{scope=" + scope + ", idx=" + idx +'}';
 	}
 }
