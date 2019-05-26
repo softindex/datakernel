@@ -48,7 +48,7 @@ public class TriggersModuleTest {
 	public void testDuplicatesRejection() {
 		exception.expect(IllegalArgumentException.class);
 		exception.expectMessage("Cannot assign duplicate triggers");
-		Injector.create(
+		Injector.of(
 				ServiceGraphModule.defaultInstance(),
 				TriggersModule.create()
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
@@ -61,7 +61,7 @@ public class TriggersModuleTest {
 	public void testWithSeveralWorkerPools() throws Exception {
 		int firstPoolSize = 10;
 		int secondPoolSize = 5;
-		Injector injector = Injector.create(
+		Injector injector = Injector.of(
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					int counter = 0;
@@ -113,7 +113,7 @@ public class TriggersModuleTest {
 
 	@Test
 	public void testMultiModule() throws ExecutionException, InterruptedException {
-		Injector injector = Injector.create(
+		Injector injector = Injector.of(
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Override

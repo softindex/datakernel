@@ -2,10 +2,15 @@ package io.datakernel.di.util;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
+
+import static java.util.Collections.emptyMap;
 
 public final class Trie<K, V> {
 	private final V payload;
@@ -35,6 +40,10 @@ public final class Trie<K, V> {
 	@Nullable
 	public Trie<K, V> get(K key) {
 		return children.get(key);
+	}
+
+	public Trie<K, V> getOrDefault(K key, V defaultValue) {
+		return children.getOrDefault(key, new Trie<>(defaultValue, emptyMap()));
 	}
 
 	public Trie<K, V> computeIfAbsent(K key, Function<K, V> f) {

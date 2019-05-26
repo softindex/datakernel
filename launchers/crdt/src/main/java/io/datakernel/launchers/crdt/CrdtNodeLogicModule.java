@@ -30,7 +30,7 @@ import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.RecursiveType;
-import io.datakernel.util.TypeT;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -57,16 +57,16 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 		Type[] typeArguments = ((ParameterizedType) genericSuperclass).getActualTypeArguments();
 
 		List<RecursiveType> typeArgs = Arrays.stream(typeArguments).map(RecursiveType::of).collect(toList());
-		TypeT<?> supertype = RecursiveType.of(CrdtStorage.class, typeArgs).getTypeT();
+		@NotNull Type supertype = RecursiveType.of(CrdtStorage.class, typeArgs).getType();
 
-		bind((Key) Key.of(supertype, InMemory.class))
-				.to(Key.of(RecursiveType.of(CrdtStorageMap.class, typeArgs).getTypeT()));
-		bind((Key) Key.of(supertype, Persistent.class))
-				.to(Key.of(RecursiveType.of(CrdtStorageFs.class, typeArgs).getTypeT()));
+		bind((Key) Key.ofType(supertype, InMemory.class))
+				.to(Key.ofType(RecursiveType.of(CrdtStorageMap.class, typeArgs).getType()));
+		bind((Key) Key.ofType(supertype, Persistent.class))
+				.to(Key.ofType(RecursiveType.of(CrdtStorageFs.class, typeArgs).getType()));
 
 		typeArgs.add(0, RecursiveType.of(String.class));
-		bind((Key) Key.of(supertype, Cluster.class))
-				.to(Key.of(RecursiveType.of(CrdtStorageCluster.class, typeArgs).getTypeT()));
+		bind((Key) Key.ofType(supertype, Cluster.class))
+				.to(Key.ofType(RecursiveType.of(CrdtStorageCluster.class, typeArgs).getType()));
 	}
 
 	@Provides

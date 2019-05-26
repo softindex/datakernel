@@ -96,7 +96,7 @@ public abstract class HttpServerLauncher extends Launcher {
 		awaitShutdown();
 	}
 
-	protected static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :

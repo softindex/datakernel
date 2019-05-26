@@ -21,14 +21,14 @@ public final class TestDI {
 
 //		module.getBindings().values().forEach(bindings -> System.out.println(bindings.iterator().next().getDisplayString()));
 
-		Injector injector = Injector.create(module);
+		Injector injector = Injector.of(module);
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 	}
 
 	@Test
 	public void singleton() {
-		Injector injector = Injector.create(new AbstractModule() {{
+		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
 			bind(String.class).to(i -> "str: " + i, Integer.class);
@@ -41,7 +41,7 @@ public final class TestDI {
 
 	@Test
 	public void provider() {
-		Injector injector = Injector.create(new AbstractModule() {{
+		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
 			bind(String.class).to(i -> "str: " + i.provideNew(), new Key<Provider<Integer>>() {});
@@ -63,7 +63,7 @@ public final class TestDI {
 
 	@Test
 	public void dsl() {
-		Injector injector = Injector.create(new AbstractModule() {
+		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
 			String provide(Integer integer) {
@@ -81,7 +81,7 @@ public final class TestDI {
 
 	@Test
 	public void namedDsl() {
-		Injector injector = Injector.create(new AbstractModule() {
+		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
 			String provide(@Named("test") Integer integer) {
@@ -121,7 +121,7 @@ public final class TestDI {
 			Integer raw;
 		}
 
-		Injector injector = Injector.create(new AbstractModule() {
+		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
 			ClassWithCustomDeps provide() {
@@ -156,7 +156,7 @@ public final class TestDI {
 		class Inherited extends ClassWithCustomDeps {
 		}
 
-		Injector injector = Injector.create(new AbstractModule() {
+		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
 			Inherited provide() {
@@ -199,9 +199,9 @@ public final class TestDI {
 				bind(RecursiveA.class).require();
 			}};
 
-			System.out.println(module.getBindings());
+			System.out.println(module.getBindingsMultimap());
 
-			Injector injector = Injector.create(module);
+			Injector injector = Injector.of(module);
 			fail("should've detected the cycle and fail");
 		} catch (RuntimeException e) {
 			e.printStackTrace();
@@ -220,7 +220,7 @@ public final class TestDI {
 			Integer integer;
 		}
 
-		Injector injector = Injector.create(new AbstractModule() {
+		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
 			ClassWithCustomDeps provide() {
@@ -237,7 +237,7 @@ public final class TestDI {
 		assertNull(instance.string);
 		assertEquals(42, instance.integer.intValue());
 
-		Injector injector2 = Injector.create(new AbstractModule() {
+		Injector injector2 = Injector.of(new AbstractModule() {
 
 			@Provides
 			ClassWithCustomDeps provide() {
@@ -260,7 +260,7 @@ public final class TestDI {
 		assertEquals(42, instance2.integer.intValue());
 
 		try {
-			Injector injector3 = Injector.create(new AbstractModule() {
+			Injector injector3 = Injector.of(new AbstractModule() {
 
 				@Provides
 				ClassWithCustomDeps provide() {
@@ -281,7 +281,7 @@ public final class TestDI {
 
 	@Test
 	public void crossmodule() {
-		Injector injector = Injector.create(
+		Injector injector = Injector.of(
 				new AbstractModule() {{
 					bind(Integer.class).toInstance(42);
 				}},
@@ -294,7 +294,7 @@ public final class TestDI {
 
 	@Test
 	public void overrides() {
-		Injector injector = Injector.create(override(
+		Injector injector = Injector.of(override(
 				new AbstractModule() {{
 					bind(Integer.class).toInstance(17);
 					bind(String.class).to(i -> "str: " + i, Integer.class);
@@ -328,7 +328,7 @@ public final class TestDI {
 
 //		module.getBindings().values().forEach(binding -> System.out.println(binding.iterator().next().getDisplayString()));
 
-		Injector injector = Injector.create(module);
+		Injector injector = Injector.of(module);
 
 		Container<Float, String, Integer> instance = injector.getInstance(new Key<Container<Float, String, Integer>>() {});
 		assertEquals("hello", instance.something);
@@ -366,7 +366,7 @@ public final class TestDI {
 
 //		module.getBindings().values().forEach(b -> System.out.println(b.iterator().next().getDisplayString()));
 
-		Injector injector = Injector.create(module);
+		Injector injector = Injector.of(module);
 
 		assertEquals("hello", injector.getInstance(new Key<Container<String>>() {}).object);
 		assertEquals(42, injector.getInstance(new Key<Container<Integer>>() {}).object.intValue());

@@ -23,8 +23,6 @@ import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -32,12 +30,11 @@ import org.junit.rules.ExpectedException;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.set;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class WorkerPoolsTest {
 	@Rule
@@ -53,7 +50,7 @@ public class WorkerPoolsTest {
 	@Before
 	public void setUp() {
 		TestModule.counter = 0;
-//		injector = Guice.createInjector(new TestModule(), new WorkerPoolModule());
+		injector = Injector.of(new TestModule(), new WorkerPoolModule());
 		first = injector.getInstance(Key.of(WorkerPool.class, Name.of("First")));
 		second = injector.getInstance(Key.of(WorkerPool.class, Name.of("Second")));
 		eventloopsFirst = first.getInstances(Eventloop.class);
@@ -178,17 +175,17 @@ public class WorkerPoolsTest {
 		String provideString() {
 			return "String: " + counter++;
 		}
-//
-//		@Provides
-//		@Named("First")
-//		WorkerPool provideFirstWorkerPool() {
-//			return new WorkerPool(4);
-//		}
-//
-//		@Provides
-//		@Named("Second")
-//		WorkerPool provideSecondWorkerPool() {
-//			return new WorkerPool(10);
-//		}
+
+		@Provides
+		@Named("First")
+		WorkerPool provideFirstWorkerPool(WorkerPools pools) {
+			return pools.createPool(4);
+		}
+
+		@Provides
+		@Named("Second")
+		WorkerPool provideSecondWorkerPool(WorkerPools pools) {
+			return pools.createPool(10);
+		}
 	}
 }

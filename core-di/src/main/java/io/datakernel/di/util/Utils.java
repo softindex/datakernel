@@ -12,8 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singleton;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 public final class Utils {
 	private Utils() {
@@ -40,9 +39,14 @@ public final class Utils {
 									throw new IllegalStateException();
 								case 1:
 									return value.iterator().next();
-								default:
-									System.out.println("value = " + value);
-									return reducers.apply(entry.getKey()).apply(entry.getValue());
+								default: {
+									Function<Set<V>, V> conflictResolver = reducers.apply(entry.getKey());
+									if (conflictResolver == null) {
+										throw new IllegalStateException("Duplicate bindings for " + entry.getKey() + "\n" +
+												entry.getValue().stream().map(Object::toString).map(s -> "\t\t" + s).collect(joining("\n")));
+									}
+									return conflictResolver.apply(entry.getValue());
+								}
 							}
 						})
 				);
@@ -57,7 +61,7 @@ public final class Utils {
 	}
 
 	public static <T, K, V> Collector<T, ?, Map<K, Set<V>>> toMultimap(Function<? super T, ? extends K> keyMapper,
-																	   Function<? super T, ? extends V> valueMapper) {
+			Function<? super T, ? extends V> valueMapper) {
 		return Collectors.toMap(keyMapper, t -> singleton(valueMapper.apply(t)), Utils::union);
 	}
 

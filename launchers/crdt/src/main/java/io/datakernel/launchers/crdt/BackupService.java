@@ -20,7 +20,6 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.local.CrdtStorageMap;
-import io.datakernel.di.Inject;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamConsumer;

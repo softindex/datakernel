@@ -89,7 +89,7 @@ public final class ReflectionUtils {
 		return fields.toArray(new Field[0]);
 	}
 
-	public static <T> BindingInitializer<T> injectingInitializer(Key<T> returnType) {
+	public static <T> BindingInitializer<T> injectingInitializer(Key<? extends T> returnType) {
 		Field[] injectableFields = getInjectableFields(returnType.getRawType());
 
 		Type[] typeParameters = returnType.getRawType().getTypeParameters();
@@ -143,7 +143,7 @@ public final class ReflectionUtils {
 			try {
 				return (T) method.invoke(module, args);
 			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException("failed to call method for " + returnType, e);
+				throw new RuntimeException("failed to call method " + method, e);
 			}
 		}, new LocationInfo(module != null ? module.getClass() : null, method.toString()));
 	}
@@ -186,7 +186,7 @@ public final class ReflectionUtils {
 				Object[] depInstances = Arrays.stream(binding.getDependencies())
 						.map(dependency -> dependency.isRequired() ?
 								injector.getInstance(dependency.getKey()) :
-								injector.getOptionalInstance(dependency.getKey()).orElse(null))
+								injector.getInstanceOrNull(dependency.getKey()))
 						.toArray(Object[]::new);
 
 				return new Provider<Object>() {
@@ -252,9 +252,13 @@ public final class ReflectionUtils {
 		addImplicitBindings(new HashSet<>(), bindings);
 	}
 
-	@SuppressWarnings("unchecked")
 	private static void addImplicitBindings(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		Map<Key<?>, Binding<?>> localBindings = bindings.get();
+		addImplicitBindings(known, bindings.get());
+		bindings.getChildren().values().forEach(sub -> addImplicitBindings(known, sub));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void addImplicitBindings(Set<Key<?>> known, Map<Key<?>, Binding<?>> localBindings) {
 		known.addAll(localBindings.keySet());
 		List<Binding<?>> bindingsToCheck = new ArrayList<>(localBindings.values());
 		do {
@@ -268,15 +272,13 @@ public final class ReflectionUtils {
 							known.add(key);
 							localBindings.put(key, binding.apply(injectingInitializer(key)));
 						} else if (dependency.isRequired()) {
-							throw new RuntimeException("unsatisfied dependency " + key + " with no implicit bindings");
+							throw new RuntimeException("Unsatisfied dependency " + key);
 						}
 						return binding;
 					})
 					.filter(Objects::nonNull)
 					.collect(toList());
 		} while (!bindingsToCheck.isEmpty());
-
-		bindings.getChildren().values().forEach(sub -> addImplicitBindings(known, sub));
 	}
 
 	// throws on unsatisfied dependencies, returns list of cycles
@@ -380,7 +382,7 @@ public final class ReflectionUtils {
 			}
 		};
 
-		Injector injector = Injector.create(module);
+		Injector injector = Injector.of(module);
 //		checkBindingGraph(injector.getBindings()).forEach(x -> System.out.println(Arrays.toString(x)));
 	}
 }

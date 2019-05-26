@@ -50,11 +50,13 @@ public final class Binding<T> {
 		Initializer<T> initializer = bindingInitializer.getInitializer();
 		int depsLen = this.dependencies.length;
 
-		return new Binding<>(combinedDependencies, args -> {
-			T instance = factory.create(Arrays.copyOf(args, depsLen));
-			initializer.apply(instance, Arrays.copyOfRange(args, depsLen, args.length));
-			return instance;
-		}, location);
+		return new Binding<>(combinedDependencies,
+				args -> {
+					T instance = factory.create(Arrays.copyOf(args, depsLen));
+					initializer.apply(instance, Arrays.copyOfRange(args, depsLen, args.length));
+					return instance;
+				},
+				location);
 	}
 
 	public void setLocation(@Nullable LocationInfo location) {
@@ -80,6 +82,6 @@ public final class Binding<T> {
 
 	@Override
 	public String toString() {
-		return "Binding{dependencies=" + Arrays.toString(dependencies) + '}';
+		return "" + location + " : " + Arrays.toString(dependencies) + "";
 	}
 }

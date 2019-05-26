@@ -28,11 +28,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class WorkerPoolTest {
 	private WorkerPool first;
@@ -43,11 +41,11 @@ public class WorkerPoolTest {
 	@Before
 	public void setUp() {
 		TestModule.counter = 0;
-//		Injector injector = Guice.createInjector(new TestModule(), new WorkerPoolModule());
-//		first = injector.getInstance(Key.of(WorkerPool.class, Name.of("First")));
-//		second = injector.getInstance(Key.of(WorkerPool.class, Name.of("Second")));
-//		eventloopsFirst = first.getInstances(Eventloop.class);
-//		eventloopsSecond = second.getInstances(Eventloop.class);
+		Injector injector = Injector.of(new TestModule(), new WorkerPoolModule());
+		first = injector.getInstance(Key.of(WorkerPool.class, Name.of("First")));
+		second = injector.getInstance(Key.of(WorkerPool.class, Name.of("Second")));
+		eventloopsFirst = first.getInstances(Eventloop.class);
+		eventloopsSecond = second.getInstances(Eventloop.class);
 	}
 
 	@Test
@@ -149,18 +147,18 @@ public class WorkerPoolTest {
 		Eventloop provideWorkerEventloop() {
 			return Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		}
-//
-//		@Provides
-//		@Named("First")
-//		WorkerPool provideFirstWorkerPool() {
-//			return new WorkerPool(4);
-//		}
-//
-//		@Provides
-//		@Named("Second")
-//		WorkerPool provideSecondWorkerPool() {
-//			return new WorkerPool(10);
-//		}
+
+		@Provides
+		@Named("First")
+		WorkerPool provideFirstWorkerPool(WorkerPools pools) {
+			return pools.createPool(4);
+		}
+
+		@Provides
+		@Named("Second")
+		WorkerPool provideSecondWorkerPool(WorkerPools pools) {
+			return pools.createPool(10);
+		}
 	}
 }
 

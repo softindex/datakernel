@@ -18,10 +18,7 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.*;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -68,21 +65,26 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				new WorkerPoolModule(),
 				new AbstractModule() {
 					@Provides
-					public Eventloop provideEventloop(Config config) {
+					Eventloop provideEventloop(Config config) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.primary")));
 					}
 
 					@Provides
 					@Worker
-					public Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.worker")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
 					@Provides
-					public PrimaryServer providePrimaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
+					WorkerPool workerPool(WorkerPools workerPools, Config config) {
+						return workerPools.createPool(config.get(ofInteger(), "workers", 4));
+					}
+
+					@Provides
+					PrimaryServer providePrimaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
 								.initialize(ofPrimaryServer(config.getChild("http")));
@@ -90,7 +92,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 
 					@Provides
 					@Worker
-					public AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
+					AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
 								.initialize(ofHttpWorker(config.getChild("http")));
 					}

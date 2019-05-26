@@ -27,7 +27,6 @@ public final class Constructors {
 
 	@FunctionalInterface
 	public interface Factory<R> {
-
 		R create(Object[] args);
 	}
 

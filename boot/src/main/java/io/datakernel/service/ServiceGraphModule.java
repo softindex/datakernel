@@ -29,7 +29,6 @@ import io.datakernel.util.Initializer;
 import io.datakernel.util.TypeT;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -42,7 +41,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.difference;
@@ -51,8 +49,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -253,7 +250,11 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@Provides
-	ServiceGraph provideServiceGraph(Injector injector) {
+	ServiceGraph provideServiceGraph(Injector injector
+//			, @Optional Set<Initializer<ServiceGraphModule>> initializers
+	) {
+//		initializers.forEach(initializer -> initializer.accept(this));
+
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
@@ -272,29 +273,39 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
 			Key<?> key = entry.getKey();
+			Binding<?> binding = injector.getBinding(key);
+			if (binding == null) continue;
 			ServiceKey serviceKey = new ServiceKey(key);
 			instances.put(serviceKey, singletonList(entry.getValue()));
-			instanceDependencies.put(serviceKey, Arrays.stream(injector.getBinding(key).getDependencies())
-					.map(d -> new ServiceKey(d.getKey()))
-					.collect(toSet()));
+			instanceDependencies.put(serviceKey,
+					Arrays.stream(binding.getDependencies())
+							.filter(dependency -> dependency.isRequired() ||
+									injector.hasInstance(dependency.getKey()))
+							.map(dependency -> new ServiceKey(dependency.getKey()))
+							.collect(toSet()));
 		}
-
 
 		if (workerPools != null) {
 			for (int i = 0; i < pools.size(); i++) {
 				final int finalI = i;
 				WorkerPool pool = pools.get(i);
-				Map<Key<?>, Set<ScopedDependency>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
+				Map<Key<?>, Set<ScopedValue<Dependency>>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
 				for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
+					if (!scopeDependencies.containsKey(key)) continue;
 					ServiceKey serviceKey = new ServiceKey(key, i);
 					instances.put(serviceKey, Arrays.asList(entry.getValue()));
-					instanceDependencies.put(serviceKey, scopeDependencies.get(key)
-							.stream()
-							.map(scopedDependency -> scopedDependency.isScoped() ?
-									new ServiceKey(scopedDependency.getDependency().getKey(), finalI) :
-									new ServiceKey(scopedDependency.getDependency().getKey()))
-							.collect(toSet()));
+					instanceDependencies.put(serviceKey,
+							scopeDependencies.get(key)
+									.stream()
+									.filter(scopedDependency -> scopedDependency.get().isRequired() ||
+											(scopedDependency.isScoped() ?
+													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
+													injector.hasInstance(scopedDependency.get().getKey())))
+									.map(scopedDependency -> scopedDependency.isScoped() ?
+											new ServiceKey(scopedDependency.get().getKey(), finalI) :
+											new ServiceKey(scopedDependency.get().getKey()))
+									.collect(toSet()));
 				}
 			}
 		}
@@ -302,19 +313,17 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return populateServiceGraph(serviceGraph, instances, instanceDependencies, cache);
 	}
 
-	private Map<Key<?>, Set<ScopedDependency>> getScopeDependencies(Injector injector, Scope scope) {
-		Trie<Scope, Map<Key<?>, Binding<?>>> scopeBindings = injector.getBindings().get(scope);
-		if (scopeBindings == null) {
-			throw new RuntimeException("no scope " + scope);
-		}
-		Map<Key<?>, Binding<?>> map = scopeBindings.get();
-		return map.entrySet().stream()
-				.collect(Collectors.toMap(Map.Entry::getKey, entry ->
-						Arrays.stream(entry.getValue().getDependencies())
+	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
+		Trie<Scope, Map<Key<?>, Binding<?>>> scopeBindings = injector.getBindings().getOrDefault(scope, emptyMap());
+		return scopeBindings.get()
+				.entrySet()
+				.stream()
+				.collect(toMap(Map.Entry::getKey,
+						entry -> Arrays.stream(entry.getValue().getDependencies())
 								.map(dependencyKey ->
-										map.containsKey(dependencyKey.getKey()) ?
-												ScopedDependency.ofScoped(scope, dependencyKey) :
-												ScopedDependency.ofUnscoped(dependencyKey))
+										scopeBindings.get().containsKey(dependencyKey.getKey()) ?
+												ScopedValue.of(scope, dependencyKey) :
+												ScopedValue.of(dependencyKey))
 								.collect(toSet())));
 	}
 
@@ -492,11 +501,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			return service;
 		}
 		return null;
-	}
-
-	@Override
-	protected void configure() {
-		install(new WorkerPoolModule());
 	}
 
 	private static class CachedService implements Service {

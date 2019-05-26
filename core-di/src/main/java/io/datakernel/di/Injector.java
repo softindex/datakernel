@@ -7,74 +7,86 @@ import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Stream;
+import java.util.HashMap;
+import java.util.Map;
 
-import static io.datakernel.di.util.Utils.flattenMultimap;
-import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.joining;
-
-public final class Injector {
-	@Nullable
-	private final Scope scope;
+public class Injector {
 	@Nullable
 	private final Injector parent;
 
 	private final Trie<Scope, Map<Key<?>, Binding<?>>> bindings;
 	private final Map<Key<?>, Binding<?>> localBindings;
-	private final Map<Key<?>, Object> instances = new HashMap<>();
+	private final Map<Key<?>, Object> instances;
 
-	private Injector(@Nullable Scope scope, @Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Binding<?>> localBindings) {
-		this.scope = scope;
+	protected static final class SynchronizedInjector extends Injector {
+		protected SynchronizedInjector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
+			super(parent, bindings, instances);
+		}
+
+		@Override
+		synchronized public <T> @NotNull T getInstance(@NotNull Class<T> type) {
+			return super.getInstance(type);
+		}
+
+		@Override
+		synchronized public <T> @NotNull T getInstance(@NotNull Key<T> key) {
+			return super.getInstance(key);
+		}
+
+		@Override
+		synchronized public <T> @Nullable T getInstanceOrNull(@NotNull Class<T> type) {
+			return super.getInstanceOrNull(type);
+		}
+
+		@Override
+		synchronized public <T> @Nullable T getInstanceOrNull(@NotNull Key<T> key) {
+			return super.getInstanceOrNull(key);
+		}
+	}
+
+	private static final Object[] NO_OBJECTS = new Object[0];
+
+	private Injector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+			Map<Key<?>, Object> instances) {
 		this.parent = parent;
 		this.bindings = bindings;
-		this.localBindings = localBindings;
+		this.localBindings = bindings.get();
+		this.instances = instances;
+	}
+
+	public static Injector of(Module... modules) {
+		Module module = Modules.combine(modules);
+		return construct(null, new HashMap<>(), true, module.getBindings());
 	}
 
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		Injector injector = new Injector(null, null, bindings, bindings.get());
+		return construct(null, new HashMap<>(), true, bindings);
+	}
+
+	public static Injector construct(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
+			@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		Injector injector = threadsafe ?
+				new SynchronizedInjector(parent, bindings, instances) :
+				new Injector(parent, bindings, instances);
 		bindings.get().put(Key.of(Injector.class), Binding.constant(injector));
 
 		ReflectionUtils.addImplicitBindings(bindings);
 
-		Set<Key<?>[]> cycles = ReflectionUtils.getCycles(bindings);
+		return injector;
 
-		if (cycles.isEmpty()) {
-			return injector;
-		}
-
-		String detail = cycles.stream()
-				.map(cycle ->
-						Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
-								.map(Key::getDisplayString)
-								.collect(joining(" -> ", "", " -> ...")))
-				.collect(joining("\n"));
-		throw new RuntimeException("cyclic dependencies detected:\n" + detail);
-	}
-
-	public static Injector ofScope(@NotNull Scope scope, @NotNull Injector outerScopeInjector, @NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return new Injector(scope, outerScopeInjector, bindings, bindings.get());
-	}
-
-	public static Injector create(Module... modules) {
-		Module module = Modules.combine(modules);
-		Function<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolver = module.getConflictResolvers()::get;
-		return of(module.getBindings().map(localBindings -> flattenMultimap(localBindings, conflictResolver)));
-	}
-
-	@Nullable
-	public Scope getScope() {
-		return scope;
-	}
-
-	@Nullable
-	public Injector getParent() {
-		return parent;
-	}
-
-	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
-		return bindings;
+//		Set<Key<?>[]> cycles = ReflectionUtils.getCycles(bindings);
+//
+//		if (cycles.isEmpty()) {
+//			return injector;
+//		}
+//
+//		String detail = cycles.stream()
+//				.map(cycle ->
+//						Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
+//								.map(Key::getDisplayString)
+//								.collect(joining(" -> ", "", " -> ...")))
+//				.collect(joining("\n"));
+//		throw new RuntimeException("cyclic dependencies detected:\n" + detail);
 	}
 
 	@NotNull
@@ -84,47 +96,62 @@ public final class Injector {
 
 	@SuppressWarnings("unchecked")
 	@NotNull
-	public synchronized <T> T getInstance(@NotNull Key<T> key) {
-		T instance = (T) instances.computeIfAbsent(key, this::generateInstance);
-		if (instance == null) {
-			throw new RuntimeException("cannot construct " + key);
-		}
+	public <T> T getInstance(@NotNull Key<T> key) {
+		T instance = (T) instances.computeIfAbsent(key, this::provideInstance);
+		if (instance == null) throw new RuntimeException("cannot construct " + key);
 		return instance;
 	}
 
-	public <T> Optional<T> getOptionalInstance(@NotNull Class<T> type) {
-		return getOptionalInstance(Key.of(type));
+	@Nullable
+	public <T> T getInstanceOrNull(@NotNull Class<T> type) {
+		return getInstanceOrNull(Key.of(type));
 	}
 
 	@SuppressWarnings("unchecked")
-	public synchronized <T> Optional<T> getOptionalInstance(@NotNull Key<T> key) {
-		return Optional.ofNullable((T) instances.computeIfAbsent(key, this::generateInstance));
-	}
-
-	@SuppressWarnings("unchecked")
-	public void inject(Object instance) {
-		BindingInitializer<Object> initializer = ReflectionUtils.injectingInitializer(Key.of((Class<Object>) instance.getClass()));
-		initializer.getInitializer().apply(instance, generateDependencies(initializer.getDependencies()));
+	@Nullable
+	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
+		return (T) instances.computeIfAbsent(key, this::provideInstance);
 	}
 
 	@Nullable
-	private Object generateInstance(@NotNull Key<?> key) {
+	protected Object provideInstance(@NotNull Key<?> key) {
 		Binding<?> binding = localBindings.get(key);
 		if (binding != null) {
-			return binding.getFactory().create(generateDependencies(binding.getDependencies()));
+			return binding.getFactory().create(getDependencies(binding.getDependencies()));
 		}
 		if (parent != null) {
-			return parent.generateInstance(key);
+			return parent.getInstanceOrNull(key);
 		}
 		return null;
 	}
 
-	private Object[] generateDependencies(Dependency[] dependencies) {
-		return Arrays.stream(dependencies)
-				.map(dependency -> dependency.isRequired() ?
-						getInstance(dependency.getKey()) :
-						getOptionalInstance(dependency.getKey()).orElse(null))
-				.toArray(Object[]::new);
+	private Object[] getDependencies(Dependency[] dependencies) {
+		if (dependencies.length == 0) return NO_OBJECTS;
+		Object[] instances = new Object[dependencies.length];
+		for (int i = 0; i < dependencies.length; i++) {
+			Dependency dependency = dependencies[i];
+			instances[i] = dependency.isRequired() ?
+					getDependency(dependency.getKey()) :
+					getDependencyOrNull(dependency.getKey());
+		}
+		return instances;
+	}
+
+	@NotNull
+	private <T> T getDependency(@NotNull Key<T> key) {
+		T instance = getDependencyOrNull(key);
+		if (instance == null) throw new RuntimeException("cannot construct " + key);
+		return instance;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	private <T> T getDependencyOrNull(@NotNull Key<T> key) {
+		T instance = (T) instances.get(key);
+		if (instance != null) return instance;
+		instance = (T) provideInstance(key);
+		instances.put(key, instance);
+		return instance;
 	}
 
 	@Nullable
@@ -147,7 +174,26 @@ public final class Injector {
 	}
 
 	public Map<Key<?>, Object> peekInstances() {
-		return unmodifiableMap(instances);
+		return instances;
+	}
+
+	@Nullable
+	public Injector getParent() {
+		return parent;
+	}
+
+	public boolean isThreadSafe() {
+		return this.getClass() == SynchronizedInjector.class;
+	}
+
+	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
+		return bindings;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public <T> Binding<T> getBinding(Class<T> type) {
+		return (Binding<T>) localBindings.get(Key.of(type));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -156,21 +202,25 @@ public final class Injector {
 		return (Binding<T>) localBindings.get(key);
 	}
 
-	public Injector enterScope(Scope scope) {
-		Trie<Scope, Map<Key<?>, Binding<?>>> sub = bindings.get(scope);
-		if (sub == null) {
-			throw new RuntimeException("tried to enter a scope " + scope + "that was not represented by any binding");
-		}
-		return new Injector(scope, this, sub, sub.get());
+	public boolean hasBinding(Class<?> type) {
+		return hasInstance(Key.of(type));
 	}
 
-	public Injector enterScope(Scope scope, Map<Key<?>, Binding<?>> extraBindings) {
-		Trie<Scope, Map<Key<?>, Binding<?>>> sub = this.bindings.get(scope);
-		if (sub == null) {
+	public boolean hasBinding(Key<?> key) {
+		return localBindings.containsKey(key);
+	}
+
+	public Injector enterScope(@NotNull Scope scope) {
+		return enterScope(scope, new HashMap<>(), isThreadSafe());
+	}
+
+	public Injector enterScope(@NotNull Scope scope, @NotNull Map<Key<?>, Object> instances, boolean threadsafe) {
+		Trie<Scope, Map<Key<?>, Binding<?>>> subBindings = bindings.get(scope);
+		if (subBindings == null) {
 			throw new RuntimeException("tried to enter a scope " + scope + "that was not represented by any binding");
 		}
-		Map<Key<?>, Binding<?>> newLocalBindings = new HashMap<>(sub.get());
-		newLocalBindings.putAll(extraBindings);
-		return new Injector(scope, this, sub, newLocalBindings);
+		return threadsafe ?
+				new SynchronizedInjector(this, subBindings, instances) :
+				new Injector(this, subBindings, instances);
 	}
 }

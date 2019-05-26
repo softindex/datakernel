@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 
 import static io.datakernel.di.module.Modules.combine;
@@ -123,7 +122,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
-		injector.inject(this);
+		injector.getInstance(Launcher.class);
 		try {
 			onStart();
 			try {
@@ -153,7 +152,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 	synchronized public Injector createInjector(String[] args) {
 		this.args = args;
-		return Injector.create(
+		return Injector.of(
 				combine(getModules()),
 				new AbstractModule() {{
 					bind(String[].class).annotatedWith(Args.class).toInstance(args);
@@ -163,11 +162,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	private void doStart(Injector injector) throws Exception {
-		Optional<ServiceGraph> optionalServiceGraph = injector.getOptionalInstance(ServiceGraph.class);
-		if (!optionalServiceGraph.isPresent()) {
+		serviceGraph = injector.getInstanceOrNull(ServiceGraph.class);
+		if (serviceGraph == null) {
 			return;
 		}
-		serviceGraph = optionalServiceGraph.get();
 		logger.info("=== STARTING APPLICATION");
 		try {
 			serviceGraph.startFuture().get();
@@ -245,12 +243,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	public final Instant getInstantOfStop() {
 		return instantOfStop;
 	}
-
-//	@JmxAttribute
-//	@Nullable
-//	public final Instant getInstantOfComplete() {
-//		return instantOfComplete;
-//	}
 
 	@JmxAttribute
 	@Nullable

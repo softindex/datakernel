@@ -20,9 +20,7 @@ import io.datakernel.di.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.service.BlockingService;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import org.slf4j.Logger;
@@ -141,7 +139,6 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Override
 	protected void configure() {
-		bind(new Key<OptionalDependency<ServiceGraph>>() {}).require();
 		bind(new Key<RequiredDependency<ConfigModuleService>>() {}).require();
 
 		bind(Config.class).to(EffectiveConfig.class);

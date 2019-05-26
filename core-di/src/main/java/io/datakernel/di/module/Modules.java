@@ -25,7 +25,7 @@ public final class Modules {
 	}
 
 	public static Module override(Module into, Module replacements) {
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindings(), replacements.getBindings());
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindingsMultimap(), replacements.getBindingsMultimap());
 
 		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
 		conflictResolvers.putAll(replacements.getConflictResolvers());
@@ -48,7 +48,7 @@ public final class Modules {
 		if (modules.size() == 1) {
 			return modules.iterator().next();
 		}
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindings));
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindingsMultimap));
 		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
 
 		for (Module module : modules) {
@@ -108,7 +108,7 @@ public final class Modules {
 		}
 
 		@Override
-		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
+		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
 			return bindings;
 		}
 

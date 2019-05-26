@@ -3,7 +3,6 @@ package io.datakernel.di;
 import org.jetbrains.annotations.Nullable;
 
 public final class LocationInfo {
-
 	@Nullable
 	private final Class<?> moduleClass;
 	private final String declaration;
@@ -19,6 +18,11 @@ public final class LocationInfo {
 	}
 
 	public String getDeclaration() {
+		return declaration;
+	}
+
+	@Override
+	public String toString() {
 		return declaration;
 	}
 }

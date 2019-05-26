@@ -6,7 +6,6 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.List;
 import java.util.Objects;
 
 public abstract class Key<T> {
@@ -128,17 +127,10 @@ public abstract class Key<T> {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) {
-			return true;
-		}
-		if (!(o instanceof Key)) {
-			return false;
-		}
-
-		Key<?> key = (Key<?>) o;
-
-		return Objects.equals(type, key.type) && Objects.equals(name, key.name);
-
+		if (this == o) return true;
+		if (!(o instanceof Key)) return false;
+		Key<?> other = (Key<?>) o;
+		return (type == other.type || type.equals(other.type)) && Objects.equals(name, other.name);
 	}
 
 	@Override
@@ -148,10 +140,6 @@ public abstract class Key<T> {
 
 	@Override
 	public String toString() {
-		return (name != null ? name.toString() : "") + type.getTypeName();
-	}
-
-	public static void main(String[] args) {
-		System.out.println(new Key<List<String>>(Name.of("hello")) {}.getDisplayString());
+		return (name != null ? name.toString() + " " : "") + type.getTypeName();
 	}
 }

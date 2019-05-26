@@ -16,12 +16,14 @@
 
 package io.datakernel.worker;
 
-import io.datakernel.di.*;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -40,8 +42,8 @@ public final class WorkerPool {
 		this.idx = idx;
 		this.scopeInjectors = new Injector[workers];
 		for (int i = 0; i < workers; i++) {
-			Map<Key<?>, Binding<?>> overrides = singletonMap(Key.of(int.class, WorkerId.class), Binding.constant(i));
-			scopeInjectors[i] = injector.enterScope(scope, overrides);
+			Map<Key<?>, Object> instances = new HashMap<>(singletonMap(Key.of(int.class, WorkerId.class), i));
+			scopeInjectors[i] = injector.enterScope(scope, instances, false);
 		}
 	}
 
@@ -89,8 +91,8 @@ public final class WorkerPool {
 		return instances;
 	}
 
-	public List<Injector> getScopeInjectors() {
-		return asList(scopeInjectors);
+	public Injector[] getScopeInjectors() {
+		return scopeInjectors;
 	}
 
 	public int getSize() {
