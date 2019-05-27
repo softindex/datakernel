@@ -20,6 +20,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
@@ -29,7 +30,6 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +43,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public abstract class RemoteFsServerLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "remotefs-server.properties";
 
 	@Inject
@@ -67,11 +66,10 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 				new AbstractModule() {
 					@Provides
 					public Eventloop provide(Config config,
-							OptionalDependency<ThrottlingController> maybeThrottlingController) {
-
+							@Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+								.initialize(eventloop -> eventloop.withInspector(throttlingController));
 					}
 
 					@Provides

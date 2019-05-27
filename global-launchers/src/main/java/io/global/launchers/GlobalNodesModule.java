@@ -19,6 +19,7 @@ package io.global.launchers;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.di.Named;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.dns.AsyncDnsClient;
@@ -30,7 +31,6 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
@@ -49,7 +49,6 @@ import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
-import org.jetbrains.annotations.Async;
 import io.global.ot.server.ValidatingGlobalOTNode;
 
 import java.util.function.Function;
@@ -72,10 +71,10 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+	Eventloop provide(Config config, @Optional ThrottlingController throttlingController) {
 		return Eventloop.create()
 				.initialize(ofEventloop(config.getChild("eventloop")))
-				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
 	@Provides

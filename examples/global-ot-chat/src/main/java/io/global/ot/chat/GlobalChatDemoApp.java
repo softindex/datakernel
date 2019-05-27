@@ -24,11 +24,9 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.ot.chat.operations.ChatOperation.OPERATION_CODEC;
 import static io.global.ot.chat.operations.Utils.DIFF_TO_STRING;
-import static io.global.ot.chat.operations.Utils.createOTSystem;
 import static java.util.Arrays.asList;
 
 public final class GlobalChatDemoApp extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "client.properties";
 	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";

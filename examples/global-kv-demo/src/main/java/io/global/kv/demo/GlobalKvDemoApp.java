@@ -50,7 +50,6 @@ import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
 import static java.util.Arrays.asList;
 
 public final class GlobalKvDemoApp extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globalkv-app.properties";
 	public static final String DEFAULT_SERVER_ID = "KV Demo";
 

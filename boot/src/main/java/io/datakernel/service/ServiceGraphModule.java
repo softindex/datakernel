@@ -16,6 +16,7 @@
 
 package io.datakernel.service;
 
+import io.datakernel.di.Optional;
 import io.datakernel.di.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -41,6 +42,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.difference;
@@ -250,11 +252,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@Provides
-	ServiceGraph provideServiceGraph(Injector injector
-//			, @Optional Set<Initializer<ServiceGraphModule>> initializers
-	) {
-//		initializers.forEach(initializer -> initializer.accept(this));
-
+	ServiceGraph provideServiceGraph(Injector injector, @Optional Set<Initializer<ServiceGraphModule>> initializers) {
+		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
@@ -273,10 +272,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
 			Key<?> key = entry.getKey();
+			Object instance = entry.getValue();
+			if (instance == null) continue;
 			Binding<?> binding = injector.getBinding(key);
 			if (binding == null) continue;
 			ServiceKey serviceKey = new ServiceKey(key);
-			instances.put(serviceKey, singletonList(entry.getValue()));
+			instances.put(serviceKey, singletonList(instance));
 			instanceDependencies.put(serviceKey,
 					Arrays.stream(binding.getDependencies())
 							.filter(dependency -> dependency.isRequired() ||
@@ -292,9 +293,11 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				Map<Key<?>, Set<ScopedValue<Dependency>>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
 				for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
+					Object[] workerInstances = entry.getValue();
 					if (!scopeDependencies.containsKey(key)) continue;
+					if (Stream.of(workerInstances).anyMatch(Objects::isNull)) continue;
 					ServiceKey serviceKey = new ServiceKey(key, i);
-					instances.put(serviceKey, Arrays.asList(entry.getValue()));
+					instances.put(serviceKey, Arrays.asList(workerInstances));
 					instanceDependencies.put(serviceKey,
 							scopeDependencies.get(key)
 									.stream()

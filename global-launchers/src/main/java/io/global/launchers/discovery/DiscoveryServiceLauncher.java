@@ -51,7 +51,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public class DiscoveryServiceLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "discovery-service.properties";
 
 	@Inject

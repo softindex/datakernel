@@ -18,22 +18,21 @@ package io.datakernel.trigger;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.GuiceUtils;
-import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.OptionalInitializer;
-import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static io.datakernel.util.guice.GuiceUtils.prettyPrintSimpleKeyName;
 import static java.util.Collections.emptyList;
@@ -119,15 +118,9 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return this;
 	}
 
-	@Override
-	protected void configure() {
-		bind(new Key<OptionalDependency<ServiceGraph>>() {}).implicitly();
-		bind(new Key<RequiredDependency<TriggersModuleService>>() {}).implicitly();
-	}
-
 	@Provides
-	TriggersModuleService service(Injector injector, Triggers triggers, OptionalInitializer<TriggersModule> optionalInitializer) {
-		optionalInitializer.accept(this);
+	TriggersModuleService service(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
+		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
 		return new TriggersModuleService() {
 			@Override
 			public void start() {
@@ -152,9 +145,10 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggersMap = new LinkedHashMap<>();
 
 		// register singletons
-		for (Key<?> k : injector.peekInstances().keySet()) {
-			Key<Object> key = (Key<Object>) k;
-			Object instance = injector.getInstance(key);
+		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
+			Key<Object> key = (Key<Object>) entry.getKey();
+			Object instance = entry.getValue();
+			if (instance == null) continue;
 			KeyWithWorkerData internalKey = new KeyWithWorkerData(key);
 
 			scanHasTriggers(triggersMap, internalKey, instance);
@@ -168,9 +162,10 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 			for (WorkerPool workerPool : workerPools.getWorkerPools()) {
 				for (Map.Entry<Key<?>, Object[]> entry : workerPool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
-					Object[] instances = entry.getValue();
-					for (int i = 0; i < instances.length; i++) {
-						Object instance = instances[i];
+					Object[] workerInstances = entry.getValue();
+					if (Stream.of(workerInstances).anyMatch(Objects::isNull)) continue;
+					for (int i = 0; i < workerInstances.length; i++) {
+						Object instance = workerInstances[i];
 						KeyWithWorkerData k = new KeyWithWorkerData(key, workerPool, i);
 
 						scanHasTriggers(triggersMap, k, instance);

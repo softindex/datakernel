@@ -47,7 +47,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 public final class GlobalEditorDemoApp extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "server.properties";
 	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";

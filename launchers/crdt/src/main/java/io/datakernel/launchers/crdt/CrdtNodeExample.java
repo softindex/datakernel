@@ -38,8 +38,6 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.Collections.singletonList;
 
 public final class CrdtNodeExample {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
-
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
 		CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {

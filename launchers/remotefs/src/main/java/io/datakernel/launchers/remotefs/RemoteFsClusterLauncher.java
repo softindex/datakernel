@@ -21,6 +21,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
 import io.datakernel.di.Named;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
@@ -30,7 +31,6 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.*;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -49,7 +49,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public abstract class RemoteFsClusterLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "remotefs-cluster.properties";
 
 	@Inject
@@ -79,10 +78,10 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+					Eventloop provide(Config config, @Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+								.initialize(eventloop -> eventloop.withInspector(throttlingController));
 					}
 
 					@Provides
@@ -101,19 +100,19 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 
 					@Provides
 					RemoteFsRepartitionController repartitionController(Config config,
-																		RemoteFsServer localServer, RemoteFsClusterClient cluster) {
+							RemoteFsServer localServer, RemoteFsClusterClient cluster) {
 						return RemoteFsRepartitionController.create(config.get("remotefs.repartition.localPartitionId"), cluster)
 								.initialize(ofRepartitionController(config.getChild("remotefs.repartition")));
 					}
 
 					@Provides
 					RemoteFsClusterClient remoteFsClusterClient(Config config,
-																RemoteFsServer localServer, Eventloop eventloop,
-																OptionalDependency<ServerSelector> maybeServerSelector) {
+							RemoteFsServer localServer, Eventloop eventloop,
+							@Optional ServerSelector serverSelector) {
 						Map<Object, FsClient> clients = new HashMap<>();
 						clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
 						return RemoteFsClusterClient.create(eventloop, clients)
-								.withServerSelector(maybeServerSelector.orElse(RENDEZVOUS_HASH_SHARDER))
+								.withServerSelector(serverSelector != null ? serverSelector : RENDEZVOUS_HASH_SHARDER)
 								.initialize(ofRemoteFsCluster(eventloop, config.getChild("remotefs.cluster")));
 					}
 

@@ -5,6 +5,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
@@ -17,7 +18,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.worker.*;
 
 import java.net.InetSocketAddress;
@@ -37,7 +37,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "http-server.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
 
@@ -72,10 +71,10 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 
 					@Provides
 					@Worker
-					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+					Eventloop provide(Config config, @Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.worker")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+								.initialize(eventloop -> eventloop.withInspector(throttlingController));
 					}
 
 					@Provides

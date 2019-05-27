@@ -56,7 +56,6 @@ import static java.util.Collections.singletonList;
 public final class GlobalFsApp extends Launcher {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
 
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";

@@ -18,7 +18,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 public final class MasterNodeLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:9000";
 	public static final String DEFAULT_SERVER_ID = "http://127.0.0.1:9000";
 	public static final String DEFAULT_FS_STORAGE = Paths.get(System.getProperty("java.io.tmpdir"))

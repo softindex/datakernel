@@ -15,10 +15,12 @@
  */
 
 package io.datakernel.launchers.rpc;
+
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
@@ -29,7 +31,6 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.Collection;
 
@@ -43,7 +44,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public abstract class RpcServerLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "rpc-server.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
 
@@ -69,10 +69,10 @@ public abstract class RpcServerLauncher extends Launcher {
 				new AbstractModule() {
 					@Provides
 					public Eventloop provide(Config config,
-							OptionalDependency<ThrottlingController> maybeThrottlingController) {
+							@Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+								.initialize(eventloop -> eventloop.withInspector(throttlingController));
 					}
 
 					@Provides
