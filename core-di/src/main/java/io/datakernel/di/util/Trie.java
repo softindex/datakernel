@@ -2,10 +2,7 @@ package io.datakernel.di.util;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -108,6 +105,30 @@ public final class Trie<K, V> {
 		Trie<K, V> combined = leaf(rootPayload);
 		bindings.forEach(sb -> mergeInto(combined, sb, merger));
 		return combined;
+	}
+
+	public String prettyPrint() {
+		return prettyPrint(0);
+	}
+
+	private String prettyPrint(int indent) {
+		String indentStr = new String(new char[indent]).replace('\0', '\t');
+
+		StringBuilder sb = new StringBuilder()
+				.append("(")
+				.append(payload)
+				.append(") {");
+
+		if (!children.isEmpty()) {
+			sb.append('\n').append(indentStr);
+			children.forEach((key, child) -> sb
+					.append(indentStr)
+					.append('\t')
+					.append(key)
+					.append(" -> ")
+					.append(child.prettyPrint(indent + 1)));
+		}
+		return sb.append("}\n").toString();
 	}
 
 	@Override

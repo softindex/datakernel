@@ -14,10 +14,18 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.multimapMerger;
-import static java.util.Arrays.copyOfRange;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toMap;
 
 public final class Modules {
 	private Modules() {
+	}
+
+	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return new ModuleImpl(bindings.map(map ->
+				map.entrySet().stream()
+						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap());
 	}
 
 	public static Module combine(Module... modules) {
@@ -75,14 +83,14 @@ public final class Modules {
 				return bindings.iterator().next();
 			}
 			List<Factory<T>> factories = new ArrayList<>();
-			List<Dependency> keys = new ArrayList<>();
+			List<Dependency> dependencies = new ArrayList<>();
 			for (Binding<T> binding : bindings) {
-				int offset = keys.size();
-				int count = binding.getDependencies().length;
-				Collections.addAll(keys, binding.getDependencies());
-				factories.add(args -> binding.getFactory().create(copyOfRange(args, offset, count)));
+				int from = dependencies.size();
+				int to = from + binding.getDependencies().length;
+				Collections.addAll(dependencies, binding.getDependencies());
+				factories.add(args -> binding.getFactory().create(Arrays.copyOfRange(args, from, to)));
 			}
-			return Binding.of(keys.toArray(new Dependency[0]), args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args))));
+			return Binding.of(dependencies.toArray(new Dependency[0]), args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args))));
 		};
 	}
 

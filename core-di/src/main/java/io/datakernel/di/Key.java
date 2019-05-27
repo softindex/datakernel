@@ -8,6 +8,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
+import static io.datakernel.di.util.ReflectionUtils.canonicalize;
+
 public abstract class Key<T> {
 	@NotNull
 	private final Type type;
@@ -16,7 +18,7 @@ public abstract class Key<T> {
 
 	public Key(@Nullable Name name) {
 		this.name = name;
-		this.type = getSuperclassTypeParameter(getClass());
+		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
 	}
 
 	public Key() {
@@ -122,7 +124,8 @@ public abstract class Key<T> {
 	}
 
 	public String getDisplayString() {
-		return (name != null ? name.getDisplayString() + " " : "") + type.getTypeName().replaceAll("(?:\\w+\\.)*(\\w+)", "$1");
+		// see ReflectionUtils#getShortName
+		return (name != null ? name.getDisplayString() + " " : "") + type.getTypeName().replaceAll("(?:[^.]+\\.)*([^.]+)", "$1");
 	}
 
 	@Override

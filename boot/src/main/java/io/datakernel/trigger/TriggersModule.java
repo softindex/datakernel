@@ -121,8 +121,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Override
 	protected void configure() {
-		bind(new Key<OptionalDependency<ServiceGraph>>() {}).require();
-		bind(new Key<RequiredDependency<TriggersModuleService>>() {}).require();
+		bind(new Key<OptionalDependency<ServiceGraph>>() {}).implicitly();
+		bind(new Key<RequiredDependency<TriggersModuleService>>() {}).implicitly();
 	}
 
 	@Provides

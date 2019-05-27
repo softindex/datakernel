@@ -52,7 +52,7 @@ public final class Binding<T> {
 
 		return new Binding<>(combinedDependencies,
 				args -> {
-					T instance = factory.create(Arrays.copyOf(args, depsLen));
+					T instance = factory.create(Arrays.copyOfRange(args, 0, depsLen));
 					initializer.apply(instance, Arrays.copyOfRange(args, depsLen, args.length));
 					return instance;
 				},
@@ -82,6 +82,6 @@ public final class Binding<T> {
 
 	@Override
 	public String toString() {
-		return "" + location + " : " + Arrays.toString(dependencies) + "";
+		return Arrays.toString(dependencies);
 	}
 }

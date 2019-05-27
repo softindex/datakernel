@@ -2,13 +2,19 @@ package io.datakernel.di;
 
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.BindingUtils;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.joining;
 
 public class Injector {
 	@Nullable
@@ -47,7 +53,7 @@ public class Injector {
 	private static final Object[] NO_OBJECTS = new Object[0];
 
 	private Injector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			Map<Key<?>, Object> instances) {
+					 Map<Key<?>, Object> instances) {
 		this.parent = parent;
 		this.bindings = bindings;
 		this.localBindings = bindings.get();
@@ -64,7 +70,7 @@ public class Injector {
 	}
 
 	public static Injector construct(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
-			@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+									 @NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :
 				new Injector(parent, bindings, instances);
@@ -72,21 +78,29 @@ public class Injector {
 
 		ReflectionUtils.addImplicitBindings(bindings);
 
-		return injector;
+		Map<Key<?>, Binding<?>> unsatisfied = BindingUtils.getUnsatisfiedDependencies(bindings);
+		if (!unsatisfied.isEmpty()) {
+			String detail = unsatisfied.entrySet().stream()
+					.map(entry -> {
+						LocationInfo location = entry.getValue().getLocation();
+						return "\tkey " + entry.getKey() + " required at " + (location != null ? location.getDeclaration() : "<unknown binding location>");
+					})
+					.collect(joining("\n"));
+			throw new RuntimeException("unsatisfied dependencies detected:\n" + detail + '\n');
+		}
 
-//		Set<Key<?>[]> cycles = ReflectionUtils.getCycles(bindings);
-//
-//		if (cycles.isEmpty()) {
-//			return injector;
-//		}
-//
-//		String detail = cycles.stream()
-//				.map(cycle ->
-//						Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
-//								.map(Key::getDisplayString)
-//								.collect(joining(" -> ", "", " -> ...")))
-//				.collect(joining("\n"));
-//		throw new RuntimeException("cyclic dependencies detected:\n" + detail);
+		Set<Key<?>[]> cycles = BindingUtils.getCycles(bindings);
+		if (!cycles.isEmpty()) {
+			String detail = cycles.stream()
+					.map(cycle ->
+							Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
+									.map(Key::getDisplayString)
+									.collect(joining(" -> ", "\t", " -> ...")))
+					.collect(joining("\n"));
+			throw new RuntimeException("cyclic dependencies detected:\n" + detail + '\n');
+		}
+
+		return injector;
 	}
 
 	@NotNull
@@ -98,7 +112,9 @@ public class Injector {
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
 		T instance = (T) instances.computeIfAbsent(key, this::provideInstance);
-		if (instance == null) throw new RuntimeException("cannot construct " + key);
+		if (instance == null) {
+			throw new RuntimeException("cannot construct " + key);
+		}
 		return instance;
 	}
 
@@ -126,7 +142,9 @@ public class Injector {
 	}
 
 	private Object[] getDependencies(Dependency[] dependencies) {
-		if (dependencies.length == 0) return NO_OBJECTS;
+		if (dependencies.length == 0) {
+			return NO_OBJECTS;
+		}
 		Object[] instances = new Object[dependencies.length];
 		for (int i = 0; i < dependencies.length; i++) {
 			Dependency dependency = dependencies[i];
@@ -140,7 +158,9 @@ public class Injector {
 	@NotNull
 	private <T> T getDependency(@NotNull Key<T> key) {
 		T instance = getDependencyOrNull(key);
-		if (instance == null) throw new RuntimeException("cannot construct " + key);
+		if (instance == null) {
+			throw new RuntimeException("cannot construct " + key);
+		}
 		return instance;
 	}
 
@@ -148,7 +168,9 @@ public class Injector {
 	@Nullable
 	private <T> T getDependencyOrNull(@NotNull Key<T> key) {
 		T instance = (T) instances.get(key);
-		if (instance != null) return instance;
+		if (instance != null) {
+			return instance;
+		}
 		instance = (T) provideInstance(key);
 		instances.put(key, instance);
 		return instance;

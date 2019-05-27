@@ -1,9 +1,7 @@
 package io.datakernel.di.util;
 
 import io.datakernel.di.*;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.Optional;
 import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +11,6 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.stream.Collectors.toList;
@@ -24,7 +21,11 @@ public final class ReflectionUtils {
 		throw new AssertionError("nope.");
 	}
 
-	private static <T> Key<T> keyOf(@NotNull Type type, Annotation[] annotations) {
+	public static String getShortName(Class<?> cls) {
+		return cls.getName().replaceAll("(?:[^.]+\\.)*([^.]+)", "$1");
+	}
+
+	public static <T> Key<T> keyOf(@NotNull Type type, Annotation[] annotations) {
 		Set<Annotation> names = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().getAnnotation(NameAnnotation.class) != null)
 				.collect(toSet());
@@ -36,7 +37,7 @@ public final class ReflectionUtils {
 				Key.ofType(type, names.iterator().next());
 	}
 
-	private static Scope[] scopesFrom(Annotation[] annotations) {
+	public static Scope[] scopesFrom(Annotation[] annotations) {
 		Set<Annotation> scopes = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().getAnnotation(ScopeAnnotation.class) != null)
 				.collect(toSet());
@@ -56,23 +57,6 @@ public final class ReflectionUtils {
 				scopes.isEmpty() ?
 						new Scope[0] :
 						new Scope[]{Scope.of(scopes.iterator().next())};
-	}
-
-	public static Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getDeclatativeBindings(Object module) {
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
-
-		for (Method method : module.getClass().getDeclaredMethods()) {
-			if (!method.isAnnotationPresent(Provides.class)) {
-				continue;
-			}
-			Annotation[] annotations = method.getDeclaredAnnotations();
-			Key<Object> key = keyOf(method.getGenericReturnType(), annotations);
-			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
-					.get()
-					.computeIfAbsent(key, $ -> new HashSet<>())
-					.add(bindingForMethod(module, method).apply(injectingInitializer(key)));
-		}
-		return bindings;
 	}
 
 	private static Field[] getInjectableFields(Class<?> cls) {
@@ -128,12 +112,15 @@ public final class ReflectionUtils {
 	@NotNull
 	private static Dependency[] toDependencies(Parameter[] parameters) {
 		return Arrays.stream(parameters)
-				.map(parameter -> new Dependency(keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations()), true))
+				.map(parameter -> {
+					Key<Object> key = keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
+					return new Dependency(key, parameter.isAnnotationPresent(Optional.class));
+				})
 				.toArray(Dependency[]::new);
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
+	public static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
 		method.setAccessible(true);
 
 		Key<T> returnType = Key.ofType(method.getGenericReturnType());
@@ -145,10 +132,10 @@ public final class ReflectionUtils {
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to call method " + method, e);
 			}
-		}, new LocationInfo(module != null ? module.getClass() : null, method.toString()));
+		}, LocationInfo.from(method));
 	}
 
-	private static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
+	public static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
 
 		Dependency[] dependencies = toDependencies(constructor.getParameters());
@@ -159,7 +146,7 @@ public final class ReflectionUtils {
 			} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to create " + key, e);
 			}
-		}, new LocationInfo(null, constructor.toString()));
+		}, LocationInfo.from(constructor));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -252,28 +239,26 @@ public final class ReflectionUtils {
 		addImplicitBindings(new HashSet<>(), bindings);
 	}
 
-	private static void addImplicitBindings(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		addImplicitBindings(known, bindings.get());
-		bindings.getChildren().values().forEach(sub -> addImplicitBindings(known, sub));
+	private static void addImplicitBindings(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		addImplicitBindings(visited, bindings.get());
+		bindings.getChildren().values().forEach(sub -> addImplicitBindings(visited, sub));
 	}
 
 	@SuppressWarnings("unchecked")
-	private static void addImplicitBindings(Set<Key<?>> known, Map<Key<?>, Binding<?>> localBindings) {
-		known.addAll(localBindings.keySet());
+	private static void addImplicitBindings(Set<Key<?>> checked, Map<Key<?>, Binding<?>> localBindings) {
+		checked.addAll(localBindings.keySet());
 		List<Binding<?>> bindingsToCheck = new ArrayList<>(localBindings.values());
 		do {
 			bindingsToCheck = bindingsToCheck.stream()
 					.flatMap(binding -> Arrays.stream(binding.getDependencies()))
-					.filter(dependency -> !known.contains(dependency.getKey()))
+					.filter(dependency -> !checked.contains(dependency.getKey()))
 					.map(dependency -> {
 						Key<Object> key = (Key<Object>) dependency.getKey();
 						Binding<Object> binding = generateImplicitBinding(key);
 						if (binding != null) {
-							known.add(key);
 							localBindings.put(key, binding.apply(injectingInitializer(key)));
-						} else if (dependency.isRequired()) {
-							throw new RuntimeException("Unsatisfied dependency " + key);
 						}
+						checked.add(key); // even if there was no binding, this will be checked in a separate dependency check
 						return binding;
 					})
 					.filter(Objects::nonNull)
@@ -281,108 +266,70 @@ public final class ReflectionUtils {
 		} while (!bindingsToCheck.isEmpty());
 	}
 
-	// throws on unsatisfied dependencies, returns list of cycles
-	// this is a subject to change ofc
-	public static Set<Key<?>[]> getCycles(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getCycles(new HashSet<>(), bindings).collect(toSet());
-	}
-
-	private static Stream<Key<?>[]> getCycles(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		Map<Key<?>, Binding<?>> localBindings = bindings.get();
-		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
-		Set<Key<?>[]> cycles = new HashSet<>();
-		localBindings.forEach((key, binding) -> dfs(localBindings, visited, visiting, cycles, new Dependency(key, true)));
-
-		return Stream.concat(
-				cycles.stream(),
-				bindings.getChildren().values().stream().flatMap(sub -> getCycles(new HashSet<>(visited), bindings))
-		);
-	}
-
-	private static void dfs(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<Key<?>[]> cycles, Dependency node) {
-		Key<?> key = node.getKey();
-		if (visited.contains(key)) {
-			return;
+	public static Type canonicalize(Type type) {
+		if (type == null) {
+			return null;
 		}
-		Binding<?> binding = bindings.get(key);
-		if (binding != null) {
-			if (!visiting.add(key)) {
-				// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
-				// and in the code below we just get d -> e -> g -> c out of it
-				Iterator<Key<?>> backtracked = visiting.iterator();
-				int skipped = 0;
-				while (backtracked.hasNext() && !backtracked.next().equals(key)) { // reference equality doesn't always work here
-					skipped++;
-				}
-				Key<?>[] cycle = new Key[visiting.size() - skipped];
-				for (int i = 0; i < cycle.length - 1; i++) {
-					cycle[i] = backtracked.next(); // this should be ok
-				}
-				cycle[cycle.length - 1] = key;
-				cycles.add(cycle);
-				return;
-			}
-			for (Dependency dependency : binding.getDependencies()) {
-				dfs(bindings, visited, visiting, cycles, dependency);
-			}
-			visiting.remove(key);
-			visited.add(key);
-		} else if (node.isRequired()) {
-			throw new RuntimeException("no binding for required key " + key);
+		if (type instanceof ParameterizedType) {
+			ParameterizedType parameterized = (ParameterizedType) type;
+			Type owner = canonicalize(parameterized.getOwnerType());
+			Type raw = canonicalize(parameterized.getRawType());
+			Type[] parameters = Arrays.stream(parameterized.getActualTypeArguments()).map(ReflectionUtils::canonicalize).toArray(Type[]::new);
+			return new ParameterizedTypeImpl(owner, raw, parameters);
 		}
+		return type;
 	}
 
-	public static void main(String[] args) {
-		Module module = new AbstractModule() {
+	public static Type parameterized(Class<?> rawType, Type... parameters) {
+		return new ParameterizedTypeImpl(null, rawType, parameters);
+	}
 
-			@Provides
-			Float provide(Boolean b) {
-				return 33f;
+	private static class ParameterizedTypeImpl implements ParameterizedType {
+		@Nullable
+		private final Type ownerType;
+		private final Type rawType;
+		private final Type[] parameters;
+
+		public ParameterizedTypeImpl(@Nullable Type ownerType, Type rawType, Type[] parameters) {
+			this.ownerType = ownerType;
+			this.rawType = rawType;
+			this.parameters = parameters;
+		}
+
+		@Override
+		public Type[] getActualTypeArguments() {
+			return parameters;
+		}
+
+		@Override
+		public Type getRawType() {
+			return rawType;
+		}
+
+		@Nullable
+		@Override
+		public Type getOwnerType() {
+			return ownerType;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) {
+				return true;
 			}
-
-			@Provides
-			Boolean provide3(String s) {
+			if (o == null || getClass() != o.getClass()) {
 				return false;
 			}
 
-			@Provides
-			String provide2(Integer z) {
-				return "" + z;
-			}
+			ParameterizedTypeImpl that = (ParameterizedTypeImpl) o;
 
-			@Provides
-			Integer provide1(Boolean b) {
-				return 31;
-			}
-			//---
+			return Objects.equals(ownerType, that.ownerType) && rawType.equals(that.rawType) && Arrays.equals(parameters, that.parameters);
 
+		}
 
-			@Provides
-			@Named("second")
-			Float provide123(@Named("second") Boolean b) {
-				return 33f;
-			}
-
-			@Provides
-			@Named("second")
-			Boolean provide33(@Named("second") String s) {
-				return false;
-			}
-
-			@Provides
-			@Named("second")
-			Integer provide12(@Named("second") Boolean b) {
-				return 31;
-			}
-
-			@Provides
-			@Named("second")
-			String provide52(@Named("second") Integer z) {
-				return "" + z;
-			}
-		};
-
-		Injector injector = Injector.of(module);
-//		checkBindingGraph(injector.getBindings()).forEach(x -> System.out.println(Arrays.toString(x)));
+		@Override
+		public int hashCode() {
+			return (ownerType != null ? 961 * ownerType.hashCode() : 0) + 31 * rawType.hashCode() + Arrays.hashCode(parameters);
+		}
 	}
 }

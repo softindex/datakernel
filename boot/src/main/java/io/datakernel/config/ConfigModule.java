@@ -139,7 +139,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Override
 	protected void configure() {
-		bind(new Key<RequiredDependency<ConfigModuleService>>() {}).require();
+		bind(new Key<RequiredDependency<ConfigModuleService>>() {}).implicitly();
 
 		bind(Config.class).to(EffectiveConfig.class);
 	}

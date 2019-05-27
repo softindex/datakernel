@@ -3,11 +3,16 @@ package io.datakernel.di;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
+import io.datakernel.di.module.ProvidesIntoSet;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Set;
+import java.util.stream.Stream;
+
 import static io.datakernel.di.module.Modules.override;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
 public final class TestDI {
@@ -45,7 +50,7 @@ public final class TestDI {
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
 			bind(String.class).to(i -> "str: " + i.provideNew(), new Key<Provider<Integer>>() {});
-			bind(new Key<Provider<String>>() {}).require();
+			bind(new Key<Provider<String>>() {}).implicitly();
 		}});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
@@ -196,7 +201,7 @@ public final class TestDI {
 	public void cyclicInjects() {
 		try {
 			Module module = new AbstractModule() {{
-				bind(RecursiveA.class).require();
+				bind(RecursiveA.class).implicitly();
 			}};
 
 			System.out.println(module.getBindingsMultimap());
@@ -275,7 +280,8 @@ public final class TestDI {
 			injector3.getInstance(ClassWithCustomDeps.class);
 			fail("should've failed, but didn't");
 		} catch (RuntimeException e) {
-			assertEquals("unsatisfied dependency java.lang.Integer with no implicit bindings", e.getMessage());
+			e.printStackTrace();
+			assertTrue(e.getMessage().startsWith("unsatisfied dependencies detected:\n\tkey java.lang.Integer required"));
 		}
 	}
 
@@ -323,10 +329,8 @@ public final class TestDI {
 		AbstractModule module = new AbstractModule() {{
 			bind(String.class).toInstance("hello");
 			bind(Integer.class).toInstance(42);
-			bind(new Key<Container<Float, String, Integer>>() {}).require();
+			bind(new Key<Container<Float, String, Integer>>() {}).implicitly();
 		}};
-
-//		module.getBindings().values().forEach(binding -> System.out.println(binding.iterator().next().getDisplayString()));
 
 		Injector injector = Injector.of(module);
 
@@ -364,11 +368,56 @@ public final class TestDI {
 			}
 		};
 
-//		module.getBindings().values().forEach(b -> System.out.println(b.iterator().next().getDisplayString()));
-
 		Injector injector = Injector.of(module);
 
 		assertEquals("hello", injector.getInstance(new Key<Container<String>>() {}).object);
 		assertEquals(42, injector.getInstance(new Key<Container<Integer>>() {}).object.intValue());
+	}
+
+	@Test
+	public void providesDuplicated() {
+		try {
+			Injector.of(new AbstractModule() {{
+				bind(Integer.class).toInstance(42);
+				bind(String.class).to(i -> "str1: " + i, Integer.class);
+				bind(String.class).to(i -> "str2: " + i, Integer.class);
+			}});
+			fail("should've failed");
+		} catch (RuntimeException e) {
+			e.printStackTrace();
+			assertTrue(e.getMessage().startsWith("Duplicate bindings for key java.lang.String"));
+		}
+	}
+
+	@Test
+	public void providesIntoSet() {
+		Injector injector = Injector.of(new AbstractModule() {
+
+			@Provides
+			Integer provide() {
+				return 42;
+			}
+
+			@ProvidesIntoSet
+			String provide1(Integer integer) {
+				return "str1: " + integer;
+			}
+
+			@ProvidesIntoSet
+			String provide2(Integer integer) {
+				return "str2: " + integer;
+			}
+
+			@ProvidesIntoSet
+			String provide3(Integer integer) {
+				return "str3: " + integer;
+			}
+		});
+
+		Set<String> instance = injector.getInstance(new Key<Set<String>>() {});
+
+		Set<String> expected = Stream.of("str1: 42", "str2: 42", "str3: 42").collect(toSet());
+
+		assertEquals(expected, instance);
 	}
 }

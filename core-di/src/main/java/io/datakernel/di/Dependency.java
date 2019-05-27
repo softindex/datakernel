@@ -39,7 +39,7 @@ public final class Dependency {
 	}
 
 	public String getDisplayString() {
-		return key.getDisplayString() + (required ? "" : "(required=false)");
+		return (required ? "required " : "optional ") + key.getDisplayString();
 	}
 
 	@Override
