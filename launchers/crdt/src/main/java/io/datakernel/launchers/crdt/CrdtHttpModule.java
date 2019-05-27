@@ -36,7 +36,7 @@ import io.datakernel.util.guice.OptionalDependency;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -82,7 +82,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.of(HttpResponse.ofCode(404)
 										.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}))
 				.with(HttpMethod.PUT, "/", loadBody()

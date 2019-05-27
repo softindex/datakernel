@@ -25,17 +25,13 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static io.datakernel.async.Promise.of;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 public class AsyncServletTest {
-
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
@@ -44,9 +40,7 @@ public class AsyncServletTest {
 
 	@Test
 	public void testEnsureRequestBody() {
-		AsyncServlet servlet = loadBody()
-				.then(request -> of(HttpResponse.ok200()
-				.withBody(request.getBody())));
+		AsyncServlet servlet = request -> request.loadBody().map(body -> HttpResponse.ok200().withBody(body.slice()));
 
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSupplier.of(
@@ -54,18 +48,16 @@ public class AsyncServletTest {
 						ByteBuf.wrapForReading("Test2".getBytes(UTF_8)))
 				);
 
-		await(servlet.serve(testRequest)
-				.then(response -> response.loadBody())
-				.whenComplete(assertComplete(body -> {
-					assertEquals("Test1Test2", body.asString(UTF_8));
-				})));
+		HttpResponse response = await(servlet.serve(testRequest));
+		testRequest.recycle();
+		ByteBuf body = await(response.loadBody());
+
+		assertEquals("Test1Test2", body.asString(UTF_8));
 	}
 
 	@Test
 	public void testEnsureRequestBodyWithException() {
-		AsyncServlet servlet = loadBody()
-				.then(request -> of(HttpResponse.ok200()
-						.withBody(request.getBody())));
+		AsyncServlet servlet = request -> request.loadBody().map(body -> HttpResponse.ok200().withBody(body.slice()));
 		Exception exception = new Exception("TestException");
 
 		ByteBuf byteBuf = ByteBufPool.allocate(100);

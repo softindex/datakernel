@@ -27,6 +27,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.net.ssl.SSLContext;
@@ -42,7 +43,6 @@ import static io.datakernel.http.MediaTypes.*;
 import static org.junit.Assert.assertEquals;
 
 public final class TestHttpsClient {
-
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
@@ -50,6 +50,7 @@ public final class TestHttpsClient {
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
+	@Ignore
 	public void testClient() throws NoSuchAlgorithmException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 

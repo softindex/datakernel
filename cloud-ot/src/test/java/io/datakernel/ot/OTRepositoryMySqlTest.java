@@ -24,6 +24,7 @@ import io.datakernel.ot.utils.*;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
+@Ignore
 public class OTRepositoryMySqlTest {
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
 

@@ -26,7 +26,7 @@ import io.datakernel.http.*;
 import java.nio.charset.Charset;
 import java.util.List;
 
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.*;

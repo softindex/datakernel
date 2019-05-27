@@ -17,7 +17,6 @@
 package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;

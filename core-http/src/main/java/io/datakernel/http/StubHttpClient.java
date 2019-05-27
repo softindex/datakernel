@@ -20,10 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 
-import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 /**
  * A stub client which forwards requests straight to the underlying servlet without any real I/O operations.
  * Used for testing.

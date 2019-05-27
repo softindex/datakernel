@@ -11,7 +11,7 @@ import io.global.common.api.AnnounceData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;

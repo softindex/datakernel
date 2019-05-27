@@ -21,8 +21,6 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.test.rules.ByteBufRule;

@@ -1,6 +1,9 @@
 package io.datakernel.examples;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 //[START EXAMPLE]
 public interface PollDao {

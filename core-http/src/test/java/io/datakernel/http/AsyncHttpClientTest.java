@@ -31,6 +31,7 @@ import io.datakernel.http.AsyncHttpClient.JmxInspector;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -90,6 +91,7 @@ public final class AsyncHttpClientTest {
 	}
 
 	@Test
+	@Ignore
 	public void testClientTimeoutConnect() {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.withConnectTimeout(Duration.ofMillis(1));

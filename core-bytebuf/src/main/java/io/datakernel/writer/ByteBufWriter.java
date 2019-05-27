@@ -35,12 +35,10 @@ public final class ByteBufWriter extends Writer {
 
 	@Override
 	public void flush() {
-		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void close() {
-		throw new UnsupportedOperationException();
 	}
 
 	public ByteBuf getBuf() {

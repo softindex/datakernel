@@ -20,7 +20,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.*;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.util.Tuple4;
 import io.global.ot.api.CommitId;
@@ -30,7 +31,7 @@ import io.global.ot.demo.util.ManagerProvider;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;

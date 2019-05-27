@@ -19,7 +19,7 @@ import io.datakernel.writer.ByteBufWriter;
 import java.util.Collection;
 import java.util.Map;
 
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;

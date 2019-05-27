@@ -7,8 +7,9 @@ import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.http.session.InMemorySessionStore;
+import io.datakernel.http.session.SessionServlet;
 import io.datakernel.http.session.SessionStore;
+import io.datakernel.http.session.SessionStoreInMemory;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.loader.StaticLoader;
 
@@ -18,7 +19,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoaders.ofClassPath;
@@ -46,7 +47,7 @@ public class AuthLauncher extends HttpServerLauncher {
 			@Provides
 			@Singleton
 			AsyncServlet mainServlet(AuthService authService, StaticLoader staticLoader, Eventloop eventloop) {
-				SessionStore<String> store = new InMemorySessionStore<>();
+				SessionStore<String> store = new SessionStoreInMemory<>();
 				Supplier<String> sessionIdSupplier = () -> UUID.randomUUID().toString();
 				String sessionId = "SESSION_ID";
 				return SessionServlet.create(store, sessionId,

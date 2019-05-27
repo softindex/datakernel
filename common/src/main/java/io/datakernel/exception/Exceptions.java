@@ -19,9 +19,7 @@ package io.datakernel.exception;
 import java.util.List;
 
 public final class Exceptions {
-	private Exceptions() {
-		throw new AssertionError("nope.");
-	}
+	private Exceptions() {}
 
 	public static Exception concat(Class<?> component, String message, List<? extends Throwable> errors) {
 		StacklessException res = new StacklessException(component, message);

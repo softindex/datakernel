@@ -25,7 +25,9 @@ import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
-import io.datakernel.util.*;
+import io.datakernel.util.MemSize;
+import io.datakernel.util.ParserFunction;
+import io.datakernel.util.Recyclable;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -46,6 +48,7 @@ public abstract class HttpMessage {
 	private Recyclable bufs;
 
 	protected ByteBuf body;
+	protected int maxBodySize = Integer.MAX_VALUE;
 	protected Map<Type, Object> attachments;
 
 	static final byte ACCESSED_BODY_STREAM = 1 << 0;
@@ -54,11 +57,6 @@ public abstract class HttpMessage {
 
 	@MagicConstant(flags = {ACCESSED_BODY_STREAM, USE_GZIP, RECYCLED})
 	byte flags;
-
-	static final int DEFAULT_LOAD_LIMIT_BYTES =
-			ApplicationSettings.getInt(HttpMessage.class, "loadLimit", 1024 * 1024 * 1024);
-
-	public static final MemSize DEFAULT_LOAD_LIMIT = MemSize.of(DEFAULT_LOAD_LIMIT_BYTES);
 
 	protected HttpMessage() {
 	}
@@ -183,37 +181,46 @@ public abstract class HttpMessage {
 		return body;
 	}
 
+	public final ByteBuf takeBody() {
+		ByteBuf body = getBody();
+		this.body = null;
+		return body;
+	}
+
+	public void setMaxBodySize(MemSize maxBodySize) {
+		this.maxBodySize = maxBodySize.toInt();
+	}
+
+	public void setMaxBodySize(int maxBodySize) {
+		this.maxBodySize = maxBodySize;
+	}
+
 	public Promise<ByteBuf> loadBody() {
-		return loadBody(DEFAULT_LOAD_LIMIT_BYTES);
+		return loadBody(maxBodySize);
 	}
 
-	public Promise<ByteBuf> loadBody(@NotNull MemSize loadLimit) {
-		return loadBody(loadLimit.toInt());
+	public Promise<ByteBuf> loadBody(@NotNull MemSize maxBodySize) {
+		return loadBody(maxBodySize.toInt());
 	}
 
-	public Promise<ByteBuf> loadBody(int loadLimit) {
+	public Promise<ByteBuf> loadBody(int maxBodySize) {
 		if (this.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue<?>) {
 			flags |= ACCESSED_BODY_STREAM;
 			return Promise.of(body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
 		}
-		return body != null ?
-				Promise.of(body) :
-				ChannelSuppliers.collect(getBodyStream(),
-						new ByteBufQueue(),
-						(queue, buf) -> {
-							if (queue.hasRemainingBytes(loadLimit)) {
-								queue.recycle();
-								buf.recycle();
-								throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
-										"HTTP body size exceeds load limit " + loadLimit));
-							}
-							queue.add(buf);
-						}, ByteBufQueue::takeRemaining)
-						.whenComplete((collectedBody, e) -> {
-							if (e == null) {
-								body = collectedBody;
-							}
-						});
+		if (body != null) return Promise.of(body);
+		return ChannelSuppliers.collect(getBodyStream(),
+				new ByteBufQueue(),
+				(queue, buf) -> {
+					if (queue.hasRemainingBytes(maxBodySize)) {
+						queue.recycle();
+						buf.recycle();
+						throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
+								"HTTP body size exceeds load limit " + maxBodySize));
+					}
+					queue.add(buf);
+				}, ByteBufQueue::takeRemaining)
+				.whenComplete((body, e) -> this.body = body);
 	}
 
 	public <T> void attach(Type type, T extra) {
@@ -264,10 +271,8 @@ public abstract class HttpMessage {
 		return (this.flags & RECYCLED) != 0;
 	}
 
-	@SuppressWarnings("AssertWithSideEffects")
 	final void recycle() {
 		assert !isRecycled();
-		assert (this.flags |= RECYCLED) != 0;
 		if (bufs != null) {
 			bufs.recycle();
 		}

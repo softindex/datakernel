@@ -33,7 +33,7 @@ import io.global.fs.transformers.FrameEncoder;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.fs.api.FsCommand.*;

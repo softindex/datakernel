@@ -24,7 +24,10 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.*;
+import io.datakernel.http.ContentTypes;
+import io.datakernel.http.HttpHeaderValue;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.util.Tuple1;
 
 import java.util.function.BiFunction;
@@ -45,9 +48,7 @@ public final class HttpDataFormats {
 
 	public static final StructuredCodec<Tuple1<Integer>> ERROR_CODE_CODEC = object(Tuple1::new, "errorCode", Tuple1::getValue1, INT_CODEC);
 
-	private HttpDataFormats() {
-		throw new AssertionError("nope.");
-	}
+	private HttpDataFormats() {}
 
 	@FunctionalInterface
 	public interface HttpUploader {

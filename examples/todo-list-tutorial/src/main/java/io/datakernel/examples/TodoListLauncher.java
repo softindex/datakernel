@@ -12,14 +12,17 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
 import java.util.Collection;
 import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoaders.ofClassPath;

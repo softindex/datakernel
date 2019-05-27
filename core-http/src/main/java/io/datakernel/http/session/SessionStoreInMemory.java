@@ -5,7 +5,7 @@ import io.datakernel.async.Promise;
 import java.util.HashMap;
 import java.util.Map;
 
-public class InMemorySessionStore<T> implements SessionStore<T> {
+public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	private final Map<String, T> store = new HashMap<>();
 
 	@Override
@@ -21,10 +21,5 @@ public class InMemorySessionStore<T> implements SessionStore<T> {
 			return Promise.ofException(new IllegalArgumentException());
 		}
 		return Promise.of(sessionObject);
-	}
-
-	@Override
-	public Promise<Long> size() {
-		return Promise.of((long) store.size());
 	}
 }

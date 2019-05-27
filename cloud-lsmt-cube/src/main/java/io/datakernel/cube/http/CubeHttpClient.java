@@ -18,7 +18,6 @@ package io.datakernel.cube.http;
 
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.cube.CubeQuery;

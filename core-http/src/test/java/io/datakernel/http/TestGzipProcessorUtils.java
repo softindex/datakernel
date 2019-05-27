@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -45,7 +44,6 @@ import java.util.zip.GZIPOutputStream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
@@ -118,16 +116,16 @@ public final class TestGzipProcessorUtils {
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException {
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
-				loadBody(CHARACTERS_COUNT)
-						.then(request -> {
+				request -> request.loadBody(CHARACTERS_COUNT)
+						.map(body -> {
 							assertEquals("gzip", request.getHeader(CONTENT_ENCODING));
 							assertEquals("gzip", request.getHeader(ACCEPT_ENCODING));
 
-							String receivedData = request.getBody().getString(UTF_8);
+							String receivedData = body.getString(UTF_8);
 							assertEquals(text, receivedData);
-							return Promise.of(HttpResponse.ok200()
+							return HttpResponse.ok200()
 									.withBodyGzipCompression()
-									.withBody(ByteBufStrings.wrapAscii(receivedData)));
+									.withBody(ByteBufStrings.wrapAscii(receivedData));
 						}))
 				.withListenPort(PORT);
 
@@ -140,16 +138,16 @@ public final class TestGzipProcessorUtils {
 
 		server.listen();
 
-		await(client.request(request)
-				.then(response -> {
-					assertEquals("gzip", response.getHeader(CONTENT_ENCODING));
-					return response.loadBody().map($ -> response);
-				})
-				.whenComplete(assertComplete(response -> assertEquals(text, response.getBody().getString(UTF_8))))
+		ByteBuf body = await(client.request(request)
+				.whenComplete(assertComplete(response -> assertEquals("gzip", response.getHeader(CONTENT_ENCODING))))
+				.then(response -> response.loadBody(CHARACTERS_COUNT))
+				.map(ByteBuf::slice)
 				.whenComplete(($, e) -> {
 					server.close();
 					client.stop();
 				}));
+
+		assertEquals(text, body.asString(UTF_8));
 	}
 
 	@Test

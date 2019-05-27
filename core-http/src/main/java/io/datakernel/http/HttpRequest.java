@@ -266,46 +266,22 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.getQueryParametersIterable();
 	}
 
-	public Promise<Map<String, String>> loadPostParams() {
-		return postParameters != null ? Promise.of(postParameters) :
-				doLoadPostParams();
-	}
-
-	private Promise<Map<String, String>> doLoadPostParams() {
-		if (!hasPostParams()) {
-			return Promise.of(postParameters = emptyMap());
-		}
-		if (body == null) {
-			return loadBody()
-					.map(body -> postParameters = UrlParser.parseQueryIntoMap(
-							decodeAscii(body.array(), body.head(), body.readRemaining())));
-		} else {
-			return Promise.of(postParameters = UrlParser.parseQueryIntoMap(
-					decodeAscii(body.array(), body.head(), body.readRemaining())));
-		}
+	@Nullable
+	public String getPostParameter(String name) {
+		return getPostParameters().get(name);
 	}
 
 	@NotNull
 	public Map<String, String> getPostParameters() {
-		return postParameters != null ? postParameters :
-				(postParameters = getParsedPostParameters());
+		if (postParameters != null) return postParameters;
+		if (body == null) throw new NullPointerException("Body must be loaded to parse post parameters");
+		return postParameters =
+				containsPostParameters() ?
+						UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining())) :
+						emptyMap();
 	}
 
-	@Nullable
-	public String getPostParameter(String name) {
-		return getParsedPostParameters().get(name);
-	}
-
-	private Map<String, String> getParsedPostParameters() {
-		if (!hasPostParams()) return emptyMap();
-		if (body == null) throw new NullPointerException("Body is not loaded to parse post params");
-		return UrlParser.parseQueryIntoMap(decodeAscii(body.array(),
-				body.head(),
-				body.readRemaining()));
-	}
-
-	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
-	private boolean hasPostParams() {
+	private boolean containsPostParameters() {
 		ByteBuf buf = getHeaderBuf(CONTENT_TYPE);
 		if (buf == null) {
 			return false;

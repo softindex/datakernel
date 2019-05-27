@@ -30,6 +30,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -340,6 +341,12 @@ public final class ChannelSuppliers {
 		protected Promise<T> doGet() {
 			T item = takeValue();
 			return Promise.of(item);
+		}
+
+		@Override
+		protected void onClosed(@NotNull Throwable e) {
+			tryRecycle(item);
+			item = null;
 		}
 	}
 

@@ -35,7 +35,6 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.test.TestUtils.getFreePort;
@@ -358,9 +357,8 @@ public final class AsyncHttpServerTest {
 	public void testExpectContinue() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = getFreePort();
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, loadBody()
-				.then(request -> Promise.of(HttpResponse.ok200()
-						.withBody(request.getBody().slice()))))
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request -> request.loadBody().map(body -> HttpResponse.ok200().withBody(body.slice())))
 				.withListenPort(port);
 
 		server.listen();

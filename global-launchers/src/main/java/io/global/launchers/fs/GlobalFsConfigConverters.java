@@ -27,9 +27,7 @@ import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
 import static io.global.fs.api.CheckpointPosStrategy.of;
 
 public final class GlobalFsConfigConverters {
-	private GlobalFsConfigConverters() {
-		throw new AssertionError("nope.");
-	}
+	private GlobalFsConfigConverters() {}
 
 	public static ConfigConverter<CheckpointPosStrategy> ofCheckpointPositionStrategy() {
 		return new ConfigConverter<CheckpointPosStrategy>() {

@@ -4,5 +4,5 @@ import org.jetbrains.annotations.NotNull;
 
 public interface BlockingServlet {
 	@NotNull
-	HttpResponse serve(@NotNull HttpRequest request);
+	HttpResponse serve(@NotNull HttpRequest request) throws Exception;
 }

@@ -37,7 +37,7 @@ import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.ofSet;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
-import static io.datakernel.http.AsyncServletWrapper.loadBody;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.*;
 import static io.global.kv.api.KvCommand.*;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
