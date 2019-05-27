@@ -46,7 +46,6 @@
     <module>cloud-dataflow</module>
     <module>common</module>
     <module>boot</module>
-    <module>boot2</module>
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>

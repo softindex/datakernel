@@ -22,7 +22,7 @@ public final class BindingUtils {
 	 * and not the common *key and the binding that provides it*
 	 */
 	public static Map<Key<?>, Binding<?>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getUnsatisfiedDependencies(new HashSet<>(bindings.get().keySet()), bindings)
+		return getUnsatisfiedDependencies(new HashSet<>(), bindings)
 				.collect(toMap(Entry::getKey, Entry::getValue));
 	}
 
@@ -35,6 +35,7 @@ public final class BindingUtils {
 
 	@SuppressWarnings("unchecked")
 	private static Stream<Entry<Key<?>, Binding<?>>> getUnsatisfiedDependencies(Set<Key<?>> known, Map<Key<?>, Binding<?>> bindings) {
+		known.addAll(bindings.keySet());
 		return bindings.values().stream()
 				.flatMap(binding -> (Stream) Arrays.stream(binding.getDependencies())
 						//             ^- because Java generics NEVER EVER WORK AS INTENDED, uggh

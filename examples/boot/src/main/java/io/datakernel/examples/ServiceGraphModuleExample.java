@@ -32,7 +32,7 @@ public class ServiceGraphModuleExample extends AbstractModule {
 	}
 
 	public static void main(String[] args) throws ExecutionException, InterruptedException {
-		Injector injector = Injector.create(ServiceGraphModule.defaultInstance(), new ServiceGraphModuleExample());
+		Injector injector = Injector.of(ServiceGraphModule.defaultInstance(), new ServiceGraphModuleExample());
 		Eventloop eventloop = injector.getInstance(Eventloop.class);
 
 		eventloop.execute(() -> System.out.println("Hello World"));

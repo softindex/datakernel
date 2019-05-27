@@ -20,6 +20,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
+import io.datakernel.di.Key;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
@@ -64,9 +65,9 @@ public final class GlobalOTDemoApp extends Launcher {
 				override(singletonList(new OTCommonModule<Operation>() {
 					@Override
 					protected void configure() {
-						bind(new TypeT<StructuredCodec<Operation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeT<Function<Operation, String>>() {}).toInstance(DIFF_TO_STRING);
-						bind(new TypeT<OTSystem<Operation>>() {}).toInstance(createOTSystem());
+						bind(new Key<StructuredCodec<Operation>>() {}).toInstance(OPERATION_CODEC);
+						bind(new Key<Function<Operation, String>>() {}).toInstance(DIFF_TO_STRING);
+						bind(new Key<OTSystem<Operation>>() {}).toInstance(createOTSystem());
 					}
 				}), singletonList(new GlobalOTDemoModule())),
 				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule()))

@@ -8,10 +8,12 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.override;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -412,12 +414,31 @@ public final class TestDI {
 			String provide3(Integer integer) {
 				return "str3: " + integer;
 			}
+
+			@ProvidesIntoSet
+			List<String> provideB1(Integer integer) {
+				return singletonList("str1: " + integer);
+			}
+
+			@ProvidesIntoSet
+			List<String> provideB2(Integer integer) {
+				return singletonList("str2: " + integer);
+			}
+
 		});
 
 		Set<String> instance = injector.getInstance(new Key<Set<String>>() {});
 
 		Set<String> expected = Stream.of("str1: 42", "str2: 42", "str3: 42").collect(toSet());
 
+
 		assertEquals(expected, instance);
+
+		Key<Set<List<String>>> key = new Key<Set<List<String>>>() {};
+		Set<List<String>> instance2 = injector.getInstance(key);
+
+		Set<List<String>> expected2 = Stream.of(singletonList("str1: 42"), singletonList("str2: 42")).collect(toSet());
+
+		assertEquals(expected2, instance2);
 	}
 }

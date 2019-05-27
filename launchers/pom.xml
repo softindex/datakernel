@@ -28,7 +28,7 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-boot2</artifactId>
+      <artifactId>datakernel-boot</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

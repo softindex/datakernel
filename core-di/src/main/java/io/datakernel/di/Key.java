@@ -16,6 +16,11 @@ public abstract class Key<T> {
 	@Nullable
 	private final Name name;
 
+	private Key(@NotNull Type type, @Nullable Name name) {
+		this.type = canonicalize(type);
+		this.name = name;
+	}
+
 	public Key(@Nullable Name name) {
 		this.name = name;
 		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
@@ -23,11 +28,6 @@ public abstract class Key<T> {
 
 	public Key() {
 		this(null);
-	}
-
-	private Key(@NotNull Type type, @Nullable Name name) {
-		this.type = type;
-		this.name = name;
 	}
 
 	// so that we have one reusable non-abstract impl
@@ -132,8 +132,8 @@ public abstract class Key<T> {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (!(o instanceof Key)) return false;
-		Key<?> other = (Key<?>) o;
-		return (type == other.type || type.equals(other.type)) && Objects.equals(name, other.name);
+		Key<?> that = (Key<?>) o;
+		return type.equals(that.type) && Objects.equals(name, that.name);
 	}
 
 	@Override

@@ -20,6 +20,8 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
+import io.datakernel.di.Key;
+import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
@@ -34,6 +36,7 @@ import io.global.ot.editor.operations.EditorOperation;
 
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.config.Config.ofProperties;
@@ -69,9 +72,9 @@ public final class GlobalEditorDemoApp extends Launcher {
 				new OTCommonModule<EditorOperation>() {
 					@Override
 					protected void configure() {
-						bind(new TypeT<StructuredCodec<EditorOperation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeT<Function<EditorOperation, String>>() {}).toInstance(Objects::toString);
-						bind(new TypeT<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
+						bind(new Key<StructuredCodec<EditorOperation>>() {}).toInstance(OPERATION_CODEC);
+						bind(new Key<Function<EditorOperation, String>>() {}).toInstance(Objects::toString);
+						bind(new Key<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
 					}
 				},
 				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule())));

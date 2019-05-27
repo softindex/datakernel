@@ -40,7 +40,7 @@ public class WorkerPoolModuleExample extends AbstractModule {
 	}
 
 	public static void main(String[] args) {
-		Injector injector = Injector.create(new WorkerPoolModule(), new WorkerPoolModuleExample());
+		Injector injector = Injector.of(new WorkerPoolModule(), new WorkerPoolModuleExample());
 		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
 		List<String> strings = workerPool.getInstances(String.class);
 		strings.forEach(System.out::println);

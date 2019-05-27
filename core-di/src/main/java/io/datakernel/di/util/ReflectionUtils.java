@@ -1,7 +1,7 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.*;
 import io.datakernel.di.Optional;
+import io.datakernel.di.*;
 import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -114,7 +114,7 @@ public final class ReflectionUtils {
 		return Arrays.stream(parameters)
 				.map(parameter -> {
 					Key<Object> key = keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
-					return new Dependency(key, parameter.isAnnotationPresent(Optional.class));
+					return new Dependency(key, !parameter.isAnnotationPresent(Optional.class));
 				})
 				.toArray(Dependency[]::new);
 	}
@@ -270,6 +270,9 @@ public final class ReflectionUtils {
 		if (type == null) {
 			return null;
 		}
+		if (type instanceof ParameterizedTypeImpl) {
+			return type;
+		}
 		if (type instanceof ParameterizedType) {
 			ParameterizedType parameterized = (ParameterizedType) type;
 			Type owner = canonicalize(parameterized.getOwnerType());
@@ -281,7 +284,7 @@ public final class ReflectionUtils {
 	}
 
 	public static Type parameterized(Class<?> rawType, Type... parameters) {
-		return new ParameterizedTypeImpl(null, rawType, parameters);
+		return new ParameterizedTypeImpl(null, rawType, Arrays.stream(parameters).map(ReflectionUtils::canonicalize).toArray(Type[]::new));
 	}
 
 	private static class ParameterizedTypeImpl implements ParameterizedType {
@@ -330,6 +333,24 @@ public final class ReflectionUtils {
 		@Override
 		public int hashCode() {
 			return (ownerType != null ? 961 * ownerType.hashCode() : 0) + 31 * rawType.hashCode() + Arrays.hashCode(parameters);
+		}
+
+		private String toString(Type type) {
+			return type instanceof Class ? ((Class) type).getName() : type.toString();
+		}
+
+		@Override
+		public String toString() {
+			if (parameters.length == 0) {
+				return toString(rawType);
+			}
+			StringBuilder sb = new StringBuilder(toString(rawType))
+					.append('<')
+					.append(toString(parameters[0]));
+			for (int i = 1; i < parameters.length; i++) {
+				sb.append(", ").append(toString(parameters[i]));
+			}
+			return sb.append('>').toString();
 		}
 	}
 }
