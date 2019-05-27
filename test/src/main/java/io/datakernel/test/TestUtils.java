@@ -53,6 +53,7 @@ public final class TestUtils {
 		dataSource.setUrl("jdbc:mysql://" + properties.getProperty("dataSource.serverName") + '/' + properties.getProperty("dataSource.databaseName"));
 		dataSource.setUser(properties.getProperty("dataSource.user"));
 		dataSource.setPassword(properties.getProperty("dataSource.password"));
+		dataSource.setServerTimezone(properties.getProperty("dataSource.timeZone"));
 		dataSource.setAllowMultiQueries(true);
 		return dataSource;
 	}
