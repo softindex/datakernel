@@ -58,7 +58,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 	private RoutingServlet servlet(DiscoveryService discoveryService) {
 		return RoutingServlet.create()
 				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", loadBody()
-						.then(request -> {
+						.serve(request -> {
 									ByteBuf body = request.getBody();
 
 									String parameterOwner = request.getPathParameter("owner");
@@ -94,7 +94,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 					}
 				})
 				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterReceiver = request.getPathParameter("receiver");
 							if (parameterReceiver == null) {

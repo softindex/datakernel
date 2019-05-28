@@ -92,7 +92,7 @@ public final class GlobalKvNodeServlet {
 					}
 				})
 				.with(GET, "/" + GET_ITEM + "/:space/:table", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
 							String table = request.getPathParameter("table");
@@ -109,7 +109,7 @@ public final class GlobalKvNodeServlet {
 							}
 						}))
 				.with(PUT, "/" + PUT_ITEM + "/:space/:table", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
 							String table = request.getPathParameter("table");

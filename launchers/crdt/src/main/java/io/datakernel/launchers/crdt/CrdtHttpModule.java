@@ -70,7 +70,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				CrdtData::getState, descriptor.getStateCodec());
 		RoutingServlet servlet = RoutingServlet.create()
 				.with(HttpMethod.POST, "/", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
@@ -86,7 +86,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 							}
 						}))
 				.with(HttpMethod.PUT, "/", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								client.put(JsonUtils.fromJson(codec, body.getString(UTF_8)));
@@ -96,7 +96,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 							}
 						}))
 				.with(HttpMethod.DELETE, "/", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));

@@ -58,7 +58,7 @@ public class AuthLauncher extends HttpServerLauncher {
 								.with(GET, "/signup", SingleResourceStaticServlet.create(eventloop, staticLoader, "signup.html"))
 								.with(GET, "/login", SingleResourceStaticServlet.create(eventloop, staticLoader, "login.html"))
 								.with(POST, "/login", loadBody()
-										.then(request -> {
+										.serve(request -> {
 											Map<String, String> params = request.getPostParameters();
 											String username = params.get("username");
 											String password = params.get("password");
@@ -74,7 +74,7 @@ public class AuthLauncher extends HttpServerLauncher {
 															.withBody(body)));
 										}))
 								.with(POST, "/signup", loadBody()
-										.then(request -> {
+										.serve(request -> {
 											Map<String, String> params = request.getPostParameters();
 											String username = params.get("username");
 											String password = params.get("password");

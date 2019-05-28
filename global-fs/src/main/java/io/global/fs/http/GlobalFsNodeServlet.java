@@ -115,7 +115,7 @@ public final class GlobalFsNodeServlet {
 					}
 				})
 				.with(POST, "/" + DELETE + "/:space", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
 							if (parameterSpace == null) {

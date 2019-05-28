@@ -148,13 +148,11 @@ public final class FsIntegrationTest {
 	public void testOnClientExceptionWhileUploading() throws IOException {
 		String resultFile = "upload_with_exceptions.txt";
 
-		ByteBuf test4 = wrapUtf8("Test4");
-
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
 				ChannelSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")).async(),
 				ChannelSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
 				ChannelSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
-				ChannelSupplier.of(test4));
+				ChannelSupplier.of(wrapUtf8("Test4")));
 
 		Throwable exception = awaitException(supplier.streamTo(ChannelConsumer.ofPromise(client.upload(resultFile)))
 				.whenComplete(($, e) -> server.close()));
@@ -162,7 +160,6 @@ public final class FsIntegrationTest {
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Test exception"));
 
-		test4.recycle();
 		ByteBufQueue queue = new ByteBufQueue();
 		queue.addAll(asList(wrapUtf8("Test1 Test2 Test3"), ByteBuf.wrapForReading(BIG_FILE)));
 		assertArrayEquals(queue.takeRemaining().asArray(), Files.readAllBytes(storage.resolve(resultFile)));

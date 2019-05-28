@@ -83,7 +83,7 @@ public class UiKernelServlets {
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
 		return loadBody()
-				.then(request -> {
+				.serve(request -> {
 					ByteBuf body = request.getBody();
 					try {
 						String json = body.asString(UTF_8);
@@ -98,7 +98,7 @@ public class UiKernelServlets {
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
 		return loadBody()
-				.then(request -> {
+				.serve(request -> {
 					ByteBuf body = request.getBody();
 					try {
 						String json = body.asString(UTF_8);

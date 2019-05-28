@@ -71,7 +71,7 @@ public final class PollLauncher extends HttpServerLauncher {
 						.with(GET, "/create", request -> Promise.of(HttpResponse.ok200()
 								.withBody(applyTemplate(singlePollCreate, ImmutableMap.of()))))
 						.with(POST, "/vote", loadBody()
-								.then(request -> {
+								.serve(request -> {
 									Map<String, String> params = request.getPostParameters();
 									String option = params.get("option");
 									String stringId = params.get("id");
@@ -88,7 +88,7 @@ public final class PollLauncher extends HttpServerLauncher {
 									return Promise.of(HttpResponse.redirect302(referer != null ? referer : "/"));
 								}))
 						.with(POST, "/add", loadBody()
-								.then(request -> {
+								.serve(request -> {
 									Map<String, String> params = request.getPostParameters();
 									String title = params.get("title");
 									String message = params.get("message");
@@ -100,7 +100,7 @@ public final class PollLauncher extends HttpServerLauncher {
 									return Promise.of(HttpResponse.redirect302("poll/" + id));
 								}))
 						.with(POST, "/delete", loadBody()
-								.then(request -> {
+								.serve(request -> {
 									Map<String, String> params = request.getPostParameters();
 									String id = params.get("id");
 									if (id == null) {

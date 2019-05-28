@@ -69,7 +69,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 						.with("/*", staticServlet)
 						//[END REGION_2]
 						.with(POST, "/add", loadBody()
-								.then(request -> {
+								.serve(request -> {
 									ByteBuf body = request.getBody();
 									try {
 										Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(Charsets.UTF_8));

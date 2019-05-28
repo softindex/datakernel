@@ -68,7 +68,7 @@ public final class OTStateServlet {
 							}
 						}))
 				.with(POST, "/add", loadBody()
-						.then(request -> getManager(provider, request)
+						.serve(request -> getManager(provider, request)
 								.then(manager -> {
 									ByteBuf body = request.getBody();
 									if (manager != null) {

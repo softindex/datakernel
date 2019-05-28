@@ -17,6 +17,7 @@
 package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
@@ -80,7 +81,7 @@ public final class DiscoveryHttpTest {
 		SignedData<AnnounceData> bobData = await(clientService.find(bob.getPubKey()));
 		assertTrue(checkNotNull(bobData).verify(bob.getPubKey()));
 
-		HttpException e = awaitException(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class),
+		StacklessException e = awaitException(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class),
 				AnnounceData.of(90, set()), alice.getPrivKey())));
 		assertSame(REJECTED_OUTDATED_ANNOUNCE_DATA, e);
 

@@ -108,7 +108,7 @@ public final class RawServerServlet implements AsyncServlet {
 									.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8)));
 				})
 				.with(POST, "/" + SAVE + "/:pubKey/:name", loadBody()
-						.then(req -> {
+						.serve(req -> {
 							ByteBuf body = req.getBody();
 							String pubKey = req.getPathParameter("pubKey");
 							String name = req.getPathParameter("name");
@@ -125,7 +125,7 @@ public final class RawServerServlet implements AsyncServlet {
 							}
 						}))
 				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", loadBody()
-						.then(req -> {
+						.serve(req -> {
 							ByteBuf body = req.getBody();
 							String pubKey = req.getPathParameter("pubKey");
 							String name = req.getPathParameter("name");
@@ -158,7 +158,7 @@ public final class RawServerServlet implements AsyncServlet {
 					}
 				})
 				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, body.slice());
@@ -247,7 +247,7 @@ public final class RawServerServlet implements AsyncServlet {
 					}
 				})
 				.with(POST, "/" + SHARE_KEY + "/:owner", loadBody()
-						.then(req -> {
+						.serve(req -> {
 							ByteBuf body = req.getBody();
 							String owner = req.getPathParameter("owner");
 							if (owner == null) {
@@ -295,7 +295,7 @@ public final class RawServerServlet implements AsyncServlet {
 							);
 				})
 				.with(POST, "/" + SEND_PULL_REQUEST, loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, body.slice());

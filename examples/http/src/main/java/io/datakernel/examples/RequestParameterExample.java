@@ -47,7 +47,7 @@ public final class RequestParameterExample extends HttpServerLauncher {
 			AsyncServlet mainServlet(Eventloop eventloop) {
 				return RoutingServlet.create()
 						.with(HttpMethod.POST, "/hello", loadBody()
-								.then(request -> {
+								.serve(request -> {
 									String name = request.getPostParameters().get("name");
 									return Promise.of(HttpResponse.ok200()
 											.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>")));

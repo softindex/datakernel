@@ -98,7 +98,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 					}
 				})
 				.with(POST, "/" + CREATE_COMMIT, loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								FetchData<K, D> fetchData = fromJson(fetchDataCodec, body.getString(UTF_8));
@@ -111,7 +111,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 							}
 						}))
 				.with(POST, "/" + PUSH, loadBody()
-						.then(request -> {
+						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
 								C commit = bytesToCommit.parse(body.getArray());

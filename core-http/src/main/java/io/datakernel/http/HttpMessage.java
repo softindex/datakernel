@@ -48,7 +48,7 @@ public abstract class HttpMessage {
 	private Recyclable bufs;
 
 	protected ByteBuf body;
-	protected int maxBodySize;
+	protected int maxBodySize = Integer.MAX_VALUE;
 	protected Map<Type, Object> attachments;
 
 	static final byte ACCESSED_BODY_STREAM = 1 << 0;

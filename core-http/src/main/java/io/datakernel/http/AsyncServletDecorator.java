@@ -1,6 +1,8 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
@@ -17,22 +19,10 @@ import java.util.function.Function;
 import static io.datakernel.csp.ChannelConsumers.recycling;
 
 public interface AsyncServletDecorator {
-	@NotNull AsyncServlet then(@NotNull AsyncServlet servlet);
-
-	default @NotNull AsyncServlet map(@NotNull Function<HttpRequest, HttpResponse> fn) {
-		return then(AsyncServlet.of(fn));
-	}
-
-	default @NotNull AsyncServlet mapBlocking(@NotNull BlockingServlet fn) {
-		return then(AsyncServlet.ofBlocking(fn));
-	}
-
-	default @NotNull AsyncServlet mapBlocking(@Nullable Executor executor, @NotNull BlockingServlet fn) {
-		return then(AsyncServlet.ofBlocking(executor, fn));
-	}
+	@NotNull AsyncServlet serve(@NotNull AsyncServlet servlet);
 
 	default AsyncServletDecorator wrap(AsyncServletDecorator next) {
-		return servlet -> this.then(next.then(servlet));
+		return servlet -> this.serve(next.serve(servlet));
 	}
 
 	static AsyncServletDecorator identity() {
@@ -40,12 +30,12 @@ public interface AsyncServletDecorator {
 	}
 
 	@NotNull
-	static AsyncServletDecorator of(AsyncServletDecorator... decorators) {
-		return of(Arrays.asList(decorators));
+	static AsyncServletDecorator wrappedDecoratorOf(AsyncServletDecorator... decorators) {
+		return wrappedDecoratorOf(Arrays.asList(decorators));
 	}
 
 	@NotNull
-	static AsyncServletDecorator of(List<AsyncServletDecorator> decorators) {
+	static AsyncServletDecorator wrappedDecoratorOf(List<AsyncServletDecorator> decorators) {
 		return decorators.stream()
 				.reduce(identity(), AsyncServletDecorator::wrap);
 	}
@@ -75,7 +65,10 @@ public interface AsyncServletDecorator {
 						.map(response -> {
 							HttpResponse newResponse = fn.apply(response);
 							if (response != newResponse) {
-								response.getBodyStream().streamTo(recycling());
+								ChannelSupplier<ByteBuf> bodyStream = response.getBodyStream();
+								if (bodyStream != null) {
+									bodyStream.streamTo(recycling());
+								}
 								response.recycle();
 							}
 							return newResponse;
@@ -88,7 +81,10 @@ public interface AsyncServletDecorator {
 						.map(response -> {
 							HttpResponse newResponse = fn.apply(request, response);
 							if (response != newResponse) {
-								response.getBodyStream().streamTo(recycling());
+								ChannelSupplier<ByteBuf> bodyStream = response.getBodyStream();
+								if (bodyStream != null) {
+									bodyStream.streamTo(recycling());
+								}
 								response.recycle();
 							}
 							return newResponse;

@@ -33,7 +33,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 	private static RoutingServlet servlet(DiscoveryServiceDriver driver) {
 		return RoutingServlet.create()
 				.with(POST, "/announce", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							String key = request.getCookie("Key");
 							if (key == null) {
 								return Promise.ofException(new ParseException());
@@ -69,7 +69,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 					}
 				})
 				.with(POST, "/shareKey/:receiver", loadBody()
-						.then(request -> {
+						.serve(request -> {
 							String parameterReceiver = request.getPathParameter("receiver");
 							String key = request.getCookie("Key");
 							if (parameterReceiver == null || key == null) {
