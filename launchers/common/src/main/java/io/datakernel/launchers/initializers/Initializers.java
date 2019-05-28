@@ -23,6 +23,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.MemSize;
 
 import java.time.Duration;
 
@@ -69,7 +70,8 @@ public class Initializers {
 	public static Initializer<AsyncHttpServer> ofHttpWorker(Config config) {
 		return server -> server
 				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", server.getKeepAliveTimeout()))
-				.withReadWriteTimeout(config.get(ofDuration(), "readWriteTimeout", server.getReadWriteTimeout()));
+				.withReadWriteTimeout(config.get(ofDuration(), "readWriteTimeout", server.getReadWriteTimeout()))
+				.withMaxBodySize(config.get(ofMemSize(), "maxBodySize", MemSize.of(0)));
 	}
 
 }

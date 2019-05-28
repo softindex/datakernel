@@ -90,12 +90,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	final InetSocketAddress remoteAddress;
 	HttpClientConnection addressPrev;
 	HttpClientConnection addressNext;
+	final int maxBodySize;
 
 	HttpClientConnection(Eventloop eventloop, AsyncHttpClient client,
 			AsyncTcpSocket asyncTcpSocket, InetSocketAddress remoteAddress) {
 		super(eventloop, asyncTcpSocket);
 		this.remoteAddress = remoteAddress;
 		this.client = client;
+		this.maxBodySize = client.maxBodySize;
 		this.inspector = client.inspector;
 	}
 
@@ -139,7 +141,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (!(statusCode >= 100 && statusCode < 600)) {
 			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}
-		response = HttpResponse.ofCode(statusCode);
+		response = new HttpResponse(statusCode);
+		response.maxBodySize = maxBodySize;
 		/*
 		  RFC 2616, section 4.4
 		  1.Any response message which "MUST NOT" include a message-body (such as the 1xx, 204, and 304 responses and any response to a HEAD request) is always

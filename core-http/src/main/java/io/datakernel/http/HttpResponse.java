@@ -65,7 +65,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	private Map<String, HttpCookie> parsedCookies;
 
 	// region creators
-	private HttpResponse(int code) {
+	HttpResponse(int code) {
 		this.code = code;
 	}
 

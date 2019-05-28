@@ -29,6 +29,7 @@ import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -71,10 +72,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private ScheduledRunnable expiredConnectionsCheck;
 
 	// timeouts
-	private int connectTimeoutMillis = 0;
+	int connectTimeoutMillis = 0;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS.getSeconds();
 	int maxKeepAliveRequests = -1;
-	private int readWriteTimeoutMillis = 0;
+	int readWriteTimeoutMillis = 0;
+	int maxBodySize = Integer.MAX_VALUE;
 
 	// SSL
 	private SSLContext sslContext;
@@ -261,6 +263,15 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	public AsyncHttpClient withConnectTimeout(@NotNull Duration connectTimeout) {
 		this.connectTimeoutMillis = (int) connectTimeout.toMillis();
+		return this;
+	}
+
+	public AsyncHttpClient withMaxBodySize(MemSize maxBodySize) {
+		return withMaxBodySize(maxBodySize.toInt());
+	}
+
+	public AsyncHttpClient withMaxBodySize(int maxBodySize) {
+		this.maxBodySize = maxBodySize != 0 ? maxBodySize : Integer.MAX_VALUE;
 		return this;
 	}
 

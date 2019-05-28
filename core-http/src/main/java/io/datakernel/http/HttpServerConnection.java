@@ -71,6 +71,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private final Inspector inspector;
 	private final AsyncServlet servlet;
 	private final char[] charBuffer;
+	private final int maxBodySize;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
 	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
@@ -89,8 +90,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
-		inspector = server.inspector;
+		this.inspector = server.inspector;
 		this.charBuffer = charBuffer;
+		this.maxBodySize = server.maxBodySize;
 	}
 
 	public void serve() {
@@ -148,6 +150,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		request = new HttpRequest(method,
 				UrlParser.parse(decodeAscii(line, urlStart, urlEnd - urlStart, ThreadLocalCharArray.ensure(charBuffer, urlEnd - urlStart))));
+		request.maxBodySize = maxBodySize;
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;

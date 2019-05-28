@@ -1,6 +1,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -121,6 +122,30 @@ public interface AsyncServletDecorator {
 								return Promise.of(fn.apply(request, e));
 							}
 						}));
+	}
+
+	static AsyncServletDecorator catchUncheckedExceptions() {
+		return servlet ->
+				request -> {
+					try {
+						return servlet.serve(request);
+					} catch (UncheckedException u) {
+						return Promise.ofException(u.getCause());
+					}
+				};
+	}
+
+	static AsyncServletDecorator catchRuntimeExceptions() {
+		return servlet ->
+				request -> {
+					try {
+						return servlet.serve(request);
+					} catch (UncheckedException u) {
+						return Promise.ofException(u.getCause());
+					} catch (RuntimeException e) {
+						return Promise.ofException(e);
+					}
+				};
 	}
 
 	static AsyncServletDecorator setMaxBodySize(MemSize maxBodySize) {
