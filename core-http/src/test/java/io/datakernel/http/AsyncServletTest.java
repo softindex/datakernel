@@ -40,7 +40,7 @@ public class AsyncServletTest {
 
 	@Test
 	public void testEnsureRequestBody() {
-		AsyncServlet servlet = request -> request.loadBody().map(body -> HttpResponse.ok200().withBody(body.slice()));
+		AsyncServlet servlet = request -> request.loadBody(Integer.MAX_VALUE).map(body -> HttpResponse.ok200().withBody(body.slice()));
 
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSupplier.of(
@@ -50,14 +50,14 @@ public class AsyncServletTest {
 
 		HttpResponse response = await(servlet.serve(testRequest));
 		testRequest.recycle();
-		ByteBuf body = await(response.loadBody());
+		ByteBuf body = await(response.loadBody(Integer.MAX_VALUE));
 
 		assertEquals("Test1Test2", body.asString(UTF_8));
 	}
 
 	@Test
 	public void testEnsureRequestBodyWithException() {
-		AsyncServlet servlet = request -> request.loadBody()
+		AsyncServlet servlet = request -> request.loadBody(Integer.MAX_VALUE)
 				.map(body -> HttpResponse.ok200().withBody(body.slice()));
 		Exception exception = new Exception("TestException");
 

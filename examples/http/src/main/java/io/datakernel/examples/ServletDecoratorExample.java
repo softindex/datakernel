@@ -27,7 +27,7 @@ public class ServletDecoratorExample extends HttpServerLauncher {
 			@Singleton
 			AsyncServlet provide(Eventloop eventloop) {
 				return wrappedDecoratorOf(
-						mapException(throwable -> HttpResponse.ofCode(404).withPlainText("Error page")),
+						mapException($ -> HttpResponse.ofCode(404).withPlainText("Error page")),
 						catchRuntimeExceptions(),
 						loadBody())
 						.serve(RoutingServlet.create()
