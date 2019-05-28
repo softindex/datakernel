@@ -16,9 +16,6 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
@@ -26,12 +23,14 @@ import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.di.Optional;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.concurrent.ExecutorService;
 
@@ -43,24 +42,21 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends AbstractModule {
 
 	@Provides
-	@Singleton
 	AsyncHttpServer provideServer(Eventloop eventloop, AsyncServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("crdt.http")));
 	}
 
 	@Provides
-	@Singleton
 	StaticLoader provideLoader(ExecutorService executor) {
 		return StaticLoaders.ofClassPath(executor);
 	}
 
 	@Provides
-	@Singleton
 	AsyncServlet provideServlet(
 			CrdtDescriptor<K, S> descriptor,
 			CrdtStorageMap<K, S> client,
-			OptionalDependency<BackupService<K, S>> backupService
+			@Optional BackupService<K, S> backupService
 	) {
 		StructuredCodec<K> keyCodec = descriptor.getKeyCodec();
 		StructuredCodec<S> stateCodec = descriptor.getStateCodec();
@@ -109,21 +105,23 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.<HttpResponse>ofException(e);
 							}
 						}));
-		//		jmxServlet.ifPresent(s -> servlet.with(HttpMethod.GET, "/", s));
-		backupService.ifPresent(backup -> servlet
-				.with(HttpMethod.POST, "/backup", request -> {
-					if (backup.backupInProgress()) {
-						return Promise.of(HttpResponse.ofCode(403)
-								.withBody("Backup is already in progress".getBytes(UTF_8)));
-					}
-					backup.backup();
-					return Promise.of(HttpResponse.ofCode(202));
-				})
-				.with(HttpMethod.POST, "/awaitBackup", request ->
-						backup.backupInProgress() ?
-								backup.backup().map($ -> HttpResponse.ofCode(204)
-										.withBody("Finished already running backup".getBytes(UTF_8))) :
-								backup.backup().map($ -> HttpResponse.ok200())));
+		if (backupService != null) {
+			servlet
+					.with(HttpMethod.POST, "/backup", request -> {
+						if (backupService.backupInProgress()) {
+							return Promise.of(HttpResponse.ofCode(403)
+									.withBody("Backup is already in progress".getBytes(UTF_8)));
+						}
+						backupService.backup();
+						return Promise.of(HttpResponse.ofCode(202));
+					})
+					.with(HttpMethod.POST, "/awaitBackup", request ->
+							backupService.backupInProgress() ?
+									backupService.backup().map($ -> HttpResponse.ofCode(204)
+											.withBody("Finished already running backup".getBytes(UTF_8))) :
+									backupService.backup().map($ -> HttpResponse.ok200()));
+
+		}
 		return servlet;
 	}
 }

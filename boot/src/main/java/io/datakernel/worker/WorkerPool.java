@@ -16,163 +16,91 @@
 
 package io.datakernel.worker;
 
-import com.google.inject.Injector;
-import com.google.inject.Key;
-import com.google.inject.Provider;
-import com.google.inject.TypeLiteral;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toMap;
 
 public final class WorkerPool {
-	private final int workers;
-	private String annotationString = "";
+	private final Scope scope;
+	private final int idx;
+	private final Injector[] scopeInjectors;
 
-	private WorkerPoolScope poolScope;
-	private Injector injector;
+	WorkerPool(Injector injector, Scope scope, int idx, int workers) {
+		this.scope = scope;
+		this.idx = idx;
+		this.scopeInjectors = new Injector[workers];
+		for (int i = 0; i < workers; i++) {
+			Map<Key<?>, Object> instances = new HashMap<>(singletonMap(Key.of(int.class, WorkerId.class), i));
+			scopeInjectors[i] = injector.enterScope(scope, instances, false);
+		}
+	}
 
-	final Map<Key<?>, List<Object>> pool = new ConcurrentHashMap<>();
+	public Scope getScope() {
+		return scope;
+	}
 
-	private final ThreadLocal<Integer> threadLocalWorkerId = new ThreadLocal<>();
+	@NotNull
+	public <T> List<T> getInstances(Key<T> key) {
+		List<T> instances = new ArrayList<>(scopeInjectors.length);
+		for (Injector scopeInjector : scopeInjectors) {
+			instances.add(scopeInjector.getInstance(key));
+		}
+		return instances;
+	}
 
-	private final Map<Key<?>, ThreadLocal<?>> threadLocalCache = new ConcurrentHashMap<>();
-
-	public WorkerPool(int workers) {
-		this.workers = workers;
+	@NotNull
+	public <T> List<T> getInstances(Class<T> type) {
+		return getInstances(Key.of(type));
 	}
 
 	@Nullable
-	Integer getLocalWorkerId() {
-		Integer workerId = threadLocalWorkerId.get();
-		if (workerId != null) {
-			return workerId;
-		}
-		Optional<? extends List<?>> eventloops = pool.entrySet()
-				.stream()
-				.filter(entry -> entry.getKey().getTypeLiteral().getRawType().equals(Eventloop.class))
-				.map(Entry::getValue)
-				.findAny();
-		checkState(eventloops.isPresent(), "No eventloops in worker pool!");
-		int index = eventloops.get().indexOf(Eventloop.getCurrentEventloop());
-		if (index == -1) {
-			return null;
-		}
-		threadLocalWorkerId.set(index);
-		return index;
+	private <T> List<T> peekInstances(Class<T> type) {
+		return peekInstances(Key.of(type));
 	}
-
-	public <T> T getCurrentInstance(Key<T> key) {
-		Integer localWorkerId = getLocalWorkerId();
-		checkState(localWorkerId != null, "No instance of %s is associated with current thread", key);
-
-		return getInstances(key).get(localWorkerId);
-	}
-
-	// region getCurrentInstance overloads
-	public <T> T getCurrentInstance(Class<T> type) {
-		return getCurrentInstance(Key.get(type));
-	}
-
-	public <T> T getCurrentInstance(TypeLiteral<T> type) {
-		return getCurrentInstance(Key.get(type));
-	}
-	// endregion
 
 	@SuppressWarnings("unchecked")
-	public <T> Provider<T> getCurrentInstanceProvider(Key<T> key) {
-		checkArgument(isValidBinding(key), "Cannot get provider for key: %s", key);
-		ThreadLocal<T> threadLocal = (ThreadLocal<T>) threadLocalCache.computeIfAbsent(key, $ ->
-				ThreadLocal.withInitial(() -> getCurrentInstance(key)));
-		return threadLocal::get;
+	@Nullable
+	private <T> List<T> peekInstances(Key<T> key) {
+		if (!scopeInjectors[0].peekInstances().containsKey(key)) return null;
+		return asList((T[]) doPeekInstances(key));
 	}
 
-	// region getCurrentInstanceProvider overloads
-	public <T> Provider<T> getCurrentInstanceProvider(Class<T> type) {
-		return getCurrentInstanceProvider(Key.get(type));
+	@NotNull
+	public Map<Key<?>, Object[]> peekInstances() {
+		return scopeInjectors[0].peekInstances().keySet().stream()
+				.collect(toMap(Function.identity(), this::doPeekInstances));
 	}
 
-	public <T> Provider<T> getCurrentInstanceProvider(TypeLiteral<T> type) {
-		return getCurrentInstanceProvider(Key.get(type));
-	}
-	// endregion
-
-	@SuppressWarnings("unchecked")
-	public synchronized <T> List<T> getInstances(Key<T> key) {
-		checkState(injector != null && poolScope != null, "WorkerPool has not been initialized, make sure Boot module and ServiceGraph is used");
-		checkArgument(injector.getExistingBinding(key) != null, "Binding for %s not found", key);
-
-
-		List<T> result = (List<T>) pool.get(key);
-		if (result != null) {
-			return result;
+	private Object[] doPeekInstances(Key<?> key) {
+		Object[] instances = new Object[getSize()];
+		for (int i = 0; i < instances.length; i++) {
+			instances[i] = scopeInjectors[i].peekInstance(key);
 		}
-		result = new ArrayList<>();
-
-		for (int i = 0; i < workers; i++) {
-			result.add(poolScope.inScope(this, i, () -> injector.getInstance(key)));
-		}
-
-		return result;
+		return instances;
 	}
 
-	// region getInstances overloads
-	public <T> List<T> getInstances(Class<T> type) {
-		return getInstances(Key.get(type));
+	public Injector[] getScopeInjectors() {
+		return scopeInjectors;
 	}
 
-	public <T> List<T> getInstances(TypeLiteral<T> type) {
-		return getInstances(Key.get(type));
-	}
-	// endregion
-
-	@SuppressWarnings("unchecked")
-	public synchronized <T> List<T> getExistingInstances(Key<T> key) {
-		checkState(injector != null && poolScope != null, "WorkerPool has not been initialized, make sure Boot module and ServiceGraph is used");
-		checkArgument(injector.getExistingBinding(key) != null, "Binding for %s not found", key);
-		return (List<T>) pool.get(key);
-	}
-
-	Object getOrAdd(Key<?> key, int workerId, Provider<?> unscoped) {
-		List<Object> instances = pool.computeIfAbsent(key, $ -> Arrays.asList(new Object[workers]));
-		Object instance = instances.get(workerId);
-		if (instance == null) {
-			instance = unscoped.get();
-			instances.set(workerId, instance);
-		}
-		return instance;
-	}
-
-	public int getWorkersCount() {
-		return workers;
-	}
-
-	public void setScopeInstance(WorkerPoolScope poolScope) {
-		this.poolScope = poolScope;
-	}
-
-	public void setAnnotationString(String annotationString){
-		this.annotationString = annotationString;
-	}
-
-	public void setInjector(Injector injector) {
-		this.injector = injector;
-	}
-	public boolean isValidBinding(Key<?> key) {
-		return pool.get(key) != null || getInstances(key).size() != 0;
-	}
-
-	public String getAnnotationString() {
-		return annotationString;
+	public int getSize() {
+		return scopeInjectors.length;
 	}
 
 	@Override
 	public String toString() {
-		return "WorkerPool" + annotationString;
+		return "WorkerPool{scope=" + scope + ", idx=" + idx +'}';
 	}
 }

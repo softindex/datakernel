@@ -16,23 +16,19 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.Module;
-import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.service.ServiceGraphModule;
 
 import java.util.Collection;
-
-import static java.util.Arrays.asList;
 
 public class UIKernelWebAppLauncher extends Launcher {
 
 	@Override
 	protected Collection<Module> getModules() {
-		return asList(ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.ofProperties("configs.properties")),
-				new UIKernelWebAppModule());
+//		return asList(ServiceGraphModule.defaultInstance(),
+//				ConfigModule.create(Config.ofProperties("configs.properties")),
+//				new UIKernelWebAppModule());
+		return null;
 	}
 
 	@Override
@@ -42,6 +38,6 @@ public class UIKernelWebAppLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		UIKernelWebAppLauncher launcher = new UIKernelWebAppLauncher();
-		launcher.launch(true, args);
+//		launcher.launch(true, args);
 	}
 }

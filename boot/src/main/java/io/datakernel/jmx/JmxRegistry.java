@@ -16,7 +16,8 @@
 
 package io.datakernel.jmx;
 
-import com.google.inject.Key;
+import io.datakernel.di.Key;
+import io.datakernel.di.Name;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.util.ReflectionUtils;
 import io.datakernel.worker.WorkerPool;
@@ -319,14 +320,14 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		if (keyToObjectNames.containsKey(key)) {
 			return keyToObjectNames.get(key);
 		}
-		Class<?> rawType = key.getTypeLiteral().getRawType();
-		Annotation annotation = key.getAnnotation();
+		Class<?> rawType = key.getRawType();
+		Name keyName = key.getName();
 		String domain = rawType.getPackage().getName();
 		String name = domain + ":" + "type=" + rawType.getSimpleName();
 
-		if (annotation != null) { // with annotation
+		if (keyName != null) { // with annotation
 			name += ',';
-			String annotationString = ReflectionUtils.getAnnotationString(annotation);
+			String annotationString = getAnnotationString(keyName);
 			if (!annotationString.contains("(")) {
 				name += "annotation=" + annotationString;
 			} else if (!annotationString.startsWith("(")) {
@@ -336,14 +337,19 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				name += annotationString.substring(1, annotationString.length() - 1);
 			}
 		}
-		if (pool != null && !pool.getAnnotationString().equals("")) {
-			name += format(",workerPool=%s", pool.toString());
-		}
 		return addGenericParamsInfo(name, key);
 	}
 
+	private static String getAnnotationString(Name keyName) throws ReflectiveOperationException {
+		Annotation annotation = keyName.getAnnotation();
+		if (annotation != null) {
+			return ReflectionUtils.getAnnotationString(annotation);
+		}
+		return keyName.getAnnotationType().getSimpleName();
+	}
+
 	private static String addGenericParamsInfo(String srcName, Key<?> key) {
-		Type type = key.getTypeLiteral().getType();
+		Type type = key.getType();
 		StringBuilder resultName = new StringBuilder(srcName);
 		if (type instanceof ParameterizedType) {
 			ParameterizedType pType = (ParameterizedType) type;

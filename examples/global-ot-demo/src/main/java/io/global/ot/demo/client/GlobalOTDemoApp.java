@@ -16,17 +16,18 @@
 
 package io.global.ot.demo.client;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
-import com.google.inject.TypeLiteral;
-import com.google.inject.name.Named;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Key;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.TypeT;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
 import io.global.launchers.GlobalNodesModule;
@@ -35,10 +36,11 @@ import io.global.ot.demo.operations.Operation;
 import java.util.Collection;
 import java.util.function.Function;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.override;
 import static io.global.ot.demo.util.Utils.*;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 public final class GlobalOTDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
@@ -60,16 +62,15 @@ public final class GlobalOTDemoApp extends Launcher {
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				override(new OTCommonModule<Operation>() {
+				override(singletonList(new OTCommonModule<Operation>() {
 					@Override
 					protected void configure() {
-						bind(new TypeLiteral<StructuredCodec<Operation>>() {}).toInstance(OPERATION_CODEC);
-						bind(new TypeLiteral<Function<Operation, String>>() {}).toInstance(DIFF_TO_STRING);
-						bind(new TypeLiteral<OTSystem<Operation>>() {}).toInstance(createOTSystem());
+						bind(new Key<StructuredCodec<Operation>>() {}).toInstance(OPERATION_CODEC);
+						bind(new Key<Function<Operation, String>>() {}).toInstance(DIFF_TO_STRING);
+						bind(new Key<OTSystem<Operation>>() {}).toInstance(createOTSystem());
 					}
-				}).with(new GlobalOTDemoModule()),
-				override(new GlobalNodesModule())
-						.with(new ExampleCommonModule())
+				}), singletonList(new GlobalOTDemoModule())),
+				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule()))
 		);
 	}
 
@@ -79,7 +80,7 @@ public final class GlobalOTDemoApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalOTDemoApp().launch(false, args);
+		new GlobalOTDemoApp().launch(args);
 	}
 
 }

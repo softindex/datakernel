@@ -103,7 +103,6 @@ protected Collection<Module> getOverrideModules() {
 protected Collection<Module> getBusinessLogicModules() {
 	return singletonList(
 		new AbstractModule() {
-			@Singleton
 			@Provides
 			AsyncServlet rootServlet() {
 				return request -> {

@@ -16,20 +16,16 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtFunction;
 
-@Singleton
 public final class CrdtDescriptor<K extends Comparable<K>, S> {
 	private final CrdtFunction<S> crdtFunction;
 	private final CrdtDataSerializer<K, S> serializer;
 	private final StructuredCodec<K> keyCodec;
 	private final StructuredCodec<S> stateCodec;
 
-	@Inject
 	public CrdtDescriptor(CrdtFunction<S> crdtFunction, CrdtDataSerializer<K, S> serializer, StructuredCodec<K> keyCodec, StructuredCodec<S> stateCodec) {
 		this.crdtFunction = crdtFunction;
 		this.serializer = serializer;

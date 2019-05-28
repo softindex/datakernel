@@ -1,10 +1,9 @@
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.session.SessionServlet;
@@ -24,7 +23,6 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoaders.ofClassPath;
 import static io.datakernel.util.CollectionUtils.list;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 //[START EXAMPLE]
@@ -33,19 +31,16 @@ public class AuthLauncher extends HttpServerLauncher {
 	protected Collection<Module> getBusinessLogicModules() {
 		return list(new AbstractModule() {
 			@Provides
-			@Singleton
 			AuthService loginService() {
 				return new AuthServiceImpl();
 			}
 
 			@Provides
-			@Singleton
 			StaticLoader staticLoader() {
 				return ofClassPath(newSingleThreadExecutor(), "site/");
 			}
 
 			@Provides
-			@Singleton
 			AsyncServlet mainServlet(AuthService authService, StaticLoader staticLoader, Eventloop eventloop) {
 				SessionStore<String> store = new SessionStoreInMemory<>();
 				Supplier<String> sessionIdSupplier = () -> UUID.randomUUID().toString();
@@ -116,7 +111,7 @@ public class AuthLauncher extends HttpServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		AuthLauncher launcher = new AuthLauncher();
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }
 //[END EXAMPLE]

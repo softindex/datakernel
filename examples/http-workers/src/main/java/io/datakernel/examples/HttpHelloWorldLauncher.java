@@ -17,12 +17,13 @@
 package io.datakernel.examples;
 
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.worker.WorkerPoolModule;
 
 import java.util.Collection;
 
@@ -60,7 +61,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		HttpHelloWorldLauncher launcher = new HttpHelloWorldLauncher();
-		launcher.launch(true, args);
+		launcher.launch(args);
 	}
 }
 // [END EXAMPLE]

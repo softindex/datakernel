@@ -1,8 +1,8 @@
 package io.datakernel.launchers.http;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;

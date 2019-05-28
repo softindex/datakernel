@@ -16,8 +16,8 @@
 
 package io.datakernel.jmx;
 
-import com.google.inject.BindingAnnotation;
-import com.google.inject.Key;
+import io.datakernel.di.Key;
+import io.datakernel.di.NameAnnotation;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -49,7 +49,7 @@ public class DynamicMBeanRegistrationTest {
 			);
 		}});
 
-		Key<?> key = Key.get(CustomKeyClass.class, createCustomAnnotation("Global"));
+		Key<?> key = Key.of(CustomKeyClass.class, createCustomAnnotation("Global"));
 		jmxRegistry.registerSingleton(key, service, null);
 	}
 
@@ -92,7 +92,7 @@ public class DynamicMBeanRegistrationTest {
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@BindingAnnotation
+	@NameAnnotation
 	public @interface CustomAnnotation {
 		String value() default "";
 	}

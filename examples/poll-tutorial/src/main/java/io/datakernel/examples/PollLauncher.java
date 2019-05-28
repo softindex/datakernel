@@ -3,12 +3,11 @@ package io.datakernel.examples;
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
 import com.google.common.collect.ImmutableMap;
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
@@ -25,7 +24,6 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.map;
-import static java.lang.Boolean.parseBoolean;
 
 //[START EXAMPLE]
 public final class PollLauncher extends HttpServerLauncher {
@@ -40,13 +38,11 @@ public final class PollLauncher extends HttpServerLauncher {
 	protected Collection<Module> getBusinessLogicModules() {
 		return list(new AbstractModule() {
 			@Provides
-			@Singleton
 			PollDao pollRepo() {
 				return new PollDaoImpl();
 			}
 
 			@Provides
-			@Singleton
 			AsyncServlet servlet(PollDao pollDao) {
 				Mustache singlePollView = new DefaultMustacheFactory().compile("templates/singlePollView.html");
 				Mustache singlePollCreate = new DefaultMustacheFactory().compile("templates/singlePollCreate.html");
@@ -116,7 +112,7 @@ public final class PollLauncher extends HttpServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new PollLauncher();
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 }
 //[END EXAMPLE]

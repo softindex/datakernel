@@ -17,38 +17,34 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPools;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 // [START EXAMPLE]
 public class HttpHelloWorldModule extends AbstractModule {
+
 	@Provides
-	@Singleton
-	WorkerPool workerPool(Config config) {
-		return new WorkerPool(config.get(ofInteger(), "workers", 4));
+	WorkerPool workerPool(Config config, WorkerPools workerPools) {
+		return workerPools.createPool(config.get(ofInteger(), "workers", 4));
 	}
 
 	@Provides
-	@Singleton
-	@Primary
 	Eventloop primaryEventloop() {
 		return Eventloop.create();
 	}
 
 	@Provides
-	@Singleton
-	PrimaryServer primaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
+	PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 		int port = config.get(ofInteger(), "port", 5577);
 		return PrimaryServer.create(primaryEventloop, workerPool.getInstances(AsyncHttpServer.class)).withListenPort(port);
 	}

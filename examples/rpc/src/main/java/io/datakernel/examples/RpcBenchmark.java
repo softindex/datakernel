@@ -16,12 +16,15 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
-import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
@@ -73,7 +76,6 @@ public class RpcBenchmark extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					@Named("client")
 					Eventloop eventloopClient() {
 						return Eventloop.create()
@@ -81,7 +83,6 @@ public class RpcBenchmark extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					@Named("server")
 					Eventloop eventloopServer() {
 						return Eventloop.create()
@@ -89,7 +90,6 @@ public class RpcBenchmark extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					public RpcClient rpcClient(@Named("client") Eventloop eventloop, Config config) {
 						return RpcClient.create(eventloop)
 								.withMessageTypes(String.class)
@@ -97,7 +97,6 @@ public class RpcBenchmark extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					public RpcServer rpcServer(@Named("server") Eventloop eventloop, Config config) {
 						return RpcServer.create(eventloop)
 								.withListenPort(config.get(ofInteger(), "rpc.server.port"))
@@ -243,6 +242,6 @@ public class RpcBenchmark extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		RpcBenchmark benchmark = new RpcBenchmark();
-		benchmark.launch(true, args);
+		benchmark.launch(args);
 	}
 }

@@ -16,7 +16,9 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
+import io.datakernel.di.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
@@ -25,13 +27,12 @@ import java.util.concurrent.ExecutionException;
 
 public class ServiceGraphModuleExample extends AbstractModule {
 	@Provides
-	@Singleton
 	Eventloop provideEventloop() {
 		return Eventloop.create();
 	}
 
 	public static void main(String[] args) throws ExecutionException, InterruptedException {
-		Injector injector = Guice.createInjector(ServiceGraphModule.defaultInstance(), new ServiceGraphModuleExample());
+		Injector injector = Injector.of(ServiceGraphModule.defaultInstance(), new ServiceGraphModuleExample());
 		Eventloop eventloop = injector.getInstance(Eventloop.class);
 
 		eventloop.execute(() -> System.out.println("Hello World"));

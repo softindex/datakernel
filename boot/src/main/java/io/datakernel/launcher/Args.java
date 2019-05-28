@@ -16,7 +16,7 @@
 
 package io.datakernel.launcher;
 
-import com.google.inject.BindingAnnotation;
+import io.datakernel.di.NameAnnotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -25,6 +25,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.PARAMETER})
-@BindingAnnotation
+@NameAnnotation
 public @interface Args {
 }

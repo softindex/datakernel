@@ -1,6 +1,6 @@
 package io.datakernel.jmx;
 
-import com.google.inject.Key;
+import io.datakernel.di.Key;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.Nullable;
 

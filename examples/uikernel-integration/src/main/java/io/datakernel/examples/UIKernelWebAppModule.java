@@ -17,10 +17,9 @@
 package io.datakernel.examples;
 
 import com.google.gson.Gson;
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -45,12 +44,11 @@ public class UIKernelWebAppModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(ExecutorService.class).toInstance(newCachedThreadPool());
-		bind(PersonGridModel.class).in(Singleton.class);
-		bind(Gson.class).in(Singleton.class);
+		bind(PersonGridModel.class).implicitly();
+		bind(Gson.class).implicitly();
 	}
 
 	@Provides
-	@Singleton
 	AsyncHttpServer server(Eventloop eventloop, Gson gson, PersonGridModel model, Config config) {
 		Path resources = Paths.get(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
 		StaticLoader resourceLoader = StaticLoaders.ofPath(resources);
@@ -70,7 +68,6 @@ public class UIKernelWebAppModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	Eventloop eventloop() {
 		return Eventloop.create();
 	}

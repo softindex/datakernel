@@ -16,8 +16,11 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
 import io.datakernel.async.Promise;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
@@ -43,14 +46,12 @@ public class RpcExample extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					Eventloop eventloop() {
 						return Eventloop.create()
 								.withFatalErrorHandler(rethrowOnAnyError());
 					}
 
 					@Provides
-					@Singleton
 					RpcServer rpcServer(Eventloop eventloop) {
 						return RpcServer.create(eventloop)
 								.withMessageTypes(String.class)
@@ -59,7 +60,6 @@ public class RpcExample extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					RpcClient rpcClient(Eventloop eventloop) {
 						return RpcClient.create(eventloop)
 								.withMessageTypes(String.class)
@@ -82,6 +82,6 @@ public class RpcExample extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		RpcExample example = new RpcExample();
-		example.launch(true, args);
+		example.launch(args);
 	}
 }

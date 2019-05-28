@@ -16,13 +16,12 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
@@ -31,8 +30,6 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.launchers.http.HttpServerLauncher.EAGER_SINGLETONS_MODE;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.singletonList;
 
 public class HttpSimpleServer {
@@ -44,7 +41,6 @@ public class HttpSimpleServer {
 			protected Collection<Module> getBusinessLogicModules() {
 				return singletonList(
 						new AbstractModule() {
-							@Singleton
 							@Provides
 							AsyncServlet rootServlet() {
 								return request -> {
@@ -73,6 +69,6 @@ public class HttpSimpleServer {
 			}
 		};
 
-		launcher.launch(parseBoolean(EAGER_SINGLETONS_MODE), args);
+		launcher.launch(args);
 	}
 }

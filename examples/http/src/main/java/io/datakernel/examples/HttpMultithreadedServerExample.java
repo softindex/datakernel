@@ -16,12 +16,12 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
@@ -76,6 +76,6 @@ public final class HttpMultithreadedServerExample extends MultithreadedHttpServe
 
 	public static void main(String[] args) throws Exception {
 		HttpMultithreadedServerExample example = new HttpMultithreadedServerExample();
-		example.launch(true, args);
+		example.launch(args);
 	}
 }

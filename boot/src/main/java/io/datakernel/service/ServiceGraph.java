@@ -16,14 +16,11 @@
 
 package io.datakernel.service;
 
-import com.google.inject.Key;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.RecursiveType;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.util.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +53,14 @@ import static java.util.stream.Collectors.toList;
  */
 public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
+
+	public interface Key<T> {
+		@NotNull
+		TypeT<T> getTypeT();
+
+		@Nullable
+		Annotation getAnnotation();
+	}
 
 	private Runnable startCallback;
 
@@ -265,7 +270,6 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 
 	public ServiceGraph add(Key<?> key, Collection<Key<?>> dependencies) {
 		for (Key<?> dependency : dependencies) {
-			checkArgument(!(dependency instanceof Service), "Dependency %s must be a key, not a service", dependency);
 			forwards.computeIfAbsent(key, o -> new HashSet<>()).add(dependency);
 			backwards.computeIfAbsent(dependency, o -> new HashSet<>()).add(key);
 		}
@@ -278,7 +282,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private CompletionStage<?> processNode(Key<?> node, boolean start,
-										   Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
+			Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
 		List<CompletionStage<?>> dependencies = new ArrayList<>();
 		for (Key<?> dependency : (start ? forwards : backwards).getOrDefault(node, emptySet())) {
 			dependencies.add(processNode(dependency, start, cache, executor));
@@ -530,7 +534,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	private String keyToString(Key<?> key) {
 		Annotation annotation = key.getAnnotation();
 		return (annotation != null ? prettyPrintAnnotation(annotation) + " " : "") +
-				key.getTypeLiteral();
+				key.getTypeT();
 	}
 
 	private String keyToNode(Key<?> key) {
@@ -545,7 +549,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		Object nodeSuffix = nodeSuffixes.apply(key);
 		NodeStatus status = nodeStatuses.get(key);
 		String label = (annotation != null ? prettyPrintAnnotation(annotation) + "\\n" : "") +
-				RecursiveType.of(key.getTypeLiteral().getType()).getSimpleName() +
+				RecursiveType.of(key.getTypeT()).getSimpleName() +
 				(nodeSuffix != null ? " [" + nodeSuffix + "]" : "") +
 				(status != null && status.isStarted() ?
 						"\\n" +

@@ -16,10 +16,13 @@
 
 package io.global.launchers.discovery;
 
-import com.google.inject.*;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
@@ -39,17 +42,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public class DiscoveryServiceLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "discovery-service.properties";
 
 	@Inject
@@ -57,7 +58,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 	@Override
 	protected final Collection<Module> getModules() {
-		return Collections.singletonList(override(getBaseModules()).with(getOverrideModules()));
+		return Collections.singletonList(override(getBaseModules(), getOverrideModules()));
 	}
 
 	private Collection<Module> getBaseModules() {
@@ -70,51 +71,43 @@ public class DiscoveryServiceLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					Eventloop eventloop(Config config) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")));
 					}
 
 					@Provides
-					@Singleton
 					DiscoveryService discoveryService(Eventloop eventloop, AnnouncementStorage announcementStorage, SharedKeyStorage sharedKeyStorage) {
 						return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
 					}
 
 					@Provides
-					@Singleton
 					AnnouncementStorage announcementStorage(FsClient storage) {
 						return new RemoteFsAnnouncementStorage(storage.subfolder("announcements"));
 					}
 
 					@Provides
-					@Singleton
 					SharedKeyStorage sharedKeyStorage(FsClient storage) {
 						return new RemoteFsSharedKeyStorage(storage.subfolder("keys"));
 					}
 
 					@Provides
-					@Singleton
 					FsClient fsClient(Eventloop eventloop, ExecutorService executor, Config config) {
 						return LocalFsClient.create(eventloop, config.get(ofPath(), "discovery.storage"))
 								.withRevisions();
 					}
 
 					@Provides
-					@Singleton
 					DiscoveryServlet discoveryServlet(DiscoveryService discoveryService) {
 						return DiscoveryServlet.create(discoveryService);
 					}
 
 					@Provides
-					@Singleton
 					AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
 					}
 
 					@Provides
-					@Singleton
 					public ExecutorService executor(Config config) {
 						return ConfigConverters.getExecutor(config.getChild("fs.executor"));
 					}
@@ -136,6 +129,6 @@ public class DiscoveryServiceLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new DiscoveryServiceLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new DiscoveryServiceLauncher().launch(args);
 	}
 }

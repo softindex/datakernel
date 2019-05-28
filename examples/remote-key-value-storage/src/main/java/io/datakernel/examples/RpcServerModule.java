@@ -15,10 +15,9 @@
  */
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -30,20 +29,17 @@ public class RpcServerModule extends AbstractModule {
 	private static final int RPC_SERVER_PORT = 5353;
 
 	@Provides
-	@Singleton
 	Eventloop eventloop() {
 		return Eventloop.create()
 				.withFatalErrorHandler(rethrowOnAnyError());
 	}
 
 	@Provides
-	@Singleton
 	KeyValueStore keyValueStore() {
 		return new KeyValueStore();
 	}
 
 	@Provides
-	@Singleton
 	RpcServer rpcServer(Eventloop eventloop, KeyValueStore store) {
 		return RpcServer.create(eventloop)
 				.withSerializerBuilder(SerializerBuilder.create(Thread.currentThread().getContextClassLoader()))

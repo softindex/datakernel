@@ -16,16 +16,12 @@
 
 package io.datakernel.config;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.TypeLiteral;
+import io.datakernel.di.Optional;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.service.BlockingService;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.OptionalInitializer;
-import io.datakernel.util.guice.RequiredDependency;
+import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +33,7 @@ import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -142,23 +139,18 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Override
 	protected void configure() {
-		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<ConfigModuleService>>() {}).asEagerSingleton();
-
 		bind(Config.class).to(EffectiveConfig.class);
 	}
 
 	@Provides
-	@Singleton
 	EffectiveConfig provideConfig() {
 		Config config = new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()));
 		return EffectiveConfig.wrap(config);
 	}
 
 	@Provides
-	@Singleton
-	ConfigModuleService service(EffectiveConfig config, OptionalInitializer<ConfigModule> optionalInitializer) {
-		optionalInitializer.accept(this);
+	ConfigModuleService service(EffectiveConfig config, @Optional Set<Initializer<ConfigModule>> initializers) {
+		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
 		return new ConfigModuleService() {
 			@Override
 			public void start() {

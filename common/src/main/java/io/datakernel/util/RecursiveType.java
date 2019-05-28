@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.GenericArrayType;
@@ -31,33 +32,41 @@ import static java.util.stream.Collectors.toList;
 public final class RecursiveType {
 	private static final RecursiveType[] NO_TYPE_PARAMS = new RecursiveType[0];
 
+	@NotNull
 	private final Class<?> clazz;
+	@NotNull
 	private final RecursiveType[] typeParams;
+
 	private final int arrayDimension;
 
-	private RecursiveType(Class<?> clazz, RecursiveType[] typeParams, int arrayDimension) {
+	private RecursiveType(@NotNull Class<?> clazz, @NotNull RecursiveType[] typeParams, int arrayDimension) {
 		this.clazz = clazz;
 		this.typeParams = typeParams;
 		this.arrayDimension = arrayDimension;
 	}
 
-	public static RecursiveType of(Class clazz) {
+	@NotNull
+	public static RecursiveType of(@NotNull Class clazz) {
 		return new RecursiveType(clazz, NO_TYPE_PARAMS, clazz.isArray() ? 1 : 0);
 	}
 
-	public static RecursiveType of(Class<?> clazz, RecursiveType... typeParams) {
+	@NotNull
+	public static RecursiveType of(@NotNull Class<?> clazz, @NotNull RecursiveType... typeParams) {
 		return new RecursiveType(clazz, typeParams, clazz.isArray() ? 1 : 0);
 	}
 
-	public static RecursiveType of(Class<?> clazz, List<RecursiveType> typeParams) {
+	@NotNull
+	public static RecursiveType of(@NotNull Class<?> clazz, @NotNull List<RecursiveType> typeParams) {
 		return new RecursiveType(clazz, typeParams.toArray(new RecursiveType[0]), clazz.isArray() ? 1 : 0);
 	}
 
-	public static RecursiveType of(TypeT<?> type) {
+	@NotNull
+	public static RecursiveType of(@NotNull TypeT<?> type) {
 		return of(type.getType());
 	}
 
-	public static RecursiveType of(Type type) {
+	@NotNull
+	public static RecursiveType of(@NotNull Type type) {
 		if (type instanceof Class) {
 			return of((Class<?>) type);
 		} else if (type instanceof ParameterizedType) {
@@ -78,10 +87,12 @@ public final class RecursiveType {
 		}
 	}
 
+	@NotNull
 	public Class getRawType() {
 		return clazz;
 	}
 
+	@NotNull
 	public RecursiveType[] getTypeParams() {
 		return typeParams;
 	}
@@ -94,13 +105,20 @@ public final class RecursiveType {
 		return arrayDimension;
 	}
 
-	private Type getArrayType(Type component, int arrayDeepness) {
+	@NotNull
+	private Type getArrayType(@NotNull Type component, int arrayDeepness) {
 		if (arrayDeepness == 0) {
 			return component;
 		}
 		return (GenericArrayType) () -> getArrayType(component, arrayDeepness - 1);
 	}
 
+	@NotNull
+	public <T> TypeT<T> getTypeT() {
+		return TypeT.ofType(getType());
+	}
+
+	@NotNull
 	public Type getType() {
 		if (typeParams.length == 0) {
 			return getArrayType(clazz, arrayDimension);
@@ -112,11 +130,13 @@ public final class RecursiveType {
 				.toArray(new Type[]{});
 
 		ParameterizedType parameterized = new ParameterizedType() {
+			@NotNull
 			@Override
 			public Type[] getActualTypeArguments() {
 				return types;
 			}
 
+			@NotNull
 			@Override
 			public Type getRawType() {
 				return clazz;
@@ -128,6 +148,7 @@ public final class RecursiveType {
 				return null;
 			}
 
+			@NotNull
 			@Override
 			public String toString() {
 				return RecursiveType.this.toString();
@@ -138,7 +159,7 @@ public final class RecursiveType {
 
 	@SuppressWarnings("RedundantIfStatement")
 	@Override
-	public boolean equals(Object o) {
+	public boolean equals(@Nullable Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		RecursiveType that = (RecursiveType) o;
@@ -154,6 +175,7 @@ public final class RecursiveType {
 		return result;
 	}
 
+	@NotNull
 	public String getSimpleName() {
 		return clazz.getSimpleName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
@@ -161,6 +183,7 @@ public final class RecursiveType {
 						.collect(Collectors.joining(",", "<", ">"))) + new String(new char[arrayDimension]).replace("\0", "[]");
 	}
 
+	@NotNull
 	public String getName() {
 		return clazz.getName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
@@ -174,6 +197,7 @@ public final class RecursiveType {
 		return pkg != null ? pkg.getName() : null;
 	}
 
+	@NotNull
 	@Override
 	public String toString() {
 		return getName();

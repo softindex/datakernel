@@ -16,12 +16,12 @@
 
 package io.global.launchers;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
+import io.datakernel.di.Named;
+import io.datakernel.di.Optional;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.DnsCache;
@@ -31,7 +31,6 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
@@ -50,7 +49,6 @@ import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
-import org.jetbrains.annotations.Async;
 import io.global.ot.server.ValidatingGlobalOTNode;
 
 import java.util.function.Function;
@@ -73,15 +71,13 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
-	Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+	Eventloop provide(Config config, @Optional ThrottlingController throttlingController) {
 		return Eventloop.create()
 				.initialize(ofEventloop(config.getChild("eventloop")))
-				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
 	@Provides
-	@Singleton
 	GlobalOTNode provide(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, commitStorage, factory)
 				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
@@ -89,7 +85,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	GlobalFsNodeImpl provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory, FsClient fsClient) {
 		return GlobalFsNodeImpl.create(serverId, discoveryService, factory, fsClient)
 				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
@@ -97,33 +92,28 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	LocalGlobalKvNode provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
 		return LocalGlobalKvNode.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
 				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
 	}
 
 	@Provides
-	@Singleton
 	RawServerId provideServerId(Config config) {
 		return config.get(ofRawServerId(), "node.serverId");
 	}
 
 	@Provides
-	@Singleton
 	DiscoveryService provide(Config config, IAsyncHttpClient client) {
 		return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "discovery.address"), client);
 	}
 
 	@Provides
-	@Singleton
 	IAsyncHttpClient provide(Eventloop eventloop, AsyncDnsClient dnsClient) {
 		return AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient);
 	}
 
 	@Provides
-	@Singleton
 	AsyncDnsClient provideDnsClient(Eventloop eventloop, Config config) {
 		RemoteAsyncDnsClient remoteDnsClient = RemoteAsyncDnsClient.create(eventloop)
 				.withDnsServerAddress(config.get(ofInetSocketAddress(), "dns.serverAddress", GOOGLE_PUBLIC_DNS))
@@ -132,7 +122,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	AsyncHttpServer provide(Eventloop eventloop, AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
@@ -143,7 +132,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	AsyncServlet provide(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet, @Named("kv") AsyncServlet kvServlet) {
 		return RoutingServlet.create()
 				.with("/ot/*", otServlet)
@@ -152,59 +140,50 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	RawServerServlet provideRawServerServlet(GlobalOTNode node) {
 		return RawServerServlet.create(ValidatingGlobalOTNode.create(node));
 	}
 
 	@Provides
-	@Singleton
 	@Named("fs")
 	AsyncServlet provideGlobalFsServlet(GlobalFsNode node) {
 		return GlobalFsNodeServlet.create(node);
 	}
 
 	@Provides
-	@Singleton
 	@Named("kv")
 	AsyncServlet provideGlobalDbServlet(GlobalKvNode node) {
 		return GlobalKvNodeServlet.create(node);
 	}
 
 	@Provides
-	@Singleton
 	CommitStorage provideCommitStorage(Eventloop eventloop, Config config) {
 		return CommitStorageRocksDb.create(eventloop, config.get("ot.storage"));
 	}
 
 	@Provides
-	@Singleton
 	FsClient provide(Eventloop eventloop, Config config) {
 		return LocalFsClient.create(eventloop, config.get(ofPath(), "fs.storage"))
 				.withRevisions();
 	}
 
 	@Provides
-	@Singleton
 	Function<RawServerId, GlobalFsNode> provideFsNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalFsNode.create(id.getServerIdString(), client);
 	}
 
 	@Provides
-	@Singleton
 	Function<RawServerId, GlobalOTNode> provideOTNodeFactory(IAsyncHttpClient client) {
 		return id -> ValidatingGlobalOTNode.create(HttpGlobalOTNode.create(id.getServerIdString(), client));
 	}
 
 	@Provides
-	@Singleton
 	Function<RawServerId, GlobalKvNode> provideDbNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
 	}
 
 	// region schedulers
 	@Provides
-	@Singleton
 	@Named("FS push")
 	EventloopTaskScheduler provideFsPushScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
@@ -212,7 +191,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	@Named("FS catch up")
 	EventloopTaskScheduler provideFsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
@@ -220,7 +198,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	@Named("DB push")
 	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, LocalGlobalKvNode node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
@@ -228,7 +205,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	@Named("DB catch up")
 	EventloopTaskScheduler provideDbCatchUpScheduler(Eventloop eventloop, LocalGlobalKvNode node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)

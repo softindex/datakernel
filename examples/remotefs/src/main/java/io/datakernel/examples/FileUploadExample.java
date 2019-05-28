@@ -16,8 +16,11 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
 import io.datakernel.csp.file.ChannelFileReader;
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
@@ -63,7 +66,6 @@ public class FileUploadExample extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides
-					@Singleton
 					Eventloop eventloop() {
 						return Eventloop.create()
 								.withFatalErrorHandler(rethrowOnAnyError())
@@ -71,13 +73,11 @@ public class FileUploadExample extends Launcher {
 					}
 
 					@Provides
-					@Singleton
 					RemoteFsClient remoteFsClient(Eventloop eventloop) {
 						return RemoteFsClient.create(eventloop, new InetSocketAddress(SERVER_PORT));
 					}
 
 					@Provides
-					@Singleton
 					ExecutorService executor() {
 						return Executors.newCachedThreadPool();
 					}
@@ -107,6 +107,6 @@ public class FileUploadExample extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		FileUploadExample example = new FileUploadExample();
-		example.launch(true, args);
+		example.launch(args);
 	}
 }

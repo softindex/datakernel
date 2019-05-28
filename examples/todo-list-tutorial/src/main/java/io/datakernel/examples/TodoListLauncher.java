@@ -1,15 +1,14 @@
 package io.datakernel.examples;
 
 import com.google.common.base.Charsets;
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.di.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
@@ -48,20 +47,17 @@ public final class TodoListLauncher extends HttpServerLauncher {
 	protected Collection<Module> getBusinessLogicModules() {
 		return list(new AbstractModule() {
 
-			@Singleton
 			@Provides
 			RecordDAO recordRepo() {
 				return new RecordImplDAO();
 			}
 
-			@Singleton
 			@Provides
 			@Named("static")
 			AsyncServlet servlet(Eventloop eventloop) {
 				return StaticServlet.create(eventloop, ofClassPath(newCachedThreadPool(), "build/"));
 			}
 
-			@Singleton
 			@Provides
 			AsyncServlet servlet(RecordDAO recordDAO, @Named("static") AsyncServlet staticServlet) {
 				return RoutingServlet.create()
@@ -112,7 +108,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 	//[START REGION_4]
 	public static void main(String[] args) throws Exception {
 		TodoListLauncher launcher = new TodoListLauncher();
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		launcher.launch(args);
 	}
 	//[END REGION_4]
 }

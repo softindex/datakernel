@@ -16,8 +16,6 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.*;
-import com.google.inject.util.Types;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtRepartitionController;
 import io.datakernel.crdt.CrdtServer;
@@ -25,8 +23,14 @@ import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.di.Key;
+import io.datakernel.di.NameAnnotation;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.util.RecursiveType;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -34,12 +38,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.List;
 
 import static io.datakernel.launchers.crdt.Initializers.ofCrdtCluster;
 import static io.datakernel.launchers.crdt.Initializers.ofFsCrdtClient;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
 
 public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends AbstractModule {
 
@@ -49,31 +56,31 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 		Type genericSuperclass = getClass().getGenericSuperclass();
 		Type[] typeArguments = ((ParameterizedType) genericSuperclass).getActualTypeArguments();
 
-		Type supertype = Types.newParameterizedType(CrdtStorage.class, typeArguments);
+		List<RecursiveType> typeArgs = Arrays.stream(typeArguments).map(RecursiveType::of).collect(toList());
+		@NotNull Type supertype = RecursiveType.of(CrdtStorage.class, typeArgs).getType();
 
-		bind((Key) Key.get(supertype, InMemory.class))
-				.to(Key.get(Types.newParameterizedType(CrdtStorageMap.class, typeArguments)));
-		bind((Key) Key.get(supertype, Persistent.class))
-				.to(Key.get(Types.newParameterizedType(CrdtStorageFs.class, typeArguments)));
-		bind((Key) Key.get(supertype, Cluster.class))
-				.to(Key.get(Types.newParameterizedType(CrdtStorageCluster.class, String.class, typeArguments[0], typeArguments[1])));
+		bind((Key) Key.ofType(supertype, InMemory.class))
+				.to(Key.ofType(RecursiveType.of(CrdtStorageMap.class, typeArgs).getType()));
+		bind((Key) Key.ofType(supertype, Persistent.class))
+				.to(Key.ofType(RecursiveType.of(CrdtStorageFs.class, typeArgs).getType()));
+
+		typeArgs.add(0, RecursiveType.of(String.class));
+		bind((Key) Key.ofType(supertype, Cluster.class))
+				.to(Key.ofType(RecursiveType.of(CrdtStorageCluster.class, typeArgs).getType()));
 	}
 
 	@Provides
-	@Singleton
 	CrdtStorageMap<K, S> provideRuntimeCrdtClient(Eventloop eventloop, CrdtDescriptor<K, S> descriptor) {
 		return CrdtStorageMap.create(eventloop, descriptor.getCrdtFunction());
 	}
 
 	@Provides
-	@Singleton
 	CrdtStorageFs<K, S> provideFsCrdtClient(Eventloop eventloop, Config config, FsClient fsClient, CrdtDescriptor<K, S> descriptor) {
 		return CrdtStorageFs.create(eventloop, fsClient, descriptor.getSerializer(), descriptor.getCrdtFunction())
 				.initialize(ofFsCrdtClient(config));
 	}
 
 	@Provides
-	@Singleton
 	CrdtStorageCluster<String, K, S> provideClusterCrdtClient(Config config, CrdtStorageMap<K, S> localClient, CrdtDescriptor<K, S> descriptor) {
 		return CrdtStorageCluster.create(
 				localClient.getEventloop(),
@@ -83,13 +90,11 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 	}
 
 	@Provides
-	@Singleton
 	CrdtRepartitionController<String, K, S> provideCrdtRepartitionController(CrdtStorageCluster<String, K, S> clusterClient, Config config) {
 		return CrdtRepartitionController.create(clusterClient, config.get("crdt.cluster.localPartitionId"));
 	}
 
 	@Provides
-	@Singleton
 	CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, CrdtStorageMap<K, S> client, CrdtDescriptor<K, S> descriptor, Config config) {
 		return CrdtServer.create(eventloop, client, descriptor.getSerializer())
 				.initialize(ofAbstractServer(config.getChild("crdt.server")));
@@ -97,14 +102,12 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 
 	@Provides
 	@Cluster
-	@Singleton
 	CrdtServer<K, S> provideClusterServer(Eventloop eventloop, CrdtStorageCluster<String, K, S> client, CrdtDescriptor<K, S> descriptor, Config config) {
 		return CrdtServer.create(eventloop, client, descriptor.getSerializer())
 				.initialize(ofAbstractServer(config.getChild("crdt.cluster.server")));
 	}
 
 	@Provides
-	@Singleton
 	Eventloop provideEventloop(Config config) {
 		return Eventloop.create()
 				.initialize(ofEventloop(config));
@@ -112,16 +115,16 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@BindingAnnotation
+	@NameAnnotation
 	public @interface InMemory {}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@BindingAnnotation
+	@NameAnnotation
 	public @interface Persistent {}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@BindingAnnotation
+	@NameAnnotation
 	public @interface Cluster {}
 }
