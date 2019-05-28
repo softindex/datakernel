@@ -40,14 +40,15 @@ public final class BindingInitializer<T> {
 		}
 		List<Initializer<T>> initializers = new ArrayList<>();
 		List<Dependency> keys = new ArrayList<>();
-		for (BindingInitializer<T> bindingInitializer : bindingInitializers) {
-			int offset = keys.size();
-			int count = bindingInitializer.getDependencies().length;
-			Collections.addAll(keys, bindingInitializer.getDependencies());
-			initializers.add((instance, args) ->
-					bindingInitializer.getInitializer().apply(instance, copyOfRange(args, offset, count)));
+		for (BindingInitializer<T> bi : bindingInitializers) {
+			Initializer<T> initializer = bi.getInitializer();
+			int from = keys.size();
+			int to = from + bi.getDependencies().length;
+
+			Collections.addAll(keys, bi.getDependencies());
+
+			initializers.add((instance, args) -> initializer.apply(instance, copyOfRange(args, from, to)));
 		}
-		return BindingInitializer.of(keys.toArray(new Dependency[0]), (instance, args) ->
-				initializers.forEach(initializer -> initializer.apply(instance, args)));
+		return BindingInitializer.of(keys.toArray(new Dependency[0]), (instance, args) -> initializers.forEach(initializer -> initializer.apply(instance, args)));
 	}
 }

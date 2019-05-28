@@ -21,12 +21,12 @@ public final class LocationInfo {
 	public static LocationInfo from(Method providerMethod) {
 		Class<?> declaringClass = providerMethod.getDeclaringClass();
 		Class<?> module = Modifier.isStatic(providerMethod.getModifiers()) ? null : declaringClass;
-		return new LocationInfo(module, declaringClass.getName() + "." + providerMethod.getName() + "(" + getShortName(declaringClass) + ".java:0)");
+		return new LocationInfo(module, declaringClass.getName() + "." + providerMethod.getName() + "(" + getShortName(declaringClass.getName()) + ".java:0)");
 	}
 
 	public static LocationInfo from(Constructor<?> injectConstructor) {
 		Class<?> declaringClass = injectConstructor.getDeclaringClass();
-		return new LocationInfo(null, declaringClass.getName() + ".<init>(" + getShortName(declaringClass) + ".java:0)");
+		return new LocationInfo(null, declaringClass.getName() + ".<init>(" + getShortName(declaringClass.getName()) + ".java:0)");
 	}
 
 	public static LocationInfo from(StackTraceElement binderCall) {

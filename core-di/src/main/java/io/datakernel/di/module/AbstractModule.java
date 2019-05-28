@@ -16,9 +16,11 @@ import java.util.function.Function;
 
 import static io.datakernel.di.module.Modules.multibinderToSet;
 import static io.datakernel.di.util.ReflectionUtils.*;
+import static io.datakernel.di.util.Utils.mergeConflictResolvers;
 import static io.datakernel.di.util.Utils.multimapMerger;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
+import static java.util.Collections.singletonMap;
 
 public abstract class AbstractModule implements Module {
 
@@ -30,41 +32,39 @@ public abstract class AbstractModule implements Module {
 		addDeclarativeBindings();
 	}
 
-	@SuppressWarnings("unchecked")
 	private void addDeclarativeBindings() {
-		for (Method method : getClass().getDeclaredMethods()) {
-			Annotation[] annotations = method.getDeclaredAnnotations();
-			Key<Object> key = keyOf(method.getGenericReturnType(), annotations);
-			if (method.isAnnotationPresent(Provides.class)) {
-				bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
-						.get()
-						.computeIfAbsent(key, $ -> new HashSet<>())
-						.add(bindingForMethod(this, method).apply(injectingInitializer(key)));
-			}
-			if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
-				Binding<Object> binding = bindingForMethod(this, method).apply(injectingInitializer(key));
-				Factory<Object> factory = binding.getFactory();
-				Key<Set<Object>> setKey = Key.ofType(parameterized(Set.class, key.getType()), key.getName());
+		Key<?> moduleType = Key.of(getClass());
 
-				bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
-						.get()
-						.computeIfAbsent(setKey, $ -> new HashSet<>())
-						.add(Binding.of(binding.getDependencies(), args -> singleton(factory.create(args)), binding.getLocation()));
+		for (Method provider : getAnnotatedElements(getClass(), Provides.class, Class::getDeclaredMethods)) {
+			Annotation[] annotations = provider.getDeclaredAnnotations();
+			Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
+			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+					.get()
+					.computeIfAbsent(key, $ -> new HashSet<>())
+					.add(bindingForMethod(this, provider).apply(fieldsInjector(key)));
+		}
+		for (Method provider : getAnnotatedElements(getClass(), ProvidesIntoSet.class, Class::getDeclaredMethods)) {
+			Annotation[] annotations = provider.getDeclaredAnnotations();
+			Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
 
-				conflictResolvers.putIfAbsent(setKey, (Function) multibinderToSet());
-			}
+			Binding<Object> binding = bindingForMethod(this, provider).apply(fieldsInjector(key));
+			Factory<Object> factory = binding.getFactory();
+			Key<Set<Object>> setKey = Key.ofType(parameterized(Set.class, key.getType()), key.getName());
+
+			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+					.get()
+					.computeIfAbsent(setKey, $ -> new HashSet<>())
+					.add(Binding.of(binding.getDependencies(), args -> singleton(factory.create(args))).at(binding.getLocation()));
+
+			resolveConflicts(setKey, multibinderToSet());
 		}
 	}
 
 	private <T> void addBinding(Scope[] scope, Key<T> key, Binding<T> binding) {
-		addBinding(scope, key, key, binding);
-	}
-
-	private <T> void addBinding(Scope[] scope, Key<T> key, Key<? extends T> targetKey, Binding<T> binding) {
 		bindings.computeIfAbsent(scope, $ -> new HashMap<>())
 				.get()
 				.computeIfAbsent(key, $ -> new HashSet<>())
-				.add(binding.apply(injectingInitializer(targetKey)));
+				.add(binding);
 	}
 
 	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument"})
@@ -100,7 +100,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public void to(Factory<T> factory, Key<?>... dependencies) {
-			addBinding(scope, key, Binding.of(dependencies, factory, getLocation()));
+			addBinding(scope, key, Binding.of(dependencies, factory).at(getLocation()).apply(fieldsInjector(key)));
 		}
 
 		public void to(Factory<T> factory, List<Key<?>> dependencies) {
@@ -181,7 +181,7 @@ public abstract class AbstractModule implements Module {
 
 		@SuppressWarnings("unchecked")
 		public void toInstance(T instance) {
-			addBinding(scope, key, Key.of((Class<? extends T>) instance.getClass()), Binding.of(new Key[]{}, $ -> instance, getLocation()));
+			addBinding(scope, key, Binding.constant(instance).at(getLocation()).apply(fieldsInjector((Key<T>) Key.of(instance.getClass()))));
 		}
 
 		public void implicitly() {
@@ -189,8 +189,8 @@ public abstract class AbstractModule implements Module {
 			if (binding == null) {
 				throw new RuntimeException("requested implicit binding for " + key + " but it had none");
 			}
-			binding.setLocation(getLocation()); // overriding the location, eh
-			addBinding(scope, key, binding);
+			// overriding the location, eh
+			addBinding(scope, key, binding.at(getLocation()).apply(fieldsInjector(key)));
 		}
 
 		@Nullable
@@ -209,9 +209,7 @@ public abstract class AbstractModule implements Module {
 
 	protected void install(Module module) {
 		bindings.addAll(module.getBindingsMultimap(), multimapMerger());
-		module.getConflictResolvers().forEach((k, v) -> conflictResolvers.merge(k, v, ($, $2) -> {
-			throw new RuntimeException("more than one conflict resolver per key");
-		}));
+		mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
 	}
 
 	protected final <T> BindingBuilder<T> bind(Key<T> key) {
@@ -224,9 +222,7 @@ public abstract class AbstractModule implements Module {
 
 	@SuppressWarnings("unchecked")
 	protected final <T> void resolveConflicts(Key<T> key, Function<Set<Binding<T>>, Binding<T>> conflictResolver) {
-		conflictResolvers.merge(key, (Function) conflictResolver, ($, $2) -> {
-			throw new RuntimeException("more than one conflict resolver per key");
-		});
+		mergeConflictResolvers(conflictResolvers, singletonMap(key, (Function) conflictResolver));
 	}
 
 	@Override

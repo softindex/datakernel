@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
@@ -216,7 +217,7 @@ public final class TestDI {
 	}
 
 	@Test
-	public void optional() {
+	public void optionalInjects() {
 		class ClassWithCustomDeps {
 
 			@Inject(optional = true)
@@ -283,7 +284,7 @@ public final class TestDI {
 			fail("should've failed, but didn't");
 		} catch (RuntimeException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("unsatisfied dependencies detected:\n\tkey java.lang.Integer required"));
+			assertTrue(e.getMessage().startsWith("unsatisfied dependencies detected:\n\tkey java.lang.Integer\n\t\trequired at"));
 		}
 	}
 
@@ -392,6 +393,31 @@ public final class TestDI {
 	}
 
 	@Test
+	public void providesOptional() {
+		Module module = new AbstractModule() {
+
+			@Provides
+			String provide(Integer integer, @Optional Float f) {
+				return "str: " + integer + ", " + f;
+			}
+
+			@Provides
+			Integer required() {
+				return 42;
+			}
+		};
+		Injector injector = Injector.of(module);
+
+		assertEquals("str: 42, null", injector.getInstance(String.class));
+
+		Injector injector2 = Injector.of(combine(module, new AbstractModule() {{
+			bind(Float.class).toInstance(3.14f);
+		}}));
+
+		assertEquals("str: 42, 3.14", injector2.getInstance(String.class));
+	}
+
+	@Test
 	public void providesIntoSet() {
 		Injector injector = Injector.of(new AbstractModule() {
 
@@ -467,17 +493,19 @@ public final class TestDI {
 
 	@Test
 	public void moduleWithGenerics() {
-		class Module1<D> extends AbstractModule {
+		abstract class Module1<D> extends AbstractModule {
 			@Provides
 			public String provideString(D object) {
-				return object.toString();
+				return "str: " + object.toString();
 			}
 		}
 
-		Injector injector = Injector.of(new Module1<Integer>());
+		Injector injector = Injector.of(new Module1<Integer>() {{
+			bind(Integer.class).toInstance(42);
+		}});
 		String string = injector.getInstance(String.class);
 
-		assertEquals("123", string);
+		assertEquals("str: 42", string);
 	}
 
 }

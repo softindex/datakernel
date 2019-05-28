@@ -39,11 +39,11 @@ public final class Dependency {
 	}
 
 	public String getDisplayString() {
-		return (required ? "required " : "optional ") + key.getDisplayString();
+		return (required ? "" : "optional ") + key.getDisplayString();
 	}
 
 	@Override
 	public String toString() {
-		return "{" + (required ? "required " : "optional ") + key + "}";
+		return "{" + (required ? "" : "optional ") + key + "}";
 	}
 }

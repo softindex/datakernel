@@ -78,13 +78,15 @@ public class Injector {
 
 		ReflectionUtils.addImplicitBindings(bindings);
 
-		Map<Key<?>, Binding<?>> unsatisfied = BindingUtils.getUnsatisfiedDependencies(bindings);
+		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingUtils.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {
 			String detail = unsatisfied.entrySet().stream()
-					.map(entry -> {
-						LocationInfo location = entry.getValue().getLocation();
-						return "\tkey " + entry.getKey() + " required at " + (location != null ? location.getDeclaration() : "<unknown binding location>");
-					})
+					.map(entry -> entry.getValue().stream()
+							.map(binding -> {
+								LocationInfo location = binding.getLocation();
+								return "at " + (location != null ? location.getDeclaration() : "<unknown binding location>");
+							})
+							.collect(joining("\n\t\t     and ", "\tkey " + entry.getKey() + "\n\t\trequired ", "")))
 					.collect(joining("\n"));
 			throw new RuntimeException("unsatisfied dependencies detected:\n" + detail + '\n');
 		}

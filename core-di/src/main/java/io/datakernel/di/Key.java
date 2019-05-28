@@ -1,5 +1,6 @@
 package io.datakernel.di;
 
+import io.datakernel.di.util.ReflectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -124,8 +125,7 @@ public abstract class Key<T> {
 	}
 
 	public String getDisplayString() {
-		// see ReflectionUtils#getShortName
-		return (name != null ? name.getDisplayString() + " " : "") + type.getTypeName().replaceAll("(?:[^.]+\\.)*([^.]+)", "$1");
+		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getShortName(type.getTypeName());
 	}
 
 	@Override

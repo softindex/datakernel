@@ -6,10 +6,9 @@ import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
 
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toMap;
+import static io.datakernel.di.util.Utils.toMultimap;
 import static java.util.stream.Collectors.toSet;
 
 public final class BindingUtils {
@@ -19,30 +18,36 @@ public final class BindingUtils {
 
 	/**
 	 * This method returns mapping from *unstatisfied keys* to *bindings that require them*
-	 * and not the common *key and the binding that provides it*
+	 * and not the common *key and the bindings that provide it*
 	 */
-	public static Map<Key<?>, Binding<?>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	public static Map<Key<?>, Set<Binding<?>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return getUnsatisfiedDependencies(new HashSet<>(), bindings)
-				.collect(toMap(Entry::getKey, Entry::getValue));
+				.collect(toMultimap(dtb -> dtb.key, dtb -> dtb.binding));
 	}
 
-	private static Stream<Entry<Key<?>, Binding<?>>> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return Stream.concat(
 				getUnsatisfiedDependencies(known, bindings.get()),
 				bindings.getChildren().values().stream().flatMap(scopeBindings -> getUnsatisfiedDependencies(known, scopeBindings))
 		);
 	}
 
-	@SuppressWarnings("unchecked")
-	private static Stream<Entry<Key<?>, Binding<?>>> getUnsatisfiedDependencies(Set<Key<?>> known, Map<Key<?>, Binding<?>> bindings) {
+	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Map<Key<?>, Binding<?>> bindings) {
 		known.addAll(bindings.keySet());
 		return bindings.values().stream()
-				.flatMap(binding -> (Stream) Arrays.stream(binding.getDependencies())
-						//             ^- because Java generics NEVER EVER WORK AS INTENDED, uggh
+				.flatMap(binding -> Arrays.stream(binding.getDependencies())
 						.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
-						.collect(toMap(Dependency::getKey, $ -> binding))
-						.entrySet()
-						.stream());
+						.map(dependency -> new DependencyToBinding(dependency.getKey(), binding)));
+	}
+
+	private static class DependencyToBinding {
+		Key<?> key;
+		Binding<?> binding;
+
+		public DependencyToBinding(Key<?> key, Binding<?> binding) {
+			this.key = key;
+			this.binding = binding;
+		}
 	}
 
 	public static Set<Key<?>[]> getCycles(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {

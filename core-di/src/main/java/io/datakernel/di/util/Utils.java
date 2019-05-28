@@ -1,5 +1,7 @@
 package io.datakernel.di.util;
 
+import io.datakernel.di.Binding;
+import io.datakernel.di.Key;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -50,6 +52,15 @@ public final class Utils {
 							}
 						})
 				);
+	}
+
+	public static void mergeConflictResolvers(Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> into, Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> from) {
+		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
+			if (!oldResolver.equals(newResolver)) {
+				throw new RuntimeException("more than one conflict resolver per key");
+			}
+			return oldResolver;
+		}));
 	}
 
 	public static <K, V> void combineMultimap(Map<K, Set<V>> accumulator, Map<K, Set<V>> multimap) {

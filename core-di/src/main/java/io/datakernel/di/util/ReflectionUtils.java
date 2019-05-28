@@ -3,14 +3,15 @@ package io.datakernel.di.util;
 import io.datakernel.di.*;
 import io.datakernel.di.Optional;
 import io.datakernel.di.util.Constructors.Factory;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Map.Entry;
+import java.util.function.Function;
 
 import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.stream.Collectors.toList;
@@ -21,20 +22,21 @@ public final class ReflectionUtils {
 		throw new AssertionError("nope.");
 	}
 
-	public static String getShortName(Class<?> cls) {
-		return cls.getName().replaceAll("(?:[^.]+\\.)*([^.]+)", "$1");
+	public static String getShortName(String className) {
+		return className.replaceAll("(?:\\p{javaJavaIdentifierPart}+\\.)*(\\p{javaJavaIdentifierPart}+)", "$1");
 	}
 
-	public static <T> Key<T> keyOf(@NotNull Type type, Annotation[] annotations) {
+	public static <T> Key<T> keyOf(@Nullable Key<?> containerType, Type type, Annotation[] annotations) {
 		Set<Annotation> names = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().getAnnotation(NameAnnotation.class) != null)
 				.collect(toSet());
 		if (names.size() > 1) {
 			throw new RuntimeException("more than one name annotation");
 		}
+		Type resolved = resolveType(type, containerType);
 		return names.isEmpty() ?
-				Key.ofType(type) :
-				Key.ofType(type, names.iterator().next());
+				Key.ofType(resolved) :
+				Key.ofType(resolved, names.iterator().next());
 	}
 
 	public static Scope[] scopesFrom(Annotation[] annotations) {
@@ -59,61 +61,52 @@ public final class ReflectionUtils {
 						new Scope[]{Scope.of(scopes.iterator().next())};
 	}
 
-	private static Field[] getInjectableFields(Class<?> cls) {
-		List<Field> fields = new ArrayList<>();
+	public static <T extends AnnotatedElement> List<T> getAnnotatedElements(Class<?> cls, Class<? extends Annotation> annotationType, Function<Class<?>, T[]> extractor) {
+		List<T> result = new ArrayList<>();
 		while (cls != null) {
-			for (Field field : cls.getDeclaredFields()) {
-				if (field.getAnnotation(Inject.class) != null) {
-					field.setAccessible(true);
-					fields.add(field);
+			for (T element : extractor.apply(cls)) {
+				if (element.getAnnotation(annotationType) != null) {
+					result.add(element);
 				}
 			}
 			cls = cls.getSuperclass();
 		}
-		return fields.toArray(new Field[0]);
+		return result;
 	}
 
-	public static <T> BindingInitializer<T> injectingInitializer(Key<? extends T> returnType) {
-		Field[] injectableFields = getInjectableFields(returnType.getRawType());
+	@SuppressWarnings("unchecked")
+	public static <T> BindingInitializer<T> fieldsInjector(Key<? extends T> containingType) {
+		List<BindingInitializer<T>> initializers =
+				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredFields).stream()
+						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field))
+						.collect(toList());
+		return BindingInitializer.combine(initializers);
+	}
 
-		Type[] typeParameters = returnType.getRawType().getTypeParameters();
-		Type[] typeArguments = returnType.getTypeParams();
-		if (typeParameters.length != typeArguments.length) {
-			throw new RuntimeException(returnType.getType() + " has number of type parameters not equal to number of type arguments");
-		}
+	public static <T> BindingInitializer<T> fieldInjector(Key<? extends T> containingType, Field field) {
+		field.setAccessible(true);
 
-		Map<Type, Type> typevars = IntStream.range(0, typeParameters.length)
-				.boxed()
-				.collect(Collectors.toMap(i -> typeParameters[i], i -> typeArguments[i]));
+		Key<Object> key = keyOf(containingType, field.getGenericType(), field.getDeclaredAnnotations());
+		Dependency dependency = new Dependency(key, !field.getAnnotation(Inject.class).optional());
 
-		Dependency[] dependencies = Arrays.stream(injectableFields)
-				.map(field -> {
-					Type type = field.getGenericType();
-					Key<Object> key = keyOf(typevars.getOrDefault(type, type), field.getDeclaredAnnotations());
-					boolean required = !field.getAnnotation(Inject.class).optional();
-					return new Dependency(key, required);
-				})
-				.toArray(Dependency[]::new);
-
-		return BindingInitializer.of(dependencies, (instance, args) -> {
-			for (int i = 0; i < injectableFields.length; i++) {
-				Object arg = args[i];
-				if (arg != null) {
-					try {
-						injectableFields[i].set(instance, arg);
-					} catch (IllegalAccessException e) {
-						throw new RuntimeException("failed to inject field " + injectableFields[i], e);
-					}
-				}
+		return BindingInitializer.of(new Dependency[]{dependency}, (instance, args) -> {
+			Object arg = args[0];
+			if (arg == null) {
+				return;
+			}
+			try {
+				field.set(instance, arg);
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException("failed to inject field " + field, e);
 			}
 		});
 	}
 
 	@NotNull
-	private static Dependency[] toDependencies(Parameter[] parameters) {
+	private static Dependency[] toDependencies(@Nullable Key<?> container, Parameter[] parameters) {
 		return Arrays.stream(parameters)
 				.map(parameter -> {
-					Key<Object> key = keyOf(parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
+					Key<Object> key = keyOf(container, parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
 					return new Dependency(key, !parameter.isAnnotationPresent(Optional.class));
 				})
 				.toArray(Dependency[]::new);
@@ -123,22 +116,19 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
 		method.setAccessible(true);
 
-		Key<T> returnType = Key.ofType(method.getGenericReturnType());
-		Dependency[] dependencies = toDependencies(method.getParameters());
-
-		return Binding.of(dependencies, args -> {
+		return Binding.of(toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters()), args -> {
 			try {
 				return (T) method.invoke(module, args);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to call method " + method, e);
 			}
-		}, LocationInfo.from(method));
+		}).at(LocationInfo.from(method));
 	}
 
 	public static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
 
-		Dependency[] dependencies = toDependencies(constructor.getParameters());
+		Dependency[] dependencies = toDependencies(null, constructor.getParameters());
 
 		return Binding.of(dependencies, args -> {
 			try {
@@ -146,7 +136,7 @@ public final class ReflectionUtils {
 			} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException("failed to create " + key, e);
 			}
-		}, LocationInfo.from(constructor));
+		}).at(LocationInfo.from(constructor));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -256,7 +246,7 @@ public final class ReflectionUtils {
 						Key<Object> key = (Key<Object>) dependency.getKey();
 						Binding<Object> binding = generateImplicitBinding(key);
 						if (binding != null) {
-							localBindings.put(key, binding.apply(injectingInitializer(key)));
+							localBindings.put(key, binding.apply(fieldsInjector(key)));
 						}
 						checked.add(key); // even if there was no binding, this will be checked in a separate dependency check
 						return binding;
@@ -264,6 +254,79 @@ public final class ReflectionUtils {
 					.filter(Objects::nonNull)
 					.collect(toList());
 		} while (!bindingsToCheck.isEmpty());
+	}
+
+	private static final Map<Key<?>, Map<Type, Type>> typevarCache = new HashMap<>();
+
+	private static Map<Type, Type> getTypeMapping(Key<?> type) {
+		Map<Type, Type> typeMapping = typevarCache.computeIfAbsent(type, t -> {
+			Map<Type, Type> mapping = new HashMap<>();
+			Class<?> cls = t.getRawType();
+
+			// first handle possible key params
+			if (t.getTypeParams().length != 0) {
+				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
+				for (TypeVariable<? extends Class<?>> typeVar : typeVars) {
+					mapping.put(typeVar, null); // not putIfAbsent because those all are first puts
+				}
+				Type[] typeArgs = t.getTypeParams();
+				for (int i = 0; i < typeArgs.length; i++) {
+					Type typeArg = typeArgs[i];
+					mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
+				}
+			}
+			// and then tail-recursively the superclasses
+			for (; ; ) {
+				Type genericSuperclass = cls.getGenericSuperclass();
+				cls = cls.getSuperclass();
+				if (cls == Object.class || cls == null) {
+					return mapping;
+				}
+				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
+				for (TypeVariable<? extends Class<?>> typeVar : typeVars) {
+					mapping.putIfAbsent(typeVar, null);
+				}
+				if (genericSuperclass instanceof ParameterizedType) {
+					Type[] typeArgs = ((ParameterizedType) genericSuperclass).getActualTypeArguments();
+					for (int i = 0; i < typeArgs.length; i++) {
+						Type typeArg = typeArgs[i];
+						mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
+					}
+				}
+			}
+		});
+		Set<Type> unsatisfiedGenerics = typeMapping.entrySet().stream()
+				.filter(e -> e.getValue() == null)
+				.map(Entry::getKey)
+				.collect(toSet());
+
+		if (!unsatisfiedGenerics.isEmpty()) {
+			throw new RuntimeException("generics " + unsatisfiedGenerics + " were never specified");
+		}
+		return typeMapping;
+	}
+
+	public static Type resolveType(Type type, @Nullable Key<?> container) {
+		return container == null ? type : resolveType(type, getTypeMapping(container));
+	}
+
+	@Contract("null, _ -> null")
+	public static Type resolveType(Type type, Map<Type, Type> mapping) {
+		if (type == null) {
+			return null;
+		}
+		Type resolved = mapping.get(type);
+		if (resolved != null) {
+			return canonicalize(resolved);
+		}
+		if (type instanceof ParameterizedType) {
+			ParameterizedType parameterized = (ParameterizedType) type;
+			Type owner = canonicalize(parameterized.getOwnerType());
+			Type raw = canonicalize(parameterized.getRawType());
+			Type[] parameters = Arrays.stream(parameterized.getActualTypeArguments()).map(parameter -> resolveType(parameter, mapping)).toArray(Type[]::new);
+			return new ParameterizedTypeImpl(owner, raw, parameters);
+		}
+		return type;
 	}
 
 	public static Type canonicalize(Type type) {

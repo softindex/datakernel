@@ -13,6 +13,7 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.util.Utils.mergeConflictResolvers;
 import static io.datakernel.di.util.Utils.multimapMerger;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
@@ -60,12 +61,7 @@ public final class Modules {
 		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
 
 		for (Module module : modules) {
-			module.getConflictResolvers().forEach((k, v) -> conflictResolvers.merge(k, v, (oldResolver, newResolver) -> {
-				if (!oldResolver.equals(newResolver)) {
-					throw new RuntimeException("more than one conflict resolver per key");
-				}
-				return oldResolver;
-			}));
+			mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
 		}
 
 		return new ModuleImpl(bindings, conflictResolvers);
