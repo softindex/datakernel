@@ -29,5 +29,6 @@ function jsClean() {
 
 module.exports = {
 	createBundle: createBundle,
+  jsClean: jsClean,
 	copyLess: copyLess
 };
