@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.di.Key;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -45,9 +46,8 @@ public class GenericTypesRegistrationTest {
 					with(objectname(domain + ":type=ServiceStubOne,T1=String")));
 		}});
 
-//		TypeLiteral<ServiceStubOne<String>> gType = new TypeLiteral<ServiceStubOne<String>>() {};
-//		Key<?> key = Key.get(gType);
-//		jmxRegistry.registerSingleton(key, service, null);
+		Key<?> key = new Key<ServiceStubOne<String>>() {};
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	@Test
@@ -60,10 +60,8 @@ public class GenericTypesRegistrationTest {
 			);
 		}});
 
-//		TypeLiteral<ServiceStubThree<String, Integer, Long>> gType =
-//				new TypeLiteral<ServiceStubThree<String, Integer, Long>>() {};
-//		Key<?> key = Key.get(gType);
-//		jmxRegistry.registerSingleton(key, service, null);
+		Key<?> key = new Key<ServiceStubThree<String, Integer, Long>>() {};
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	@Test
@@ -76,10 +74,8 @@ public class GenericTypesRegistrationTest {
 			);
 		}});
 
-//		TypeLiteral<ServiceStubThree<String, List<Integer>, Map<Long, List<String>>>> gType =
-//				new TypeLiteral<ServiceStubThree<String, List<Integer>, Map<Long, List<String>>>>() {};
-//		Key<?> key = Key.get(gType);
-//		jmxRegistry.registerSingleton(key, service, null);
+		Key<?> key = new Key<ServiceStubThree<String, List<Integer>, Map<Long, List<String>>>>() {};
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	public interface ServiceStubOneMBean {

@@ -27,11 +27,11 @@ public abstract class AbstractModule implements Module {
 
 	public AbstractModule() {
 		configure();
-		addDeclatativeBindings();
+		addDeclarativeBindings();
 	}
 
 	@SuppressWarnings("unchecked")
-	private void addDeclatativeBindings() {
+	private void addDeclarativeBindings() {
 		for (Method method : getClass().getDeclaredMethods()) {
 			Annotation[] annotations = method.getDeclaredAnnotations();
 			Key<Object> key = keyOf(method.getGenericReturnType(), annotations);

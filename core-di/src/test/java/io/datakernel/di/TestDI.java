@@ -441,4 +441,43 @@ public final class TestDI {
 
 		assertEquals(expected2, instance2);
 	}
+
+
+	@Test
+	public void hierarchyModules() {
+		class Module1 extends AbstractModule {
+			@Provides
+			Integer provideInteger() {
+				return 123;
+			}
+		}
+
+		class Module2 extends Module1 {
+			@Provides
+			String provideString(Integer integer) {
+				return integer.toString();
+			}
+		}
+
+		Injector injector = Injector.of(new Module2());
+		String string = injector.getInstance(String.class);
+
+		assertEquals("123", string);
+	}
+
+	@Test
+	public void moduleWithGenerics() {
+		class Module1<D> extends AbstractModule {
+			@Provides
+			public String provideString(D object) {
+				return object.toString();
+			}
+		}
+
+		Injector injector = Injector.of(new Module1<Integer>());
+		String string = injector.getInstance(String.class);
+
+		assertEquals("123", string);
+	}
+
 }

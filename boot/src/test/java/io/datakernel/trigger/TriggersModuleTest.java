@@ -27,10 +27,13 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
+import io.datakernel.trigger.TriggersModule.TriggersModuleService;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -63,20 +66,21 @@ public class TriggersModuleTest {
 		int secondPoolSize = 5;
 		Injector injector = Injector.of(
 				ServiceGraphModule.defaultInstance(),
+				new WorkerPoolModule(),
 				new AbstractModule() {
 					int counter = 0;
 
-//					@Provides
-//					@Named("first")
-//					WorkerPool provideFirstPool() {
-//						return new WorkerPool(firstPoolSize);
-//					}
-//
-//					@Provides
-//					@Named("second")
-//					WorkerPool provideSecondPool() {
-//						return new WorkerPool(secondPoolSize);
-//					}
+					@Provides
+					@Named("first")
+					WorkerPool provideFirstPool(WorkerPools workerPools) {
+						return workerPools.createPool(firstPoolSize);
+					}
+
+					@Provides
+					@Named("second")
+					WorkerPool provideSecondPool(WorkerPools workerPools) {
+						return workerPools.createPool(secondPoolSize);
+					}
 
 					@Provides
 					@Worker
@@ -96,6 +100,7 @@ public class TriggersModuleTest {
 		);
 		injector.getInstance(Key.of(WorkerPool.class, Name.of("first"))).getInstances(String.class);
 		injector.getInstance(Key.of(WorkerPool.class, Name.of("second"))).getInstances(String.class);
+		injector.getInstanceOrNull(TriggersModuleService.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
@@ -126,27 +131,28 @@ public class TriggersModuleTest {
 						return Eventloop.create();
 					}
 
-					@Provides
-					Initializer<TriggersModule> triggersModuleInitializer(Eventloop _eventloop) {
+					@ProvidesIntoSet
+					Initializer<TriggersModule> triggersModuleInitializer(Eventloop eventloop) {
 						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create());
+								.with(Eventloop.class, Severity.HIGH, "test", $ -> TriggerResult.create());
 					}
 				},
 				new AbstractModule() {
 					@ProvidesIntoSet
 					Initializer<TriggersModule> triggersModuleInitializer() {
 						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "testModule1", eventloop -> TriggerResult.create());
+								.with(Eventloop.class, Severity.HIGH, "testModule1", $ -> TriggerResult.create());
 					}
 				},
 				new AbstractModule() {
 					@ProvidesIntoSet
 					Initializer<TriggersModule> triggersModuleInitializer() {
 						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "testModule2", eventloop -> TriggerResult.create());
+								.with(Eventloop.class, Severity.HIGH, "testModule2", $ -> TriggerResult.create());
 					}
 				}
 		);
+		injector.getInstanceOrNull(TriggersModuleService.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {

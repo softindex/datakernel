@@ -111,11 +111,7 @@ public class Injector {
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
-		T instance = (T) instances.computeIfAbsent(key, this::provideInstance);
-		if (instance == null) {
-			throw new RuntimeException("cannot construct " + key);
-		}
-		return instance;
+		return doGetInstance(key);
 	}
 
 	@Nullable
@@ -126,14 +122,14 @@ public class Injector {
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
-		return (T) instances.computeIfAbsent(key, this::provideInstance);
+		return doGetInstanceOrNull(key);
 	}
 
 	@Nullable
 	protected Object provideInstance(@NotNull Key<?> key) {
 		Binding<?> binding = localBindings.get(key);
 		if (binding != null) {
-			return binding.getFactory().create(getDependencies(binding.getDependencies()));
+			return binding.getFactory().create(getInstances(binding.getDependencies()));
 		}
 		if (parent != null) {
 			return parent.getInstanceOrNull(key);
@@ -141,7 +137,7 @@ public class Injector {
 		return null;
 	}
 
-	private Object[] getDependencies(Dependency[] dependencies) {
+	private Object[] getInstances(Dependency[] dependencies) {
 		if (dependencies.length == 0) {
 			return NO_OBJECTS;
 		}
@@ -149,15 +145,15 @@ public class Injector {
 		for (int i = 0; i < dependencies.length; i++) {
 			Dependency dependency = dependencies[i];
 			instances[i] = dependency.isRequired() ?
-					getDependency(dependency.getKey()) :
-					getDependencyOrNull(dependency.getKey());
+					doGetInstance(dependency.getKey()) :
+					doGetInstanceOrNull(dependency.getKey());
 		}
 		return instances;
 	}
 
 	@NotNull
-	private <T> T getDependency(@NotNull Key<T> key) {
-		T instance = getDependencyOrNull(key);
+	private <T> T doGetInstance(@NotNull Key<T> key) {
+		T instance = doGetInstanceOrNull(key);
 		if (instance == null) {
 			throw new RuntimeException("cannot construct " + key);
 		}
@@ -166,7 +162,7 @@ public class Injector {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private <T> T getDependencyOrNull(@NotNull Key<T> key) {
+	private <T> T doGetInstanceOrNull(@NotNull Key<T> key) {
 		T instance = (T) instances.get(key);
 		if (instance != null) {
 			return instance;

@@ -16,11 +16,15 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.NameAnnotation;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -44,7 +48,14 @@ public class JmxRegistryTest {
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 	private final MBeanSettings settings = MBeanSettings.defaultSettings();
-//	private final WorkerPool workerPool = new WorkerPool(3);
+	private WorkerPool workerPool;
+
+	@Before
+	public void setUp() throws Exception {
+		Injector injector = Injector.of(new WorkerPoolModule());
+		WorkerPools pools = injector.getInstance(WorkerPools.class);
+		workerPool = pools.createPool(3);
+	}
 
 	@Test
 	public void registerSingletonInstanceWithout_Annotation_AndComposeAppropriateObjectName() throws Exception {
@@ -170,7 +181,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.of(ServiceStub.class, basicServiceAnnotation);
-//		jmxRegistry.registerWorkers(workerPool, key, asList(worker_1, worker_2, worker_3), settings);
+		jmxRegistry.registerWorkers(workerPool, key, asList(worker_1, worker_2, worker_3), settings);
 	}
 
 	@Test
@@ -196,7 +207,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.of(ServiceStub.class, basicServiceAnnotation);
-//		jmxRegistry.unregisterWorkers(workerPool, key, asList(worker_1, worker_2, worker_3));
+		jmxRegistry.unregisterWorkers(workerPool, key, asList(worker_1, worker_2, worker_3));
 	}
 
 	// annotations

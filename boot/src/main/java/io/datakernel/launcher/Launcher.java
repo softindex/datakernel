@@ -17,13 +17,16 @@
 package io.datakernel.launcher;
 
 import io.datakernel.config.ConfigModule;
+import io.datakernel.config.ConfigModule.ConfigModuleService;
 import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxModule.JmxModuleService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.TriggersModule;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -162,6 +165,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	private void doStart(Injector injector) throws Exception {
+		injector.getInstanceOrNull(ConfigModuleService.class);
+		injector.getInstanceOrNull(JmxModuleService.class);
+		injector.getInstanceOrNull(TriggersModule.class);
 		serviceGraph = injector.getInstanceOrNull(ServiceGraph.class);
 		if (serviceGraph == null) {
 			return;

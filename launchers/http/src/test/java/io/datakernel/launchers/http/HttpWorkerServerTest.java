@@ -27,6 +27,7 @@ import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
@@ -78,6 +79,7 @@ public final class HttpWorkerServerTest {
 			}
 		};
 		Injector injector = launcher.createInjector(new String[]{});
+		injector.getInstance(Launcher.class);
 
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try (Socket socket0 = new Socket(); Socket socket1 = new Socket()) {

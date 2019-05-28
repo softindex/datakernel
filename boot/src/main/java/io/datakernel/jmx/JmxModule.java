@@ -23,10 +23,8 @@ import io.datakernel.di.Name;
 import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
-import io.datakernel.di.module.ProvidesIntoSet;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.service.BlockingService;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
@@ -170,11 +168,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	@Override
 	protected void configure() {
 		super.configure();
-	}
-
-	@ProvidesIntoSet
-	Initializer<ServiceGraphModule> initializer(Injector injector) {
-		return $ -> injector.getInstance(JmxModuleService.class);
 	}
 
 	@Provides

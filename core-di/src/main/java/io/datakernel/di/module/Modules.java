@@ -60,8 +60,11 @@ public final class Modules {
 		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
 
 		for (Module module : modules) {
-			module.getConflictResolvers().forEach((k, v) -> conflictResolvers.merge(k, v, ($, $2) -> {
-				throw new RuntimeException("more than one conflict resolver per key");
+			module.getConflictResolvers().forEach((k, v) -> conflictResolvers.merge(k, v, (oldResolver, newResolver) -> {
+				if (!oldResolver.equals(newResolver)) {
+					throw new RuntimeException("more than one conflict resolver per key");
+				}
+				return oldResolver;
 			}));
 		}
 

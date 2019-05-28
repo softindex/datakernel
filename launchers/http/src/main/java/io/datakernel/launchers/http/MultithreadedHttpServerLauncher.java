@@ -64,6 +64,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				new WorkerPoolModule(),
 				new AbstractModule() {
 					@Provides
+					@Primary
 					Eventloop provideEventloop(Config config) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.primary")));
@@ -83,7 +84,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					}
 
 					@Provides
-					PrimaryServer providePrimaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
+					PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
 								.initialize(ofPrimaryServer(config.getChild("http")));

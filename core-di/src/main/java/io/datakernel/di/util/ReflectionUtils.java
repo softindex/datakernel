@@ -1,7 +1,7 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.Optional;
 import io.datakernel.di.*;
+import io.datakernel.di.Optional;
 import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
