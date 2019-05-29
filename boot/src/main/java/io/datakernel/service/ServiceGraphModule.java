@@ -16,8 +16,8 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.Optional;
 import io.datakernel.di.*;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.di.util.Trie;
@@ -201,7 +201,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		private ServiceKey(@NotNull Key<?> key) {
 			this.key = key;
-			this.workerPoolId = -1;
+			this.workerPoolId = 0;
 		}
 
 		private ServiceKey(@NotNull Key<?> key, int id) {
@@ -215,7 +215,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 
 		public boolean isWorker() {
-			return workerPoolId != -1;
+			return workerPoolId != 0;
 		}
 
 		public int getWorkerPoolId() {
@@ -253,7 +253,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		@Override
 		public String toString() {
-			return key.toString() + (workerPoolId == -1 ? "" : ":" + workerPoolId);
+			return key.toString() + (workerPoolId == 0 ? "" : ":" + workerPoolId);
 		}
 	}
 
@@ -272,7 +272,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 					if (!serviceKey.isWorker()) {
 						return null;
 					}
-					return pools.get(serviceKey.getWorkerPoolId()).getSize();
+					return pools.get(serviceKey.getWorkerPoolId() - 1).getSize();
 				})
 				.initialize(initializer);
 
@@ -293,16 +293,14 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 
 		if (workerPools != null) {
-			for (int i = 0; i < pools.size(); i++) {
-				final int finalI = i;
-				WorkerPool pool = pools.get(i);
+			for (WorkerPool pool : pools) {
 				Map<Key<?>, Set<ScopedValue<Dependency>>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
 				for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
 					Object[] workerInstances = entry.getValue();
 					if (!scopeDependencies.containsKey(key)) continue;
 					if (Stream.of(workerInstances).anyMatch(Objects::isNull)) continue;
-					ServiceKey serviceKey = new ServiceKey(key, i);
+					ServiceKey serviceKey = new ServiceKey(key, pool.getIdx());
 					instances.put(serviceKey, Arrays.asList(workerInstances));
 					instanceDependencies.put(serviceKey,
 							scopeDependencies.get(key)
@@ -312,7 +310,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
 													injector.hasInstance(scopedDependency.get().getKey())))
 									.map(scopedDependency -> scopedDependency.isScoped() ?
-											new ServiceKey(scopedDependency.get().getKey(), finalI) :
+											new ServiceKey(scopedDependency.get().getKey(), pool.getIdx()) :
 											new ServiceKey(scopedDependency.get().getKey()))
 									.collect(toSet()));
 				}

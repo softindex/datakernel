@@ -213,6 +213,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				// register workers
 				WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 				if (workerPools != null) {
+					// populating workerPoolKeys map
+					injector.peekInstances().entrySet().stream()
+							.filter(entry -> entry.getKey().getRawType().equals(WorkerPool.class))
+							.forEach(entry -> jmxRegistry.addWorkerPoolKey((WorkerPool) entry.getValue(), entry.getKey()));
+
 					for (WorkerPool workerPool : workerPools.getWorkerPools()) {
 						for (Map.Entry<Key<?>, Object[]> entry : workerPool.peekInstances().entrySet()) {
 							Key<?> key = entry.getKey();

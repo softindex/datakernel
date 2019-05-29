@@ -165,17 +165,17 @@ public class JmxRegistryTest {
 			// checking calls and names for each worker separately
 			oneOf(mBeanServer).registerMBean(
 					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-0")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-0")));
 			oneOf(mBeanServer).registerMBean(
 					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-1")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-1")));
 			oneOf(mBeanServer).registerMBean(
 					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-2")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-2")));
 
 			// checking calls and names for worker_pool DynamicMBean
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker")));
 
 		}});
 
@@ -193,15 +193,15 @@ public class JmxRegistryTest {
 		context.checking(new Expectations() {{
 			// checking calls and names for each worker separately
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-0")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-0")));
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-1")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-1")));
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-2")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-2")));
 
 			// checking calls and names for worker_pool DynamicMBean
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker")));
 
 		}});
 

@@ -51,6 +51,10 @@ public final class WorkerPool {
 		return scope;
 	}
 
+	public int getIdx() {
+		return idx;
+	}
+
 	@NotNull
 	public <T> List<T> getInstances(Key<T> key) {
 		List<T> instances = new ArrayList<>(scopeInjectors.length);

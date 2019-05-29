@@ -18,7 +18,10 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.worker.*;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPools;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -63,7 +66,6 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					@Primary
 					Eventloop provideEventloop(Config config) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.primary")));
@@ -83,7 +85,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					}
 
 					@Provides
-					PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
+					PrimaryServer providePrimaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
 								.initialize(ofPrimaryServer(config.getChild("http")));

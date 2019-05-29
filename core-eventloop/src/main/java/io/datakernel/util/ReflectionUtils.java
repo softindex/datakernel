@@ -19,6 +19,7 @@ package io.datakernel.util;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.*;
 import io.datakernel.util.ref.RefBoolean;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.MXBean;
@@ -320,6 +321,13 @@ public final class ReflectionUtils {
 			return first(result);
 		}
 		return null;
+	}
+
+	public static String getAnnotationString(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) throws ReflectiveOperationException {
+		if (annotation != null) {
+			return getAnnotationString(annotation);
+		}
+		return annotationType.getSimpleName();
 	}
 
 	/**

@@ -60,6 +60,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 
 		@Nullable
 		Annotation getAnnotation();
+
+		int getWorkerPoolId();
 	}
 
 	private Runnable startCallback;
@@ -533,8 +535,10 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 
 	private String keyToString(Key<?> key) {
 		Annotation annotation = key.getAnnotation();
+		int workerPoolId = key.getWorkerPoolId();
 		return (annotation != null ? prettyPrintAnnotation(annotation) + " " : "") +
-				key.getTypeT();
+				key.getTypeT() +
+				(workerPoolId == 0 ? "" : "#" + workerPoolId);
 	}
 
 	private String keyToNode(Key<?> key) {

@@ -18,20 +18,21 @@ package io.datakernel.jmx;
 
 import io.datakernel.di.Key;
 import io.datakernel.di.Name;
+import io.datakernel.di.Scope;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
-import io.datakernel.util.ReflectionUtils;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.*;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 
+import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.ReflectionUtils.getAnnotationString;
 import static io.datakernel.util.StringFormatUtils.formatDuration;
 import static io.datakernel.util.StringFormatUtils.parseDuration;
 import static java.lang.String.format;
@@ -47,6 +48,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private final DynamicMBeanFactory mbeanFactory;
 	private final Map<Key<?>, String> keyToObjectNames;
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes;
+	private final Map<WorkerPool, Key<?>> workerPoolKeys = new HashMap<>();
 
 	// jmx
 	private int registeredSingletons;
@@ -72,6 +74,11 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
+	}
+
+	public void addWorkerPoolKey(WorkerPool workerPool, Key<?> workerPoolKey) {
+		check(!workerPoolKeys.containsKey(workerPool), "Key already added");
+		workerPoolKeys.put(workerPool, workerPoolKey);
 	}
 
 	public void registerSingleton(Key<?> key, Object singletonInstance, @Nullable MBeanSettings settings) {
@@ -327,7 +334,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		if (keyName != null) { // with annotation
 			name += ',';
-			String annotationString = getAnnotationString(keyName);
+			String annotationString = getAnnotationString(keyName.getAnnotationType(), keyName.getAnnotation());
 			if (!annotationString.contains("(")) {
 				name += "annotation=" + annotationString;
 			} else if (!annotationString.startsWith("(")) {
@@ -337,15 +344,16 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				name += annotationString.substring(1, annotationString.length() - 1);
 			}
 		}
-		return addGenericParamsInfo(name, key);
-	}
-
-	private static String getAnnotationString(Name keyName) throws ReflectiveOperationException {
-		Annotation annotation = keyName.getAnnotation();
-		if (annotation != null) {
-			return ReflectionUtils.getAnnotationString(annotation);
+		if (pool != null) {
+			Scope scope = pool.getScope();
+			name += format(",scope=%s", getAnnotationString(scope.getAnnotationType(), scope.getAnnotation()));
+			Key<?> poolKey = workerPoolKeys.get(pool);
+			if (poolKey != null && poolKey.getName() != null) {
+				String annotationString = getAnnotationString(poolKey.getName().getAnnotationType(), poolKey.getName().getAnnotation());
+				name += format(",workerPool=WorkerPool%s", annotationString);
+			}
 		}
-		return keyName.getAnnotationType().getSimpleName();
+		return addGenericParamsInfo(name, key);
 	}
 
 	private static String addGenericParamsInfo(String srcName, Key<?> key) {
