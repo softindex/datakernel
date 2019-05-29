@@ -33,26 +33,6 @@ public final class Modules {
 		return modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
-	public static Module override(Module into, Module replacements) {
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindingsMultimap(), replacements.getBindingsMultimap());
-
-		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
-		conflictResolvers.putAll(replacements.getConflictResolvers());
-		return new ModuleImpl(bindings, conflictResolvers);
-	}
-
-	public static Module override(Module into, Collection<Module> from) {
-		return override(into, combine(from));
-	}
-
-	public static Module override(Collection<Module> into, Module from) {
-		return override(combine(into), from);
-	}
-
-	public static Module override(Collection<Module> into, Collection<Module> from) {
-		return override(combine(into), combine(from));
-	}
-
 	public static Module combine(Collection<Module> modules) {
 		if (modules.size() == 1) {
 			return modules.iterator().next();
@@ -64,6 +44,22 @@ public final class Modules {
 			mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
 		}
 
+		return new ModuleImpl(bindings, conflictResolvers);
+	}
+
+	public static Module override(Module... modules) {
+		return override(Arrays.asList(modules));
+	}
+
+	public static Module override(List<Module> modules) {
+		return modules.stream().reduce(Module.empty(), Modules::override);
+	}
+
+	public static Module override(Module into, Module replacements) {
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindingsMultimap(), replacements.getBindingsMultimap());
+
+		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
+		conflictResolvers.putAll(replacements.getConflictResolvers());
 		return new ModuleImpl(bindings, conflictResolvers);
 	}
 

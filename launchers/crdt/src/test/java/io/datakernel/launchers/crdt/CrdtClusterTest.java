@@ -48,7 +48,6 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.IntStream;
 
@@ -56,13 +55,12 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.http.HttpMethod.PUT;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 @Ignore("manual demos")
 @LoggerConfig("TRACE")
@@ -106,8 +104,8 @@ public final class CrdtClusterTest {
 		}
 
 		@Override
-		protected Collection<Module> getOverrideModules() {
-			return singletonList(ConfigModule.create(config));
+		protected Module getOverrideModule() {
+			return ConfigModule.create(config);
 		}
 
 		@Override
@@ -116,8 +114,8 @@ public final class CrdtClusterTest {
 		}
 
 		@Override
-		protected Collection<Module> getBusinessLogicModules() {
-			return asList(
+		protected Module getBusinessLogicModule() {
+			return combine(
 					new CrdtHttpModule<String, Integer>() {},
 					new BusinessLogicModule()
 			);
@@ -155,30 +153,29 @@ public final class CrdtClusterTest {
 	@Test
 	public void startFileServer() throws Exception {
 		new CrdtFileServerLauncher<String, Integer>() {
-
 			@Override
 			protected CrdtFileServerLogicModule<String, Integer> getLogicModule() {
 				return new CrdtFileServerLogicModule<String, Integer>() {};
 			}
 
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singletonList(ConfigModule.create(() ->
+			protected Module getOverrideModule() {
+				return ConfigModule.create(() ->
 						Config.create()
 								.with("crdt.localPath", "/tmp/TESTS/fileServer")
-								.with("crdt.server.listenAddresses", "localhost:8002")));
+								.with("crdt.server.listenAddresses", "localhost:8002"));
 			}
 
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(new AbstractModule() {
+			protected Module getBusinessLogicModule() {
+				return new AbstractModule() {
 					@Provides
 					CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
 						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
 								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
 								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
 					}
-				});
+				};
 			}
 		}.launch(new String[0]);
 	}

@@ -31,12 +31,11 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static java.util.Arrays.asList;
 
 public class HttpServerScratch extends Launcher {
 	private final static int PORT = 25565;
@@ -45,8 +44,8 @@ public class HttpServerScratch extends Launcher {
 	private AsyncHttpServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT))),
 				new AbstractModule() {

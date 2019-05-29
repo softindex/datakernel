@@ -35,12 +35,11 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Collection;
 
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static java.util.Arrays.asList;
 
 
 public class RpcBenchmark extends Launcher {
@@ -66,8 +65,9 @@ public class RpcBenchmark extends Launcher {
 	private Config config;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
+				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.create()
 						.with("rpc.server.port", "" + SERVICE_PORT)
 						.with("benchmark.warmupRounds", "" + WARMUP_ROUNDS)
@@ -76,7 +76,6 @@ public class RpcBenchmark extends Launcher {
 						.with("benchmark.maxRequests", "" + MAX_REQUESTS)
 						.with("benchmark.generateFile", "" + GENERATE_FILE)
 						.override(Config.ofProperties(System.getProperties()))),
-				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides
 					@Named("client")

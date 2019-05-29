@@ -38,17 +38,14 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.discovery.RemoteFsAnnouncementStorage;
 import io.global.common.discovery.RemoteFsSharedKeyStorage;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 
 public class DiscoveryServiceLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "discovery-service.properties";
@@ -57,12 +54,12 @@ public class DiscoveryServiceLauncher extends Launcher {
 	AsyncHttpServer httpServer;
 
 	@Override
-	protected final Collection<Module> getModules() {
-		return Collections.singletonList(override(getBaseModules(), getOverrideModules()));
+	protected final Module getModule() {
+		return override(getBaseModule(), getOverrideModule());
 	}
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
@@ -119,8 +116,8 @@ public class DiscoveryServiceLauncher extends Launcher {
 	/**
 	 * Override this method to override base modules supplied in launcher.
 	 */
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
 	@Override

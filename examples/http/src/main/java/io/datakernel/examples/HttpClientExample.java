@@ -30,13 +30,11 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofInetAddress;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.util.CollectionUtils.list;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -56,14 +54,14 @@ public final class HttpClientExample extends Launcher {
 	private String addr;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return list(
+	protected Module getModule() {
+		return combine(
+				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.create()
 						.with("http.client.googlePublicDns", "8.8.8.8")
 						.with("http.client.timeout", "3 seconds")
 						.with("http.client.host", "http://127.0.0.1:5588")
 				),
-				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides
 					Eventloop eventloop() {

@@ -16,7 +16,6 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.loader.StaticLoader;
-import io.datakernel.loader.StaticLoaders;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
@@ -40,18 +39,16 @@ import org.slf4j.LoggerFactory;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static java.util.Collections.singletonList;
 
 public final class GlobalFsApp extends Launcher {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
@@ -65,8 +62,9 @@ public final class GlobalFsApp extends Launcher {
 	AsyncHttpServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(ServiceGraphModule.defaultInstance(),
+	protected Module getModule() {
+		return combine(
+				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
@@ -83,9 +81,9 @@ public final class GlobalFsApp extends Launcher {
 
 					@Provides
 					@Named("App")
-					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, StaticLoader resourceLoader) {
+					AsyncServlet provide(GlobalFsDriver driver, StaticLoader resourceLoader) {
 						return GlobalFsDriverServlet.create(driver)
-								.with(GET, "/*", StaticServlet.create(eventloop, resourceLoader, "index.html"));
+								.with(GET, "/*", StaticServlet.create(resourceLoader).withMappingEmptyTo("index.html"));
 					}
 
 					@Provides
@@ -94,8 +92,8 @@ public final class GlobalFsApp extends Launcher {
 					}
 
 					@Provides
-					StaticLoader provide(ExecutorService executor, Config config) {
-						return StaticLoaders.ofPath(Paths.get(config.get("app.http.staticPath")));
+					StaticLoader staticLoader(Config config) {
+						return StaticLoader.ofPath(Paths.get(config.get("app.http.staticPath")));
 					}
 
 					@Provides
@@ -105,32 +103,34 @@ public final class GlobalFsApp extends Launcher {
 								.initialize(ofHttpServer(config.getChild("app.http")));
 					}
 				},
-				override(singletonList(new GlobalNodesModule()), singletonList(new AbstractModule() {
-					@Provides
-					DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
-						InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
-						if (discoveryAddress != null) {
-							logger.info("Using remote discovery service at " + discoveryAddress);
-							return HttpDiscoveryService.create(discoveryAddress, client);
-						}
-						logger.warn("No discovery.address config found, using discovery stub");
-						PrivKey stubPK = PrivKey.of(BigInteger.ONE);
-						AnnouncementStorage announcementStorage = new AnnouncementStorage() {
-							@Override
-							public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
-								throw new UnsupportedOperationException();
-							}
+				override(
+						new GlobalNodesModule(),
+						new AbstractModule() {
+							@Provides
+							DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
+								InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
+								if (discoveryAddress != null) {
+									logger.info("Using remote discovery service at " + discoveryAddress);
+									return HttpDiscoveryService.create(discoveryAddress, client);
+								}
+								logger.warn("No discovery.address config found, using discovery stub");
+								PrivKey stubPK = PrivKey.of(BigInteger.ONE);
+								AnnouncementStorage announcementStorage = new AnnouncementStorage() {
+									@Override
+									public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
+										throw new UnsupportedOperationException();
+									}
 
-							@Override
-							public Promise<@Nullable SignedData<AnnounceData>> load(PubKey space) {
-								AnnounceData announceData = AnnounceData.of(System.currentTimeMillis(), singleton(new RawServerId(DEFAULT_SERVER_ID)));
-								return Promise.of(SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, stubPK));
+									@Override
+									public Promise<@Nullable SignedData<AnnounceData>> load(PubKey space) {
+										AnnounceData announceData = AnnounceData.of(System.currentTimeMillis(), singleton(new RawServerId(DEFAULT_SERVER_ID)));
+										return Promise.of(SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, stubPK));
+									}
+								};
+								InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
+								return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
 							}
-						};
-						InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
-						return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
-					}
-				})));
+						}));
 	}
 
 	@Override

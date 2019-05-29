@@ -28,11 +28,10 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static java.util.Arrays.asList;
 
 public class RpcExample extends Launcher {
 	private static final int SERVICE_PORT = 34765;
@@ -44,8 +43,8 @@ public class RpcExample extends Launcher {
 	private RpcServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides

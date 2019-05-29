@@ -10,12 +10,10 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.launchers.GlobalNodesModule;
 
 import java.nio.file.Paths;
-import java.util.Collection;
 
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 public final class MasterNodeLauncher extends Launcher {
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:9000";
@@ -27,8 +25,8 @@ public final class MasterNodeLauncher extends Launcher {
 	AsyncHttpServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
@@ -37,7 +35,7 @@ public final class MasterNodeLauncher extends Launcher {
 								.with("fs.storage", DEFAULT_FS_STORAGE)
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule()))
+				override(new GlobalNodesModule(), new ExampleCommonModule())
 		);
 	}
 

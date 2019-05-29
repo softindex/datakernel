@@ -10,10 +10,6 @@ import io.datakernel.worker.WorkerId;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.util.Collection;
-
-import static java.util.Collections.singletonList;
-
 public class MultithreadedHttpServerLauncherTest {
 
 	@ClassRule
@@ -23,14 +19,14 @@ public class MultithreadedHttpServerLauncherTest {
 	public void testsInjector() {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(new AbstractModule() {
+			protected Module getBusinessLogicModule() {
+				return new AbstractModule() {
 					@Provides
 					@Worker
 					AsyncServlet provideServlet(@WorkerId int worker) {
 						throw new UnsupportedOperationException();
 					}
-				});
+				};
 			}
 		};
 		launcher.testInjector();

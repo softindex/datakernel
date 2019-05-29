@@ -16,23 +16,31 @@
 
 package io.datakernel.examples;
 
+import io.datakernel.di.Inject;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
 import io.datakernel.launcher.Launcher;
-
-import java.util.Collection;
-import java.util.Collections;
 
 public class HelloWorldLauncher {
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new Launcher() {
+			@Inject
+			String message;
+
 			@Override
-			protected Collection<Module> getModules() {
-				return Collections.emptyList();
+			protected Module getModule() {
+				return new AbstractModule() {
+					@Provides
+					String message() {
+						return "Hello, world!";
+					}
+				};
 			}
 
 			@Override
 			protected void run() {
-				System.out.println("Hello World!");
+				System.out.println(message);
 			}
 		};
 		launcher.launch(args);

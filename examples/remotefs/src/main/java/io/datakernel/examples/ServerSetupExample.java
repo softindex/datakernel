@@ -25,10 +25,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
 
-import java.util.Collection;
-
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static java.util.Arrays.asList;
 
 /**
  * This example demonstrates configuring and launching RemoteFsServer.
@@ -37,8 +35,8 @@ public class ServerSetupExample {
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new RemoteFsServerLauncher() {
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return asList(
+			protected Module getOverrideModule() {
+				return combine(
 						ConfigModule.create(Config.create()
 								.with("remotefs.path", "src/main/resources/server_storage")
 								.with("remotefs.listenAddresses", "6732")

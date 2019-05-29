@@ -11,7 +11,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
 public final class HelloWorldExample {
 	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withCurrentThread();
+		Eventloop eventloop = Eventloop.create();
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request ->
 				Promise.of(HttpResponse.ok200()

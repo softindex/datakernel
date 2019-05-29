@@ -3,6 +3,7 @@ package io.datakernel.loader;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.HttpException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
@@ -12,20 +13,27 @@ import java.net.URL;
 import java.nio.file.NoSuchFileException;
 import java.util.concurrent.Executor;
 
+import static java.lang.ClassLoader.getSystemClassLoader;
+
 class StaticLoaderClassPath implements StaticLoader {
 	private static final String ROOT = "/";
 	private static final int ROOT_OFFSET = 1;
+	@Nullable
 	private final Executor executor;
 	private final ClassLoader classLoader;
 	private final String root;
 
-	private StaticLoaderClassPath(Executor executor, ClassLoader classLoader, String root) {
+	private StaticLoaderClassPath(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
 		this.root = root;
 		this.executor = executor;
 		this.classLoader = classLoader;
 	}
 
-	public static StaticLoaderClassPath create(Executor executor, @Nullable Class<?> classLoader, String root) {
+	public static StaticLoaderClassPath create(String root) {
+		return create(null, getSystemClassLoader(), root);
+	}
+
+	public static StaticLoaderClassPath create(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
 		if (root.startsWith(ROOT)) {
 			root = root.substring(ROOT_OFFSET);
 		}
@@ -33,18 +41,11 @@ class StaticLoaderClassPath implements StaticLoader {
 			root = root + ROOT;
 		}
 
-		ClassLoader loader = classLoader == null ?
-				Thread.currentThread().getContextClassLoader() :
-				classLoader.getClassLoader();
-		return new StaticLoaderClassPath(executor, loader, root);
-	}
-
-	public static StaticLoaderClassPath create(Executor executor, @Nullable Class<?> classLoader) {
-		return create(executor, classLoader, ROOT);
+		return new StaticLoaderClassPath(executor, classLoader, root);
 	}
 
 	@Override
-	public Promise<ByteBuf> getResource(String name) {
+	public Promise<ByteBuf> load(String name) {
 		String path = root;
 		int begin = 0;
 		if (name.startsWith(ROOT)) {
@@ -63,7 +64,7 @@ class StaticLoaderClassPath implements StaticLoader {
 
 		return Promise.ofBlockingCallable(executor, () -> ByteBuf.wrapForReading(loadResource(file)))
 				.thenEx((buf, e) ->
-						Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
+						Promise.of(buf, e instanceof NoSuchFileException ? NOT_FOUND_EXCEPTION : e));
 	}
 
 	private byte[] loadResource(URL file) throws IOException {

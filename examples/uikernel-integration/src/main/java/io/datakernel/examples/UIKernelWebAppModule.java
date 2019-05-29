@@ -26,7 +26,6 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
-import io.datakernel.loader.StaticLoaders;
 import io.datakernel.uikernel.UiKernelServlets;
 
 import java.nio.file.Path;
@@ -51,12 +50,12 @@ public class UIKernelWebAppModule extends AbstractModule {
 	@Provides
 	AsyncHttpServer server(Eventloop eventloop, Gson gson, PersonGridModel model, Config config) {
 		Path resources = Paths.get(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
-		StaticLoader resourceLoader = StaticLoaders.ofPath(resources);
+		StaticLoader resourceLoader = StaticLoader.ofPath(resources);
 		int port = config.get(ofInteger(), "port", DEFAULT_PORT);
 
 		// middleware used to map requests to appropriate asyncServlets
 
-		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticServlet staticServlet = StaticServlet.create(resourceLoader);
 		AsyncServlet usersApiServlet = UiKernelServlets.apiServlet(model, gson);
 
 		RoutingServlet dispatcher = RoutingServlet.create()

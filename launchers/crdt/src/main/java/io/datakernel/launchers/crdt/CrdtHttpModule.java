@@ -30,7 +30,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
-import io.datakernel.loader.StaticLoaders;
 
 import java.util.concurrent.ExecutorService;
 
@@ -49,7 +48,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 
 	@Provides
 	StaticLoader provideLoader(ExecutorService executor) {
-		return StaticLoaders.ofClassPath(executor);
+		return StaticLoader.ofClassPath("/");
 	}
 
 	@Provides

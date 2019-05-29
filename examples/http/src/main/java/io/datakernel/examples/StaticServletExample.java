@@ -19,30 +19,22 @@ package io.datakernel.examples;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-
-import static io.datakernel.loader.StaticLoaders.ofPath;
-import static io.datakernel.util.CollectionUtils.list;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class StaticServletExample extends HttpServerLauncher {
-	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/site");
-
 	@Override
-	protected Collection<Module> getBusinessLogicModules() {
-		return list(new AbstractModule() {
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
 			@Provides
-			AsyncServlet staticServlet(Eventloop eventloop) {
-				return StaticServlet.create(eventloop, ofPath(RESOURCE_DIR));
+			AsyncServlet staticServlet() {
+				return StaticServlet.create(ofClassPath("static/site")).withMappingEmptyTo("index.html");
 			}
-		});
+		};
 	}
 
 	public static void main(String[] args) throws Exception {

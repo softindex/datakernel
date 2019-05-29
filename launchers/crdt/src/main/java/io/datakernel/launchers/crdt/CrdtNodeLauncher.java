@@ -27,13 +27,9 @@ import io.datakernel.launchers.crdt.CrdtNodeLogicModule.Cluster;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule;
 
-import java.util.Collection;
-
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 
 public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launcher {
 	public static final String PROPERTIES_FILE = "crdt-node.properties";
@@ -48,21 +44,22 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 	private CrdtNodeLogicModule<K, S> logicModule = getLogicModule();
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(override(getBaseModules(), getOverrideModules()),
-				combine(getBusinessLogicModules()));
+	protected Module getModule() {
+		return combine(
+				override(getBaseModule(), getOverrideModule()),
+				getBusinessLogicModule());
 	}
 
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
 	protected abstract CrdtNodeLogicModule<K, S> getLogicModule();
 
-	protected abstract Collection<Module> getBusinessLogicModules();
+	protected abstract Module getBusinessLogicModule();
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				TriggersModule.create(),

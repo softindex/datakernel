@@ -26,13 +26,9 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 public class GlobalNodesLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
@@ -57,12 +53,12 @@ public class GlobalNodesLauncher extends Launcher {
 	EventloopTaskScheduler kvCatchUpScheduler;
 
 	@Override
-	protected final Collection<Module> getModules() {
-		return singletonList(override(getBaseModules(), getOverrideModules()));
+	protected final Module getModule() {
+		return override(getBaseModule(), getOverrideModule());
 	}
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
@@ -76,8 +72,8 @@ public class GlobalNodesLauncher extends Launcher {
 	/**
 	 * Override this method to override base modules supplied in launcher.
 	 */
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
 	@Override

@@ -29,7 +29,7 @@ public class AsyncServletDecoratorTest {
 	@Test
 	public void testOf() {
 		List<Integer> result = new ArrayList<>();
-		AsyncServlet rootServlet = wrappedDecoratorOf(
+		AsyncServlet rootServlet = combineDecorators(
 				servlet ->
 						request -> {
 							result.add(1);
@@ -58,9 +58,9 @@ public class AsyncServletDecoratorTest {
 	@Test
 	public void testOnRequest() {
 		byte[] body = {0};
-		AsyncServlet rootServlet = identity()
-				.wrap(onRequest(request -> request.setBody(body)))
-				.wrap(loadBody())
+		AsyncServlet rootServlet = AsyncServletDecorator.identity()
+				.combine(onRequest(request -> request.setBody(body)))
+				.combine(loadBody())
 				.serve(request -> {
 					ByteBuf loadedBody = request.getBody();
 					assertArrayEquals(loadedBody.getArray(), body);
@@ -142,7 +142,7 @@ public class AsyncServletDecoratorTest {
 
 	@Test
 	public void testMapException() {
-		AsyncServlet servlet = wrappedDecoratorOf(
+		AsyncServlet servlet = combineDecorators(
 				mapException(throwable -> HttpResponse.ofCode(100)),
 				mapException(throwable -> HttpResponse.ofCode(200)))
 				.serve(request -> Promise.ofException(new HttpException(300)));
@@ -153,7 +153,7 @@ public class AsyncServletDecoratorTest {
 
 	@Test
 	public void testRuntimeExeptionExceptions() {
-		AsyncServlet servlet = wrappedDecoratorOf(catchRuntimeExceptions(), loadBody())
+		AsyncServlet servlet = combineDecorators(catchRuntimeExceptions(), loadBody())
 				.serve(request -> Promise.of(HttpResponse.ok200()));
 
 		NullPointerException exception = awaitException(servlet.serve(HttpRequest.get("http://example.com")));

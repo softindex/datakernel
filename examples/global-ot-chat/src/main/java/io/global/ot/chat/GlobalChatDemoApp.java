@@ -17,14 +17,13 @@ import io.global.launchers.GlobalNodesModule;
 import io.global.ot.chat.operations.ChatOperation;
 import io.global.ot.chat.operations.Utils;
 
-import java.util.Collection;
 import java.util.function.Function;
 
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.ot.chat.operations.ChatOperation.OPERATION_CODEC;
 import static io.global.ot.chat.operations.Utils.DIFF_TO_STRING;
-import static java.util.Arrays.asList;
 
 public final class GlobalChatDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
@@ -37,8 +36,8 @@ public final class GlobalChatDemoApp extends Launcher {
 	AsyncHttpServer chatServer;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()

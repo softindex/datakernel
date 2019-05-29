@@ -32,12 +32,11 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static java.util.Arrays.asList;
 
 /**
  * This example demonstrates uploading file to server using RemoteFS
@@ -58,8 +57,8 @@ public class FileUploadExample extends Launcher {
 	private Eventloop eventloop;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Provides

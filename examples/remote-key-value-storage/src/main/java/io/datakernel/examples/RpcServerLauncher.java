@@ -21,9 +21,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
-import static java.util.Arrays.asList;
+import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class RpcServerLauncher extends Launcher {
@@ -31,8 +29,8 @@ public class RpcServerLauncher extends Launcher {
 	private RpcServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				new RpcServerModule());
 	}

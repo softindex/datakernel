@@ -1,7 +1,6 @@
 package io.datakernel.launchers.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
@@ -24,9 +23,9 @@ import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
@@ -35,9 +34,6 @@ import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static io.datakernel.launchers.initializers.Initializers.*;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "http-server.properties";
@@ -47,14 +43,14 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	PrimaryServer primaryServer;
 
 	@Override
-	protected final Collection<Module> getModules() {
-		return asList(
-				override(getBaseModules(), getOverrideModules()),
-				combine(getBusinessLogicModules()));
+	protected final Module getModule() {
+		return combine(
+				override(getBaseModule(), getOverrideModule()),
+				getBusinessLogicModule());
 	}
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create()
 						.initialize(ofGlobalEventloopStats()),
@@ -66,14 +62,14 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					Eventloop provideEventloop(Config config) {
+					Eventloop primaryEventloop(Config config) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.primary")));
 					}
 
 					@Provides
 					@Worker
-					Eventloop provide(Config config, @Optional ThrottlingController throttlingController) {
+					Eventloop workerEventloop(Config config, @Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.worker")))
 								.initialize(eventloop -> eventloop.withInspector(throttlingController));
@@ -85,26 +81,26 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					}
 
 					@Provides
-					PrimaryServer providePrimaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
-						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
-						return PrimaryServer.create(primaryEventloop, workerHttpServers)
+					PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
+						List<AsyncHttpServer> workerServers = workerPool.getInstances(AsyncHttpServer.class);
+						return PrimaryServer.create(primaryEventloop, workerServers)
 								.initialize(ofPrimaryServer(config.getChild("http")));
 					}
 
 					@Provides
 					@Worker
-					AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
+					AsyncHttpServer workerServer(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
 								.initialize(ofHttpWorker(config.getChild("http")));
 					}
 				});
 	}
 
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
-	protected abstract Collection<Module> getBusinessLogicModules();
+	protected abstract Module getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {
@@ -113,23 +109,25 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
+
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
 				new AbstractModule() {
 					@Provides
 					@Worker
-					AsyncServlet provideServlet(@WorkerId int worker) {
+					AsyncServlet rootServlet(@WorkerId int workerId) {
 						return req -> Promise.of(
-								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
+								HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId))));
 					}
 				};
 
 		Launcher launcher = new MultithreadedHttpServerLauncher() {
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(businessLogicModule);
+			protected Module getBusinessLogicModule() {
+				return businessLogicModule;
 			}
 		};
+
 		launcher.launch(args);
 	}
 }

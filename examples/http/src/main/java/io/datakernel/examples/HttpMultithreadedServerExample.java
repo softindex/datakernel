@@ -28,10 +28,7 @@ import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 
-import java.util.Collection;
-
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static java.util.Collections.singletonList;
 
 /**
  * HTTP multithreaded server example.
@@ -42,29 +39,24 @@ public final class HttpMultithreadedServerExample extends MultithreadedHttpServe
 	public static final int WORKERS = 4;
 
 	@Override
-	protected Collection<Module> getOverrideModules() {
-		return singletonList(
-				ConfigModule.create(Config.create()
-						.with("http.listenAddresses", "" + PORT)
-						.with("workers", "" + WORKERS)
-				)
-		);
+	protected Module getOverrideModule() {
+		return ConfigModule.create(Config.create()
+				.with("http.listenAddresses", "" + PORT)
+				.with("workers", "" + WORKERS));
 	}
 
 	@Override
-	protected Collection<Module> getBusinessLogicModules() {
-		return singletonList(
-				new AbstractModule() {
-					@Provides
-					@Worker
-					AsyncServlet servlet(@WorkerId final int workerId) {
-						return request -> {
-							byte[] msg = encodeAscii("Hello from worker server #" + workerId + "\n");
-							return Promise.of(HttpResponse.ok200().withBody(msg));
-						};
-					}
-				}
-		);
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
+			@Provides
+			@Worker
+			AsyncServlet servlet(@WorkerId final int workerId) {
+				return request -> {
+					byte[] msg = encodeAscii("Hello from worker server #" + workerId + "\n");
+					return Promise.of(HttpResponse.ok200().withBody(msg));
+				};
+			}
+		};
 	}
 
 	@Override

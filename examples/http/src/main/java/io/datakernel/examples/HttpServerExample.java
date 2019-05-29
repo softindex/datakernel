@@ -21,6 +21,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -28,12 +29,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 /**
  * HTTP simple server example.
@@ -41,8 +37,8 @@ import static java.util.Collections.singletonList;
  */
 public final class HttpServerExample extends HttpServerLauncher {
 	@Override
-	protected Collection<Module> getOverrideModules() {
-		return asList(
+	protected Module getOverrideModule() {
+		return Modules.combine(
 				ConfigModule.create(Config.create()
 						.with("http.listenAddresses", "5588")
 				),
@@ -51,16 +47,14 @@ public final class HttpServerExample extends HttpServerLauncher {
 	}
 
 	@Override
-	protected Collection<Module> getBusinessLogicModules() {
-		return singletonList(
-				new AbstractModule() {
-					@Provides
-					AsyncServlet servlet() {
-						return request -> Promise.of(HttpResponse.ok200()
-								.withBody(encodeAscii("Hello World!")));
-					}
-				}
-		);
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
+			@Provides
+			AsyncServlet servlet() {
+				return request -> Promise.of(HttpResponse.ok200()
+						.withBody(encodeAscii("Hello World!")));
+			}
+		};
 	}
 
 	@Override

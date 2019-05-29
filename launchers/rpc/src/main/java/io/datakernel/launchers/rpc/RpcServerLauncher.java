@@ -32,16 +32,11 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.Initializer;
 
-import java.util.Collection;
-
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.rpc.Initializers.ofRpcServer;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 public abstract class RpcServerLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "rpc-server.properties";
@@ -51,14 +46,14 @@ public abstract class RpcServerLauncher extends Launcher {
 	RpcServer rpcServer;
 
 	@Override
-	protected final Collection<Module> getModules() {
-		return asList(
-				override(getBaseModules(), getOverrideModules()),
-				combine(getBusinessLogicModules()));
+	protected final Module getModule() {
+		return combine(
+				override(getBaseModule(), getOverrideModule()),
+				getBusinessLogicModule());
 	}
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
@@ -85,11 +80,11 @@ public abstract class RpcServerLauncher extends Launcher {
 		);
 	}
 
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
-	protected abstract Collection<Module> getBusinessLogicModules();
+	protected abstract Module getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {
@@ -98,6 +93,7 @@ public abstract class RpcServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
+
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
 				new AbstractModule() {
@@ -112,10 +108,11 @@ public abstract class RpcServerLauncher extends Launcher {
 
 		Launcher launcher = new RpcServerLauncher() {
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(businessLogicModule);
+			protected Module getBusinessLogicModule() {
+				return businessLogicModule;
 			}
 		};
+
 		launcher.launch(args);
 	}
 }

@@ -32,21 +32,18 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.*;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
 import static io.datakernel.launchers.remotefs.Initializers.*;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 public abstract class RemoteFsClusterLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "remotefs-cluster.properties";
@@ -63,12 +60,12 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	EventloopTaskScheduler clusterDeadCheckScheduler;
 
 	@Override
-	protected final Collection<Module> getModules() {
-		return singletonList(override(getBaseModules(), getOverrideModules()));
+	protected final Module getModule() {
+		return override(getBaseModule(), getOverrideModule());
 	}
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
@@ -130,8 +127,8 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 		);
 	}
 
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
 	@Override

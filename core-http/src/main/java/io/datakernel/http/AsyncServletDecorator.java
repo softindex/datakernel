@@ -7,7 +7,6 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -15,11 +14,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.csp.ChannelConsumers.recycling;
+import static java.util.Arrays.asList;
 
 public interface AsyncServletDecorator {
 	@NotNull AsyncServlet serve(@NotNull AsyncServlet servlet);
 
-	default AsyncServletDecorator wrap(AsyncServletDecorator next) {
+	default AsyncServletDecorator combine(AsyncServletDecorator next) {
 		return servlet -> this.serve(next.serve(servlet));
 	}
 
@@ -28,14 +28,14 @@ public interface AsyncServletDecorator {
 	}
 
 	@NotNull
-	static AsyncServletDecorator wrappedDecoratorOf(AsyncServletDecorator... decorators) {
-		return wrappedDecoratorOf(Arrays.asList(decorators));
+	static AsyncServletDecorator combineDecorators(AsyncServletDecorator... decorators) {
+		return combineDecorators(asList(decorators));
 	}
 
 	@NotNull
-	static AsyncServletDecorator wrappedDecoratorOf(List<AsyncServletDecorator> decorators) {
+	static AsyncServletDecorator combineDecorators(List<AsyncServletDecorator> decorators) {
 		return decorators.stream()
-				.reduce(identity(), AsyncServletDecorator::wrap);
+				.reduce(identity(), AsyncServletDecorator::combine);
 	}
 
 	static AsyncServletDecorator onRequest(Consumer<HttpRequest> consumer) {
@@ -114,6 +114,36 @@ public interface AsyncServletDecorator {
 								return Promise.of(response);
 							} else {
 								return Promise.of(fn.apply(request, e));
+							}
+						}));
+	}
+
+	static AsyncServletDecorator mapToHttp500Exception() {
+		return mapToHttpException(e -> HttpException.internalServerError500());
+	}
+
+	static AsyncServletDecorator mapToHttpException(Function<Throwable, HttpException> fn) {
+		return servlet ->
+				request -> servlet.serve(request)
+						.thenEx(((response, e) -> {
+							if (e == null) {
+								return Promise.of(response);
+							} else {
+								if (e instanceof HttpException) return Promise.ofException(e);
+								return Promise.ofException(fn.apply(e));
+							}
+						}));
+	}
+
+	static AsyncServletDecorator mapToHttpException(BiFunction<HttpRequest, Throwable, HttpException> fn) {
+		return servlet ->
+				request -> servlet.serve(request)
+						.thenEx(((response, e) -> {
+							if (e == null) {
+								return Promise.of(response);
+							} else {
+								if (e instanceof HttpException) return Promise.ofException(e);
+								return Promise.ofException(fn.apply(request, e));
 							}
 						}));
 	}

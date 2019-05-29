@@ -30,12 +30,10 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.Random;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.test.TestUtils.getFreePort;
-import static java.util.Collections.singleton;
 
 @Ignore
 public final class RemoteFsClusterLauncherTest {
@@ -58,10 +56,10 @@ public final class RemoteFsClusterLauncherTest {
 	public void launchServer() throws Exception {
 		new RemoteFsServerLauncher() {
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singleton(ConfigModule.create(Config.create()
-					.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
-					.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber)))));
+			protected Module getOverrideModule() {
+				return ConfigModule.create(Config.create()
+						.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
+						.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber))));
 			}
 		}.launch(new String[0]);
 	}
@@ -75,16 +73,16 @@ public final class RemoteFsClusterLauncherTest {
 
 		new RemoteFsClusterLauncher() {
 			@Override
-			protected Collection<Module> getOverrideModules() {
+			protected Module getOverrideModule() {
 				Config config = Config.create()
-					.with("local.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000)))
-					.with("local.path", Config.ofValue("storages/local"))
-					.with("cluster.replicationCount", Config.ofValue("3"))
-					.with("scheduler.repartition.disabled", "true");
+						.with("local.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000)))
+						.with("local.path", Config.ofValue("storages/local"))
+						.with("cluster.replicationCount", Config.ofValue("3"))
+						.with("scheduler.repartition.disabled", "true");
 				for (int i = 0; i < 10; i++) {
 					config = config.with("cluster.partitions.server_" + i, "localhost:" + (5400 + i));
 				}
-				return singleton(ConfigModule.create(config));
+				return ConfigModule.create(config);
 			}
 		}.launch(new String[0]);
 	}

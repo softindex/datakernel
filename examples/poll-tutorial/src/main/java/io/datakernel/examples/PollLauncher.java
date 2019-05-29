@@ -15,7 +15,6 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.writer.ByteBufWriter;
 
-import java.util.Collection;
 import java.util.Map;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -35,8 +34,8 @@ public final class PollLauncher extends HttpServerLauncher {
 	}
 
 	@Override
-	protected Collection<Module> getBusinessLogicModules() {
-		return list(new AbstractModule() {
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
 			@Provides
 			PollDao pollRepo() {
 				return new PollDaoImpl();
@@ -71,7 +70,7 @@ public final class PollLauncher extends HttpServerLauncher {
 									Map<String, String> params = request.getPostParameters();
 									String option = params.get("option");
 									String stringId = params.get("id");
-									if (option ==null || stringId == null) {
+									if (option == null || stringId == null) {
 										return Promise.of(HttpResponse.ofCode(401));
 									}
 
@@ -107,7 +106,7 @@ public final class PollLauncher extends HttpServerLauncher {
 									return Promise.of(HttpResponse.redirect302("/"));
 								}));
 			}
-		});
+		};
 	}
 
 	public static void main(String[] args) throws Exception {

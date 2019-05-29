@@ -33,14 +33,13 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.util.Arrays.asList;
 
 @SuppressWarnings("unused")
 public final class HttpBenchmark extends Launcher {
@@ -61,8 +60,8 @@ public final class HttpBenchmark extends Launcher {
 	AsyncHttpClient httpClient;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.create()
 						.with("benchmark.warmupRounds", "" + WARMUP_ROUNDS)

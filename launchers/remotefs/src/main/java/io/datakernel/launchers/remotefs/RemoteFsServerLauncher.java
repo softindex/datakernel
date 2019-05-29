@@ -31,16 +31,13 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.remotefs.Initializers.ofRemoteFsServer;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 public abstract class RemoteFsServerLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "remotefs-server.properties";
@@ -49,15 +46,14 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	RemoteFsServer remoteFsServer;
 
 	@Override
-	protected final Collection<Module> getModules() {
-		return singletonList(override(getBaseModules(), getOverrideModules()));
+	protected final Module getModule() {
+		return override(getBaseModule(), getOverrideModule());
 	}
 
-	private Collection<Module> getBaseModules() {
-		return asList(
+	private Module getBaseModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-
 				ConfigModule.create(() ->
 						Config.create()
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
@@ -88,8 +84,8 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		);
 	}
 
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
 	@Override

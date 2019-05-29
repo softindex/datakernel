@@ -28,14 +28,11 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
-import java.util.Collection;
-
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static java.util.Collections.singletonList;
 
 public final class CrdtNodeExample {
 	static class BusinessLogicModule extends AbstractModule {
@@ -61,23 +58,22 @@ public final class CrdtNodeExample {
 			}
 
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singletonList(
-						ConfigModule.create(() ->
-								Config.create()
-										.with("crdt.http.listenAddresses", "localhost:8080")
-										.with("crdt.server.listenAddresses", "localhost:9090")
-										.with("crdt.local.path", "/tmp/TESTS/crdt")
-										.with("crdt.cluster.localPartitionId", "local")
-										.with("crdt.cluster.partitions.noop", "localhost:9091")
-										.override(ofProperties(PROPERTIES_FILE, true))
-										.override(ofProperties(System.getProperties()).getChild("config")))
-								.printEffectiveConfig());
+			protected Module getOverrideModule() {
+				return ConfigModule.create(() ->
+						Config.create()
+								.with("crdt.http.listenAddresses", "localhost:8080")
+								.with("crdt.server.listenAddresses", "localhost:9090")
+								.with("crdt.local.path", "/tmp/TESTS/crdt")
+								.with("crdt.cluster.localPartitionId", "local")
+								.with("crdt.cluster.partitions.noop", "localhost:9091")
+								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofProperties(System.getProperties()).getChild("config")))
+						.printEffectiveConfig();
 			}
 
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(new BusinessLogicModule());
+			protected Module getBusinessLogicModule() {
+				return new BusinessLogicModule();
 			}
 		};
 		launcher.launch(args);

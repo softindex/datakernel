@@ -27,10 +27,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.util.Collection;
-
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static java.util.Collections.singletonList;
 
 public class HttpSimpleServer {
 	private static final int SERVICE_PORT = 25565;
@@ -38,27 +35,22 @@ public class HttpSimpleServer {
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new HttpServerLauncher() {
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(
-						new AbstractModule() {
-							@Provides
-							AsyncServlet rootServlet() {
-								return request -> {
-									logger.info("Connection received");
-									return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
-								};
-							}
-						}
-				);
+			protected Module getBusinessLogicModule() {
+				return new AbstractModule() {
+					@Provides
+					AsyncServlet rootServlet() {
+						return request -> {
+							logger.info("Connection received");
+							return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
+						};
+					}
+				};
 			}
 
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singletonList(
-						ConfigModule.create(Config.create()
-								.with("http.listenAddresses", "" + SERVICE_PORT)
-						)
-				);
+			protected Module getOverrideModule() {
+				return ConfigModule.create(Config.create()
+						.with("http.listenAddresses", "" + SERVICE_PORT));
 			}
 
 			@Override

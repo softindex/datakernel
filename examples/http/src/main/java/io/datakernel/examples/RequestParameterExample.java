@@ -20,28 +20,25 @@ import io.datakernel.async.Promise;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.loader.StaticLoaders;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
-import static io.datakernel.util.CollectionUtils.list;
+import static io.datakernel.loader.StaticLoader.ofPath;
 
 public final class RequestParameterExample extends HttpServerLauncher {
 	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/query");
 
 	@Override
-	protected Collection<Module> getBusinessLogicModules() {
-		return list(new AbstractModule() {
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
 			@Provides
-			AsyncServlet mainServlet(Eventloop eventloop) {
+			AsyncServlet mainServlet() {
 				return RoutingServlet.create()
 						.with(HttpMethod.POST, "/hello", loadBody()
 								.serve(request -> {
@@ -54,10 +51,9 @@ public final class RequestParameterExample extends HttpServerLauncher {
 							return Promise.of(HttpResponse.ok200()
 									.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
 						})
-						.with("/*", StaticServlet.create(eventloop,
-								StaticLoaders.ofPath(RESOURCE_DIR)));
+						.with("/*", StaticServlet.create(ofPath(RESOURCE_DIR)));
 			}
-		});
+		};
 	}
 
 	public static void main(String[] args) throws Exception {

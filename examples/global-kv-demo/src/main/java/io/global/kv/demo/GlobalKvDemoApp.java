@@ -38,7 +38,6 @@ import io.global.kv.api.KvItem;
 import io.global.launchers.GlobalNodesModule;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -47,7 +46,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
-import static java.util.Arrays.asList;
 
 public final class GlobalKvDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "globalkv-app.properties";
@@ -66,8 +64,9 @@ public final class GlobalKvDemoApp extends Launcher {
 	KvClient<String, String> alice;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(ServiceGraphModule.defaultInstance(),
+	protected Module getModule() {
+		return combine(
+				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()

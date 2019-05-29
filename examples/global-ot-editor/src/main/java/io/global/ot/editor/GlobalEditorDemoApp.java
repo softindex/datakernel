@@ -21,30 +21,25 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.TypeT;
 import io.global.common.ExampleCommonModule;
 import io.global.common.ot.OTCommonModule;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.editor.operations.EditorOperation;
 
-import java.util.Collection;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.ot.editor.operations.EditorOTSystem.createOTSystem;
 import static io.global.ot.editor.operations.Utils.OPERATION_CODEC;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 public final class GlobalEditorDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "server.properties";
@@ -57,8 +52,8 @@ public final class GlobalEditorDemoApp extends Launcher {
 	AsyncHttpServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
@@ -76,7 +71,7 @@ public final class GlobalEditorDemoApp extends Launcher {
 						bind(new Key<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
 					}
 				},
-				override(singletonList(new GlobalNodesModule()), singletonList(new ExampleCommonModule())));
+				override(new GlobalNodesModule(), new ExampleCommonModule()));
 	}
 
 	@Override

@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
@@ -25,10 +24,8 @@ import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static java.util.Arrays.asList;
+import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class HttpHelloWorldLauncher extends Launcher {
@@ -41,8 +38,8 @@ public class HttpHelloWorldLauncher extends Launcher {
 	PrimaryServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.ofProperties("configs.properties")),
 				new HttpHelloWorldModule()

@@ -7,12 +7,9 @@ import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import org.junit.Test;
 
-import java.util.Collection;
-
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static java.util.Collections.singletonList;
 
 public class CrdtFileServerLauncherTest {
 	@Test
@@ -24,17 +21,15 @@ public class CrdtFileServerLauncherTest {
 			}
 
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(
-						new AbstractModule() {
-							@Provides
-							CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
-								return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-										new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-										tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
-							}
-						}
-				);
+			protected Module getBusinessLogicModule() {
+				return new AbstractModule() {
+					@Provides
+					CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
+					}
+				};
 			}
 		}.testInjector();
 	}

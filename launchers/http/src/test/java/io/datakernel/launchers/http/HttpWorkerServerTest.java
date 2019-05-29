@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -47,7 +46,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 public final class HttpWorkerServerTest {
@@ -60,22 +58,22 @@ public final class HttpWorkerServerTest {
 	public void test() throws Exception {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(new AbstractModule() {
+			protected Module getBusinessLogicModule() {
+				return new AbstractModule() {
 					@Provides
 					@Worker
 					AsyncServlet provideServlet(@WorkerId int worker) {
 						return req -> Promise.of(
 								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 					}
-				});
+				};
 			}
 
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singletonList(ConfigModule.create(
+			protected Module getOverrideModule() {
+				return ConfigModule.create(
 						Config.create()
-								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))));
+								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT))));
 			}
 		};
 		Injector injector = launcher.createInjector(new String[]{});

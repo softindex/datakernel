@@ -5,11 +5,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
-import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -17,19 +15,15 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.util.Collection;
 import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.loader.StaticLoaders.ofClassPath;
-import static io.datakernel.util.CollectionUtils.list;
-import static java.lang.Boolean.parseBoolean;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
 import static java.lang.Integer.parseInt;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 
 //[START EXAMPLE]
 public final class TodoListLauncher extends HttpServerLauncher {
@@ -44,25 +38,18 @@ public final class TodoListLauncher extends HttpServerLauncher {
 	//[END REGION_1]
 
 	@Override
-	protected Collection<Module> getBusinessLogicModules() {
-		return list(new AbstractModule() {
-
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
 			@Provides
 			RecordDAO recordRepo() {
 				return new RecordImplDAO();
 			}
 
 			@Provides
-			@Named("static")
-			AsyncServlet servlet(Eventloop eventloop) {
-				return StaticServlet.create(eventloop, ofClassPath(newCachedThreadPool(), "build/"));
-			}
-
-			@Provides
-			AsyncServlet servlet(RecordDAO recordDAO, @Named("static") AsyncServlet staticServlet) {
+			AsyncServlet servlet(RecordDAO recordDAO) {
 				return RoutingServlet.create()
 						//[START REGION_2]
-						.with("/*", staticServlet)
+						.with("/*", StaticServlet.create(ofClassPath("build/")))
 						//[END REGION_2]
 						.with(POST, "/add", loadBody()
 								.serve(request -> {
@@ -100,9 +87,9 @@ public final class TodoListLauncher extends HttpServerLauncher {
 							plan.toggle();
 
 							return Promise.of(HttpResponse.ok200());
-						 });
+						});
 			}
-		});
+		};
 	}
 
 	//[START REGION_4]

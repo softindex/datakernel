@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 
@@ -51,5 +52,19 @@ public interface Module {
 									}
 								})
 						));
+	}
+
+	static Module empty() {
+		return new Module() {
+			@Override
+			public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
+				return Trie.leaf(emptyMap());
+			}
+
+			@Override
+			public Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers() {
+				return emptyMap();
+			}
+		};
 	}
 }
