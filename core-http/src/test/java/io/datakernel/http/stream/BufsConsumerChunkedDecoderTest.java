@@ -28,11 +28,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import sun.net.www.http.ChunkedOutputStream;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -42,7 +38,6 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.http.TestUtils.AssertingConsumer;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
-import static java.lang.System.arraycopy;
 import static org.junit.Assert.assertEquals;
 
 public final class BufsConsumerChunkedDecoderTest {
@@ -76,59 +71,6 @@ public final class BufsConsumerChunkedDecoderTest {
 		list.clear();
 		consumer.reset();
 		chunkedDecoder.getOutput().set(consumer);
-	}
-
-	@Test
-	public void testDecoderWithStrings() throws IOException {
-		StringBuilder builder = new StringBuilder();
-		for (String s : plainText) {
-			builder.append(s);
-		}
-		String finalString = builder.toString();
-		consumer.setExpectedByteArray(finalString.getBytes());
-
-		for (int i = 0; i < plainText.length; i++) {
-			boolean lastchunk = i == plainText.length - 1;
-			byte[] encoded = encode(plainText[i].getBytes(), lastchunk);
-			ByteBuf buf = ByteBufPool.allocate(encoded.length);
-			buf.put(encoded);
-			list.add(buf);
-		}
-		doTest(null);
-	}
-
-	@Test
-	public void testDecoderWithRandomData() throws IOException {
-		List<byte[]> randomData = new ArrayList<>();
-		int size = random.nextInt(100) + 50;
-		int totalBytes = 0;
-		for (int i = 0; i < size; i++) {
-			int bytes = random.nextInt(1000) + 1;
-			totalBytes += bytes;
-			byte[] data = new byte[bytes];
-			random.nextBytes(data);
-			randomData.add(data);
-		}
-
-		byte[] expected = new byte[totalBytes];
-		for (int i = 0; i < totalBytes; ) {
-			for (byte[] bytes : randomData) {
-				int length = bytes.length;
-				arraycopy(bytes, 0, expected, i, length);
-				i += length;
-			}
-		}
-		consumer.setExpectedByteArray(expected);
-
-		for (int i = 0; i < size; i++) {
-			boolean lastchunk = i == size - 1;
-			byte[] encoded = encode(randomData.get(i), lastchunk);
-			ByteBuf buf = ByteBufPool.allocate(encoded.length);
-			buf.put(encoded);
-			list.add(buf);
-		}
-
-		doTest(null);
 	}
 
 	@Test
@@ -280,21 +222,6 @@ public final class BufsConsumerChunkedDecoderTest {
 			await(processResult);
 		} else {
 			assertEquals(expectedException, awaitException(processResult));
-		}
-	}
-
-	public static byte[] encode(byte[] data, boolean lastchunk) throws IOException {
-		try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-			ChunkedOutputStream zip = new ChunkedOutputStream(new PrintStream(stream));
-			zip.write(data);
-			zip.flush();
-			if (lastchunk) {
-				zip.close();
-				// making the last block end with 0\r\n\r\n
-				stream.write(13);
-				stream.write(10);
-			}
-			return stream.toByteArray();
 		}
 	}
 }

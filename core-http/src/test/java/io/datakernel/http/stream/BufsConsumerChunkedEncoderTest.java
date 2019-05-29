@@ -26,7 +26,6 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -81,17 +80,6 @@ public final class BufsConsumerChunkedEncoderTest {
 		expected.put("\r\n0\r\n\r\n".getBytes());
 		consumer.setExpectedBuf(expected);
 
-		doTest();
-	}
-
-	@Test
-	public void testWithChunkedOutputStream() throws IOException {
-		byte[] chunkData = new byte[1000];
-		ThreadLocalRandom.current().nextBytes(chunkData);
-		consumer.setExpectedByteArray(BufsConsumerChunkedDecoderTest.encode(chunkData, true));
-		ByteBuf buf = ByteBufPool.allocate(chunkData.length);
-		buf.put(chunkData);
-		list.add(buf);
 		doTest();
 	}
 

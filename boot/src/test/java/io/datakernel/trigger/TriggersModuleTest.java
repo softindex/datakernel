@@ -32,7 +32,6 @@ import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.junit.Rule;
 import org.junit.Test;
@@ -66,7 +65,6 @@ public class TriggersModuleTest {
 		int secondPoolSize = 5;
 		Injector injector = Injector.of(
 				ServiceGraphModule.defaultInstance(),
-				new WorkerPoolModule(),
 				new AbstractModule() {
 					int counter = 0;
 

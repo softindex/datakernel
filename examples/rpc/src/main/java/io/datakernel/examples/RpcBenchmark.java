@@ -56,6 +56,9 @@ public class RpcBenchmark extends Launcher {
 	private RpcClient rpcClient;
 
 	@Inject
+	private RpcServer rpcServer;
+
+	@Inject
 	@Named("client")
 	private Eventloop eventloop;
 

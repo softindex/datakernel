@@ -30,6 +30,7 @@ import io.datakernel.util.Initializer;
 import io.datakernel.util.TypeT;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -122,6 +123,11 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				.register(EventloopService.class, forEventloopService())
 				.register(EventloopServer.class, forEventloopServer())
 				.register(Eventloop.class, forEventloop());
+	}
+
+	@Override
+	protected void configure() {
+		install(new WorkerPoolModule());
 	}
 
 	public static ServiceGraphModule newInstance() {

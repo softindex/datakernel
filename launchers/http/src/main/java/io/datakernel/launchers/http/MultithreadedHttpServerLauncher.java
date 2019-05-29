@@ -61,7 +61,6 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new WorkerPoolModule(),
 				new AbstractModule() {
 					@Provides
 					@Primary

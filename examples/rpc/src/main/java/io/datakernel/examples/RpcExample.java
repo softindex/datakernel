@@ -40,6 +40,9 @@ public class RpcExample extends Launcher {
 	@Inject
 	private RpcClient client;
 
+	@Inject
+	private RpcServer server;
+
 	@Override
 	protected Collection<Module> getModules() {
 		return asList(

@@ -56,9 +56,6 @@ public class FileDownloadExample extends Launcher {
 	private RemoteFsClient client;
 
 	@Inject
-	private ExecutorService executor;
-
-	@Inject
 	private Eventloop eventloop;
 
 	@Override

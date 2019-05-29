@@ -21,9 +21,9 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
 import io.datakernel.di.module.Module;
+import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.worker.WorkerPoolModule;
 
 import java.util.Collection;
 
@@ -36,6 +36,9 @@ public class HttpHelloWorldLauncher extends Launcher {
 	Config config;
 
 	private int port;
+
+	@Inject
+	PrimaryServer server;
 
 	@Override
 	protected Collection<Module> getModules() {

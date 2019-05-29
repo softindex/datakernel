@@ -355,10 +355,6 @@
       <activation>
         <activeByDefault>false</activeByDefault>
       </activation>
-      <modules>
-        <module>examples/aio-examples</module>
-        <module>core-aio</module>
-      </modules>
     </profile>
   </profiles>
 
