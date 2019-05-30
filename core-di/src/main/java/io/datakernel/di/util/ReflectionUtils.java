@@ -148,17 +148,21 @@ public final class ReflectionUtils {
 			Type[] typeParams = key.getTypeParams();
 			checkArgument(typeParams.length == 1);
 
-			return (Binding<T>) Binding.of(new Key[]{Key.of(Injector.class)}, args -> {
-				Injector injector = (Injector) args[0];
+			Key<Object> subkey = Key.ofType(typeParams[0], key.getName());
+
+			return (Binding<T>) Binding.of(new Key[]{subkey, Key.of(Injector.class)}, args -> {
+				Object singleton = args[0];
+				Injector injector = (Injector) args[1];
+
 				Injector current = injector;
 				Binding<?> binding = null;
 				while (current != null && binding == null) {
-					binding = current.getBinding(Key.ofType(typeParams[0], key.getName()));
+					binding = current.getBinding(subkey);
 					current = current.getParent();
 				}
-				if (binding == null) {
-					return null;
-				}
+
+				assert binding != null : "singleton was provided but no binding were found in injector tree";
+
 				Factory<?> factory = binding.getFactory();
 				Object[] depInstances = Arrays.stream(binding.getDependencies())
 						.map(dependency -> dependency.isRequired() ?
@@ -174,7 +178,7 @@ public final class ReflectionUtils {
 
 					@Override
 					public synchronized Object provideSingleton() {
-						return injector.getInstance(key);
+						return singleton;
 					}
 				};
 			});
@@ -329,6 +333,7 @@ public final class ReflectionUtils {
 		return type;
 	}
 
+	@Contract("null, -> null")
 	public static Type canonicalize(Type type) {
 		if (type == null) {
 			return null;

@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.service;
 
+import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPools;
 import org.junit.Rule;
 import org.junit.Test;
 
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
 import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
-import static io.datakernel.test.TestUtils.getFreePort;
 
 public final class WorkerNameTest {
-	public static final int PORT = getFreePort();
 	public static final int WORKERS = 4;
 
 	@Rule
@@ -72,6 +72,11 @@ public final class WorkerNameTest {
 		}
 
 		@Provides
+		WorkerPool workerPool(WorkerPools workerPools) {
+			return workerPools.createPool(WORKERS);
+		}
+
+		@Provides
 		@Worker
 		@Named("First")
 		Element4 ffWorker() {
@@ -93,7 +98,7 @@ public final class WorkerNameTest {
 
 		@Provides
 		@Worker
-		Element3 workerHttpServer(Element1 eventloop, int workerId,
+		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId,
 		                          @Named("Second") Element4 unusedString) {
 			return new Element3();
 		}
@@ -102,12 +107,13 @@ public final class WorkerNameTest {
 
 	@Test
 	public void test() throws Exception {
-//		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
-//		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-//		try {
-//			serviceGraph.startFuture().get();
-//		} finally {
-//			serviceGraph.stopFuture().get();
-//		}
+		Injector injector = Injector.of(new TestModule());
+		injector.getInstance(Element2.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		try {
+			serviceGraph.startFuture().get();
+		} finally {
+			serviceGraph.stopFuture().get();
+		}
 	}
 }

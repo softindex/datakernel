@@ -187,7 +187,7 @@ public abstract class AbstractModule implements Module {
 		public void implicitly() {
 			Binding<T> binding = ReflectionUtils.generateImplicitBinding(key);
 			if (binding == null) {
-				throw new RuntimeException("requested implicit binding for " + key + " but it had none");
+				throw new RuntimeException("requested implicit binding for key " + key + " but it had none");
 			}
 			// overriding the location, eh
 			addBinding(scope, key, binding.at(getLocation()).apply(fieldsInjector(key)));

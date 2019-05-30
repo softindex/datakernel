@@ -23,9 +23,9 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
+import io.datakernel.util.DIUtils;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
@@ -33,12 +33,12 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.datakernel.util.guice.GuiceUtils.prettyPrintSimpleKeyName;
+import static io.datakernel.util.DIUtils.prettyPrintSimpleKeyName;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
-	private Function<Key<?>, String> keyToString = GuiceUtils::prettyPrintSimpleKeyName;
+	private Function<Key<?>, String> keyToString = DIUtils::prettyPrintSimpleKeyName;
 
 	private final Map<Class<?>, Set<TriggerConfig<?>>> classSettings = new LinkedHashMap<>();
 	private final Map<Key<?>, Set<TriggerConfig<?>>> keySettings = new LinkedHashMap<>();

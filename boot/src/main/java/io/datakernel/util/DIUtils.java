@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.util.guice;
+package io.datakernel.util;
 
 import io.datakernel.di.Key;
-import io.datakernel.util.RecursiveType;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 
-public final class GuiceUtils {
+public final class DIUtils {
 	public static String prettyPrintAnnotation(Annotation annotation) {
 		StringBuilder sb = new StringBuilder();
 		Method[] methods = annotation.annotationType().getDeclaredMethods();

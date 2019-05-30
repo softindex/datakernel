@@ -56,17 +56,22 @@ public final class TestDI {
 			bind(new Key<Provider<String>>() {}).implicitly();
 		}});
 
-		assertEquals("str: 42", injector.getInstance(String.class));
-		assertEquals("str: 42", injector.getInstance(String.class));
-		assertEquals("str: 42", injector.getInstance(String.class));
+		// the provideNew call calls the integer factory for the second time (first was for the singleton/cache), so it returns 43
+		// nobody should make non-pure factories anyway, this is just for testing
+		assertEquals("str: 43", injector.getInstance(String.class));
+		assertEquals("str: 43", injector.getInstance(String.class));
+		assertEquals("str: 43", injector.getInstance(String.class));
 
 		Provider<String> provider = injector.getInstance(new Key<Provider<String>>() {});
-		assertEquals("str: 43", provider.provideNew());
 		assertEquals("str: 44", provider.provideNew());
 		assertEquals("str: 45", provider.provideNew());
+		assertEquals("str: 46", provider.provideNew());
 
 		// the first getInstance call was cached, non-pure mutability affects results only when using .provideNew
-		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals("str: 43", injector.getInstance(String.class));
+
+		// as was said in a big comment above first assert
+		assertEquals(42, injector.getInstance(Integer.class).intValue());
 	}
 
 	@Test
@@ -207,9 +212,10 @@ public final class TestDI {
 				bind(RecursiveA.class).implicitly();
 			}};
 
-			System.out.println(module.getBindingsMultimap());
+			module.getBindings().get().forEach((key, binding) ->
+					System.out.println(key.getDisplayString() + " -> " + binding.getDisplayString()));
 
-			Injector injector = Injector.of(module);
+			Injector.of(module);
 			fail("should've detected the cycle and fail");
 		} catch (RuntimeException e) {
 			e.printStackTrace();

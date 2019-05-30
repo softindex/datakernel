@@ -34,10 +34,9 @@ public abstract class AbstractAnnotation {
 
 	public String getDisplayString() {
 		if (annotation != null) {
-			String s = annotation.toString();
-			return "@" + s.substring(s.lastIndexOf('.') + 1);
+			return ReflectionUtils.getShortName(annotation.toString()).replace("value=", "");
 		}
-		return "@" + annotationType.getSimpleName() + "()";
+		return "@" + ReflectionUtils.getShortName(annotationType.getName()) + "()";
 	}
 
 	@Override

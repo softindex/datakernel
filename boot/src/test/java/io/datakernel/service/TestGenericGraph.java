@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.service;
 
 import io.datakernel.di.Key;
 import io.datakernel.di.Name;
@@ -22,7 +22,6 @@ import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Test;

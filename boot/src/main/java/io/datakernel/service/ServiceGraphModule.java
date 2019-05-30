@@ -16,8 +16,8 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.Optional;
 import io.datakernel.di.*;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.di.util.Trie;
@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
-import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -227,9 +226,10 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			return TypeT.ofType(key.getType());
 		}
 
+		@Nullable
 		@Override
-		public @Nullable Annotation getAnnotation() {
-			return key.getAnnotation();
+		public Name getName() {
+			return key.getName();
 		}
 
 		@Override
@@ -316,17 +316,21 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 							.filter(dependency -> dependency.isRequired() ||
 									injector.hasInstance(dependency.getKey()))
 							.map(dependency -> {
-								if (dependency.getKey().getRawType() == WorkerPool.class) {
-									if (binding.getDependencies().length == 1) {
-										if (instance instanceof WorkerPool.Instances) {
-											WorkerPool.Instances<?> workerInstances = (WorkerPool.Instances<?>) instance;
-											return workerInstanceToKey.get(workerInstances.get(0));
-										} else {
-											logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
-										}
-									} else {
-										logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : single dependency to WorkerPool is expected");
-									}
+								Class<?> dependencyRawType = dependency.getKey().getRawType();
+								boolean rawTypeMatches = dependencyRawType == WorkerPool.class || dependencyRawType == WorkerPools.class;
+								boolean instanceMatches = instance instanceof WorkerPool.Instances;
+
+								if (rawTypeMatches && instanceMatches) {
+									WorkerPool.Instances<?> workerInstances = (WorkerPool.Instances<?>) instance;
+									return workerInstanceToKey.get(workerInstances.get(0));
+								}
+
+								if (rawTypeMatches && !(instance instanceof WorkerPool)) {
+									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
+								}
+
+								if (instanceMatches) {
+									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
 								}
 								return new ServiceKey(dependency.getKey());
 							})

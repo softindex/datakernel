@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.service;
 
+import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
-import io.datakernel.service.Service;
-import io.datakernel.service.ServiceGraphModule;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.assertEquals;
 
 public class TestStartTwice {
 	private static AtomicInteger countStart = new AtomicInteger(0);
@@ -66,16 +67,17 @@ public class TestStartTwice {
 
 	@Test
 	public void test() throws Exception {
-//		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
-//		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-//
-//		try {
-//			serviceGraph.startFuture().get();
-//		} finally {
-//			serviceGraph.stopFuture().get();
-//		}
-//
-//		assertEquals(countStart.get(), 1);
-//		assertEquals(countStop.get(), 1);
+		Injector injector = Injector.of(new TestModule());
+		injector.getInstance(ServiceImpl.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+
+		try {
+			serviceGraph.startFuture().get();
+		} finally {
+			serviceGraph.stopFuture().get();
+		}
+
+		assertEquals(countStart.get(), 1);
+		assertEquals(countStop.get(), 1);
 	}
 }
