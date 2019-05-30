@@ -16,30 +16,57 @@
 
 package io.datakernel.worker;
 
+import io.datakernel.di.Binding;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
+import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.toMap;
 
 public final class WorkerPool {
 	private final Scope scope;
-	private final int idx;
 	private final Injector[] scopeInjectors;
 
-	WorkerPool(Injector injector, Scope scope, int idx, int workers) {
+	@SuppressWarnings("unchecked")
+	public static final class Instances<T> implements Iterable<T> {
+		private final Object[] instances;
+		private final List<T> list;
+
+		private Instances(Object[] instances) {
+			this.instances = instances;
+			this.list = (List<T>) asList(instances);
+		}
+
+		public Object[] getArray() {
+			return instances;
+		}
+
+		public List<T> getList() {
+			return list;
+		}
+
+		public T get(int i) {
+			return (T) instances[i];
+		}
+
+		public int size() {
+			return instances.length;
+		}
+
+		@Override
+		public Iterator<T> iterator() {
+			return list.iterator();
+		}
+	}
+
+	WorkerPool(Injector injector, Scope scope, int workers) {
 		this.scope = scope;
-		this.idx = idx;
 		this.scopeInjectors = new Injector[workers];
 		for (int i = 0; i < workers; i++) {
 			Map<Key<?>, Object> instances = new HashMap<>(singletonMap(Key.of(int.class, WorkerId.class), i));
@@ -51,40 +78,44 @@ public final class WorkerPool {
 		return scope;
 	}
 
-	public int getIdx() {
-		return idx;
+	@NotNull
+	public <T> Instances<T> getInstances(Class<T> type) {
+		return getInstances(Key.of(type));
 	}
 
 	@NotNull
-	public <T> List<T> getInstances(Key<T> key) {
-		List<T> instances = new ArrayList<>(scopeInjectors.length);
-		for (Injector scopeInjector : scopeInjectors) {
-			instances.add(scopeInjector.getInstance(key));
+	public <T> Instances<T> getInstances(Key<T> key) {
+		Instances<T> instances = new Instances<>(new Object[scopeInjectors.length]);
+		for (int i = 0; i < scopeInjectors.length; i++) {
+			instances.instances[i] = scopeInjectors[i].getInstance(key);
 		}
 		return instances;
 	}
 
-	@NotNull
-	public <T> List<T> getInstances(Class<T> type) {
-		return getInstances(Key.of(type));
-	}
-
 	@Nullable
-	private <T> List<T> peekInstances(Class<T> type) {
+	private <T> Instances<T> peekInstances(Class<T> type) {
 		return peekInstances(Key.of(type));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Nullable
-	private <T> List<T> peekInstances(Key<T> key) {
-		if (!scopeInjectors[0].peekInstances().containsKey(key)) return null;
-		return asList((T[]) doPeekInstances(key));
+	private <T> Instances<T> peekInstances(Key<T> key) {
+		if (!scopeInjectors[0].getBindings().get().containsKey(key)) return null;
+		Object[] instances = doPeekInstances(key);
+		if (Stream.of(instances).anyMatch(Objects::isNull)) return null;
+		return new Instances<>(instances);
 	}
 
 	@NotNull
-	public Map<Key<?>, Object[]> peekInstances() {
-		return scopeInjectors[0].peekInstances().keySet().stream()
-				.collect(toMap(Function.identity(), this::doPeekInstances));
+	public Map<Key<?>, Instances<?>> peekInstances() {
+		Map<Key<?>, Instances<?>> map = new HashMap<>();
+		Map<Key<?>, Binding<?>> bindings = scopeInjectors[0].getBindings().get();
+		for (Key<?> key : scopeInjectors[0].peekInstances().keySet()) {
+			if (!bindings.containsKey(key)) continue;
+			Object[] instances = doPeekInstances(key);
+			if (Stream.of(instances).anyMatch(Objects::isNull)) continue;
+			map.put(key, new Instances<>(instances));
+		}
+		return map;
 	}
 
 	private Object[] doPeekInstances(Key<?> key) {
@@ -105,6 +136,6 @@ public final class WorkerPool {
 
 	@Override
 	public String toString() {
-		return "WorkerPool{scope=" + scope + ", idx=" + idx +'}';
+		return "WorkerPool{scope=" + scope + "}";
 	}
 }

@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -44,6 +45,12 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 
 	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends WorkerServer> workerServers) {
 		return create(primaryEventloop, workerServers.toArray(new WorkerServer[0]));
+	}
+
+	public static PrimaryServer create(Eventloop primaryEventloop, Iterable<? extends WorkerServer> workerServers) {
+		List<WorkerServer> list = new ArrayList<>();
+		workerServers.forEach(list::add);
+		return create(primaryEventloop, list);
 	}
 
 	public static PrimaryServer create(Eventloop primaryEventloop, WorkerServer... workerServer) {

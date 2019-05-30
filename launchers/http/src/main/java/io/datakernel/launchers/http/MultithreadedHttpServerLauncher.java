@@ -23,7 +23,6 @@ import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.net.InetSocketAddress;
-import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -81,13 +80,13 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					}
 
 					@Provides
-					PrimaryServer primaryServer(Eventloop primaryEventloop, List<AsyncHttpServer> workerServers, Config config) {
-						return PrimaryServer.create(primaryEventloop, workerServers)
+					PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool.Instances<AsyncHttpServer> workerServers, Config config) {
+						return PrimaryServer.create(primaryEventloop, workerServers.getList())
 								.initialize(ofPrimaryServer(config.getChild("http")));
 					}
 
 					@Provides
-					List<AsyncHttpServer> workerServers(WorkerPool workerPool) {
+					WorkerPool.Instances<AsyncHttpServer> workerServers(WorkerPool workerPool) {
 						return workerPool.getInstances(AsyncHttpServer.class);
 					}
 

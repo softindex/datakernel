@@ -43,7 +43,6 @@ import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
@@ -219,11 +218,10 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 							.forEach(entry -> jmxRegistry.addWorkerPoolKey((WorkerPool) entry.getValue(), entry.getKey()));
 
 					for (WorkerPool workerPool : workerPools.getWorkerPools()) {
-						for (Map.Entry<Key<?>, Object[]> entry : workerPool.peekInstances().entrySet()) {
+						for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : workerPool.peekInstances().entrySet()) {
 							Key<?> key = entry.getKey();
-							Object[] workerInstances = entry.getValue();
-							if (Stream.of(workerInstances).anyMatch(Objects::isNull)) continue;
-							jmxRegistry.registerWorkers(workerPool, key, asList(workerInstances), ensureSettingsFor(key));
+							WorkerPool.Instances<?> workerInstances = entry.getValue();
+							jmxRegistry.registerWorkers(workerPool, key, workerInstances.getList(), ensureSettingsFor(key));
 
 							Type type = key.getType();
 							if (globalMBeans.containsKey(type)) {

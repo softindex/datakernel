@@ -32,7 +32,6 @@ import io.datakernel.worker.WorkerPools;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import static io.datakernel.util.guice.GuiceUtils.prettyPrintSimpleKeyName;
 import static java.util.Collections.emptyList;
@@ -160,17 +159,16 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		if (workerPools != null) {
 			for (WorkerPool workerPool : workerPools.getWorkerPools()) {
-				for (Map.Entry<Key<?>, Object[]> entry : workerPool.peekInstances().entrySet()) {
+				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : workerPool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
-					Object[] workerInstances = entry.getValue();
-					if (Stream.of(workerInstances).anyMatch(Objects::isNull)) continue;
-					for (int i = 0; i < workerInstances.length; i++) {
-						Object instance = workerInstances[i];
+					WorkerPool.Instances<?> workerInstances = entry.getValue();
+					for (int i = 0; i < workerInstances.size(); i++) {
+						Object workerInstance = workerInstances.get(i);
 						KeyWithWorkerData k = new KeyWithWorkerData(key, workerPool, i);
 
-						scanHasTriggers(triggersMap, k, instance);
-						scanClassSettings(triggersMap, k, instance);
-						scanKeySettings(triggersMap, k, instance);
+						scanHasTriggers(triggersMap, k, workerInstance);
+						scanClassSettings(triggersMap, k, workerInstance);
+						scanKeySettings(triggersMap, k, workerInstance);
 					}
 				}
 

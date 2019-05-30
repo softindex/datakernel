@@ -1,6 +1,5 @@
 package io.datakernel.examples;
 
-import com.google.common.base.Charsets;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
@@ -15,6 +14,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
+import java.nio.charset.Charset;
 import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.*;
@@ -55,7 +55,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 								.serve(request -> {
 									ByteBuf body = request.getBody();
 									try {
-										Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(Charsets.UTF_8));
+										Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(Charset.forName("UTF_8")));
 										recordDAO.add(record);
 
 										return Promise.of(HttpResponse.ok200());

@@ -43,7 +43,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.difference;
@@ -276,6 +275,34 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				})
 				.initialize(initializer);
 
+		IdentityHashMap<Object, ServiceKey> workerInstanceToKey = new IdentityHashMap<>();
+		if (workerPools != null) {
+			for (int i = 0; i < pools.size(); i++) {
+				WorkerPool pool = pools.get(i);
+				int idx = i + 1;
+				Map<Key<?>, Set<ScopedValue<Dependency>>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
+				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : pool.peekInstances().entrySet()) {
+					Key<?> key = entry.getKey();
+					WorkerPool.Instances<?> workerInstances = entry.getValue();
+					if (!scopeDependencies.containsKey(key)) continue;
+					ServiceKey serviceKey = new ServiceKey(key, idx);
+					instances.put(serviceKey, workerInstances.getList());
+					workerInstanceToKey.put(workerInstances.get(0), serviceKey);
+					instanceDependencies.put(serviceKey,
+							scopeDependencies.get(key)
+									.stream()
+									.filter(scopedDependency -> scopedDependency.get().isRequired() ||
+											(scopedDependency.isScoped() ?
+													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
+													injector.hasInstance(scopedDependency.get().getKey())))
+									.map(scopedDependency -> scopedDependency.isScoped() ?
+											new ServiceKey(scopedDependency.get().getKey(), idx) :
+											new ServiceKey(scopedDependency.get().getKey()))
+									.collect(toSet()));
+				}
+			}
+		}
+
 		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
 			Key<?> key = entry.getKey();
 			Object instance = entry.getValue();
@@ -288,33 +315,22 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 					Arrays.stream(binding.getDependencies())
 							.filter(dependency -> dependency.isRequired() ||
 									injector.hasInstance(dependency.getKey()))
-							.map(dependency -> new ServiceKey(dependency.getKey()))
+							.map(dependency -> {
+								if (dependency.getKey().getRawType() == WorkerPool.class) {
+									if (binding.getDependencies().length == 1) {
+										if (instance instanceof WorkerPool.Instances) {
+											WorkerPool.Instances<?> workerInstances = (WorkerPool.Instances<?>) instance;
+											return workerInstanceToKey.get(workerInstances.get(0));
+										} else {
+											logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
+										}
+									} else {
+										logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : single dependency to WorkerPool is expected");
+									}
+								}
+								return new ServiceKey(dependency.getKey());
+							})
 							.collect(toSet()));
-		}
-
-		if (workerPools != null) {
-			for (WorkerPool pool : pools) {
-				Map<Key<?>, Set<ScopedValue<Dependency>>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
-				for (Map.Entry<Key<?>, Object[]> entry : pool.peekInstances().entrySet()) {
-					Key<?> key = entry.getKey();
-					Object[] workerInstances = entry.getValue();
-					if (!scopeDependencies.containsKey(key)) continue;
-					if (Stream.of(workerInstances).anyMatch(Objects::isNull)) continue;
-					ServiceKey serviceKey = new ServiceKey(key, pool.getIdx());
-					instances.put(serviceKey, Arrays.asList(workerInstances));
-					instanceDependencies.put(serviceKey,
-							scopeDependencies.get(key)
-									.stream()
-									.filter(scopedDependency -> scopedDependency.get().isRequired() ||
-											(scopedDependency.isScoped() ?
-													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
-													injector.hasInstance(scopedDependency.get().getKey())))
-									.map(scopedDependency -> scopedDependency.isScoped() ?
-											new ServiceKey(scopedDependency.get().getKey(), pool.getIdx()) :
-											new ServiceKey(scopedDependency.get().getKey()))
-									.collect(toSet()));
-				}
-			}
 		}
 
 		return populateServiceGraph(serviceGraph, instances, instanceDependencies, cache);

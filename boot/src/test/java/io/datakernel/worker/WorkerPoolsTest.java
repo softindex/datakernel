@@ -29,7 +29,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -44,8 +43,8 @@ public class WorkerPoolsTest {
 	private WorkerPool first;
 	private WorkerPool second;
 	private WorkerPools pools;
-	private List<Eventloop> eventloopsFirst;
-	private List<Eventloop> eventloopsSecond;
+	private WorkerPool.Instances<Eventloop> eventloopsFirst;
+	private WorkerPool.Instances<Eventloop> eventloopsSecond;
 
 	@Before
 	public void setUp() {

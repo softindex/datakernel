@@ -21,10 +21,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.worker.*;
 
-import java.util.List;
-
 public class WorkerPoolModuleExample extends AbstractModule {
-
 	@Provides
 	WorkerPool workerPool(WorkerPools workerPools) {
 		return workerPools.createPool(4);
@@ -39,7 +36,7 @@ public class WorkerPoolModuleExample extends AbstractModule {
 	public static void main(String[] args) {
 		Injector injector = Injector.of(new WorkerPoolModule(), new WorkerPoolModuleExample());
 		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
-		List<String> strings = workerPool.getInstances(String.class);
+		WorkerPool.Instances<String> strings = workerPool.getInstances(String.class);
 		strings.forEach(System.out::println);
 	}
 }

@@ -16,21 +16,17 @@
 
 package io.datakernel.guice;
 
-import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Rule;
 import org.junit.Test;
-
-import java.util.List;
 
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
 import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
@@ -71,7 +67,7 @@ public final class WorkerNameTest {
 
 		@Provides
 		Element2 primaryServer(@Named("Primary") Element1 primaryEventloop, WorkerPool workerPool) {
-			List<Element4> unusedList = workerPool.getInstances(Key.of(Element4.class, Name.of("First")));
+			WorkerPool.Instances<Element4> unusedList = workerPool.getInstances(Key.of(Element4.class, Name.of("First")));
 			return new Element2();
 		}
 

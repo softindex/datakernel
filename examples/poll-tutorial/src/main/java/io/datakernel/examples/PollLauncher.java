@@ -2,7 +2,6 @@ package io.datakernel.examples;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.di.module.AbstractModule;
@@ -23,6 +22,7 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.map;
+import static java.util.Collections.emptyMap;
 
 //[START EXAMPLE]
 public final class PollLauncher extends HttpServerLauncher {
@@ -64,7 +64,7 @@ public final class PollLauncher extends HttpServerLauncher {
 						})
 						//[END REGION_2]
 						.with(GET, "/create", request -> Promise.of(HttpResponse.ok200()
-								.withBody(applyTemplate(singlePollCreate, ImmutableMap.of()))))
+								.withBody(applyTemplate(singlePollCreate, emptyMap()))))
 						.with(POST, "/vote", loadBody()
 								.serve(request -> {
 									Map<String, String> params = request.getPostParameters();

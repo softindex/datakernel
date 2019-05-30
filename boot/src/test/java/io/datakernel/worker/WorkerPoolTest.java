@@ -27,7 +27,6 @@ import io.datakernel.eventloop.FatalErrorHandlers;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
@@ -35,8 +34,8 @@ import static org.junit.Assert.assertEquals;
 public class WorkerPoolTest {
 	private WorkerPool first;
 	private WorkerPool second;
-	private List<Eventloop> eventloopsFirst;
-	private List<Eventloop> eventloopsSecond;
+	private WorkerPool.Instances<Eventloop> eventloopsFirst;
+	private WorkerPool.Instances<Eventloop> eventloopsSecond;
 
 	@Before
 	public void setUp() {

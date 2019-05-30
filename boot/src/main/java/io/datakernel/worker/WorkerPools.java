@@ -35,7 +35,7 @@ public final class WorkerPools {
 	}
 
 	public synchronized WorkerPool createPool(Scope scope, int size) {
-		WorkerPool workerPool = new WorkerPool(injector, scope, workerPools.size() + 1, size);
+		WorkerPool workerPool = new WorkerPool(injector, scope, size);
 		workerPools.add(workerPool);
 		return workerPool;
 	}

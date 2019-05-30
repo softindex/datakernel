@@ -28,8 +28,6 @@ import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
-import java.util.List;
-
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 // [START EXAMPLE]
@@ -51,13 +49,13 @@ public class HttpHelloWorldModule extends AbstractModule {
 	}
 
 	@Provides
-	PrimaryServer primaryServer(Eventloop primaryEventloop, List<AsyncHttpServer> instances, Config config) {
+	PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool.Instances<AsyncHttpServer> instances, Config config) {
 		int port = config.get(ofInteger(), "port", 5577);
 		return PrimaryServer.create(primaryEventloop, instances).withListenPort(port);
 	}
 
 	@Provides
-	List<AsyncHttpServer> workerServers(WorkerPool workerPool) {
+	WorkerPool.Instances<AsyncHttpServer> workerServers(WorkerPool workerPool) {
 		return workerPool.getInstances(AsyncHttpServer.class);
 	}
 

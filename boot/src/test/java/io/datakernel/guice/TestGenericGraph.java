@@ -16,20 +16,16 @@
 
 package io.datakernel.guice;
 
-import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Test;
-
-import java.util.List;
 
 public class TestGenericGraph {
 	public static final int WORKERS = 4;
@@ -62,8 +58,8 @@ public class TestGenericGraph {
 
 		@Provides
 		Pojo integerPojo(WorkerPool workerPool) {
-			List<Pojo> list = workerPool.getInstances(Key.of(Pojo.class, Name.of("worker")));
-			List<Pojo> listOther = workerPool.getInstances(Key.of(Pojo.class, Name.of("anotherWorker")));
+			WorkerPool.Instances<Pojo> list = workerPool.getInstances(Key.of(Pojo.class, Name.of("worker")));
+			WorkerPool.Instances<Pojo> listOther = workerPool.getInstances(Key.of(Pojo.class, Name.of("anotherWorker")));
 			return new Pojo("root");
 		}
 
