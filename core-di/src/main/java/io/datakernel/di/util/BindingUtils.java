@@ -4,8 +4,10 @@ import io.datakernel.di.Binding;
 import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
+import io.datakernel.di.module.BindingGenerator;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.toMultimap;
@@ -16,38 +18,38 @@ public final class BindingUtils {
 		throw new AssertionError("nope.");
 	}
 
+	public static void completeBindings(Trie<Scope, Map<Key<?>, Binding<?>>> trie, Map<Key<?>, BindingGenerator<?>> generators) {
+		Set<Key<?>> known = new HashSet<>(); // to keep knowledge about what keys existed in upper scopes
+		trie.bfs(bindings -> {
+			known.addAll(bindings.keySet());
+			for (Binding<?> binding : bindings.values()) {
+				for (Dependency dependency : binding.getDependencies()) {
+					if (dependency.isRequired() && !known.contains(dependency.getKey())) {
+
+					}
+				}
+			}
+		});
+	}
+
 	/**
 	 * This method returns mapping from *unstatisfied keys* to *bindings that require them*
 	 * and not the common *key and the bindings that provide it*
 	 */
-	public static Map<Key<?>, Set<Binding<?>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getUnsatisfiedDependencies(new HashSet<>(), bindings)
-				.collect(toMultimap(dtb -> dtb.key, dtb -> dtb.binding));
-	}
-
-	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return Stream.concat(
-				getUnsatisfiedDependencies(known, bindings.get()),
-				bindings.getChildren().values().stream().flatMap(scopeBindings -> getUnsatisfiedDependencies(known, scopeBindings))
-		);
-	}
-
-	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Map<Key<?>, Binding<?>> bindings) {
-		known.addAll(bindings.keySet());
-		return bindings.values().stream()
-				.flatMap(binding -> Arrays.stream(binding.getDependencies())
-						.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
-						.map(dependency -> new DependencyToBinding(dependency.getKey(), binding)));
-	}
-
-	private static class DependencyToBinding {
-		Key<?> key;
-		Binding<?> binding;
-
-		public DependencyToBinding(Key<?> key, Binding<?> binding) {
-			this.key = key;
-			this.binding = binding;
-		}
+	public static Map<Key<?>, Set<Binding<?>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+		Map<Key<?>, Set<Binding<?>>> unsatisfied = new HashMap<>();
+		Set<Key<?>> known = new HashSet<>(); // to keep knowledge about what keys existed in upper scopes
+		trie.bfs(bindings -> {
+			known.addAll(bindings.keySet());
+			for (Binding<?> binding : bindings.values()) {
+				for (Dependency dependency : binding.getDependencies()) {
+					if (dependency.isRequired() && !known.contains(dependency.getKey())) {
+						unsatisfied.computeIfAbsent(dependency.getKey(), $ -> new HashSet<>()).add(binding);
+					}
+				}
+			}
+		});
+		return unsatisfied;
 	}
 
 	public static Set<Key<?>[]> getCycles(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {

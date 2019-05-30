@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -75,6 +76,15 @@ public final class Trie<K, V> {
 		Trie<K, E> root = leaf(fn.apply(payload));
 		children.forEach((k, sub) -> root.getChildren().put(k, sub.map(fn)));
 		return root;
+	}
+
+	public void bfs(K root, BiConsumer<K, V> consumer) {
+		consumer.accept(root, payload);
+		children.forEach((key, child) -> child.bfs(key, consumer));
+	}
+
+	public void bfs(Consumer<V> consumer) {
+		bfs(null, ($, payload) -> consumer.accept(payload));
 	}
 
 	private static <K, V> void mergeInto(Trie<K, V> into, Trie<K, V> from, BiConsumer<V, V> merger) {

@@ -1,5 +1,9 @@
 package io.datakernel.di;
 
+import io.datakernel.di.error.CannotConstructException;
+import io.datakernel.di.error.CyclicDependensiesException;
+import io.datakernel.di.error.NoBindingsInScopeException;
+import io.datakernel.di.error.UnsatisfiedDependenciesException;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.BindingUtils;
@@ -8,13 +12,9 @@ import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.joining;
 
 public class Injector {
 	@Nullable
@@ -74,32 +74,21 @@ public class Injector {
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :
 				new Injector(parent, bindings, instances);
+
 		bindings.get().put(Key.of(Injector.class), Binding.constant(injector));
+
+//		BindingUtils.completeBindings(bindings, );
 
 		ReflectionUtils.addImplicitBindings(bindings);
 
 		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingUtils.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {
-			String detail = unsatisfied.entrySet().stream()
-					.map(entry -> entry.getValue().stream()
-							.map(binding -> {
-								LocationInfo location = binding.getLocation();
-								return "at " + (location != null ? location.getDeclaration() : "<unknown binding location>");
-							})
-							.collect(joining("\n\t\t     and ", "\tkey " + entry.getKey() + "\n\t\trequired ", "")))
-					.collect(joining("\n"));
-			throw new RuntimeException("unsatisfied dependencies detected:\n" + detail + '\n');
+			throw new UnsatisfiedDependenciesException(injector, unsatisfied);
 		}
 
 		Set<Key<?>[]> cycles = BindingUtils.getCycles(bindings);
 		if (!cycles.isEmpty()) {
-			String detail = cycles.stream()
-					.map(cycle ->
-							Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
-									.map(Key::getDisplayString)
-									.collect(joining(" -> ", "\t", " -> ...")))
-					.collect(joining("\n"));
-			throw new RuntimeException("cyclic dependencies detected:\n" + detail + '\n');
+			throw new CyclicDependensiesException(injector, cycles);
 		}
 
 		return injector;
@@ -110,7 +99,6 @@ public class Injector {
 		return getInstance(Key.of(type));
 	}
 
-	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
 		return doGetInstance(key);
@@ -121,7 +109,6 @@ public class Injector {
 		return getInstanceOrNull(Key.of(type));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
 		return doGetInstanceOrNull(key);
@@ -157,7 +144,7 @@ public class Injector {
 	private <T> T doGetInstance(@NotNull Key<T> key) {
 		T instance = doGetInstanceOrNull(key);
 		if (instance == null) {
-			throw new RuntimeException("cannot construct " + key);
+			throw new CannotConstructException(this, key, localBindings.get(key));
 		}
 		return instance;
 	}
@@ -170,7 +157,9 @@ public class Injector {
 			return instance;
 		}
 		instance = (T) provideInstance(key);
-		instances.put(key, instance);
+		if (instance != null) {
+			instances.put(key, instance);
+		}
 		return instance;
 	}
 
@@ -237,7 +226,7 @@ public class Injector {
 	public Injector enterScope(@NotNull Scope scope, @NotNull Map<Key<?>, Object> instances, boolean threadsafe) {
 		Trie<Scope, Map<Key<?>, Binding<?>>> subBindings = bindings.get(scope);
 		if (subBindings == null) {
-			throw new RuntimeException("tried to enter a scope " + scope + "that was not represented by any binding");
+			throw new NoBindingsInScopeException(this, scope);
 		}
 		return threadsafe ?
 				new SynchronizedInjector(this, subBindings, instances) :

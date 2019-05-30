@@ -2,6 +2,7 @@ package io.datakernel.di.util;
 
 import io.datakernel.di.Optional;
 import io.datakernel.di.*;
+import io.datakernel.di.error.BadAnnotationException;
 import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -12,6 +13,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.stream.Collectors.toList;
@@ -31,7 +33,7 @@ public final class ReflectionUtils {
 				.filter(annotation -> annotation.annotationType().getAnnotation(NameAnnotation.class) != null)
 				.collect(toSet());
 		if (names.size() > 1) {
-			throw new RuntimeException("more than one name annotation");
+			throw new BadAnnotationException(annotations, "more than one name annotation");
 		}
 		Type resolved = resolveType(type, containerType);
 		return names.isEmpty() ?
@@ -49,10 +51,10 @@ public final class ReflectionUtils {
 				.orElse(null);
 
 		if (scopes.size() > 1) {
-			throw new RuntimeException("more than one scope annotation");
+			throw new BadAnnotationException(annotations, "more than one scope annotation");
 		}
 		if (!scopes.isEmpty() && nested != null) {
-			throw new RuntimeException("cannot have both @Scoped and other scope annotations");
+			throw new BadAnnotationException(annotations, "cannot have both @Scoped and other scope annotations");
 		}
 		return nested != null ?
 				Arrays.stream(nested.value()).map(Scope::of).toArray(Scope[]::new) :
@@ -75,19 +77,21 @@ public final class ReflectionUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> BindingInitializer<T> fieldsInjector(Key<? extends T> containingType) {
-		List<BindingInitializer<T>> initializers =
+	public static <T> BindingInitializer<T> injectingInitializer(Key<? extends T> containingType) {
+		List<BindingInitializer<T>> initializers = Stream.concat(
 				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredFields).stream()
-						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field))
-						.collect(toList());
+						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.getAnnotation(Inject.class).optional())),
+				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredMethods).stream()
+						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method, !method.getAnnotation(Inject.class).optional())))
+				.collect(toList());
 		return BindingInitializer.combine(initializers);
 	}
 
-	public static <T> BindingInitializer<T> fieldInjector(Key<? extends T> containingType, Field field) {
+	public static <T> BindingInitializer<T> fieldInjector(Key<? extends T> container, Field field, boolean required) {
 		field.setAccessible(true);
 
-		Key<Object> key = keyOf(containingType, field.getGenericType(), field.getDeclaredAnnotations());
-		Dependency dependency = new Dependency(key, !field.getAnnotation(Inject.class).optional());
+		Key<Object> key = keyOf(container, field.getGenericType(), field.getDeclaredAnnotations());
+		Dependency dependency = new Dependency(key, required);
 
 		return BindingInitializer.of(new Dependency[]{dependency}, (instance, args) -> {
 			Object arg = args[0];
@@ -97,7 +101,40 @@ public final class ReflectionUtils {
 			try {
 				field.set(instance, arg);
 			} catch (IllegalAccessException e) {
-				throw new RuntimeException("failed to inject field " + field, e);
+				throw new RuntimeException("failed to inject into injectable field " + field, e);
+			}
+		});
+	}
+
+	public static <T> BindingInitializer<T> methodInjector(Key<? extends T> container, Method method, boolean required) {
+		method.setAccessible(true);
+
+		Dependency[] dependencies = toDependencies(container, method.getParameters());
+
+		if (required) {
+			return BindingInitializer.of(dependencies, (instance, args) -> {
+				try {
+					method.invoke(instance, args);
+				} catch (IllegalAccessException | InvocationTargetException e) {
+					throw new RuntimeException("failed to inject into injectable method " + method, e);
+				}
+			});
+		}
+
+		Dependency[] optionalDependencies = Arrays.stream(dependencies)
+				.map(dependency -> new Dependency(dependency.getKey(), false))
+				.toArray(Dependency[]::new);
+
+		return BindingInitializer.of(optionalDependencies, (instance, args) -> {
+			for (int i = 0; i < args.length; i++) {
+				if (args[i] == null && dependencies[i].isRequired()) {
+					return;
+				}
+			}
+			try {
+				method.invoke(instance, args);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new RuntimeException("failed to inject into injectable method " + method, e);
 			}
 		});
 	}
@@ -229,35 +266,29 @@ public final class ReflectionUtils {
 		return null;
 	}
 
-	public static void addImplicitBindings(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		addImplicitBindings(new HashSet<>(), bindings);
-	}
-
-	private static void addImplicitBindings(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		addImplicitBindings(visited, bindings.get());
-		bindings.getChildren().values().forEach(sub -> addImplicitBindings(visited, sub));
-	}
-
 	@SuppressWarnings("unchecked")
-	private static void addImplicitBindings(Set<Key<?>> checked, Map<Key<?>, Binding<?>> localBindings) {
-		checked.addAll(localBindings.keySet());
-		List<Binding<?>> bindingsToCheck = new ArrayList<>(localBindings.values());
-		do {
-			bindingsToCheck = bindingsToCheck.stream()
-					.flatMap(binding -> Arrays.stream(binding.getDependencies()))
-					.filter(dependency -> !checked.contains(dependency.getKey()))
-					.map(dependency -> {
-						Key<Object> key = (Key<Object>) dependency.getKey();
-						Binding<Object> binding = generateImplicitBinding(key);
-						if (binding != null) {
-							localBindings.put(key, binding.apply(fieldsInjector(key)));
-						}
-						checked.add(key); // even if there was no binding, this will be checked in a separate dependency check
-						return binding;
-					})
-					.filter(Objects::nonNull)
-					.collect(toList());
-		} while (!bindingsToCheck.isEmpty());
+	public static void addImplicitBindings(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+		Set<Key<?>> checked = new HashSet<>();
+		trie.bfs(bindings -> {
+			checked.addAll(bindings.keySet());
+			List<Binding<?>> bindingsToCheck = new ArrayList<>(bindings.values());
+			do {
+				bindingsToCheck = bindingsToCheck.stream()
+						.flatMap(binding -> Arrays.stream(binding.getDependencies()))
+						.filter(dependency -> !checked.contains(dependency.getKey()))
+						.map(dependency -> {
+							Key<Object> key = (Key<Object>) dependency.getKey();
+							Binding<Object> binding = generateImplicitBinding(key);
+							if (binding != null) {
+								bindings.put(key, binding.apply(injectingInitializer(key)));
+							}
+							checked.add(key); // even if there was no binding, this will be checked in a separate dependency check
+							return binding;
+						})
+						.filter(Objects::nonNull)
+						.collect(toList());
+			} while (!bindingsToCheck.isEmpty());
+		});
 	}
 
 	private static final Map<Key<?>, Map<Type, Type>> typevarCache = new HashMap<>();
@@ -308,6 +339,47 @@ public final class ReflectionUtils {
 			throw new RuntimeException("generics " + unsatisfiedGenerics + " were never specified");
 		}
 		return typeMapping;
+	}
+
+	private static boolean matches(Type strict, Type pattern) {
+		if (strict.equals(pattern)) {
+			return true;
+		}
+		if (pattern instanceof TypeVariable) {
+			if (((TypeVariable) pattern).getBounds().length != 0) {
+				throw new RuntimeException("Bounded wildcards are not supported yet");
+			}
+			return true;
+		}
+		if (!(strict instanceof ParameterizedType) || !(pattern instanceof ParameterizedType)) {
+			return false;
+		}
+		ParameterizedType parameterizedStrict = (ParameterizedType) strict;
+		ParameterizedType parameterizedPattern = (ParameterizedType) pattern;
+
+		if (!Objects.equals(parameterizedPattern.getOwnerType(), parameterizedStrict.getOwnerType())) {
+			return false;
+		}
+		if (!parameterizedPattern.getRawType().equals(parameterizedStrict.getRawType())) {
+			return false;
+		}
+
+		Type[] strictParams = parameterizedStrict.getActualTypeArguments();
+		Type[] patternParams = parameterizedPattern.getActualTypeArguments();
+		if (strictParams.length != patternParams.length) {
+			return false;
+		}
+		for (int i = 0; i < strictParams.length; i++) {
+			if (!matches(strictParams[i], patternParams[i])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static <T extends Float> void main(String[] args) {
+
+		System.out.println(matches(new Key<Map<String, List<Integer>>>() {}.getType(), new Key<Map<String, List<T>>>() {}.getType()));
 	}
 
 	public static Type resolveType(Type type, @Nullable Key<?> container) {
@@ -395,7 +467,6 @@ public final class ReflectionUtils {
 			ParameterizedTypeImpl that = (ParameterizedTypeImpl) o;
 
 			return Objects.equals(ownerType, that.ownerType) && rawType.equals(that.rawType) && Arrays.equals(parameters, that.parameters);
-
 		}
 
 		@Override

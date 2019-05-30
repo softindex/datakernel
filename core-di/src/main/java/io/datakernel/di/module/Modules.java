@@ -26,7 +26,7 @@ public final class Modules {
 	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return new ModuleImpl(bindings.map(map ->
 				map.entrySet().stream()
-						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap());
+						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap(), emptyMap());
 	}
 
 	public static Module combine(Module... modules) {
@@ -38,13 +38,14 @@ public final class Modules {
 			return modules.iterator().next();
 		}
 		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindingsMultimap));
-		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
+		Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>();
 
 		for (Module module : modules) {
 			mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
 		}
 
-		return new ModuleImpl(bindings, conflictResolvers);
+		throw new UnsupportedOperationException("not implemented"); // TODO anton: implement
+//		return new ModuleImpl(bindings, bindingGenerators, conflictResolvers);
 	}
 
 	public static Module override(Module... modules) {
@@ -58,9 +59,11 @@ public final class Modules {
 	public static Module override(Module into, Module replacements) {
 		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindingsMultimap(), replacements.getBindingsMultimap());
 
-		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
+		Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
 		conflictResolvers.putAll(replacements.getConflictResolvers());
-		return new ModuleImpl(bindings, conflictResolvers);
+
+		throw new UnsupportedOperationException("not implemented"); // TODO anton: implement
+//		return new ModuleImpl(bindings, bindingGenerators, conflictResolvers);
 	}
 
 	private static final Function<Set<Binding<?>>, Binding<?>> ERRORS_ON_DUPLICATE = bindings -> {
@@ -72,7 +75,7 @@ public final class Modules {
 		return (Function) ERRORS_ON_DUPLICATE;
 	}
 
-	public static <T> Function<Set<Binding<T>>, Binding<T>> resolverOfReducer(Function<Stream<T>, T> reducerFunction) {
+	public static <T> ConflictResolver<T> resolverOfReducer(Function<Stream<T>, T> reducerFunction) {
 		return bindings -> {
 			if (bindings.size() == 1) {
 				return bindings.iterator().next();
@@ -90,23 +93,27 @@ public final class Modules {
 	}
 
 	@SuppressWarnings("OptionalGetWithoutIsPresent")
-	public static <T> Function<Set<Binding<T>>, Binding<T>> resolverOfBinaryOperator(BinaryOperator<T> binaryOperator) {
+	public static <T> ConflictResolver<T> resolverOfBinaryOperator(BinaryOperator<T> binaryOperator) {
 		return resolverOfReducer(stream -> stream.reduce(binaryOperator).get());
 	}
 
-	private static final Function<Set<Binding<Set<Object>>>, Binding<Set<Object>>> MULTIBINDER_TO_SET = resolverOfBinaryOperator(Utils::union);
+	private static final ConflictResolver<Set<Object>> MULTIBINDER_TO_SET = resolverOfBinaryOperator(Utils::union);
 
 	@SuppressWarnings("unchecked")
-	public static <T> Function<Set<Binding<Set<T>>>, Binding<Set<T>>> multibinderToSet() {
-		return (Function) MULTIBINDER_TO_SET;
+	public static <T> ConflictResolver<Set<T>> multibinderToSet() {
+		return (ConflictResolver) MULTIBINDER_TO_SET;
 	}
 
 	private static class ModuleImpl implements Module {
 		private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
-		private final Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers;
+		private final Map<Key<?>, BindingGenerator<?>> bindingGenerators;
+		private final Map<Key<?>, ConflictResolver<?>> conflictResolvers;
 
-		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers) {
+		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+						   Map<Key<?>, BindingGenerator<?>> bindingGenerators,
+						   Map<Key<?>, ConflictResolver<?>> conflictResolvers) {
 			this.bindings = bindings;
+			this.bindingGenerators = bindingGenerators;
 			this.conflictResolvers = conflictResolvers;
 		}
 
@@ -116,7 +123,12 @@ public final class Modules {
 		}
 
 		@Override
-		public Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers() {
+		public Map<Key<?>, BindingGenerator<?>> getBindingGenerators() {
+			return bindingGenerators;
+		}
+
+		@Override
+		public Map<Key<?>, ConflictResolver<?>> getConflictResolvers() {
 			return conflictResolvers;
 		}
 	}

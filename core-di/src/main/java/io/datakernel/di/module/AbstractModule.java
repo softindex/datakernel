@@ -12,20 +12,19 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.function.Function;
 
 import static io.datakernel.di.module.Modules.multibinderToSet;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.Utils.mergeConflictResolvers;
 import static io.datakernel.di.util.Utils.multimapMerger;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 
 public abstract class AbstractModule implements Module {
 
 	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
-	private final Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> conflictResolvers = new HashMap<>();
+	private final Map<Key<?>, BindingGenerator<?>> bindingGenerators = new HashMap<>();
+	private final Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>();
 
 	public AbstractModule() {
 		configure();
@@ -41,13 +40,13 @@ public abstract class AbstractModule implements Module {
 			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 					.get()
 					.computeIfAbsent(key, $ -> new HashSet<>())
-					.add(bindingForMethod(this, provider).apply(fieldsInjector(key)));
+					.add(bindingForMethod(this, provider).apply(injectingInitializer(key)));
 		}
 		for (Method provider : getAnnotatedElements(getClass(), ProvidesIntoSet.class, Class::getDeclaredMethods)) {
 			Annotation[] annotations = provider.getDeclaredAnnotations();
 			Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
 
-			Binding<Object> binding = bindingForMethod(this, provider).apply(fieldsInjector(key));
+			Binding<Object> binding = bindingForMethod(this, provider).apply(injectingInitializer(key));
 			Factory<Object> factory = binding.getFactory();
 			Key<Set<Object>> setKey = Key.ofType(parameterized(Set.class, key.getType()), key.getName());
 
@@ -100,7 +99,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public void to(Factory<T> factory, Key<?>... dependencies) {
-			addBinding(scope, key, Binding.of(dependencies, factory).at(getLocation()).apply(fieldsInjector(key)));
+			addBinding(scope, key, Binding.of(dependencies, factory).at(getLocation()).apply(injectingInitializer(key)));
 		}
 
 		public void to(Factory<T> factory, List<Key<?>> dependencies) {
@@ -181,7 +180,7 @@ public abstract class AbstractModule implements Module {
 
 		@SuppressWarnings("unchecked")
 		public void toInstance(T instance) {
-			addBinding(scope, key, Binding.constant(instance).at(getLocation()).apply(fieldsInjector((Key<T>) Key.of(instance.getClass()))));
+			addBinding(scope, key, Binding.constant(instance).at(getLocation()).apply(injectingInitializer((Key<T>) Key.of(instance.getClass()))));
 		}
 
 		public void implicitly() {
@@ -190,7 +189,7 @@ public abstract class AbstractModule implements Module {
 				throw new RuntimeException("requested implicit binding for key " + key + " but it had none");
 			}
 			// overriding the location, eh
-			addBinding(scope, key, binding.at(getLocation()).apply(fieldsInjector(key)));
+			addBinding(scope, key, binding.at(getLocation()).apply(injectingInitializer(key)));
 		}
 
 		@Nullable
@@ -220,9 +219,12 @@ public abstract class AbstractModule implements Module {
 		return bind(Key.of(type));
 	}
 
-	@SuppressWarnings("unchecked")
-	protected final <T> void resolveConflicts(Key<T> key, Function<Set<Binding<T>>, Binding<T>> conflictResolver) {
-		mergeConflictResolvers(conflictResolvers, singletonMap(key, (Function) conflictResolver));
+	protected final <T> void resolveConflicts(Key<T> key, ConflictResolver<T> conflictResolver) {
+		mergeConflictResolvers(conflictResolvers, singletonMap(key, conflictResolver));
+	}
+
+	protected final <T> void generateBindings(Key<T> key, BindingGenerator<T> conflictResolver) {
+		bindingGenerators.put(key, conflictResolver);
 	}
 
 	@Override
@@ -231,7 +233,12 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers() {
+	public Map<Key<?>, BindingGenerator<?>> getBindingGenerators() {
+		return bindingGenerators;
+	}
+
+	@Override
+	public Map<Key<?>, ConflictResolver<?>> getConflictResolvers() {
 		return conflictResolvers;
 	}
 }

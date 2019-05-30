@@ -2,53 +2,46 @@ package io.datakernel.di.module;
 
 import io.datakernel.di.Binding;
 import io.datakernel.di.Key;
-import io.datakernel.di.LocationInfo;
 import io.datakernel.di.Scope;
+import io.datakernel.di.error.MultipleBindingsException;
+import io.datakernel.di.error.NoBindingsForKey;
 import io.datakernel.di.util.Trie;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import static java.util.Collections.emptyMap;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 
 public interface Module {
 	Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap();
 
-	Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers();
+	Map<Key<?>, BindingGenerator<?>> getBindingGenerators();
 
+	Map<Key<?>, ConflictResolver<?>> getConflictResolvers();
+
+	@SuppressWarnings("unchecked")
 	default Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
-		Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> resolvers = getConflictResolvers();
-		return getBindingsMultimap().map(bindings ->
-				bindings.entrySet().stream()
+		Map<Key<?>, ConflictResolver<?>> resolvers = getConflictResolvers();
+		return getBindingsMultimap().map(scopeBindings ->
+				scopeBindings.entrySet().stream()
 						.collect(toMap(
 								Map.Entry::getKey,
 								entry -> {
 									Key<?> key = entry.getKey();
-									Set<Binding<?>> value = entry.getValue();
-									switch (value.size()) {
+									Set<Binding<?>> bindings = entry.getValue();
+									switch (bindings.size()) {
 										case 0:
-											throw new IllegalStateException("Module " + getClass().getName() + " provided key " + key + " without bindings");
+											throw new NoBindingsForKey(key);
 										case 1:
-											return value.iterator().next();
-										default: {
-											Function<Set<Binding<?>>, Binding<?>> resolver = resolvers.get(key);
+											return bindings.iterator().next();
+										default:
+											ConflictResolver<?> resolver = resolvers.get(key);
 											if (resolver == null) {
-												throw new IllegalStateException("Duplicate bindings for key " + key + ":\n" +
-														entry.getValue().stream()
-																.map(binding -> {
-																	LocationInfo location = binding.getLocation();
-																	if (location == null) {
-																		return "at <unknown binding location>";
-																	}
-																	return "\tat " + location.getDeclaration();
-																})
-																.collect(joining("\n")) + "\n");
+												throw new MultipleBindingsException(key, bindings);
 											}
-											return resolver.apply(entry.getValue());
-										}
+											// because Java generics are just broken :(
+											return ((ConflictResolver) resolver).resolve(bindings);
 									}
 								})
 						));
@@ -56,13 +49,20 @@ public interface Module {
 
 	static Module empty() {
 		return new Module() {
+			private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> emptyTrie = Trie.leaf(emptyMap());
+
 			@Override
 			public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
-				return Trie.leaf(emptyMap());
+				return emptyTrie;
 			}
 
 			@Override
-			public Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> getConflictResolvers() {
+			public Map<Key<?>, BindingGenerator<?>> getBindingGenerators() {
+				return emptyMap();
+			}
+
+			@Override
+			public Map<Key<?>, ConflictResolver<?>> getConflictResolvers() {
 				return emptyMap();
 			}
 		};

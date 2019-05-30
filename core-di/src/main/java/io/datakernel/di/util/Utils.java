@@ -1,7 +1,7 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.Binding;
 import io.datakernel.di.Key;
+import io.datakernel.di.module.ConflictResolver;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -54,7 +54,7 @@ public final class Utils {
 				);
 	}
 
-	public static void mergeConflictResolvers(Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> into, Map<Key<?>, Function<Set<Binding<?>>, Binding<?>>> from) {
+	public static void mergeConflictResolvers(Map<Key<?>, ConflictResolver<?>> into, Map<Key<?>, ConflictResolver<?>> from) {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
 				throw new RuntimeException("more than one conflict resolver per key");
