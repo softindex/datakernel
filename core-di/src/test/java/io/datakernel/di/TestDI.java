@@ -74,12 +74,12 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
-			String provide(Integer integer) {
+			String string(Integer integer) {
 				return "str: " + integer;
 			}
 
 			@Provides
-			Integer provide() {
+			Integer integer() {
 				return 42;
 			}
 		});
@@ -92,24 +92,24 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
-			String provide(@Named("test") Integer integer) {
+			String string(@Named("test") Integer integer) {
 				return "str: " + integer;
 			}
 
 			@Provides
 			@Named("test")
-			Integer provide() {
+			Integer integer1() {
 				return 42;
 			}
 
 			@Provides
 			@Named("test2")
-			Integer provide2() {
+			Integer integer2() {
 				return 43;
 			}
 
 			@Provides
-			Integer provide0() {
+			Integer integer() {
 				return -1;
 			}
 		});
@@ -132,18 +132,18 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
-			ClassWithCustomDeps provide() {
+			ClassWithCustomDeps classWithCustomDeps() {
 				return new ClassWithCustomDeps();
 			}
 
 			@Provides
 			@Named("test")
-			String provide(Integer integer) {
+			String testString(Integer integer) {
 				return "str: " + integer;
 			}
 
 			@Provides
-			Integer provide2() {
+			Integer integer() {
 				return 42;
 			}
 		});
@@ -167,17 +167,17 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
-			Inherited provide() {
+			Inherited inherited() {
 				return new Inherited();
 			}
 
 			@Provides
-			String provide(Integer integer) {
+			String string(Integer integer) {
 				return "str: " + integer;
 			}
 
 			@Provides
-			Integer provide2() {
+			Integer integer() {
 				return 42;
 			}
 		});
@@ -231,12 +231,12 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {
 
 			@Provides
-			ClassWithCustomDeps provide() {
+			ClassWithCustomDeps classWithCustomDeps() {
 				return new ClassWithCustomDeps();
 			}
 
 			@Provides
-			Integer provide2() {
+			Integer integer() {
 				return 42;
 			}
 		});
@@ -356,17 +356,17 @@ public final class TestDI {
 
 		AbstractModule module = new AbstractModule() {
 			@Provides
-			<T> Container<T> get(T t) {
+			<T> Container<T> container(T t) {
 				return new Container<>(t);
 			}
 
 			@Provides
-			String provide() {
+			String string() {
 				return "hello";
 			}
 
 			@Provides
-			Integer provide2() {
+			Integer integer() {
 				return 42;
 			}
 		};
@@ -395,14 +395,13 @@ public final class TestDI {
 	@Test
 	public void providesOptional() {
 		Module module = new AbstractModule() {
-
 			@Provides
-			String provide(Integer integer, @Optional Float f) {
+			String string(Integer integer, @Optional Float f) {
 				return "str: " + integer + ", " + f;
 			}
 
 			@Provides
-			Integer required() {
+			Integer integer() {
 				return 42;
 			}
 		};
@@ -420,34 +419,33 @@ public final class TestDI {
 	@Test
 	public void providesIntoSet() {
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Provides
-			Integer provide() {
+			Integer integer() {
 				return 42;
 			}
 
 			@ProvidesIntoSet
-			String provide1(Integer integer) {
+			String string1(Integer integer) {
 				return "str1: " + integer;
 			}
 
 			@ProvidesIntoSet
-			String provide2(Integer integer) {
+			String string2(Integer integer) {
 				return "str2: " + integer;
 			}
 
 			@ProvidesIntoSet
-			String provide3(Integer integer) {
+			String string3(Integer integer) {
 				return "str3: " + integer;
 			}
 
 			@ProvidesIntoSet
-			List<String> provideB1(Integer integer) {
+			List<String> stringsB1(Integer integer) {
 				return singletonList("str1: " + integer);
 			}
 
 			@ProvidesIntoSet
-			List<String> provideB2(Integer integer) {
+			List<String> stringsB2(Integer integer) {
 				return singletonList("str2: " + integer);
 			}
 
@@ -473,14 +471,14 @@ public final class TestDI {
 	public void hierarchyModules() {
 		class Module1 extends AbstractModule {
 			@Provides
-			Integer provideInteger() {
+			Integer integer() {
 				return 123;
 			}
 		}
 
 		class Module2 extends Module1 {
 			@Provides
-			String provideString(Integer integer) {
+			String string(Integer integer) {
 				return integer.toString();
 			}
 		}
@@ -495,7 +493,7 @@ public final class TestDI {
 	public void moduleWithGenerics() {
 		abstract class Module1<D> extends AbstractModule {
 			@Provides
-			public String provideString(D object) {
+			String string(D object) {
 				return "str: " + object.toString();
 			}
 		}

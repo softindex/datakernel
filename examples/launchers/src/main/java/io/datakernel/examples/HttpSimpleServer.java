@@ -38,7 +38,7 @@ public class HttpSimpleServer {
 			protected Module getBusinessLogicModule() {
 				return new AbstractModule() {
 					@Provides
-					AsyncServlet rootServlet() {
+					AsyncServlet servlet() {
 						return request -> {
 							logger.info("Connection received");
 							return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));

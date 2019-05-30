@@ -48,7 +48,7 @@ public class OTCommonModule<D> extends AbstractModule {
 
 	@Provides
 	@Named("Example")
-	AsyncHttpServer provideServer(Eventloop eventloop, RoutingServlet servlet,
+	AsyncHttpServer server(Eventloop eventloop, RoutingServlet servlet,
 			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet, Config config) {
 
 		AsyncHttpServer asyncHttpServer = AsyncHttpServer.create(eventloop, servlet)
@@ -60,7 +60,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	RoutingServlet provideMiddlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
+	RoutingServlet middlewareServlet(StaticServlet staticServlet, OTGraphServlet<CommitId, D> graphServlet,
 			OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet) {
 		return RoutingServlet.create()
 				.with(GET, "/graph/*", graphServlet)
@@ -69,7 +69,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	OTGraphServlet<CommitId, D> provideGraphServlet(OTRepository<CommitId, D> repository, OTSystem<D> otSystem,
+	OTGraphServlet<CommitId, D> graphServlet(OTRepository<CommitId, D> repository, OTSystem<D> otSystem,
 			Function<D, String> diffToString) {
 		return OTGraphServlet.create(repository, otSystem, COMMIT_ID_TO_STRING, diffToString)
 				.withCurrentCommit(request -> {
@@ -86,42 +86,42 @@ public class OTCommonModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	StaticServlet provideStaticServlet(Config config) {
+	StaticServlet staticServlet(Config config) {
 		Path staticDir = config.get(ConfigConverters.ofPath(), "resources.path", DEFAULT_RESOURCES_PATH);
 		return StaticServlet.create(ofPath(staticDir));
 	}
 
 	@Provides
-	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> provideNodeServlet(OTNode<CommitId, D, OTCommit<CommitId, D>> node,
+	OTNodeServlet<CommitId, D, OTCommit<CommitId, D>> nodeServlet(OTNode<CommitId, D, OTCommit<CommitId, D>> node,
 			StructuredCodec<D> diffCodec, OTRepository<CommitId, D> repository, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
 		return OTNodeServlet.forGlobalNode(DelayedPushNode.create(node, delay), diffCodec, (OTRepositoryAdapter<D>) repository);
 	}
 
 	@Provides
-	OTNode<CommitId, D, OTCommit<CommitId, D>> provideNode(OTRepository<CommitId, D> repository, OTSystem<D> otSystem) {
+	OTNode<CommitId, D, OTCommit<CommitId, D>> node(OTRepository<CommitId, D> repository, OTSystem<D> otSystem) {
 		return OTNodeImpl.create(repository, otSystem);
 	}
 
 	@Provides
-	OTRepository<CommitId, D> provideRepository(OTDriver driver, MyRepositoryId<D> myRepositoryId) {
+	OTRepository<CommitId, D> repository(OTDriver driver, MyRepositoryId<D> myRepositoryId) {
 		return new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 	}
 
 	@Provides
-	OTDriver provideDriver(GlobalOTNode node, Config config) {
+	OTDriver driver(GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);
 	}
 
 	@Provides
-	MyRepositoryId<D> provideMyRepositoryId(Config config, StructuredCodec<D> diffCodec) {
+	MyRepositoryId<D> myRepositoryId(Config config, StructuredCodec<D> diffCodec) {
 		MyRepositoryId<D> DEMO_MY_REPOSITORY_ID = new MyRepositoryId<>(DEMO_REPO_ID, DEMO_PRIVATE_KEY, diffCodec);
 		return config.get(ofMyRepositoryId(diffCodec), "credentials", DEMO_MY_REPOSITORY_ID);
 	}
 
 	@Provides
-	Executor provideExecutor(Config config) {
+	Executor executor(Config config) {
 		return getExecutor(config.getChild("executor"));
 	}
 }

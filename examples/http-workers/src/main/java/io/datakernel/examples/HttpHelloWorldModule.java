@@ -28,13 +28,14 @@ import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
+import java.util.List;
+
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 // [START EXAMPLE]
 public class HttpHelloWorldModule extends AbstractModule {
-
 	@Provides
-	WorkerPool workerPool(Config config, WorkerPools workerPools) {
+	WorkerPool workerPool(WorkerPools workerPools, Config config) {
 		return workerPools.createPool(config.get(ofInteger(), "workers", 4));
 	}
 
@@ -44,20 +45,25 @@ public class HttpHelloWorldModule extends AbstractModule {
 	}
 
 	@Provides
-	PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
-		int port = config.get(ofInteger(), "port", 5577);
-		return PrimaryServer.create(primaryEventloop, workerPool.getInstances(AsyncHttpServer.class)).withListenPort(port);
-	}
-
-	@Provides
 	@Worker
 	Eventloop workerEventloop() {
 		return Eventloop.create();
 	}
 
 	@Provides
+	PrimaryServer primaryServer(Eventloop primaryEventloop, List<AsyncHttpServer> instances, Config config) {
+		int port = config.get(ofInteger(), "port", 5577);
+		return PrimaryServer.create(primaryEventloop, instances).withListenPort(port);
+	}
+
+	@Provides
+	List<AsyncHttpServer> workerServers(WorkerPool workerPool) {
+		return workerPool.getInstances(AsyncHttpServer.class);
+	}
+
+	@Provides
 	@Worker
-	AsyncHttpServer workerHttpServer(Eventloop eventloop, @WorkerId final int workerId, Config config) {
+	AsyncHttpServer workerServer(Eventloop eventloop, @WorkerId int workerId, Config config) {
 		String responseMessage = config.get("message", "Some msg");
 		SimpleServlet servlet = new SimpleServlet(workerId, responseMessage);
 		return AsyncHttpServer.create(eventloop, servlet);

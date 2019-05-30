@@ -134,7 +134,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@Provides
-	Triggers getTriggersWatcher(Injector injector) {
+	Triggers triggersWatcher(Injector injector) {
 		return Triggers.create();
 	}
 

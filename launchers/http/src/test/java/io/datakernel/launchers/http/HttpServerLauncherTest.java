@@ -19,7 +19,7 @@ public class HttpServerLauncherTest {
 			protected Module getBusinessLogicModule() {
 				return new AbstractModule() {
 					@Provides
-					public AsyncServlet provide() {
+					public AsyncServlet servlet() {
 						throw new UnsupportedOperationException();
 					}
 				};

@@ -16,18 +16,14 @@
 
 package io.datakernel.guice;
 
-import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.service.Service;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.Assert.assertEquals;
 
 public class TestStartTwice {
 	private static AtomicInteger countStart = new AtomicInteger(0);
@@ -57,14 +53,12 @@ public class TestStartTwice {
 		}
 
 		@Provides
-//
 		ServiceImpl serviceImpl(A a) {
 			return (ServiceImpl) a;
 		}
 
 		@Provides
-//
-		A createA() {
+		A a() {
 			return new ServiceImpl();
 		}
 

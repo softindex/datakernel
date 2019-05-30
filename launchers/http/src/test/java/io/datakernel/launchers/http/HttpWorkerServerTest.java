@@ -62,7 +62,7 @@ public final class HttpWorkerServerTest {
 				return new AbstractModule() {
 					@Provides
 					@Worker
-					AsyncServlet provideServlet(@WorkerId int worker) {
+					AsyncServlet servlet(@WorkerId int worker) {
 						return req -> Promise.of(
 								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 					}

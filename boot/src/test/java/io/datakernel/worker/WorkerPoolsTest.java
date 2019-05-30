@@ -166,25 +166,25 @@ public class WorkerPoolsTest {
 
 		@Provides
 		@Worker
-		Eventloop provideWorkerEventloop() {
+		Eventloop workerEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 
 		@Provides
 		@Worker
-		String provideString() {
+		String string() {
 			return "String: " + counter++;
 		}
 
 		@Provides
 		@Named("First")
-		WorkerPool provideFirstWorkerPool(WorkerPools pools) {
+		WorkerPool firstWorkerPool(WorkerPools pools) {
 			return pools.createPool(4);
 		}
 
 		@Provides
 		@Named("Second")
-		WorkerPool provideSecondWorkerPool(WorkerPools pools) {
+		WorkerPool secondWorkerPool(WorkerPools pools) {
 			return pools.createPool(10);
 		}
 	}

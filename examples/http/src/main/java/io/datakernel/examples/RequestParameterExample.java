@@ -38,7 +38,7 @@ public final class RequestParameterExample extends HttpServerLauncher {
 	protected Module getBusinessLogicModule() {
 		return new AbstractModule() {
 			@Provides
-			AsyncServlet mainServlet() {
+			AsyncServlet servlet() {
 				return RoutingServlet.create()
 						.with(HttpMethod.POST, "/hello", loadBody()
 								.serve(request -> {

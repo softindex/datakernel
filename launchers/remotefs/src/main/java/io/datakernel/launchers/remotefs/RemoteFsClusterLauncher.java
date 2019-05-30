@@ -75,7 +75,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					Eventloop provide(Config config, @Optional ThrottlingController throttlingController) {
+					Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> eventloop.withInspector(throttlingController));
@@ -83,7 +83,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 
 					@Provides
 					@Named("repartition")
-					EventloopTaskScheduler repartitionScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller) {
+					EventloopTaskScheduler eventloopTaskScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller) {
 						return EventloopTaskScheduler.create(eventloop, controller::repartition)
 								.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.repartition")));
 					}
@@ -120,7 +120,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					}
 
 					@Provides
-					public ExecutorService executorService() {
+					public ExecutorService executor() {
 						return Executors.newSingleThreadExecutor();
 					}
 				}

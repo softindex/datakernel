@@ -50,7 +50,7 @@ public final class HttpMultithreadedServerExample extends MultithreadedHttpServe
 		return new AbstractModule() {
 			@Provides
 			@Worker
-			AsyncServlet servlet(@WorkerId final int workerId) {
+			AsyncServlet servlet(@WorkerId int workerId) {
 				return request -> {
 					byte[] msg = encodeAscii("Hello from worker server #" + workerId + "\n");
 					return Promise.of(HttpResponse.ok200().withBody(msg));

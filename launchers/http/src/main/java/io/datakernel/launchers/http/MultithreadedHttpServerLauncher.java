@@ -81,10 +81,14 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					}
 
 					@Provides
-					PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
-						List<AsyncHttpServer> workerServers = workerPool.getInstances(AsyncHttpServer.class);
+					PrimaryServer primaryServer(Eventloop primaryEventloop, List<AsyncHttpServer> workerServers, Config config) {
 						return PrimaryServer.create(primaryEventloop, workerServers)
 								.initialize(ofPrimaryServer(config.getChild("http")));
+					}
+
+					@Provides
+					List<AsyncHttpServer> workerServers(WorkerPool workerPool) {
+						return workerPool.getInstances(AsyncHttpServer.class);
 					}
 
 					@Provides
@@ -115,7 +119,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				new AbstractModule() {
 					@Provides
 					@Worker
-					AsyncServlet rootServlet(@WorkerId int workerId) {
+					AsyncServlet servlet(@WorkerId int workerId) {
 						return req -> Promise.of(
 								HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId))));
 					}

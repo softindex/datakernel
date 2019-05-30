@@ -37,14 +37,14 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 public final class CrdtNodeExample {
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
-		CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+		CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
 			return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
 					new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
 					tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
 		}
 
 		@Provides
-		FsClient provideFsClient(Eventloop eventloop, Config config) {
+		FsClient fsClient(Eventloop eventloop, Config config) {
 			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}
 	}

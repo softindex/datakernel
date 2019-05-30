@@ -63,7 +63,7 @@ public abstract class RpcServerLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					public Eventloop provide(Config config,
+					public Eventloop eventloop(Config config,
 							@Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))

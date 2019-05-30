@@ -41,18 +41,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends AbstractModule {
 
 	@Provides
-	AsyncHttpServer provideServer(Eventloop eventloop, AsyncServlet servlet, Config config) {
+	AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("crdt.http")));
 	}
 
 	@Provides
-	StaticLoader provideLoader(ExecutorService executor) {
+	StaticLoader loader(ExecutorService executor) {
 		return StaticLoader.ofClassPath("/");
 	}
 
 	@Provides
-	AsyncServlet provideServlet(
+	AsyncServlet servlet(
 			CrdtDescriptor<K, S> descriptor,
 			CrdtStorageMap<K, S> client,
 			@Optional BackupService<K, S> backupService

@@ -61,7 +61,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					public Eventloop provide(Config config,
+					public Eventloop eventloop(Config config,
 							@Optional ThrottlingController throttlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
@@ -77,7 +77,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 					}
 
 					@Provides
-					public ExecutorService provide(Config config) {
+					ExecutorService executor(Config config) {
 						return ConfigConverters.getExecutor(config.getChild("remotefs.executor"));
 					}
 				}

@@ -16,8 +16,8 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.*;
 import io.datakernel.di.Optional;
+import io.datakernel.di.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.di.util.Trie;
@@ -258,7 +258,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@Provides
-	ServiceGraph provideServiceGraph(Injector injector, @Optional Set<Initializer<ServiceGraphModule>> initializers) {
+	ServiceGraph serviceGraph(Injector injector, @Optional Set<Initializer<ServiceGraphModule>> initializers) {
 		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();

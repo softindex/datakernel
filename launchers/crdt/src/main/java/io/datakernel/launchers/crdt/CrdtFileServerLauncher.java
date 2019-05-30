@@ -73,19 +73,18 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 						.printEffectiveConfig(),
 				getLogicModule(),
 				new AbstractModule() {
-
 					@Provides
-					Eventloop provideEventloop() {
+					Eventloop eventloop() {
 						return Eventloop.create();
 					}
 
 					@Provides
-					ExecutorService provideExecutor(Config config) {
+					ExecutorService executor(Config config) {
 						return config.get(ofExecutor(), "executor");
 					}
 
 					@Provides
-					LocalFsClient provideLocalFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
+					LocalFsClient localFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
 						return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.localPath"));
 					}
 				}
@@ -100,13 +99,13 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 	public abstract static class CrdtFileServerLogicModule<K extends Comparable<K>, S> extends AbstractModule {
 
 		@Provides
-		CrdtServer<K, S> provideCrdtServer(Eventloop eventloop, CrdtStorageFs<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
+		CrdtServer<K, S> crdtServer(Eventloop eventloop, CrdtStorageFs<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return CrdtServer.create(eventloop, crdtClient, descriptor.getSerializer())
 					.initialize(ofAbstractServer(config.getChild("crdt.server")));
 		}
 
 		@Provides
-		CrdtStorageFs<K, S> provideFsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
+		CrdtStorageFs<K, S> fsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return CrdtStorageFs.create(eventloop, localFsClient, descriptor.getSerializer(), descriptor.getCrdtFunction())
 					.initialize(Initializers.ofFsCrdtClient(config.getChild("crdt.files")));
 		}

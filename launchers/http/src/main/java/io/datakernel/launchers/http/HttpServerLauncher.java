@@ -98,7 +98,7 @@ public abstract class HttpServerLauncher extends Launcher {
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
 				new AbstractModule() {
 					@Provides
-					public AsyncServlet rootServlet(Config config) {
+					public AsyncServlet servlet(Config config) {
 						String message = config.get("message", "Hello, world!");
 						return req -> Promise.of(
 								HttpResponse.ok200().withBody(wrapForReading(encodeAscii(message))));

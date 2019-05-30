@@ -31,17 +31,17 @@ public class ConfigModuleExample extends AbstractModule {
 	private static final String PROPERTIES_FILE = "example.properties";
 
 	@Provides
-	String providePhrase(Config config) {
+	String phrase(Config config) {
 		return config.get("phrase");
 	}
 
 	@Provides
-	Integer provideNumber(Config config) {
+	Integer number(Config config) {
 		return config.get(ofInteger(), "number");
 	}
 
 	@Provides
-	InetAddress provideAddress(Config config) {
+	InetAddress address(Config config) {
 		return config.get(ofInetAddress(), "address");
 	}
 

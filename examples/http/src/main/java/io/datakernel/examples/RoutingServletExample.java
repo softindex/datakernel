@@ -35,7 +35,7 @@ public final class RoutingServletExample extends HttpServerLauncher {
 	protected Module getBusinessLogicModule() {
 		return new AbstractModule() {
 			@Provides
-			AsyncServlet mainServlet() {
+			AsyncServlet servlet() {
 				return RoutingServlet.create()
 						.with(GET, "/", request -> Promise.of(HttpResponse.ok200()
 								.withBody(wrapUtf8("<h1>Go to some pages</h1>" +

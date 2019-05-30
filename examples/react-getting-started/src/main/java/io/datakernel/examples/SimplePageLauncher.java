@@ -15,7 +15,7 @@ public class SimplePageLauncher extends HttpServerLauncher {
 	protected Module getBusinessLogicModule() {
 		return new AbstractModule() {
 			@Provides
-			AsyncServlet staticServlet() {
+			AsyncServlet servlet() {
 				return StaticServlet.create(ofClassPath("build"));
 			}
 		};

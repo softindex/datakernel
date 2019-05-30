@@ -75,19 +75,19 @@ public final class GlobalFsApp extends Launcher {
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
-					ExecutorService provide(Config config) {
+					ExecutorService executor(Config config) {
 						return getExecutor(config);
 					}
 
 					@Provides
 					@Named("App")
-					AsyncServlet provide(GlobalFsDriver driver, StaticLoader resourceLoader) {
+					AsyncServlet servlet(GlobalFsDriver driver, StaticLoader resourceLoader) {
 						return GlobalFsDriverServlet.create(driver)
 								.with(GET, "/*", StaticServlet.create(resourceLoader).withMappingEmptyTo("index.html"));
 					}
 
 					@Provides
-					GlobalFsDriver provide(GlobalFsNode node, Config config) {
+					GlobalFsDriver globalFsDriver(GlobalFsNode node, Config config) {
 						return GlobalFsDriver.create(node, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
 					}
 
@@ -98,7 +98,7 @@ public final class GlobalFsApp extends Launcher {
 
 					@Provides
 					@Named("App")
-					AsyncHttpServer provide(Eventloop eventloop, Config config, @Named("App") AsyncServlet servlet) {
+					AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, @Named("App") AsyncServlet servlet) {
 						return AsyncHttpServer.create(eventloop, servlet)
 								.initialize(ofHttpServer(config.getChild("app.http")));
 					}
@@ -107,7 +107,7 @@ public final class GlobalFsApp extends Launcher {
 						new GlobalNodesModule(),
 						new AbstractModule() {
 							@Provides
-							DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
+							DiscoveryService discoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
 								InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
 								if (discoveryAddress != null) {
 									logger.info("Using remote discovery service at " + discoveryAddress);

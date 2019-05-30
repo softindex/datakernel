@@ -40,7 +40,7 @@ public final class ExampleCommonModule extends AbstractModule {
 			new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 
 	@Provides
-	DiscoveryService provideDiscoveryService(Eventloop eventloop, IAsyncHttpClient httpClient, Config config) {
+	DiscoveryService discoveryService(Eventloop eventloop, IAsyncHttpClient httpClient, Config config) {
 		InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
 		if (discoveryAddress != null) {
 			logger.info("Using remote discovery service at " + discoveryAddress);
@@ -69,7 +69,7 @@ public final class ExampleCommonModule extends AbstractModule {
 	}
 
 	@Provides
-	CommitStorage provideCommitStorage() {
+	CommitStorage commitStorage() {
 		return new CommitStorageStub();
 	}
 

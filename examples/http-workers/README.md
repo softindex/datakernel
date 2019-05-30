@@ -225,7 +225,7 @@ public class HttpHelloWorldModule extends AbstractModule {
 
 	@Provides
 	@Worker
-	AsyncHttpServer workerHttpServer(Eventloop eventloop, @WorkerId final int workerId, Config config) {
+	AsyncHttpServer workerHttpServer(Eventloop eventloop, @WorkerId int workerId, Config config) {
 		String responseMessage = config.get("message", "Some msg");
 		SimpleServlet servlet = new SimpleServlet(workerId, responseMessage);
 		return AsyncHttpServer.create(eventloop, servlet);

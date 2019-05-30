@@ -17,7 +17,7 @@ public class BlockingServletExample extends HttpServerLauncher {
 	protected Module getBusinessLogicModule() {
 		return new AbstractModule() {
 			@Provides
-			AsyncServlet provide() {
+			AsyncServlet servlet() {
 				return RoutingServlet.create()
 						.with("/", request -> Promise.of(HttpResponse.ok200()
 								.withBody(wrapUtf8("<a href='hardWork'>Do hard work</a>"))))

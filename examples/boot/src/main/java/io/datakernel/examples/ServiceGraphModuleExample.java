@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutionException;
 
 public class ServiceGraphModuleExample extends AbstractModule {
 	@Provides
-	Eventloop provideEventloop() {
+	Eventloop eventloop() {
 		return Eventloop.create();
 	}
 

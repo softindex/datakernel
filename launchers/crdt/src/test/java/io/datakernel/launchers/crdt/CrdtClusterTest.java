@@ -79,19 +79,19 @@ public final class CrdtClusterTest {
 
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
-		CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+		CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
 			return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
 					new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
 					tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
 		}
 
 		@Provides
-		ExecutorService provideExecutor(Config config) {
+		ExecutorService executor(Config config) {
 			return config.get(ofExecutor(), "crdt.local.executor");
 		}
 
 		@Provides
-		FsClient provideFsClient(Eventloop eventloop, Config config) {
+		FsClient fsClient(Eventloop eventloop, Config config) {
 			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
 		}
 	}
@@ -170,7 +170,7 @@ public final class CrdtClusterTest {
 			protected Module getBusinessLogicModule() {
 				return new AbstractModule() {
 					@Provides
-					CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
+					CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
 						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
 								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
 								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));

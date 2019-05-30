@@ -39,13 +39,13 @@ import static io.global.ot.demo.util.Utils.createOTSystem;
 
 final class GlobalOTDemoModule extends AbstractModule {
 	@Provides
-	RoutingServlet provideServlet(StaticServlet staticServlet, OTRepository<CommitId, Operation> repository, ManagerProvider<Operation> managerProvider) {
+	RoutingServlet servlet(StaticServlet staticServlet, OTRepository<CommitId, Operation> repository, ManagerProvider<Operation> managerProvider) {
 		return OTStateServlet.create(managerProvider, repository)
 				.with("/*", staticServlet);
 	}
 
 	@Provides
-	ManagerProvider<Operation> provideManager(Eventloop eventloop, OTNode<CommitId, Operation, OTCommit<CommitId, Operation>> node, Config config) {
+	ManagerProvider<Operation> manager(Eventloop eventloop, OTNode<CommitId, Operation, OTCommit<CommitId, Operation>> node, Config config) {
 		Duration delay = config.get(ofDuration(), "push.delay", DEFAULT_PUSH_DELAY_DURATION);
 		return new ManagerProvider<>(eventloop, node, createOTSystem(), OperationState::new, delay);
 	}

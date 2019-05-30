@@ -31,7 +31,7 @@ public final class StaticServletExample extends HttpServerLauncher {
 	protected Module getBusinessLogicModule() {
 		return new AbstractModule() {
 			@Provides
-			AsyncServlet staticServlet() {
+			AsyncServlet servlet() {
 				return StaticServlet.create(ofClassPath("static/site")).withMappingEmptyTo("index.html");
 			}
 		};

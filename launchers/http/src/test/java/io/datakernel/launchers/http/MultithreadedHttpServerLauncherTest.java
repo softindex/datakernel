@@ -23,7 +23,7 @@ public class MultithreadedHttpServerLauncherTest {
 				return new AbstractModule() {
 					@Provides
 					@Worker
-					AsyncServlet provideServlet(@WorkerId int worker) {
+					AsyncServlet servlet(@WorkerId int worker) {
 						throw new UnsupportedOperationException();
 					}
 				};

@@ -32,7 +32,7 @@ public class AuthLauncher extends HttpServerLauncher {
 			}
 
 			@Provides
-			AsyncServlet mainServlet(AuthService authService) {
+			AsyncServlet servlet(AuthService authService) {
 				SessionStore<String> store = new SessionStoreInMemory<>();
 				StaticLoader staticLoader = StaticLoader.ofClassPath("site/");
 				return SessionServlet.create(store, SESSION_ID,

@@ -70,19 +70,19 @@ public class TriggersModuleTest {
 
 					@Provides
 					@Named("first")
-					WorkerPool provideFirstPool(WorkerPools workerPools) {
+					WorkerPool firstPool(WorkerPools workerPools) {
 						return workerPools.createPool(firstPoolSize);
 					}
 
 					@Provides
 					@Named("second")
-					WorkerPool provideSecondPool(WorkerPools workerPools) {
+					WorkerPool secondPool(WorkerPools workerPools) {
 						return workerPools.createPool(secondPoolSize);
 					}
 
 					@Provides
 					@Worker
-					String provideWorker() {
+					String worker() {
 						return "" + counter++;
 					}
 
@@ -125,7 +125,7 @@ public class TriggersModuleTest {
 					}
 
 					@Provides
-					Eventloop provide() {
+					Eventloop eventloop() {
 						return Eventloop.create();
 					}
 
