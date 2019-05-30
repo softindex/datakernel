@@ -59,7 +59,7 @@ class StaticLoaderClassPath implements StaticLoader {
 		URL file = classLoader.getResource(path);
 
 		if (file == null) {
-			return Promise.ofException(HttpException.notFound404());
+			return Promise.ofException(NOT_FOUND_EXCEPTION);
 		}
 
 		return Promise.ofBlockingCallable(executor, () -> ByteBuf.wrapForReading(loadResource(file)))

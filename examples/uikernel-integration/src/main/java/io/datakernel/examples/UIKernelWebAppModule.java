@@ -55,7 +55,8 @@ public class UIKernelWebAppModule extends AbstractModule {
 
 		// middleware used to map requests to appropriate asyncServlets
 
-		StaticServlet staticServlet = StaticServlet.create(resourceLoader);
+		StaticServlet staticServlet = StaticServlet.create(resourceLoader)
+				.withMappingEmptyTo("index.html");
 		AsyncServlet usersApiServlet = UiKernelServlets.apiServlet(model, gson);
 
 		RoutingServlet dispatcher = RoutingServlet.create()

@@ -26,7 +26,8 @@ public class ServletDecoratorExample extends HttpServerLauncher {
 						catchRuntimeExceptions(),
 						loadBody())
 						.serve(RoutingServlet.create()
-								.with(GET, "/", StaticServlet.create(ofClassPath("static/wrapper")).withMappingTo("page.html"))
+								.with(GET, "/", StaticServlet.create(ofClassPath("static/wrapper"))
+										.withMappingTo("page.html"))
 								.with(POST, "/", request -> {
 									String text = request.getPostParameter("text");
 									if (text == null) {

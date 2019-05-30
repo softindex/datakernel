@@ -49,7 +49,8 @@ public final class TodoListLauncher extends HttpServerLauncher {
 			AsyncServlet servlet(RecordDAO recordDAO) {
 				return RoutingServlet.create()
 						//[START REGION_2]
-						.with("/*", StaticServlet.create(ofClassPath("build/")))
+						.with("/*", StaticServlet.create(ofClassPath("build/"))
+								.withMappingEmptyTo("index.html"))
 						//[END REGION_2]
 						.with(POST, "/add", loadBody()
 								.serve(request -> {

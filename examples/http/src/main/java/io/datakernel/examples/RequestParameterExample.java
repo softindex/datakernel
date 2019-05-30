@@ -51,7 +51,8 @@ public final class RequestParameterExample extends HttpServerLauncher {
 							return Promise.of(HttpResponse.ok200()
 									.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
 						})
-						.with("/*", StaticServlet.create(ofPath(RESOURCE_DIR)));
+						.with("/*", StaticServlet.create(ofPath(RESOURCE_DIR))
+								.withMappingEmptyTo("index.html"));
 			}
 		};
 	}

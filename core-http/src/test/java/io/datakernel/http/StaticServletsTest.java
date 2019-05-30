@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -79,9 +78,9 @@ public final class StaticServletsTest {
 	@Test
 	public void testFileNotFoundPathLoader() {
 		StaticServlet staticServlet = StaticServlet.create(ofPath(resourcesPath));
-		StacklessException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
+		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
 
-		assertEquals(StaticLoader.NOT_FOUND_EXCEPTION, e);
+		assertEquals(404, e.getCode());
 	}
 
 	@Test
@@ -97,9 +96,9 @@ public final class StaticServletsTest {
 	@Test
 	public void testFileNotFoundCachedFileLoader() {
 		StaticServlet staticServlet = StaticServlet.create(ofFile(resourcesFile));
-		StacklessException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
+		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
 
-		assertEquals(StaticLoader.NOT_FOUND_EXCEPTION, e);
+		assertEquals(404, e.getCode());
 	}
 
 	@Test
@@ -149,5 +148,4 @@ public final class StaticServletsTest {
 
 		assertEquals(404, e.getCode());
 	}
-
 }

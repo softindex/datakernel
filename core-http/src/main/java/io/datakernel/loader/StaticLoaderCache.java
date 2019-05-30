@@ -2,7 +2,6 @@ package io.datakernel.loader;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.http.HttpException;
 
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -28,11 +27,10 @@ class StaticLoaderCache implements StaticLoader {
 		if (bytes != null) {
 			return Promise.of(wrapForReading(bytes));
 		} else if (bytes == NOT_FOUND) {
-			return Promise.ofException(HttpException.notFound404());
+			return Promise.ofException(NOT_FOUND_EXCEPTION);
 		} else {
 			return doLoad(path);
 		}
-
 	}
 
 	private Promise<ByteBuf> doLoad(String path) {

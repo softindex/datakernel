@@ -83,7 +83,8 @@ public final class GlobalFsApp extends Launcher {
 					@Named("App")
 					AsyncServlet servlet(GlobalFsDriver driver, StaticLoader resourceLoader) {
 						return GlobalFsDriverServlet.create(driver)
-								.with(GET, "/*", StaticServlet.create(resourceLoader).withMappingEmptyTo("index.html"));
+								.with(GET, "/*", StaticServlet.create(resourceLoader)
+										.withMappingEmptyTo("index.html"));
 					}
 
 					@Provides

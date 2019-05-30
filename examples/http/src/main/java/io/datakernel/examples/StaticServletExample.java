@@ -32,7 +32,8 @@ public final class StaticServletExample extends HttpServerLauncher {
 		return new AbstractModule() {
 			@Provides
 			AsyncServlet servlet() {
-				return StaticServlet.create(ofClassPath("static/site")).withMappingEmptyTo("index.html");
+				return StaticServlet.create(ofClassPath("static/site"))
+						.withMappingEmptyTo("index.html");
 			}
 		};
 	}

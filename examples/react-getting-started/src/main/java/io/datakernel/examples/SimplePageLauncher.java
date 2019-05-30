@@ -16,7 +16,8 @@ public class SimplePageLauncher extends HttpServerLauncher {
 		return new AbstractModule() {
 			@Provides
 			AsyncServlet servlet() {
-				return StaticServlet.create(ofClassPath("build"));
+				return StaticServlet.create(ofClassPath("build"))
+						.withMappingEmptyTo("index.html");
 			}
 		};
 	}

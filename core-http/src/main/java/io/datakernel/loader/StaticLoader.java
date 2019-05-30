@@ -34,22 +34,22 @@ public interface StaticLoader {
 	}
 
 	default StaticLoader cached() {
-		return cachedOf(this);
+		return cacheOf(this);
 	}
 
 	default StaticLoader cached(Map<String, byte[]> map) {
-		return cachedOf(this, map);
+		return cacheOf(this, map);
 	}
 
-	static StaticLoader cachedOf(StaticLoader loader) {
-		return cachedOf(loader, new HashMap<>());
+	static StaticLoader cacheOf(StaticLoader loader) {
+		return cacheOf(loader, new HashMap<>());
 	}
 
-	static StaticLoader cachedOf(StaticLoader loader, Map<String, byte[]> map) {
-		return cachedOf(loader, map::get, map::put);
+	static StaticLoader cacheOf(StaticLoader loader, Map<String, byte[]> map) {
+		return cacheOf(loader, map::get, map::put);
 	}
 
-	static StaticLoader cachedOf(StaticLoader loader, Function<String, byte[]> get, BiConsumer<String, byte[]> put) {
+	static StaticLoader cacheOf(StaticLoader loader, Function<String, byte[]> get, BiConsumer<String, byte[]> put) {
 		return new StaticLoaderCache(loader, get, put);
 	}
 
