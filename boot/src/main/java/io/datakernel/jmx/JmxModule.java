@@ -62,10 +62,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	private final Map<Type, MBeanSettings> typeToSettings = new HashMap<>();
 	private final Map<Key<?>, String> keyToObjectNames = new HashMap<>();
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes = new HashMap<>();
+	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
 
 	private Duration refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
-	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
+	private boolean withScopes = true;
 
 	public interface JmxModuleService extends BlockingService {
 	}
@@ -142,6 +143,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	public JmxModule withObjectName(Key<?> key, String objectName) {
 		this.keyToObjectNames.put(key, objectName);
+		return this;
+	}
+
+	public JmxModule withScopes(boolean withScopes) {
+		this.withScopes = withScopes;
 		return this;
 	}
 
@@ -255,6 +261,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	@Provides
 	JmxRegistry jmxRegistry(DynamicMBeanFactory mbeanFactory) {
-		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames, customTypes);
+		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames, customTypes)
+				.withScopes(withScopes);
 	}
 }

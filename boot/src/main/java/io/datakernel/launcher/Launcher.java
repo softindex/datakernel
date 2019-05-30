@@ -26,7 +26,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxModule.JmxModuleService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggersModule;
+import io.datakernel.trigger.TriggersModule.TriggersModuleService;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -165,7 +165,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	private void doStart(Injector injector) throws Exception {
 		injector.getInstanceOrNull(ConfigModuleService.class);
 		injector.getInstanceOrNull(JmxModuleService.class);
-		injector.getInstanceOrNull(TriggersModule.class);
+		injector.getInstanceOrNull(TriggersModuleService.class);
 		serviceGraph = injector.getInstanceOrNull(ServiceGraph.class);
 		if (serviceGraph == null) {
 			return;

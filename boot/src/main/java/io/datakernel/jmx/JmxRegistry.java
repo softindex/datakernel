@@ -49,6 +49,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private final Map<Key<?>, String> keyToObjectNames;
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes;
 	private final Map<WorkerPool, Key<?>> workerPoolKeys = new HashMap<>();
+	private boolean withScopes = true;
 
 	// jmx
 	private int registeredSingletons;
@@ -74,6 +75,11 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
+	}
+
+	public JmxRegistry withScopes(boolean withScopes) {
+		this.withScopes = withScopes;
+		return this;
 	}
 
 	public void addWorkerPoolKey(WorkerPool workerPool, Key<?> workerPoolKey) {
@@ -345,12 +351,14 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			}
 		}
 		if (pool != null) {
-			Scope scope = pool.getScope();
-			name += format(",scope=%s", getAnnotationString(scope.getAnnotationType(), scope.getAnnotation()));
+			if (withScopes) {
+				Scope scope = pool.getScope();
+				name += format(",scope=%s", getAnnotationString(scope.getAnnotationType(), scope.getAnnotation()));
+			}
 			Key<?> poolKey = workerPoolKeys.get(pool);
 			if (poolKey != null && poolKey.getName() != null) {
 				String annotationString = getAnnotationString(poolKey.getName().getAnnotationType(), poolKey.getName().getAnnotation());
-				name += format(",workerPool=WorkerPool%s", annotationString);
+				name += format(",workerPool=WorkerPool@%s", annotationString);
 			}
 		}
 		return addGenericParamsInfo(name, key);
