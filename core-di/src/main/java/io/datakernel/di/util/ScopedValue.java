@@ -1,5 +1,6 @@
-package io.datakernel.di;
+package io.datakernel.di.util;
 
+import io.datakernel.di.Scope;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;

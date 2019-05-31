@@ -1,7 +1,7 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.*;
 import io.datakernel.di.Optional;
+import io.datakernel.di.*;
 import io.datakernel.di.util.Constructors.Factory;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -144,7 +144,7 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Class<?> cls = key.getRawType();
 
-		if (cls == Provider.class) {
+		if (cls == InstanceProvider.class) {
 			Type[] typeParams = key.getTypeParams();
 			checkArgument(typeParams.length == 1);
 
@@ -170,14 +170,14 @@ public final class ReflectionUtils {
 								injector.getInstanceOrNull(dependency.getKey()))
 						.toArray(Object[]::new);
 
-				return new Provider<Object>() {
+				return new InstanceProvider<Object>() {
 					@Override
-					public Object provideNew() {
+					public Object create() {
 						return factory.create(depInstances);
 					}
 
 					@Override
-					public synchronized Object provideSingleton() {
+					public synchronized Object provide() {
 						return singleton;
 					}
 				};

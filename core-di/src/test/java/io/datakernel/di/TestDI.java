@@ -52,22 +52,22 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
-			bind(String.class).to(i -> "str: " + i.provideNew(), new Key<Provider<Integer>>() {});
-			bind(new Key<Provider<String>>() {}).implicitly();
+			bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceProvider<Integer>>() {});
+			bind(new Key<InstanceProvider<String>>() {}).implicitly();
 		}});
 
-		// the provideNew call calls the integer factory for the second time (first was for the singleton/cache), so it returns 43
+		// the create call calls the integer factory for the second time (first was for the singleton/cache), so it returns 43
 		// nobody should make non-pure factories anyway, this is just for testing
 		assertEquals("str: 43", injector.getInstance(String.class));
 		assertEquals("str: 43", injector.getInstance(String.class));
 		assertEquals("str: 43", injector.getInstance(String.class));
 
-		Provider<String> provider = injector.getInstance(new Key<Provider<String>>() {});
-		assertEquals("str: 44", provider.provideNew());
-		assertEquals("str: 45", provider.provideNew());
-		assertEquals("str: 46", provider.provideNew());
+		InstanceProvider<String> instanceProvider = injector.getInstance(new Key<InstanceProvider<String>>() {});
+		assertEquals("str: 44", instanceProvider.create());
+		assertEquals("str: 45", instanceProvider.create());
+		assertEquals("str: 46", instanceProvider.create());
 
-		// the first getInstance call was cached, non-pure mutability affects results only when using .provideNew
+		// the first getInstance call was cached, non-pure mutability affects results only when using .create
 		assertEquals("str: 43", injector.getInstance(String.class));
 
 		// as was said in a big comment above first assert
