@@ -24,16 +24,10 @@ import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class HttpHelloWorldLauncher extends Launcher {
-	@Inject
-	Config config;
-
-	private int port;
-
 	@Inject
 	PrimaryServer server;
 
@@ -41,23 +35,18 @@ public class HttpHelloWorldLauncher extends Launcher {
 	protected Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.ofProperties("configs.properties")),
+				ConfigModule.create(Config.create()
+						.with("port", "8080")
+						.with("workers", "4")
+						.with("message", "Hello from config")),
 				new HttpHelloWorldModule()
 		);
 	}
 
 	@Override
-	protected void onStart() {
-		port = config.get(ofInteger(), "port");
-	}
-
-	@Override
 	protected void run() throws Exception {
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:" + port + "'");
 		awaitShutdown();
 	}
-
 
 	public static void main(String[] args) throws Exception {
 		HttpHelloWorldLauncher launcher = new HttpHelloWorldLauncher();

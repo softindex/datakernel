@@ -38,9 +38,9 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
@@ -53,7 +53,7 @@ import static java.util.Collections.singleton;
 public final class GlobalFsApp extends Launcher {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
 
-	public static final String PROPERTIES_FILE = "globalfs-app.properties";
+	public static final String PROPERTIES_FILE = "globalfs-app.example.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";
 
@@ -70,7 +70,7 @@ public final class GlobalFsApp extends Launcher {
 						Config.create()
 								.with("node.serverId", DEFAULT_SERVER_ID)
 								.with("fs.storage", DEFAULT_FS_STORAGE)
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new AbstractModule() {
@@ -94,7 +94,7 @@ public final class GlobalFsApp extends Launcher {
 
 					@Provides
 					StaticLoader staticLoader(Config config) {
-						return StaticLoader.ofPath(Paths.get(config.get("app.http.staticPath")));
+						return StaticLoader.ofClassPath(config.get("app.http.staticPath"));
 					}
 
 					@Provides

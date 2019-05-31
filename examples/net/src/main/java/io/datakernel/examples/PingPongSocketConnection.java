@@ -43,7 +43,7 @@ public class PingPongSocketConnection {
 			.andThen(buf -> buf.asString(UTF_8));
 
 	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.create().withCurrentThread();
 
 		SimpleServer server = SimpleServer.create(
 				socket -> {

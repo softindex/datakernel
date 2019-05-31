@@ -27,6 +27,7 @@ import io.datakernel.launchers.crdt.CrdtNodeLogicModule.Cluster;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule;
 
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
@@ -65,7 +66,7 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				logicModule

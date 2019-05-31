@@ -29,6 +29,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
@@ -66,7 +67,7 @@ public final class CrdtNodeExample {
 								.with("crdt.local.path", "/tmp/TESTS/crdt")
 								.with("crdt.cluster.localPartitionId", "local")
 								.with("crdt.cluster.partitions.noop", "localhost:9091")
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig();
 			}

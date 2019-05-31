@@ -60,19 +60,18 @@ public final class HttpClientExample extends Launcher {
 				ConfigModule.create(Config.create()
 						.with("http.client.googlePublicDns", "8.8.8.8")
 						.with("http.client.timeout", "3 seconds")
-						.with("http.client.host", "http://127.0.0.1:5588")
+						.with("http.client.host", "http://127.0.0.1:8080")
 				),
 				new AbstractModule() {
 					@Provides
 					Eventloop eventloop() {
-						return Eventloop.create()
-								.withFatalErrorHandler(rethrowOnAnyError())
-								.withCurrentThread();
+						return Eventloop.create();
 					}
 
 					@Provides
 					AsyncHttpClient client(Eventloop eventloop, AsyncDnsClient dnsClient) {
-						return AsyncHttpClient.create(eventloop).withDnsClient(dnsClient);
+						return AsyncHttpClient.create(eventloop)
+								.withDnsClient(dnsClient);
 					}
 
 					@Provides

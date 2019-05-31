@@ -3,7 +3,6 @@ package io.global.common.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverters;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -23,18 +22,17 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.graph.OTGraphServlet;
 import io.global.ot.http.OTNodeServlet;
 
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
-import static io.datakernel.config.ConfigConverters.getExecutor;
-import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.datakernel.loader.StaticLoader.ofPath;
-import static io.global.common.ExampleCommonModule.*;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
+import static io.global.common.ExampleCommonModule.DEMO_PRIVATE_KEY;
+import static io.global.common.ExampleCommonModule.DEMO_SIM_KEY;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.ot.GlobalOTConfigConverters.ofMyRepositoryId;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
@@ -87,8 +85,7 @@ public class OTCommonModule<D> extends AbstractModule {
 
 	@Provides
 	StaticServlet staticServlet(Config config) {
-		Path staticDir = config.get(ConfigConverters.ofPath(), "resources.path", DEFAULT_RESOURCES_PATH);
-		return StaticServlet.create(ofPath(staticDir))
+		return StaticServlet.create(ofClassPath(config.get(ofString(), "resources.path")))
 				.withMappingEmptyTo("index.html");
 	}
 

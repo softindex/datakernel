@@ -39,7 +39,8 @@ public class SimpleServlet implements AsyncServlet {
 	@Override
 	public Promise<HttpResponse> serve(@NotNull HttpRequest httpRequest) {
 		byte[] message = encodeAscii("Worker #" + workerId + ". Message: " + responseMessage + "\n");
-		return Promise.of(HttpResponse.ok200().withBody(message));
+		return Promise.of(HttpResponse.ok200()
+				.withBody(message));
 	}
 }
 // [END EXAMPLE]

@@ -59,8 +59,9 @@ public final class GlobalEditorDemoApp extends Launcher {
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.override(Config.ofProperties(PROPERTIES_FILE, true)
-										.combine(Config.ofProperties(CREDENTIALS_FILE, true)))
+								.with("resources.path", "front/build")
+								.override(Config.ofClassPathProperties(PROPERTIES_FILE, true)
+										.combine(Config.ofClassPathProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new OTCommonModule<EditorOperation>() {

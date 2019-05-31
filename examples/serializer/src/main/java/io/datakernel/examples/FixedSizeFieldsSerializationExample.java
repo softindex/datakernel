@@ -24,10 +24,39 @@ import io.datakernel.serializer.annotations.SerializeNullable;
 
 import java.util.Arrays;
 
+import static java.lang.ClassLoader.getSystemClassLoader;
+
 /**
  * Example of serialization and deserialization of an object with fixed size fields.
  */
 public class FixedSizeFieldsSerializationExample {
+	public static class TestDataFixedSize {
+		@Serialize(order = 0)
+		@SerializeFixedSize(3)
+		@SerializeNullable(path = {0})
+		public String[] strings;
+
+		@Serialize(order = 1)
+		@SerializeFixedSize(4)
+		public byte[] bytes;
+	}
+
+	@SuppressWarnings("SameParameterValue")
+	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
+		BinarySerializer<T> serializer = SerializerBuilder
+				.create(getSystemClassLoader())
+				.build(typeToken);
+		return serializeAndDeserialize(testData1, serializer, serializer);
+	}
+
+	private static <T> T serializeAndDeserialize(T testData1,
+												 BinarySerializer<T> serializer,
+												 BinarySerializer<T> deserializer) {
+		byte[] array = new byte[1000];
+		serializer.encode(array, 0, testData1);
+		return deserializer.decode(array, 0);
+	}
+
 
 	public static void main(String[] args) {
 		// Create a test object
@@ -47,34 +76,5 @@ public class FixedSizeFieldsSerializationExample {
 		// Compare them
 		System.out.println(Arrays.toString(testData1.strings) + " " + Arrays.toString(testData2.strings));
 		System.out.println(Arrays.toString(testData1.bytes) + " " + Arrays.toString(testData2.bytes));
-	}
-
-	public static class TestDataFixedSize {
-		@Serialize(order = 0)
-		@SerializeFixedSize(3)
-		@SerializeNullable(path = {0})
-		public String[] strings;
-
-		@Serialize(order = 1)
-		@SerializeFixedSize(4)
-		public byte[] bytes;
-	}
-
-	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getContextClassLoader())
-				.build(typeToken);
-		return serializeAndDeserialize(testData1, serializer, serializer);
-	}
-
-	private static <T> T serializeAndDeserialize(T testData1, BinarySerializer<T> serializer,
-			BinarySerializer<T> deserializer) {
-		byte[] array = new byte[1000];
-		serializer.encode(array, 0, testData1);
-		return deserializer.decode(array, 0);
-	}
-
-	private static ClassLoader getContextClassLoader() {
-		return Thread.currentThread().getContextClassLoader();
 	}
 }

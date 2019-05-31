@@ -48,7 +48,7 @@ public class ConfigModuleExample extends AbstractModule {
 	public static void main(String[] args) {
 		Injector injector = Injector.of(
 				new ConfigModuleExample(),
-				ConfigModule.create(Config.ofProperties(PROPERTIES_FILE))
+				ConfigModule.create(Config.ofClassPathProperties(PROPERTIES_FILE))
 		);
 
 		String phrase = injector.getInstance(String.class);

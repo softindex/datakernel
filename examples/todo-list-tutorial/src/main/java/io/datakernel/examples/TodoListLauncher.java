@@ -14,7 +14,6 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.nio.charset.Charset;
 import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.*;
@@ -23,6 +22,7 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 import static java.lang.Integer.parseInt;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
 //[START EXAMPLE]
@@ -56,7 +56,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 								.serve(request -> {
 									ByteBuf body = request.getBody();
 									try {
-										Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(Charset.forName("UTF_8")));
+										Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(UTF_8));
 										recordDAO.add(record);
 
 										return Promise.of(HttpResponse.ok200());
@@ -68,7 +68,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 							Map<Integer, Record> records = recordDAO.findAll();
 							return Promise.of(HttpResponse.ok200()
 									.withJson(ofMap(INT_CODEC, RECORD_CODEC), records));
-						})
+							})
 						//[START REGION_3]
 						.with(GET, "/delete/:recordId", request -> {
 							String stringId = request.getPathParameter("recordId");

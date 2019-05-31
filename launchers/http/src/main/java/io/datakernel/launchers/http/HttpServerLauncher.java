@@ -21,6 +21,7 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
@@ -54,7 +55,7 @@ public abstract class HttpServerLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new AbstractModule() {

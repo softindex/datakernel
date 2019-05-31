@@ -40,7 +40,7 @@ import io.global.common.discovery.RemoteFsSharedKeyStorage;
 
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
@@ -63,7 +63,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
-						ofProperties(PROPERTIES_FILE)
+						ofClassPathProperties(PROPERTIES_FILE)
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new AbstractModule() {

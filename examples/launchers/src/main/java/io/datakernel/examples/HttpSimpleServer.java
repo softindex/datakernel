@@ -29,38 +29,28 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
-public class HttpSimpleServer {
+public class HttpSimpleServer extends HttpServerLauncher {
 	private static final int SERVICE_PORT = 25565;
 
-	public static void main(String[] args) throws Exception {
-		Launcher launcher = new HttpServerLauncher() {
-			@Override
-			protected Module getBusinessLogicModule() {
-				return new AbstractModule() {
-					@Provides
-					AsyncServlet servlet() {
-						return request -> {
-							logger.info("Connection received");
-							return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
-						};
-					}
-				};
-			}
-
-			@Override
-			protected Module getOverrideModule() {
-				return ConfigModule.create(Config.create()
-						.with("http.listenAddresses", "" + SERVICE_PORT));
-			}
-
-			@Override
-			protected void run() throws Exception {
-				System.out.println("Server is running");
-				System.out.println("You can connect from browser by visiting 'http://localhost:" + SERVICE_PORT + "'");
-				awaitShutdown();
+	@Override
+	protected Module getBusinessLogicModule() {
+		return new AbstractModule() {
+			@Provides
+			AsyncServlet servlet() {
+				return request -> Promise.of(HttpResponse.ok200()
+						.withBody(encodeAscii("Hello from HTTP server")));
 			}
 		};
+	}
 
+	@Override
+	protected Module getOverrideModule() {
+		return ConfigModule.create(Config.create()
+				.with("http.listenAddresses", "" + SERVICE_PORT));
+	}
+
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new HttpSimpleServer();
 		launcher.launch(args);
 	}
 }

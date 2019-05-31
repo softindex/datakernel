@@ -20,12 +20,13 @@ import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 
 import static io.datakernel.codegen.Expressions.*;
+import static java.lang.ClassLoader.getSystemClassLoader;
 
 public class ExpressionsExample {
 	public static void main(String[] args) throws InstantiationException, IllegalAccessException {
 		Class<Example> example = ClassBuilder
 				// context class loader is used because without it maven runner is not happy with our codegen
-				.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Example.class)
+				.create(DefiningClassLoader.create(getSystemClassLoader()), Example.class)
 				.withMethod("sayHello", call(staticField(System.class, "out"), "println", value("Hello world")))
 				.build();
 		Example instance = example.newInstance();

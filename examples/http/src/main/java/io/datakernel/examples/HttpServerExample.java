@@ -17,17 +17,13 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
@@ -37,16 +33,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
  */
 public final class HttpServerExample extends HttpServerLauncher {
 	@Override
-	protected Module getOverrideModule() {
-		return Modules.combine(
-				ConfigModule.create(Config.create()
-						.with("http.listenAddresses", "5588")
-				),
-				ServiceGraphModule.defaultInstance()
-		);
-	}
-
-	@Override
 	protected Module getBusinessLogicModule() {
 		return new AbstractModule() {
 			@Provides
@@ -55,12 +41,6 @@ public final class HttpServerExample extends HttpServerLauncher {
 						.withBody(encodeAscii("Hello World!")));
 			}
 		};
-	}
-
-	@Override
-	protected void onStart() {
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:5588/' or by running HttpClientExample");
 	}
 
 	public static void main(String[] args) throws Exception {

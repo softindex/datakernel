@@ -49,8 +49,7 @@ public class RpcExample extends Launcher {
 				new AbstractModule() {
 					@Provides
 					Eventloop eventloop() {
-						return Eventloop.create()
-								.withFatalErrorHandler(rethrowOnAnyError());
+						return Eventloop.create();
 					}
 
 					@Provides

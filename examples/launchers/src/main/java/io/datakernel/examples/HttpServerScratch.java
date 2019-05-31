@@ -35,11 +35,9 @@ import java.net.InetSocketAddress;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public class HttpServerScratch extends Launcher {
-	private final static int PORT = 25565;
-
+	private static final int PORT = 8080;
 	@Inject
 	private AsyncHttpServer server;
 
@@ -51,16 +49,13 @@ public class HttpServerScratch extends Launcher {
 				new AbstractModule() {
 					@Provides
 					Eventloop eventloop() {
-						return Eventloop.create()
-								.withFatalErrorHandler(rethrowOnAnyError());
+						return Eventloop.create();
 					}
 
 					@Provides
 					AsyncServlet servlet() {
-						return request -> {
-							logger.info("Received connection");
-							return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
-						};
+						return request -> Promise.of(HttpResponse.ok200()
+								.withBody(encodeAscii("Hello from HTTP server")));
 					}
 
 					@Provides
@@ -74,8 +69,6 @@ public class HttpServerScratch extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:" + PORT + "'");
 		awaitShutdown();
 	}
 

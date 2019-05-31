@@ -18,9 +18,9 @@ package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFileService;
 import io.datakernel.file.ExecutorAsyncFileService;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,28 +39,32 @@ import static java.nio.file.StandardOpenOption.*;
 @SuppressWarnings("Convert2MethodRef")
 public class AsyncFileServiceExample {
 	private static final ExecutorService executorService = Executors.newCachedThreadPool();
-	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
-	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 	private static final AsyncFileService fileService = new ExecutorAsyncFileService(executorService);
+	private static final Path PATH;
+	static {
+		try {
+			PATH = Files.createTempFile("NewFile", "txt");
+		} catch (IOException e) {
+			throw new UncheckedException(e);
+		}
+	}
 
 	@NotNull
 	private static Promise<Void> writeToFile() {
-		FileChannel channel = null;
 		try {
-			channel = FileChannel.open(PATH, set(WRITE, CREATE_NEW, APPEND));
+			FileChannel channel = FileChannel.open(PATH, set(WRITE, APPEND));
+
+			byte[] message1 = "Hello\n".getBytes();
+			byte[] message2 = "This is test file\n".getBytes();
+			byte[] message3 = "This is the 3rd line in file".getBytes();
+
+			return fileService.write(channel, 0, message1, 0, message1.length)
+					.then($ -> fileService.write(channel, 0, message2, 0, message2.length))
+					.then($ -> fileService.write(channel, 0, message3, 0, message3.length))
+					.toVoid();
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
-
-		byte[] message1 = "Hello\n".getBytes();
-		byte[] message2 = "This is test file\n".getBytes();
-		byte[] message3 = "This is the 3rd line in file".getBytes();
-
-		FileChannel finalChannel = channel;
-		return fileService.write(channel, 0, message1, 0, message1.length)
-				.then($ -> fileService.write(finalChannel, 0, message2, 0, message2.length))
-				.then($ -> fileService.write(finalChannel, 0, message3, 0, message3.length))
-				.toVoid();
 	}
 
 	@NotNull
@@ -82,17 +85,8 @@ public class AsyncFileServiceExample {
 				});
 	}
 
-	private static void cleanup() {
-		try {
-			Files.delete(PATH);
-		} catch (IOException e) {
-			System.out.println("Failed to delete file (" + PATH + "): " + e);
-		} finally {
-			executorService.shutdown();
-		}
-	}
-
 	public static void main(String[] args) {
+		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		Promises.sequence(
 				() -> writeToFile(),
 				() -> readFromFile().toVoid())
@@ -100,7 +94,7 @@ public class AsyncFileServiceExample {
 					if (e != null) {
 						System.out.println("Something went wrong : " + e);
 					}
-					cleanup();
+					executorService.shutdown();
 				});
 
 		eventloop.run();

@@ -56,7 +56,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(Config.ofProperties(PROPERTIES_FILE, true))
+								.override(Config.ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new AbstractModule() {

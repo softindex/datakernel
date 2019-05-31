@@ -22,7 +22,7 @@ import org.junit.Test;
 import java.util.Properties;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class ConfigsModuleTest {
 	private static class TestClass {
@@ -47,6 +47,48 @@ public class ConfigsModuleTest {
 					&& Double.compare(testClass.field2, field2) == 0
 					&& field3 == testClass.field3;
 		}
+	}
+
+	@Test
+	public void testClassPathConfig() {
+		Config config = Config.ofClassPathProperties("test.properties");
+		assertNotNull(config);
+	}
+
+	@Test
+	public void testClassPathConfigWithRoots() {
+		Config config = Config.ofClassPathProperties("/test.properties");
+		assertNotNull(config);
+		config = Config.ofClassPathProperties("test.properties/");
+		assertNotNull(config);
+		config = Config.ofClassPathProperties("/test.properties/");
+		assertNotNull(config);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testPathConfig() {
+		Config config = Config.ofProperties("test.properties");
+		assertNotNull(config);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testClassPathNotFoundProperties() {
+		Config.ofClassPathProperties("notFound.properties");
+	}
+
+	@Test
+	public void testClassPathNotFoundPropertiesOptional() {
+		Config.ofClassPathProperties("notFound.properties", true);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testPathNameNotFoundProperties() {
+		Config.ofProperties("notFound.properties");
+	}
+
+	@Test
+	public void testPathNameNotFoundPropertiesOptional() {
+		Config.ofProperties("notFound.properties", true);
 	}
 
 	@Test

@@ -26,6 +26,7 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
@@ -62,7 +63,7 @@ public class GlobalNodesLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
-						ofProperties(PROPERTIES_FILE)
+						ofClassPathProperties(PROPERTIES_FILE)
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new GlobalNodesModule()
@@ -84,5 +85,4 @@ public class GlobalNodesLauncher extends Launcher {
 	public static void main(String[] args) throws Exception {
 		new GlobalNodesLauncher().launch(args);
 	}
-
 }

@@ -18,40 +18,52 @@ package io.datakernel.examples;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
 
+import java.io.IOException;
+import java.nio.file.Files;
+
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
  * This example demonstrates configuring and launching RemoteFsServer.
  */
-public class ServerSetupExample {
-	public static void main(String[] args) throws Exception {
-		Launcher launcher = new RemoteFsServerLauncher() {
-			@Override
-			protected Module getOverrideModule() {
-				return combine(
-						ConfigModule.create(Config.create()
-								.with("remotefs.path", "src/main/resources/server_storage")
-								.with("remotefs.listenAddresses", "6732")
-						),
-						new AbstractModule() {
-							@Provides
-							Eventloop eventloop() {
-								return Eventloop.create()
-										.withFatalErrorHandler(rethrowOnAnyError())
-										.withCurrentThread();
-							}
+public class ServerSetupExample extends RemoteFsServerLauncher {
+	@Override
+	protected Module getOverrideModule() {
+		try {
+			return combine(
+					ConfigModule.create(Config.create()
+							.with("remotefs.path", Files.createTempDirectory("server_storage")
+									.toString())
+							.with("remotefs.listenAddresses", "6732")
+					),
+					new AbstractModule() {
+						@Provides
+						Eventloop eventloop() {
+							return Eventloop.create();
 						}
-				);
-			}
-		};
+					}
+			);
+		} catch (IOException e) {
+			throw new UncheckedException(e);
+		}
+	}
+
+	@Override
+	protected void run() throws Exception {
+		awaitShutdown();
+	}
+
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new ServerSetupExample();
 		launcher.launch(args);
 	}
 }

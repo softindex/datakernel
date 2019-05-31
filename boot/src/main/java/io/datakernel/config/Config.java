@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Collections.*;
 
 /**
@@ -76,7 +78,6 @@ public interface Config {
 	static void checkPath(String path) {
 		checkArgument(PATH_PATTERN.matcher(path).matches(), "Invalid path %s", path);
 	}
-
 	/**
 	 * @return value stored in root or defaultValue
 	 */
@@ -259,6 +260,31 @@ public interface Config {
 		return ofProperties(Paths.get(fileName), optional);
 	}
 
+
+	static Config ofClassPathProperties(String fileName) {
+		return ofClassPathProperties(fileName, getSystemClassLoader(), false);
+	}
+
+	static Config ofClassPathProperties(String fileName, ClassLoader classLoader) {
+		return ofClassPathProperties(fileName, classLoader, false);
+	}
+
+	static Config ofClassPathProperties(String fileName, boolean optional) {
+		return ofClassPathProperties(fileName, getSystemClassLoader(), optional);
+	}
+
+	static Config ofClassPathProperties(String fileName, ClassLoader classLoader, boolean optional) {
+		if (fileName.startsWith("/")) fileName = fileName.substring(1);
+		URL resource = classLoader.getResource(fileName);
+		if (resource == null) {
+			if (optional) {
+				logger.warn("Can't load properties file: {}", fileName);
+				return ofProperties(new Properties());
+			}
+			throw new IllegalArgumentException("Failed to load required properties: " + fileName);
+		}
+		return ofProperties(Paths.get(resource.getFile()), optional);
+	}
 	/**
 	 * Creates new config from file
 	 * @param file with properties

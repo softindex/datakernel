@@ -50,8 +50,9 @@ public class HttpHelloWorldModule extends AbstractModule {
 
 	@Provides
 	PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool.Instances<AsyncHttpServer> instances, Config config) {
-		int port = config.get(ofInteger(), "port", 5577);
-		return PrimaryServer.create(primaryEventloop, instances).withListenPort(port);
+		int port = config.get(ofInteger(), "port", 8080);
+		return PrimaryServer.create(primaryEventloop, instances)
+				.withListenPort(port);
 	}
 
 	@Provides

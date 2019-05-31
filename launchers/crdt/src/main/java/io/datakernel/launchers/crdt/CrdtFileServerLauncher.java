@@ -33,6 +33,7 @@ import io.datakernel.trigger.TriggersModule;
 
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
@@ -68,7 +69,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				getLogicModule(),

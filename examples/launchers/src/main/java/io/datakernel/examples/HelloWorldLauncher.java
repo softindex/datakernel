@@ -22,27 +22,27 @@ import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.launcher.Launcher;
 
-public class HelloWorldLauncher {
-	public static void main(String[] args) throws Exception {
-		Launcher launcher = new Launcher() {
-			@Inject
-			String message;
+public class HelloWorldLauncher extends Launcher {
+	@Inject
+	String message;
 
-			@Override
-			protected Module getModule() {
-				return new AbstractModule() {
-					@Provides
-					String message() {
-						return "Hello, world!";
-					}
-				};
-			}
-
-			@Override
-			protected void run() {
-				System.out.println(message);
+	@Override
+	protected Module getModule() {
+		return new AbstractModule() {
+			@Provides
+			String message() {
+				return "Hello, world!";
 			}
 		};
+	}
+
+	@Override
+	protected void run() {
+		System.out.println(message);
+	}
+
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new HelloWorldLauncher();
 		launcher.launch(args);
 	}
 }

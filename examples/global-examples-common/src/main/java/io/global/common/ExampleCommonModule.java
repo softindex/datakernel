@@ -33,7 +33,6 @@ import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 public final class ExampleCommonModule extends AbstractModule {
 	private static final Logger logger = LoggerFactory.getLogger(ExampleCommonModule.class);
 
-	public static final Path DEFAULT_RESOURCES_PATH = Paths.get("front/build");
 	public static final PrivKey DEMO_PRIVATE_KEY =
 			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));
 	public static final SimKey DEMO_SIM_KEY = SimKey.of(

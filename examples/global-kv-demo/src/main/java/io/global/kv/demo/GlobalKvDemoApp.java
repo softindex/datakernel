@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
@@ -71,7 +72,7 @@ public final class GlobalKvDemoApp extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				override(combine(new AbstractModule() {
