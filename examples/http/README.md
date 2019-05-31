@@ -15,6 +15,8 @@ an example of `MiddlewareServlet` usage.
 an example of processing requests with parameter.
 3. [Static Servlet Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/StaticServletExample.java) - 
 an example of `StaticServlet` utilizing. 
+4. [ServletDecoratorExample](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/ServletDecoratorExample.java) - 
+an example of using `AsyncServletDecorator`, a wrapper over `AsyncServlet`.
 
 [Launch](#2-servlet-examples)
 
@@ -85,3 +87,8 @@ utilized with *postParameters.get()*.
 
 **Static Servlet Example** shows how to set up and utilize `StaticServlet`. Method *StaticServlet.create()* returns a 
 new `StaticServlet`. 
+
+**ServletDecoratorExample** shows basic functionality of [**AsyncServletDecorator**](https://github.com/softindex/datakernel/blob/master/core-http/src/main/java/io/datakernel/http/AsyncServletDecorator.java) 
+class. It creates a wrap over **AsyncServlets** and adds behaviour for particular events, for example exception handling or 
+processing received responses. To add new behaviour, use *wrappedDecoratorOf(AsyncServletDecorator... decorators)*. 
+In the example, we defined exception handling and made loading request body default in the servlet.

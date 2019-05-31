@@ -2,6 +2,14 @@
 
 LSMT Aggregation represents database tables containing pre-aggregated data with user-defined aggregative functions.
 
-* LSMT database utilizes log-structured merge-tree data structure, so databases built on top of this table can easily 
-handle high insert volumes of data (e.g. transactional logs).
-* Aggregations can be stored on a distributed file system.
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-aggregation</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+### To find out more visit [our site](https://datakernel.io/docs/components/cloud/aggregation.html).
