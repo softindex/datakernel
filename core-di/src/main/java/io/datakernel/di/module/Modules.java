@@ -8,13 +8,13 @@ import io.datakernel.di.util.Constructors.Factory;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.mergeConflictResolvers;
-import static io.datakernel.di.util.Utils.multimapMerger;
+import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toMap;
@@ -26,7 +26,7 @@ public final class Modules {
 	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return new ModuleImpl(bindings.map(map ->
 				map.entrySet().stream()
-						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap(), emptyMap());
+						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap(), emptyMap(), emptyMap());
 	}
 
 	public static Module combine(Module... modules) {
@@ -38,14 +38,18 @@ public final class Modules {
 			return modules.iterator().next();
 		}
 		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindingsMultimap));
+
+		Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>();
+		Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 		Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>();
 
 		for (Module module : modules) {
+			mergeBindingTransformers(bindingTransformers, module.getBindingTransformers());
+			combineMultimap(bindingGenerators, module.getBindingGenerators());
 			mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
 		}
 
-		throw new UnsupportedOperationException("not implemented"); // TODO anton: implement
-//		return new ModuleImpl(bindings, bindingGenerators, conflictResolvers);
+		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, conflictResolvers);
 	}
 
 	public static Module override(Module... modules) {
@@ -59,11 +63,16 @@ public final class Modules {
 	public static Module override(Module into, Module replacements) {
 		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindingsMultimap(), replacements.getBindingsMultimap());
 
+		Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>(into.getBindingTransformers());
+		bindingTransformers.putAll(replacements.getBindingTransformers());
+
+		Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
+		combineMultimap(bindingGenerators, into.getBindingGenerators());
+
 		Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
 		conflictResolvers.putAll(replacements.getConflictResolvers());
 
-		throw new UnsupportedOperationException("not implemented"); // TODO anton: implement
-//		return new ModuleImpl(bindings, bindingGenerators, conflictResolvers);
+		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, conflictResolvers);
 	}
 
 	private static final Function<Set<Binding<?>>, Binding<?>> ERRORS_ON_DUPLICATE = bindings -> {
@@ -106,13 +115,16 @@ public final class Modules {
 
 	private static class ModuleImpl implements Module {
 		private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
-		private final Map<Key<?>, BindingGenerator<?>> bindingGenerators;
+		private final Map<Integer, BindingTransformer<?>> bindingMappers;
+		private final Map<Type, Set<BindingGenerator<?>>> bindingGenerators;
 		private final Map<Key<?>, ConflictResolver<?>> conflictResolvers;
 
 		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-						   Map<Key<?>, BindingGenerator<?>> bindingGenerators,
+						   Map<Integer, BindingTransformer<?>> bindingMappers,
+						   Map<Type, Set<BindingGenerator<?>>> bindingGenerators,
 						   Map<Key<?>, ConflictResolver<?>> conflictResolvers) {
 			this.bindings = bindings;
+			this.bindingMappers = bindingMappers;
 			this.bindingGenerators = bindingGenerators;
 			this.conflictResolvers = conflictResolvers;
 		}
@@ -123,7 +135,12 @@ public final class Modules {
 		}
 
 		@Override
-		public Map<Key<?>, BindingGenerator<?>> getBindingGenerators() {
+		public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
+			return bindingMappers;
+		}
+
+		@Override
+		public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
 			return bindingGenerators;
 		}
 

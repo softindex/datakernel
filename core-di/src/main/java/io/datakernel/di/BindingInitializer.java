@@ -10,7 +10,7 @@ import static java.util.Arrays.copyOfRange;
 import static java.util.Collections.addAll;
 
 public final class BindingInitializer<T> {
-	private static final BindingInitializer<?> IDENTITY = new BindingInitializer<>(new Dependency[0], (instance, args) -> {});
+	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(new Dependency[0], (instance, args) -> {});
 
 	@FunctionalInterface
 	public interface Initializer<T> {
@@ -41,11 +41,6 @@ public final class BindingInitializer<T> {
 		return new BindingInitializer<>(Arrays.stream(dependencies).map(k -> new Dependency(k, true)).toArray(Dependency[]::new), initializer);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> BindingInitializer<T> identity() {
-		return (BindingInitializer<T>) IDENTITY;
-	}
-
 	@SafeVarargs
 	public static <T> BindingInitializer<T> combine(BindingInitializer<T>... bindingInitializers) {
 		return combine(asList(bindingInitializers));
@@ -56,24 +51,23 @@ public final class BindingInitializer<T> {
 		List<Initializer<T>> initializers = new ArrayList<>();
 		List<Dependency> keys = new ArrayList<>();
 		for (BindingInitializer<T> bi : bindingInitializers) {
-			if (bi == identity()) continue;
-			bindingInitializersList.add(bi);
+			if (bi == NOOP) {
+				continue;
+			}
 			Initializer<T> initializer = bi.getInitializer();
 			int from = keys.size();
 			int to = from + bi.getDependencies().length;
 			addAll(keys, bi.getDependencies());
 			initializers.add((instance, args) -> initializer.apply(instance, copyOfRange(args, from, to)));
 		}
-		if (bindingInitializersList.isEmpty()) return identity();
-		if (bindingInitializersList.size() == 1) return bindingInitializersList.get(0);
-		@SuppressWarnings("unchecked") Initializer<T>[] initializersArray = initializers.toArray(new Initializer[0]);
-		return BindingInitializer.of(
-				keys.toArray(new Dependency[0]),
-				(instance, args) -> {
-					for (Initializer<T> initializer : initializersArray) {
-						initializer.apply(instance, args);
-					}
-				});
+		if (initializers.isEmpty()) {
+			return noop();
+		}
+		return BindingInitializer.of(keys.toArray(new Dependency[0]), (instance, args) -> initializers.forEach(initializer -> initializer.apply(instance, args)));
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <T> BindingInitializer<T> noop() {
+		return (BindingInitializer<T>) NOOP;
+	}
 }

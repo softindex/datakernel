@@ -19,12 +19,13 @@ package io.datakernel.jmx;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.NameAnnotation;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -48,14 +49,6 @@ public class JmxRegistryTest {
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 	private final MBeanSettings settings = MBeanSettings.defaultSettings();
-	private WorkerPool workerPool;
-
-	@Before
-	public void setUp() throws Exception {
-		Injector injector = Injector.of(new WorkerPoolModule());
-		WorkerPools pools = injector.getInstance(WorkerPools.class);
-		workerPool = pools.createPool(3);
-	}
 
 	@Test
 	public void registerSingletonInstanceWithout_Annotation_AndComposeAppropriateObjectName() throws Exception {
@@ -141,9 +134,12 @@ public class JmxRegistryTest {
 
 	@Test
 	public void registerWorkers_andComposeAppropriateObjectNames() throws Exception {
-		ServiceStub worker_1 = new ServiceStub();
-		ServiceStub worker_2 = new ServiceStub();
-		ServiceStub worker_3 = new ServiceStub();
+		WorkerPool workerPool = getWorkerPool();
+		WorkerPool.Instances<ServiceStub> instances = workerPool.getInstances(ServiceStub.class);
+
+		ServiceStub worker_1 = instances.get(0);
+		ServiceStub worker_2 = instances.get(1);
+		ServiceStub worker_3 = instances.get(2);
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
@@ -186,9 +182,12 @@ public class JmxRegistryTest {
 
 	@Test
 	public void unregisterWorkers() throws Exception {
-		ServiceStub worker_1 = new ServiceStub();
-		ServiceStub worker_2 = new ServiceStub();
-		ServiceStub worker_3 = new ServiceStub();
+		WorkerPool workerPool = getWorkerPool();
+		WorkerPool.Instances<ServiceStub> instances = workerPool.getInstances(ServiceStub.class);
+
+		ServiceStub worker_1 = instances.get(0);
+		ServiceStub worker_2 = instances.get(1);
+		ServiceStub worker_3 = instances.get(2);
 
 		context.checking(new Expectations() {{
 			// checking calls and names for each worker separately
@@ -208,6 +207,14 @@ public class JmxRegistryTest {
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.of(ServiceStub.class, basicServiceAnnotation);
 		jmxRegistry.unregisterWorkers(workerPool, key, asList(worker_1, worker_2, worker_3));
+	}
+
+	private WorkerPool getWorkerPool() {
+		Injector injector = Injector.of(new WorkerPoolModule(), new AbstractModule() {{
+			bind(ServiceStub.class).in(Worker.class).to(ServiceStub::new);
+		}});
+		WorkerPools pools = injector.getInstance(WorkerPools.class);
+		return pools.createPool(3);
 	}
 
 	// annotations

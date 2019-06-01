@@ -69,11 +69,6 @@ public final class ComplexHttpLauncher extends Launcher {
 
 				new AbstractModule() {
 
-					@Override
-					protected void configure() {
-						bind(Key.of(int.class, WorkerId.class)).to(() -> {throw new UnsupportedOperationException();});
-					}
-
 					// region primary eventloops
 					@Provides
 					Eventloop eventloop1() {
@@ -207,7 +202,6 @@ public final class ComplexHttpLauncher extends Launcher {
 	public static void main(String[] args) throws Exception {
 		new ComplexHttpLauncher().launch(args);
 	}
-
 }
 
 

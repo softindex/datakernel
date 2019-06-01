@@ -116,8 +116,10 @@ public final class Binding<T> {
 		return this;
 	}
 
-	public Binding<T> apply(@NotNull BindingInitializer<T> bindingInitializer) {
-		if (bindingInitializer == BindingInitializer.identity()) return this;
+	public Binding<T> apply(BindingInitializer<T> bindingInitializer) {
+		if (bindingInitializer == BindingInitializer.noop()) {
+			return this;
+		}
 		Dependency[] addedDependencies = bindingInitializer.getDependencies();
 		Dependency[] combinedDependencies = new Dependency[this.dependencies.length + addedDependencies.length];
 		System.arraycopy(this.dependencies, 0, combinedDependencies, 0, this.dependencies.length);

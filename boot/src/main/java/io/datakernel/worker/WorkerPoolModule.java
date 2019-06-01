@@ -16,16 +16,23 @@
 
 package io.datakernel.worker;
 
+import io.datakernel.di.Binding;
+import io.datakernel.di.Dependency;
 import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
 import io.datakernel.di.module.AbstractModule;
 
 public final class WorkerPoolModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
-		bind(Key.of(int.class, WorkerId.class)).in(Worker.class).to(() -> {
-			throw new UnsupportedOperationException();
+
+		generate(int.class, (scope, key, context) -> {
+			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
+				return null;
+			}
+			return Binding.of(new Dependency[0], $ -> {
+				throw new RuntimeException("expected instance override for worker id after Injector.enterScope");
+			});
 		});
 	}
 }

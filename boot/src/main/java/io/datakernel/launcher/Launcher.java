@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 
+import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**

@@ -2,10 +2,10 @@ package io.datakernel.di.module;
 
 import io.datakernel.di.Binding;
 import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 
-import java.util.function.Function;
-
+@FunctionalInterface
 public interface BindingGenerator<T> {
 
-	Binding<T> generate(Key<T> key, Function<Key<?>, Binding<?>> context);
+	Binding<T> generate(Scope[] scope, Key<T> key, BindingGenerationContext context);
 }

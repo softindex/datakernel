@@ -120,8 +120,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					@Provides
 					@Worker
 					AsyncServlet servlet(@WorkerId int workerId) {
-						return req -> Promise.of(
-								HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId))));
+						return req -> Promise.of(HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId))));
 					}
 				};
 

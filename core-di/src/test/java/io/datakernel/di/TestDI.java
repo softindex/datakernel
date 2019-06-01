@@ -1,19 +1,20 @@
 package io.datakernel.di;
 
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Provides;
-import io.datakernel.di.module.ProvidesIntoSet;
+import io.datakernel.di.error.CyclicDependensiesException;
+import io.datakernel.di.error.MultipleBindingsException;
+import io.datakernel.di.error.UnsatisfiedDependenciesException;
+import io.datakernel.di.module.*;
 import org.jetbrains.annotations.Nullable;
-import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
@@ -26,8 +27,6 @@ public final class TestDI {
 			bind(Integer.class).toInstance(42);
 			bind(String.class).to(i -> "str: " + i, Integer.class);
 		}};
-
-//		module.getBindings().values().forEach(bindings -> System.out.println(bindings.iterator().next().getDisplayString()));
 
 		Injector injector = Injector.of(module);
 
@@ -52,26 +51,134 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
-			bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceProvider<Integer>>() {});
-			bind(new Key<InstanceProvider<String>>() {}).implicitly();
+			bind(String.class).to(i -> "str: " + i.get(), new Key<Provider<Integer>>() {});
+			bind(new Key<Provider<String>>() {});
 		}});
 
-		// the create call calls the integer factory for the second time (first was for the singleton/cache), so it returns 43
-		// nobody should make non-pure factories anyway, this is just for testing
-		assertEquals("str: 43", injector.getInstance(String.class));
-		assertEquals("str: 43", injector.getInstance(String.class));
-		assertEquals("str: 43", injector.getInstance(String.class));
+		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals("str: 42", injector.getInstance(String.class));
 
-		InstanceProvider<String> instanceProvider = injector.getInstance(new Key<InstanceProvider<String>>() {});
-		assertEquals("str: 44", instanceProvider.create());
-		assertEquals("str: 45", instanceProvider.create());
-		assertEquals("str: 46", instanceProvider.create());
+		Provider<String> provider = injector.getInstance(new Key<Provider<String>>() {});
+		assertEquals("str: 43", provider.get());
+		assertEquals("str: 44", provider.get());
+		assertEquals("str: 45", provider.get());
 
 		// the first getInstance call was cached, non-pure mutability affects results only when using .create
-		assertEquals("str: 43", injector.getInstance(String.class));
+		assertEquals("str: 42", injector.getInstance(String.class));
 
-		// as was said in a big comment above first assert
-		assertEquals(42, injector.getInstance(Integer.class).intValue());
+		// but the integer getInstance or even provideSingleton were never called and so it was never cached
+		// mutable factory is only to indicate multiple factory calls in testing, in reality nobody
+		// should really do non-pure factories unless they know what hack they're trying to accomplish
+		assertEquals(46, injector.getInstance(Integer.class).intValue());
+	}
+
+	@Test
+	public void crossmodule() {
+		Injector injector = Injector.of(
+				new AbstractModule() {{
+					bind(Integer.class).toInstance(42);
+				}},
+				new AbstractModule() {{
+					bind(String.class).to(i -> "str: " + i, Integer.class);
+				}});
+
+		assertEquals("str: 42", injector.getInstance(String.class));
+	}
+
+	@Test
+	public void overrides() {
+		Injector injector = Injector.of(override(
+				new AbstractModule() {{
+					bind(Integer.class).toInstance(17);
+					bind(String.class).to(i -> "str: " + i, Integer.class);
+				}},
+				new AbstractModule() {{
+					bind(Integer.class).toInstance(42);
+				}}));
+
+		assertEquals("str: 42", injector.getInstance(String.class));
+	}
+
+	@Test
+	public void duplicates() {
+		Module module = new AbstractModule() {{
+			bind(Integer.class).toInstance(42);
+			bind(String.class).to(i -> "str1: " + i, Integer.class);
+			bind(String.class).to(i -> "str2: " + i, Integer.class);
+		}};
+		try {
+			Injector.of(module);
+			fail("should've failed");
+		} catch (MultipleBindingsException e) {
+			e.printStackTrace();
+			assertTrue(e.getMessage().startsWith("for key java.lang.String"));
+		}
+	}
+
+	@Test
+	public void simpleCycle() {
+		AbstractModule module = new AbstractModule() {{
+			bind(Integer.class).to($ -> 42, String.class);
+			bind(String.class).to(i -> "str: " + i, Integer.class);
+		}};
+
+		try {
+			Injector.of(module);
+			fail("should've failed here");
+		} catch (CyclicDependensiesException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Test
+	public void advancedCycles() {
+
+		Module branch = new AbstractModule() {{
+			// branch that leads to the cycle(s) (should not be in exception output)
+			bind(Short.class).to(Integer::shortValue, Integer.class);
+			bind(Byte.class).to(Short::byteValue, Short.class);
+		}};
+
+		Module cyclic1 = new AbstractModule() {{
+			bind(Integer.class).to($ -> 42, Object.class);
+			bind(Object.class).to($ -> new Object(), String.class);
+			bind(String.class).to(i -> "str: " + i, Float.class);
+			bind(Float.class).to(i -> (float) i, Integer.class);
+		}};
+
+		Set<Key<?>> expected1 = cyclic1.getBindings().get().keySet();
+
+		try {
+			Injector.of(branch, cyclic1);
+			fail("should've failed here");
+		} catch (CyclicDependensiesException e) {
+			e.printStackTrace();
+
+			assertEquals(1, e.getCycles().size());
+			assertEquals(expected1, Arrays.stream(e.getCycles().iterator().next()).collect(toSet()));
+		}
+
+		Module cyclic2 = new AbstractModule() {{
+			bind(Double.class).to($ -> 42.0, Character.class);
+			bind(Character.class).to($ -> 'k', Boolean.class);
+			bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
+		}};
+
+		Set<Key<?>> expected2 = cyclic2.getBindings().get().keySet();
+
+		try {
+			Injector.of(branch, cyclic1, cyclic2);
+			fail("should've failed here");
+		} catch (CyclicDependensiesException e) {
+			e.printStackTrace();
+
+			assertEquals(2, e.getCycles().size());
+
+			Set<Set<Key<?>>> cycles = e.getCycles().stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
+
+			assertEquals(Stream.of(expected1, expected2).collect(toSet()), cycles);
+		}
 	}
 
 	@Test
@@ -166,26 +273,16 @@ public final class TestDI {
 			String string;
 		}
 
+		@Inject
 		class Inherited extends ClassWithCustomDeps {
 		}
 
-		Injector injector = Injector.of(new AbstractModule() {
-
-			@Provides
-			Inherited inherited() {
-				return new Inherited();
-			}
-
-			@Provides
-			String string(Integer integer) {
-				return "str: " + integer;
-			}
-
-			@Provides
-			Integer integer() {
-				return 42;
-			}
-		});
+		Injector injector = Injector.of(new AbstractModule() {{
+			bind(TestDI.class).toInstance(TestDI.this); // inherited class has implicit dependency on enclosing class
+			bind(Inherited.class);
+			bind(String.class).to(i -> "str: " + i, Integer.class);
+			bind(Integer.class).toInstance(42);
+		}});
 
 		Inherited instance = injector.getInstance(Inherited.class);
 		assertEquals("str: 42", instance.string);
@@ -209,21 +306,21 @@ public final class TestDI {
 	public void cyclicInjects() {
 		try {
 			Module module = new AbstractModule() {{
-				bind(RecursiveA.class).implicitly();
+				bind(RecursiveA.class);
 			}};
 
-			module.getBindings().get().forEach((key, binding) ->
-					System.out.println(key.getDisplayString() + " -> " + binding.getDisplayString()));
-
 			Injector.of(module);
+			module.getBindings().get().forEach((k, b) -> System.out.println(k.getDisplayString() + " -> " + b.getDisplayString()));
 			fail("should've detected the cycle and fail");
-		} catch (RuntimeException e) {
+		} catch (CyclicDependensiesException e) {
 			e.printStackTrace();
 		}
 	}
 
 	@Test
 	public void optionalInjects() {
+
+		@Inject
 		class ClassWithCustomDeps {
 
 			@Inject(optional = true)
@@ -234,91 +331,38 @@ public final class TestDI {
 			Integer integer;
 		}
 
-		Injector injector = Injector.of(new AbstractModule() {
+		Module module = new AbstractModule() {{
+			bind(TestDI.class).toInstance(TestDI.this);
+			bind(ClassWithCustomDeps.class);
+			bind(Integer.class).toInstance(42);
+		}};
 
-			@Provides
-			ClassWithCustomDeps classWithCustomDeps() {
-				return new ClassWithCustomDeps();
-			}
-
-			@Provides
-			Integer integer() {
-				return 42;
-			}
-		});
+		Injector injector = Injector.of(module);
 
 		ClassWithCustomDeps instance = injector.getInstance(ClassWithCustomDeps.class);
 		assertNull(instance.string);
 		assertEquals(42, instance.integer.intValue());
 
-		Injector injector2 = Injector.of(new AbstractModule() {
-
-			@Provides
-			ClassWithCustomDeps provide() {
-				return new ClassWithCustomDeps();
-			}
-
-			@Provides
-			Integer provide2() {
-				return 42;
-			}
-
-			@Provides
-			String provide3() {
-				return "str";
-			}
-		});
+		Injector injector2 = Injector.of(module, new AbstractModule() {{
+			bind(String.class).to(i -> "str: " + i, Integer.class);
+		}});
 
 		ClassWithCustomDeps instance2 = injector2.getInstance(ClassWithCustomDeps.class);
-		assertEquals("str", instance2.string);
+		assertEquals("str: 42", instance2.string);
 		assertEquals(42, instance2.integer.intValue());
 
 		try {
-			Injector injector3 = Injector.of(new AbstractModule() {
-
-				@Provides
-				ClassWithCustomDeps provide() {
-					return new ClassWithCustomDeps();
-				}
-
-				@Provides
-				String provide2() {
-					return "str";
-				}
-			});
+			Injector injector3 = Injector.of(new AbstractModule() {{
+				bind(TestDI.class).toInstance(TestDI.this);
+				bind(ClassWithCustomDeps.class);
+				bind(String.class).toInstance("str");
+			}});
 			injector3.getInstance(ClassWithCustomDeps.class);
 			fail("should've failed, but didn't");
-		} catch (RuntimeException e) {
+		} catch (UnsatisfiedDependenciesException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("unsatisfied dependencies detected:\n\tkey java.lang.Integer\n\t\trequired at"));
+			assertTrue(e.getMessage().startsWith("\n\tkey java.lang.Integer\n\t\trequired at"));
 		}
-	}
-
-	@Test
-	public void crossmodule() {
-		Injector injector = Injector.of(
-				new AbstractModule() {{
-					bind(Integer.class).toInstance(42);
-				}},
-				new AbstractModule() {{
-					bind(String.class).to(i -> "str: " + i, Integer.class);
-				}});
-
-		assertEquals("str: 42", injector.getInstance(String.class));
-	}
-
-	@Test
-	public void overrides() {
-		Injector injector = Injector.of(override(
-				new AbstractModule() {{
-					bind(Integer.class).toInstance(17);
-					bind(String.class).to(i -> "str: " + i, Integer.class);
-				}},
-				new AbstractModule() {{
-					bind(Integer.class).toInstance(42);
-				}}));
-
-		assertEquals("str: 42", injector.getInstance(String.class));
 	}
 
 	@SuppressWarnings("unused")
@@ -338,7 +382,7 @@ public final class TestDI {
 		AbstractModule module = new AbstractModule() {{
 			bind(String.class).toInstance("hello");
 			bind(Integer.class).toInstance(42);
-			bind(new Key<Container<Float, String, Integer>>() {}).implicitly();
+			bind(new Key<Container<Float, String, Integer>>() {});
 		}};
 
 		Injector injector = Injector.of(module);
@@ -349,7 +393,6 @@ public final class TestDI {
 	}
 
 	@Test
-	@Ignore
 	public void container() {
 
 		class Container<T> {
@@ -361,6 +404,13 @@ public final class TestDI {
 		}
 
 		AbstractModule module = new AbstractModule() {
+
+			@Override
+			protected void configure() {
+				bind(new Key<Container<String>>() {});
+				bind(new Key<Container<Integer>>() {});
+			}
+
 			@Provides
 			<T> Container<T> container(T t) {
 				return new Container<>(t);
@@ -379,27 +429,14 @@ public final class TestDI {
 
 		Injector injector = Injector.of(module);
 
+		injector.getBindings().get().forEach((k, b) -> System.out.println(k.getDisplayString() + " -> " + b.getDisplayString()));
+
 		assertEquals("hello", injector.getInstance(new Key<Container<String>>() {}).object);
 		assertEquals(42, injector.getInstance(new Key<Container<Integer>>() {}).object.intValue());
 	}
 
 	@Test
-	public void providesDuplicated() {
-		try {
-			Injector.of(new AbstractModule() {{
-				bind(Integer.class).toInstance(42);
-				bind(String.class).to(i -> "str1: " + i, Integer.class);
-				bind(String.class).to(i -> "str2: " + i, Integer.class);
-			}});
-			fail("should've failed");
-		} catch (RuntimeException e) {
-			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("Duplicate bindings for key java.lang.String"));
-		}
-	}
-
-	@Test
-	public void providesOptional() {
+	public void optionalProvidesParam() {
 		Module module = new AbstractModule() {
 			@Provides
 			String string(Integer integer, @Optional Float f) {
@@ -474,7 +511,7 @@ public final class TestDI {
 
 
 	@Test
-	public void hierarchyModules() {
+	public void injeritedProviders() {
 		class Module1 extends AbstractModule {
 			@Provides
 			Integer integer() {
@@ -496,20 +533,69 @@ public final class TestDI {
 	}
 
 	@Test
-	public void moduleWithGenerics() {
+	public void genericModules() {
+
+		@Inject
+		class AndAContainerToo<T> {
+
+			@Inject
+			@Named("namedGeneric")
+			T object;
+		}
+
 		abstract class Module1<D> extends AbstractModule {
 			@Provides
 			String string(D object) {
 				return "str: " + object.toString();
 			}
 		}
+		abstract class Module2<C> extends Module1<C> {
+			@Override
+			protected void configure() {
+				bind(TestDI.class).toInstance(TestDI.this);
+				bind(new Key<AndAContainerToo<C>>() {});
+			}
 
-		Injector injector = Injector.of(new Module1<Integer>() {{
+			@Provides
+			@Named("second")
+			String string(List<C> object) {
+				return "str: " + object.toString();
+			}
+		}
+
+		Injector injector = Injector.of(new Module2<Integer>() {{
 			bind(Integer.class).toInstance(42);
+			bind(Key.of(Integer.class, Name.of("namedGeneric"))).toInstance(-42);
+			bind(new Key<List<Integer>>() {}).toInstance(asList(1, 2, 3));
 		}});
-		String string = injector.getInstance(String.class);
 
-		assertEquals("str: 42", string);
+		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals("str: [1, 2, 3]", injector.getInstance(Key.of(String.class, Name.of("second"))));
+		assertEquals(-42, injector.getInstance(new Key<AndAContainerToo<Integer>>() {}).object.intValue());
 	}
 
+	@Test
+	public void injectConstructor() {
+
+		class Injectable {
+			String string;
+			Integer integer;
+
+			@Inject
+			Injectable(String string, @Optional @Nullable Integer integer) {
+				this.string = string;
+				this.integer = integer;
+			}
+		}
+
+		Injector injector = Injector.of(new AbstractModule() {{
+			bind(TestDI.class).toInstance(TestDI.this);
+			bind(Injectable.class);
+			bind(String.class).toInstance("hello");
+		}});
+
+		Injectable instance = injector.getInstance(Injectable.class);
+		assertEquals("hello", instance.string);
+		assertNull(instance.integer);
+	}
 }

@@ -78,9 +78,26 @@ public final class Trie<K, V> {
 		return root;
 	}
 
+	public void dfs(K root, BiConsumer<K, V> consumer) {
+		children.forEach((key, child) -> child.dfs(key, consumer));
+		consumer.accept(root, payload);
+	}
+
+	public void dfs(Consumer<V> consumer) {
+		dfs(null, ($, payload) -> consumer.accept(payload));
+	}
+
 	public void bfs(K root, BiConsumer<K, V> consumer) {
 		consumer.accept(root, payload);
-		children.forEach((key, child) -> child.bfs(key, consumer));
+		Map<K, Trie<K, V>> current = children;
+		while (!current.isEmpty()) {
+			Map<K, Trie<K, V>> next = new HashMap<>();
+			current.forEach((key, child) -> {
+				consumer.accept(key, child.get());
+				next.putAll(child.children);
+			});
+			current = next;
+		}
 	}
 
 	public void bfs(Consumer<V> consumer) {

@@ -4,19 +4,24 @@ import io.datakernel.di.Binding;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
 import io.datakernel.di.error.MultipleBindingsException;
-import io.datakernel.di.error.NoBindingsForKey;
+import io.datakernel.di.error.NoBindingsForKeyException;
 import io.datakernel.di.util.Trie;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toMap;
 
 public interface Module {
-	Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap();
+	Trie<Scope, Map<Key<?>, Set<@Nullable Binding<?>>>> getBindingsMultimap();
 
-	Map<Key<?>, BindingGenerator<?>> getBindingGenerators();
+	Map<Integer, BindingTransformer<?>> getBindingTransformers();
+
+	Map<Type, Set<BindingGenerator<?>>> getBindingGenerators();
 
 	Map<Key<?>, ConflictResolver<?>> getConflictResolvers();
 
@@ -30,9 +35,15 @@ public interface Module {
 								entry -> {
 									Key<?> key = entry.getKey();
 									Set<Binding<?>> bindings = entry.getValue();
+
+									// filter out null but not when binding set is [null]
+									if (bindings.size() > 1) {
+										bindings.removeIf(Objects::isNull);
+									}
+
 									switch (bindings.size()) {
 										case 0:
-											throw new NoBindingsForKey(key);
+											throw new NoBindingsForKeyException(key);
 										case 1:
 											return bindings.iterator().next();
 										default:
@@ -57,7 +68,12 @@ public interface Module {
 			}
 
 			@Override
-			public Map<Key<?>, BindingGenerator<?>> getBindingGenerators() {
+			public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
+				return emptyMap();
+			}
+
+			@Override
+			public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
 				return emptyMap();
 			}
 

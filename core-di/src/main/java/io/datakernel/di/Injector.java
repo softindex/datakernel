@@ -4,17 +4,18 @@ import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.NoBindingsInScopeException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
-import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Modules;
+import io.datakernel.di.module.*;
 import io.datakernel.di.util.BindingUtils;
-import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import static java.util.Collections.emptyMap;
 
 public class Injector {
 	@Nullable
@@ -52,8 +53,7 @@ public class Injector {
 
 	private static final Object[] NO_OBJECTS = new Object[0];
 
-	private Injector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-					 Map<Key<?>, Object> instances) {
+	private Injector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
 		this.parent = parent;
 		this.bindings = bindings;
 		this.localBindings = bindings.get();
@@ -61,25 +61,26 @@ public class Injector {
 	}
 
 	public static Injector of(Module... modules) {
-		Module module = Modules.combine(modules);
-		return construct(null, new HashMap<>(), true, module.getBindings());
+		Module module = Modules.combine(Modules.combine(modules), new DefaultModule());
+		return compile(null, new HashMap<>(), true, module.getBindings(), module.getBindingTransformers(), module.getBindingGenerators());
 	}
 
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return construct(null, new HashMap<>(), true, bindings);
+		return compile(null, new HashMap<>(), true, bindings, emptyMap(), emptyMap());
 	}
 
-	public static Injector construct(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
-									 @NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
+								   @NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+								   @NotNull Map<Integer, BindingTransformer<?>> bindingTransformers,
+								   @NotNull Map<Type, Set<BindingGenerator<?>>> bindingGenerators) {
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :
 				new Injector(parent, bindings, instances);
 
+		// well, can't do anything better than that
 		bindings.get().put(Key.of(Injector.class), Binding.constant(injector));
 
-//		BindingUtils.completeBindings(bindings, );
-
-		ReflectionUtils.addImplicitBindings(bindings);
+		BindingUtils.completeBindings(bindings, bindingTransformers, bindingGenerators);
 
 		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingUtils.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {

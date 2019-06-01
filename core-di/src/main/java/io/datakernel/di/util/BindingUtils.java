@@ -4,52 +4,204 @@ import io.datakernel.di.Binding;
 import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
+import io.datakernel.di.module.BindingGenerationContext;
 import io.datakernel.di.module.BindingGenerator;
+import io.datakernel.di.module.BindingTransformer;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.Map.Entry;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.toMultimap;
+import static io.datakernel.di.util.ScopedValue.UNSCOPED;
+import static io.datakernel.di.util.Utils.*;
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class BindingUtils {
+	public static final Binding<?> PHANTOM = Binding.of(new Dependency[0], $ -> {
+		throw new AssertionError("This binding exists as a marker to be replaced by generated binding, if you see this message then somethning is really wrong");
+	});
+
 	private BindingUtils() {
 		throw new AssertionError("nope.");
 	}
 
-	public static void completeBindings(Trie<Scope, Map<Key<?>, Binding<?>>> trie, Map<Key<?>, BindingGenerator<?>> generators) {
-		Set<Key<?>> known = new HashSet<>(); // to keep knowledge about what keys existed in upper scopes
-		trie.bfs(bindings -> {
-			known.addAll(bindings.keySet());
-			for (Binding<?> binding : bindings.values()) {
-				for (Dependency dependency : binding.getDependencies()) {
-					if (dependency.isRequired() && !known.contains(dependency.getKey())) {
+	public static Set<BindingGenerator<?>> findBestMatch(Type type, Map<Type, Set<BindingGenerator<?>>> generators) {
+		Set<BindingGenerator<?>> found = generators.entrySet().stream()
+				.filter(e -> ReflectionUtils.matches(type, e.getKey()))
+				.map(Entry::getValue)
+				.findFirst()
+				.orElse(null);
+		if (found != null || type == Object.class || type == null) {
+			return found;
+		}
 
+		Class<?> rawType;
+		if (type instanceof Class) {
+			rawType = (Class<?>) type;
+		} else if (type instanceof ParameterizedType) {
+			Type raw = ((ParameterizedType) type).getRawType();
+			if (!(raw instanceof Class)) {
+				throw new AssertionError("in current java all raw types are of type class");
+			}
+			rawType = (Class<?>) raw;
+		} else {
+			throw new IllegalArgumentException("unsupported type");
+		}
+
+		Type genericSuperclass = rawType.getGenericSuperclass();
+		if (genericSuperclass != null) { // ^ returns null on interfaces, but below we are recursively calling this for them
+			found = findBestMatch(genericSuperclass, generators);
+			if (found != null) {
+				return found;
+			}
+		}
+		for (Type iface : rawType.getGenericInterfaces()) {
+			found = findBestMatch(iface, generators);
+			if (found != null) {
+				return found;
+			}
+		}
+		return emptySet();
+	}
+
+	public static void completeBindings(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+										Map<Integer, BindingTransformer<?>> transformers,
+										Map<Type, Set<BindingGenerator<?>>> generators) {
+		completeBindings(new HashMap<>(bindings.get()), new HashSet<>(), UNSCOPED, bindings, transformers, generators);
+	}
+
+	private static void completeBindings(Map<Key<?>, Binding<?>> known, Set<Binding<?>> transformed,
+										 Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+										 Map<Integer, BindingTransformer<?>> transformers,
+										 Map<Type, Set<BindingGenerator<?>>> generators) {
+		completeBindings(known, transformed, scope, bindings.get(), transformers, generators);
+		bindings.getChildren().forEach((subscope, subtrie) -> completeBindings(override(known, subtrie.get()), transformed, next(scope, subscope), subtrie, transformers, generators));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void completeBindings(Map<Key<?>, @Nullable Binding<?>> known, Set<Binding<?>> transformed,
+										 Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
+										 Map<Integer, BindingTransformer<?>> transformers,
+										 Map<Type, Set<BindingGenerator<?>>> generators) {
+		Map<Key<?>, Set<BindingGenerator<?>>> generatorCache = new HashMap<>();
+		BindingGenerationContext context = new BindingGenerationContext() {
+			@Override
+			@Nullable
+			public <T> Binding<T> getBinding(Key<T> key) {
+				return (Binding<T>) known.get(key);
+			}
+		};
+
+		List<BindingTransformer<Object>> transformerList = transformers.entrySet().stream()
+				.sorted(Comparator.comparing(Entry::getKey))
+				.map(e -> (BindingTransformer<Object>) e.getValue())
+				.collect(toList());
+
+		for (; ; ) {
+			Map<Key<?>, Binding<?>> generated = new HashMap<>();
+			for (Entry<Key<?>, @Nullable Binding<?>> entry : localBindings.entrySet()) {
+
+				Key<Object> key = (Key<Object>) entry.getKey();
+				Binding<?> binding = entry.getValue();
+
+				if (binding == PHANTOM) {
+					Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(key, k -> findBestMatch(k.getType(), generators));
+					if (found.isEmpty()) {
+						throw new RuntimeException("cannot generate a real binding for phantom one");
 					}
+					Set<Binding> generatedBindings = found.stream()
+							.map(generator -> ((BindingGenerator<Object>) generator).generate(scope, key, context))
+							.filter(Objects::nonNull)
+							.collect(toSet());
+
+					if (generatedBindings.isEmpty()) {
+						throw new RuntimeException("refused to generate a real binding for phantom one");
+					}
+					if (generatedBindings.size() > 1) {
+						throw new RuntimeException("two generators both generated a binding for same key");
+					}
+					binding = generatedBindings.iterator().next();
+				}
+
+				if (!transformed.contains(binding)) {
+					for (BindingTransformer<Object> transformer : transformerList) {
+						binding = ((Binding<Object>) binding).apply(transformer.run(key, context));
+					}
+					transformed.add(binding);
+					generated.put(key, binding);
+				}
+
+				for (Dependency dependency : binding.getDependencies()) {
+					Key<Object> depKey = (Key<Object>) dependency.getKey();
+					if (known.containsKey(depKey)) {
+						continue;
+					}
+					Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(depKey, k -> findBestMatch(k.getType(), generators));
+					if (found.isEmpty()) {
+						// no generators found, ignore that, unsatisfied dependency check will find these
+						// and add to known as a little optimization (no generators for this key anyway)
+						known.put(key, null);
+						continue;
+					}
+					Set<Binding> generatedBindings = found.stream()
+							.map(generator -> ((BindingGenerator<Object>) generator).generate(scope, depKey, context))
+							.filter(Objects::nonNull)
+							.collect(toSet());
+
+					if (generatedBindings.isEmpty()) {
+						continue; // nobody generated a binding, possibly they'll do on the next iteration
+					}
+					if (generatedBindings.size() > 1) {
+						throw new RuntimeException("two generators both generated a binding for same key");
+					}
+					Binding<Object> b = generatedBindings.iterator().next();
+					for (BindingTransformer<Object> transformer : transformerList) {
+						b = b.apply(transformer.run(depKey, context));
+					}
+					transformed.add(b);
+					generated.put(depKey, b);
+					known.put(depKey, b);
 				}
 			}
-		});
+			if (generated.isEmpty()) {
+				break;
+			}
+			localBindings.putAll(generated);
+		}
 	}
 
 	/**
 	 * This method returns mapping from *unstatisfied keys* to *bindings that require them*
 	 * and not the common *key and the bindings that provide it*
 	 */
-	public static Map<Key<?>, Set<Binding<?>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
-		Map<Key<?>, Set<Binding<?>>> unsatisfied = new HashMap<>();
-		Set<Key<?>> known = new HashSet<>(); // to keep knowledge about what keys existed in upper scopes
-		trie.bfs(bindings -> {
-			known.addAll(bindings.keySet());
-			for (Binding<?> binding : bindings.values()) {
-				for (Dependency dependency : binding.getDependencies()) {
-					if (dependency.isRequired() && !known.contains(dependency.getKey())) {
-						unsatisfied.computeIfAbsent(dependency.getKey(), $ -> new HashSet<>()).add(binding);
-					}
-				}
-			}
-		});
-		return unsatisfied;
+	public static Map<Key<?>, Set<Binding<?>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return getUnsatisfiedDependencies(new HashSet<>(bindings.get().keySet()), bindings)
+				.collect(toMultimap(dtb -> dtb.key, dtb -> dtb.binding));
+	}
+
+	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return Stream.concat(
+				bindings.get().values().stream()
+						.flatMap(binding -> Arrays.stream(binding.getDependencies())
+								.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
+								.map(dependency -> new DependencyToBinding(dependency.getKey(), binding))),
+				bindings.getChildren().values().stream().flatMap(scopeBindings -> getUnsatisfiedDependencies(union(known, scopeBindings.get().keySet()), scopeBindings))
+		);
+	}
+
+	private static class DependencyToBinding {
+		Key<?> key;
+		Binding<?> binding;
+
+		public DependencyToBinding(Key<?> key, Binding<?> binding) {
+			this.key = key;
+			this.binding = binding;
+		}
 	}
 
 	public static Set<Key<?>[]> getCycles(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {

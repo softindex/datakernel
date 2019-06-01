@@ -1,9 +1,7 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Key;
-import io.datakernel.di.LocationInfo;
-import io.datakernel.di.Scope;
+import io.datakernel.di.*;
+import io.datakernel.di.util.BindingUtils;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
@@ -11,95 +9,134 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.*;
 
 import static io.datakernel.di.module.Modules.multibinderToSet;
 import static io.datakernel.di.util.ReflectionUtils.*;
-import static io.datakernel.di.util.Utils.mergeConflictResolvers;
-import static io.datakernel.di.util.Utils.multimapMerger;
+import static io.datakernel.di.util.ScopedValue.UNSCOPED;
+import static io.datakernel.di.util.Utils.*;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.singleton;
+import static java.util.Collections.singletonMap;
 
 public abstract class AbstractModule implements Module {
 
-	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
-	private final Map<Key<?>, BindingGenerator<?>> bindingGenerators = new HashMap<>();
+	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
+
+	private final Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>();
+	private final Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 	private final Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>();
 
+	@Nullable
+	private List<BindingBuilder<?>> builders = new ArrayList<>();
+
 	public AbstractModule() {
+		bindings = searchForDeclarativeBindings(this); // just reuse that returned trie without redundant merging into empty one
 		configure();
-		addDeclarativeBindings();
 	}
 
-	private void addDeclarativeBindings() {
-		Key<?> moduleType = Key.of(getClass());
+	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> searchForDeclarativeBindings(Object instance) {
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> trie = Trie.leaf(new HashMap<>());
+		Class<?> cls = instance.getClass();
+		Key<?> moduleType = Key.of(cls);
 
-		for (Method provider : getAnnotatedElements(getClass(), Provides.class, Class::getDeclaredMethods)) {
-			Annotation[] annotations = provider.getDeclaredAnnotations();
-			Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
-			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
-					.get()
-					.computeIfAbsent(key, $ -> new HashSet<>())
-					.add(bindingForMethod(this, provider).apply(injectingInitializer(key)));
+		for (Method provider : getAnnotatedElements(cls, Provides.class, Class::getDeclaredMethods)) {
+			TypeVariable<Method>[] typeVars = provider.getTypeParameters();
+			if (typeVars.length == 0) {
+				Annotation[] annotations = provider.getDeclaredAnnotations();
+				Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
+				trie.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+						.get()
+						.computeIfAbsent(key, $ -> new HashSet<>())
+						.add(bindingForMethod(instance, provider));
+			} else {
+				Type genericReturnType = provider.getGenericReturnType();
+				for (TypeVariable<Method> typeVar : typeVars) {
+					if (typeVar.getBounds().length != 1 && typeVar.getBounds()[0] != Object.class) {
+						throw new RuntimeException("Bounded type vars are not supported yet");
+					}
+					if (!ReflectionUtils.contains(genericReturnType, typeVar)) {
+						throw new RuntimeException("generic type variable " + typeVar + " is not used in return type");
+					}
+				}
+
+				generate(genericReturnType, (scope, key, context) -> bindingForGenericMethod(instance, key, provider));
+			}
 		}
-		for (Method provider : getAnnotatedElements(getClass(), ProvidesIntoSet.class, Class::getDeclaredMethods)) {
+		for (Method provider : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods)) {
 			Annotation[] annotations = provider.getDeclaredAnnotations();
 			Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
 
-			Binding<Object> binding = bindingForMethod(this, provider).apply(injectingInitializer(key));
+			Binding<Object> binding = bindingForMethod(instance, provider);
 			Factory<Object> factory = binding.getFactory();
 			Key<Set<Object>> setKey = Key.ofType(parameterized(Set.class, key.getType()), key.getName());
 
-			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+			trie.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 					.get()
 					.computeIfAbsent(setKey, $ -> new HashSet<>())
 					.add(Binding.of(binding.getDependencies(), args -> singleton(factory.create(args))).at(binding.getLocation()));
 
-			resolveConflicts(setKey, multibinderToSet());
+			resolve(setKey, multibinderToSet());
 		}
+		return trie;
 	}
 
-	private <T> void addBinding(Scope[] scope, Key<T> key, Binding<T> binding) {
-		bindings.computeIfAbsent(scope, $ -> new HashMap<>())
-				.get()
-				.computeIfAbsent(key, $ -> new HashSet<>())
-				.add(binding);
-	}
+	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "unchecked"})
+	public final class BindingBuilder<T> {
+		private Scope[] scope = UNSCOPED;
+		private Key<T> key;
 
-	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument"})
-	public class BindingBuilder<T> {
-		private final Key<T> key;
-		private final Scope[] scope;
+		private Binding<T> binding = (Binding<T>) BindingUtils.PHANTOM;
 
-		public BindingBuilder(Key<T> key, Scope[] scope) {
+		public BindingBuilder(Key<T> key) {
 			this.key = key;
-			this.scope = scope;
+		}
+
+		public BindingBuilder<T> annotatedWith(Name name) {
+			if (key.getName() != null) {
+				throw new RuntimeException("already annotated with some name");
+			}
+			key = Key.ofType(key.getType(), name);
+			return this;
 		}
 
 		public BindingBuilder<T> annotatedWith(Annotation annotation) {
-			return new BindingBuilder<>(Key.ofType(key.getType(), annotation), scope);
+			return annotatedWith(Name.of(annotation));
 		}
 
 		public BindingBuilder<T> annotatedWith(Class<? extends Annotation> annotationType) {
-			return new BindingBuilder<>(Key.ofType(key.getType(), annotationType), scope);
+			return annotatedWith(Name.of(annotationType));
 		}
 
 		public BindingBuilder<T> in(Scope scope, Scope... scopes) {
 			if (this.scope.length != 0) {
 				throw new RuntimeException("already bound to some scope");
 			}
+
 			Scope[] ss = new Scope[scopes.length + 1];
 			ss[0] = scope;
 			System.arraycopy(scopes, 0, ss, 1, scopes.length);
-			return new BindingBuilder<>(key, ss);
+
+			this.scope = ss;
+			return this;
 		}
 
-		public BindingBuilder<T> in(Class<? extends Annotation> annotationClass) {
-			return in(Scope.of(annotationClass));
+		@SafeVarargs
+		public final BindingBuilder<T> in(Class<? extends Annotation> annotationClass, Class<? extends Annotation>... annotationClasses) {
+			return in(Scope.of(annotationClass), Arrays.stream(annotationClasses).map(Scope::of).toArray(Scope[]::new));
+		}
+
+		public void toBinding(Binding<T> binding) {
+			if (this.binding != BindingUtils.PHANTOM) {
+				throw new RuntimeException("already mapped to some binding");
+			}
+			this.binding = binding;
 		}
 
 		public void to(Factory<T> factory, Key<?>... dependencies) {
-			addBinding(scope, key, Binding.of(dependencies, factory).at(getLocation()).apply(injectingInitializer(key)));
+			toBinding(Binding.of(dependencies, factory).at(getLocation(BindingBuilder.class)));
 		}
 
 		public void to(Factory<T> factory, List<Key<?>> dependencies) {
@@ -180,26 +217,8 @@ public abstract class AbstractModule implements Module {
 
 		@SuppressWarnings("unchecked")
 		public void toInstance(T instance) {
-			addBinding(scope, key, Binding.constant(instance).at(getLocation()).apply(injectingInitializer((Key<T>) Key.of(instance.getClass()))));
-		}
 
-		public void implicitly() {
-			Binding<T> binding = ReflectionUtils.generateImplicitBinding(key);
-			if (binding == null) {
-				throw new RuntimeException("requested implicit binding for key " + key + " but it had none");
-			}
-			// overriding the location, eh
-			addBinding(scope, key, binding.at(getLocation()).apply(injectingInitializer(key)));
-		}
-
-		@Nullable
-		private LocationInfo getLocation() {
-			return Arrays.stream(Thread.currentThread().getStackTrace())
-					.skip(2)
-					.filter(trace -> !trace.getClassName().equals(BindingBuilder.class.getName()))
-					.findFirst()
-					.map(LocationInfo::from)
-					.orElse(null);
+			toBinding(Binding.constant(instance).at(getLocation(BindingBuilder.class)).apply(injectingInitializer((Key<T>) Key.of(instance.getClass()))));
 		}
 	}
 
@@ -208,32 +227,64 @@ public abstract class AbstractModule implements Module {
 
 	protected void install(Module module) {
 		bindings.addAll(module.getBindingsMultimap(), multimapMerger());
+		combineMultimap(bindingGenerators, module.getBindingGenerators());
 		mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
+		mergeBindingTransformers(bindingTransformers, module.getBindingTransformers());
 	}
 
 	protected final <T> BindingBuilder<T> bind(Key<T> key) {
-		return new BindingBuilder<>(key, new Scope[0]);
+		Key<T> fullKey = Key.ofType(resolveGenerics(key.getType(), Key.of(getClass())), key.getName());
+		BindingBuilder<T> builder = new BindingBuilder<>(fullKey);
+		if (builders == null) {
+			throw new AssertionError("cannot call bind after the module was used");
+		}
+		builders.add(builder);
+		return builder;
+
 	}
 
 	protected final <T> BindingBuilder<T> bind(Class<T> type) {
-		return bind(Key.of(type));
+		BindingBuilder<T> builder = new BindingBuilder<>(Key.of(type));
+		if (builders == null) {
+			throw new AssertionError("cannot call bind after the module was used");
+		}
+		builders.add(builder);
+		return builder;
 	}
 
-	protected final <T> void resolveConflicts(Key<T> key, ConflictResolver<T> conflictResolver) {
+	protected final <T> void resolve(Key<T> key, ConflictResolver<T> conflictResolver) {
 		mergeConflictResolvers(conflictResolvers, singletonMap(key, conflictResolver));
 	}
 
-	protected final <T> void generateBindings(Key<T> key, BindingGenerator<T> conflictResolver) {
-		bindingGenerators.put(key, conflictResolver);
+	protected final <T> void generate(Type pattern, BindingGenerator<T> conflictResolver) {
+		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>()).add(conflictResolver);
+	}
+
+	protected final <T> void transform(int priority, BindingTransformer<T> bindingTransformer) {
+		bindingTransformers.put(priority, bindingTransformer);
 	}
 
 	@Override
 	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
+		if (builders != null) {
+			for (BindingBuilder<?> builder : builders) {
+				bindings.computeIfAbsent(builder.scope, $1 -> new HashMap<>())
+						.get()
+						.computeIfAbsent(builder.key, $ -> new HashSet<>())
+						.add(builder.binding);
+			}
+			builders = null;
+		}
 		return bindings;
 	}
 
 	@Override
-	public Map<Key<?>, BindingGenerator<?>> getBindingGenerators() {
+	public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
+		return bindingTransformers;
+	}
+
+	@Override
+	public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
 		return bindingGenerators;
 	}
 

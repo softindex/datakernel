@@ -34,6 +34,7 @@ public final class ScopedValue<T> {
 
 	@NotNull
 	public Scope[] getScope() {
+
 		return scope;
 	}
 
@@ -70,8 +71,8 @@ public final class ScopedValue<T> {
 
 	@Override
 	public String toString() {
-		return Stream.of(scope).map(Scope::toString).map(s -> "->" + s).collect(joining("", "()", "")) +
-				" " +
-				value.toString();
+		return Stream.of(scope)
+				.map(s -> "->" + s)
+				.collect(joining("", "()", " " + value.toString()));
 	}
 }
