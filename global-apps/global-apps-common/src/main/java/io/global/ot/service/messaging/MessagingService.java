@@ -25,13 +25,10 @@ import java.util.Set;
 
 import static io.datakernel.async.AsyncSuppliers.retry;
 import static io.datakernel.async.Promises.repeat;
-import static io.global.common.CryptoUtils.randomBytes;
-import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static io.global.util.Utils.eitherComplete;
 
 public final class MessagingService implements EventloopService {
-	public static final int RESOURCE_ID_LENGTH = ApplicationSettings.getInt(MessagingService.class, "resource.id.length", 32);
 	public static final StacklessException STOPPED_EXCEPTION = new StacklessException(MessagingService.class, "Service has been stopped");
 	@NotNull
 	public static final Duration POLL_INTERVAL = ApplicationSettings.getDuration(MessagingService.class, "message.poll.interval", Duration.ofSeconds(5));
@@ -76,12 +73,12 @@ public final class MessagingService implements EventloopService {
 		return Promise.complete();
 	}
 
-	public Promise<Void> sendCreateMessage(Set<PubKey> participants) {
+	public Promise<Void> sendCreateMessage(String id, Set<PubKey> participants) {
 		MyRepositoryId<?> myRepositoryId = userContainer.getMyRepositoryId();
 		PrivKey senderPrivKey = myRepositoryId.getPrivKey();
 		PubKey senderPubKey = senderPrivKey.computePubKey();
 		participants.add(senderPubKey);
-		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(generateRandomHexString(), participants));
+		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, participants));
 		Message<CreateSharedRepo> message = Message.now(senderPubKey, payload);
 		return Promises.all(participants.stream()
 				.map(receiver -> pmDriver.send(senderPrivKey, receiver, mailBox, message)));
@@ -124,7 +121,4 @@ public final class MessagingService implements EventloopService {
 				}));
 	}
 
-	private static String generateRandomHexString() {
-		return toHexString(randomBytes(RESOURCE_ID_LENGTH));
-	}
 }
