@@ -14,7 +14,7 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.ot.OTSystem;
-import io.global.chat.chatroom.ChatMultiOperation;
+import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.common.SimKey;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.client.OTDriver;
@@ -30,8 +30,8 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.chat.Utils.CHAT_ROOM_CODEC;
-import static io.global.chat.Utils.createMergedOTSystem;
+import static io.global.chat.Utils.MESSAGE_OPERATION_CODEC;
+import static io.global.chat.chatroom.messages.MessagesOTSystem.createOTSystem;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
 public final class ChatModule extends AbstractModule {
@@ -40,8 +40,8 @@ public final class ChatModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		bind(new TypeLiteral<OTSystem<ChatMultiOperation>>() {}).toInstance(createMergedOTSystem());
-		bind(new TypeLiteral<StructuredCodec<ChatMultiOperation>>() {}).toInstance(CHAT_ROOM_CODEC);
+		bind(new TypeLiteral<OTSystem<MessageOperation>>() {}).toInstance(createOTSystem());
+		bind(new TypeLiteral<StructuredCodec<MessageOperation>>() {}).toInstance(MESSAGE_OPERATION_CODEC);
 		super.configure();
 	}
 
@@ -58,7 +58,7 @@ public final class ChatModule extends AbstractModule {
 	MiddlewareServlet provideMainServlet(
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
-			DynamicOTNodeServlet<ChatMultiOperation> roomServlet,
+			DynamicOTNodeServlet<MessageOperation> roomServlet,
 			MessagingServlet messagingServlet,
 			StaticServlet staticServlet
 	) {
