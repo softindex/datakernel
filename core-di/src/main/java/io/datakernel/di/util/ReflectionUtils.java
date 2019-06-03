@@ -500,7 +500,11 @@ public final class ReflectionUtils {
 			ParameterizedType parameterized = (ParameterizedType) type;
 			Type owner = canonicalize(parameterized.getOwnerType());
 			Type raw = canonicalize(parameterized.getRawType());
-			Type[] parameters = Arrays.stream(parameterized.getActualTypeArguments()).map(ReflectionUtils::canonicalize).toArray(Type[]::new);
+			Type[] actualTypeArguments = parameterized.getActualTypeArguments();
+			Type[] parameters = new Type[actualTypeArguments.length];
+			for (int i = 0; i < actualTypeArguments.length; i++) {
+				parameters[i] = canonicalize(actualTypeArguments[i]);
+			}
 			return new ParameterizedTypeImpl(owner, raw, parameters);
 		}
 		return type;

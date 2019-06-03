@@ -17,63 +17,68 @@ public abstract class Key<T> {
 	@Nullable
 	private final Name name;
 
-	private Key(@NotNull Type type, @Nullable Name name) {
+	public Key() {
+		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.name = null;
+	}
+
+	public Key(@NotNull Name name) {
+		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.name = name;
+	}
+
+	public Key(@NotNull String name) {
+		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.name = Name.of(name);
+	}
+
+	Key(@NotNull Type type, @Nullable Name name) {
 		this.type = canonicalize(type);
 		this.name = name;
 	}
 
-	public Key(@Nullable Name name) {
-		this.name = name;
-		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
-	}
-
-	public Key() {
-		this(null);
-	}
-
-	// so that we have one reusable non-abstract impl
-	private static <T> Key<T> create(Type type, Name name) {
-		return new Key<T>(type, name) {};
+	static final class KeyImpl<T> extends Key<T> {
+		KeyImpl(Type type, Name name) {super(type, name);}
 	}
 
 	@NotNull
 	public static <T> Key<T> of(@NotNull Class<T> type, @Nullable Name name) {
-		return create(type, name);
+		return new KeyImpl<>(type, name);
 	}
 
 	@NotNull
 	public static <T> Key<T> of(@NotNull Class<T> type) {
-		return create(type, null);
+		return new KeyImpl<>(type, null);
 	}
 
 	@NotNull
 	public static <T> Key<T> of(@NotNull Class<T> type, @NotNull Class<? extends Annotation> annotationType) {
-		return create(type, Name.of(annotationType));
+		return new KeyImpl<>(type, Name.of(annotationType));
 	}
 
 	@NotNull
 	public static <T> Key<T> of(@NotNull Class<T> type, @NotNull Annotation annotation) {
-		return create(type, Name.of(annotation));
+		return new KeyImpl<>(type, Name.of(annotation));
 	}
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type) {
-		return create(type, null);
+		return new KeyImpl<>(type, null);
 	}
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @Nullable Name name) {
-		return create(type, name);
+		return new KeyImpl<>(type, name);
 	}
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @NotNull Class<? extends Annotation> annotationType) {
-		return create(type, Name.of(annotationType));
+		return new KeyImpl<>(type, Name.of(annotationType));
 	}
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @NotNull Annotation annotation) {
-		return create(type, Name.of(annotation));
+		return new KeyImpl<>(type, Name.of(annotation));
 	}
 
 	@NotNull
@@ -145,4 +150,5 @@ public abstract class Key<T> {
 	public String toString() {
 		return (name != null ? name.toString() + " " : "") + type.getTypeName();
 	}
+
 }
