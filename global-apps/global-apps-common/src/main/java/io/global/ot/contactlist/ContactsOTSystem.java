@@ -1,4 +1,4 @@
-package io.global.ot.friendlist;
+package io.global.ot.contactlist;
 
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
@@ -20,6 +20,10 @@ public final class ContactsOTSystem {
 					if (op2.isEmpty()) return op1;
 					if (op1.isInversionFor(op2)) {
 						return ContactsOperation.EMPTY;
+					}
+					// changing name
+					if (op1.getPubKey().equals(op2.getPubKey())) {
+						return op2;
 					}
 					return null;
 				})

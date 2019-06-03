@@ -11,14 +11,9 @@ import io.global.LocalNodeCommonModule;
 import io.global.editor.document.DocumentMultiOperation;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.SharedRepoModule;
-import io.global.ot.friendlist.ContactsModule;
+import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
 import io.global.ot.shared.IndexRepoModule;
-import io.global.ot.stub.CommitStorageStub;
-import io.global.pm.MapMessageStorage;
-import io.global.pm.api.MessageStorage;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 

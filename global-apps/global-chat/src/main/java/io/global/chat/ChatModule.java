@@ -18,7 +18,7 @@ import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.common.SimKey;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.client.OTDriver;
-import io.global.ot.friendlist.ContactsOperation;
+import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.service.ServiceEnsuringServlet;
 import io.global.ot.service.messaging.MessagingServlet;
