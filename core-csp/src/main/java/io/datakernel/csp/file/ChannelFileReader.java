@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.exception.CloseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.file.AsyncFileService;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
@@ -43,6 +45,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelFileReader.class);
 
+	public static final StacklessException NOT_A_REGULAR_FILE = new StacklessException(ChannelFileReader.class, "Not a regular file");
 	public static final Set<OpenOption> READ_OPTIONS = set(READ);
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
@@ -59,6 +62,9 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	}
 
 	public static Promise<ChannelFileReader> readFile(Path path) {
+		if (!Files.isRegularFile(path)) {
+			return Promise.ofException(NOT_A_REGULAR_FILE);
+		}
 		try {
 			FileChannel channel = FileChannel.open(path, READ_OPTIONS);
 			return Promise.of(new ChannelFileReader(channel));
@@ -142,7 +148,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 			channel.close();
 			logger.trace(this + ": closed file");
-		    return Promise.complete();
+			return Promise.complete();
 		} catch (IOException | CloseException e) {
 			logger.error(this + ": failed to close file", e);
 			return Promise.ofException(e);

@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
@@ -143,4 +142,16 @@ public final class ChannelFileReaderWriterTest {
 
 		assertEquals("", byteBuf.asString(UTF_8));
 	}
+
+	@Test
+	public void testReaderNotRegularFile() throws IOException {
+		File file = tempFolder.newFile();
+		ChannelFileReader cfr = await(ChannelFileReader.readFile(file.toPath()));
+		cfr.close();
+
+		File dir = tempFolder.newFolder();
+		Throwable e = awaitException(ChannelFileReader.readFile(dir.toPath()));
+		assertSame(ChannelFileReader.NOT_A_REGULAR_FILE, e);
+	}
+
 }

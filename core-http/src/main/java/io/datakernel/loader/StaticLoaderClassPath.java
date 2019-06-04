@@ -44,6 +44,8 @@ class StaticLoaderClassPath implements StaticLoader {
 
 	@Override
 	public Promise<ByteBuf> load(String name) {
+		if (name.isEmpty()) return Promise.ofException(NOT_FOUND_EXCEPTION);
+
 		String path = root;
 		int begin = 0;
 		if (name.startsWith(ROOT)) {

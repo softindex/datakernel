@@ -8,6 +8,8 @@ import io.datakernel.csp.file.ChannelFileReader;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
+import static io.datakernel.csp.file.ChannelFileReader.NOT_A_REGULAR_FILE;
+
 class StaticLoaderFileReader implements StaticLoader {
 	private final Path root;
 
@@ -30,7 +32,7 @@ class StaticLoaderFileReader implements StaticLoader {
 		return ChannelFileReader.readFile(file)
 				.then(cfr -> cfr.toCollector(ByteBufQueue.collector()))
 				.thenEx((buf, e) -> {
-					if (e instanceof NoSuchFileException) {
+					if (e instanceof NoSuchFileException || e == NOT_A_REGULAR_FILE) {
 						return Promise.ofException(NOT_FOUND_EXCEPTION);
 					}
 					return Promise.of(buf, e);
