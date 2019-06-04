@@ -25,7 +25,6 @@ import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -55,7 +54,6 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.http.HttpMethod.PUT;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
@@ -77,25 +75,6 @@ public final class CrdtClusterTest {
 	@Rule
 	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
-	static class BusinessLogicModule extends AbstractModule {
-		@Provides
-		CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
-			return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-					new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-					tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
-		}
-
-		@Provides
-		ExecutorService executor(Config config) {
-			return config.get(ofExecutor(), "crdt.local.executor");
-		}
-
-		@Provides
-		FsClient fsClient(Eventloop eventloop, Config config) {
-			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
-		}
-	}
-
 	static class TestNodeLauncher extends CrdtNodeLauncher<String, TimestampContainer<Integer>> {
 		private final Config config;
 
@@ -109,16 +88,30 @@ public final class CrdtClusterTest {
 		}
 
 		@Override
-		protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
-			return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};
-		}
+		protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
+			return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
+				@Override
+				protected void configure() {
+					install(new CrdtHttpModule<String, TimestampContainer<Integer>>() {});
+				}
 
-		@Override
-		protected Module getBusinessLogicModule() {
-			return combine(
-					new CrdtHttpModule<String, TimestampContainer<Integer>>() {},
-					new BusinessLogicModule()
-			);
+				@Provides
+				CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
+					return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+							new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+							tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
+				}
+
+				@Provides
+				ExecutorService executor(Config config) {
+					return config.get(ofExecutor(), "crdt.local.executor");
+				}
+
+				@Provides
+				FsClient fsClient(Eventloop eventloop, Config config) {
+					return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
+				}
+			};
 		}
 	}
 
@@ -154,7 +147,7 @@ public final class CrdtClusterTest {
 	public void startFileServer() throws Exception {
 		new CrdtFileServerLauncher<String, TimestampContainer<Integer>>() {
 			@Override
-			protected CrdtFileServerLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
+			protected CrdtFileServerLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
 				return new CrdtFileServerLogicModule<String, TimestampContainer<Integer>>() {};
 			}
 

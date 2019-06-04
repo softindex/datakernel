@@ -107,7 +107,7 @@ public final class Binding<T> {
 		return of(asList(dependency1, dependency2, dependency3, dependency4, dependency5, dependency6), constructor);
 	}
 
-	public static <T> Binding<T> constant(@NotNull T instance) {
+	public static <T> Binding<T> toInstance(@NotNull T instance) {
 		return new Binding<>(new Dependency[0], $ -> instance, null);
 	}
 
@@ -116,7 +116,7 @@ public final class Binding<T> {
 		return this;
 	}
 
-	public Binding<T> apply(BindingInitializer<T> bindingInitializer) {
+	public Binding<T> withInitializer(BindingInitializer<T> bindingInitializer) {
 		if (bindingInitializer == BindingInitializer.noop()) {
 			return this;
 		}

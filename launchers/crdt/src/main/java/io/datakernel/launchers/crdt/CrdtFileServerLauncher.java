@@ -63,12 +63,6 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 
 	@Override
 	protected Module getModule() {
-		return combine(getBaseModule(), getBusinessLogicModule());
-	}
-
-	protected abstract CrdtFileServerLogicModule<K, S> getLogicModule();
-
-	private Module getBaseModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -78,13 +72,10 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				getLogicModule()
-		);
+				getBusinessLogicModule());
 	}
 
-	protected Module getBusinessLogicModule() {
-		return Module.empty();
-	}
+	protected abstract CrdtFileServerLogicModule<K, S> getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {

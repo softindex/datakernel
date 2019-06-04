@@ -88,8 +88,74 @@ public final class ReflectionUtils {
 				.orElse(null);
 	}
 
+	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
+		Binding<T> binding = generateConstructorBinding(key);
+		if (binding == null) return null;
+		return binding.withInitializer(generateBindingInitializer(key));
+	}
+
 	@SuppressWarnings("unchecked")
-	public static <T> BindingInitializer<T> injectingInitializer(Key<? extends T> containingType) {
+	@Nullable
+	public static <T> Binding<T> generateConstructorBinding(Key<T> key) {
+		Class<?> cls = key.getRawType();
+
+		Inject classInjectAnnotation = cls.getAnnotation(Inject.class);
+
+		if (classInjectAnnotation != null) {
+			if (classInjectAnnotation.optional()) {
+				throw new InvalidImplicitBindingException(key, "inject annotation on class cannot be optional");
+			}
+			try {
+				Class<?> enclosingClass = cls.getEnclosingClass();
+
+				Constructor<?> constructor = enclosingClass != null && !Modifier.isStatic(cls.getModifiers()) ?
+						cls.getDeclaredConstructor(enclosingClass) :
+						cls.getDeclaredConstructor();
+
+				return bindingForConstructor(key, (Constructor<T>) constructor);
+			} catch (NoSuchMethodException e) {
+				throw new InvalidImplicitBindingException(key, "inject annotation on class with no default constructor");
+			}
+		} else {
+			Set<Constructor<?>> injectConstructors = Arrays.stream(cls.getDeclaredConstructors())
+					.filter(c -> {
+						Inject inject = c.getAnnotation(Inject.class);
+						if (inject != null) {
+							if (inject.optional()) {
+								throw new InvalidImplicitBindingException(key, "inject annotation on constructor cannot be optional");
+							}
+							return true;
+						}
+						return false;
+					})
+					.collect(toSet());
+
+			if (injectConstructors.size() > 1) {
+				throw new InvalidImplicitBindingException(key, "more than one inject constructor");
+			}
+			if (!injectConstructors.isEmpty()) {
+				return bindingForConstructor(key, (Constructor<T>) injectConstructors.iterator().next());
+			}
+		}
+
+		Set<Method> factoryMethods = Arrays.stream(cls.getDeclaredMethods())
+				.filter(method -> method.isAnnotationPresent(Inject.class)
+						&& method.getReturnType() == cls
+						&& Modifier.isPublic(method.getModifiers())
+						&& Modifier.isStatic(method.getModifiers()))
+				.collect(toSet());
+
+		if (factoryMethods.size() > 1) {
+			throw new InvalidImplicitBindingException(key, "more than one inject factory method");
+		}
+		if (!factoryMethods.isEmpty()) {
+			return bindingForMethod(null, factoryMethods.iterator().next());
+		}
+		return null;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> BindingInitializer<T> generateBindingInitializer(Key<? extends T> containingType) {
 		List<BindingInitializer<T>> initializers = Stream.concat(
 				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredFields).stream()
 						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.getAnnotation(Inject.class).optional())),
@@ -227,7 +293,7 @@ public final class ReflectionUtils {
 		}).at(LocationInfo.from(constructor));
 	}
 
-	public static <T> Binding<Provider<T>> bindingForProvider(Key<T> elementKey, Binding<T> elementBinding) {
+	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> elementKey, Binding<T> elementBinding) {
 		Dependency[] dependencies = new Dependency[elementBinding.getDependencies().length + 1];
 
 		dependencies[0] = new Dependency(Key.of(Injector.class), true);
@@ -236,78 +302,29 @@ public final class ReflectionUtils {
 		return Binding.of(dependencies, args -> {
 			Injector injector = (Injector) args[0];
 			Object[] elementArgs = Arrays.copyOfRange(args, 1, args.length);
-			return new Provider<T>() {
+			return new InstanceProvider<T>() {
 				@Override
-				public T get() {
+				public T create() {
 					return elementBinding.getFactory().create(elementArgs);
 				}
 
 				@Override
-				public T newInstance() {
+				public T get() {
 					return injector.getInstance(elementKey);
 				}
 			};
 		});
 	}
 
-	@SuppressWarnings("unchecked")
-	@Nullable
-	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
-		Class<?> cls = key.getRawType();
-
-		Inject classInjectAnnotation = cls.getAnnotation(Inject.class);
-
-		if (classInjectAnnotation != null) {
-			if (classInjectAnnotation.optional()) {
-				throw new InvalidImplicitBindingException(key, "inject annotation on class cannot be optional");
-			}
-			try {
-				Class<?> enclosingClass = cls.getEnclosingClass();
-
-				Constructor<?> constructor = enclosingClass != null && !Modifier.isStatic(cls.getModifiers()) ?
-						cls.getDeclaredConstructor(enclosingClass) :
-						cls.getDeclaredConstructor();
-
-				return bindingForConstructor(key, (Constructor<T>) constructor);
-			} catch (NoSuchMethodException e) {
-				throw new InvalidImplicitBindingException(key, "inject annotation on class with no default constructor");
-			}
-		} else {
-			Set<Constructor<?>> injectConstructors = Arrays.stream(cls.getDeclaredConstructors())
-					.filter(c -> {
-						Inject inject = c.getAnnotation(Inject.class);
-						if (inject != null) {
-							if (inject.optional()) {
-								throw new InvalidImplicitBindingException(key, "inject annotation on constructor cannot be optional");
-							}
-							return true;
-						}
-						return false;
-					})
-					.collect(toSet());
-
-			if (injectConstructors.size() > 1) {
-				throw new InvalidImplicitBindingException(key, "more than one inject constructor");
-			}
-			if (!injectConstructors.isEmpty()) {
-				return bindingForConstructor(key, (Constructor<T>) injectConstructors.iterator().next());
-			}
-		}
-
-		Set<Method> factoryMethods = Arrays.stream(cls.getDeclaredMethods())
-				.filter(method -> method.isAnnotationPresent(Inject.class)
-						&& method.getReturnType() == cls
-						&& Modifier.isPublic(method.getModifiers())
-						&& Modifier.isStatic(method.getModifiers()))
-				.collect(toSet());
-
-		if (factoryMethods.size() > 1) {
-			throw new InvalidImplicitBindingException(key, "more than one inject factory method");
-		}
-		if (!factoryMethods.isEmpty()) {
-			return bindingForMethod(null, factoryMethods.iterator().next());
-		}
-		return null;
+	public static <T> Binding<InstanceInjector<T>> bindingForInstanceInjector(BindingInitializer<Object> bindingInitializer) {
+		BindingInitializer.Initializer<Object> initializer = bindingInitializer.getInitializer();
+		return Binding.of(bindingInitializer.getDependencies(), args ->
+				new InstanceInjector<T>() {
+					@Override
+					public void inject(T existingInstance) {
+						initializer.apply(existingInstance, args);
+					}
+				});
 	}
 
 	// pattern = Map<K, List<V>>

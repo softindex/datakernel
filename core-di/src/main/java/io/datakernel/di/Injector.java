@@ -78,7 +78,7 @@ public class Injector {
 				new Injector(parent, bindings, instances);
 
 		// well, can't do anything better than that
-		bindings.get().put(Key.of(Injector.class), Binding.constant(injector));
+		bindings.get().put(Key.of(Injector.class), Binding.toInstance(injector));
 
 		BindingUtils.completeBindings(bindings, bindingTransformers, bindingGenerators);
 

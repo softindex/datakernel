@@ -41,18 +41,8 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 	@Inject
 	CrdtServer<K, S> crdtServer;
 
-	private CrdtNodeLogicModule<K, S> logicModule = getLogicModule();
-
 	@Override
 	protected Module getModule() {
-		return combine(getBaseModule(), getBusinessLogicModule());
-	}
-
-	protected abstract CrdtNodeLogicModule<K, S> getLogicModule();
-
-	protected abstract Module getBusinessLogicModule();
-
-	private Module getBaseModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -62,9 +52,10 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				logicModule
-		);
+				getBusinessLogicModule());
 	}
+
+	protected abstract CrdtNodeLogicModule<K, S> getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {

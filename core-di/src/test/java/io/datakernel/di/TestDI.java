@@ -54,18 +54,18 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
-			bind(String.class).to(i -> "str: " + i.get(), new Key<Provider<Integer>>() {});
-			bind(new Key<Provider<String>>() {});
+			bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceProvider<Integer>>() {});
+			bind(new Key<InstanceProvider<String>>() {});
 		}});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 
-		Provider<String> provider = injector.getInstance(new Key<Provider<String>>() {});
-		assertEquals("str: 43", provider.get());
-		assertEquals("str: 44", provider.get());
-		assertEquals("str: 45", provider.get());
+		InstanceProvider<String> provider = injector.getInstance(new Key<InstanceProvider<String>>() {});
+		assertEquals("str: 43", provider.create());
+		assertEquals("str: 44", provider.create());
+		assertEquals("str: 45", provider.create());
 
 		// the first getInstance call was cached, non-pure mutability affects results only when using .create
 		assertEquals("str: 42", injector.getInstance(String.class));

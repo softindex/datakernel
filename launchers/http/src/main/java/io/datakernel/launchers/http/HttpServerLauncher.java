@@ -40,11 +40,6 @@ public abstract class HttpServerLauncher extends Launcher {
 	@Inject
 	AsyncHttpServer httpServer;
 
-	@Override
-	protected final Module getModule() {
-		return combine(getBaseModule(), getBusinessLogicModule());
-	}
-
 	@Provides
 	Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
 		return Eventloop.create()
@@ -58,7 +53,8 @@ public abstract class HttpServerLauncher extends Launcher {
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
-	private Module getBaseModule() {
+	@Override
+	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -67,8 +63,8 @@ public abstract class HttpServerLauncher extends Launcher {
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig()
-		);
+						.printEffectiveConfig(),
+				getBusinessLogicModule());
 	}
 
 	/**

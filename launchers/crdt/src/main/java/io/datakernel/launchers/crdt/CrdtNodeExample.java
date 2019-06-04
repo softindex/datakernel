@@ -20,7 +20,6 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -36,25 +35,24 @@ import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 
 public final class CrdtNodeExample {
-	static class BusinessLogicModule extends AbstractModule {
-		@Provides
-		CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
-			return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-					new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-					tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
-		}
-
-		@Provides
-		FsClient fsClient(Eventloop eventloop, Config config) {
-			return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
-		}
-	}
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
 			@Override
-			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
-				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};
+			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
+				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
+					@Provides
+					CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
+						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
+					}
+
+					@Provides
+					FsClient fsClient(Eventloop eventloop, Config config) {
+						return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
+					}
+				};
 			}
 
 			@Override
@@ -71,10 +69,6 @@ public final class CrdtNodeExample {
 						.printEffectiveConfig();
 			}
 
-			@Override
-			protected Module getBusinessLogicModule() {
-				return new BusinessLogicModule();
-			}
 		};
 		launcher.launch(args);
 	}

@@ -2,8 +2,6 @@ package io.datakernel.launchers.crdt;
 
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
@@ -21,13 +19,8 @@ public class CrdtNodeLauncherTest {
 	public void testInjector() {
 		new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
 			@Override
-			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
-				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};
-			}
-
-			@Override
-			protected Module getBusinessLogicModule() {
-				return new AbstractModule() {
+			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
+				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
 					@Provides
 					CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
 						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
@@ -40,7 +33,6 @@ public class CrdtNodeLauncherTest {
 						return LocalFsClient.create(Eventloop.create(), Paths.get(""));
 					}
 				};
-
 			}
 		}.testInjector();
 	}

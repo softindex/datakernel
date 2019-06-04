@@ -70,24 +70,24 @@ public final class BindingUtils {
 	}
 
 	public static void completeBindings(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-										Map<Integer, BindingTransformer<?>> transformers,
-										Map<Type, Set<BindingGenerator<?>>> generators) {
+			Map<Integer, BindingTransformer<?>> transformers,
+			Map<Type, Set<BindingGenerator<?>>> generators) {
 		completeBindings(new HashMap<>(bindings.get()), new HashSet<>(), UNSCOPED, bindings, transformers, generators);
 	}
 
 	private static void completeBindings(Map<Key<?>, Binding<?>> known, Set<Binding<?>> transformed,
-										 Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-										 Map<Integer, BindingTransformer<?>> transformers,
-										 Map<Type, Set<BindingGenerator<?>>> generators) {
+			Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+			Map<Integer, BindingTransformer<?>> transformers,
+			Map<Type, Set<BindingGenerator<?>>> generators) {
 		completeBindings(known, transformed, scope, bindings.get(), transformers, generators);
 		bindings.getChildren().forEach((subscope, subtrie) -> completeBindings(override(known, subtrie.get()), transformed, next(scope, subscope), subtrie, transformers, generators));
 	}
 
 	@SuppressWarnings("unchecked")
 	private static void completeBindings(Map<Key<?>, @Nullable Binding<?>> known, Set<Binding<?>> transformed,
-										 Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
-										 Map<Integer, BindingTransformer<?>> transformers,
-										 Map<Type, Set<BindingGenerator<?>>> generators) {
+			Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
+			Map<Integer, BindingTransformer<?>> transformers,
+			Map<Type, Set<BindingGenerator<?>>> generators) {
 		Map<Key<?>, Set<BindingGenerator<?>>> generatorCache = new HashMap<>();
 		BindingGenerationContext context = new BindingGenerationContext() {
 			@Override
@@ -130,7 +130,7 @@ public final class BindingUtils {
 
 				if (!transformed.contains(binding)) {
 					for (BindingTransformer<Object> transformer : transformerList) {
-						binding = ((Binding<Object>) binding).apply(transformer.run(key, context));
+						binding = transformer.transform(scope, key, (Binding<Object>) binding, context);
 					}
 					transformed.add(binding);
 					generated.put(key, binding);
@@ -161,7 +161,7 @@ public final class BindingUtils {
 					}
 					Binding<Object> b = generatedBindings.iterator().next();
 					for (BindingTransformer<Object> transformer : transformerList) {
-						b = b.apply(transformer.run(depKey, context));
+						b = transformer.transform(scope, depKey, b, context);
 					}
 					transformed.add(b);
 					generated.put(depKey, b);

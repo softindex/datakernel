@@ -45,11 +45,6 @@ public abstract class RpcServerLauncher extends Launcher {
 	@Inject
 	RpcServer rpcServer;
 
-	@Override
-	protected final Module getModule() {
-		return combine(getBaseModule(), getBusinessLogicModule());
-	}
-
 	@Provides
 	public Eventloop eventloop(Config config,
 			@Optional ThrottlingController throttlingController) {
@@ -65,7 +60,8 @@ public abstract class RpcServerLauncher extends Launcher {
 				.initialize(rpcServerInitializer);
 	}
 
-	private Module getBaseModule() {
+	@Override
+	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -73,8 +69,8 @@ public abstract class RpcServerLauncher extends Launcher {
 						Config.create()
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig()
-		);
+						.printEffectiveConfig(),
+				getBusinessLogicModule());
 	}
 
 	protected Module getBusinessLogicModule() {

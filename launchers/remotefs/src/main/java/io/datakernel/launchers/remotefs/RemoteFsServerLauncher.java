@@ -43,11 +43,6 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	@Inject
 	RemoteFsServer remoteFsServer;
 
-	@Override
-	protected final Module getModule() {
-		return getBaseModule();
-	}
-
 	@Provides
 	public Eventloop eventloop(Config config,
 			@Optional ThrottlingController throttlingController) {
@@ -69,7 +64,8 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		return ConfigConverters.getExecutor(config.getChild("remotefs.executor"));
 	}
 
-	private Module getBaseModule() {
+	@Override
+	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -77,8 +73,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 						Config.create()
 								.override(Config.ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig()
-		);
+						.printEffectiveConfig());
 	}
 
 	@Override

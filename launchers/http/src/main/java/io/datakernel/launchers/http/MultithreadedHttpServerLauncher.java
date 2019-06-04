@@ -84,12 +84,6 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				getBaseModule(),
-				getBusinessLogicModule());
-	}
-
-	private Module getBaseModule() {
-		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create()
 						.initialize(ofGlobalEventloopStats()),
@@ -99,8 +93,8 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 								.with("workers", "" + WORKERS)
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig()
-		);
+						.printEffectiveConfig(),
+				getBusinessLogicModule());
 	}
 
 	protected Module getBusinessLogicModule() {

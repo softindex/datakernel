@@ -19,6 +19,8 @@ package io.datakernel.launcher;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.config.ConfigModule.ConfigModuleService;
 import io.datakernel.di.Injector;
+import io.datakernel.di.InstanceInjector;
+import io.datakernel.di.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.ConcurrentJmxMBean;
@@ -36,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.util.ReflectionUtils.parameterized;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -131,7 +134,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
-		injector.getInstance(Launcher.class);
+		InstanceInjector<Launcher> instanceInjector = injector.getInstance(
+				Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
+		instanceInjector.inject(this);
 		try {
 			onStart();
 			try {
@@ -166,7 +171,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 						getModule(),
 						new AbstractModule() {{
 							bind(String[].class).annotatedWith(Args.class).toInstance(args);
-							bind(Launcher.class).toInstance(Launcher.this);
+							bind(Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
 
 							addDeclarativeBindingsFrom(Launcher.this);
 						}}),

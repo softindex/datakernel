@@ -1,6 +1,9 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.*;
+import io.datakernel.di.Binding;
+import io.datakernel.di.Key;
+import io.datakernel.di.Name;
+import io.datakernel.di.Scope;
 import io.datakernel.di.util.BindingUtils;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.ReflectionUtils;
@@ -154,74 +157,67 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public <T1> void to(Constructor1<T1, T> constructor,
-							Key<T1> dependency1) {
+				Key<T1> dependency1) {
 			to(constructor, asList(dependency1));
 		}
 
 		public <T1, T2> void to(Constructor2<T1, T2, T> constructor,
-								Key<T1> dependency1, Key<T2> dependency2) {
+				Key<T1> dependency1, Key<T2> dependency2) {
 			to(constructor, asList(dependency1, dependency2));
 		}
 
 		public <T1, T2, T3> void to(Constructor3<T1, T2, T3, T> constructor,
-									Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
+				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
 			to(constructor, asList(dependency1, dependency2, dependency3));
 		}
 
 		public <T1, T2, T3, T4> void to(Constructor4<T1, T2, T3, T4, T> constructor,
-										Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
+				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
 			to(constructor, asList(dependency1, dependency2, dependency3, dependency4));
 		}
 
 		public <T1, T2, T3, T4, T5> void to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
-											Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
+				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
 			to(constructor, asList(dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
 		public <T1, T2, T3, T4, T5, T6> void to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
-												Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
+				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
 			to(constructor, asList(dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
 		public <T1> void to(Constructor1<T1, T> constructor,
-							Class<T1> dependency1) {
+				Class<T1> dependency1) {
 			to(constructor, Key.of(dependency1));
 		}
 
 		public <T1, T2> void to(Constructor2<T1, T2, T> constructor,
-								Class<T1> dependency1, Class<T2> dependency2) {
+				Class<T1> dependency1, Class<T2> dependency2) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2));
 		}
 
 		public <T1, T2, T3> void to(Constructor3<T1, T2, T3, T> constructor,
-									Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3));
 		}
 
 		public <T1, T2, T3, T4> void to(Constructor4<T1, T2, T3, T4, T> constructor,
-										Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4));
 		}
 
 		public <T1, T2, T3, T4, T5> void to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
-											Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5));
 		}
 
 		public <T1, T2, T3, T4, T5, T6> void to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
-												Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
 			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5), Key.of(dependency6));
 		}
 
-		@SuppressWarnings("unchecked")
 		public void toInstance(T instance) {
-			toBinding(Binding.constant(instance).at(getLocation(BindingBuilder.class))
-					.apply(injectingInitializer((Key<T>) Key.of(instance.getClass()))));
-			// default injecting transformer uses the key that the binding is bound to
-			// here we also add injects from impl type, double injects for parent type but whatever
-			// eg key Launcher -> binding for HttpServerLauncher
-			// default will look at injects from class Launcher,
-			// this one also looks in HttpServerLauncher
+			toBinding(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
 		}
 	}
 
