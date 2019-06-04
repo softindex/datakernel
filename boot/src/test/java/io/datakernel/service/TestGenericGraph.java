@@ -17,7 +17,6 @@
 package io.datakernel.service;
 
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -57,8 +56,8 @@ public class TestGenericGraph {
 
 		@Provides
 		Pojo integerPojo(WorkerPool workerPool) {
-			WorkerPool.Instances<Pojo> list = workerPool.getInstances(Key.of(Pojo.class, Name.of("worker")));
-			WorkerPool.Instances<Pojo> listOther = workerPool.getInstances(Key.of(Pojo.class, Name.of("anotherWorker")));
+			WorkerPool.Instances<Pojo> list = workerPool.getInstances(Key.of(Pojo.class, "worker"));
+			WorkerPool.Instances<Pojo> listOther = workerPool.getInstances(Key.of(Pojo.class, "anotherWorker"));
 			return new Pojo("root");
 		}
 

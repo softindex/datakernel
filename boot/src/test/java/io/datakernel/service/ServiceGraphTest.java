@@ -20,7 +20,6 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -39,7 +38,7 @@ public class ServiceGraphTest {
 	@Test
 	public void testProperClosingForFailingServiceOneComponent() throws Exception {
 		Injector injector = Injector.of(new FailingModule());
-		injector.getInstance(Key.of(EventloopService.class, Name.of("TopService1")));
+		injector.getInstance(Key.of(EventloopService.class, "TopService1"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();
@@ -48,8 +47,8 @@ public class ServiceGraphTest {
 	@Test
 	public void testProperClosingForFailingServiceTwoComponents() throws Exception {
 		Injector injector = Injector.of(new FailingModule());
-		injector.getInstance(Key.of(EventloopService.class, Name.of("TopService1")));
-		injector.getInstance(Key.of(EventloopService.class, Name.of("TopService2")));
+		injector.getInstance(Key.of(EventloopService.class, "TopService1"));
+		injector.getInstance(Key.of(EventloopService.class, "TopService2"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();

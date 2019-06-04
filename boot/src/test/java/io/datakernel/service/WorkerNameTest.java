@@ -18,7 +18,6 @@ package io.datakernel.service;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -67,7 +66,7 @@ public final class WorkerNameTest {
 
 		@Provides
 		Element2 primaryServer(@Named("Primary") Element1 primaryEventloop, WorkerPool workerPool) {
-			WorkerPool.Instances<Element4> unusedList = workerPool.getInstances(Key.of(Element4.class, Name.of("First")));
+			WorkerPool.Instances<Element4> unusedList = workerPool.getInstances(Key.of(Element4.class, "First"));
 			return new Element2();
 		}
 

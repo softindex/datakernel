@@ -18,7 +18,6 @@ package io.datakernel.trigger;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -96,8 +95,8 @@ public class TriggersModuleTest {
 				TriggersModule.create()
 						.with(String.class, Severity.HIGH, "test", s -> TriggerResult.create())
 		);
-		injector.getInstance(Key.of(WorkerPool.class, Name.of("first"))).getInstances(String.class);
-		injector.getInstance(Key.of(WorkerPool.class, Name.of("second"))).getInstances(String.class);
+		injector.getInstance(Key.of(WorkerPool.class, "first")).getInstances(String.class);
+		injector.getInstance(Key.of(WorkerPool.class, "second")).getInstances(String.class);
 		injector.getInstanceOrNull(TriggersModuleService.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		RefBoolean wasExecuted = new RefBoolean(false);

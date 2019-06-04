@@ -18,7 +18,6 @@ package io.datakernel.worker;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Named;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -41,8 +40,8 @@ public class WorkerPoolTest {
 	public void setUp() {
 		TestModule.counter = 0;
 		Injector injector = Injector.of(new TestModule(), new WorkerPoolModule());
-		first = injector.getInstance(Key.of(WorkerPool.class, Name.of("First")));
-		second = injector.getInstance(Key.of(WorkerPool.class, Name.of("Second")));
+		first = injector.getInstance(Key.of(WorkerPool.class, "First"));
+		second = injector.getInstance(Key.of(WorkerPool.class, "Second"));
 		eventloopsFirst = first.getInstances(Eventloop.class);
 		eventloopsSecond = second.getInstances(Eventloop.class);
 	}

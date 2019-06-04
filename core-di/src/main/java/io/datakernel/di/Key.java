@@ -22,7 +22,7 @@ public abstract class Key<T> {
 		this.name = null;
 	}
 
-	public Key(@NotNull Name name) {
+	public Key(@Nullable Name name) {
 		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
 		this.name = name;
 	}
@@ -30,6 +30,16 @@ public abstract class Key<T> {
 	public Key(@NotNull String name) {
 		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
 		this.name = Name.of(name);
+	}
+
+	public Key(@NotNull Class<? extends Annotation> annotationType) {
+		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.name = Name.of(annotationType);
+	}
+
+	public Key(@NotNull Annotation annotation) {
+		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.name = Name.of(annotation);
 	}
 
 	Key(@NotNull Type type, @Nullable Name name) {
@@ -42,13 +52,18 @@ public abstract class Key<T> {
 	}
 
 	@NotNull
+	public static <T> Key<T> of(@NotNull Class<T> type) {
+		return new KeyImpl<>(type, null);
+	}
+
+	@NotNull
 	public static <T> Key<T> of(@NotNull Class<T> type, @Nullable Name name) {
 		return new KeyImpl<>(type, name);
 	}
 
 	@NotNull
-	public static <T> Key<T> of(@NotNull Class<T> type) {
-		return new KeyImpl<>(type, null);
+	public static <T> Key<T> of(@NotNull Class<T> type, @NotNull String name) {
+		return new KeyImpl<>(type, Name.of(name));
 	}
 
 	@NotNull
@@ -69,6 +84,11 @@ public abstract class Key<T> {
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @Nullable Name name) {
 		return new KeyImpl<>(type, name);
+	}
+
+	@NotNull
+	public static <T> Key<T> ofType(@NotNull Type type, @NotNull String name) {
+		return new KeyImpl<>(type, Name.of(name));
 	}
 
 	@NotNull

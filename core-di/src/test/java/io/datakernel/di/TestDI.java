@@ -3,7 +3,10 @@ package io.datakernel.di;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
-import io.datakernel.di.module.*;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Provides;
+import io.datakernel.di.module.ProvidesIntoSet;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
@@ -565,12 +568,12 @@ public final class TestDI {
 
 		Injector injector = Injector.of(new Module2<Integer>() {{
 			bind(Integer.class).toInstance(42);
-			bind(Key.of(Integer.class, Name.of("namedGeneric"))).toInstance(-42);
+			bind(Key.of(Integer.class, "namedGeneric")).toInstance(-42);
 			bind(new Key<List<Integer>>() {}).toInstance(asList(1, 2, 3));
 		}});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
-		assertEquals("str: [1, 2, 3]", injector.getInstance(Key.of(String.class, Name.of("second"))));
+		assertEquals("str: [1, 2, 3]", injector.getInstance(Key.of(String.class, "second")));
 		assertEquals(-42, injector.getInstance(new Key<AndAContainerToo<Integer>>() {}).object.intValue());
 	}
 

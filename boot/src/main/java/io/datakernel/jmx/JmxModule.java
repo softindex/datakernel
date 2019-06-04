@@ -19,7 +19,6 @@ package io.datakernel.jmx;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
-import io.datakernel.di.Name;
 import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
@@ -133,7 +132,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public JmxModule withGlobalMBean(Type type, String named) {
-		return withGlobalMBean(type, Key.ofType(type, Name.of(named)));
+		return withGlobalMBean(type, Key.ofType(type, named));
 	}
 
 	public JmxModule withGlobalMBean(Type type, Key<?> key) {
