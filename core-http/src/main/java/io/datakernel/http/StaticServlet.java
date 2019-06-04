@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.loader.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -37,6 +38,9 @@ public final class StaticServlet implements AsyncServlet {
 	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
 	private Function<String, @Nullable String> mapper = path -> path;
 	private Predicate<String> filter = path -> true;
+
+	@Nullable
+	private String defaultResource;
 
 	private StaticServlet(StaticLoader resourceLoader) {
 		this.resourceLoader = resourceLoader;
@@ -80,6 +84,11 @@ public final class StaticServlet implements AsyncServlet {
 		return this;
 	}
 
+	public StaticServlet withMappingNotFoundTo(String defaultResource) {
+		this.defaultResource = defaultResource;
+		return this;
+	}
+
 	public static ContentType getContentType(String path) {
 		int pos = path.lastIndexOf(".");
 		if (pos == -1) {
@@ -103,6 +112,12 @@ public final class StaticServlet implements AsyncServlet {
 		return type;
 	}
 
+	private HttpResponse createHttpResponse(ByteBuf buf, ContentType contentType) {
+		return HttpResponse.ofCode(200)
+				.withBody(buf)
+				.withHeader(CONTENT_TYPE, ofContentType(contentType));
+	}
+
 	@NotNull
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
@@ -114,14 +129,14 @@ public final class StaticServlet implements AsyncServlet {
 		return resourceLoader.load(mappedPath)
 				.thenEx((byteBuf, e) -> {
 					if (e == null) {
-						return Promise.of(
-								HttpResponse.ofCode(200)
-										.withBody(byteBuf)
-										.withHeader(CONTENT_TYPE, ofContentType(contentType)));
+						return Promise.of(createHttpResponse(byteBuf, contentType));
+					} else if (e == StaticLoader.NOT_FOUND_EXCEPTION) {
+						return defaultResource != null ?
+								resourceLoader.load(defaultResource)
+										.map(buf -> createHttpResponse(buf, contentTypeResolver.apply(defaultResource))) :
+								Promise.ofException(HttpException.notFound404());
 					} else {
-						return e == StaticLoader.NOT_FOUND_EXCEPTION ?
-								Promise.ofException(HttpException.notFound404()) :
-								Promise.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
