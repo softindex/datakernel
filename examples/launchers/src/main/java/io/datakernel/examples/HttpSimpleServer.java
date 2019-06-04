@@ -19,7 +19,6 @@ package io.datakernel.examples;
 import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
@@ -32,15 +31,10 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 public class HttpSimpleServer extends HttpServerLauncher {
 	private static final int SERVICE_PORT = 25565;
 
-	@Override
-	protected Module getBusinessLogicModule() {
-		return new AbstractModule() {
-			@Provides
-			AsyncServlet servlet() {
-				return request -> Promise.of(HttpResponse.ok200()
-						.withBody(encodeAscii("Hello from HTTP server")));
-			}
-		};
+	@Provides
+	AsyncServlet servlet() {
+		return request -> Promise.of(HttpResponse.ok200()
+				.withBody(encodeAscii("Hello from HTTP server")));
 	}
 
 	@Override

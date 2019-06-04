@@ -23,7 +23,7 @@ import static java.util.Collections.singletonMap;
 
 public abstract class AbstractModule implements Module {
 
-	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
+	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
 
 	private final Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>();
 	private final Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
@@ -33,12 +33,11 @@ public abstract class AbstractModule implements Module {
 	private List<BindingBuilder<?>> builders = new ArrayList<>();
 
 	public AbstractModule() {
-		bindings = searchForDeclarativeBindings(this); // just reuse that returned trie without redundant merging into empty one
 		configure();
+		addDeclarativeBindingsFrom(this);
 	}
 
-	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> searchForDeclarativeBindings(Object instance) {
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> trie = Trie.leaf(new HashMap<>());
+	protected void addDeclarativeBindingsFrom(Object instance) {
 		Class<?> cls = instance.getClass();
 		Key<?> moduleType = Key.of(cls);
 
@@ -47,7 +46,7 @@ public abstract class AbstractModule implements Module {
 			if (typeVars.length == 0) {
 				Annotation[] annotations = provider.getDeclaredAnnotations();
 				Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
-				trie.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+				bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 						.get()
 						.computeIfAbsent(key, $ -> new HashSet<>())
 						.add(bindingForMethod(instance, provider));
@@ -73,14 +72,13 @@ public abstract class AbstractModule implements Module {
 			Factory<Object> factory = binding.getFactory();
 			Key<Set<Object>> setKey = Key.ofType(parameterized(Set.class, key.getType()), key.getName());
 
-			trie.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
+			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 					.get()
 					.computeIfAbsent(setKey, $ -> new HashSet<>())
 					.add(Binding.of(binding.getDependencies(), args -> singleton(factory.create(args))).at(binding.getLocation()));
 
 			resolve(setKey, multibinderToSet());
 		}
-		return trie;
 	}
 
 	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "unchecked"})
@@ -217,8 +215,13 @@ public abstract class AbstractModule implements Module {
 
 		@SuppressWarnings("unchecked")
 		public void toInstance(T instance) {
-
-			toBinding(Binding.constant(instance).at(getLocation(BindingBuilder.class)).apply(injectingInitializer((Key<T>) Key.of(instance.getClass()))));
+			toBinding(Binding.constant(instance).at(getLocation(BindingBuilder.class))
+					.apply(injectingInitializer((Key<T>) Key.of(instance.getClass()))));
+			// default injecting transformer uses the key that the binding is bound to
+			// here we also add injects from impl type, double injects for parent type but whatever
+			// eg key Launcher -> binding for HttpServerLauncher
+			// default will look at injects from class Launcher,
+			// this one also looks in HttpServerLauncher
 		}
 	}
 

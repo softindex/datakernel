@@ -59,11 +59,9 @@ public final class ComplexHttpLauncher extends Launcher {
 				JmxModule.create()
 						.withScopes(false),
 				TriggersModule.create()
-
 						.with(Key.of(PrimaryServer.class, Name.of("First")), Severity.HIGH, "server1", TriggerResult::ofValue)
 						.with(Key.of(PrimaryServer.class, Name.of("Second")), Severity.HIGH, "server2", TriggerResult::ofValue)
 						.with(Key.of(PrimaryServer.class, Name.of("Third")), Severity.HIGH, "server3", TriggerResult::ofValue)
-
 						.with(Key.of(Eventloop.class), Severity.HIGH, "eventloop", TriggerResult::ofValue),
 
 

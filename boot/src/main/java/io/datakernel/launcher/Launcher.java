@@ -34,7 +34,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 
-import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -159,6 +158,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				new AbstractModule() {{
 					bind(String[].class).annotatedWith(Args.class).toInstance(args);
 					bind(Launcher.class).toInstance(Launcher.this);
+
+					addDeclarativeBindingsFrom(Launcher.this);
 				}}
 		);
 	}

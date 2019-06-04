@@ -213,7 +213,7 @@ public class Injector {
 	}
 
 	public boolean hasBinding(Class<?> type) {
-		return hasInstance(Key.of(type));
+		return hasBinding(Key.of(type));
 	}
 
 	public boolean hasBinding(Key<?> key) {

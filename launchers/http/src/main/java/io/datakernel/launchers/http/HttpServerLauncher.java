@@ -85,7 +85,9 @@ public abstract class HttpServerLauncher extends Launcher {
 	/**
 	 * Override this method to supply your launcher business logic.
 	 */
-	protected abstract Module getBusinessLogicModule();
+	protected Module getBusinessLogicModule() {
+		return Module.empty();
+	}
 
 	@Override
 	protected void run() throws Exception {

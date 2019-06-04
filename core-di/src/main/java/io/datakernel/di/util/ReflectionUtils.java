@@ -321,11 +321,11 @@ public final class ReflectionUtils {
 	}
 
 	private static void extractTypevarValues(Type pattern, Type real, Map<Type, Type> result) {
-		if (pattern.equals(real)) {
-			return;
-		}
 		if (pattern instanceof TypeVariable) {
 			result.put(pattern, real);
+			return;
+		}
+		if (pattern.equals(real)) {
 			return;
 		}
 		if (!(pattern instanceof ParameterizedType) || !(real instanceof ParameterizedType)) {
