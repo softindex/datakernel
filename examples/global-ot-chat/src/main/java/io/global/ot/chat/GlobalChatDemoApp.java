@@ -30,6 +30,7 @@ public final class GlobalChatDemoApp extends Launcher {
 	public static final String CREDENTIALS_FILE = "credentials.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	public static final String DEFAULT_SERVER_ID = "Chat Node";
+	public static final String DEFAULT_STATIC_PATH = "build";
 
 	@Inject
 	@Named("Example")
@@ -43,7 +44,7 @@ public final class GlobalChatDemoApp extends Launcher {
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.with("resources.path", "front/build")
+								.with("resources.path", DEFAULT_STATIC_PATH)
 								.override(Config.ofClassPathProperties(PROPERTIES_FILE, true)
 										.combine(Config.ofClassPathProperties(CREDENTIALS_FILE, true)))
 								.override(ofProperties(System.getProperties()).getChild("config")))

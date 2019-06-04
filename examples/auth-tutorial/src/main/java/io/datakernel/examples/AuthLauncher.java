@@ -1,6 +1,8 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.*;
 import io.datakernel.http.session.SessionServlet;
