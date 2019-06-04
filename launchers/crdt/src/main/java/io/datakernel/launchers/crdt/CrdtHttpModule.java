@@ -101,26 +101,25 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.of(HttpResponse.ofCode(404)
 										.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}));
-		if (backupService != null) {
-			servlet
-					.with(HttpMethod.POST, "/backup", request -> {
-						if (backupService.backupInProgress()) {
-							return Promise.of(HttpResponse.ofCode(403)
-									.withBody("Backup is already in progress".getBytes(UTF_8)));
-						}
-						backupService.backup();
-						return Promise.of(HttpResponse.ofCode(202));
-					})
-					.with(HttpMethod.POST, "/awaitBackup", request ->
-							backupService.backupInProgress() ?
-									backupService.backup().map($ -> HttpResponse.ofCode(204)
-											.withBody("Finished already running backup".getBytes(UTF_8))) :
-									backupService.backup().map($ -> HttpResponse.ok200()));
-
+		if (backupService == null) {
+			return servlet;
 		}
-		return servlet;
+		return servlet
+				.with(HttpMethod.POST, "/backup", request -> {
+					if (backupService.backupInProgress()) {
+						return Promise.of(HttpResponse.ofCode(403)
+								.withBody("Backup is already in progress".getBytes(UTF_8)));
+					}
+					backupService.backup();
+					return Promise.of(HttpResponse.ofCode(202));
+				})
+				.with(HttpMethod.POST, "/awaitBackup", request ->
+						backupService.backupInProgress() ?
+								backupService.backup().map($ -> HttpResponse.ofCode(204)
+										.withBody("Finished already running backup".getBytes(UTF_8))) :
+								backupService.backup().map($ -> HttpResponse.ok200()));
 	}
 }

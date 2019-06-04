@@ -96,7 +96,7 @@ public final class CrdtClusterTest {
 		}
 	}
 
-	static class TestNodeLauncher extends CrdtNodeLauncher<String, Integer> {
+	static class TestNodeLauncher extends CrdtNodeLauncher<String, TimestampContainer<Integer>> {
 		private final Config config;
 
 		public TestNodeLauncher(Config config) {
@@ -109,14 +109,14 @@ public final class CrdtClusterTest {
 		}
 
 		@Override
-		protected CrdtNodeLogicModule<String, Integer> getLogicModule() {
-			return new CrdtNodeLogicModule<String, Integer>() {};
+		protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
+			return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};
 		}
 
 		@Override
 		protected Module getBusinessLogicModule() {
 			return combine(
-					new CrdtHttpModule<String, Integer>() {},
+					new CrdtHttpModule<String, TimestampContainer<Integer>>() {},
 					new BusinessLogicModule()
 			);
 		}
@@ -152,10 +152,10 @@ public final class CrdtClusterTest {
 
 	@Test
 	public void startFileServer() throws Exception {
-		new CrdtFileServerLauncher<String, Integer>() {
+		new CrdtFileServerLauncher<String, TimestampContainer<Integer>>() {
 			@Override
-			protected CrdtFileServerLogicModule<String, Integer> getLogicModule() {
-				return new CrdtFileServerLogicModule<String, Integer>() {};
+			protected CrdtFileServerLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
+				return new CrdtFileServerLogicModule<String, TimestampContainer<Integer>>() {};
 			}
 
 			@Override
