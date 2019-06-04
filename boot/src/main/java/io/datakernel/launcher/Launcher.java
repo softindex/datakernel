@@ -34,6 +34,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -94,7 +96,13 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
 	 */
-	protected abstract Module getModule();
+	protected Module getModule() {
+		return Module.empty();
+	}
+
+	protected Module getOverrideModule() {
+		return Module.empty();
+	}
 
 	/**
 	 * Creates a Guice injector with modules and overrides from this launcher and
@@ -153,14 +161,16 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 	synchronized public Injector createInjector(String[] args) {
 		this.args = args;
-		return Injector.of(
-				getModule(),
-				new AbstractModule() {{
-					bind(String[].class).annotatedWith(Args.class).toInstance(args);
-					bind(Launcher.class).toInstance(Launcher.this);
+		return Injector.of(override(
+				combine(
+						getModule(),
+						new AbstractModule() {{
+							bind(String[].class).annotatedWith(Args.class).toInstance(args);
+							bind(Launcher.class).toInstance(Launcher.this);
 
-					addDeclarativeBindingsFrom(Launcher.this);
-				}}
+							addDeclarativeBindingsFrom(Launcher.this);
+						}}),
+				getOverrideModule())
 		);
 	}
 

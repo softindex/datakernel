@@ -30,7 +30,6 @@ import io.datakernel.trigger.TriggersModule;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 
 public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launcher {
 	public static final String PROPERTIES_FILE = "crdt-node.properties";
@@ -46,13 +45,7 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 
 	@Override
 	protected Module getModule() {
-		return combine(
-				override(getBaseModule(), getOverrideModule()),
-				getBusinessLogicModule());
-	}
-
-	protected Module getOverrideModule() {
-		return Module.empty();
+		return combine(getBaseModule(), getBusinessLogicModule());
 	}
 
 	protected abstract CrdtNodeLogicModule<K, S> getLogicModule();

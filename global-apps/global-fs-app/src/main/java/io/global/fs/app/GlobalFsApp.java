@@ -61,6 +61,37 @@ public final class GlobalFsApp extends Launcher {
 	@Named("App")
 	AsyncHttpServer server;
 
+	@Provides
+	ExecutorService executor(Config config) {
+		return getExecutor(config);
+	}
+
+	@Provides
+	@Named("App")
+	AsyncServlet servlet(GlobalFsDriver driver, StaticLoader resourceLoader) {
+		return GlobalFsDriverServlet.create(driver)
+				.with(GET, "/*", StaticServlet.create(resourceLoader)
+						.withMappingEmptyTo("index.html")
+						.withMappingNotFoundTo("index.html"));
+	}
+
+	@Provides
+	GlobalFsDriver globalFsDriver(GlobalFsNode node, Config config) {
+		return GlobalFsDriver.create(node, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
+	}
+
+	@Provides
+	StaticLoader staticLoader(Config config) {
+		return StaticLoader.ofClassPath(config.get("app.http.staticPath"));
+	}
+
+	@Provides
+	@Named("App")
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, @Named("App") AsyncServlet servlet) {
+		return AsyncHttpServer.create(eventloop, servlet)
+				.initialize(ofHttpServer(config.getChild("app.http")));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -73,38 +104,6 @@ public final class GlobalFsApp extends Launcher {
 								.override(ofClassPathProperties(PROPERTIES_FILE))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					ExecutorService executor(Config config) {
-						return getExecutor(config);
-					}
-
-					@Provides
-					@Named("App")
-					AsyncServlet servlet(GlobalFsDriver driver, StaticLoader resourceLoader) {
-						return GlobalFsDriverServlet.create(driver)
-								.with(GET, "/*", StaticServlet.create(resourceLoader)
-										.withMappingEmptyTo("index.html")
-										.withMappingNotFoundTo("index.html"));
-					}
-
-					@Provides
-					GlobalFsDriver globalFsDriver(GlobalFsNode node, Config config) {
-						return GlobalFsDriver.create(node, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
-					}
-
-					@Provides
-					StaticLoader staticLoader(Config config) {
-						return StaticLoader.ofClassPath(config.get("app.http.staticPath"));
-					}
-
-					@Provides
-					@Named("App")
-					AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, @Named("App") AsyncServlet servlet) {
-						return AsyncHttpServer.create(eventloop, servlet)
-								.initialize(ofHttpServer(config.getChild("app.http")));
-					}
-				},
 				override(
 						new GlobalNodesModule(),
 						new AbstractModule() {
@@ -132,7 +131,8 @@ public final class GlobalFsApp extends Launcher {
 								InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
 								return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
 							}
-						}));
+						})
+		);
 	}
 
 	@Override

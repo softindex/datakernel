@@ -31,21 +31,60 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static io.datakernel.launchers.initializers.Initializers.*;
 
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
+	public static final int PORT = 8080;
+	public static final int WORKERS = 4;
+
 	public static final String PROPERTIES_FILE = "http-server.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
 
 	@Inject
 	PrimaryServer primaryServer;
 
+	@Provides
+	Eventloop primaryEventloop(Config config) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop.primary")));
+	}
+
+	@Provides
+	@Worker
+	Eventloop workerEventloop(Config config, @Optional ThrottlingController throttlingController) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop.worker")))
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
+	}
+
+	@Provides
+	WorkerPool workerPool(WorkerPools workerPools, Config config) {
+		return workerPools.createPool(config.get(ofInteger(), "workers", 4));
+	}
+
+	@Provides
+	PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool.Instances<AsyncHttpServer> workerServers, Config config) {
+		return PrimaryServer.create(primaryEventloop, workerServers.getList())
+				.initialize(ofPrimaryServer(config.getChild("http")));
+	}
+
+	@Provides
+	WorkerPool.Instances<AsyncHttpServer> workerServers(WorkerPool workerPool) {
+		return workerPool.getInstances(AsyncHttpServer.class);
+	}
+
+	@Provides
+	@Worker
+	AsyncHttpServer workerServer(Eventloop eventloop, AsyncServlet servlet, Config config) {
+		return AsyncHttpServer.create(eventloop, servlet)
+				.initialize(ofHttpWorker(config.getChild("http")));
+	}
+
 	@Override
 	protected final Module getModule() {
 		return combine(
-				override(getBaseModule(), getOverrideModule()),
+				getBaseModule(),
 				getBusinessLogicModule());
 	}
 
@@ -57,54 +96,16 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
+								.with("workers", "" + WORKERS)
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					Eventloop primaryEventloop(Config config) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop.primary")));
-					}
-
-					@Provides
-					@Worker
-					Eventloop workerEventloop(Config config, @Optional ThrottlingController throttlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop.worker")))
-								.initialize(eventloop -> eventloop.withInspector(throttlingController));
-					}
-
-					@Provides
-					WorkerPool workerPool(WorkerPools workerPools, Config config) {
-						return workerPools.createPool(config.get(ofInteger(), "workers", 4));
-					}
-
-					@Provides
-					PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool.Instances<AsyncHttpServer> workerServers, Config config) {
-						return PrimaryServer.create(primaryEventloop, workerServers.getList())
-								.initialize(ofPrimaryServer(config.getChild("http")));
-					}
-
-					@Provides
-					WorkerPool.Instances<AsyncHttpServer> workerServers(WorkerPool workerPool) {
-						return workerPool.getInstances(AsyncHttpServer.class);
-					}
-
-					@Provides
-					@Worker
-					AsyncHttpServer workerServer(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
-						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(ofHttpWorker(config.getChild("http")));
-					}
-				});
+						.printEffectiveConfig()
+		);
 	}
 
-	protected Module getOverrideModule() {
+	protected Module getBusinessLogicModule() {
 		return Module.empty();
 	}
-
-	protected abstract Module getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {

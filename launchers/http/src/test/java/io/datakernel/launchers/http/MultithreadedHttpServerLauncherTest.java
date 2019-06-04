@@ -1,7 +1,5 @@
 package io.datakernel.launchers.http;
 
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.test.rules.ByteBufRule;
@@ -18,15 +16,10 @@ public class MultithreadedHttpServerLauncherTest {
 	@Test
 	public void testsInjector() {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
-			@Override
-			protected Module getBusinessLogicModule() {
-				return new AbstractModule() {
-					@Provides
-					@Worker
-					AsyncServlet servlet(@WorkerId int worker) {
-						throw new UnsupportedOperationException();
-					}
-				};
+			@Provides
+			@Worker
+			AsyncServlet servlet(@WorkerId int worker) {
+				throw new UnsupportedOperationException();
 			}
 		};
 		launcher.testInjector();

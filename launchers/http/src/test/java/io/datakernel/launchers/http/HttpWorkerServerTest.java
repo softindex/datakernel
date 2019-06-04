@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Injector;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
@@ -57,16 +56,11 @@ public final class HttpWorkerServerTest {
 	@Test
 	public void test() throws Exception {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
-			@Override
-			protected Module getBusinessLogicModule() {
-				return new AbstractModule() {
-					@Provides
-					@Worker
-					AsyncServlet servlet(@WorkerId int worker) {
-						return req -> Promise.of(
-								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
-					}
-				};
+			@Provides
+			@Worker
+			AsyncServlet servlet(@WorkerId int worker) {
+				return req -> Promise.of(
+						HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 			}
 
 			@Override

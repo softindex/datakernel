@@ -1,8 +1,6 @@
 package io.datakernel.examples;
 
 import io.datakernel.csp.file.ChannelFileWriter;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -27,19 +25,14 @@ public final class HttpFileUploadExample extends HttpServerLauncher {
 		Files.delete(PATH);
 	}
 
-	@Override
-	protected Module getBusinessLogicModule() {
-		return new AbstractModule() {
-			@Provides
-			AsyncServlet servlet() {
-				return RoutingServlet.create()
-						.with(GET, "/*", StaticServlet.create(ofClassPath("static/multipart/"))
-								.withMappingEmptyTo("index.html"))
-						.with(POST, "/test", request ->
-								request.getFiles(name -> ChannelFileWriter.create(PATH.resolve(name)))
-										.map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
-			}
-		};
+	@Provides
+	AsyncServlet servlet() {
+		return RoutingServlet.create()
+				.with(GET, "/*", StaticServlet.create(ofClassPath("static/multipart/"))
+						.withMappingEmptyTo("index.html"))
+				.with(POST, "/test", request ->
+						request.getFiles(name -> ChannelFileWriter.create(PATH.resolve(name)))
+								.map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
 	}
 
 	public static void main(String[] args) throws Exception {

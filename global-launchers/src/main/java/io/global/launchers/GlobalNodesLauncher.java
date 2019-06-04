@@ -29,7 +29,6 @@ import io.datakernel.service.ServiceGraphModule;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 
 public class GlobalNodesLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
@@ -55,10 +54,6 @@ public class GlobalNodesLauncher extends Launcher {
 
 	@Override
 	protected final Module getModule() {
-		return override(getBaseModule(), getOverrideModule());
-	}
-
-	private Module getBaseModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -68,13 +63,6 @@ public class GlobalNodesLauncher extends Launcher {
 						.printEffectiveConfig(),
 				new GlobalNodesModule()
 		);
-	}
-
-	/**
-	 * Override this method to override base modules supplied in launcher.
-	 */
-	protected Module getOverrideModule() {
-		return Module.empty();
 	}
 
 	@Override

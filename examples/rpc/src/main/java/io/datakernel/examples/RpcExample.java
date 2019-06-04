@@ -18,7 +18,6 @@ package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
 import io.datakernel.di.Inject;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -29,8 +28,6 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 public class RpcExample extends Launcher {
@@ -42,32 +39,29 @@ public class RpcExample extends Launcher {
 	@Inject
 	private RpcServer server;
 
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
+	@Provides
+	RpcServer rpcServer(Eventloop eventloop) {
+		return RpcServer.create(eventloop)
+				.withMessageTypes(String.class)
+				.withHandler(String.class, String.class, request -> Promise.of("Hello " + request))
+				.withListenPort(SERVICE_PORT);
+	}
+
+	@Provides
+	RpcClient rpcClient(Eventloop eventloop) {
+		return RpcClient.create(eventloop)
+				.withMessageTypes(String.class)
+				.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
+	}
+
 	@Override
 	protected Module getModule() {
-		return combine(
-				ServiceGraphModule.defaultInstance(),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@Provides
-					RpcServer rpcServer(Eventloop eventloop) {
-						return RpcServer.create(eventloop)
-								.withMessageTypes(String.class)
-								.withHandler(String.class, String.class, request -> Promise.of("Hello " + request))
-								.withListenPort(SERVICE_PORT);
-					}
-
-					@Provides
-					RpcClient rpcClient(Eventloop eventloop) {
-						return RpcClient.create(eventloop)
-								.withMessageTypes(String.class)
-								.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
-					}
-				}
-		);
+		return ServiceGraphModule.defaultInstance();
 	}
 
 	@Override

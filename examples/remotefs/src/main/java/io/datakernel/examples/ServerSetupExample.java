@@ -18,8 +18,6 @@ package io.datakernel.examples;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.Inject;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -36,22 +34,19 @@ import static io.datakernel.di.module.Modules.combine;
  * This example demonstrates configuring and launching RemoteFsServer.
  */
 public class ServerSetupExample extends RemoteFsServerLauncher {
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
 	@Override
 	protected Module getOverrideModule() {
 		try {
 			return combine(
-					ConfigModule.create(Config.create()
-							.with("remotefs.path", Files.createTempDirectory("server_storage")
-									.toString())
-							.with("remotefs.listenAddresses", "6732")
-					),
-					new AbstractModule() {
-						@Provides
-						Eventloop eventloop() {
-							return Eventloop.create();
-						}
-					}
-			);
+					ConfigModule.create(
+							Config.create()
+									.with("remotefs.path", Files.createTempDirectory("server_storage").toString())
+									.with("remotefs.listenAddresses", "6732")));
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}

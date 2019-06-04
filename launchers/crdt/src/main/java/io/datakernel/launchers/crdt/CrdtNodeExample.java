@@ -52,7 +52,6 @@ public final class CrdtNodeExample {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
-
 			@Override
 			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
 				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};

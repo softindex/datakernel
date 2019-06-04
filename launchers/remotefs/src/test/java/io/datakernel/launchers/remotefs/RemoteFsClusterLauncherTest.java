@@ -47,8 +47,7 @@ public final class RemoteFsClusterLauncherTest {
 
 	@Test
 	public void testInjector() {
-		new RemoteFsClusterLauncher() {
-		}.testInjector();
+		new RemoteFsClusterLauncher() {}.testInjector();
 	}
 
 	@Test

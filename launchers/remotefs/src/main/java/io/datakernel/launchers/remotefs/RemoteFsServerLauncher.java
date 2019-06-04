@@ -21,7 +21,6 @@ import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
 import io.datakernel.di.Optional;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -35,7 +34,6 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.remotefs.Initializers.ofRemoteFsServer;
 
@@ -47,7 +45,28 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 
 	@Override
 	protected final Module getModule() {
-		return override(getBaseModule(), getOverrideModule());
+		return getBaseModule();
+	}
+
+	@Provides
+	public Eventloop eventloop(Config config,
+			@Optional ThrottlingController throttlingController) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop")))
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
+	}
+
+	@Provides
+	RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor,
+			Config config) {
+		return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
+				.initialize(ofRemoteFsServer(config.getChild("remotefs")));
+
+	}
+
+	@Provides
+	ExecutorService executor(Config config) {
+		return ConfigConverters.getExecutor(config.getChild("remotefs.executor"));
 	}
 
 	private Module getBaseModule() {
@@ -58,34 +77,8 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 						Config.create()
 								.override(Config.ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					public Eventloop eventloop(Config config,
-							@Optional ThrottlingController throttlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> eventloop.withInspector(throttlingController));
-					}
-
-					@Provides
-					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor,
-							Config config) {
-						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
-								.initialize(ofRemoteFsServer(config.getChild("remotefs")));
-
-					}
-
-					@Provides
-					ExecutorService executor(Config config) {
-						return ConfigConverters.getExecutor(config.getChild("remotefs.executor"));
-					}
-				}
+						.printEffectiveConfig()
 		);
-	}
-
-	protected Module getOverrideModule() {
-		return Module.empty();
 	}
 
 	@Override

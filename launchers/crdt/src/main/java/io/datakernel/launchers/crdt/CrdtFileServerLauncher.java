@@ -38,7 +38,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 
 public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends Launcher {
@@ -47,20 +46,27 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 	@Inject
 	CrdtServer<K, S> crdtServer;
 
-	@Override
-	protected Module getModule() {
-		return combine(
-				override(getBaseModule(), getOverrideModule()),
-				getBusinessLogicModule());
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
 	}
 
-	protected Module getOverrideModule() {
-		return Module.empty();
+	@Provides
+	ExecutorService executor(Config config) {
+		return config.get(ofExecutor(), "executor");
+	}
+
+	@Provides
+	LocalFsClient localFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
+		return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.localPath"));
+	}
+
+	@Override
+	protected Module getModule() {
+		return combine(getBaseModule(), getBusinessLogicModule());
 	}
 
 	protected abstract CrdtFileServerLogicModule<K, S> getLogicModule();
-
-	protected abstract Module getBusinessLogicModule();
 
 	private Module getBaseModule() {
 		return combine(
@@ -72,24 +78,12 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				getLogicModule(),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@Provides
-					ExecutorService executor(Config config) {
-						return config.get(ofExecutor(), "executor");
-					}
-
-					@Provides
-					LocalFsClient localFsClient(Eventloop eventloop, ExecutorService executor, Config config) {
-						return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.localPath"));
-					}
-				}
+				getLogicModule()
 		);
+	}
+
+	protected Module getBusinessLogicModule() {
+		return Module.empty();
 	}
 
 	@Override

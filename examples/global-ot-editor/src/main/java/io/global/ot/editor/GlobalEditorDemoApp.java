@@ -72,7 +72,8 @@ public final class GlobalEditorDemoApp extends Launcher {
 						bind(new Key<OTSystem<EditorOperation>>() {}).toInstance(createOTSystem());
 					}
 				},
-				override(new GlobalNodesModule(), new ExampleCommonModule()));
+				override(new GlobalNodesModule(), new ExampleCommonModule())
+		);
 	}
 
 	@Override

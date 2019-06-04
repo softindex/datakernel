@@ -17,10 +17,6 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -35,35 +31,13 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
  * Sends back a greeting and the number of worker which served the connection.
  */
 public final class HttpMultithreadedServerExample extends MultithreadedHttpServerLauncher {
-	public static final int PORT = 7583;
-	public static final int WORKERS = 4;
-
-	@Override
-	protected Module getOverrideModule() {
-		return ConfigModule.create(Config.create()
-				.with("http.listenAddresses", "" + PORT)
-				.with("workers", "" + WORKERS));
-	}
-
-	@Override
-	protected Module getBusinessLogicModule() {
-		return new AbstractModule() {
-			@Provides
-			@Worker
-			AsyncServlet servlet(@WorkerId int workerId) {
-				return request -> {
-					byte[] msg = encodeAscii("Hello from worker server #" + workerId + "\n");
-					return Promise.of(HttpResponse.ok200().withBody(msg));
-				};
-			}
+	@Provides
+	@Worker
+	AsyncServlet servlet(@WorkerId int workerId) {
+		return request -> {
+			byte[] msg = encodeAscii("Hello from worker server #" + workerId + "\n");
+			return Promise.of(HttpResponse.ok200().withBody(msg));
 		};
-	}
-
-	@Override
-	protected void run() throws Exception {
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:7583/'");
-		super.run();
 	}
 
 	public static void main(String[] args) throws Exception {

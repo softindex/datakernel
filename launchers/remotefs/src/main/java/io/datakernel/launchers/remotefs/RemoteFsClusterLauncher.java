@@ -22,7 +22,6 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
 import io.datakernel.di.Named;
 import io.datakernel.di.Optional;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -39,7 +38,6 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
 import static io.datakernel.launchers.remotefs.Initializers.*;
@@ -59,12 +57,58 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	@Named("clusterDeadCheck")
 	EventloopTaskScheduler clusterDeadCheckScheduler;
 
-	@Override
-	protected final Module getModule() {
-		return override(getBaseModule(), getOverrideModule());
+	@Provides
+	Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop")))
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
-	private Module getBaseModule() {
+	@Provides
+	@Named("repartition")
+	EventloopTaskScheduler eventloopTaskScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller1) {
+		return EventloopTaskScheduler.create(eventloop, controller1::repartition)
+				.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.repartition")));
+	}
+
+	@Provides
+	@Named("clusterDeadCheck")
+	EventloopTaskScheduler deadCheckScheduler(Config config, Eventloop eventloop, RemoteFsClusterClient cluster) {
+		return EventloopTaskScheduler.create(eventloop, cluster::checkDeadPartitions)
+				.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.cluster.deadCheck")));
+	}
+
+	@Provides
+	RemoteFsRepartitionController repartitionController(Config config,
+			RemoteFsServer localServer, RemoteFsClusterClient cluster) {
+		return RemoteFsRepartitionController.create(config.get("remotefs.repartition.localPartitionId"), cluster)
+				.initialize(ofRepartitionController(config.getChild("remotefs.repartition")));
+	}
+
+	@Provides
+	RemoteFsClusterClient remoteFsClusterClient(Config config,
+			RemoteFsServer localServer, Eventloop eventloop,
+			@Optional ServerSelector serverSelector) {
+		Map<Object, FsClient> clients = new HashMap<>();
+		clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
+		return RemoteFsClusterClient.create(eventloop, clients)
+				.withServerSelector(serverSelector != null ? serverSelector : RENDEZVOUS_HASH_SHARDER)
+				.initialize(ofRemoteFsCluster(eventloop, config.getChild("remotefs.cluster")));
+	}
+
+	@Provides
+	RemoteFsServer remoteFsServer(Config config, Eventloop eventloop, ExecutorService executor) {
+		return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.path"))
+				.initialize(ofRemoteFsServer(config.getChild("remotefs.server")));
+	}
+
+	@Provides
+	public ExecutorService executor() {
+		return Executors.newSingleThreadExecutor();
+	}
+
+	@Override
+	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -72,63 +116,8 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 						Config.create()
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> eventloop.withInspector(throttlingController));
-					}
-
-					@Provides
-					@Named("repartition")
-					EventloopTaskScheduler eventloopTaskScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller) {
-						return EventloopTaskScheduler.create(eventloop, controller::repartition)
-								.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.repartition")));
-					}
-
-					@Provides
-					@Named("clusterDeadCheck")
-					EventloopTaskScheduler deadCheckScheduler(Config config, Eventloop eventloop, RemoteFsClusterClient cluster) {
-						return EventloopTaskScheduler.create(eventloop, cluster::checkDeadPartitions)
-								.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.cluster.deadCheck")));
-					}
-
-					@Provides
-					RemoteFsRepartitionController repartitionController(Config config,
-							RemoteFsServer localServer, RemoteFsClusterClient cluster) {
-						return RemoteFsRepartitionController.create(config.get("remotefs.repartition.localPartitionId"), cluster)
-								.initialize(ofRepartitionController(config.getChild("remotefs.repartition")));
-					}
-
-					@Provides
-					RemoteFsClusterClient remoteFsClusterClient(Config config,
-							RemoteFsServer localServer, Eventloop eventloop,
-							@Optional ServerSelector serverSelector) {
-						Map<Object, FsClient> clients = new HashMap<>();
-						clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
-						return RemoteFsClusterClient.create(eventloop, clients)
-								.withServerSelector(serverSelector != null ? serverSelector : RENDEZVOUS_HASH_SHARDER)
-								.initialize(ofRemoteFsCluster(eventloop, config.getChild("remotefs.cluster")));
-					}
-
-					@Provides
-					RemoteFsServer remoteFsServer(Config config, Eventloop eventloop, ExecutorService executor) {
-						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.path"))
-								.initialize(ofRemoteFsServer(config.getChild("remotefs.server")));
-					}
-
-					@Provides
-					public ExecutorService executor() {
-						return Executors.newSingleThreadExecutor();
-					}
-				}
+						.printEffectiveConfig()
 		);
-	}
-
-	protected Module getOverrideModule() {
-		return Module.empty();
 	}
 
 	@Override
@@ -137,8 +126,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new RemoteFsClusterLauncher() {
-		};
+		Launcher launcher = new RemoteFsClusterLauncher() {};
 		launcher.launch(args);
 	}
 }

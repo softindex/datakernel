@@ -17,8 +17,6 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
@@ -31,27 +29,22 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 public final class RequestParameterExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
 
-	@Override
-	protected Module getBusinessLogicModule() {
-		return new AbstractModule() {
-			@Provides
-			AsyncServlet servlet() {
-				return RoutingServlet.create()
-						.with(HttpMethod.POST, "/hello", loadBody()
-								.serve(request -> {
-									String name = request.getPostParameters().get("name");
-									return Promise.of(HttpResponse.ok200()
-											.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>")));
-								}))
-						.with(HttpMethod.GET, "/hello", request -> {
-							String name = request.getQueryParameter("name");
+	@Provides
+	AsyncServlet servlet() {
+		return RoutingServlet.create()
+				.with(HttpMethod.POST, "/hello", loadBody()
+						.serve(request -> {
+							String name = request.getPostParameters().get("name");
 							return Promise.of(HttpResponse.ok200()
-									.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
-						})
+									.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>")));
+						}))
+				.with(HttpMethod.GET, "/hello", request -> {
+					String name = request.getQueryParameter("name");
+					return Promise.of(HttpResponse.ok200()
+							.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
+				})
 						.with("/*", StaticServlet.create(ofClassPath(RESOURCE_DIR))
-								.withMappingEmptyTo("index.html"));
-			}
-		};
+						.withMappingEmptyTo("index.html"));
 	}
 
 	public static void main(String[] args) throws Exception {

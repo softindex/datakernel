@@ -75,24 +75,30 @@ public final class GlobalKvDemoApp extends Launcher {
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				override(combine(new AbstractModule() {
-					@Provides
-					GlobalKvDriver<String, String> provide(GlobalKvNode node) {
-						return GlobalKvDriver.create(node, STRING_CODEC, STRING_CODEC);
-					}
+				override(
+						combine(
+								new AbstractModule() {
+									@Provides
+									GlobalKvDriver<String, String> provide(GlobalKvNode node) {
+										return GlobalKvDriver.create(node, STRING_CODEC, STRING_CODEC);
+									}
 
-					@Provides
-					@Named("alice")
-					KeyPair provideAlice(Config config) {
-						return config.get(ofPrivKey(), "app.keys.alice").computeKeys();
-					}
+									@Provides
+									@Named("alice")
+									KeyPair provideAlice(Config config) {
+										return config.get(ofPrivKey(), "app.keys.alice").computeKeys();
+									}
 
-					@Provides
-					@Named("alice")
-					KvClient<String, String> provideAlice(GlobalKvDriver<String, String> driver, @Named("alice") KeyPair keys) {
-						return driver.adapt(keys);
-					}
-				}, new GlobalNodesModule()), new ExampleCommonModule()));
+									@Provides
+									@Named("alice")
+									KvClient<String, String> provideAlice(GlobalKvDriver<String, String> driver, @Named("alice") KeyPair keys) {
+										return driver.adapt(keys);
+									}
+								},
+								new GlobalNodesModule()),
+						new ExampleCommonModule()
+				)
+		);
 	}
 
 	@Override

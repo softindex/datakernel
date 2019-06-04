@@ -20,7 +20,6 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -43,7 +42,6 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 
@@ -53,71 +51,58 @@ public class DiscoveryServiceLauncher extends Launcher {
 	@Inject
 	AsyncHttpServer httpServer;
 
-	@Override
-	protected final Module getModule() {
-		return override(getBaseModule(), getOverrideModule());
+	@Provides
+	Eventloop eventloop(Config config) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop")));
 	}
 
-	private Module getBaseModule() {
+	@Provides
+	DiscoveryService discoveryService(Eventloop eventloop, AnnouncementStorage announcementStorage, SharedKeyStorage sharedKeyStorage) {
+		return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
+	}
+
+	@Provides
+	AnnouncementStorage announcementStorage(FsClient storage) {
+		return new RemoteFsAnnouncementStorage(storage.subfolder("announcements"));
+	}
+
+	@Provides
+	SharedKeyStorage sharedKeyStorage(FsClient storage) {
+		return new RemoteFsSharedKeyStorage(storage.subfolder("keys"));
+	}
+
+	@Provides
+	FsClient fsClient(Eventloop eventloop, ExecutorService executor, Config config) {
+		return LocalFsClient.create(eventloop, config.get(ofPath(), "discovery.storage"))
+				.withRevisions();
+	}
+
+	@Provides
+	DiscoveryServlet discoveryServlet(DiscoveryService discoveryService) {
+		return DiscoveryServlet.create(discoveryService);
+	}
+
+	@Provides
+	AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
+		return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
+	}
+
+	@Provides
+	public ExecutorService executor(Config config) {
+		return ConfigConverters.getExecutor(config.getChild("fs.executor"));
+	}
+
+	@Override
+	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						ofClassPathProperties(PROPERTIES_FILE)
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop(Config config) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")));
-					}
-
-					@Provides
-					DiscoveryService discoveryService(Eventloop eventloop, AnnouncementStorage announcementStorage, SharedKeyStorage sharedKeyStorage) {
-						return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
-					}
-
-					@Provides
-					AnnouncementStorage announcementStorage(FsClient storage) {
-						return new RemoteFsAnnouncementStorage(storage.subfolder("announcements"));
-					}
-
-					@Provides
-					SharedKeyStorage sharedKeyStorage(FsClient storage) {
-						return new RemoteFsSharedKeyStorage(storage.subfolder("keys"));
-					}
-
-					@Provides
-					FsClient fsClient(Eventloop eventloop, ExecutorService executor, Config config) {
-						return LocalFsClient.create(eventloop, config.get(ofPath(), "discovery.storage"))
-								.withRevisions();
-					}
-
-					@Provides
-					DiscoveryServlet discoveryServlet(DiscoveryService discoveryService) {
-						return DiscoveryServlet.create(discoveryService);
-					}
-
-					@Provides
-					AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
-						return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
-					}
-
-					@Provides
-					public ExecutorService executor(Config config) {
-						return ConfigConverters.getExecutor(config.getChild("fs.executor"));
-					}
-
-				}
+						.printEffectiveConfig()
 		);
-	}
-
-	/**
-	 * Override this method to override base modules supplied in launcher.
-	 */
-	protected Module getOverrideModule() {
-		return Module.empty();
 	}
 
 	@Override

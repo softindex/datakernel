@@ -19,7 +19,6 @@ package io.datakernel.examples;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.dns.AsyncDnsClient;
@@ -34,7 +33,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -53,6 +51,24 @@ public final class HttpClientExample extends Launcher {
 
 	private String addr;
 
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
+	@Provides
+	AsyncHttpClient client(Eventloop eventloop, AsyncDnsClient dnsClient) {
+		return AsyncHttpClient.create(eventloop)
+				.withDnsClient(dnsClient);
+	}
+
+	@Provides
+	AsyncDnsClient dnsClient(Eventloop eventloop, Config config) {
+		return RemoteAsyncDnsClient.create(eventloop)
+				.withDnsServerAddress(config.get(ofInetAddress(), "http.client.googlePublicDns"))
+				.withTimeout(config.get(ofDuration(), "http.client.timeout"));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -60,27 +76,7 @@ public final class HttpClientExample extends Launcher {
 				ConfigModule.create(Config.create()
 						.with("http.client.googlePublicDns", "8.8.8.8")
 						.with("http.client.timeout", "3 seconds")
-						.with("http.client.host", "http://127.0.0.1:8080")
-				),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@Provides
-					AsyncHttpClient client(Eventloop eventloop, AsyncDnsClient dnsClient) {
-						return AsyncHttpClient.create(eventloop)
-								.withDnsClient(dnsClient);
-					}
-
-					@Provides
-					AsyncDnsClient dnsClient(Eventloop eventloop, Config config) {
-						return RemoteAsyncDnsClient.create(eventloop)
-								.withDnsServerAddress(config.get(ofInetAddress(), "http.client.googlePublicDns"))
-								.withTimeout(config.get(ofDuration(), "http.client.timeout"));
-					}
-				}
+						.with("http.client.host", "http://127.0.0.1:8080"))
 		);
 	}
 

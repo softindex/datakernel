@@ -25,7 +25,6 @@ import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 
@@ -43,9 +42,20 @@ public abstract class HttpServerLauncher extends Launcher {
 
 	@Override
 	protected final Module getModule() {
-		return combine(
-				override(getBaseModule(), getOverrideModule()),
-				getBusinessLogicModule());
+		return combine(getBaseModule(), getBusinessLogicModule());
+	}
+
+	@Provides
+	Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop")))
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
+	}
+
+	@Provides
+	AsyncHttpServer server(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
+		return AsyncHttpServer.create(eventloop, rootServlet)
+				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
 	private Module getBaseModule() {
@@ -57,29 +67,8 @@ public abstract class HttpServerLauncher extends Launcher {
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> eventloop.withInspector(throttlingController));
-					}
-
-					@Provides
-					AsyncHttpServer server(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
-						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(ofHttpServer(config.getChild("http")));
-					}
-				}
+						.printEffectiveConfig()
 		);
-	}
-
-	/**
-	 * Override this method to override base modules supplied in launcher.
-	 */
-	protected Module getOverrideModule() {
-		return Module.empty();
 	}
 
 	/**

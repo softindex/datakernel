@@ -35,7 +35,6 @@ import io.datakernel.util.Initializer;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.rpc.Initializers.ofRpcServer;
 
@@ -48,9 +47,22 @@ public abstract class RpcServerLauncher extends Launcher {
 
 	@Override
 	protected final Module getModule() {
-		return combine(
-				override(getBaseModule(), getOverrideModule()),
-				getBusinessLogicModule());
+		return combine(getBaseModule(), getBusinessLogicModule());
+	}
+
+	@Provides
+	public Eventloop eventloop(Config config,
+			@Optional ThrottlingController throttlingController) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop")))
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
+	}
+
+	@Provides
+	RpcServer provideRpcServer(Config config, Eventloop eventloop, Initializer<RpcServer> rpcServerInitializer) {
+		return RpcServer.create(eventloop)
+				.initialize(ofRpcServer(config))
+				.initialize(rpcServerInitializer);
 	}
 
 	private Module getBaseModule() {
@@ -61,31 +73,13 @@ public abstract class RpcServerLauncher extends Launcher {
 						Config.create()
 								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					public Eventloop eventloop(Config config,
-							@Optional ThrottlingController throttlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> eventloop.withInspector(throttlingController));
-					}
-
-					@Provides
-					RpcServer provideRpcServer(Config config, Eventloop eventloop, Initializer<RpcServer> rpcServerInitializer) {
-						return RpcServer.create(eventloop)
-								.initialize(ofRpcServer(config))
-								.initialize(rpcServerInitializer);
-					}
-				}
+						.printEffectiveConfig()
 		);
 	}
 
-	protected Module getOverrideModule() {
+	protected Module getBusinessLogicModule() {
 		return Module.empty();
 	}
-
-	protected abstract Module getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {

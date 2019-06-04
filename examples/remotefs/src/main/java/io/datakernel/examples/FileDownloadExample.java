@@ -19,7 +19,6 @@ package io.datakernel.examples;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.di.Inject;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -32,8 +31,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static io.datakernel.di.module.Modules.combine;
 
 /**
  * This example demonstrates downloading file from RemoteFS server.
@@ -58,25 +55,23 @@ public class FileDownloadExample extends Launcher {
 
 	@Inject
 	private RemoteFsClient client;
+
 	@Inject
 	private Eventloop eventloop;
 
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
+	@Provides
+	RemoteFsClient remoteFsClient(Eventloop eventloop) {
+		return RemoteFsClient.create(eventloop, new InetSocketAddress(SERVER_PORT));
+	}
+
 	@Override
 	protected Module getModule() {
-		return combine(
-				ServiceGraphModule.defaultInstance(),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@Provides
-					RemoteFsClient remoteFsClient(Eventloop eventloop) {
-						return RemoteFsClient.create(eventloop, new InetSocketAddress(SERVER_PORT));
-					}
-				}
-		);
+		return ServiceGraphModule.defaultInstance();
 	}
 
 	@Override

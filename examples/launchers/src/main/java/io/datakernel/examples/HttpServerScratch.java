@@ -20,7 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Inject;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
@@ -41,29 +40,28 @@ public class HttpServerScratch extends Launcher {
 	@Inject
 	private AsyncHttpServer server;
 
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
+	@Provides
+	AsyncServlet servlet() {
+		return request -> Promise.of(HttpResponse.ok200()
+				.withBody(encodeAscii("Hello from HTTP server")));
+	}
+
+	@Provides
+	AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet, Config config) {
+		return AsyncHttpServer.create(eventloop, servlet)
+				.withListenAddress(config.get(ofInetSocketAddress(), Config.THIS));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT))),
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@Provides
-					AsyncServlet servlet() {
-						return request -> Promise.of(HttpResponse.ok200()
-								.withBody(encodeAscii("Hello from HTTP server")));
-					}
-
-					@Provides
-					AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet, Config config) {
-						return AsyncHttpServer.create(eventloop, servlet)
-								.withListenAddress(config.get(ofInetSocketAddress(), Config.THIS));
-					}
-				}
+				ConfigModule.create(Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))
 		);
 	}
 
