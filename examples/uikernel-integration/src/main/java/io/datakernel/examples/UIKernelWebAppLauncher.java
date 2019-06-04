@@ -16,17 +16,25 @@
 
 package io.datakernel.examples;
 
+import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
+import io.datakernel.di.Inject;
 import io.datakernel.di.module.Module;
+import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.service.ServiceGraphModule;
+
+import static io.datakernel.di.module.Modules.combine;
 
 public class UIKernelWebAppLauncher extends Launcher {
+	@Inject
+	AsyncHttpServer server;
 
 	@Override
 	protected Module getModule() {
-//		return asList(ServiceGraphModule.defaultInstance(),
-//				ConfigModule.create(Config.ofProperties("configs.properties")),
-//				new UIKernelWebAppModule());
-		return null;
+		return combine(ServiceGraphModule.defaultInstance(),
+				ConfigModule.create(Config.ofClassPathProperties("configs.properties")),
+				new UIKernelWebAppModule());
 	}
 
 	@Override
@@ -36,6 +44,6 @@ public class UIKernelWebAppLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		UIKernelWebAppLauncher launcher = new UIKernelWebAppLauncher();
-		//launcher.launch(args);
+		launcher.launch(args);
 	}
 }

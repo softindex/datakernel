@@ -60,10 +60,30 @@ public class StaticLoaderTest {
 	}
 
 	@Test
+	public void testClassPathWithDiffRoot() {
+		StaticLoader staticLoader = StaticLoader.ofClassPath("/");
+		ByteBuf buf = await(staticLoader.load("/testFile.txt"));
+		assertNotNull(buf);
+		buf = await(staticLoader.load("/testFile.txt/"));
+		assertNotNull(buf);
+		buf = await(staticLoader.load("testFile.txt/"));
+		assertNotNull(buf);
+		buf = await(staticLoader.load("testFile.txt"));
+		assertNotNull(buf);
+	}
+
+	@Test
 	public void testFilterFilePath() {
 		StaticLoader staticLoader = StaticLoader.ofPath(Paths.get("/"))
 				.filter(file -> !file.equals("testFile.txt"));
 		StacklessException exception = awaitException(staticLoader.load("testFile.txt"));
 		assertEquals(NOT_FOUND_EXCEPTION, exception);
+	}
+
+	@Test
+	public void testClassPathWithDir() {
+		StaticLoader staticLoader = StaticLoader.ofClassPath("dir");
+		ByteBuf file = await(staticLoader.load("test.txt"));
+		assertNotNull(file);
 	}
 }

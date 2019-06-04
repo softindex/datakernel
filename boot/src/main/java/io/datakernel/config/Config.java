@@ -20,9 +20,9 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -274,16 +274,19 @@ public interface Config {
 	}
 
 	static Config ofClassPathProperties(String fileName, ClassLoader classLoader, boolean optional) {
+		Properties props = new Properties();
 		if (fileName.startsWith("/")) fileName = fileName.substring(1);
-		URL resource = classLoader.getResource(fileName);
-		if (resource == null) {
+		try (InputStream resource = classLoader.getResourceAsStream(fileName)) {
+			if (resource == null) throw new FileNotFoundException();
+			props.load(resource);
+		} catch (IOException e) {
 			if (optional) {
 				logger.warn("Can't load properties file: {}", fileName);
-				return ofProperties(new Properties());
+			} else {
+				throw new IllegalArgumentException("Failed to load required properties: " + fileName, e);
 			}
-			throw new IllegalArgumentException("Failed to load required properties: " + fileName);
 		}
-		return ofProperties(Paths.get(resource.getFile()), optional);
+		return ofProperties(props);
 	}
 	/**
 	 * Creates new config from file

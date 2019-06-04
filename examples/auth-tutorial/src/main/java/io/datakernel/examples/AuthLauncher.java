@@ -40,8 +40,12 @@ public class AuthLauncher extends HttpServerLauncher {
 								//[START REGION_1]
 								.with("/", request -> Promise.of(HttpResponse.redirect302("/login")))
 								//[END REGION_1]
-								.with(GET, "/signup", StaticServlet.create(staticLoader).withMappingTo("signup.html"))
-								.with(GET, "/login", StaticServlet.create(staticLoader).withMappingTo("login.html"))
+								.with(GET, "/signup", StaticServlet.create(staticLoader)
+										.withMappingTo("signup.html")
+										.withContentType(ContentType.of(MediaTypes.HTML)))
+								.with(GET, "/login", StaticServlet.create(staticLoader)
+										.withMappingTo("login.html")
+										.withContentType(ContentType.of(MediaTypes.HTML)))
 								.with(POST, "/login", loadBody()
 										.serve(request -> {
 											Map<String, String> params = request.getPostParameters();

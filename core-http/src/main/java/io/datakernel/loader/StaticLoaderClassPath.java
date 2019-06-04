@@ -2,14 +2,12 @@ package io.datakernel.loader;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.http.HttpException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.NoSuchFileException;
 import java.util.concurrent.Executor;
 
@@ -52,12 +50,8 @@ class StaticLoaderClassPath implements StaticLoader {
 			begin++;
 		}
 		path += name.substring(begin);
-		if (!name.endsWith(ROOT)) {
-			path += ROOT;
-		}
 
-		URL file = classLoader.getResource(path);
-
+		InputStream file = classLoader.getResourceAsStream(path);
 		if (file == null) {
 			return Promise.ofException(NOT_FOUND_EXCEPTION);
 		}
@@ -67,16 +61,18 @@ class StaticLoaderClassPath implements StaticLoader {
 						Promise.of(buf, e instanceof NoSuchFileException ? NOT_FOUND_EXCEPTION : e));
 	}
 
-	private byte[] loadResource(URL file) throws IOException {
-		try (InputStream in = file.openStream()) {
-			// reading file as resource
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[4096];
-			int size;
-			while ((size = in.read(buffer)) != -1) {
-				out.write(buffer, 0, size);
-			}
+	private byte[] loadResource(InputStream file) throws IOException {
+		// reading file as resource
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		byte[] buffer = new byte[4096];
+		int size;
+		while ((size = file.read(buffer)) != -1) {
+			out.write(buffer, 0, size);
+		}
+		try {
 			return out.toByteArray();
+		} finally {
+			file.close();
 		}
 	}
 }

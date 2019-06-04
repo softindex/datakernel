@@ -28,8 +28,6 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.uikernel.UiKernelServlets;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
@@ -38,19 +36,18 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class UIKernelWebAppModule extends AbstractModule {
 	private static final int DEFAULT_PORT = 8080;
-	private static final String DEFAULT_PATH_TO_RESOURCES = "src/main/resources/static/";
+	private static final String DEFAULT_PATH_TO_RESOURCES = "/static/";
 
 	@Override
 	protected void configure() {
 		bind(ExecutorService.class).toInstance(newCachedThreadPool());
-		bind(PersonGridModel.class);
-		bind(Gson.class);
+		bind(Gson.class).to(Gson::new);
 	}
 
 	@Provides
 	AsyncHttpServer server(Eventloop eventloop, Gson gson, PersonGridModel model, Config config) {
-		Path resources = Paths.get(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
-		StaticLoader resourceLoader = StaticLoader.ofPath(resources);
+		String resources = config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES);
+		StaticLoader resourceLoader = StaticLoader.ofClassPath(resources);
 		int port = config.get(ofInteger(), "port", DEFAULT_PORT);
 
 		// middleware used to map requests to appropriate asyncServlets

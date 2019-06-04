@@ -24,15 +24,12 @@ import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
-import static io.datakernel.loader.StaticLoader.ofPath;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class RequestParameterExample extends HttpServerLauncher {
-	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/query");
+	private static final String RESOURCE_DIR = "static/query";
 
 	@Override
 	protected Module getBusinessLogicModule() {
@@ -51,7 +48,7 @@ public final class RequestParameterExample extends HttpServerLauncher {
 							return Promise.of(HttpResponse.ok200()
 									.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
 						})
-						.with("/*", StaticServlet.create(ofPath(RESOURCE_DIR))
+						.with("/*", StaticServlet.create(ofClassPath(RESOURCE_DIR))
 								.withMappingEmptyTo("index.html"));
 			}
 		};
