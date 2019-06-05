@@ -53,9 +53,11 @@ import static java.util.Collections.singleton;
 public final class GlobalFsApp extends Launcher {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
 
-	public static final String PROPERTIES_FILE = "globalfs-app.example.properties";
+	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";
+	public static final String DEFAULT_STATIC_PATH = "/build";
+	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 
 	@Inject
 	@Named("App")
@@ -100,7 +102,10 @@ public final class GlobalFsApp extends Launcher {
 						Config.create()
 								.with("node.serverId", DEFAULT_SERVER_ID)
 								.with("fs.storage", DEFAULT_FS_STORAGE)
-								.override(ofClassPathProperties(PROPERTIES_FILE))
+								.override(Config.create()
+										.with("app.http.staticPath", DEFAULT_STATIC_PATH)
+										.with("app.http.listenAddresses", DEFAULT_LISTEN_ADDRESS))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				override(

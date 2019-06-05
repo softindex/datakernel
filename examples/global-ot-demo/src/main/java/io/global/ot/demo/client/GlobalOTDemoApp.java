@@ -43,6 +43,7 @@ public final class GlobalOTDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "client.properties";
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	public static final String DEFAULT_SERVER_ID = "OT Demo";
+	public static final String DEFAULT_RESOURCES = "/build";
 
 	@Inject
 	@Named("Example")
@@ -56,7 +57,7 @@ public final class GlobalOTDemoApp extends Launcher {
 						Config.create()
 								.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.with("resources.path", "front/build")
+								.with("resources.path", DEFAULT_RESOURCES)
 								.override(Config.ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),

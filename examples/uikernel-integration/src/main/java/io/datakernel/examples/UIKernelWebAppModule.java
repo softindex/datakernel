@@ -36,7 +36,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class UIKernelWebAppModule extends AbstractModule {
 	private static final int DEFAULT_PORT = 8080;
-	private static final String DEFAULT_PATH_TO_RESOURCES = "/static/";
+	private static final String DEFAULT_PATH_TO_RESOURCES = "/static";
 
 	@Override
 	protected void configure() {

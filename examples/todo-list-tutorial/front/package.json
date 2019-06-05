@@ -9,7 +9,9 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "prebuild": "rm -rf ../src/main/resources/build",
     "build": "react-scripts build",
+    "postbuild": "mkdir -p ../src/main/resources; mv build ../src/main/resources/",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
