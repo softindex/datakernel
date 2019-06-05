@@ -1,6 +1,8 @@
 package io.datakernel.test;
 
 import io.datakernel.di.Injector;
+import io.datakernel.di.InstanceInjector;
+import io.datakernel.di.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
@@ -14,6 +16,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 
+import static io.datakernel.di.util.ReflectionUtils.parameterized;
+
 public final class InjectingRunner extends BlockJUnit4ClassRunner {
 
 	@Retention(RetentionPolicy.RUNTIME)
@@ -25,11 +29,9 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 	@Nullable
 	private final Module module;
 
-	private final Class<?> testClass;
 
 	public InjectingRunner(Class<?> testClass) throws InitializationError, ReflectiveOperationException {
 		super(testClass);
-		this.testClass = testClass;
 
 		UseModules annotation = testClass.getAnnotation(UseModules.class);
 		if (annotation == null) {
@@ -63,11 +65,13 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 		if (module == null) {
 			return instance;
 		}
+		Key<InstanceInjector<Object>> key = Key.ofType(parameterized(InstanceInjector.class, instance.getClass()));
 		Injector injector = Injector.of(module, new AbstractModule() {{
-			bind((Class<Object>) testClass).toInstance(instance);
-
+			bind(key);
 			addDeclarativeBindingsFrom(instance);
 		}});
-		return injector.getInstance(testClass);
+		injector.getInstance(key).inject(instance);
+
+		return instance;
 	}
 }
