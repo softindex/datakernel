@@ -17,7 +17,6 @@
 package io.datakernel.worker;
 
 import io.datakernel.di.Binding;
-import io.datakernel.di.Dependency;
 import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
 
@@ -30,7 +29,7 @@ public final class WorkerPoolModule extends AbstractModule {
 			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
 				return null;
 			}
-			return Binding.of(new Dependency[0], $ -> {
+			return Binding.of($ -> {
 				throw new RuntimeException("expected instance override for worker id after Injector.enterScope");
 			});
 		});

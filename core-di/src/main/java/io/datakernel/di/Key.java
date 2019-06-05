@@ -47,7 +47,7 @@ public abstract class Key<T> {
 		this.name = name;
 	}
 
-	static final class KeyImpl<T> extends Key<T> {
+	private static final class KeyImpl<T> extends Key<T> {
 		KeyImpl(Type type, Name name) {super(type, name);}
 	}
 

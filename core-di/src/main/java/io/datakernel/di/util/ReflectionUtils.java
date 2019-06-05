@@ -242,13 +242,15 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
 		method.setAccessible(true);
 
-		return Binding.of(toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters()), args -> {
-			try {
-				return (T) method.invoke(module, args);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException("failed to call method " + method, e);
-			}
-		}).at(LocationInfo.from(method));
+		return Binding.of(
+				args -> {
+					try {
+						return (T) method.invoke(module, args);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						throw new RuntimeException("failed to call method " + method, e);
+					}
+				},
+				toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters())).at(LocationInfo.from(method));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -268,14 +270,15 @@ public final class ReflectionUtils {
 				})
 				.toArray(Dependency[]::new);
 
-		return (Binding<T>) Binding.of(dependencies,
+		return (Binding<T>) Binding.of(
 				args -> {
 					try {
 						return method.invoke(module, args);
 					} catch (IllegalAccessException | InvocationTargetException e) {
 						throw new RuntimeException("failed to call method " + method, e);
 					}
-				})
+				},
+				dependencies)
 				.at(LocationInfo.from(method));
 	}
 
@@ -284,13 +287,16 @@ public final class ReflectionUtils {
 
 		Dependency[] dependencies = toDependencies(null, constructor.getParameters());
 
-		return Binding.of(dependencies, args -> {
-			try {
-				return constructor.newInstance(args);
-			} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException("failed to create " + key, e);
-			}
-		}).at(LocationInfo.from(constructor));
+		return Binding.of(
+				args -> {
+					try {
+						return constructor.newInstance(args);
+					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+						throw new RuntimeException("failed to create " + key, e);
+					}
+				},
+				dependencies)
+				.at(LocationInfo.from(constructor));
 	}
 
 	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> elementKey, Binding<T> elementBinding) {
@@ -299,32 +305,36 @@ public final class ReflectionUtils {
 		dependencies[0] = new Dependency(Key.of(Injector.class), true);
 		System.arraycopy(elementBinding.getDependencies(), 0, dependencies, 1, dependencies.length - 1);
 
-		return Binding.of(dependencies, args -> {
-			Injector injector = (Injector) args[0];
-			Object[] elementArgs = Arrays.copyOfRange(args, 1, args.length);
-			return new InstanceProvider<T>() {
-				@Override
-				public T create() {
-					return elementBinding.getFactory().create(elementArgs);
-				}
+		return Binding.of(
+				args -> {
+					Injector injector = (Injector) args[0];
+					Object[] elementArgs = Arrays.copyOfRange(args, 1, args.length);
+					return new InstanceProvider<T>() {
+						@Override
+						public T create() {
+							return elementBinding.getFactory().create(elementArgs);
+						}
 
-				@Override
-				public T get() {
-					return injector.getInstance(elementKey);
-				}
-			};
-		});
+						@Override
+						public T get() {
+							return injector.getInstance(elementKey);
+						}
+					};
+				},
+				dependencies);
 	}
 
 	public static <T> Binding<InstanceInjector<T>> bindingForInstanceInjector(BindingInitializer<Object> bindingInitializer) {
 		BindingInitializer.Initializer<Object> initializer = bindingInitializer.getInitializer();
-		return Binding.of(bindingInitializer.getDependencies(), args ->
-				new InstanceInjector<T>() {
-					@Override
-					public void inject(T existingInstance) {
-						initializer.apply(existingInstance, args);
-					}
-				});
+		return Binding.of(
+				args ->
+						new InstanceInjector<T>() {
+							@Override
+							public void inject(T existingInstance) {
+								initializer.apply(existingInstance, args);
+							}
+						},
+				bindingInitializer.getDependencies());
 	}
 
 	// pattern = Map<K, List<V>>

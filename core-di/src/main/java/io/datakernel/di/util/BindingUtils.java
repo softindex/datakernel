@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class BindingUtils {
-	public static final Binding<?> PHANTOM = Binding.of(new Dependency[0], $ -> {
+	public static final Binding<?> PHANTOM = Binding.of($ -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by generated binding, if you see this message then somethning is really wrong");
 	});
 

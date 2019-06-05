@@ -20,7 +20,6 @@ import static io.datakernel.di.module.Modules.multibinderToSet;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 
@@ -78,7 +77,7 @@ public abstract class AbstractModule implements Module {
 			bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 					.get()
 					.computeIfAbsent(setKey, $ -> new HashSet<>())
-					.add(Binding.of(binding.getDependencies(), args -> singleton(factory.create(args))).at(binding.getLocation()));
+					.add(Binding.of(args -> singleton(factory.create(args)), binding.getDependencies()).at(binding.getLocation()));
 
 			resolve(setKey, multibinderToSet());
 		}
@@ -129,15 +128,15 @@ public abstract class AbstractModule implements Module {
 			return in(Scope.of(annotationClass), Arrays.stream(annotationClasses).map(Scope::of).toArray(Scope[]::new));
 		}
 
-		public void toBinding(Binding<T> binding) {
+		public void to(Binding<T> binding) {
 			if (this.binding != BindingUtils.PHANTOM) {
 				throw new RuntimeException("already mapped to some binding");
 			}
-			this.binding = binding;
+			this.binding = binding.at(getLocation(BindingBuilder.class));
 		}
 
 		public void to(Factory<T> factory, Key<?>... dependencies) {
-			toBinding(Binding.of(dependencies, factory).at(getLocation(BindingBuilder.class)));
+			to(Binding.of(factory, dependencies));
 		}
 
 		public void to(Factory<T> factory, List<Key<?>> dependencies) {
@@ -153,71 +152,71 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public void to(Constructor0<T> constructor) {
-			to(constructor, asList());
+			to(Binding.of(constructor));
 		}
 
 		public <T1> void to(Constructor1<T1, T> constructor,
 				Key<T1> dependency1) {
-			to(constructor, asList(dependency1));
+			to(Binding.to(constructor, dependency1));
 		}
 
 		public <T1, T2> void to(Constructor2<T1, T2, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2) {
-			to(constructor, asList(dependency1, dependency2));
+			to(Binding.to(constructor, dependency1, dependency2));
 		}
 
 		public <T1, T2, T3> void to(Constructor3<T1, T2, T3, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
-			to(constructor, asList(dependency1, dependency2, dependency3));
+			to(Binding.to(constructor, dependency1, dependency2, dependency3));
 		}
 
 		public <T1, T2, T3, T4> void to(Constructor4<T1, T2, T3, T4, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
-			to(constructor, asList(dependency1, dependency2, dependency3, dependency4));
+			to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4));
 		}
 
 		public <T1, T2, T3, T4, T5> void to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
-			to(constructor, asList(dependency1, dependency2, dependency3, dependency4, dependency5));
+			to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
 		public <T1, T2, T3, T4, T5, T6> void to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
-			to(constructor, asList(dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
+			to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
 		public <T1> void to(Constructor1<T1, T> constructor,
 				Class<T1> dependency1) {
-			to(constructor, Key.of(dependency1));
+			to(Binding.of(constructor, dependency1));
 		}
 
 		public <T1, T2> void to(Constructor2<T1, T2, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2) {
-			to(constructor, Key.of(dependency1), Key.of(dependency2));
+			to(Binding.of(constructor, dependency1, dependency2));
 		}
 
 		public <T1, T2, T3> void to(Constructor3<T1, T2, T3, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
-			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3));
+			to(Binding.of(constructor, dependency1, dependency2, dependency3));
 		}
 
 		public <T1, T2, T3, T4> void to(Constructor4<T1, T2, T3, T4, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
-			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4));
+			to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4));
 		}
 
 		public <T1, T2, T3, T4, T5> void to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
-			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5));
+			to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
 		public <T1, T2, T3, T4, T5, T6> void to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
-			to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5), Key.of(dependency6));
+			to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
 		public void toInstance(T instance) {
-			toBinding(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
+			to(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
 		}
 	}
 

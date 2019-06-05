@@ -235,7 +235,6 @@ public final class TestDI {
 	@Test
 	public void injectDsl() {
 		class ClassWithCustomDeps {
-
 			@Inject
 			@Named("test")
 			String string;
@@ -245,6 +244,10 @@ public final class TestDI {
 		}
 
 		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(new Key<InstanceInjector<ClassWithCustomDeps>>() {});
+			}
 
 			@Provides
 			ClassWithCustomDeps classWithCustomDeps() {
@@ -264,6 +267,10 @@ public final class TestDI {
 		});
 
 		ClassWithCustomDeps instance = injector.getInstance(ClassWithCustomDeps.class);
+		assertNull(instance.string);
+		assertNull(instance.raw);
+		InstanceInjector<ClassWithCustomDeps> instanceInjector = injector.getInstance(new Key<InstanceInjector<ClassWithCustomDeps>>() {});
+		instanceInjector.inject(instance);
 		assertEquals("str: 42", instance.string);
 		assertEquals(42, instance.raw.intValue());
 	}
@@ -501,7 +508,6 @@ public final class TestDI {
 
 		Set<String> expected = Stream.of("str1: 42", "str2: 42", "str3: 42").collect(toSet());
 
-
 		assertEquals(expected, instance);
 
 		Key<Set<List<String>>> key = new Key<Set<List<String>>>() {};
@@ -511,7 +517,6 @@ public final class TestDI {
 
 		assertEquals(expected2, instance2);
 	}
-
 
 	@Test
 	public void injeritedProviders() {

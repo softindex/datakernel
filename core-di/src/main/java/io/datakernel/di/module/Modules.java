@@ -97,7 +97,9 @@ public final class Modules {
 				Collections.addAll(dependencies, binding.getDependencies());
 				factories.add(args -> binding.getFactory().create(Arrays.copyOfRange(args, from, to)));
 			}
-			return Binding.of(dependencies.toArray(new Dependency[0]), args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args))));
+			return Binding.of(
+					args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args))),
+					dependencies.toArray(new Dependency[0]));
 		};
 	}
 
