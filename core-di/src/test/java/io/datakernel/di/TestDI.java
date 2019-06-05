@@ -606,4 +606,23 @@ public final class TestDI {
 		assertEquals("hello", instance.string);
 		assertNull(instance.integer);
 	}
+
+	@Test
+	public void transitiveImplicitBinding() {
+		@Inject
+		class Container {
+			@Inject
+			InstanceProvider<InstanceProvider<String>> provider;
+		}
+
+		Injector injector = Injector.of(new AbstractModule() {{
+			bind(TestDI.class).toInstance(TestDI.this);
+			bind(Container.class);
+			bind(String.class).toInstance("hello");
+		}});
+
+		Container instance = injector.getInstance(Container.class);
+
+		assertEquals("hello", instance.provider.get().get());
+	}
 }

@@ -6,5 +6,5 @@ import io.datakernel.di.Scope;
 
 @FunctionalInterface
 public interface BindingTransformer<T> {
-	Binding<T> transform(Scope[] scope, Key<T> key, Binding<T> binding, BindingGenerationContext context);
+	Binding<T> transform(Scope[] scope, Key<T> key, Binding<T> binding, BindingProvider context);
 }

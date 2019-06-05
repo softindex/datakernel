@@ -58,7 +58,6 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 		module = Modules.combine(modules);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	protected Object createTest() throws Exception {
 		Object instance = super.createTest();

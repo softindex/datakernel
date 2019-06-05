@@ -23,13 +23,13 @@ public final class DefaultModule implements Module {
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
-		generators.put(Object.class, singleton((scope, key, context) -> ReflectionUtils.generateImplicitBinding(key)));
+		generators.put(Object.class, singleton((scope, key, provider) -> ReflectionUtils.generateImplicitBinding(key)));
 
 		// generating bindings for provider requests
 		generators.put(new Key<InstanceProvider<?>>() {}.getType(), singleton(
-				(scope, key, context) -> {
+				(scope, key, provider) -> {
 					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
-					Binding<Object> elementBinding = context.getBinding(elementKey);
+					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
 					}
@@ -39,7 +39,7 @@ public final class DefaultModule implements Module {
 		));
 
 		generators.put(new Key<InstanceInjector<?>>() {}.getType(), singleton(
-				(scope, key, context) -> {
+				(scope, key, provider) -> {
 					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
 					//noinspection unchecked
 					return (Binding) bindingForInstanceInjector(ReflectionUtils.generateBindingInitializer(elementKey));

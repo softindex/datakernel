@@ -90,7 +90,9 @@ public final class ReflectionUtils {
 
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Binding<T> binding = generateConstructorBinding(key);
-		if (binding == null) return null;
+		if (binding == null) {
+			return null;
+		}
 		return binding.withInitializer(generateBindingInitializer(key));
 	}
 

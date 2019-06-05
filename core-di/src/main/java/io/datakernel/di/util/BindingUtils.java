@@ -4,7 +4,8 @@ import io.datakernel.di.Binding;
 import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
-import io.datakernel.di.module.BindingGenerationContext;
+import io.datakernel.di.error.CannotGenerateBindingException;
+import io.datakernel.di.module.BindingProvider;
 import io.datakernel.di.module.BindingGenerator;
 import io.datakernel.di.module.BindingTransformer;
 import org.jetbrains.annotations.Nullable;
@@ -72,107 +73,93 @@ public final class BindingUtils {
 	public static void completeBindings(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			Map<Integer, BindingTransformer<?>> transformers,
 			Map<Type, Set<BindingGenerator<?>>> generators) {
-		completeBindings(new HashMap<>(bindings.get()), new HashSet<>(), UNSCOPED, bindings, transformers, generators);
+		completeBindings(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformers, generators);
 	}
 
-	private static void completeBindings(Map<Key<?>, Binding<?>> known, Set<Binding<?>> transformed,
+	private static void completeBindings(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			Map<Integer, BindingTransformer<?>> transformers,
 			Map<Type, Set<BindingGenerator<?>>> generators) {
-		completeBindings(known, transformed, scope, bindings.get(), transformers, generators);
-		bindings.getChildren().forEach((subscope, subtrie) -> completeBindings(override(known, subtrie.get()), transformed, next(scope, subscope), subtrie, transformers, generators));
+		completeBindings(known, scope, bindings.get(), transformers, generators);
+		bindings.getChildren().forEach((subscope, subtrie) -> completeBindings(override(known, subtrie.get()), next(scope, subscope), subtrie, transformers, generators));
 	}
 
 	@SuppressWarnings("unchecked")
-	private static void completeBindings(Map<Key<?>, @Nullable Binding<?>> known, Set<Binding<?>> transformed,
+	private static void completeBindings(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
 			Map<Integer, BindingTransformer<?>> transformers,
 			Map<Type, Set<BindingGenerator<?>>> generators) {
 		Map<Key<?>, Set<BindingGenerator<?>>> generatorCache = new HashMap<>();
-		BindingGenerationContext context = new BindingGenerationContext() {
-			@Override
-			@Nullable
-			public <T> Binding<T> getBinding(Key<T> key) {
-				return (Binding<T>) known.get(key);
-			}
-		};
 
 		List<BindingTransformer<Object>> transformerList = transformers.entrySet().stream()
 				.sorted(Comparator.comparing(Entry::getKey))
 				.map(e -> (BindingTransformer<Object>) e.getValue())
 				.collect(toList());
 
-		for (; ; ) {
-			Map<Key<?>, Binding<?>> generated = new HashMap<>();
-			for (Entry<Key<?>, @Nullable Binding<?>> entry : localBindings.entrySet()) {
+		Map<Key<?>, Binding<?>> generated = new HashMap<>();
 
-				Key<Object> key = (Key<Object>) entry.getKey();
-				Binding<?> binding = entry.getValue();
-
-				if (binding == PHANTOM) {
-					Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(key, k -> findBestMatch(k.getType(), generators));
-					if (found.isEmpty()) {
-						throw new RuntimeException("cannot generate a real binding for phantom one");
-					}
-					Set<Binding> generatedBindings = found.stream()
-							.map(generator -> ((BindingGenerator<Object>) generator).generate(scope, key, context))
-							.filter(Objects::nonNull)
-							.collect(toSet());
-
-					if (generatedBindings.isEmpty()) {
-						throw new RuntimeException("refused to generate a real binding for phantom one");
-					}
-					if (generatedBindings.size() > 1) {
-						throw new RuntimeException("two generators both generated a binding for same key");
-					}
-					binding = generatedBindings.iterator().next();
+		BindingProvider provider = new BindingProvider() {
+			@Override
+			@Nullable
+			public <T> Binding<T> getBinding(Key<T> key) {
+				Binding<T> binding = (Binding<T>) generated.get(key);
+				if (binding == null) {
+					binding = (Binding<T>) known.get(key);
 				}
-
-				if (!transformed.contains(binding)) {
-					for (BindingTransformer<Object> transformer : transformerList) {
-						binding = transformer.transform(scope, key, (Binding<Object>) binding, context);
-					}
-					transformed.add(binding);
-					generated.put(key, binding);
+				if (binding != null && binding != PHANTOM) {
+					return binding;
 				}
-
-				for (Dependency dependency : binding.getDependencies()) {
-					Key<Object> depKey = (Key<Object>) dependency.getKey();
-					if (known.containsKey(depKey)) {
-						continue;
-					}
-					Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(depKey, k -> findBestMatch(k.getType(), generators));
-					if (found.isEmpty()) {
-						// no generators found, ignore that, unsatisfied dependency check will find these
-						// and add to known as a little optimization (no generators for this key anyway)
-						known.put(key, null);
-						continue;
-					}
-					Set<Binding> generatedBindings = found.stream()
-							.map(generator -> ((BindingGenerator<Object>) generator).generate(scope, depKey, context))
-							.filter(Objects::nonNull)
-							.collect(toSet());
-
-					if (generatedBindings.isEmpty()) {
-						continue; // nobody generated a binding, possibly they'll do on the next iteration
-					}
-					if (generatedBindings.size() > 1) {
-						throw new RuntimeException("two generators both generated a binding for same key");
-					}
-					Binding<Object> b = generatedBindings.iterator().next();
-					for (BindingTransformer<Object> transformer : transformerList) {
-						b = transformer.transform(scope, depKey, b, context);
-					}
-					transformed.add(b);
-					generated.put(depKey, b);
-					known.put(depKey, b);
+				Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(key, k -> findBestMatch(k.getType(), generators));
+				if (found.isEmpty()) {
+					return null;
 				}
+				Set<Binding<T>> generatedBindings = found.stream()
+						.map(generator -> ((BindingGenerator<T>) generator).generate(scope, key, this))
+						.filter(Objects::nonNull)
+						.collect(toSet());
+
+				if (generatedBindings.isEmpty()) {
+					return null;
+				}
+				if (generatedBindings.size() > 1) {
+					throw new CannotGenerateBindingException(key, "more than one generator provided a binding");
+				}
+				Binding<T> generatedBinding = generatedBindings.iterator().next();
+				generated.put(key, generatedBinding);
+
+				// ensure that its dependencies are generated if nesessary
+				for (Dependency dependency : generatedBinding.getDependencies()) {
+					getBinding(dependency.getKey());
+				}
+				return generatedBinding;
 			}
-			if (generated.isEmpty()) {
-				break;
+		};
+
+		for (Entry<Key<?>, Binding<?>> entry : localBindings.entrySet()) {
+			Key<Object> key = (Key<Object>) entry.getKey();
+			Binding<?> binding = entry.getValue();
+
+			if (binding == PHANTOM) {
+				Binding<Object> generatedBinding = provider.getBinding(key);
+				if (generatedBinding == null) {
+					// phantom bindings are the ones requested with plain `bind(...);` call, here we fail fast
+					// see comment below where dependencies are generated
+					throw new CannotGenerateBindingException(key, "refused to generate a requested binding");
+				}
+				known.put(key, generatedBinding);
 			}
-			localBindings.putAll(generated);
+
+			for (Dependency dependency : binding.getDependencies()) {
+				Key<?> depKey = dependency.getKey();
+				if (known.containsKey(depKey)) {
+					continue;
+				}
+				known.put(depKey, provider.getBinding(depKey)); // put even nulls in known just as a little optimization
+				// when generating dependencies we dont fail and just do nothing
+				// unsatisfied dependency check will collect all of them and make a nice error
+			}
 		}
+		localBindings.putAll(generated);
 	}
 
 	/**

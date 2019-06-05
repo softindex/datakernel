@@ -66,8 +66,8 @@ public final class Modules {
 		Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>(into.getBindingTransformers());
 		bindingTransformers.putAll(replacements.getBindingTransformers());
 
-		Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
-		combineMultimap(bindingGenerators, into.getBindingGenerators());
+		Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>(into.getBindingGenerators());
+		bindingGenerators.putAll(replacements.getBindingGenerators());
 
 		Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>(into.getConflictResolvers());
 		conflictResolvers.putAll(replacements.getConflictResolvers());

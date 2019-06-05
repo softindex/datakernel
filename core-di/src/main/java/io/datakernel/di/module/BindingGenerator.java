@@ -7,5 +7,5 @@ import io.datakernel.di.Scope;
 @FunctionalInterface
 public interface BindingGenerator<T> {
 
-	Binding<T> generate(Scope[] scope, Key<T> key, BindingGenerationContext context);
+	Binding<T> generate(Scope[] scope, Key<T> key, BindingProvider provider);
 }

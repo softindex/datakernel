@@ -43,17 +43,17 @@ public abstract class AbstractModule implements Module {
 		Class<?> cls = instance.getClass();
 		Key<?> moduleType = Key.of(cls);
 
-		for (Method provider : getAnnotatedElements(cls, Provides.class, Class::getDeclaredMethods)) {
-			TypeVariable<Method>[] typeVars = provider.getTypeParameters();
+		for (Method method : getAnnotatedElements(cls, Provides.class, Class::getDeclaredMethods)) {
+			TypeVariable<Method>[] typeVars = method.getTypeParameters();
 			if (typeVars.length == 0) {
-				Annotation[] annotations = provider.getDeclaredAnnotations();
-				Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
+				Annotation[] annotations = method.getDeclaredAnnotations();
+				Key<Object> key = keyOf(moduleType, method.getGenericReturnType(), annotations);
 				bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 						.get()
 						.computeIfAbsent(key, $ -> new HashSet<>())
-						.add(bindingForMethod(instance, provider));
+						.add(bindingForMethod(instance, method));
 			} else {
-				Type genericReturnType = provider.getGenericReturnType();
+				Type genericReturnType = method.getGenericReturnType();
 				for (TypeVariable<Method> typeVar : typeVars) {
 					if (typeVar.getBounds().length != 1 && typeVar.getBounds()[0] != Object.class) {
 						throw new RuntimeException("Bounded type vars are not supported yet");
@@ -63,7 +63,7 @@ public abstract class AbstractModule implements Module {
 					}
 				}
 
-				generate(genericReturnType, (scope, key, context) -> bindingForGenericMethod(instance, key, provider));
+				generate(genericReturnType, (scope, key, provider) -> bindingForGenericMethod(instance, key, method));
 			}
 		}
 		for (Method provider : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods)) {
@@ -83,7 +83,7 @@ public abstract class AbstractModule implements Module {
 		}
 	}
 
-	@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "unchecked"})
+	@SuppressWarnings("unchecked")
 	public final class BindingBuilder<T> {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
