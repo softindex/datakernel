@@ -125,6 +125,7 @@ public final class StaticServlet implements AsyncServlet {
 		String mappedPath = mapper.apply(relativePath);
 		if (!filter.test(relativePath) || mappedPath == null) return Promise.ofException(HttpException.notFound404());
 		ContentType contentType = contentTypeResolver.apply(mappedPath);
+
 		return resourceLoader.load(mappedPath)
 				.thenEx((byteBuf, e) -> {
 					if (e == null) {

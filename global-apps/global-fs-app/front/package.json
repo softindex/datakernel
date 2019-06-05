@@ -22,7 +22,7 @@
   },
   "scripts": {
     "start": "react-app-rewired start",
-    "build": "react-app-rewired build && webpack --mode production",
+    "build": "react-app-rewired build && webpack --mode production && mv build ../src/main/resources",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },

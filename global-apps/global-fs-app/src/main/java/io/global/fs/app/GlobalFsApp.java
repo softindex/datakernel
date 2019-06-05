@@ -40,6 +40,7 @@ import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
@@ -105,6 +106,7 @@ public final class GlobalFsApp extends Launcher {
 								.override(Config.create()
 										.with("app.http.staticPath", DEFAULT_STATIC_PATH)
 										.with("app.http.listenAddresses", DEFAULT_LISTEN_ADDRESS))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				override(

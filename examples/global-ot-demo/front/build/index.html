@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <title>OT State Manager</title>
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+
+<body>
+<div class="container">
+  <div class="control">
+    <input id="toAdd" type="number" step="1">
+    <button id="add">Add</button>
+    <br>
+
+    Current state:
+    <span id="state"></span>
+    <br>
+    <p id="status"></p>
+    <button id="newManager">New Manager</button>
+  </div>
+
+  <div class='graph'>
+    <div id="graphviz" style="text-align: center;"></div>
+  </div>
+</div>
+
+<script src="js/bundle.js"></script>
+</body>

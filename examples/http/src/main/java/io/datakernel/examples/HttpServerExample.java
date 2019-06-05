@@ -25,10 +25,6 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
-/**
- * HTTP simple server example.
- * Sends back a greeting and received data.
- */
 public final class HttpServerExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
