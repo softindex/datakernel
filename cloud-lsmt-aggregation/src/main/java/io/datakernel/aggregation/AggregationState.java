@@ -22,11 +22,11 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.ot.OTState;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationPredicates.toRangeScan;
@@ -41,7 +41,7 @@ import static java.util.Collections.unmodifiableMap;
  * Provides methods for managing index, querying for chunks by key, searching for chunks that are available for consolidation.
  */
 public final class AggregationState implements OTState<AggregationDiff> {
-	private static final Logger logger = LoggerFactory.getLogger(AggregationState.class);
+	private static final Logger logger = Logger.getLogger(AggregationState.class.getName());
 
 	private final AggregationStructure aggregation;
 
@@ -346,12 +346,13 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private static void logChunksAndStrategy(Collection<AggregationChunk> chunks, PickingStrategy strategy) {
-		if (logger.isInfoEnabled()) {
+		if (logger.isLoggable(Level.INFO)) {
 			String chunkIds = chunks.stream()
 					.map(AggregationChunk::getChunkId)
 					.map(Object::toString)
 					.collect(Collectors.joining(",", "[", "]"));
-			logger.info("Chunks for consolidation {}: {}. Strategy: {}", chunks.size(), chunkIds, strategy);
+			logger.log(Level.INFO, "Chunks for consolidation " + chunks.size() + ": " + chunkIds
+					+ ". Strategy: " + strategy);
 		}
 	}
 

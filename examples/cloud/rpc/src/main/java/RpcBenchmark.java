@@ -8,6 +8,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
@@ -23,7 +24,9 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 public class RpcBenchmark extends Launcher {
-
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	private final static int MAX_REQUESTS = 1000000;
 	private final static int WARMUP_ROUNDS = 1;
 	private final static int BENCHMARK_ROUNDS = 3;

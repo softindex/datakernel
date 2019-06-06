@@ -4,6 +4,7 @@ import io.datakernel.di.module.Module;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,6 +15,11 @@ import static io.datakernel.di.module.Modules.combine;
  * This example demonstrates configuring and launching RemoteFsServer.
  */
 public class ServerSetupExample extends RemoteFsServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
+
 	@Override
 	protected Module getOverrideModule() {
 		try {

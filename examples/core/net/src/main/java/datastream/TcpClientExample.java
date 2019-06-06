@@ -7,6 +7,7 @@ import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +26,9 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
  */
 public final class TcpClientExample {
 	public static final int PORT = 9922;
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());

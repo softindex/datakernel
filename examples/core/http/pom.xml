@@ -28,6 +28,17 @@
       <artifactId>http-launchers</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>global-fs</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>logger-config</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

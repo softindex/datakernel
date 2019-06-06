@@ -30,23 +30,22 @@ import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.BinaryDataFormats.readBuf;
 import static java.util.stream.Collectors.toList;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsCheckpointStorage.class.getName());
 	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
@@ -80,7 +79,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							Promise.complete() :
 							Promise.ofException(OVERRIDING);
 				})
-				.whenComplete(toLogger(logger, TRACE, "store", filename, signedCheckpoint, this));
+				.whenComplete(toLogger(logger, FINEST, "store", filename, signedCheckpoint, this));
 	}
 
 	@Override
@@ -108,14 +107,14 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "load", filename, position, this));
+				.whenComplete(toLogger(logger, FINEST, "load", filename, position, this));
 	}
 
 	@Override
 	public Promise<List<String>> listMetaCheckpoints(String glob) {
 		return storage.list(glob)
 				.map(list -> list.stream().map(FileMetadata::getName).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
+				.whenComplete(toLogger(logger, FINEST, "listMetaCheckpoints", glob, this));
 	}
 
 	@Override
@@ -144,7 +143,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
+				.whenComplete(toLogger(logger, FINEST, "loadMetaCheckpoints", filename, this));
 	}
 
 	@Override
@@ -175,7 +174,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "loadIndex", filename, this));
+				.whenComplete(toLogger(logger, FINEST, "loadIndex", filename, this));
 	}
 
 	@Override
@@ -187,7 +186,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					return Promise.complete();
 				})
-				.whenComplete(toLogger(logger, TRACE, "drop", filename, revision, this));
+				.whenComplete(toLogger(logger, FINEST, "drop", filename, revision, this));
 	}
 
 	@Override

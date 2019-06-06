@@ -5,6 +5,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import static io.datakernel.http.AsyncServletDecorator.*;
 import static io.datakernel.http.HttpMethod.GET;
@@ -12,6 +13,9 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class ServletDecoratorExample extends HttpServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	@Provides
 	AsyncServlet servlet() {
 		return loadBody().serve(

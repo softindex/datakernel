@@ -5,8 +5,12 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 public final class BlockingServletExample extends HttpServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	@Provides
 	AsyncServlet servlet() {
 		return RoutingServlet.create()

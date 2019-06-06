@@ -27,17 +27,16 @@ import io.datakernel.util.Initializable;
 import io.global.common.*;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.logging.Logger;
 
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsAdapter.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsAdapter.class.getName());
 
 	public static final StacklessException UPK_UPLOAD = new StacklessException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
 	public static final StacklessException UPK_DELETE = new StacklessException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");
@@ -92,7 +91,7 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+				.whenComplete(toLogger(logger, FINEST, "list", glob, this));
 	}
 
 
@@ -102,14 +101,14 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+				.whenComplete(toLogger(logger, FINEST, "list", glob, this));
 	}
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
 		return driver.getMetadata(space, name)
 				.map(checkpoint -> checkpoint != null ? fromCheckpoint(checkpoint) : null)
-				.whenComplete(toLogger(logger, TRACE, "getMetadata", name, this));
+				.whenComplete(toLogger(logger, FINEST, "getMetadata", name, this));
 	}
 
 	@Override

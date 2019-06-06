@@ -33,12 +33,12 @@ import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
@@ -51,7 +51,7 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.singleton;
 
 public final class GlobalFsApp extends Launcher {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsApp.class.getName());
 
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";
@@ -118,7 +118,7 @@ public final class GlobalFsApp extends Launcher {
 									logger.info("Using remote discovery service at " + discoveryAddress);
 									return HttpDiscoveryService.create(discoveryAddress, client);
 								}
-								logger.warn("No discovery.address config found, using discovery stub");
+								logger.log(Level.WARNING, "No discovery.address config found, using discovery stub");
 								PrivKey stubPK = PrivKey.of(BigInteger.ONE);
 								AnnouncementStorage announcementStorage = new AnnouncementStorage() {
 									@Override

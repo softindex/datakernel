@@ -29,17 +29,17 @@ import io.global.kv.api.KvItem;
 import io.global.kv.api.RawKvItem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.global.common.Hash.sha1;
 import static io.global.kv.util.BinaryDataFormats.RAW_KV_ITEM_CODEC;
 
 public final class GlobalKvDriver<K, V> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalKvDriver.class);
+	private static final Logger logger = Logger.getLogger(GlobalKvDriver.class.getName());
 
 	private final GlobalKvNode node;
 	private final StructuredCodec<K> keyCodec;
@@ -99,7 +99,7 @@ public final class GlobalKvDriver<K, V> {
 				.map(supplier -> supplier
 						.filter(signedItem -> {
 							if (!signedItem.verify(space)) {
-								logger.warn("received key-value pair with a signature that is not verified, skipping");
+								logger.log(Level.WARNING, "received key-value pair with a signature that is not verified, skipping");
 								return false;
 							}
 							RawKvItem raw = signedItem.getValue();

@@ -1,4 +1,5 @@
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.Sharders.HashSharder;
@@ -12,6 +13,9 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  * Example of some simple builtin stream nodes.
  */
 public final class BuiltinNodesExample {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	private static void filter() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 

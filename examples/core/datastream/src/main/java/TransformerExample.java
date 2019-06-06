@@ -1,5 +1,6 @@
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -11,6 +12,10 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  */
 public final class TransformerExample implements StreamTransformer<String, Integer> {
 	private static final int MAX_LENGTH = 10;
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 
 	private final AbstractStreamConsumer<String> inputConsumer = new AbstractStreamConsumer<String>() {
 

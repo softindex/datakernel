@@ -28,11 +28,11 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
@@ -42,7 +42,7 @@ import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HttpDiscoveryService implements DiscoveryService {
-	private static final Logger logger = LoggerFactory.getLogger(HttpDiscoveryService.class);
+	private static final Logger logger = Logger.getLogger(HttpDiscoveryService.class.getName());
 
 	private final IAsyncHttpClient client;
 	private final InetSocketAddress address;
@@ -97,7 +97,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.build()))
 				.thenEx((response, e) -> {
 					if (e != null) {
-						logger.trace("Failed to find announcements", e);
+						logger.log(Level.FINEST, "Failed to find announcements", e);
 						return Promise.of(null);
 					}
 					return response.loadBody()

@@ -16,17 +16,16 @@
 
 package io.datakernel.remotefs.stress;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.remotefs.RemoteFsServer;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.getFreePort;
@@ -35,7 +34,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 public class StressServer {
 
 	static {
-		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.INFO);
+		LoggerConfigurer.enableLogging(Level.INFO);
 	}
 
 	static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");

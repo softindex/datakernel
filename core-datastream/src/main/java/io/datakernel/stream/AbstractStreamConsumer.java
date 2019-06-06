@@ -23,11 +23,11 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -40,7 +40,7 @@ import static java.util.Collections.emptySet;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass().getName());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
@@ -102,9 +102,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.setException(e);
 		if (!(e instanceof ExpectedException)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("StreamConsumer {} closed with error {}", this, e.toString());
-			}
+			logger.log(Level.WARNING, () -> "StreamConsumer " + this + " closed with error " + e.toString());
 		}
 		onError(e);
 		eventloop.post(this::cleanup);

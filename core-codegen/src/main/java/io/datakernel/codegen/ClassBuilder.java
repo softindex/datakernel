@@ -22,8 +22,6 @@ import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -33,6 +31,8 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.codegen.Utils.loadAndCast;
 import static java.util.Arrays.asList;
@@ -48,7 +48,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  */
 @SuppressWarnings("unchecked")
 public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass().getName());
 
 	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
@@ -271,7 +271,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
-				logger.trace("Fetching {} for key {} from cache", cachedClass, key);
+				logger.log(Level.FINEST, () -> "Fetching " + cachedClass + " for key " + key + " from cache");
 				return (Class<T>) cachedClass;
 			}
 
@@ -393,7 +393,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		cw.visitEnd();
 
 		Class<?> definedClass = classLoader.defineClass(actualClassName, key, cw.toByteArray());
-		logger.trace("Defined new {} for key {}", definedClass, key);
+		logger.log(Level.FINEST, () -> "Defined new " + definedClass + " for key " + key);
 		return (Class<T>) definedClass;
 	}
 

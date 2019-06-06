@@ -17,8 +17,6 @@
 package io.datakernel.config;
 
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -31,6 +29,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -43,7 +43,7 @@ import static java.util.Collections.*;
  * Interface for interaction with configs.
  */
 public interface Config {
-	Logger logger = LoggerFactory.getLogger(Config.class);
+	Logger logger = Logger.getLogger(Config.class.getName());
 
 	/**
 	 * Empty config with no values, children, etc...
@@ -297,7 +297,7 @@ public interface Config {
 			props.load(resource);
 		} catch (IOException e) {
 			if (optional) {
-				logger.warn("Can't load properties file: {}", fileName);
+				logger.log(Level.WARNING, "Can't load properties file: " +  fileName);
 			} else {
 				throw new IllegalArgumentException("Failed to load required properties: " + fileName, e);
 			}
@@ -318,7 +318,7 @@ public interface Config {
 			props.load(is);
 		} catch (IOException e) {
 			if (optional) {
-				logger.warn("Can't load properties file: {}", file);
+				logger.log(Level.WARNING, () -> "Can't load properties file: " + file);
 			} else {
 				throw new IllegalArgumentException("Failed to load required properties: " + file.toString(), e);
 			}

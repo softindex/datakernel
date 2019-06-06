@@ -16,17 +16,16 @@
 
 package io.datakernel.remotefs;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -36,11 +35,11 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.enableLogging;
 
 @Ignore("takes forever, only for manual testing")
 public final class TestRepartitionController {
@@ -138,9 +137,9 @@ public final class TestRepartitionController {
 	}
 
 	private void testN(int n, int minSize, int maxSize) throws IOException {
-		enableLogging(Logger.ROOT_LOGGER_NAME, Level.WARN);
-		enableLogging("io.datakernel.remotefs", Level.TRACE);
-		enableLogging("io.datakernel.remotefs", Level.TRACE);
+		LoggerConfigurer.enableLogging(Level.WARNING);
+		LoggerConfigurer.enableLogging("io.datakernel.remotefs", Level.FINEST);
+		LoggerConfigurer.enableLogging("io.datakernel.remotefs", Level.FINEST);
 
 		long start = System.nanoTime();
 

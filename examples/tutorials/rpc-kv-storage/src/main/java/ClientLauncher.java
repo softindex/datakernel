@@ -2,6 +2,7 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Args;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -9,6 +10,9 @@ import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class ClientLauncher extends Launcher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	@Inject
 	private RpcClient client;
 

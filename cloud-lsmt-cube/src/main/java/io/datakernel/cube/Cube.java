@@ -50,8 +50,6 @@ import io.datakernel.stream.processor.StreamSplitter;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.nio.file.NoSuchFileException;
@@ -62,6 +60,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -87,7 +87,7 @@ import static java.util.stream.Collectors.toList;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
+	private static final Logger logger = Logger.getLogger(Cube.class.getName());
 
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
 
@@ -368,7 +368,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				.withStats(aggregationStats);
 
 		aggregations.put(config.id, new AggregationContainer(aggregation, config.measures, config.predicate));
-		logger.info("Added aggregation {} for id '{}'", aggregation, config.id);
+		logger.log(Level.INFO, () -> "Added aggregation " + aggregation + " for id '" + config.id + "'");
 		return this;
 	}
 
@@ -492,7 +492,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	 */
 	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
 			AggregationPredicate dataPredicate) {
-		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
+		logger.log(Level.INFO, "Started consuming data. Dimensions: " + dimensionFields.keySet() + ". Measures: " + measureFields.keySet());
 
 		StreamSplitter<T> streamSplitter = StreamSplitter.create();
 
@@ -695,7 +695,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		for (AggregationContainer aggregationContainer : aggregations.values()) {
 			int numberOfOverlappingChunks = aggregationContainer.aggregation.getNumberOfOverlappingChunks();
 			if (numberOfOverlappingChunks > maxOverlappingChunksToProcessLogs) {
-				logger.info("Aggregation {} contains {} overlapping chunks", aggregationContainer.aggregation, numberOfOverlappingChunks);
+				logger.log(Level.INFO, () -> "Aggregation " + aggregationContainer.aggregation + " contains "
+						+ numberOfOverlappingChunks + " overlapping chunks");
 				excessive = true;
 			}
 		}
@@ -774,7 +775,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 						queryLastError = e;
 
 						if (e instanceof NoSuchFileException) {
-							logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), e);
+							logger.log(Level.WARNING, "Query failed because of NoSuchFileException. " + cubeQuery.toString(), e);
 						}
 					}
 				});

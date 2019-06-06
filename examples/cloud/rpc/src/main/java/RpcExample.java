@@ -4,6 +4,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
@@ -14,6 +15,9 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 public class RpcExample extends Launcher {
 	private static final int SERVICE_PORT = 34765;
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	@Inject
 	private RpcClient client;

@@ -16,11 +16,11 @@
 
 package io.datakernel.time;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class SteppingCurrentTimeProvider implements CurrentTimeProvider {
-	private static final Logger logger = LoggerFactory.getLogger(SteppingCurrentTimeProvider.class);
+	private static final Logger logger = Logger.getLogger(SteppingCurrentTimeProvider.class.getName());
 
 	private long timeMillis;
 	private long step;
@@ -38,7 +38,7 @@ public final class SteppingCurrentTimeProvider implements CurrentTimeProvider {
 	public long currentTimeMillis() {
 		long currentTime = timeMillis;
 		timeMillis += step;
-		logger.info("Time: {}", currentTime);
+		logger.log(Level.INFO, "Time: " + currentTime);
 		return currentTime;
 	}
 }

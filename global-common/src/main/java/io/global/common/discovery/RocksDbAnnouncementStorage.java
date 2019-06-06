@@ -12,10 +12,9 @@ import org.jetbrains.annotations.Nullable;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Executor;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
@@ -24,7 +23,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public class RocksDbAnnouncementStorage implements AnnouncementStorage {
-	private static final Logger logger = LoggerFactory.getLogger(RocksDbAnnouncementStorage.class);
+	private static final Logger logger = Logger.getLogger(RocksDbAnnouncementStorage.class.getName());
 
 	private static final StructuredCodec<PubKey> PUB_KEY_CODEC = REGISTRY.get(PubKey.class);
 	private static final StructuredCodec<SignedData<AnnounceData>> ANNOUNCEMENT_CODEC = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});

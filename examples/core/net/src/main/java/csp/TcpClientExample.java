@@ -8,6 +8,7 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
@@ -24,6 +25,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class TcpClientExample {
 	private final Eventloop eventloop = Eventloop.create();
 	private AsyncTcpSocket socket;
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	/* Thread, which sends characters and prints received responses to the console. */
 	private Thread getScannerThread() {

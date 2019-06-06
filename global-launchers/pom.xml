@@ -43,11 +43,11 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-      <optional>true</optional>
+      <groupId>io.datakernel</groupId>
+      <artifactId>logger-config</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-test</artifactId>

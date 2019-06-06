@@ -36,7 +36,6 @@ import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
@@ -44,6 +43,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.difference;
@@ -53,7 +54,6 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.*;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Builds dependency graph of {@code Service} objects based on Guice's object
@@ -84,7 +84,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * An application terminates if a circular dependency found.
  */
 public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
-	private static final Logger logger = getLogger(ServiceGraphModule.class);
+	private static final Logger logger = Logger.getLogger(ServiceGraphModule.class.getName());
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();
@@ -343,11 +343,11 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								}
 
 								if (rawTypeMatches && !(instance instanceof WorkerPool)) {
-									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
+									logger.log(Level.WARNING, () -> "Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
 								}
 
 								if (instanceMatches) {
-									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
+									logger.log(Level.WARNING, () -> "Unsupported service " + key + " at " + binding.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
 								}
 								return new ServiceKey(dependency.getKey());
 							})
@@ -375,7 +375,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	private ServiceGraph populateServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies, IdentityHashMap<Object, CachedService> cache) {
 		Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));
 		if (!unusedKeys.isEmpty()) {
-			logger.warn("Unused services : {}", unusedKeys);
+			logger.log(Level.WARNING, () -> "Unused services : " + unusedKeys);
 		}
 
 		for (Map.Entry<ServiceKey, List<?>> entry : instances.entrySet()) {
@@ -390,11 +390,14 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			Set<ServiceKey> dependencies = new HashSet<>(entry.getValue());
 
 			if (!difference(removedDependencies.getOrDefault(key, emptySet()), dependencies).isEmpty()) {
-				logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.getOrDefault(key, emptySet()), dependencies));
+				logger.log(Level.WARNING, () -> "Unused removed dependencies for " + key + " : " +
+						difference(removedDependencies.getOrDefault(key, emptySet()), dependencies)
+				);
 			}
 
 			if (!intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())).isEmpty()) {
-				logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())));
+				logger.log(Level.WARNING, () -> "Unused added dependencies for " + key + " : "
+						+ intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())));
 			}
 
 			Set<Key<?>> added = addedDependencies.getOrDefault(key, emptySet());

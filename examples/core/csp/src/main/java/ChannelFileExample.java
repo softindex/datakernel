@@ -6,6 +6,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ public final class ChannelFileExample {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
+		LoggerConfigurer.enableLogging();
 	}
 
 	@NotNull

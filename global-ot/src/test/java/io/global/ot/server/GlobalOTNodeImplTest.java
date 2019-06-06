@@ -16,13 +16,13 @@
 
 package io.global.ot.server;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.test.rules.LoggingRule;
@@ -56,12 +56,12 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.CollectorsEx.toAll;
 import static io.datakernel.util.CollectorsEx.toAny;
@@ -168,7 +168,7 @@ public class GlobalOTNodeImplTest {
 
 	@BeforeClass
 	public static void disableLogs() {
-		enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+		LoggerConfigurer.enableLogging(SteppingCurrentTimeProvider.class, Level.WARNING);
 	}
 
 	@Before
@@ -424,7 +424,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testSyncRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -484,7 +484,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testCatchupRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1, () -> 10);
 
@@ -540,7 +540,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testPushRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -566,7 +566,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testPushIntermediateToMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
