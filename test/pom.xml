@@ -42,11 +42,6 @@
       <artifactId>mysql-connector-java</artifactId>
       <optional>true</optional>
     </dependency>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-      <optional>true</optional>
-    </dependency>
   </dependencies>
   <profiles>
     <profile>

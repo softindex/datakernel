@@ -32,12 +32,11 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static io.datakernel.remotefs.FsClient.*;
 import static io.datakernel.util.LogUtils.Level.INFO;
@@ -47,7 +46,7 @@ import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsDriver {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsDriver.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsDriver.class.getName());
 
 	public static final StacklessException FILE_APPEND_WITH_OTHER_KEY = new StacklessException(GlobalFsDriver.class, "Trying to upload to the file with other symmetric key");
 

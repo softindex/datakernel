@@ -16,12 +16,9 @@
 
 package io.datakernel.test;
 
-import ch.qos.logback.classic.Level;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import io.datakernel.async.Callback;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -33,6 +30,8 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class TestUtils {
 	private static int activePromises = 0;
@@ -59,29 +58,29 @@ public final class TestUtils {
 	}
 
 	public static void enableLogging(String name, Level level) {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(name);
+		Logger logger = Logger.getLogger(name);
 		logger.setLevel(level);
 	}
 
 	public static void enableLogging(Class<?> cls, Level level) {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(cls);
+		Logger logger = Logger.getLogger(cls.getName());
 		logger.setLevel(level);
 	}
 
 	public static void enableLogging(Level level) {
-		enableLogging(Logger.ROOT_LOGGER_NAME, level);
+		enableLogging(Logger.GLOBAL_LOGGER_NAME, level);
 	}
 
 	public static void enableLogging(String name) {
-		enableLogging(name, Level.TRACE);
+		enableLogging(name, Level.FINE);
 	}
 
 	public static void enableLogging(Class<?> cls) {
-		enableLogging(cls, Level.TRACE);
+		enableLogging(cls, Level.FINE);
 	}
 
 	public static void enableLogging() {
-		enableLogging(Logger.ROOT_LOGGER_NAME, Level.TRACE);
+		enableLogging(Logger.GLOBAL_LOGGER_NAME, Level.FINE);
 	}
 
 	public static <T> Callback<T> assertComplete(ThrowingConsumer<T> consumer) {

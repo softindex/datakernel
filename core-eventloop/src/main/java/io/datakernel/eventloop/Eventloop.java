@@ -33,8 +33,6 @@ import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -49,6 +47,8 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.eventloop.Utils.tryToOptimizeSelector;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -73,7 +73,7 @@ import static java.util.Collections.emptyIterator;
  * and its queues with tasks are empty.
  */
 public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
+	private static final Logger logger = Logger.getLogger(Eventloop.class.getName());
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException(Eventloop.class, "Connection timed out");
@@ -269,7 +269,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				selector = (selectorProvider != null ? selectorProvider : SelectorProvider.provider()).openSelector();
 			} catch (Exception e) {
-				logger.error("Could not open selector", e);
+				logger.log(Level.SEVERE, "Could not open selector", e);
 				throw new RuntimeException(e);
 			}
 		}
@@ -285,7 +285,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				selector = null;
 				cancelledKeys = 0;
 			} catch (IOException e) {
-				logger.error("Could not close selector", e);
+				logger.log(Level.SEVERE, "Could not close selector", e);
 			}
 		}
 	}
@@ -307,7 +307,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		try {
 			channel.close();
 		} catch (IOException e) {
-			logger.warn("Failed to close channel {}", channel, e);
+			logger.log(Level.WARNING, e, () ->  "Failed to close channel " + channel);
 		}
 	}
 
@@ -372,7 +372,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		long timeAfterBusinessLogic = 0;
 		while (true) {
 			if (!isAlive()) {
-				logger.info("{} is complete, exiting...", this);
+				logger.log(Level.INFO, "{} is complete, exiting...", this);
 				break;
 			}
 			try {
@@ -385,7 +385,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				}
 				cancelledKeys = 0;
 			} catch (ClosedChannelException e) {
-				logger.error("Selector is closed, exiting...", e);
+				logger.log(Level.SEVERE, "Selector is closed, exiting...", e);
 				break;
 			} catch (IOException e) {
 				recordIoError(e, selector);
@@ -416,10 +416,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			loop++;
 			tick = 0;
 		}
-		logger.info("{} finished", this);
+		logger.log(Level.INFO, "{} finished", this);
 		eventloopThread = null;
 		if (selector != null && selector.isOpen() && selector.keys().stream().anyMatch(SelectionKey::isValid)) {
-			logger.warn("Selector is still open, because event loop {} has {} keys", this, selector.keys());
+			logger.log(Level.WARNING, "Selector is still open, because event loop {} has {} keys", new Object[]{this, selector.keys()});
 			return;
 		}
 		closeSelector();
@@ -860,7 +860,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				try {
 					datagramChannel.close();
 				} catch (Exception nested) {
-					logger.error("Failed closing datagram channel after I/O error", nested);
+					logger.log(Level.SEVERE, "Failed closing datagram channel after I/O error", nested);
 					e.addSuppressed(nested);
 				}
 			}
@@ -1152,14 +1152,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	private void recordIoError(@NotNull Exception e, @Nullable Object context) {
-		logger.warn("IO Error in {}: {}", context, e.toString());
+		logger.log(Level.WARNING, "IO Error in {}: {}", new Object[]{context, e.toString()});
 	}
 
 	public void recordFatalError(@NotNull Throwable e, @Nullable Object context) {
 		while (e instanceof UncheckedException) {
 			e = e.getCause();
 		}
-		logger.error("Fatal Error in " + context, e);
+		logger.log(Level.SEVERE, e, () -> "Fatal Error in " + context);
 		if (fatalErrorHandler != null) {
 			handleFatalError(fatalErrorHandler, e, context);
 		} else {

@@ -16,20 +16,19 @@
 
 package io.datakernel.https;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
-import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
 import java.io.File;
 import java.security.SecureRandom;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -41,8 +40,8 @@ public class TestHttpsServer {
 	private static final int PORT = getFreePort();
 
 	static {
-		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-		root.setLevel(Level.TRACE);
+		Logger root = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+		root.setLevel(Level.FINE);
 //		System.setProperty("javax.net.debug", "all");
 	}
 

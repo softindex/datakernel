@@ -8,10 +8,9 @@ import io.datakernel.ot.OTSystem;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
@@ -21,7 +20,7 @@ import static io.datakernel.util.StringFormatUtils.limit;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTGraphServlet<K, D> implements AsyncServlet {
-	private static final Logger logger = LoggerFactory.getLogger(OTGraphServlet.class);
+	private static final Logger logger = Logger.getLogger(OTGraphServlet.class.getName());
 
 	public static final Function<CommitId, String> COMMIT_ID_TO_STRING = commitId -> limit(commitId.toString(), 10);
 

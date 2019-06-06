@@ -23,8 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -32,11 +30,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.dns.DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL;
 
 public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(CachedAsyncDnsClient.class);
+	private final Logger logger = Logger.getLogger(CachedAsyncDnsClient.class.getName());
 
 	private final Eventloop eventloop;
 	private final AsyncDnsClient client;
@@ -89,7 +89,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 			public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
 				DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 				if (fromQuery != null) {
-					logger.trace("{} already contained an IP address within itself", query);
+					logger.log(Level.FINE, "{} already contained an IP address within itself", query);
 					return Promise.of(fromQuery);
 				}
 
@@ -128,10 +128,10 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 
 	private void refresh(DnsQuery query) {
 		if (!refreshingNow.add(query)) {
-			logger.trace("{} needs refreshing, but it does so right now", query);
+			logger.log(Level.FINE, "{} needs refreshing, but it does so right now", query);
 			return;
 		}
-		logger.trace("Refreshing {}", query);
+		logger.log(Level.FINE, "Refreshing {}", query);
 		client.resolve(query)
 				.whenComplete((response, e) -> {
 					addToCache(query, response, e);
@@ -145,11 +145,11 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
-			logger.trace("{} already contained an IP address within itself", query);
+			logger.log(Level.FINE, "{} already contained an IP address within itself", query);
 			return Promise.of(fromQuery);
 		}
 
-		logger.trace("Resolving {}", query);
+		logger.log(Level.FINE, "Resolving {}", query);
 		DnsQueryCacheResult cacheResult = cache.tryToResolve(query);
 		if (cacheResult != null) {
 			if (cacheResult.doesNeedRefreshing()) {
@@ -159,7 +159,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		}
 		MaterializedPromise<DnsResponse> promise = pending.compute(query, (k, v) -> {
 			if (v != null) {
-				logger.trace("{} is already pending", k);
+				logger.log(Level.FINE, "{} is already pending", k);
 				return v;
 			}
 			MaterializedPromise<DnsResponse> resolve = client.resolve(k);

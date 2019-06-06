@@ -30,11 +30,10 @@ import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
@@ -46,7 +45,7 @@ import static io.global.fs.util.BinaryDataFormats.readBuf;
 import static java.util.stream.Collectors.toList;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsCheckpointStorage.class.getName());
 	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 

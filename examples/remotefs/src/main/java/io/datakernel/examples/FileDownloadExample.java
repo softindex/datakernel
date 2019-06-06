@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
 
 /**
  * This example demonstrates downloading file from RemoteFS server.
@@ -81,7 +82,7 @@ public class FileDownloadExample extends Launcher {
 			ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
 					.streamTo(ChannelFileWriter.create(CLIENT_STORAGE.resolve(DOWNLOADED_FILE)))
 					.whenComplete(($, e) -> {
-						if (e != null) logger.error("Download is failed", e);
+						if (e != null) logger.log(Level.SEVERE, "Download is failed", e);
 						shutdown();
 					});
 		});

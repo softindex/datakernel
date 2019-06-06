@@ -1,17 +1,16 @@
 package io.datakernel.eventloop;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.Field;
 import java.nio.channels.Selector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Is used to replace the inefficient {@link java.util.HashSet} in {@link sun.nio.ch.SelectorImpl}
  * into {@link OptimizedSelectedKeysSet}. Replace fields to advance performance for the {@link Selector}
  */
 final class Utils {
-	private static final Logger logger = LoggerFactory.getLogger(Utils.class);
+	private static final Logger logger = Logger.getLogger(Utils.class.getName());
 
 	private static Field SELECTED_KEYS_FIELD;
 	private static Field PUBLIC_SELECTED_KEYS_FIELD;
@@ -25,7 +24,7 @@ final class Utils {
 			SELECTED_KEYS_FIELD.setAccessible(true);
 			PUBLIC_SELECTED_KEYS_FIELD.setAccessible(true);
 		} catch (ClassNotFoundException | NoSuchFieldException e) {
-			logger.warn("Failed reflecting NIO selector fields", e);
+			logger.log(Level.WARNING, "Failed reflecting NIO selector fields", e);
 		}
 	}
 
@@ -44,7 +43,7 @@ final class Utils {
 			return true;
 
 		} catch (IllegalAccessException e) {
-			logger.warn("Failed setting optimized set into selector", e);
+			logger.log(Level.WARNING, "Failed setting optimized set into selector", e);
 		}
 
 		return false;

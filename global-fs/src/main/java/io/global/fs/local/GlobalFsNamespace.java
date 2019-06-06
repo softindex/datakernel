@@ -17,13 +17,13 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FramesFromStorage;
 import io.global.fs.transformers.FramesIntoStorage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -32,7 +32,7 @@ import static io.global.util.Utils.tolerantCollectBoolean;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNamespace, GlobalFsNodeImpl, GlobalFsNode> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNamespace.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsNamespace.class.getName());
 
 	private final FsClient storage;
 	private final CheckpointStorage checkpointStorage;
@@ -97,14 +97,14 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 	}
 
 	public Promise<ChannelConsumer<DataFrame>> upload(String filename, long offset, long revision) {
-		logger.trace("uploading to local storage {}, offset: {}", filename, offset);
+		logger.log(Level.FINE, "uploading to local storage {}, offset: {}", new Object[]{filename, offset});
 		return checkpointStorage.drop(filename, revision)
 				.then($ -> storage.upload(filename, offset, revision))
 				.map(consumer -> consumer.transformWith(FramesIntoStorage.create(filename, space, checkpointStorage)));
 	}
 
 	public Promise<ChannelSupplier<DataFrame>> download(String fileName, long offset, long length) {
-		logger.trace("downloading local copy of {} at {}, offset: {}, length: {}", fileName, space, offset, length);
+		logger.log(Level.FINE, "downloading local copy of {} at {}, offset: {}, length: {}", new Object[]{ fileName, space, offset, length});
 		return checkpointStorage.loadIndex(fileName)
 				.then(checkpoints -> {
 					assert Arrays.equals(checkpoints, Arrays.stream(checkpoints).sorted().toArray()) : "Checkpoint array must be sorted!";
@@ -155,20 +155,20 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 								}
 								if (localMeta.isTombstone()) {
 									if (remoteMeta != null && remoteMeta.isTombstone()) {
-										logger.trace("both local and remote files {} are tombstones", remoteMeta.getFilename());
+										logger.log(Level.FINE, "both local and remote files {} are tombstones", remoteMeta.getFilename());
 										return Promise.of(false);
 									} else {
-										logger.info("local file {} is a tombstone, removing remote", localMeta.getFilename());
+										logger.log(Level.INFO, "local file {} is a tombstone, removing remote", localMeta.getFilename());
 										return into.delete(space, signedLocalMeta)
 												.map($ -> true);
 									}
 								} else {
 									if (remoteMeta != null && remoteMeta.isTombstone()) {
-										logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+										logger.log(Level.INFO, "remote file {} is a tombstone, removing local", remoteMeta.getFilename());
 										return delete(signedLocalMeta)
 												.map($ -> true);
 									}
-									logger.info("pushing local file {} to node {}", localMeta.getFilename(), into);
+									logger.log(Level.INFO, "pushing local file {} to node {}", new Object[]{localMeta.getFilename(), into});
 									return streamDataFrames(node, into, filename, remoteMeta != null ? remoteMeta.getPosition() : 0, localMeta.getRevision())
 											.map($ -> true);
 								}
@@ -190,21 +190,21 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 										if (localMeta != null) {
 											// our file is better
 											if (GlobalFsCheckpoint.COMPARATOR.compare(localMeta, remoteMeta) >= 0) {
-												logger.trace("local file {} is better than remote", localMeta.getFilename());
+												logger.log(Level.FINE, "local file {} is better than remote", localMeta.getFilename());
 												return Promise.of(false);
 											}
 											// other file is encrypted with different key
 											if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
-												logger.trace("remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
+												logger.log(Level.FINE, "remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
 												return Promise.of(false);
 											}
 										}
 										if (remoteMeta.isTombstone()) {
-											logger.trace("remote file {} is a tombstone with higher revision, removing local", remoteMeta.getFilename());
+											logger.log(Level.FINE, "remote file {} is a tombstone with higher revision, removing local", remoteMeta.getFilename());
 											return delete(signedRemoteMeta)
 													.map($ -> true);
 										}
-										logger.info("remote file {} is better than local", remoteMeta.getFilename());
+										logger.log(Level.INFO, "remote file {} is better than local", remoteMeta.getFilename());
 
 										long ourSize = localMeta != null ? localMeta.getPosition() : 0;
 

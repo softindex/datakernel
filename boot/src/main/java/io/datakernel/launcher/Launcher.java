@@ -30,16 +30,16 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule.TriggersModuleService;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.ReflectionUtils.parameterized;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Integrates all modules together and manages application lifecycle by
@@ -79,7 +79,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see ConfigModule
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = getLogger(getClass());
+	protected final Logger logger = Logger.getLogger(getClass().getName());
 
 	protected String[] args = {};
 
@@ -155,7 +155,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			if (applicationError == null) {
 				applicationError = e;
 			}
-			logger.error("Application failure", e);
+			logger.log(Level.SEVERE, "Application failure", e);
 			throw e;
 		} finally {
 			onStop();
@@ -232,7 +232,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				finishLatch.await();
 				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
 			} catch (InterruptedException e) {
-				logger.error("Shutdown took too long", e);
+				logger.log(Level.SEVERE, "Shutdown took too long", e);
 			}
 		}, "shutdownNotification"));
 		shutdownLatch.await();

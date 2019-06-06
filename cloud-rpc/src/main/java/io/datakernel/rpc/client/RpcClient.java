@@ -46,17 +46,17 @@ import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.util.Preconditions.*;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Sends requests to the specified servers according to defined
@@ -82,7 +82,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final MemSize DEFAULT_PACKET_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = ChannelSerializer.MAX_SIZE;
 
-	private Logger logger = getLogger(getClass());
+	private Logger logger = Logger.getLogger(getClass().getName());
 
 	private final Eventloop eventloop;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
@@ -346,7 +346,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			return;
 		}
 
-		logger.info("Connecting {}", address);
+		logger.log(Level.INFO, "Connecting {}", address);
 
 		AsyncTcpSocketImpl.connect(address, 0, socketSettings)
 				.whenResult(asyncTcpSocketImpl -> {
@@ -366,7 +366,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					generalConnectsStats.successfulConnects++;
 					connectsStatsPerAddress.get(address).successfulConnects++;
 
-					logger.info("Connection to {} established", address);
+					logger.log(Level.INFO, "Connection to {} established", address);
 					if (startCallback != null && !(requestSender instanceof NoSenderAvailable)) {
 						SettableCallback<Void> startPromise = this.startCallback;
 						this.startCallback = null;
@@ -379,9 +379,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					connectsStatsPerAddress.get(address).failedConnects++;
 
 					if (running) {
-						if (logger.isWarnEnabled()) {
-							logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
-						}
+						logger.log(Level.WARNING, "Connection failed, reconnecting to {}: {}", new Object[]{address, e.toString()});
 						eventloop.delayBackground(reconnectIntervalMillis, () -> {
 							if (running) {
 								connect(address);
@@ -407,7 +405,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			return;
 		}
 
-		logger.info("Connection to {} closed", address);
+		logger.log(Level.INFO, "Connection to {} closed", address);
 
 		connections.remove(address);
 

@@ -37,8 +37,6 @@ import io.datakernel.stream.processor.StreamReducers.ReducerToResult.Accumulator
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToAccumulator;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToOutput;
 import io.datakernel.util.Initializable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -50,6 +48,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
@@ -61,7 +61,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
  */
 @SuppressWarnings({"rawtypes", "unchecked", "WeakerAccess"})
 public final class DatagraphSerialization implements Initializable<DatagraphSerialization> {
-	static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class);
+	static final Logger logger = Logger.getLogger(DatagraphSerialization.class.getName());
 
 	final class CodecProvider<T> {
 		private StructuredCodec<T> ref;
@@ -416,7 +416,7 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 	public synchronized <T> BinarySerializer<T> getSerializer(Class<T> type) {
 		BinarySerializer<T> serializer = (BinarySerializer<T>) serializers.get(type);
 		if (serializer == null) {
-			logger.info("Creating serializer for {}", type);
+			logger.log(Level.INFO, "Creating serializer for {}", type);
 			serializer = SerializerBuilder.create(DefiningClassLoader.create(getSystemClassLoader()))
 					.build(type);
 			serializers.put(type, serializer);

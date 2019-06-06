@@ -5,15 +5,15 @@ import io.datakernel.async.Promise;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 
 public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<S, L, N>, L extends AbstractGlobalNode<L, S, N>, N> {
-	private static final Logger logger = LoggerFactory.getLogger(AbstractGlobalNamespace.class);
+	private static final Logger logger = Logger.getLogger(AbstractGlobalNamespace.class.getName());
 
 	protected final L node;
 	protected final PubKey space;
@@ -51,11 +51,11 @@ public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<
 							masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
 							if (newServerIds.remove(node.getId())) { // ensure that we are master for the space if it was announced
 								if (node.getManagedPublicKeys().add(space)) {
-									logger.trace("became a master for {}: {}", space, node);
+									logger.log(Level.FINE, "became a master for {}: {}", new Object[]{space, node});
 								}
 							} else {
 								if (node.getManagedPublicKeys().remove(space)) {
-									logger.trace("stopped being a master for {}: {}", space, node);
+									logger.log(Level.FINE, "stopped being a master for {}: {}", new Object[]{space, node});
 								}
 							}
 							newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, node.getNodeFactory()));

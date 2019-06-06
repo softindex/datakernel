@@ -40,20 +40,20 @@ import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 
 public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(MultilogImpl.class);
+	private static final Logger logger = Logger.getLogger(MultilogImpl.class.getName());
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
@@ -171,9 +171,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 			public StreamSupplier<T> next() {
 				currentLogFile = it.next();
 				long position = n++ == 0 ? startPosition.getPosition() : 0L;
-
-				if (logger.isTraceEnabled())
-					logger.trace("Read log file `{}` from: {}", currentLogFile, position);
+				logger.log(Level.FINE, "Read log file `{}` from: {}", new Object[]{currentLogFile, position});
 
 				return StreamSupplier.ofPromise(
 						client.download(namingScheme.path(logPartition, currentLogFile), position)
@@ -208,12 +206,15 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 			}
 
 			private void log(Throwable e) {
-				if (e == null && logger.isTraceEnabled()) {
-					logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
-							sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
-				} else if (e != null && logger.isErrorEnabled()) {
-					logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
-							sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), e);
+				if (e == null) {
+					logger.log(Level.FINE, "Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", new Object[]{
+							currentLogFile, sw, inputStreamPosition,
+							inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1)
+					});
+				} else {
+					logger.log(Level.SEVERE, e, () -> "Error on log fil" + currentLogFile
+							+ " in " + sw + ", compressed bytes: " + inputStreamPosition
+							+ " (" + inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1) + " bytes/s)");
 				}
 			}
 		};

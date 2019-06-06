@@ -35,8 +35,6 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -47,6 +45,8 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationUtils.*;
@@ -67,7 +67,7 @@ import static java.util.stream.Collectors.toList;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Aggregation implements IAggregation, Initializable<Aggregation>, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass().getName());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_REDUCER_BUFFER_SIZE = StreamReducer.DEFAULT_BUFFER_SIZE;
@@ -230,7 +230,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(),
 				getMeasureTypes().keySet()));
 
-		logger.info("Started consuming data in aggregation {}. Keys: {} Measures: {}", this, keyFields.keySet(), measureFields.keySet());
+		logger.log(Level.INFO, "Started consuming data in aggregation {}. Keys: {} Measures: {}",
+				new Object[] {this, keyFields.keySet(), measureFields.keySet()});
 
 		Class<K> keyClass = createKeyClass(
 				keysToMap(getKeys().stream(), structure.getKeyTypes()::get),
@@ -378,7 +379,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			DefiningClassLoader queryClassLoader) {
 		QueryPlan plan = createPlan(individualChunks, measures);
 
-		logger.info("Query plan for {} in aggregation {}: {}", queryKeys, this, plan);
+		logger.log(Level.INFO, "Query plan for {} in aggregation {}: {}", new Object[]{queryKeys, this, plan});
 
 		boolean alreadySorted = getKeys().subList(0, min(getKeys().size(), queryKeys.size())).equals(queryKeys);
 
@@ -512,11 +513,11 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				state.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
 
 		if (chunks.isEmpty()) {
-			logger.info("Nothing to consolidate in aggregation '{}", this);
+			logger.log(Level.INFO, "Nothing to consolidate in aggregation '{}", this);
 			return Promise.of(AggregationDiff.empty());
 		}
 
-		logger.info("Starting consolidation of aggregation '{}'", this);
+		logger.log(Level.INFO, "Starting consolidation of aggregation '{}'", this);
 		consolidationStarted = eventloop.currentTimeMillis();
 
 		return doConsolidation(chunks)
@@ -544,7 +545,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		try {
 			Files.delete(sortDir);
 		} catch (IOException e) {
-			logger.warn("Could not delete temporal directory {} : {}", temporarySortDir, e.toString());
+			logger.log(Level.WARNING, "Could not delete temporal directory {} : {}", new Object[]{temporarySortDir, e.toString()});
 		}
 	}
 

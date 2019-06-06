@@ -23,14 +23,14 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
 
@@ -38,7 +38,7 @@ import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
  * Represents a cache for storing resolved domains during its time to live.
  */
 public final class DnsCache {
-	private static final Logger logger = LoggerFactory.getLogger(DnsCache.class);
+	private static final Logger logger = Logger.getLogger(DnsCache.class.getName());
 
 	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL = Duration.ofSeconds(1);
 	public static final Duration DEFAULT_ERROR_CACHE_EXPIRATION = Duration.ofMinutes(1);
@@ -107,23 +107,23 @@ public final class DnsCache {
 		CachedDnsQueryResult cachedResult = cache.get(query);
 
 		if (cachedResult == null) {
-			logger.trace("{} cache miss", query);
+			logger.log(Level.FINE, "{} cache miss", query);
 			return null;
 		}
 
 		DnsResponse result = cachedResult.response;
 		assert result != null; // results with null responses should never be in cache map
 		if (result.isSuccessful()) {
-			logger.trace("{} cache hit", query);
+			logger.log(Level.FINE, "{} cache hit", query);
 		} else {
-			logger.trace("{} error cache hit", query);
+			logger.log(Level.FINE, "{} error cache hit", query);
 		}
 
 		if (isExpired(cachedResult)) {
-			logger.trace("{} hard TTL expired", query);
+			logger.log(Level.FINE, "{} hard TTL expired", query);
 			return null;
 		} else if (isSoftExpired(cachedResult)) {
-			logger.trace("{} soft TTL expired", query);
+			logger.log(Level.FINE, "{} soft TTL expired", query);
 			return new DnsQueryCacheResult(result, true);
 		}
 		return new DnsQueryCacheResult(result, false);
@@ -163,9 +163,9 @@ public final class DnsCache {
 
 		if (old != null) {
 			old.response = null; // mark old cache response as refreshed (see performCleanup)
-			logger.trace("Refreshed cache entry for {}", query);
+			logger.log(Level.FINE, "Refreshed cache entry for {}", query);
 		} else {
-			logger.trace("Added cache entry for {}", query);
+			logger.log(Level.FINE, "Added cache entry for {}", query);
 		}
 	}
 
@@ -181,7 +181,7 @@ public final class DnsCache {
 			if (response != null) { // if it was not refreshed(so there is a newer response in the queue)
 				DnsQuery query = response.getTransaction().getQuery();
 				cache.remove(query); // we drop it from cache
-				logger.trace("Cache entry expired for {}", query);
+				logger.log(Level.FINE, "Cache entry expired for {}", query);
 			}
 			expirations.poll();
 		}

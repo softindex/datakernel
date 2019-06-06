@@ -21,7 +21,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.BlockingSocketServer;
-import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
@@ -29,8 +28,8 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
-
-import static org.slf4j.LoggerFactory.getLogger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Static utility methods pertaining to ConcurrentService. Creates
@@ -38,7 +37,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings("WeakerAccess")
 public final class ServiceAdapters {
-	private static final Logger logger = getLogger(ServiceAdapters.class);
+	private static final Logger logger = Logger.getLogger(ServiceAdapters.class.getName());
 
 	private ServiceAdapters() {
 	}
@@ -258,10 +257,10 @@ public final class ServiceAdapters {
 			protected void stop(ExecutorService instance) throws Exception {
 				List<Runnable> runnables = instance.shutdownNow();
 				if (!runnables.isEmpty()) {
-					logger.warn("Cancelled tasks: " + runnables);
+					logger.log(Level.WARNING, "Cancelled tasks: {}", runnables);
 				}
 				if (!instance.isTerminated()) {
-					logger.warn("Awaiting termination of " + instance + " ...");
+					logger.log(Level.WARNING, "Awaiting termination of {} ...", instance);
 					instance.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
 				}
 			}
@@ -330,12 +329,12 @@ public final class ServiceAdapters {
 	}
 
 	public static <T> ServiceAdapter<T> combinedAdapter(List<? extends ServiceAdapter<? super T>> startOrder,
-			List<? extends ServiceAdapter<? super T>> stopOrder) {
+														List<? extends ServiceAdapter<? super T>> stopOrder) {
 		return new ServiceAdapter<T>() {
 			@SuppressWarnings("unchecked")
 			private void doAction(T instance, Executor executor,
-					Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<?> future,
-					Action<T> action) {
+								  Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<?> future,
+								  Action<T> action) {
 				if (iterator.hasNext()) {
 					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor)
 							.whenCompleteAsync(($, e) -> {

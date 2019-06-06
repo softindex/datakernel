@@ -28,8 +28,6 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.util.MemSize;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -45,11 +43,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 class StressClient {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass().getName());
 	private InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = Executors.newCachedThreadPool();
@@ -83,9 +83,9 @@ class StressClient {
 								.streamTo(ChannelConsumer.ofPromise(client.upload(fileName))))
 						.whenComplete(($, e) -> {
 							if (e == null) {
-								logger.info("Uploaded: " + fileName);
+								logger.log(Level.INFO, "Uploaded: {}", fileName);
 							} else {
-								logger.info("Failed to upload: {}", e.getMessage());
+								logger.log(Level.INFO, "Failed to upload: {}", e.getMessage());
 							}
 						});
 			} catch (IOException e) {
@@ -106,9 +106,9 @@ class StressClient {
 					.then(supplier -> supplier.streamTo(ChannelFileWriter.create(downloads.resolve(fileName))))
 					.whenComplete((supplier, e) -> {
 						if (e == null) {
-							logger.info("Downloaded: " + fileName);
+							logger.log(Level.INFO, "Downloaded: {}" + fileName);
 						} else {
-							logger.info("Failed to download: {}", e.getMessage());
+							logger.log(Level.INFO, "Failed to download: {}", e.getMessage());
 						}
 					});
 		});
@@ -123,9 +123,9 @@ class StressClient {
 			client.delete(fileName).whenComplete(($, e) -> {
 				if (e == null) {
 					existingClientFiles.remove(fileName);
-					logger.info("Deleted: " + fileName);
+					logger.log(Level.INFO, "Deleted: {}", fileName);
 				} else {
-					logger.info("Failed to delete: {}", e.getMessage());
+					logger.log(Level.INFO, "Failed to delete: {}", e.getMessage());
 				}
 			});
 		});
@@ -133,9 +133,9 @@ class StressClient {
 		// list file
 		operations.add(() -> client.list("**").whenComplete((strings, e) -> {
 			if (e == null) {
-				logger.info("Listed: " + strings.size());
+				logger.log(Level.INFO, "Listed: {}", strings.size());
 			} else {
-				logger.info("Failed to list files: {}", e.getMessage());
+				logger.log(Level.INFO, "Failed to list files: {}", e.getMessage());
 			}
 		}));
 
@@ -202,7 +202,7 @@ class StressClient {
 		String name = "someName" + i;
 		client.download(name, 0).whenComplete((supplier, e) -> {
 			if (e != null) {
-				logger.error("can't download", e);
+				logger.log(Level.SEVERE, "can't download", e);
 			} else {
 				//				try {
 				//					supplier.streamTo(ChannelFileWriter.create(executor, downloads.resolve(name)));

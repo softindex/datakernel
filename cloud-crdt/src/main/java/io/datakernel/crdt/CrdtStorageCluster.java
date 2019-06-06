@@ -39,17 +39,17 @@ import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class);
+	private static final Logger logger = Logger.getLogger(CrdtStorageCluster.class.getName());
 
 	private final Eventloop eventloop;
 	private final Map<I, CrdtStorage<K, S>> clients;
@@ -180,7 +180,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		if (removed != null) {
 			aliveClients.put(partitionId, removed);
 			recompute();
-			logger.info("Marked partition {} as alive", partitionId);
+			logger.log(Level.INFO, "Marked partition {} as alive", partitionId);
 		}
 	}
 
@@ -189,7 +189,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		if (removed != null) {
 			deadClients.put(partitionId, removed);
 			recompute();
-			logger.warn("Marked partition {} as dead", partitionId, err);
+			logger.log(Level.WARNING, "Marked partition " + partitionId + " as dead", err);
 		}
 	}
 

@@ -17,23 +17,23 @@
 package io.datakernel.util;
 
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.check;
 
 public final class FileLocker {
-	private static final Logger logger = LoggerFactory.getLogger(FileLocker.class);
+	private static final Logger logger = Logger.getLogger(FileLocker.class.getName());
 
 	synchronized public static FileLocker obtainLockOrDie(String filename) {
 		FileLocker fileLocker = new FileLocker(filename);
 		if (!fileLocker.obtainLock()) {
-			logger.error("Could not obtain lock for {}", filename);
+			logger.log(Level.SEVERE, "Could not obtain lock for {}", filename);
 			throw new RuntimeException("Could not obtain lock");
 		}
 		return fileLocker;
@@ -56,7 +56,7 @@ public final class FileLocker {
 
 	synchronized public void obtainLockOrDie() {
 		if (!obtainLock()) {
-			logger.error("Could not obtain lock for {}", this);
+			logger.log(Level.SEVERE, "Could not obtain lock for {}", this);
 			throw new RuntimeException("Could not obtain lock");
 		}
 	}
@@ -72,7 +72,7 @@ public final class FileLocker {
 			fileLock = lockStream.getChannel().tryLock();
 			return fileLock != null;
 		} catch (IOException e) {
-			logger.error("IO Exception during locking {}", lockFile, e);
+			logger.log(Level.SEVERE, e, () -> "IO Exception during locking" + lockFile);
 			return false;
 		}
 	}
@@ -84,7 +84,7 @@ public final class FileLocker {
 				fileLock = null;
 			}
 		} catch (IOException e) {
-			logger.error("IO Exception during releasing FileLock on {}", lockFile, e);
+			logger.log(Level.SEVERE, e, () -> "IO Exception during releasing FileLock on " + lockFile);
 		}
 		try {
 			if (lockStream != null) {
@@ -92,7 +92,7 @@ public final class FileLocker {
 				lockStream = null;
 			}
 		} catch (IOException e) {
-			logger.error("IO Exception during closing FileOutputStream on {}", lockFile, e);
+			logger.log(Level.SEVERE, e, () -> "IO Exception during closing FileOutputStream on " + lockFile);
 		}
 	}
 

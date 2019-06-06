@@ -32,14 +32,14 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
@@ -50,7 +50,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class RemoteFsRepartitionController implements Initializable<RemoteFsRepartitionController>, EventloopJmxMBeanEx, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsRepartitionController.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsRepartitionController.class.getName());
 
 	private final Eventloop eventloop;
 	private final Object localPartitionId;
@@ -153,9 +153,12 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenEx(($, e) -> {
 					if (e != null) {
-						logger.warn("forced repartition finish, {} files ensured, {} errored, {} untouched", ensuredFiles, failedFiles, allFiles - ensuredFiles - failedFiles);
+						logger.log(Level.WARNING, "forced repartition finish, {} files ensured, {} errored, {} untouched", new Object[] {
+								ensuredFiles,
+								failedFiles,
+								allFiles - ensuredFiles - failedFiles});
 					} else {
-						logger.info("repartition finished, {} files ensured, {} errored", ensuredFiles, failedFiles);
+						logger.log(Level.INFO, "repartition finished, {} files ensured, {} errored", new Object[] {ensuredFiles, failedFiles});
 					}
 					if (closeCallback != null) {
 						closeCallback.accept($, e);
@@ -188,21 +191,21 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					String name = meta.getName();
 					long revision = meta.getRevision();
 					if (uploadTargets.isEmpty()) { // everybody had the file
-						logger.trace("deleting file {} locally", meta);
+						logger.log(Level.FINE, "deleting file {} locally", meta);
 						return localStorage.remove(name) // so we delete the copy which does not belong to local partition
 								.map($ -> {
-									logger.info("handled file {} (ensured on {})", meta, selected);
+									logger.log(Level.INFO, "handled file {} (ensured on {})", new Object[] {meta, selected});
 									return true;
 								});
 					}
 					if (uploadTargets.size() == 1 && uploadTargets.get(0) == localStorage) { // everybody had the file AND
-						logger.info("handled file {} (ensured on {})", meta, selected);      // we dont delete the local copy
+						logger.log(Level.INFO, "handled file {} (ensured on {})", new Object[] {meta, selected});      // we dont delete the local copy
 						return Promise.of(true);
 					}
 
 					// else we need to upload to at least one nonlocal partition
 
-					logger.trace("uploading file {} to partitions {}...", meta, uploadTargets);
+					logger.log(Level.FINE, "uploading file {} to partitions {}...", new Object[] {meta, uploadTargets});
 
 					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create()
 							.withInput(ChannelSupplier.ofPromise(localStorage.download(name)));
@@ -219,27 +222,27 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 												.set(ChannelConsumer.ofPromise(clients.get(partitionId).upload(name, 0, revision))
 														.withAcknowledgement(fn)))
 										.whenException(e -> {
-											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');
+											logger.log(Level.WARNING, "failed uploading to partition " + partitionId + " (" + e + ')');
 											cluster.markDead(partitionId, e);
 										})
-										.whenResult($ -> logger.trace("file {} uploaded to '{}'", meta, partitionId))
+										.whenResult($ -> logger.log(Level.FINE, "file " + meta + " uploaded to '" + partitionId + "'"))
 										.toTry();
 							}))
 							.then(tries -> {
 								if (!tries.stream().allMatch(Try::isSuccess)) { // if anybody failed uploading then we skip this file
-									logger.warn("failed uploading file {}, skipping", meta);
+									logger.log(Level.WARNING, "failed uploading file {}, skipping", meta);
 									return Promise.of(false);
 								}
 
 								if (uploadTargets.contains(localPartitionId)) { // dont delete local if it was marked
-									logger.info("handled file {} (ensured on {}, uploaded to {})", meta, selected, uploadTargets);
+									logger.log(Level.INFO, "handled file {} (ensured on {}, uploaded to {})", new Object[]{meta, selected, uploadTargets});
 									return Promise.of(true);
 								}
 
-								logger.trace("deleting file {} on {}", meta, localPartitionId);
+								logger.log(Level.FINE, "deleting file {} on {}", new Object[] {meta, localPartitionId});
 								return localStorage.remove(name)
 										.map($ -> {
-											logger.info("handled file {} (ensured on {}, uploaded to {})", meta, selected, uploadTargets);
+											logger.log(Level.INFO, "handled file {} (ensured on {}, uploaded to {})", new Object[] {meta, selected, uploadTargets});
 											return true;
 										});
 							});
@@ -259,7 +262,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 							.listEntities(fileToUpload.getName()) // checking file existense and size on particular partition
 							.whenComplete((list, e) -> {
 								if (e != null) {
-									logger.warn("failed connecting to partition " + partitionId + " (" + e + ')');
+									logger.log(Level.WARNING, () -> "failed connecting to partition " + partitionId + " (" + e + ')');
 									cluster.markDead(partitionId, e);
 									return;
 								}
@@ -272,7 +275,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				}))
 				.then(tries -> {
 					if (!tries.stream().allMatch(Try::isSuccess)) { // any of list calls failed
-						logger.warn("failed figuring out partitions for file " + fileToUpload + ", skipping");
+						logger.log(Level.WARNING, () -> "failed figuring out partitions for file " + fileToUpload + ", skipping");
 						return Promise.of(null); // using null to mark failure without exceptions
 					}
 					return Promise.of(uploadTargets);

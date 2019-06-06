@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
@@ -37,6 +36,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
@@ -80,7 +80,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	@BeforeClass
 	public static void disableLogs() {
-		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARNING);
 	}
 
 	@Test

@@ -25,19 +25,19 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
+	private static final Logger logger = Logger.getLogger(AggregationGroupReducer.class.getName());
 
 	private final AggregationChunkStorage<C> storage;
 	private final AggregationStructure aggregation;
@@ -128,10 +128,10 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 
 	private void suspendOrResume() {
 		if (chunksCollector.getActivePromises() > 2) {
-			logger.trace("Suspend group reduce: {}", this);
+			logger.log(Level.FINE, "Suspend group reduce: {}", this);
 			getSupplier().suspend();
 		} else {
-			logger.trace("Resume group reduce: {}", this);
+			logger.log(Level.FINE, "Resume group reduce: {}", this);
 			getSupplier().resume(this);
 		}
 	}

@@ -24,8 +24,6 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.util.MemSize;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -34,6 +32,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
@@ -46,7 +46,7 @@ import static java.lang.String.format;
  * @param <T> type of storing data
  */
 public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> {
-	private static final Logger logger = LoggerFactory.getLogger(StreamSorterStorageImpl.class);
+	private static final Logger logger = Logger.getLogger(StreamSorterStorageImpl.class.getName());
 
 	public static final String DEFAULT_FILE_PATTERN = "%d";
 	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);
@@ -161,7 +161,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 				try {
 					Files.delete(path1);
 				} catch (IOException e) {
-					logger.warn("Could not delete {} : {}", path1, e.toString());
+					logger.log(Level.WARNING, "Could not delete {} : {}", new Object[]{path1, e.toString()});
 				}
 			}
 			return null;

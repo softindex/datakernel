@@ -21,14 +21,14 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.file.AsyncFileService;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.*;
@@ -37,7 +37,7 @@ import static java.nio.file.StandardOpenOption.*;
  * This consumer allows you to asynchronously write binary data to a file.
  */
 public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(ChannelFileWriter.class);
+	private static final Logger logger = Logger.getLogger(ChannelFileWriter.class.getName());
 
 	public static final Set<OpenOption> CREATE_OPTIONS = set(WRITE, CREATE_NEW, APPEND);
 
@@ -131,9 +131,9 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 			}
 
 			channel.close();
-			logger.trace(this + ": closed file");
+			logger.log(Level.FINE, () -> this + ": closed file");
 		} catch (IOException e) {
-			logger.error(this + ": failed to close file", e);
+			logger.log(Level.SEVERE, e, () -> this + ": failed to close file");
 		}
 	}
 

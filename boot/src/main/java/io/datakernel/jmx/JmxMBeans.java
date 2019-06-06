@@ -21,8 +21,6 @@ import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ReflectionUtils;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import javax.management.openmbean.OpenType;
@@ -35,6 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.*;
@@ -47,7 +47,7 @@ import static java.util.Collections.singletonList;
 
 @SuppressWarnings("rawtypes")
 public final class JmxMBeans implements DynamicMBeanFactory {
-	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
+	private static final Logger logger = Logger.getLogger(JmxMBeans.class.getName());
 
 	// refreshing jmx
 	public static final Duration DEFAULT_REFRESH_PERIOD_IN_SECONDS = Duration.ofSeconds(1);
@@ -172,8 +172,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	// region building tree of AttributeNodes
 	private List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
-			String[] includedOptionalAttrs, @Nullable Method getter,
-			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+											   String[] includedOptionalAttrs, @Nullable Method getter,
+											   Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 
 		Set<String> includedOptionals = new HashSet<>(asList(includedOptionalAttrs));
 		List<AttributeDescriptor> attrDescriptors = fetchAttributeDescriptors(clazz, customTypes);
@@ -408,8 +408,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {
 		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
 				!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			logger.warn("JmxRefreshableStats won't be refreshed when used in classes that do not implement" +
-					" EventloopJmxMBean. MBean class: " + mbeanClass.getName());
+			logger.log(Level.WARNING, "JmxRefreshableStats won't be refreshed when used in classes that do not implement" +
+					" EventloopJmxMBean. MBean class: {}", mbeanClass.getName());
 		}
 
 		if (returnClass.isInterface()) {
@@ -439,9 +439,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private AttributeNode createNodeForParametrizedType(String attrName, @Nullable String attrDescription,
-			ParameterizedType pType, boolean included,
-			@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
-			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+														ParameterizedType pType, boolean included,
+														@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
+														Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
 
@@ -815,7 +815,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Map<OperationKey, Method> opkeyToMethod;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
-				AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
+									  AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
 			this.mBeanInfo = mBeanInfo;
 			this.mbeanWrappers = mbeanWrappers;
 
@@ -892,7 +892,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					}
 				}
 			} catch (Exception e) {
-				logger.error("Cannot get attributes: " + attrNames, e);
+				logger.log(Level.SEVERE, "Cannot get attributes: " + attrNames, e);
 			}
 			return attrList;
 		}
@@ -906,7 +906,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					setAttribute(attribute);
 					resultList.add(new Attribute(attribute.getName(), attribute.getValue()));
 				} catch (MBeanException e) {
-					logger.error("Cannot set attribute: " + attribute.getName(), e);
+					logger.log(Level.SEVERE, "Cannot set attribute: " + attribute.getName(), e);
 				}
 			}
 			return resultList;

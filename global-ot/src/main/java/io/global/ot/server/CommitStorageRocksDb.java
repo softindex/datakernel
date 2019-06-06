@@ -14,12 +14,11 @@ import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.rocksdb.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.StructuredCodecs.BYTE_CODEC;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
@@ -33,7 +32,7 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
 
 public final class CommitStorageRocksDb implements CommitStorage, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(CommitStorageRocksDb.class);
+	private static final Logger logger = Logger.getLogger(CommitStorageRocksDb.class.getName());
 
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 	private static final StructuredCodec<RawCommit> RAW_COMMIT_CODEC = REGISTRY.get(RawCommit.class);

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
 
 /**
  * This example demonstrates uploading file to server using RemoteFS
@@ -80,7 +81,7 @@ public class FileUploadExample extends Launcher {
 			ChannelFileReader.readFile(CLIENT_FILE)
 					.then(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)).streamTo(client.upload(FILE_NAME)))
 					.whenComplete(($, e) -> {
-						if (e != null) logger.error("Upload failed", e);
+						if (e != null) logger.log(Level.SEVERE, "Upload failed", e);
 						shutdown();
 					});
 		});

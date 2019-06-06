@@ -36,8 +36,6 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,8 +46,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import static io.datakernel.async.Promise.*;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.CollectionUtils.set;
@@ -68,7 +67,7 @@ import static java.util.stream.Collectors.toList;
  * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
  */
 public final class LocalFsClient implements FsClient, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
+	private static final Logger logger = Logger.getLogger(LocalFsClient.class.getName());
 
 	public static final FileNamingScheme REVISION_NAMING_SCHEME = new FileNamingScheme() {
 		private static final String SEPARATOR = "@";
@@ -439,14 +438,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						try {
 							ts = Files.getLastModifiedTime(info.getFilePath()).toMillis();
 						} catch (IOException e) {
-							logger.warn("Failed to get timestamp of the tombstone {}", info.getName());
+							logger.log(Level.WARNING, "Failed to get timestamp of the tombstone {}", info.getName());
 							return;
 						}
 						if (ts < border) {
 							try {
 								Files.deleteIfExists(info.getFilePath());
 							} catch (IOException e) {
-								logger.warn("Failed clean up expired tombstone {}", info.getName());
+								logger.log(Level.WARNING, "Failed clean up expired tombstone {}", info.getName());
 							}
 						}
 					});
@@ -649,7 +648,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					FileMetadata.tombstone(info.getName(), timestamp, info.getRevision()) :
 					FileMetadata.of(info.getName(), Files.size(path), timestamp, info.getRevision());
 		} catch (Exception e) {
-			logger.warn("error while getting metadata for file {}", info.getFilePath());
+			logger.log(Level.WARNING, "error while getting metadata for file {}", info.getFilePath());
 			return null;
 		}
 	}

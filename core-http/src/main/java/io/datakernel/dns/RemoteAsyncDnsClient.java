@@ -35,8 +35,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.DatagramSocketSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -45,13 +43,15 @@ import java.nio.channels.DatagramChannel;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.Promises.TIMEOUT_EXCEPTION;
 import static io.datakernel.async.Promises.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
 public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
+	private final Logger logger = Logger.getLogger(RemoteAsyncDnsClient.class.getName());
 
 	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
 	private static final int DNS_SERVER_PORT = 53;
@@ -134,12 +134,12 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
-			logger.trace("{} already contained an IP address within itself", query);
+			logger.log(Level.FINE, "{} already contained an IP address within itself", query);
 			return Promise.of(fromQuery);
 		}
 
 		if (socket == null) {
-			logger.trace("Incoming query, opening UDP socket");
+			logger.log(Level.FINE, "Incoming query, opening UDP socket");
 			try {
 				DatagramChannel channel = Eventloop.createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
 				AsyncUdpSocketImpl s = AsyncUdpSocketImpl.create(eventloop, channel)
@@ -148,12 +148,12 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 				s.register();
 				socket = s;
 			} catch (IOException e) {
-				logger.error("UDP socket creation failed.", e);
+				logger.log(Level.SEVERE, "UDP socket creation failed.", e);
 				return Promise.ofException(e);
 			}
 		}
 
-		logger.trace("Resolving {} with DNS server {}", query, dnsServerAddress);
+		logger.log(Level.SEVERE, "Resolving {} with DNS server {}", new Object[] {query, dnsServerAddress});
 
 		DnsTransaction transaction = DnsTransaction.of(DnsProtocol.generateTransactionId(), query);
 		SettablePromise<DnsResponse> promise = new SettablePromise<>();
@@ -172,11 +172,11 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 						if (inspector != null) {
 							inspector.onDnsQueryResult(query, queryResult);
 						}
-						logger.trace("DNS query {} resolved as {}", query, queryResult.getRecord());
+						logger.log(Level.FINE, "DNS query {} resolved as {}", new Object[] {query, queryResult.getRecord()});
 						return Promise.of(queryResult);
 					}
 					if (e == TIMEOUT_EXCEPTION) {
-						logger.trace("{} timed out", query);
+						logger.log(Level.FINE, "{} timed out", query);
 						e = new DnsQueryException(RemoteAsyncDnsClient.class, DnsResponse.ofFailure(transaction, TIMED_OUT));
 						transactions.remove(transaction);
 						closeIfDone();
@@ -195,7 +195,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 			DnsResponse queryResult = DnsProtocol.readDnsResponse(packet.getBuf());
 			SettableCallback<DnsResponse> cb = transactions.remove(queryResult.getTransaction());
 			if (cb == null) {
-				logger.warn("Received a DNS response that had no listener (most likely because it timed out) : {}", queryResult);
+				logger.log(Level.WARNING, "Received a DNS response that had no listener (most likely because it timed out) : {}", queryResult);
 				return;
 			}
 			if (queryResult.isSuccessful()) {
@@ -205,7 +205,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 			}
 			closeIfDone();
 		} catch (ParseException e) {
-			logger.warn("Received a UDP packet than cannot be parsed as a DNS server response.", e);
+			logger.log(Level.WARNING, "Received a UDP packet than cannot be parsed as a DNS server response.", e);
 		} finally {
 			packet.recycle();
 		}
@@ -215,7 +215,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 		if (!transactions.isEmpty()) {
 			return;
 		}
-		logger.trace("All queries complete, closing UDP socket");
+		logger.log(Level.FINE, "All queries complete, closing UDP socket");
 		close(); // transactions is empty so no loops here
 	}
 

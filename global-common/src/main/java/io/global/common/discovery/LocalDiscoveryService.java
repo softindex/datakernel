@@ -31,16 +31,16 @@ import io.global.common.api.DiscoveryService;
 import io.global.common.api.SharedKeyStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 
 public final class LocalDiscoveryService implements DiscoveryService, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(LocalDiscoveryService.class);
+	private static final Logger logger = Logger.getLogger(LocalDiscoveryService.class.getName());
 
 	private final Eventloop eventloop;
 	private final AnnouncementStorage announcementStorage;
@@ -72,7 +72,7 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 					}
 					if (signedAnnounceData != null
 							&& signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
-						logger.info("rejected as outdated: {} : {}", announceData, this);
+						logger.log(Level.INFO, "rejected as outdated: {} : {}", new Object[] {announceData, this});
 						return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
 					}
 					return announcementStorage.store(space, announceData);

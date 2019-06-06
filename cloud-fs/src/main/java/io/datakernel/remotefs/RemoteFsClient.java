@@ -36,13 +36,13 @@ import io.datakernel.remotefs.RemoteFsResponses.*;
 import io.datakernel.util.ref.RefLong;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.RemoteFsUtils.KNOWN_ERRORS;
@@ -53,7 +53,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * An implementation of {@link FsClient} which connects to a single {@link RemoteFsServer} and communicates with it.
  */
 public final class RemoteFsClient implements FsClient, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsClient.class.getName());
 
 	public static final StacklessException INVALID_MESSAGE = new StacklessException(RemoteFsClient.class, "Invalid or unexpected message received");
 	public static final StacklessException TOO_MUCH_DATA = new StacklessException(RemoteFsClient.class, "Received more bytes than expected");
@@ -128,13 +128,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													})
 													.whenException(e -> {
 														messaging.close(e);
-														logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
+														logger.log(Level.WARNING, "Cancelled while trying to upload file {} ({}): ", new Object[]{filename, this});
 													})
 													.whenComplete(uploadFinishPromise.recordStats())));
 								})
 								.whenException(e -> {
 									messaging.close(e);
-									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
+									logger.log(Level.WARNING, "Error while trying to upload file {} ({}): ", new Object[]{filename, this});
 								}))
 				.whenComplete(toLogger(logger, "upload", filename, this))
 				.whenComplete(uploadStartPromise.recordStats());
@@ -154,7 +154,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									}
 									long receivingSize = ((DownloadSize) msg).getSize();
 
-									logger.trace("download size for file {} is {}: {}", name, receivingSize, this);
+									logger.log(Level.FINE, "download size for file {} is {}: {}", new Object[]{name, receivingSize, this});
 
 									RefLong size = new RefLong(0);
 									return Promise.of(messaging.receiveBinaryStream()
@@ -165,7 +165,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 														if (size.get() == receivingSize) {
 															return Promise.of(result);
 														}
-														logger.error("invalid stream size for file " + name +
+														logger.log(Level.SEVERE, () -> "invalid stream size for file " + name +
 																" (offset " + offset + ", length " + length + ")," +
 																" expected: " + receivingSize +
 																" actual: " + size.get());
@@ -176,7 +176,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								})
 								.whenException(e -> {
 									messaging.close(e);
-									logger.warn("error trying to download file " + name + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
+									logger.log(Level.WARNING, () -> "error trying to download file " + name + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, "download", name, offset, length, this))
 				.whenComplete(downloadStartPromise.recordStats());
@@ -224,14 +224,14 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
 				.map(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
-				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
-				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
+				.whenResult($ -> logger.log(Level.FINE, "connected to [{}]: {}", new Object[]{address, this}))
+				.whenException(e -> logger.log(Level.WARNING,"failed connecting to [{}] ({}): ", new Object[]{address, e}))
 				.whenComplete(connectPromise.recordStats());
 	}
 
 	private <T> Promise<T> handleInvalidResponse(@Nullable FsResponse msg) {
 		if (msg == null) {
-			logger.warn(this + ": Received unexpected end of stream");
+			logger.log(Level.WARNING, "{}: Received unexpected end of stream", this);
 			return Promise.ofException(UNEXPECTED_END_OF_STREAM);
 		}
 		if (msg instanceof ServerError) {
@@ -256,7 +256,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								})
 								.whenException(e -> {
 									messaging.close(e);
-									logger.warn("Error while processing command " + command + " (" + e + ") : " + this);
+									logger.log(Level.WARNING, "Error while processing command {} ({}) : ", new Object[]{command, this});
 								}));
 	}
 

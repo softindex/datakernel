@@ -33,13 +33,13 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static java.util.Collections.emptyList;
@@ -50,7 +50,7 @@ import static java.util.Collections.emptyMap;
  */
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(LogOTProcessor.class);
+	private static final Logger logger = Logger.getLogger(LogOTProcessor.class.getName());
 
 	private final Eventloop eventloop;
 	private final Multilog<T> multilog;
@@ -71,7 +71,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private final PromiseStats promiseConsumer = PromiseStats.create(Duration.ofMinutes(5));
 
 	private LogOTProcessor(Eventloop eventloop, Multilog<T> multilog, LogDataConsumer<T, D> logStreamConsumer,
-			String log, List<String> partitions, LogOTState<D> state) {
+						   String log, List<String> partitions, LogOTState<D> state) {
 		this.eventloop = eventloop;
 		this.multilog = multilog;
 		this.logStreamConsumer = logStreamConsumer;
@@ -81,8 +81,8 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	public static <T, D> LogOTProcessor<T, D> create(Eventloop eventloop, Multilog<T> multilog,
-			LogDataConsumer<T, D> logStreamConsumer,
-			String log, List<String> partitions, LogOTState<D> state) {
+													 LogDataConsumer<T, D> logStreamConsumer,
+													 String log, List<String> partitions, LogOTState<D> state) {
 		return new LogOTProcessor<>(eventloop, multilog, logStreamConsumer, log, partitions, state);
 	}
 
@@ -113,7 +113,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	@NotNull
 	private Promise<LogDiff<D>> doProcessLog() {
 		if (!enabled) return Promise.of(LogDiff.of(emptyMap(), emptyList()));
-		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());
+		logger.log(Level.FINE, "processLog_gotPositions called. Positions: {}", state.getPositions());
 
 		StreamSupplierWithResult<T, Map<String, LogPositionDiff>> supplier = getSupplier();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
@@ -124,7 +124,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 				.whenComplete(promiseProcessLog.recordStats())
 				.map(result -> LogDiff.of(result.getValue1(), result.getValue2()))
 				.whenResult(logDiff ->
-						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.getPositions()));
+						logger.log(Level.INFO, "Log '{}' processing complete. Positions: {}", new Object[]{log, logDiff.getPositions()}));
 	}
 
 	private StreamSupplierWithResult<T, Map<String, LogPositionDiff>> getSupplier() {
@@ -136,7 +136,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			if (logPosition == null) {
 				logPosition = LogPosition.create(new LogFile("", 0), 0L);
 			}
-			logger.info("Starting reading '{}' from position {}", logName, logPosition);
+			logger.log(Level.INFO, "Starting reading '{}' from position {}", new Object[]{logName, logPosition});
 
 			LogPosition logPositionFrom = logPosition;
 			StreamSupplierWithResult<T, LogPosition> supplier = StreamSupplierWithResult.ofPromise(

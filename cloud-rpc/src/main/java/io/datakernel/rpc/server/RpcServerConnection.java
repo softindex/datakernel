@@ -23,14 +23,14 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.protocol.RpcStream.Listener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class RpcServerConnection implements Listener, JmxRefreshable {
-	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
+	private static final Logger logger = Logger.getLogger(RpcServerConnection.class.getName());
 
 	private final RpcServer rpcServer;
 	private final RpcStream stream;
@@ -95,7 +95,7 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 
 				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(e)));
 				decrementActiveRequest();
-				logger.warn("Exception while processing request ID {}", cookie, e);
+				logger.log(Level.WARNING, "Exception while processing request ID " + cookie, e);
 			}
 		});
 	}
@@ -122,7 +122,7 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 
 		// jmx
 		String causedAddress = "Remote address: " + remoteAddress;
-		logger.error("Protocol error. " + causedAddress, e);
+		logger.log(Level.WARNING, "Protocol error. " + causedAddress, e);
 		rpcServer.getLastProtocolError().recordException(e, causedAddress);
 	}
 

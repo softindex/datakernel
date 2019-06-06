@@ -13,11 +13,11 @@ import io.global.common.api.AbstractGlobalNamespace;
 import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.*;
@@ -31,7 +31,7 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNamespace, GlobalOTNodeImpl, GlobalOTNode> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNamespace.class);
+	private static final Logger logger = Logger.getLogger(GlobalOTNamespace.class.getName());
 
 	public static final StacklessException POLLING_HAS_BEEN_STOPPED = new StacklessException(GlobalOTNodeImpl.class, "Polling has been stopped");
 
@@ -59,7 +59,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 	@NotNull
 	private Promise<Void> doUpdateRepositories() {
-		logger.trace("Updating repositories");
+		logger.log(Level.FINE, "Updating repositories");
 		if (updateRepositoriesTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.complete();
 		}
@@ -254,7 +254,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doUpdateHeads() {
-			logger.trace("Updating heads");
+			logger.log(Level.FINE, "Updating heads");
 			if (updateHeadsTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -268,7 +268,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doUpdateSnapshots() {
-			logger.trace("Updating snapshots");
+			logger.log(Level.FINE, "Updating snapshots");
 			if (updateSnapshotsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -287,7 +287,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doUpdatePullRequests() {
-			logger.trace("Updating pull requests");
+			logger.log(Level.FINE, "Updating pull requests");
 			if (updatePullRequestsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -327,7 +327,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doFetch(GlobalOTNode targetNode) {
-			logger.trace("{} fetching from {}", repositoryId, targetNode);
+			logger.log(Level.FINE, "{} fetching from {}", new Object[]{repositoryId, targetNode});
 			return transfer(targetNode, node);
 		}
 
@@ -337,7 +337,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private Promise<Void> doPush(GlobalOTNode targetNode) {
-			logger.trace("{} pushing to {}", repositoryId, targetNode);
+			logger.log(Level.FINE, "{} pushing to {}", new Object[]{repositoryId, targetNode});
 			return transfer(node, targetNode);
 		}
 
@@ -357,7 +357,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		@NotNull
 		private Promise<Void> doPushSnapshots() {
 			return forEachMaster(master -> {
-				logger.trace("{} pushing snapshots to {}", repositoryId, master);
+				logger.log(Level.FINE, "{} pushing snapshots to {}", new Object[]{repositoryId, master});
 				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in node.getCommitStorage().listSnapshotIds()
 				return master.listSnapshots(repositoryId, emptySet())
 						.then(remoteSnapshotIds -> node.getCommitStorage().listSnapshotIds(repositoryId)
@@ -372,7 +372,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		@NotNull
 		private Promise<Void> doPushPullRequests() {
 			return forEachMaster(master -> {
-				logger.trace("{} pushing pull requests to {}", repositoryId, master);
+				logger.log(Level.FINE, "{} pushing pull requests to {}", new Object[]{repositoryId, master});
 				return master.getPullRequests(repositoryId)
 						.then(remotePullRequests -> node.getCommitStorage().getPullRequests(repositoryId)
 								.map(localPullRequests -> difference(localPullRequests, remotePullRequests)))
@@ -398,7 +398,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private void doExcludeParents(PriorityQueue<CommitEntry> queue, long minLevel,
-				Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
+									  Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
 			CommitEntry entry = queue.poll();
 			if (entry == null || entry.getLevel() < minLevel) {
 				cb.set(resultHeads);

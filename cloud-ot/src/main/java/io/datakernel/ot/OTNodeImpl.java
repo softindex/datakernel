@@ -6,12 +6,11 @@ import io.datakernel.async.Promises;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.util.ref.Ref;
 import io.datakernel.util.ref.RefInt;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.ot.DiffsReducer.toSquashedList;
 import static io.datakernel.ot.OTAlgorithms.*;
@@ -21,7 +20,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
 
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
-	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
+	private static final Logger logger = Logger.getLogger(OTNodeImpl.class.getName());
 
 	private final OTSystem<D> otSystem;
 	private final OTRepository<K, D> repository;

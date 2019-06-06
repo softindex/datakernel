@@ -16,7 +16,6 @@
 
 package io.global.ot.server;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.RetryPolicy;
@@ -56,6 +55,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -168,7 +168,7 @@ public class GlobalOTNodeImplTest {
 
 	@BeforeClass
 	public static void disableLogs() {
-		enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+		enableLogging(SteppingCurrentTimeProvider.class, Level.WARNING);
 	}
 
 	@Before
@@ -424,7 +424,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testSyncRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -484,7 +484,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testCatchupRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1, () -> 10);
 
@@ -540,7 +540,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testPushRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -566,7 +566,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = "WARNING") // too many logs
 	public void testPushIntermediateToMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 

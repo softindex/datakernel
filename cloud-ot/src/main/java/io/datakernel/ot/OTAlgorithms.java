@@ -8,12 +8,12 @@ import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
 import io.datakernel.util.ref.Ref;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.Promises.toList;
 import static io.datakernel.ot.GraphReducer.resume;
@@ -29,7 +29,7 @@ import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTAlgorithms {
-	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
+	private static final Logger logger = Logger.getLogger(OTAlgorithms.class.getName());
 
 	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
 
@@ -204,13 +204,13 @@ public final class OTAlgorithms {
 								.then(graph -> {
 									try {
 										Map<K, List<D>> mergeResult = graph.merge(graph.excludeParents(heads));
-										if (logger.isTraceEnabled()) {
-											logger.info(graph.toGraphViz() + "\n");
+										if (logger.isLoggable(Level.FINER)) {
+											logger.info(() -> graph.toGraphViz() + "\n");
 										}
 										return Promise.of(mergeResult);
 									} catch (OTException e) {
-										if (logger.isTraceEnabled()) {
-											logger.error(graph.toGraphViz() + "\n", e);
+										if (logger.isLoggable(Level.FINER)) {
+											logger.log(Level.SEVERE,  e, () -> graph.toGraphViz() + "\n");
 										}
 										return Promise.ofException(e);
 									}

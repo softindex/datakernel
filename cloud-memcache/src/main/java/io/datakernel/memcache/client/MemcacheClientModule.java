@@ -8,13 +8,13 @@ import io.datakernel.memcache.protocol.MemcacheRpcMessage;
 import io.datakernel.rpc.client.RpcClient;
 
 import java.time.Duration;
+import java.util.logging.Logger;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.HASH_FUNCTION;
 import static io.datakernel.rpc.client.RpcClient.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
 import static io.datakernel.util.MemSize.kilobytes;
-import static org.slf4j.LoggerFactory.getLogger;
 
 public class MemcacheClientModule extends AbstractModule {
 	@Provides
@@ -32,7 +32,7 @@ public class MemcacheClientModule extends AbstractModule {
 				.withConnectTimeout(config.get(ofDuration(), "client.connectSettings.connectTimeout", Duration.ofSeconds(10)))
 				.withReconnectInterval(config.get(ofDuration(), "client.connectSettings.reconnectInterval", Duration.ofSeconds(1)))
 				.withAutoFlushInterval(config.get(ofDuration(), "client.flushDelay", Duration.ZERO))
-				.withLogger(getLogger(MemcacheClient.class));
+				.withLogger(Logger.getLogger(MemcacheClient.class.getName()));
 	}
 
 	@Provides

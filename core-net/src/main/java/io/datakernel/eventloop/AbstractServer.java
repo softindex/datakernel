@@ -29,7 +29,6 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
@@ -43,6 +42,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
@@ -50,7 +51,6 @@ import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.check;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * It is implementation of {@link EventloopServer}. It is non-blocking server which works in eventloop.
@@ -61,7 +61,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
-	protected Logger logger = getLogger(getClass());
+	protected Logger logger = Logger.getLogger(getClass().getName());
 
 	@NotNull
 	protected final Eventloop eventloop;
@@ -216,11 +216,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		serverSocketChannels = new ArrayList<>();
 		if (listenAddresses != null && !listenAddresses.isEmpty()) {
 			listenAddresses(listenAddresses, false);
-			logger.info("Listening on {}: {}", listenAddresses, this);
+			logger.log(Level.INFO, "Listening on {}: {}", new Object[]{listenAddresses, this});
 		}
 		if (sslListenAddresses != null && !sslListenAddresses.isEmpty()) {
 			listenAddresses(sslListenAddresses, true);
-			logger.info("Listening with SSL on {}: {}", sslListenAddresses, this);
+			logger.log(Level.INFO, "Listening with SSL on {}: {}", new Object[]{sslListenAddresses, this});
 		}
 	}
 
@@ -231,7 +231,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 						channel -> doAccept(channel, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
-				logger.error("Can't listen on [" + address + "]: " + this, e);
+				logger.log(Level.SEVERE, e, () -> "Can't listen on [" + address + "]: " + this);
 				close();
 				throw e;
 			}
@@ -247,9 +247,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return Promise.ofCallback(this::onClose)
 				.whenComplete(($, e) -> {
 					if (e == null) {
-						logger.info("Server closed: {}", this);
+						logger.log(Level.INFO, "Server closed: {}", this);
 					} else {
-						logger.error("Server closed exceptionally: " + this, e);
+						logger.log(Level.SEVERE, e, () -> "Server closed exceptionally: " + this);
 					}
 				})
 				.materialize();
@@ -308,9 +308,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		if (workerServerEventloop == eventloop) {
 			workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
-			if (logger.isTraceEnabled()) {
-				logger.trace("received connection from [{}]{}: {}", remoteAddress, ssl ? " over SSL" : "", this);
-			}
+			logger.log(Level.FINE, "received connection from [{}]{}: {}",
+					new Object[]{remoteAddress, ssl ? " over SSL" : "", this});
 			accepts.recordEvent();
 			if (ssl) acceptsSsl.recordEvent();
 			onAccept(channel, localAddress, remoteAddress, ssl);
@@ -325,7 +324,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public final void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
-			boolean ssl, SocketSettings socketSettings) {
+							   boolean ssl, SocketSettings socketSettings) {
 		assert eventloop.inEventloopThread();
 		accepts.recordEvent();
 		if (ssl) acceptsSsl.recordEvent();

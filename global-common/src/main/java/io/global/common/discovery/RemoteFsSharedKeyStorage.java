@@ -32,13 +32,12 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyStorage;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.reduce;
@@ -51,7 +50,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsSharedKeyStorage.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsSharedKeyStorage.class.getName());
 
 	private static final StructuredCodec<SignedData<SharedSimKey>> SHARED_KEY_CODEC =
 			REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});

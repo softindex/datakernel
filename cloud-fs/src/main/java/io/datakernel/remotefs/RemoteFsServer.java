@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.logging.Level;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
@@ -94,20 +95,20 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		messaging.receive()
 				.then(msg -> {
 					if (msg == null) {
-						logger.warn("unexpected end of stream: {}", this);
+						logger.log(Level.WARNING, "unexpected end of stream: {}", this);
 						messaging.close();
 						return Promise.complete();
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 					if (handler == null) {
-						logger.warn("received a message with no associated handler, type: " + msg.getClass());
+						logger.log(Level.WARNING, "received a message with no associated handler, type: {}", msg.getClass());
 						return Promise.ofException(NO_HANDLER_FOR_MESSAGE);
 					}
 					return handler.onMessage(messaging, msg);
 				})
 				.whenComplete(handleRequestPromise.recordStats())
 				.whenException(e -> {
-					logger.warn("got an error while handling message (" + e + ") : " + this);
+					logger.log(Level.WARNING, "got an error while handling message ({}) : ", new Object[] {e, this});
 					messaging.send(new ServerError(getErrorCode(e)))
 							.then($ -> messaging.sendEndOfStream())
 							.whenResult($ -> messaging.close());

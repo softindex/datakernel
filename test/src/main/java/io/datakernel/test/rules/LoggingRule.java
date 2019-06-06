@@ -16,14 +16,13 @@
 
 package io.datakernel.test.rules;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
-import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * {@link TestRule} that enables deeper logger levels for specific tests that request it.
@@ -47,10 +46,10 @@ public final class LoggingRule implements TestRule {
 			Logger[] loggers = new Logger[clauses.length];
 			for (int i = 0; i < clauses.length; i++) {
 				LoggerConfig clause = clauses[i];
-				Logger logger = (Logger) LoggerFactory.getLogger(clause.logger());
+				Logger logger = Logger.getLogger(clause.logger());
 				oldLevels[i] = logger.getLevel();
 				loggers[i] = logger;
-				logger.setLevel(Level.toLevel(clause.value()));
+				logger.setLevel(Level.parse(clause.value()));
 			}
 			try {
 				base.evaluate();
@@ -66,7 +65,7 @@ public final class LoggingRule implements TestRule {
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.TYPE})
 	public @interface LoggerConfig {
-		String logger() default Logger.ROOT_LOGGER_NAME;
+		String logger() default Logger.GLOBAL_LOGGER_NAME;
 
 		String value();
 

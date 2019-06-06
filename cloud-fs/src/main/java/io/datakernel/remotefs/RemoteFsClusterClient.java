@@ -35,12 +35,12 @@ import io.datakernel.util.Initializable;
 import io.datakernel.util.Tuple2;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
@@ -55,7 +55,7 @@ import static java.util.stream.Collectors.toList;
  * Contains some redundancy and fail-safety capabilities.
  */
 public final class RemoteFsClusterClient implements FsClient, Initializable<RemoteFsClusterClient>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClusterClient.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsClusterClient.class.getName());
 
 	private final Eventloop eventloop;
 	private final Map<Object, FsClient> clients;
@@ -210,7 +210,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	public boolean markDead(Object partitionId, @Nullable Throwable e) {
 		FsClient client = aliveClients.remove(partitionId);
 		if (client != null) {
-			logger.warn("marking " + partitionId + " as dead (" + e + ')');
+			logger.log(Level.WARNING, "marking " + partitionId + " as dead (" + e + ')');
 			deadClients.put(partitionId, client);
 			return true;
 		}
@@ -292,9 +292,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 									.toTry()))
 							.materialize();
 
-					if (logger.isTraceEnabled()) {
-						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
-					}
+
+					logger.log(Level.FINE, "uploading file {} to {}, {}", new Object[]{
+							filename,
+							successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")),
+							this});
 
 					ChannelConsumer<ByteBuf> consumer = splitter.getInput().getConsumer();
 
@@ -380,9 +382,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								if (client == null) { // marked as dead already by somebody
 									return Promise.ofException(new StacklessException(RemoteFsClusterClient.class, "Client " + piwfs.getValue1() + " is not alive"));
 								}
-								logger.trace("downloading file {} from {}", name, piwfs.getValue1());
+								logger.log(Level.FINE, "downloading file {} from {}", new Object[]{name, piwfs.getValue1()});
 								return client.download(name, offset, length)
-										.whenException(e -> logger.warn("Failed to connect to server with key " + piwfs.getValue1() + " to download file " + name, e))
+										.whenException(e -> logger.log(Level.WARNING, "Failed to connect to server with key " + piwfs.getValue1() + " to download file " + name, e))
 										.thenEx(wrapDeath(piwfs.getValue1()))
 										.map(supplier -> supplier
 												.withEndOfStream(eos -> eos
