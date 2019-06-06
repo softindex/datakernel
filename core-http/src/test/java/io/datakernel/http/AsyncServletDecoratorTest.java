@@ -16,6 +16,7 @@ import java.util.List;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.http.AsyncServletDecorator.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("ConstantConditions")
@@ -152,7 +153,7 @@ public class AsyncServletDecoratorTest {
 	}
 
 	@Test
-	public void testRuntimeExeptionExceptions() {
+	public void testRuntimeExceptionExceptions() {
 		AsyncServlet servlet = combineDecorators(catchRuntimeExceptions(), loadBody())
 				.serve(request -> Promise.of(HttpResponse.ok200()));
 
@@ -161,7 +162,7 @@ public class AsyncServletDecoratorTest {
 	}
 
 	@Test
-	public void testCathcUncheckedException() {
+	public void testCatchUncheckedException() {
 		AsyncServlet servlet = AsyncServletDecorator.catchUncheckedExceptions()
 				.serve(request -> {
 					throw new UncheckedException(new NullPointerException());
@@ -169,5 +170,45 @@ public class AsyncServletDecoratorTest {
 
 		NullPointerException throwable = awaitException(servlet.serve(null));
 		assertNotNull(throwable);
+	}
+
+	@Test
+	public void testMapExceptionPredicate() {
+		Exception exception = new Exception("Test exception");
+		AsyncServlet servlet = mapException(e -> e == exception, $ -> Promise.of(HttpResponse.ok200().withBody("Test".getBytes(UTF_8))))
+				.serve($ -> Promise.ofException(exception));
+
+		HttpResponse response = await(servlet.serve(null));
+		assertEquals(200, response.getCode());
+
+		ByteBuf body = await(response.loadBody());
+		assertEquals("Test", body.asString(UTF_8));
+	}
+
+	@Test
+	public void testMapHttpException404() {
+		AsyncServlet servlet = mapHttpException404(request -> {
+			String path = request.getPath();
+			switch (path) {
+				case "/resource":
+					return Promise.of(HttpResponse.ok200().withBody("Resource not found".getBytes(UTF_8)));
+				default:
+					throw new AssertionError();
+			}
+		}).serve(request -> {
+			String path = request.getPath();
+			switch (path) {
+				case "/resource":
+					return Promise.ofException(HttpException.ofCode(404));
+				default:
+					return Promise.of(HttpResponse.ok200());
+			}
+		});
+
+		ByteBuf bodyClient = await(servlet.serve(HttpRequest.get("http://localhost/resource")).then(HttpResponse::loadBody));
+		assertEquals("Resource not found", bodyClient.asString(UTF_8));
+
+		HttpResponse responseOther = await(servlet.serve(HttpRequest.get("http://localhost/other")));
+		assertEquals(200, responseOther.getCode());
 	}
 }

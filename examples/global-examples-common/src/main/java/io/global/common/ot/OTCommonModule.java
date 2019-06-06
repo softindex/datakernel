@@ -86,7 +86,7 @@ public class OTCommonModule<D> extends AbstractModule {
 	@Provides
 	StaticServlet staticServlet(Config config) {
 		return StaticServlet.create(ofClassPath(config.get(ofString(), "resources.path")))
-				.withMappingEmptyTo("index.html");
+				.withIndexHtml();
 	}
 
 	@Provides

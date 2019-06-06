@@ -41,7 +41,7 @@ final class GlobalOTDemoModule extends AbstractModule {
 	@Provides
 	RoutingServlet servlet(StaticServlet staticServlet, OTRepository<CommitId, Operation> repository, ManagerProvider<Operation> managerProvider) {
 		return OTStateServlet.create(managerProvider, repository)
-				.with("/*", staticServlet.withMappingEmptyTo("index.html"));
+				.with("/*", staticServlet);
 	}
 
 	@Provides

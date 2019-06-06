@@ -45,7 +45,7 @@ public final class TodoListLauncher extends HttpServerLauncher {
 		return RoutingServlet.create()
 				//[START REGION_2]
 				.with("/*", StaticServlet.create(ofClassPath("build/"))
-						.withMappingEmptyTo("index.html"))
+						.withIndexHtml())
 				//[END REGION_2]
 				.with(POST, "/add", loadBody()
 						.serve(request -> {

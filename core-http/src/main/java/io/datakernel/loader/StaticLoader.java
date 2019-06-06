@@ -3,6 +3,7 @@ package io.datakernel.loader;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -14,7 +15,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface StaticLoader {
-	StacklessException NOT_FOUND_EXCEPTION = new StacklessException();
+	StacklessException NOT_FOUND_EXCEPTION = new StacklessException(StaticLoader.class, "File not found");
+	StacklessException IS_A_DIRECTORY = new StacklessException(StaticLoader.class, "Is a directory");
 
 	Promise<ByteBuf> load(String path);
 
@@ -57,7 +59,7 @@ public interface StaticLoader {
 		return StaticLoaderClassPath.create(root);
 	}
 
-	static StaticLoader ofClassPath(Executor executor, ClassLoader classLoader, String root) {
+	static StaticLoader ofClassPath(@Nullable Executor executor, ClassLoader classLoader, String root) {
 		return StaticLoaderClassPath.create(executor, classLoader, root);
 	}
 

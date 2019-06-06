@@ -44,7 +44,7 @@ public final class RequestParameterExample extends HttpServerLauncher {
 							.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
 				})
 						.with("/*", StaticServlet.create(ofClassPath(RESOURCE_DIR))
-						.withMappingEmptyTo("index.html"));
+								.withIndexHtml());
 	}
 
 	public static void main(String[] args) throws Exception {

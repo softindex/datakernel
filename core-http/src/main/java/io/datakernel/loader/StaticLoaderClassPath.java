@@ -8,7 +8,12 @@ import org.jetbrains.annotations.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.NoSuchFileException;
+import java.net.JarURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
 import static java.lang.ClassLoader.getSystemClassLoader;
@@ -44,8 +49,6 @@ class StaticLoaderClassPath implements StaticLoader {
 
 	@Override
 	public Promise<ByteBuf> load(String name) {
-		if (name.isEmpty()) return Promise.ofException(NOT_FOUND_EXCEPTION);
-
 		String path = root;
 		int begin = 0;
 		if (name.startsWith(ROOT)) {
@@ -53,28 +56,44 @@ class StaticLoaderClassPath implements StaticLoader {
 		}
 		path += name.substring(begin);
 
-		InputStream file = classLoader.getResourceAsStream(path);
-		if (file == null) {
-			return Promise.ofException(NOT_FOUND_EXCEPTION);
-		}
+		String finalPath = path;
 
-		return Promise.ofBlockingCallable(executor, () -> ByteBuf.wrapForReading(loadResource(file)))
-				.thenEx((buf, e) ->
-						Promise.of(buf, e instanceof NoSuchFileException ? NOT_FOUND_EXCEPTION : e));
+		return Promise.ofBlockingCallable(executor, () -> {
+			URL resource = classLoader.getResource(finalPath);
+			if (resource == null) {
+				throw NOT_FOUND_EXCEPTION;
+			}
+
+			URLConnection connection = resource.openConnection();
+
+			if (connection instanceof JarURLConnection) {
+				if (((JarURLConnection) connection).getJarEntry().isDirectory()) {
+					throw IS_A_DIRECTORY;
+				}
+			} else if ("file".equals(resource.getProtocol())) {
+				Path filePath = Paths.get(resource.getPath());
+				if (!Files.isRegularFile(filePath)) {
+					if (Files.isDirectory(filePath)) {
+						throw IS_A_DIRECTORY;
+					} else {
+						throw NOT_FOUND_EXCEPTION;
+					}
+				}
+			}
+			return ByteBuf.wrapForReading(loadResource(connection));
+		});
 	}
 
-	private byte[] loadResource(InputStream file) throws IOException {
+	private byte[] loadResource(URLConnection connection) throws IOException {
 		// reading file as resource
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		byte[] buffer = new byte[4096];
+		byte[] buffer = new byte[8192];
 		int size;
-		while ((size = file.read(buffer)) != -1) {
-			out.write(buffer, 0, size);
+		try (InputStream stream = connection.getInputStream()) {
+			while ((size = stream.read(buffer)) != -1) {
+				out.write(buffer, 0, size);
+			}
 		}
-		try {
-			return out.toByteArray();
-		} finally {
-			file.close();
-		}
+		return out.toByteArray();
 	}
 }

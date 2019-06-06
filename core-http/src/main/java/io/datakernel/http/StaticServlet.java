@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.loader.StaticLoader;
 import org.jetbrains.annotations.NotNull;
@@ -25,8 +26,10 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
@@ -36,8 +39,8 @@ public final class StaticServlet implements AsyncServlet {
 
 	private final StaticLoader resourceLoader;
 	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
-	private Function<String, @Nullable String> mapper = path -> path;
-	private Predicate<String> filter = path -> true;
+	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
+	private Set<String> indexResources = new LinkedHashSet<>();
 
 	@Nullable
 	private String defaultResource;
@@ -63,7 +66,7 @@ public final class StaticServlet implements AsyncServlet {
 		return this;
 	}
 
-	public StaticServlet withMapping(Function<String, String> fn) {
+	public StaticServlet withMapping(Function<HttpRequest, String> fn) {
 		mapper = fn;
 		return this;
 	}
@@ -75,17 +78,18 @@ public final class StaticServlet implements AsyncServlet {
 		return withMapping($ -> path);
 	}
 
-	public StaticServlet withMappingEmptyTo(String index) {
-		return withMapping(filename -> filename.isEmpty() ? index : filename);
-	}
-
-	public StaticServlet withFilter(Predicate<String> filter) {
-		this.filter = filter;
+	public StaticServlet withMappingNotFoundTo(String defaultResource) {
+		this.defaultResource = defaultResource;
 		return this;
 	}
 
-	public StaticServlet withMappingNotFoundTo(String defaultResource) {
-		this.defaultResource = defaultResource;
+	public StaticServlet withIndexResources(String... indexResources) {
+		this.indexResources.addAll(Arrays.asList(indexResources));
+		return this;
+	}
+
+	public StaticServlet withIndexHtml() {
+		this.indexResources.add("index.html");
 		return this;
 	}
 
@@ -121,23 +125,46 @@ public final class StaticServlet implements AsyncServlet {
 	@NotNull
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
-		String relativePath = request.getRelativePath();
-		String mappedPath = mapper.apply(relativePath);
-		if (!filter.test(relativePath) || mappedPath == null) return Promise.ofException(HttpException.notFound404());
+		String mappedPath = mapper.apply(request);
+		if (mappedPath == null) return Promise.ofException(HttpException.notFound404());
 		ContentType contentType = contentTypeResolver.apply(mappedPath);
-
-		return resourceLoader.load(mappedPath)
-				.thenEx((byteBuf, e) -> {
+		return Promise.complete()
+				.then($ -> (mappedPath.endsWith("/") || mappedPath.isEmpty()) ?
+						tryLoadIndexResource(mappedPath) :
+						resourceLoader.load(mappedPath)
+								.map(byteBuf -> createHttpResponse(byteBuf, contentType))
+								.thenEx((value, e) -> {
+									if (e == StaticLoader.IS_A_DIRECTORY) {
+										return tryLoadIndexResource(mappedPath);
+									} else {
+										return Promise.of(value, e);
+									}
+								}))
+				.thenEx((response, e) -> {
 					if (e == null) {
-						return Promise.of(createHttpResponse(byteBuf, contentType));
+						return Promise.of(response);
 					} else if (e == StaticLoader.NOT_FOUND_EXCEPTION) {
-						return defaultResource != null ?
-								resourceLoader.load(defaultResource)
-										.map(buf -> createHttpResponse(buf, contentTypeResolver.apply(defaultResource))) :
-								Promise.ofException(HttpException.notFound404());
+						return tryLoadDefaultResource();
 					} else {
 						return Promise.ofException(e);
 					}
 				});
+	}
+
+	@NotNull
+	private Promise<HttpResponse> tryLoadIndexResource(String mappedPath) {
+		String dirPath = mappedPath.endsWith("/") || mappedPath.isEmpty() ? mappedPath : (mappedPath + '/');
+		return Promises.<HttpResponse>firstSuccessful(indexResources.stream()
+				.map(indexResource -> () -> resourceLoader.load(dirPath + indexResource)
+						.map(byteBuf -> createHttpResponse(byteBuf, contentTypeResolver.apply(indexResource)))))
+				.thenEx(((response, e) -> e == null ? Promise.of(response) : Promise.ofException(StaticLoader.NOT_FOUND_EXCEPTION)));
+	}
+
+	@NotNull
+	private Promise<? extends HttpResponse> tryLoadDefaultResource() {
+		return defaultResource != null ?
+				resourceLoader.load(defaultResource)
+						.map(buf -> createHttpResponse(buf, contentTypeResolver.apply(defaultResource))) :
+				Promise.ofException(HttpException.notFound404());
 	}
 }

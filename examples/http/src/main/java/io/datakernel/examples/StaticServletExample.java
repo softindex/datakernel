@@ -28,7 +28,7 @@ public final class StaticServletExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
 		return StaticServlet.create(ofClassPath("static/site"))
-				.withMappingEmptyTo("index.html");
+				.withIndexHtml();
 	}
 
 	public static void main(String[] args) throws Exception {

@@ -8,10 +8,7 @@ import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 
 import static io.datakernel.csp.ChannelConsumers.recycling;
 import static java.util.Arrays.asList;
@@ -116,6 +113,46 @@ public interface AsyncServletDecorator {
 								return Promise.of(fn.apply(request, e));
 							}
 						}));
+	}
+
+	static AsyncServletDecorator mapException(Predicate<Throwable> predicate, AsyncServlet fallbackServlet) {
+		return servlet ->
+				request -> servlet.serve(request)
+						.thenEx((response, e) -> predicate.test(e) ?
+								fallbackServlet.serve(request) :
+								Promise.of(response, e));
+	}
+
+	static AsyncServletDecorator mapHttpException(AsyncServlet fallbackServlet) {
+		return mapException(throwable -> throwable instanceof HttpException, fallbackServlet);
+	}
+
+	static AsyncServletDecorator mapHttpException404(AsyncServlet fallbackServlet) {
+		return mapException(throwable -> throwable instanceof HttpException && ((HttpException) throwable).getCode() == 404, fallbackServlet);
+	}
+
+	static AsyncServletDecorator mapHttpException500(AsyncServlet fallbackServlet) {
+		return mapException(throwable -> throwable instanceof HttpException && ((HttpException) throwable).getCode() == 500, fallbackServlet);
+	}
+
+	static AsyncServletDecorator mapHttpClientException(AsyncServlet fallbackServlet) {
+		return mapException(throwable -> {
+			if (throwable instanceof HttpException) {
+				int code = ((HttpException) throwable).getCode();
+				return code >= 400 && code < 500;
+			}
+			return false;
+		}, fallbackServlet);
+	}
+
+	static AsyncServletDecorator mapHttpServerException(AsyncServlet fallbackServlet) {
+		return mapException(throwable -> {
+			if (throwable instanceof HttpException) {
+				int code = ((HttpException) throwable).getCode();
+				return code >= 500 && code < 600;
+			}
+			return false;
+		}, fallbackServlet);
 	}
 
 	static AsyncServletDecorator mapToHttp500Exception() {

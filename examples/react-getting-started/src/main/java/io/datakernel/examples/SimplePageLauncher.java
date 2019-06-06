@@ -12,7 +12,7 @@ public class SimplePageLauncher extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
 		return StaticServlet.create(ofClassPath("build"))
-				.withMappingEmptyTo("index.html");
+				.withIndexHtml();
 	}
 
 	public static void main(String[] args) throws Exception {

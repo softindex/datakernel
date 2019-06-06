@@ -74,7 +74,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 
 
 		String name;
-		Promise<ChannelSupplier<ByteBuf>> reader;
+		Promise<? extends ChannelSupplier<ByteBuf>> reader;
 
 		if (file == null) {
 			if (remoteName == null) {
@@ -97,7 +97,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			info("Uploading data from standard input as " + name + " ...");
 		} else {
 			Path path = Paths.get(file);
-			reader = ChannelFileReader.readFile(path).map(channel -> channel);
+			reader = ChannelFileReader.readFile(path);
 			if (remoteName == null) {
 				name = path.getFileName().toString();
 				info("Uploading " + name + " ...");

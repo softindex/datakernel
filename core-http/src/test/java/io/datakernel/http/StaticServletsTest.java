@@ -133,7 +133,7 @@ public final class StaticServletsTest {
 	public void testRelativeClassPathWithInnerPath() {
 		StaticLoader resourceLoader = ofClassPath(null, getClass().getClassLoader(), "/dir/");
 		StaticServlet staticServlet = StaticServlet.create(resourceLoader);
-		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/test.txt/")));
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/test.txt")));
 		await(response.loadBody());
 		ByteBuf body = response.getBody();
 

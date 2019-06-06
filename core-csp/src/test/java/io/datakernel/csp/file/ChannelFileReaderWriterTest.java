@@ -142,16 +142,4 @@ public final class ChannelFileReaderWriterTest {
 
 		assertEquals("", byteBuf.asString(UTF_8));
 	}
-
-	@Test
-	public void testReaderNotRegularFile() throws IOException {
-		File file = tempFolder.newFile();
-		ChannelFileReader cfr = await(ChannelFileReader.readFile(file.toPath()));
-		cfr.close();
-
-		File dir = tempFolder.newFolder();
-		Throwable e = awaitException(ChannelFileReader.readFile(dir.toPath()));
-		assertSame(ChannelFileReader.NOT_A_REGULAR_FILE, e);
-	}
-
 }
