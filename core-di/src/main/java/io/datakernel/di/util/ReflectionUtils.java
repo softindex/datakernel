@@ -25,19 +25,7 @@ public final class ReflectionUtils {
 		return className.replaceAll("(?:\\p{javaJavaIdentifierPart}+\\.)*(\\p{javaJavaIdentifierPart}+)", "$1");
 	}
 
-	public static <T> Key<T> keyOf(Method method) {
-		return keyOf(Key.of(method.getDeclaringClass()), method.getGenericReturnType(), method.getDeclaredAnnotations());
-	}
-
-	public static <T> Key<T> keyOf(Field field) {
-		return keyOf(Key.of(field.getDeclaringClass()), field.getGenericType(), field.getDeclaredAnnotations());
-	}
-
-	public static <T> Key<T> keyOf(Parameter parameter) {
-		return keyOf(Key.of(parameter.getDeclaringExecutable().getDeclaringClass()), parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
-	}
-
-	private static <T> Key<T> keyOf(@Nullable Key<?> containerType, Type type, Annotation[] annotations) {
+	public static <T> Key<T> keyOf(@Nullable Key<?> containerType, Type type, Annotation[] annotations) {
 		Set<Annotation> names = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().isAnnotationPresent(NameAnnotation.class))
 				.collect(toSet());
@@ -180,7 +168,7 @@ public final class ReflectionUtils {
 	public static <T> BindingInitializer<T> fieldInjector(Key<? extends T> container, Field field, boolean required) {
 		field.setAccessible(true);
 
-		Key<Object> key = keyOf(field);
+		Key<Object> key = keyOf(container, field.getGenericType(), field.getDeclaredAnnotations());
 		Dependency dependency = new Dependency(key, required);
 
 		return BindingInitializer.of(new Dependency[]{dependency}, (instance, args) -> {
@@ -199,7 +187,7 @@ public final class ReflectionUtils {
 	public static <T> BindingInitializer<T> methodInjector(Key<? extends T> container, Method method, boolean required) {
 		method.setAccessible(true);
 
-		Dependency[] dependencies = toDependencies(method.getParameters());
+		Dependency[] dependencies = toDependencies(container, method.getParameters());
 
 		if (required) {
 			return BindingInitializer.of(dependencies, (instance, args) -> {
@@ -230,7 +218,7 @@ public final class ReflectionUtils {
 	}
 
 	@NotNull
-	private static Dependency[] toDependencies(Parameter[] parameters) {
+	private static Dependency[] toDependencies(@Nullable Key<?> container, Parameter[] parameters) {
 		Dependency[] dependencies = new Dependency[parameters.length];
 
 		if (parameters.length == 0) {
@@ -244,7 +232,6 @@ public final class ReflectionUtils {
 
 			Parameter parameter = parameters[workaround && i != 0 ? i - 1 : i];
 
-			Key<?> container = Key.of(parameter.getDeclaringExecutable().getDeclaringClass());
 			Key<Object> key = keyOf(container, type, parameter.getDeclaredAnnotations());
 			dependencies[i] = new Dependency(key, !parameter.isAnnotationPresent(Optional.class));
 		}
@@ -263,19 +250,21 @@ public final class ReflectionUtils {
 						throw new ProvisionFailedException(null, method, e);
 					}
 				},
-				toDependencies(method.getParameters())).at(LocationInfo.from(method));
+				toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters())).at(LocationInfo.from(method));
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Binding<T> bindingForGenericMethod(Key<?> requestedKey, @Nullable Object instance, Method method) {
+	public static <T> Binding<T> bindingForGenericMethod(@Nullable Object module, Key<?> requestedKey, Method method) {
 		method.setAccessible(true);
+
+		Key<?> moduleType = module != null ? Key.of(module.getClass()) : null;
 
 		Type genericReturnType = method.getGenericReturnType();
 		Map<TypeVariable<?>, Type> mapping = extractTypevarValues(genericReturnType, requestedKey.getType());
 
 		Dependency[] dependencies = Arrays.stream(method.getParameters())
 				.map(parameter -> {
-					Key<?> paramKey = keyOf(parameter);
+					Key<?> paramKey = keyOf(moduleType, parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
 					Key<Object> fullKey = Key.ofType(resolveGenerics(paramKey.getType(), mapping), paramKey.getName());
 					return new Dependency(fullKey, !parameter.isAnnotationPresent(Optional.class));
 				})
@@ -284,7 +273,7 @@ public final class ReflectionUtils {
 		return (Binding<T>) Binding.of(
 				args -> {
 					try {
-						return method.invoke(instance, args);
+						return method.invoke(module, args);
 					} catch (IllegalAccessException | InvocationTargetException e) {
 						throw new ProvisionFailedException(requestedKey, method, e);
 					}
@@ -296,7 +285,7 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
 
-		Dependency[] dependencies = toDependencies(constructor.getParameters());
+		Dependency[] dependencies = toDependencies(null, constructor.getParameters());
 
 		return Binding.of(
 				args -> {

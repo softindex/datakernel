@@ -48,7 +48,7 @@ public abstract class AbstractModule implements Module {
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
 			if (typeVars.length == 0) {
 				Annotation[] annotations = method.getDeclaredAnnotations();
-				Key<Object> key = keyOf(method);
+				Key<Object> key = keyOf(moduleType, method.getGenericReturnType(), annotations);
 				bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 						.get()
 						.computeIfAbsent(key, $ -> new HashSet<>())
@@ -64,12 +64,12 @@ public abstract class AbstractModule implements Module {
 					}
 				}
 
-				generate(genericReturnType, (scope, key, provider) -> bindingForGenericMethod(key, instance, method));
+				generate(genericReturnType, (scope, key, provider) -> bindingForGenericMethod(instance, key, method));
 			}
 		}
 		for (Method method : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods)) {
 			Annotation[] annotations = method.getDeclaredAnnotations();
-			Key<Object> key = keyOf(method);
+			Key<Object> key = keyOf(moduleType, method.getGenericReturnType(), annotations);
 
 			Binding<Object> binding = bindingForMethod(instance, method);
 			Factory<Object> factory = binding.getFactory();

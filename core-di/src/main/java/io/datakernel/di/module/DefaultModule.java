@@ -23,7 +23,10 @@ public final class DefaultModule implements Module {
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
-		generators.put(Object.class, singleton((scope, key, provider) -> ReflectionUtils.generateImplicitBinding(key)));
+		generators.put(Object.class, singleton(
+				(scope, key, provider) ->
+						ReflectionUtils.generateImplicitBinding(key)
+		));
 
 		// generating bindings for provider requests
 		generators.put(new Key<InstanceProvider<?>>() {}.getType(), singleton(
