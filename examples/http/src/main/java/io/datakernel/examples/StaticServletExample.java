@@ -21,10 +21,15 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class StaticServletExample extends HttpServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Provides
 	AsyncServlet servlet() {
 		return StaticServlet.create(ofClassPath("static/site"))

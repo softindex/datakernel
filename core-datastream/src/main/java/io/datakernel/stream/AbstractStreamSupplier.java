@@ -24,11 +24,11 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.util.Recyclable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -41,7 +41,7 @@ import static java.util.Collections.emptySet;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass().getName());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
@@ -175,7 +175,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void resume(StreamDataAcceptor<T> dataAcceptor) {
-		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
+		logger.log(Level.FINEST, () -> "Start producing: " + this);
 		assert dataAcceptor != null;
 
 		if (currentDataAcceptor == dataAcceptor) return;
@@ -194,7 +194,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void suspend() {
-		if (logger.isTraceEnabled()) logger.trace("Suspend supplier: {}", this);
+		logger.log(Level.FINEST, () -> "Suspend supplier: " + this);
 		if (!isReceiverReady())
 			return;
 		currentDataAcceptor = null;
@@ -215,9 +215,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	public final void close(@NotNull Throwable e) {
 		if (endOfStream.isComplete()) return;
 		if (!(e instanceof ExpectedException)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("StreamSupplier {} closed with error {}", this, e.toString());
-			}
+			logger.log(Level.WARNING, () -> "StreamSupplier " + this + " closed with error " + e.toString());
 		}
 		currentDataAcceptor = null;
 		lastDataAcceptor = Recyclable::tryRecycle;

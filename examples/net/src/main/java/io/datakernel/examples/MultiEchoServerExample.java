@@ -27,6 +27,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -42,6 +43,9 @@ public class MultiEchoServerExample {
 	private static final int PORT = 9922;
 	private static final Set<AsyncTcpSocket> sockets = new HashSet<>();
 	private static final byte[] CRLF = {CR, LF};
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	public static void main(String[] args) throws Exception {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();

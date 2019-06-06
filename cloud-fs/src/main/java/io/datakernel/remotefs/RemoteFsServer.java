@@ -38,12 +38,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.logging.Level;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.remotefs.RemoteFsUtils.checkRange;
 import static io.datakernel.remotefs.RemoteFsUtils.getErrorCode;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 
 /**
@@ -94,20 +95,20 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		messaging.receive()
 				.then(msg -> {
 					if (msg == null) {
-						logger.warn("unexpected end of stream: {}", this);
+						logger.log(Level.WARNING, () -> "unexpected end of stream: " + this);
 						messaging.close();
 						return Promise.complete();
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 					if (handler == null) {
-						logger.warn("received a message with no associated handler, type: " + msg.getClass());
+						logger.log(Level.WARNING, () -> "received a message with no associated handler, type: " + msg.getClass());
 						return Promise.ofException(NO_HANDLER_FOR_MESSAGE);
 					}
 					return handler.onMessage(messaging, msg);
 				})
 				.whenComplete(handleRequestPromise.recordStats())
 				.whenException(e -> {
-					logger.warn("got an error while handling message (" + e + ") : " + this);
+					logger.log(Level.WARNING, e, () -> "got an error while handling message (" + this + ") : ");
 					messaging.send(new ServerError(getErrorCode(e)))
 							.then($ -> messaging.sendEndOfStream())
 							.whenResult($ -> messaging.close());
@@ -130,7 +131,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					.then($ -> messaging.sendEndOfStream())
 					.whenResult($ -> messaging.close())
 					.whenComplete(uploadPromise.recordStats())
-					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
+					.whenComplete(toLogger(logger, FINEST, "receiving data", msg, this))
 					.toVoid();
 		});
 

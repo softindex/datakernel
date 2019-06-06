@@ -24,6 +24,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.onResponse;
@@ -32,6 +33,10 @@ import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 
 public final class RoutingServletExample extends HttpServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Provides
 	AsyncServlet servlet() {
 		return RoutingServlet.create()

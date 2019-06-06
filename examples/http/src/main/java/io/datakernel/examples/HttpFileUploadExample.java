@@ -8,6 +8,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,6 +20,9 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class HttpFileUploadExample extends HttpServerLauncher {
 	private Path PATH = Paths.get("src/main/resources/");
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	@Override
 	protected void onStop() throws Exception {

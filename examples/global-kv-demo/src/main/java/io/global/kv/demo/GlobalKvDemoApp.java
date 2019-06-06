@@ -28,6 +28,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.common.ExampleCommonModule;
 import io.global.common.KeyPair;
@@ -51,6 +52,9 @@ import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
 public final class GlobalKvDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "globalkv-app.properties";
 	public static final String DEFAULT_SERVER_ID = "KV Demo";
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	public static final Consumer<KvItem<String, String>> DB_ITEM_CONSUMER = item -> {
 		System.out.print("Key: " + item.getKey());

@@ -16,9 +16,14 @@
 package io.datakernel.examples;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 
 // [START EXAMPLE]
 public class HelloWorld {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create();
 

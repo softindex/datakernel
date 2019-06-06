@@ -28,13 +28,12 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.http.IAsyncHttpClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -43,7 +42,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CubeHttpClient implements ICube {
-	private static final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class);
+	private static final Logger logger = Logger.getLogger(CubeHttpClient.class.getName());
 
 	private final String url;
 	private final IAsyncHttpClient httpClient;

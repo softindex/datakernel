@@ -22,6 +22,7 @@ import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.stream.processor.StreamMapper;
 
@@ -37,6 +38,9 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
  * computes it in a certain way and sends back the result.
  */
 public final class NetworkDemoServer {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create();

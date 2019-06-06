@@ -23,6 +23,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFileService;
 import io.datakernel.file.ExecutorAsyncFileService;
+import io.datakernel.logger.LoggerConfigurer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -47,6 +48,8 @@ public class AsyncFileServiceExample {
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
+
+		LoggerConfigurer.enableLogging();
 	}
 
 	@NotNull

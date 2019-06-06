@@ -6,6 +6,7 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.launchers.GlobalNodesModule;
 
@@ -20,6 +21,9 @@ public final class MasterNodeLauncher extends Launcher {
 	public static final String DEFAULT_SERVER_ID = "http://127.0.0.1:9000";
 	public static final String DEFAULT_FS_STORAGE = Paths.get(System.getProperty("java.io.tmpdir"))
 			.resolve("fs_storage").toString();
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	@Inject
 	AsyncHttpServer server;

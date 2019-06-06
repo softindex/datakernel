@@ -46,11 +46,4 @@
     <module>di</module>
   </modules>
 
-  <dependencies>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-    </dependency>
-  </dependencies>
-
 </project>

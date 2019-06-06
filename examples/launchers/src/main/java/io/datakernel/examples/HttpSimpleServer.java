@@ -22,10 +22,15 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public class HttpSimpleServer extends HttpServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Provides
 	AsyncServlet servlet() {
 		return request -> Promise.of(HttpResponse.ok200()

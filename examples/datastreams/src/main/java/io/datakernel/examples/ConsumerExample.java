@@ -18,6 +18,7 @@ package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -28,6 +29,10 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  * Example of creating the custom StreamConsumer. This implementation just outputs received data to the console.
  */
 public class ConsumerExample<T> extends AbstractStreamConsumer<T> {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Override
 	protected void onStarted() {
 		getSupplier().resume(x -> System.out.println("received: " + x));

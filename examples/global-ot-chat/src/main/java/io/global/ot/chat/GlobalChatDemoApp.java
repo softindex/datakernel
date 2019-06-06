@@ -9,6 +9,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.common.ExampleCommonModule;
@@ -31,6 +32,10 @@ public final class GlobalChatDemoApp extends Launcher {
 	public static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	public static final String DEFAULT_SERVER_ID = "Chat Node";
 	public static final String DEFAULT_STATIC_PATH = "/build";
+
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	@Inject
 	@Named("Example")

@@ -24,11 +24,11 @@ import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
@@ -36,7 +36,7 @@ import static java.lang.Math.pow;
 public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxMBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
 
-	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
+	private final Logger logger = Logger.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
 
 	public static final Duration TARGET_TIME = Duration.ofMillis(20);
 	public static final Duration GC_TIME = Duration.ofMillis(20);
@@ -185,14 +185,14 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	@Override
 	public void onUpdateBusinessLogicTime(boolean anyTaskOrKeyPresent, boolean externalTaskOrKeyPresent, long businessLogicTime) {
 		if (businessLogicTime < 0 || businessLogicTime > 60000) {
-			logger.warn("Invalid processing time: {}", businessLogicTime);
+			logger.log(Level.WARNING, "Invalid processing time: " + businessLogicTime);
 			return;
 		}
 
 		int throttlingKeys = lastSelectedKeys + concurrentTasksSize;
 		int lastTimePredicted = (int) (throttlingKeys * smoothedTimePerKeyMillis);
 		if (gcTimeMillis != 0.0 && businessLogicTime > lastTimePredicted + gcTimeMillis) {
-			logger.debug("GC detected {} ms, {} keys", businessLogicTime, throttlingKeys);
+			logger.log(Level.FINEST, "GC detected " + businessLogicTime + " ms, " + throttlingKeys + " keys");
 			businessLogicTime = lastTimePredicted + gcTimeMillis;
 			infoRoundsGc++;
 		}

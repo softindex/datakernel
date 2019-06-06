@@ -27,6 +27,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
@@ -37,6 +38,10 @@ import static io.datakernel.di.module.Modules.combine;
 
 public class HttpServerScratch extends Launcher {
 	private static final int PORT = 8080;
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Inject
 	private AsyncHttpServer server;
 

@@ -20,12 +20,16 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.ExecutionException;
 
 public class ServiceGraphModuleExample extends AbstractModule {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();

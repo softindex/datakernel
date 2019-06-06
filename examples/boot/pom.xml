@@ -10,13 +10,17 @@
   </parent>
 
   <artifactId>boot-examples</artifactId>
-
   <name>Datakernel Examples: Boot</name>
 
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-boot</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>logger-config</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

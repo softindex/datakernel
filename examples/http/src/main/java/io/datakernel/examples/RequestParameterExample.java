@@ -21,6 +21,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -28,6 +29,9 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class RequestParameterExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	@Provides
 	AsyncServlet servlet() {

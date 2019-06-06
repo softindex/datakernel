@@ -22,8 +22,10 @@
       <artifactId>picocli</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-nop</artifactId>
+      <groupId>io.datakernel</groupId>
+      <artifactId>logger-config</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

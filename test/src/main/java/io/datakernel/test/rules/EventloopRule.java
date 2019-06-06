@@ -18,12 +18,12 @@ package io.datakernel.test.rules;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
-import io.datakernel.test.TestUtils;
+import io.datakernel.logger.LoggerConfigurer;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
-import static ch.qos.logback.classic.Level.WARN;
+import java.util.logging.Level;
 
 /**
  * {@link TestRule} that creates an eventloop and sets it to ThreadLocal
@@ -32,7 +32,7 @@ public final class EventloopRule implements TestRule {
 
 	static {
 		createEventloop();
-		TestUtils.enableLogging(Eventloop.class, WARN);
+		LoggerConfigurer.enableLogging(Eventloop.class, Level.WARNING);
 	}
 
 	private static void createEventloop() {

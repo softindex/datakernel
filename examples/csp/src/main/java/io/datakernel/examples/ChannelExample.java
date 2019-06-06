@@ -19,6 +19,7 @@ package io.datakernel.examples;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,6 +27,10 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 
 public class ChannelExample {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	private static void supplierOfValues() {
 		ChannelSupplier.of("1", "2", "3", "4", "5")
 				.streamTo(ChannelConsumer.ofConsumer(System.out::println));

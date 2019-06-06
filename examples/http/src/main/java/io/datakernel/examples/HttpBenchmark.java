@@ -29,6 +29,7 @@ import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
@@ -42,6 +43,9 @@ import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 
 @SuppressWarnings("unused")
 public final class HttpBenchmark extends Launcher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	private final static int MAX_REQUESTS = 1000000;
 	private final static int WARMUP_ROUNDS = 3;

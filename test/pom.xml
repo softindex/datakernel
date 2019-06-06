@@ -38,13 +38,13 @@
     </dependency>
 
     <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
-      <optional>true</optional>
+      <groupId>io.datakernel</groupId>
+      <artifactId>logger-config</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
       <optional>true</optional>
     </dependency>
   </dependencies>

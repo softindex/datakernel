@@ -41,6 +41,7 @@ import java.net.InetAddress;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 
 /**
  * Server for processing JSON commands.
@@ -81,9 +82,9 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			StreamId streamId = command.getStreamId();
 			ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
-				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
+				logger.log(Level.INFO, () -> "onDownload: transferring " + streamId + ", pending downloads: " + pendingStreams.size());
 			} else {
-				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
+				logger.log(Level.INFO, () -> "onDownload: waiting " + streamId + ", pending downloads: " + pendingStreams.size());
 				forwarder = new ChannelZeroBuffer<>();
 				pendingStreams.put(streamId, forwarder);
 			}
@@ -92,7 +93,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			consumer.withAcknowledgement(ack ->
 					ack.whenComplete(($, e) -> {
 						if (e != null) {
-							logger.warn("Exception occurred while trying to send data");
+							logger.log(Level.WARNING, "Exception occurred while trying to send data");
 						}
 						messaging.close();
 					}));
@@ -120,11 +121,11 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 		ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 		if (forwarder == null) {
-			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
+			logger.log(Level.INFO, () -> "onUpload: waiting " + streamId + ", pending downloads: " + pendingStreams.size());
 			forwarder = new ChannelZeroBuffer<>();
 			pendingStreams.put(streamId, forwarder);
 		} else {
-			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
+			logger.log(Level.INFO, () -> "onUpload: transferring " + streamId +", pending downloads: " + pendingStreams.size());
 		}
 		streamSerializer.getOutput()
 				.set(forwarder.getConsumer());
@@ -139,12 +140,12 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 					if (msg != null) {
 						doRead(messaging, msg);
 					} else {
-						logger.warn("unexpected end of stream");
+						logger.log(Level.WARNING, "unexpected end of stream");
 						messaging.close();
 					}
 				})
 				.whenException(e -> {
-					logger.error("received error while trying to read", e);
+					logger.log(Level.SEVERE, "received error while trying to read", e);
 					messaging.close();
 				});
 	}
@@ -154,7 +155,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {
 			messaging.close();
-			logger.error("missing handler for " + command);
+			logger.log(Level.SEVERE, () -> "missing handler for " + command);
 		} else {
 			handler.onCommand(messaging, command);
 		}

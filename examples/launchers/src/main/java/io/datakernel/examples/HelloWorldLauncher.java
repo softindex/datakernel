@@ -19,8 +19,13 @@ package io.datakernel.examples;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 
 public class HelloWorldLauncher extends Launcher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Inject
 	String message;
 

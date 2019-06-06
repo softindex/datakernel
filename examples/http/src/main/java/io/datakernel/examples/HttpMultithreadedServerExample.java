@@ -21,6 +21,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 
@@ -31,6 +32,10 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
  * Sends back a greeting and the number of worker which served the connection.
  */
 public final class HttpMultithreadedServerExample extends MultithreadedHttpServerLauncher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	@Provides
 	@Worker
 	AsyncServlet servlet(@WorkerId int workerId) {

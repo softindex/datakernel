@@ -32,22 +32,21 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static io.datakernel.remotefs.FsClient.*;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.Level.INFO;
-import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsDriver {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsDriver.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsDriver.class.getName());
 
 	public static final StacklessException FILE_APPEND_WITH_OTHER_KEY = new StacklessException(GlobalFsDriver.class, "Trying to upload to the file with other symmetric key");
 
@@ -141,23 +140,23 @@ public final class GlobalFsDriver {
 	public Promise<List<GlobalFsCheckpoint>> listEntities(PubKey space, String glob) {
 		return node.listEntities(space, glob)
 				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this));
+				.whenComplete(toLogger(logger, FINEST, "listEntities", glob, this));
 	}
 
 	public Promise<List<GlobalFsCheckpoint>> list(PubKey space, String glob) {
 		return node.list(space, glob)
 				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+				.whenComplete(toLogger(logger, FINEST, "list", glob, this));
 	}
 
 	public Promise<@Nullable GlobalFsCheckpoint> getMetadata(PubKey space, String filename) {
 		return node.getMetadata(space, filename)
 				.then(signedCheckpoint -> Promise.of(signedCheckpoint != null ? signedCheckpoint.getValue() : null))
-				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
+				.whenComplete(toLogger(logger, FINEST, "getMetadata", filename, this));
 	}
 
 	public Promise<Void> delete(KeyPair keys, String filename, long revision) {
 		return node.delete(keys.getPubKey(), SignedData.sign(CHECKPOINT_CODEC, GlobalFsCheckpoint.createTombstone(filename, revision), keys.getPrivKey()))
-				.whenComplete(toLogger(logger, TRACE, "delete", filename, revision, this));
+				.whenComplete(toLogger(logger, FINEST, "delete", filename, revision, this));
 	}
 }

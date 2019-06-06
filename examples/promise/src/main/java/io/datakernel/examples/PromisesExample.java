@@ -19,11 +19,16 @@ package io.datakernel.examples;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.util.Arrays;
 
 public class PromisesExample {
 	private static int counter;
+
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	private static void repeat() {
 		System.out.println("Repeat until exception:");

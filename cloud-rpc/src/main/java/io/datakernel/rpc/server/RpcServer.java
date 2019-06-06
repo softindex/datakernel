@@ -35,6 +35,7 @@ import io.datakernel.util.MemSize;
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.*;
+import java.util.logging.Level;
 
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Arrays.asList;
@@ -217,9 +218,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	void add(RpcServerConnection connection) {
-		if (logger.isInfoEnabled())
-			logger.info("Client connected on {}", connection);
-
+		logger.log(Level.INFO, () -> "Client connected on " + connection);
 		if (monitoring) {
 			connection.startMonitoring();
 		}
@@ -228,8 +227,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	void remove(RpcServerConnection connection) {
-		if (logger.isInfoEnabled())
-			logger.info("Client disconnected on {}", connection);
+		logger.log(Level.INFO, () -> "Client disconnected on " + connection);
 		connections.remove(connection);
 
 		if (closeCallback != null) {

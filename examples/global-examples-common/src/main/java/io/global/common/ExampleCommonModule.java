@@ -13,14 +13,13 @@ import io.global.common.stub.InMemoryAnnouncementStorage;
 import io.global.common.stub.InMemorySharedKeyStorage;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.stub.CommitStorageStub;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.logging.Logger;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofList;
@@ -29,7 +28,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 
 public final class ExampleCommonModule extends AbstractModule {
-	private static final Logger logger = LoggerFactory.getLogger(ExampleCommonModule.class);
+	private static final Logger logger = Logger.getLogger(ExampleCommonModule.class.getName());
 
 	public static final PrivKey DEMO_PRIVATE_KEY =
 			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));

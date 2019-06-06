@@ -16,13 +16,13 @@
 
 package io.global.ot.http;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.time.CurrentTimeProvider;
@@ -37,6 +37,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
@@ -80,7 +81,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	@BeforeClass
 	public static void disableLogs() {
-		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+		LoggerConfigurer.enableLogging(SteppingCurrentTimeProvider.class, Level.WARNING);
 	}
 
 	@Test

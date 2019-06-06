@@ -16,9 +16,6 @@
 
 package io.datakernel.net;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -26,13 +23,15 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class BlockingSocketServer {
 	public interface AcceptHandler {
 		void onAccept(Socket socket) throws IOException;
 	}
 
-	private static final Logger logger = LoggerFactory.getLogger(BlockingSocketServer.class);
+	private static final Logger logger = Logger.getLogger(BlockingSocketServer.class.getName());
 	private ThreadFactory acceptThreadFactory;
 	private final Executor executor;
 	private final AcceptHandler acceptHandler;
@@ -91,7 +90,7 @@ public final class BlockingSocketServer {
 			try {
 				acceptHandler.onAccept(socket);
 			} catch (Exception e) {
-				logger.error("Failed to serve socket " + socket, e);
+				logger.log(Level.SEVERE, e, () -> "Failed to serve socket " + socket);
 			}
 		});
 	}
@@ -108,7 +107,7 @@ public final class BlockingSocketServer {
 					} catch (Exception e) {
 						if (Thread.currentThread().isInterrupted())
 							break;
-						logger.error("Socket error for " + serverSocket, e);
+						logger.log(Level.SEVERE, e, () -> "Socket error for " + serverSocket);
 					}
 				}
 			};

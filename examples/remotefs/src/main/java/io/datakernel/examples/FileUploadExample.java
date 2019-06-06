@@ -23,6 +23,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.MemSize;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
 
 /**
  * This example demonstrates uploading file to server using RemoteFS
@@ -50,6 +52,9 @@ public class FileUploadExample extends Launcher {
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
+	}
+	static {
+		LoggerConfigurer.enableLogging();
 	}
 
 	@Inject
@@ -80,7 +85,7 @@ public class FileUploadExample extends Launcher {
 			ChannelFileReader.readFile(CLIENT_FILE)
 					.then(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)).streamTo(client.upload(FILE_NAME)))
 					.whenComplete(($, e) -> {
-						if (e != null) logger.error("Upload failed", e);
+						if (e != null) logger.log(Level.SEVERE, "Upload failed", e);
 						shutdown();
 					});
 		});

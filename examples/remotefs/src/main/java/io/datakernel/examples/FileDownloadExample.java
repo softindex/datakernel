@@ -24,6 +24,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
 
 /**
  * This example demonstrates downloading file from RemoteFS server.
@@ -51,6 +53,9 @@ public class FileDownloadExample extends Launcher {
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
+	}
+	static {
+		LoggerConfigurer.enableLogging();
 	}
 
 	@Inject
@@ -81,7 +86,7 @@ public class FileDownloadExample extends Launcher {
 			ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
 					.streamTo(ChannelFileWriter.create(CLIENT_STORAGE.resolve(DOWNLOADED_FILE)))
 					.whenComplete(($, e) -> {
-						if (e != null) logger.error("Download is failed", e);
+						if (e != null) logger.log(Level.SEVERE, "Download is failed", e);
 						shutdown();
 					});
 		});

@@ -17,16 +17,19 @@
 package io.datakernel.examples;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
  * Example of creating the custom StreamSupplier.
  * This supplier just streams all numbers from 0 to number specified in constructor.
  */
 public class SupplierExample {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		StreamSupplier<Integer> supplier = StreamSupplier.of(0, 1, 2, 3, 4);

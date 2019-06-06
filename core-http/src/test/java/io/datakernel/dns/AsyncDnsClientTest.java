@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -42,7 +43,6 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -50,7 +50,7 @@ import static org.junit.Assert.assertNotNull;
 @Ignore
 public final class AsyncDnsClientTest {
 	static {
-		enableLogging("io.datakernel.dns");
+		LoggerConfigurer.enableLogging("io.datakernel.dns");
 	}
 
 	@ClassRule

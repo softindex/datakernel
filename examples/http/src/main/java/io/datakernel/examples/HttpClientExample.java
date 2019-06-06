@@ -27,6 +27,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -40,6 +41,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * You can launch HttpServerExample to test this.
  */
 public final class HttpClientExample extends Launcher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	@Inject
 	AsyncHttpClient httpClient;
 

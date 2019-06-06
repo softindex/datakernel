@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerConfigurer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -39,6 +40,10 @@ public class ChannelFileExample {
 	private static final ExecutorService executorService = Executors.newCachedThreadPool();
 	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
+	static {
+		LoggerConfigurer.enableLogging();
+	}
+
 
 	@NotNull
 	private static Promise<Void> writeToFile() {

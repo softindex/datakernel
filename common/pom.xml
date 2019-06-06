@@ -16,4 +16,12 @@
     Module containing various general utilities for DataKernel project.
   </description>
 
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>logger-config</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

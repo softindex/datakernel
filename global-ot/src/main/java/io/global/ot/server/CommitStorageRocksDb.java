@@ -14,18 +14,17 @@ import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.rocksdb.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.StructuredCodecs.BYTE_CODEC;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Utils.arrayStartsWith;
@@ -33,7 +32,7 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
 
 public final class CommitStorageRocksDb implements CommitStorage, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(CommitStorageRocksDb.class);
+	private static final Logger logger = Logger.getLogger(CommitStorageRocksDb.class.getName());
 
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 	private static final StructuredCodec<RawCommit> RAW_COMMIT_CODEC = REGISTRY.get(RawCommit.class);
@@ -158,7 +157,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	@Override
 	public Promise<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(heads, repositoryId, REPO_ID_CODEC, Tuple2::getValue2))
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repositoryId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), repositoryId, this));
 	}
 
 	@Override
@@ -187,19 +186,19 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	@Override
 	public Promise<Boolean> hasCommit(CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> get(commits, commitId) != null)
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), commitId, this));
 	}
 
 	@Override
 	public Promise<Optional<RawCommit>> loadCommit(CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> Optional.ofNullable(get(commits, commitId)))
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), commitId, this));
 	}
 
 	@Override
 	public Promise<Set<CommitId>> getChildren(CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(parentToChildren, commitId, COMMIT_ID_CODEC, Tuple2::getValue2).keySet())
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), commitId, this));
 	}
 
 	@Override
@@ -240,7 +239,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 						return true;
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, rawCommit, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), commitId, rawCommit, this));
 	}
 
 	@Override
@@ -260,13 +259,13 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 		return Promise.ofBlockingCallable(executor, () -> Optional.ofNullable(get(snapshots, new Tuple2<>(repositoryId, commitId))))
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repositoryId, commitId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), repositoryId, commitId, this));
 	}
 
 	@Override
 	public Promise<Set<CommitId>> listSnapshotIds(RepoID repositoryId) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(snapshots, repositoryId, REPO_ID_CODEC, Tuple2::getValue2).keySet())
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repositoryId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), repositoryId, this));
 	}
 
 	@Override
@@ -284,7 +283,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository) {
 		return Promise.ofBlockingCallable(executor, () -> getRange(pullRequests, repository, REPO_ID_CODEC, Tuple2::getValue2).keySet())
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), repository, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), repository, this));
 	}
 
 	@Override
@@ -324,7 +323,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 						throw new UncheckedException(e);
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), this));
 	}
 
 	@Override
@@ -337,7 +336,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					RawCommit commit = get(commits, commitId);
 					return commit != null && (count == null || count == 0);
 				})
-				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
+				.whenComplete(toLogger(logger, FINEST, thisMethod(), commitId, this));
 	}
 
 	@NotNull

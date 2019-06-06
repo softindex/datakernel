@@ -23,6 +23,7 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -30,7 +31,6 @@ import java.net.InetSocketAddress;
 import static io.datakernel.async.Promises.loop;
 import static io.datakernel.async.Promises.repeat;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class PingPongSocketConnection {
@@ -38,6 +38,9 @@ public class PingPongSocketConnection {
 	private static final int ITERATIONS = 3;
 	private static final String REQUEST_MSG = "PING";
 	private static final String RESPONSE_MSG = "PONG";
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
 			.andThen(buf -> buf.asString(UTF_8));

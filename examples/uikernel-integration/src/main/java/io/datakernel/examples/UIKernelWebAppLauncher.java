@@ -22,11 +22,15 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.logger.LoggerConfigurer;
 import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.di.module.Modules.combine;
 
 public class UIKernelWebAppLauncher extends Launcher {
+	static {
+		LoggerConfigurer.enableLogging();
+	}
 	@Inject
 	AsyncHttpServer server;
 
