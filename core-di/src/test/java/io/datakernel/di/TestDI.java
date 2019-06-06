@@ -1,5 +1,6 @@
 package io.datakernel.di;
 
+import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
@@ -10,15 +11,13 @@ import io.datakernel.di.module.ProvidesIntoSet;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.module.Modules.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -624,5 +623,72 @@ public final class TestDI {
 		Container instance = injector.getInstance(Container.class);
 
 		assertEquals("hello", instance.provider.get().get());
+	}
+
+	@Test
+	public void mapMultibinding() {
+
+		Key<Map<String, Integer>> key = new Key<Map<String, Integer>>() {};
+
+		Injector injector = Injector.of(new AbstractModule() {
+
+			@Override
+			protected void configure() {
+				resolve(key, multibinderToMap());
+			}
+
+			@Provides
+			Integer integer() {
+				return 42;
+			}
+
+			@Provides
+			Map<String, Integer> firstOne() {
+				return singletonMap("first", 1);
+			}
+
+			@Provides
+			Map<String, Integer> second(Integer integer) {
+				return singletonMap("second", integer);
+			}
+
+			@Provides
+			Map<String, Integer> thirdTwo() {
+				return singletonMap("third", 2);
+			}
+		});
+
+		Map<String, Integer> map = injector.getInstance(key);
+
+		Map<String, Integer> expected = new HashMap<>();
+		expected.put("first", 1);
+		expected.put("second", 42);
+		expected.put("third", 2);
+
+		assertEquals(expected, map);
+	}
+
+	@Test
+	public void providesNull() {
+
+		Injector injector = Injector.of(new AbstractModule() {
+
+			@Provides
+			Integer integer() {
+				return null;
+			}
+
+			@Provides
+			String string(Integer integer) {
+				return "str: " + integer;
+			}
+		});
+
+		try {
+			injector.getInstance(String.class);
+		} catch (CannotConstructException e) {
+			assertNotNull(e.getBinding());
+			assertEquals("binding refused to construct an instance for key Integer", e.getMessage());
+		}
 	}
 }

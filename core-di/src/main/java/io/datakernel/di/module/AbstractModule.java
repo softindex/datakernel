@@ -39,7 +39,7 @@ public abstract class AbstractModule implements Module {
 		addDeclarativeBindingsFrom(this);
 	}
 
-	protected void addDeclarativeBindingsFrom(Object instance) {
+	protected final void addDeclarativeBindingsFrom(Object instance) {
 		Class<?> cls = instance.getClass();
 		Key<?> moduleType = Key.of(cls);
 
@@ -223,7 +223,7 @@ public abstract class AbstractModule implements Module {
 	protected void configure() {
 	}
 
-	protected void install(Module module) {
+	protected final void install(Module module) {
 		bindings.addAll(module.getBindingsMultimap(), multimapMerger());
 		combineMultimap(bindingGenerators, module.getBindingGenerators());
 		mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());

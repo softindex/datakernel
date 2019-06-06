@@ -108,11 +108,30 @@ public final class Modules {
 		return resolverOfReducer(stream -> stream.reduce(binaryOperator).get());
 	}
 
-	private static final ConflictResolver<Set<Object>> MULTIBINDER_TO_SET = resolverOfBinaryOperator(Utils::union);
+	private static final ConflictResolver<Set<Object>> MULTIBINDER_TO_SET = resolverOfReducer(stream -> {
+		Set<Object> result = new HashSet<>();
+		stream.forEach(result::addAll);
+		return result;
+	});
+
+	private static final ConflictResolver<Map<Object, Object>> MULTIBINDER_TO_MAP = resolverOfReducer(stream -> {
+		Map<Object, Object> result = new HashMap<>();
+		stream.forEach(map ->
+				map.forEach((k, v) ->
+						result.merge(k, v, ($, $2) -> {
+							throw new RuntimeException("duplicate keys");
+						})));
+		return result;
+	});
 
 	@SuppressWarnings("unchecked")
 	public static <T> ConflictResolver<Set<T>> multibinderToSet() {
 		return (ConflictResolver) MULTIBINDER_TO_SET;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <K, V> ConflictResolver<Map<K, V>> multibinderToMap() {
+		return (ConflictResolver) MULTIBINDER_TO_MAP;
 	}
 
 	private static class ModuleImpl implements Module {
@@ -122,9 +141,9 @@ public final class Modules {
 		private final Map<Key<?>, ConflictResolver<?>> conflictResolvers;
 
 		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-						   Map<Integer, BindingTransformer<?>> bindingMappers,
-						   Map<Type, Set<BindingGenerator<?>>> bindingGenerators,
-						   Map<Key<?>, ConflictResolver<?>> conflictResolvers) {
+				Map<Integer, BindingTransformer<?>> bindingMappers,
+				Map<Type, Set<BindingGenerator<?>>> bindingGenerators,
+				Map<Key<?>, ConflictResolver<?>> conflictResolvers) {
 			this.bindings = bindings;
 			this.bindingMappers = bindingMappers;
 			this.bindingGenerators = bindingGenerators;

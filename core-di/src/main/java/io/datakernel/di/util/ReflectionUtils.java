@@ -223,11 +223,11 @@ public final class ReflectionUtils {
 	private static Dependency[] toDependencies(@Nullable Key<?> container, Parameter[] parameters) {
 		Dependency[] dependencies = new Dependency[parameters.length];
 
+		if (parameters.length == 0) {
+			return dependencies;
+		}
 		// submitted an actual JDK bug report for this
-		boolean workaround =
-				parameters.length != 0
-						&& parameters[0].getDeclaringExecutable() instanceof Constructor
-						&& parameters[0].getDeclaringExecutable().getDeclaringClass().getEnclosingClass() != null;
+		boolean workaround = parameters[0].getDeclaringExecutable().getParameterAnnotations().length != parameters.length;
 
 		for (int i = 0; i < dependencies.length; i++) {
 			Type type = parameters[i].getParameterizedType();
