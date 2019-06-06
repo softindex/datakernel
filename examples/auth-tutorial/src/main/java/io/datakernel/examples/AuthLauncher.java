@@ -11,6 +11,7 @@ import io.datakernel.loader.StaticLoader;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.LogManager;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -96,6 +97,8 @@ public class AuthLauncher extends HttpServerLauncher {
 	}
 
 	public static void main(String[] args) throws Exception {
+		LogManager.getLogManager()
+				.readConfiguration(ClassLoader.getSystemResourceAsStream("logger-config.properties"));
 		AuthLauncher launcher = new AuthLauncher();
 		launcher.launch(args);
 	}

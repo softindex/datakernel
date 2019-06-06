@@ -49,6 +49,7 @@
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>
+    <module>logger-config</module>
   </modules>
 
   <scm>
