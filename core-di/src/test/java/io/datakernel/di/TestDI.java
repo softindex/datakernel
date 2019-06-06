@@ -688,7 +688,7 @@ public final class TestDI {
 			injector.getInstance(String.class);
 		} catch (CannotConstructException e) {
 			assertNotNull(e.getBinding());
-			assertEquals("binding refused to construct an instance for key Integer", e.getMessage());
+			assertEquals("Binding refused to construct an instance for key Integer", e.getMessage());
 		}
 	}
 }

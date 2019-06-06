@@ -5,8 +5,8 @@ import io.datakernel.di.Dependency;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
 import io.datakernel.di.error.CannotGenerateBindingException;
-import io.datakernel.di.module.BindingProvider;
 import io.datakernel.di.module.BindingGenerator;
+import io.datakernel.di.module.BindingProvider;
 import io.datakernel.di.module.BindingTransformer;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,11 +47,11 @@ public final class BindingUtils {
 		} else if (type instanceof ParameterizedType) {
 			Type raw = ((ParameterizedType) type).getRawType();
 			if (!(raw instanceof Class)) {
-				throw new AssertionError("in current java all raw types are of type class");
+				throw new AssertionError("In current java all raw types are of type class");
 			}
 			rawType = (Class<?>) raw;
 		} else {
-			throw new IllegalArgumentException("unsupported type");
+			throw new IllegalArgumentException("Unsupported type");
 		}
 
 		Type genericSuperclass = rawType.getGenericSuperclass();

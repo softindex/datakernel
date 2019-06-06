@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +31,7 @@ import java.util.function.BinaryOperator;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RoutingServlet implements AsyncServlet {
+public final class RoutingServlet implements AsyncServlet, Initializable<RoutingServlet> {
 	private static final String ROOT = "/";
 	private static final String STAR = "*";
 	private static final String WILDCARD = "/" + STAR;
