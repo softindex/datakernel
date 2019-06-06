@@ -153,7 +153,10 @@ public final class Binding<T> {
 
 	public Binding<T> mapInstance(@NotNull Function<? super T, ? extends T> fn) {
 		return new Binding<>(dependencies,
-				args -> fn.apply(factory.create(args)),
+				args -> {
+					T instance = factory.create(args);
+					return instance != null ? fn.apply(instance) : null;
+				},
 				location);
 	}
 

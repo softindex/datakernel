@@ -119,7 +119,7 @@ public final class Modules {
 		stream.forEach(map ->
 				map.forEach((k, v) ->
 						result.merge(k, v, ($, $2) -> {
-							throw new RuntimeException("duplicate keys");
+							throw new IllegalStateException("Duplicate key " + k);
 						})));
 		return result;
 	});

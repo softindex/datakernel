@@ -6,6 +6,8 @@ import io.datakernel.di.module.ConflictResolver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
@@ -67,7 +69,7 @@ public final class Utils {
 	public static void mergeConflictResolvers(Map<Key<?>, ConflictResolver<?>> into, Map<Key<?>, ConflictResolver<?>> from) {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
-				throw new RuntimeException("more than one conflict resolver per key");
+				throw new IllegalStateException("More than one conflict resolver per key");
 			}
 			return oldResolver;
 		}));
@@ -76,7 +78,7 @@ public final class Utils {
 	public static void mergeBindingTransformers(Map<Integer, BindingTransformer<?>> into, Map<Integer, BindingTransformer<?>> from) {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
-				throw new RuntimeException("multiple binding transformers with the same priority");
+				throw new IllegalStateException("More than one binding transformer with the same priority");
 			}
 			return oldResolver;
 		}));
@@ -108,6 +110,14 @@ public final class Utils {
 	public static void checkArgument(boolean condition) {
 		if (!condition) {
 			throw new IllegalArgumentException();
+		}
+	}
+
+	public static void printGraphVizLink(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+		try {
+			String encoded = URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20");
+			System.out.println("https://dreampuf.github.io/GraphvizOnline/#" + encoded);
+		} catch (UnsupportedEncodingException ignored) {
 		}
 	}
 

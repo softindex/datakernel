@@ -12,7 +12,7 @@ public final class CannotConstructException extends IllegalArgumentException {
 	private final Binding<?> binding;
 
 	public CannotConstructException(Injector injector, Key<?> key, @Nullable Binding<?> binding) {
-		super((binding != null ? "binding refused to" : "no binding to") + " construct an instance for key " + key.getDisplayString());
+		super((binding != null ? "Binding refused to" : "No binding to") + " construct an instance for key " + key.getDisplayString());
 		this.injector = injector;
 		this.key = key;
 		this.binding = binding;

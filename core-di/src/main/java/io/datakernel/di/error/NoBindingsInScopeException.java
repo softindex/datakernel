@@ -8,7 +8,7 @@ public final class NoBindingsInScopeException extends IllegalArgumentException {
 	private final Scope scope;
 
 	public NoBindingsInScopeException(Injector injector, Scope scope) {
-		super("tried to enter a scope " + scope + " that was not represented by any binding");
+		super("Tried to enter a scope " + scope + " that was not represented by any binding");
 		this.injector = injector;
 		this.scope = scope;
 	}

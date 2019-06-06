@@ -91,9 +91,9 @@ public final class BindingUtils {
 			Map<Type, Set<BindingGenerator<?>>> generators) {
 		Map<Key<?>, Set<BindingGenerator<?>>> generatorCache = new HashMap<>();
 
-		List<BindingTransformer<Object>> transformerList = transformers.entrySet().stream()
+		List<BindingTransformer<?>> transformerList = transformers.entrySet().stream()
 				.sorted(Comparator.comparing(Entry::getKey))
-				.map(e -> (BindingTransformer<Object>) e.getValue())
+				.map(Entry::getValue)
 				.collect(toList());
 
 		Map<Key<?>, Binding<?>> generated = new HashMap<>();
@@ -122,9 +122,15 @@ public final class BindingUtils {
 					return null;
 				}
 				if (generatedBindings.size() > 1) {
-					throw new CannotGenerateBindingException(key, "more than one generator provided a binding");
+					throw new CannotGenerateBindingException(key, "More than one generator provided a binding");
 				}
 				Binding<T> generatedBinding = generatedBindings.iterator().next();
+				for (BindingTransformer<?> transformer : transformerList) {
+					generatedBinding = ((BindingTransformer<T>) transformer).transform(scope, key, generatedBinding, this);
+					if (generatedBinding == null) {
+						throw new NullPointerException("Transformers should never return null");
+					}
+				}
 				generated.put(key, generatedBinding);
 
 				// ensure that its dependencies are generated if nesessary
@@ -144,7 +150,7 @@ public final class BindingUtils {
 				if (generatedBinding == null) {
 					// phantom bindings are the ones requested with plain `bind(...);` call, here we fail fast
 					// see comment below where dependencies are generated
-					throw new CannotGenerateBindingException(key, "refused to generate a requested binding");
+					throw new CannotGenerateBindingException(key, "Refused to generate a requested binding");
 				}
 				known.put(key, generatedBinding);
 			}

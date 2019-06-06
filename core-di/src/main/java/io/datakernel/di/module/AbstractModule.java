@@ -22,6 +22,7 @@ import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.joining;
 
 public abstract class AbstractModule implements Module {
 
@@ -47,7 +48,7 @@ public abstract class AbstractModule implements Module {
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
 			if (typeVars.length == 0) {
 				Annotation[] annotations = method.getDeclaredAnnotations();
-				Key<Object> key = keyOf(moduleType, method.getGenericReturnType(), annotations);
+				Key<Object> key = keyOf(method);
 				bindings.computeIfAbsent(scopesFrom(annotations), $ -> new HashMap<>())
 						.get()
 						.computeIfAbsent(key, $ -> new HashSet<>())
@@ -56,21 +57,21 @@ public abstract class AbstractModule implements Module {
 				Type genericReturnType = method.getGenericReturnType();
 				for (TypeVariable<Method> typeVar : typeVars) {
 					if (typeVar.getBounds().length != 1 && typeVar.getBounds()[0] != Object.class) {
-						throw new RuntimeException("Bounded type vars are not supported yet");
+						throw new IllegalArgumentException("Bounded type vars are not supported yet");
 					}
 					if (!ReflectionUtils.contains(genericReturnType, typeVar)) {
-						throw new RuntimeException("generic type variable " + typeVar + " is not used in return type");
+						throw new IllegalStateException("Generic type variable " + typeVar + " must be used in return type");
 					}
 				}
 
-				generate(genericReturnType, (scope, key, provider) -> bindingForGenericMethod(instance, key, method));
+				generate(genericReturnType, (scope, key, provider) -> bindingForGenericMethod(key, instance, method));
 			}
 		}
-		for (Method provider : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods)) {
-			Annotation[] annotations = provider.getDeclaredAnnotations();
-			Key<Object> key = keyOf(moduleType, provider.getGenericReturnType(), annotations);
+		for (Method method : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods)) {
+			Annotation[] annotations = method.getDeclaredAnnotations();
+			Key<Object> key = keyOf(method);
 
-			Binding<Object> binding = bindingForMethod(instance, provider);
+			Binding<Object> binding = bindingForMethod(instance, method);
 			Factory<Object> factory = binding.getFactory();
 			Key<Set<Object>> setKey = Key.ofType(parameterized(Set.class, key.getType()), key.getName());
 
@@ -96,7 +97,7 @@ public abstract class AbstractModule implements Module {
 
 		public BindingBuilder<T> annotatedWith(Name name) {
 			if (key.getName() != null) {
-				throw new RuntimeException("already annotated with some name");
+				throw new IllegalStateException("Already annotated with " + key.getName().getDisplayString());
 			}
 			key = Key.ofType(key.getType(), name);
 			return this;
@@ -112,7 +113,7 @@ public abstract class AbstractModule implements Module {
 
 		public BindingBuilder<T> in(Scope scope, Scope... scopes) {
 			if (this.scope.length != 0) {
-				throw new RuntimeException("already bound to some scope");
+				throw new IllegalStateException("Already bound to scope " + Arrays.stream(this.scope).map(Scope::getDisplayString).collect(joining("->", "()", "")));
 			}
 
 			Scope[] ss = new Scope[scopes.length + 1];
@@ -130,7 +131,7 @@ public abstract class AbstractModule implements Module {
 
 		public void to(Binding<T> binding) {
 			if (this.binding != BindingUtils.PHANTOM) {
-				throw new RuntimeException("already mapped to some binding");
+				throw new IllegalStateException("Already mapped to a binding");
 			}
 			this.binding = binding.at(getLocation(BindingBuilder.class));
 		}

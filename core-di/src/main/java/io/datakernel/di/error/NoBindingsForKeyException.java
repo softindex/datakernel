@@ -6,7 +6,7 @@ public final class NoBindingsForKeyException extends IllegalStateException {
 	private final Key<?> key;
 
 	public NoBindingsForKeyException(Key<?> key) {
-		super("provided key " + key + " with no associated bindings");
+		super("Provided key " + key + " with no associated bindings");
 		this.key = key;
 	}
 
