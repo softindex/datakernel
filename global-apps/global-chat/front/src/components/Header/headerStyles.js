@@ -1,11 +1,10 @@
-const headerStyles = theme => ({
-  grow: {
-    flexGrow: '1'
+const headerStyles = (theme) => ({
+  appBar: {
+    zIndex: theme.zIndex.drawer + 1
   },
-  graphTriggerButton: {
-    [theme.breakpoints.down('sm')]: {
-      display: 'none'
-    }
+  title: {
+    flexGrow: 1,
+    marginLeft: 20
   }
 });
 

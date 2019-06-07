@@ -1,4 +1,4 @@
-const appStyles = theme => ({
+const chatStyles = theme => ({
   root: {
     display: 'flex',
     flexDirection: 'column',
@@ -7,4 +7,4 @@ const appStyles = theme => ({
   headerPadding: theme.mixins.toolbar
 });
 
-export default appStyles;
+export default chatStyles;

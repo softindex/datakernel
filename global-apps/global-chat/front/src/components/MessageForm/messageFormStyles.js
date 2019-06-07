@@ -15,7 +15,7 @@ const messageFormStyles = theme => {
     divider: {
       width: 1,
       height: theme.spacing.unit * 3,
-      margin: 4,
+      margin: 4
     },
     input: {
       flexGrow: 1,

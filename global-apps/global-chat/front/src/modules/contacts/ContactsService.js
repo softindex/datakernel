@@ -6,7 +6,7 @@ const RETRY_CHECKOUT_TIMEOUT = 1000;
 class ContactsService extends Service {
   constructor(contactsOTStateManager) {
     super({
-      contacts: [],
+      contacts: new Map(),
       ready: false,
     });
     this._contactsOTStateManager = contactsOTStateManager;
@@ -23,6 +23,7 @@ class ContactsService extends Service {
       await this.init();
       return;
     }
+
 
     this._onStateChange();
 
@@ -56,7 +57,10 @@ class ContactsService extends Service {
   };
 
   _getContactsFromStateManager() {
-    return [...this._contactsOTStateManager.getState()];
+    return new Map(
+      [...this._contactsOTStateManager.getState()]
+        .map(([pubKey, name]) => [pubKey, {name}])
+    );
   }
 
   _reconnectDelay() {

@@ -1,6 +1,6 @@
 import React from "react";
-import connectService from "../common/connectService";
-import AccountContext from "../modules/account/AccountContext";
+import connectService from "../../../common/connectService";
+import AccountContext from "../../../modules/account/AccountContext";
 
 class SignUp extends React.Component {
   constructor(props) {

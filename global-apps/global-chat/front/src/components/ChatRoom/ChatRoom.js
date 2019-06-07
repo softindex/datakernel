@@ -7,6 +7,7 @@ import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import chatRoomSerializer from "../../modules/chatroom/ot/serializer";
 import chatRoomOTSystem from "../../modules/chatroom/ot/ChatRoomOTSystem";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
+import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 
 class ChatRoom extends React.Component {
   constructor(props) {
@@ -16,16 +17,11 @@ class ChatRoom extends React.Component {
       serializer: chatRoomSerializer
     });
     let chatRoomStateManager = new OTStateManager(() => new Set(), chatRoomOTNode, chatRoomOTSystem);
-    this._chatRoomService = new ChatRoomService(chatRoomStateManager);
+    this.chatRoomService = new ChatRoomService(chatRoomStateManager);
   }
 
   componentDidMount() {
-    this._chatRoomService.addChangeListener(this.update);
-    this._chatRoomService.init();
-  }
-
-  componentWillUnmount() {
-    this._chatRoomService.removeChangeListener(this.update);
+    this.chatRoomService.init();
   }
 
   update = newState => this.setState(newState);
@@ -33,11 +29,13 @@ class ChatRoom extends React.Component {
   render() {
     let classes = this.props.classes;
     return (
-      <div className={classes.root}>
-        <div className={classes.headerPadding}/>
-        <Messages ready={this._chatRoomService.ready} messages={this._chatRoomService.messages}/>
-        <MessageForm/>
-      </div>
+      <ChatRoomContext.Provider value={this.chatRoomService}>
+        <div className={classes.root}>
+          <div className={classes.headerPadding}/>
+          <Messages/>
+          <MessageForm/>
+        </div>
+      </ChatRoomContext.Provider>
     );
   }
 }

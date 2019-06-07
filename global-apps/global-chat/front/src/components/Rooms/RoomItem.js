@@ -1,7 +1,12 @@
 import React from "react";
 import path from "path";
+import {withStyles} from '@material-ui/core';
+import ListItemAvatar from "@material-ui/core/ListItemAvatar";
+import Avatar from "@material-ui/core/Avatar";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
+import roomItemStyles from "./roomItemStyles";
+import {Link} from 'react-router-dom';
 
 class RoomItem extends React.Component {
   constructor(){
@@ -14,17 +19,20 @@ class RoomItem extends React.Component {
   }
 
   render() {
-    let roomID = this.props.room.id;
+    const {classes, room} = this.props;
+    const roomPath = path.join('/room', room.id || '');
 
-    return <li>
-      <a href={path.join('/room', roomID)}>
-        {roomID.substring(0, 8)}
-      </a>
-      <button onClick={this.quitRoom}>
-        Quit
-      </button>
-    </li>;
+    return (
+      <Link to={roomPath} className={classes.link}>
+        <ListItem className={classes.listItem} button>
+          <ListItemAvatar>
+            <Avatar/>
+          </ListItemAvatar>
+          <ListItemText primary={room.name}/>
+        </ListItem>
+      </Link>
+    )
   }
 }
 
-export default RoomItem;
+export default withStyles(roomItemStyles)(RoomItem);

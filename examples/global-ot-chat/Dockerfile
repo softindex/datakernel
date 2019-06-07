@@ -5,8 +5,8 @@ WORKDIR /build
 RUN apk --update add --no-cache git
 
 # datakernel layer
-ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/master last-commit.json
-RUN git clone --depth 1 https://github.com/softindex/datakernel \
+ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/editor-chat last-commit.json
+RUN git clone --depth 1 -b editor-chat https://github.com/softindex/datakernel \
  && cd datakernel \
  && mvn install -DskipTests \
  && cd ..

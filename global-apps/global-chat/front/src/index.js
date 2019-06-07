@@ -17,6 +17,7 @@ import RoomsService from "./modules/rooms/RoomsService";
 import RoomsContext from "./modules/rooms/RoomsContext";
 import ContactsService from "./modules/contacts/ContactsService";
 import ContactsContext from "./modules/contacts/ContactsContext";
+import {SnackbarProvider} from "notistack";
 
 const roomsOTNode = ClientOTNode.createWithJsonKey({
   url: '/index',
@@ -30,8 +31,8 @@ const contactsOTNode = ClientOTNode.createWithJsonKey({
 
 const roomsOTStateManager = new OTStateManager(() => new Set(), roomsOTNode, roomsOTSystem);
 const contactsOTStateManager = new OTStateManager(() => new Map(), contactsOTNode, contactsOTSystem);
-const roomsService = new RoomsService(roomsOTStateManager, '/rooms');
 const contactsService = new ContactsService(contactsOTStateManager);
+const roomsService = new RoomsService(roomsOTStateManager, '/rooms', contactsService);
 const accountService = new AccountService(cookies);
 accountService.init();
 
@@ -41,11 +42,13 @@ ReactDOM.render((
     <RoomsContext.Provider value={roomsService}>
       <ContactsContext.Provider value={contactsService}>
         <AccountContext.Provider value={accountService}>
-          <App/>
+          <SnackbarProvider maxSnack={3}>
+            <App/>
+          </SnackbarProvider>
         </AccountContext.Provider>
       </ContactsContext.Provider>
     </RoomsContext.Provider>
   </MuiThemeProvider>
 ), document.getElementById('root'));
 
-serviceWorker.register();
+serviceWorker.unregister();

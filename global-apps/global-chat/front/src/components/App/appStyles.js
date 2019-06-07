@@ -3,7 +3,7 @@ const appStyles = theme => {
     root: {
       display: 'flex',
       flexDirection: 'row',
-      backgroundImage: 'linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)',
+      backgroundImage: 'linear-gradient(80deg, #e0c3fc 0%, #8ec5fc 100%)',
       height: '100vh'
     },
     chatWrapper: {

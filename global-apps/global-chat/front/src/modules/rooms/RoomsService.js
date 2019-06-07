@@ -3,7 +3,7 @@ import Service from '../../common/Service';
 const RETRY_CHECKOUT_TIMEOUT = 1000;
 
 class RoomsService extends Service {
-  constructor(roomsOTStateManager, messagingURL) {
+  constructor(roomsOTStateManager, messagingURL, contactsService) {
     super({
       rooms: [],
       ready: false,
@@ -11,6 +11,7 @@ class RoomsService extends Service {
     this._roomsOTStateManager = roomsOTStateManager;
     this._reconnectTimeout = null;
     this._messagingURL = messagingURL;
+    this._contactsService = contactsService;
   }
 
   async init() {
@@ -27,17 +28,19 @@ class RoomsService extends Service {
     this._onStateChange();
 
     this._roomsOTStateManager.addChangeListener(this._onStateChange);
+    this._contactsService.addChangeListener(this._onStateChange);
   }
 
   stop() {
     clearTimeout(this._reconnectTimeout);
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
+    this._contactsService.removeChangeListener(this._onStateChange);
   }
 
-  createRoom(participants) {
+  createRoom(name, participants) {
     return fetch(this._messagingURL + '/add', {
       method: 'POST',
-      body: JSON.stringify(participants)
+      body: JSON.stringify([...participants])
     })
       .then(response => {
         if (response.status >= 400 && response.status < 600) {
@@ -55,16 +58,19 @@ class RoomsService extends Service {
 
   _onStateChange = () => {
     this.setState({
-      rooms: this._getRoomsFromStateManager(),
+      rooms: this._getRooms(),
       ready: true
     });
   };
 
-  _getRoomsFromStateManager() {
-    const otState = this._roomsOTStateManager.getState();
-    return [...otState]
-      .sort()
-      .map(key => JSON.parse(key));
+  _getRooms() {
+    const otState = [...this._roomsOTStateManager.getState()].map(key => JSON.parse(key));
+    const contactState = [...this._contactsService.getAll().contacts].map(([contactPublicKey, contact]) => ({
+      id: null,
+      name: contact.name,
+      participants: [contactPublicKey]
+    }));
+    return [...otState, ...contactState];
   }
 
   _reconnectDelay() {
