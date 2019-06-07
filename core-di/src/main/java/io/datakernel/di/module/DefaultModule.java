@@ -9,8 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.di.util.ReflectionUtils.bindingForInstanceInjector;
-import static io.datakernel.di.util.ReflectionUtils.bindingForInstanceProvider;
+import static io.datakernel.di.util.ReflectionUtils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
 
@@ -37,7 +36,19 @@ public final class DefaultModule implements Module {
 						return null;
 					}
 					//noinspection unchecked
-					return (Binding) bindingForInstanceProvider(elementKey, elementBinding);
+					return (Binding) bindingForInstanceProvider(elementKey);
+				}
+		));
+
+		generators.put(new Key<InstanceFactory<?>>() {}.getType(), singleton(
+				(scope, key, provider) -> {
+					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
+					Binding<Object> elementBinding = provider.getBinding(elementKey);
+					if (elementBinding == null) {
+						return null;
+					}
+					//noinspection unchecked
+					return (Binding) bindingForInstanceFactory(elementBinding);
 				}
 		));
 

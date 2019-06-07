@@ -17,6 +17,7 @@ import java.util.Set;
 
 import static java.util.Collections.emptyMap;
 
+@SuppressWarnings("unused")
 public class Injector {
 	@Nullable
 	private final Injector parent;
@@ -41,6 +42,16 @@ public class Injector {
 		}
 
 		@Override
+		synchronized public <T> @NotNull T createInstance(@NotNull Key<T> key) {
+			return super.createInstance(key);
+		}
+
+		@Override
+		synchronized public <T> @Nullable T createInstanceOrNull(@NotNull Key<T> key) {
+			return super.createInstanceOrNull(key);
+		}
+
+		@Override
 		synchronized public <T> @Nullable T peekInstance(@NotNull Key<T> key) {
 			return super.peekInstance(key);
 		}
@@ -57,6 +68,7 @@ public class Injector {
 	}
 
 	private static final Object[] NO_OBJECTS = new Object[0];
+	private static final Object NO_KEY = new Object();
 
 	private Injector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
 		this.parent = parent;
@@ -75,9 +87,9 @@ public class Injector {
 	}
 
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
-								   @NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-								   @NotNull Map<Integer, BindingTransformer<?>> bindingTransformers,
-								   @NotNull Map<Type, Set<BindingGenerator<?>>> bindingGenerators) {
+			@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+			@NotNull Map<Integer, BindingTransformer<?>> bindingTransformers,
+			@NotNull Map<Type, Set<BindingGenerator<?>>> bindingGenerators) {
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :
 				new Injector(parent, bindings, instances);
@@ -105,9 +117,19 @@ public class Injector {
 		return getInstance(Key.of(type));
 	}
 
+	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
-		return doGetInstance(key);
+		T instance = (T) instances.getOrDefault(key, NO_KEY);
+		if (instance != NO_KEY) {
+			return instance;
+		}
+		instance = doCreateInstanceOrNull(key);
+		instances.put(key, instance);
+		if (instance == null) {
+			throw new CannotConstructException(this, key, localBindings.get(key));
+		}
+		return instance;
 	}
 
 	@Nullable
@@ -115,58 +137,73 @@ public class Injector {
 		return getInstanceOrNull(Key.of(type));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
-		return doGetInstanceOrNull(key);
-	}
-
-	@Nullable
-	protected Object provideInstance(@NotNull Key<?> key) {
-		Binding<?> binding = localBindings.get(key);
-		if (binding != null) {
-			return binding.getFactory().create(getInstances(binding.getDependencies()));
+		T instance = (T) instances.getOrDefault(key, NO_KEY);
+		if (instance != NO_KEY) {
+			return instance;
 		}
-		if (parent != null) {
-			return parent.getInstanceOrNull(key);
-		}
-		return null;
-	}
-
-	private Object[] getInstances(Dependency[] dependencies) {
-		if (dependencies.length == 0) {
-			return NO_OBJECTS;
-		}
-		Object[] instances = new Object[dependencies.length];
-		for (int i = 0; i < dependencies.length; i++) {
-			Dependency dependency = dependencies[i];
-			instances[i] = dependency.isRequired() ?
-					doGetInstance(dependency.getKey()) :
-					doGetInstanceOrNull(dependency.getKey());
-		}
-		return instances;
+		instance = doCreateInstanceOrNull(key);
+		instances.put(key, instance);
+		return instance;
 	}
 
 	@NotNull
-	private <T> T doGetInstance(@NotNull Key<T> key) {
-		T instance = doGetInstanceOrNull(key);
+	public <T> T createInstance(@NotNull Class<T> type) {
+		return createInstance(Key.of(type));
+	}
+
+	@NotNull
+	public <T> T createInstance(@NotNull Key<T> key) {
+		T instance = doCreateInstanceOrNull(key);
 		if (instance == null) {
 			throw new CannotConstructException(this, key, localBindings.get(key));
 		}
 		return instance;
 	}
 
+	@Nullable
+	public <T> T createInstanceOrNull(@NotNull Class<T> type) {
+		return createInstanceOrNull(Key.of(type));
+	}
+
+	@Nullable
+	public <T> T createInstanceOrNull(@NotNull Key<T> key) {
+		return doCreateInstanceOrNull(key);
+	}
+
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private <T> T doGetInstanceOrNull(@NotNull Key<T> key) {
-		T instance = (T) instances.get(key);
-		if (instance != null) {
-			return instance;
+	private <T> T doCreateInstanceOrNull(@NotNull Key<T> key) {
+		Binding<?> binding = localBindings.get(key);
+		if (binding != null) {
+			Dependency[] dependencies = binding.getDependencies();
+			if (dependencies.length == 0) {
+				return (T) binding.getFactory().create(NO_OBJECTS);
+			}
+			Object[] dependencyInstances = new Object[dependencies.length];
+			for (int i = 0; i < dependencies.length; i++) {
+				Dependency dependency = dependencies[i];
+				Key<?> dependencyKey = dependency.getKey();
+				Object dependencyInstance = instances.get(dependencyKey);
+				if (dependencyInstance == null) {
+					dependencyInstance = doCreateInstanceOrNull(dependencyKey);
+					if (dependencyInstance != null) {
+						instances.put(dependencyKey, dependencyInstance);
+					}
+				}
+				if (dependencyInstance == null && dependency.isRequired()) {
+					throw new CannotConstructException(this, dependencyKey, localBindings.get(dependencyKey));
+				}
+				dependencyInstances[i] = dependencyInstance;
+			}
+			return (T) binding.getFactory().create(dependencyInstances);
 		}
-		instance = (T) provideInstance(key);
-		if (instance != null) {
-			instances.put(key, instance);
+		if (parent != null) {
+			return parent.getInstanceOrNull(key);
 		}
-		return instance;
+		return null;
 	}
 
 	@Nullable
@@ -189,24 +226,20 @@ public class Injector {
 	}
 
 	public Map<Key<?>, Object> peekInstances() {
-		Map<Key<?>, Object> instances = new HashMap<>();
-		for (Map.Entry<Key<?>, Object> entry : this.instances.entrySet()) {
+		Map<Key<?>, Object> result = new HashMap<>();
+		for (Map.Entry<Key<?>, Object> entry : instances.entrySet()) {
 			Key<?> key = entry.getKey();
 			Object value = entry.getValue();
 			if (hasBinding(key) && value != null) {
-				instances.put(key, value);
+				result.put(key, value);
 			}
 		}
-		return instances;
+		return result;
 	}
 
 	@Nullable
 	public Injector getParent() {
 		return parent;
-	}
-
-	public boolean isThreadSafe() {
-		return this.getClass() == SynchronizedInjector.class;
 	}
 
 	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
@@ -245,5 +278,17 @@ public class Injector {
 		return threadsafe ?
 				new SynchronizedInjector(this, subBindings, instances) :
 				new Injector(this, subBindings, instances);
+	}
+
+	public boolean isThreadSafe() {
+		return this.getClass() == SynchronizedInjector.class;
+	}
+
+	public void createEagerSingletons() {
+		Set<Key<?>> eagerSingletons = getInstanceOrNull(new Key<Set<Key<?>>>(EagerSingleton.class) {});
+		if (eagerSingletons == null) return;
+		for (Key<?> key : eagerSingletons) {
+			getInstanceOrNull(key);
+		}
 	}
 }

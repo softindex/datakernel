@@ -53,15 +53,15 @@ public final class TestDI {
 		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
-			bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceProvider<Integer>>() {});
-			bind(new Key<InstanceProvider<String>>() {});
+			bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceFactory<Integer>>() {});
+			bind(new Key<InstanceFactory<String>>() {});
 		}});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 
-		InstanceProvider<String> provider = injector.getInstance(new Key<InstanceProvider<String>>() {});
+		InstanceFactory<String> provider = injector.getInstance(new Key<InstanceFactory<String>>() {});
 		assertEquals("str: 43", provider.create());
 		assertEquals("str: 44", provider.create());
 		assertEquals("str: 45", provider.create());

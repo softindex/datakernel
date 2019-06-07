@@ -1,13 +1,11 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Key;
-import io.datakernel.di.Name;
-import io.datakernel.di.Scope;
+import io.datakernel.di.*;
 import io.datakernel.di.util.BindingUtils;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -84,7 +82,7 @@ public abstract class AbstractModule implements Module {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "UnusedReturnValue"})
 	public final class BindingBuilder<T> {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
@@ -129,95 +127,118 @@ public abstract class AbstractModule implements Module {
 			return in(Scope.of(annotationClass), Arrays.stream(annotationClasses).map(Scope::of).toArray(Scope[]::new));
 		}
 
-		public void to(Binding<T> binding) {
+		public BindingBuilder<T> to(Binding<T> binding) {
 			if (this.binding != BindingUtils.PHANTOM) {
 				throw new IllegalStateException("Already mapped to a binding");
 			}
 			this.binding = binding.at(getLocation(BindingBuilder.class));
+			return this;
 		}
 
-		public void to(Factory<T> factory, Key<?>... dependencies) {
-			to(Binding.of(factory, dependencies));
+		public BindingBuilder<T> to(Factory<T> factory, Key<?>... dependencies) {
+			return to(Binding.of(factory, dependencies));
 		}
 
-		public void to(Factory<T> factory, List<Key<?>> dependencies) {
-			to(factory, dependencies.toArray(new Key[0]));
+		public BindingBuilder<T> to(Factory<T> factory, List<Key<?>> dependencies) {
+			return to(factory, dependencies.toArray(new Key[0]));
 		}
 
-		public void to(Class<? extends T> implementation) {
-			to(Key.of(implementation));
+		public BindingBuilder<T> to(Class<? extends T> implementation) {
+			return to(Key.of(implementation));
 		}
 
-		public void to(Key<? extends T> implementation) {
-			to(impl -> impl, implementation);
+		public BindingBuilder<T> to(Key<? extends T> implementation) {
+			return to(impl -> impl, implementation);
 		}
 
-		public void to(Constructor0<T> constructor) {
-			to(Binding.of(constructor));
+		public BindingBuilder<T> to(Constructor0<T> constructor) {
+			return to(Binding.of(constructor));
 		}
 
-		public <T1> void to(Constructor1<T1, T> constructor,
+		public <T1> BindingBuilder<T> to(Constructor1<T1, T> constructor,
 				Key<T1> dependency1) {
-			to(Binding.to(constructor, dependency1));
+			return to(Binding.to(constructor, dependency1));
 		}
 
-		public <T1, T2> void to(Constructor2<T1, T2, T> constructor,
+		public <T1, T2> BindingBuilder<T> to(Constructor2<T1, T2, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2) {
-			to(Binding.to(constructor, dependency1, dependency2));
+			return to(Binding.to(constructor, dependency1, dependency2));
 		}
 
-		public <T1, T2, T3> void to(Constructor3<T1, T2, T3, T> constructor,
+		public <T1, T2, T3> BindingBuilder<T> to(Constructor3<T1, T2, T3, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
-			to(Binding.to(constructor, dependency1, dependency2, dependency3));
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3));
 		}
 
-		public <T1, T2, T3, T4> void to(Constructor4<T1, T2, T3, T4, T> constructor,
+		public <T1, T2, T3, T4> BindingBuilder<T> to(Constructor4<T1, T2, T3, T4, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
-			to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4));
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4));
 		}
 
-		public <T1, T2, T3, T4, T5> void to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
+		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
-			to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
-		public <T1, T2, T3, T4, T5, T6> void to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
+		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
 				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
-			to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
-		public <T1> void to(Constructor1<T1, T> constructor,
+		public <T1> BindingBuilder<T> to(Constructor1<T1, T> constructor,
 				Class<T1> dependency1) {
-			to(Binding.of(constructor, dependency1));
+			return to(Binding.of(constructor, dependency1));
 		}
 
-		public <T1, T2> void to(Constructor2<T1, T2, T> constructor,
+		public <T1, T2> BindingBuilder<T> to(Constructor2<T1, T2, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2) {
-			to(Binding.of(constructor, dependency1, dependency2));
+			return to(Binding.of(constructor, dependency1, dependency2));
 		}
 
-		public <T1, T2, T3> void to(Constructor3<T1, T2, T3, T> constructor,
+		public <T1, T2, T3> BindingBuilder<T> to(Constructor3<T1, T2, T3, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
-			to(Binding.of(constructor, dependency1, dependency2, dependency3));
+			return to(Binding.of(constructor, dependency1, dependency2, dependency3));
 		}
 
-		public <T1, T2, T3, T4> void to(Constructor4<T1, T2, T3, T4, T> constructor,
+		public <T1, T2, T3, T4> BindingBuilder<T> to(Constructor4<T1, T2, T3, T4, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
-			to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4));
+			return to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4));
 		}
 
-		public <T1, T2, T3, T4, T5> void to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
+		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
-			to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
+			return to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
-		public <T1, T2, T3, T4, T5, T6> void to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
+		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
 				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
-			to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
+			return to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
-		public void toInstance(T instance) {
-			to(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
+		public BindingBuilder<T> toInstance(@NotNull T instance) {
+			return to(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
+		}
+
+		public BindingBuilder<T> asEagerSingleton() {
+			return as(EagerSingleton.class);
+		}
+
+		public BindingBuilder<T> as(@NotNull Class<? extends Annotation> annotationType) {
+			return as(Name.of(annotationType));
+		}
+
+		public BindingBuilder<T> as(@NotNull Annotation annotation) {
+			return as(Name.of(annotation));
+		}
+
+		public BindingBuilder<T> as(@NotNull String name) {
+			return as(Name.of(name));
+		}
+
+		public BindingBuilder<T> as(@NotNull Name name) {
+			conflictResolvers.put(new Key<Set<Key<?>>>(name) {}, multibinderToSet());
+			bind(new Key<Set<Key<?>>>(name) {}).toInstance(singleton(key));
+			return this;
 		}
 	}
 

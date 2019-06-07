@@ -299,34 +299,41 @@ public final class ReflectionUtils {
 				.at(LocationInfo.from(constructor));
 	}
 
-	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> elementKey, Binding<T> elementBinding) {
-		Dependency[] dependencies = new Dependency[elementBinding.getDependencies().length + 1];
-
-		dependencies[0] = new Dependency(Key.of(Injector.class), true);
-		System.arraycopy(elementBinding.getDependencies(), 0, dependencies, 1, dependencies.length - 1);
-
+	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> elementKey) {
 		return Binding.of(
 				args -> {
 					Injector injector = (Injector) args[0];
-					Object[] elementArgs = Arrays.copyOfRange(args, 1, args.length);
 					return new InstanceProvider<T>() {
-						@Override
-						public T create() {
-							return elementBinding.getFactory().create(elementArgs);
-						}
-
 						@Override
 						public T get() {
 							return injector.getInstance(elementKey);
 						}
 					};
 				},
-				dependencies);
+				new Dependency[]{new Dependency(Key.of(Injector.class), true)});
+	}
+
+	public static <T> Binding<InstanceFactory<T>> bindingForInstanceFactory(Binding<T> elementBinding) {
+		return Binding.of(
+				args -> new InstanceFactory<T>() {
+					@Override
+					public T create() {
+						return elementBinding.getFactory().create(args);
+					}
+				},
+				elementBinding.getDependencies());
 	}
 
 	public static <T> Binding<InstanceInjector<T>> bindingForInstanceInjector(BindingInitializer<Object> bindingInitializer) {
 		BindingInitializer.Initializer<Object> initializer = bindingInitializer.getInitializer();
-		return Binding.of(args -> existingInstance -> initializer.apply(existingInstance, args), bindingInitializer.getDependencies());
+		return Binding.of(
+				args -> new InstanceInjector<T>() {
+					@Override
+					public void inject(T existingInstance) {
+						initializer.apply(existingInstance, args);
+					}
+				},
+				bindingInitializer.getDependencies());
 	}
 
 	// pattern = Map<K, List<V>>

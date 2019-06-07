@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 import static io.datakernel.di.module.Modules.combine;
@@ -134,10 +135,13 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
+		injector.createEagerSingletons();
 		InstanceInjector<Launcher> instanceInjector = injector.getInstance(
 				Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
 		instanceInjector.inject(this);
 		try {
+			Set<Runnable> onStart = injector.getInstanceOrNull(new Key<Set<Runnable>>(OnStart.class) {});
+			if (onStart != null) onStart.forEach(Runnable::run);
 			onStart();
 			try {
 				doStart(injector);
@@ -158,6 +162,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.error("Application failure", e);
 			throw e;
 		} finally {
+			Set<Runnable> onStop = injector.getInstanceOrNull(new Key<Set<Runnable>>(OnStop.class) {});
+			if (onStop != null) onStop.forEach(Runnable::run);
 			onStop();
 			instantOfComplete = Instant.now();
 			finishLatch.countDown();
