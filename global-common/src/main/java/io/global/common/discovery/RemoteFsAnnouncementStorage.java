@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
@@ -40,7 +41,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
-	private static final Logger logger = Logger.getLogger(RemoteFsAnnouncementStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsAnnouncementStorage.class.getName());
 	private static final StructuredCodec<SignedData<AnnounceData>> ANNOUNCEMENT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 

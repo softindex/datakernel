@@ -23,6 +23,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.multilog.LogFile;
 import io.datakernel.multilog.LogPosition;
 import io.datakernel.multilog.Multilog;
@@ -50,7 +51,7 @@ import static java.util.Collections.emptyMap;
  */
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(LogOTProcessor.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(LogOTProcessor.class.getName());
 
 	private final Eventloop eventloop;
 	private final Multilog<T> multilog;

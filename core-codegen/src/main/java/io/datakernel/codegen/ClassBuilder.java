@@ -17,6 +17,7 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassWriter;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
@@ -48,7 +49,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  */
 @SuppressWarnings("unchecked")
 public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
-	private final Logger logger = Logger.getLogger(getClass().getName());
+	private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
 	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();

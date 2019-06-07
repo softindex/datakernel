@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
@@ -36,7 +37,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {
-	private static final Logger logger = Logger.getLogger(GlobalFsAdapter.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsAdapter.class.getName());
 
 	public static final StacklessException UPK_UPLOAD = new StacklessException(GlobalFsAdapter.class, "Trying to upload to public key without knowing it's private key");
 	public static final StacklessException UPK_DELETE = new StacklessException(GlobalFsAdapter.class, "Trying to delete file at public key without knowing it's private key");

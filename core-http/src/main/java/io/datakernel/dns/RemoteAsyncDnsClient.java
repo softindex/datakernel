@@ -32,6 +32,7 @@ import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.DatagramSocketSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,7 +52,7 @@ import static io.datakernel.async.Promises.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
 public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
-	private final Logger logger = Logger.getLogger(RemoteAsyncDnsClient.class.getName());
+	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class.getName());
 
 	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
 	private static final int DNS_SERVER_PORT = 53;

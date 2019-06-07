@@ -10,6 +10,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
 import io.datakernel.ot.OTSystem;
@@ -31,7 +32,7 @@ import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
 public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(CubeBackupController.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CubeBackupController.class.getName());
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 

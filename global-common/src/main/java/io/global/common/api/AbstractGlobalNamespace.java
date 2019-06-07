@@ -2,6 +2,7 @@ package io.global.common.api;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -13,7 +14,7 @@ import java.util.logging.Logger;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 
 public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<S, L, N>, L extends AbstractGlobalNode<L, S, N>, N> {
-	private static final Logger logger = Logger.getLogger(AbstractGlobalNamespace.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(AbstractGlobalNamespace.class.getName());
 
 	protected final L node;
 	protected final PubKey space;

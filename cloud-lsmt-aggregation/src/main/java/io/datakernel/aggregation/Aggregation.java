@@ -26,6 +26,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -67,7 +68,7 @@ import static java.util.stream.Collectors.toList;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Aggregation implements IAggregation, Initializable<Aggregation>, EventloopJmxMBeanEx {
-	private final Logger logger = Logger.getLogger(getClass().getName());
+	private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_REDUCER_BUFFER_SIZE = StreamReducer.DEFAULT_BUFFER_SIZE;

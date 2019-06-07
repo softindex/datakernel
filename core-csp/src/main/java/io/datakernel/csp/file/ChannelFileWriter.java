@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.file.AsyncFileService;
+import io.datakernel.logger.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -37,7 +38,7 @@ import static java.nio.file.StandardOpenOption.*;
  * This consumer allows you to asynchronously write binary data to a file.
  */
 public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
-	private static final Logger logger = Logger.getLogger(ChannelFileWriter.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ChannelFileWriter.class.getName());
 
 	public static final Set<OpenOption> CREATE_OPTIONS = set(WRITE, CREATE_NEW, APPEND);
 

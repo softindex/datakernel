@@ -18,6 +18,7 @@ package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.utils.*;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -58,7 +59,7 @@ public class OTRepositoryMySqlTest {
 	private OTRepositoryMySql<TestOp> repository;
 
 	static {
-		Logger rootLogger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+		Logger rootLogger = LoggerFactory.getLogger(Logger.GLOBAL_LOGGER_NAME);
 		rootLogger.setLevel(Level.FINE);
 	}
 

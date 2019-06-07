@@ -8,6 +8,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.DiffsReducer;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
@@ -35,7 +36,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(CubeCleanerController.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class.getName());
 
 	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);
 	public static final int DEFAULT_SNAPSHOTS_COUNT = 1;

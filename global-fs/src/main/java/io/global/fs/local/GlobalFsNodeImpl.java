@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.ref.RefBoolean;
@@ -48,7 +49,7 @@ import static io.global.util.Utils.nSuccessesOrLess;
 import static io.global.util.Utils.tolerantCollectBoolean;
 
 public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl, GlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<GlobalFsNodeImpl> {
-	private static final Logger logger = Logger.getLogger(GlobalFsNodeImpl.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeImpl.class.getName());
 
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;

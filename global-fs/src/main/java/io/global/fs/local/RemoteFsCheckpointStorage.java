@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
@@ -45,7 +46,7 @@ import static io.global.fs.util.BinaryDataFormats.readBuf;
 import static java.util.stream.Collectors.toList;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
-	private static final Logger logger = Logger.getLogger(RemoteFsCheckpointStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class.getName());
 	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 

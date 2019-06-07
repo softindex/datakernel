@@ -16,6 +16,7 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.loader.StaticLoader;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
@@ -51,7 +52,7 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.singleton;
 
 public final class GlobalFsApp extends Launcher {
-	private static final Logger logger = Logger.getLogger(GlobalFsApp.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class.getName());
 
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";

@@ -19,6 +19,7 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
@@ -30,7 +31,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class RpcServerConnection implements Listener, JmxRefreshable {
-	private static final Logger logger = Logger.getLogger(RpcServerConnection.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class.getName());
 
 	private final RpcServer rpcServer;
 	private final RpcStream stream;

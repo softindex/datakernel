@@ -24,6 +24,7 @@ import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
@@ -73,7 +74,7 @@ import static java.util.Collections.emptyIterator;
  * and its queues with tasks are empty.
  */
 public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(Eventloop.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class.getName());
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException(Eventloop.class, "Connection timed out");

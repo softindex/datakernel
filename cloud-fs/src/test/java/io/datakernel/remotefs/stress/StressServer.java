@@ -17,6 +17,7 @@
 package io.datakernel.remotefs.stress;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.RemoteFsServer;
 
 import java.io.IOException;
@@ -34,7 +35,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 public class StressServer {
 
 	static {
-		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).setLevel(Level.INFO);
+		LoggerFactory.getLogger(Logger.GLOBAL_LOGGER_NAME).setLevel(Level.INFO);
 	}
 
 	static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");

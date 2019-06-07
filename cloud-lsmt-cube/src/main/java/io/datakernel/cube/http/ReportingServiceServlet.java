@@ -28,6 +28,7 @@ import io.datakernel.cube.ReportType;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 
@@ -48,7 +49,7 @@ import static io.datakernel.http.HttpMethod.GET;
 import static java.util.stream.Collectors.toList;
 
 public final class ReportingServiceServlet extends AsyncServletWithStats {
-	private static final Logger logger = Logger.getLogger(ReportingServiceServlet.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class.getName());
 
 	private final ICube cube;
 	private final CodecFactory mapping;

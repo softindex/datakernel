@@ -32,6 +32,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFileService;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
@@ -67,7 +68,7 @@ import static java.util.stream.Collectors.toList;
  * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
  */
 public final class LocalFsClient implements FsClient, EventloopService {
-	private static final Logger logger = Logger.getLogger(LocalFsClient.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class.getName());
 
 	public static final FileNamingScheme REVISION_NAMING_SCHEME = new FileNamingScheme() {
 		private static final String SEPARATOR = "@";

@@ -22,6 +22,7 @@ import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.*;
 import io.global.kv.api.GlobalKvNode;
@@ -39,7 +40,7 @@ import static io.global.common.Hash.sha1;
 import static io.global.kv.util.BinaryDataFormats.RAW_KV_ITEM_CODEC;
 
 public final class GlobalKvDriver<K, V> {
-	private static final Logger logger = Logger.getLogger(GlobalKvDriver.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalKvDriver.class.getName());
 
 	private final GlobalKvNode node;
 	private final StructuredCodec<K> keyCodec;

@@ -27,6 +27,7 @@ import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.MultiSharder;
@@ -49,7 +50,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(CrdtStorageCluster.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class.getName());
 
 	private final Eventloop eventloop;
 	private final Map<I, CrdtStorage<K, S>> clients;

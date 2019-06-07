@@ -7,6 +7,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -32,7 +33,7 @@ import static io.global.util.Utils.tolerantCollectBoolean;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNamespace, GlobalFsNodeImpl, GlobalFsNode> {
-	private static final Logger logger = Logger.getLogger(GlobalFsNamespace.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNamespace.class.getName());
 
 	private final FsClient storage;
 	private final CheckpointStorage checkpointStorage;

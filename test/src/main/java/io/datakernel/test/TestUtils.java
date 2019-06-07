@@ -18,6 +18,7 @@ package io.datakernel.test;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 import io.datakernel.async.Callback;
+import io.datakernel.logger.LoggerFactory;
 import org.jetbrains.annotations.Nullable;
 
 import javax.sql.DataSource;
@@ -58,12 +59,12 @@ public final class TestUtils {
 	}
 
 	public static void enableLogging(String name, Level level) {
-		Logger logger = Logger.getLogger(name);
+		Logger logger = LoggerFactory.getLogger(name);
 		logger.setLevel(level);
 	}
 
 	public static void enableLogging(Class<?> cls, Level level) {
-		Logger logger = Logger.getLogger(cls.getName());
+		Logger logger = LoggerFactory.getLogger(cls.getName());
 		logger.setLevel(level);
 	}
 

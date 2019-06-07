@@ -2,6 +2,7 @@ package io.global.ot.graph;
 
 import io.datakernel.async.Promise;
 import io.datakernel.http.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTLoadedGraph;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
@@ -20,7 +21,7 @@ import static io.datakernel.util.StringFormatUtils.limit;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTGraphServlet<K, D> implements AsyncServlet {
-	private static final Logger logger = Logger.getLogger(OTGraphServlet.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(OTGraphServlet.class.getName());
 
 	public static final Function<CommitId, String> COMMIT_ID_TO_STRING = commitId -> limit(commitId.toString(), 10);
 

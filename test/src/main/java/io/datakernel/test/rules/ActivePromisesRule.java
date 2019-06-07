@@ -16,6 +16,7 @@
 
 package io.datakernel.test.rules;
 
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.test.TestUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -29,7 +30,7 @@ import java.util.logging.Logger;
  * listener attached
  */
 public final class ActivePromisesRule implements TestRule {
-	private static final Logger logger = Logger.getLogger(ActivePromisesRule.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ActivePromisesRule.class.getName());
 
 	@Override
 	public Statement apply(Statement base, Description description) {

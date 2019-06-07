@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
@@ -50,7 +51,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
-	private static final Logger logger = Logger.getLogger(RemoteFsSharedKeyStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsSharedKeyStorage.class.getName());
 
 	private static final StructuredCodec<SignedData<SharedSimKey>> SHARED_KEY_CODEC =
 			REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});

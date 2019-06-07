@@ -26,6 +26,7 @@ import io.datakernel.csp.process.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.stream.StreamConsumer;
@@ -60,7 +61,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopService, Initializable<RemoteFsChunkStorage<C>>, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(RemoteFsChunkStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsChunkStorage.class.getName());
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);

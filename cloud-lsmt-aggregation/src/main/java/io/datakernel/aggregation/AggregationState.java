@@ -20,6 +20,7 @@ import io.datakernel.aggregation.AggregationPredicates.RangeScan;
 import io.datakernel.aggregation.RangeTree.Segment;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTState;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,7 +42,7 @@ import static java.util.Collections.unmodifiableMap;
  * Provides methods for managing index, querying for chunks by key, searching for chunks that are available for consolidation.
  */
 public final class AggregationState implements OTState<AggregationDiff> {
-	private static final Logger logger = Logger.getLogger(AggregationState.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(AggregationState.class.getName());
 
 	private final AggregationStructure aggregation;
 

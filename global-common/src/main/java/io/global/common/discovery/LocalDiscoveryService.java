@@ -20,6 +20,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.Hash;
 import io.global.common.PubKey;
@@ -40,7 +41,7 @@ import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 
 public final class LocalDiscoveryService implements DiscoveryService, EventloopService {
-	private static final Logger logger = Logger.getLogger(LocalDiscoveryService.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(LocalDiscoveryService.class.getName());
 
 	private final Eventloop eventloop;
 	private final AnnouncementStorage announcementStorage;

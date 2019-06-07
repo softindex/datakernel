@@ -25,6 +25,7 @@ import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.*;
 import io.datakernel.dataflow.server.command.*;
 import io.datakernel.exception.ParseException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamJoin.Joiner;
@@ -61,7 +62,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
  */
 @SuppressWarnings({"rawtypes", "unchecked", "WeakerAccess"})
 public final class DatagraphSerialization implements Initializable<DatagraphSerialization> {
-	static final Logger logger = Logger.getLogger(DatagraphSerialization.class.getName());
+	static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class.getName());
 
 	final class CodecProvider<T> {
 		private StructuredCodec<T> ref;

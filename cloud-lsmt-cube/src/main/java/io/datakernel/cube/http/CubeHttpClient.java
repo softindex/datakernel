@@ -28,6 +28,7 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.logger.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.net.URI;
@@ -42,7 +43,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CubeHttpClient implements ICube {
-	private static final Logger logger = Logger.getLogger(CubeHttpClient.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class.getName());
 
 	private final String url;
 	private final IAsyncHttpClient httpClient;

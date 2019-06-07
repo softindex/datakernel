@@ -26,6 +26,7 @@ import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serializer.BinarySerializer;
@@ -53,7 +54,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 
 public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(MultilogImpl.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(MultilogImpl.class.getName());
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 

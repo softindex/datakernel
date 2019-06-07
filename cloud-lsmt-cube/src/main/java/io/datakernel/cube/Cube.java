@@ -38,6 +38,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTState;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
@@ -87,7 +88,7 @@ import static java.util.stream.Collectors.toList;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(Cube.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(Cube.class.getName());
 
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
 

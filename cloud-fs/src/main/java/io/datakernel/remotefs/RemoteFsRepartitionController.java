@@ -29,6 +29,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +51,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class RemoteFsRepartitionController implements Initializable<RemoteFsRepartitionController>, EventloopJmxMBeanEx, EventloopService {
-	private static final Logger logger = Logger.getLogger(RemoteFsRepartitionController.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsRepartitionController.class.getName());
 
 	private final Eventloop eventloop;
 	private final Object localPartitionId;

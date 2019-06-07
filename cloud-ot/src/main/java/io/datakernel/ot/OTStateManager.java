@@ -21,6 +21,7 @@ import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.exceptions.OTTransformException;
 import org.jetbrains.annotations.NotNull;
@@ -43,7 +44,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public final class OTStateManager<K, D> implements EventloopService {
-	private static final Logger logger = Logger.getLogger(OTStateManager.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(OTStateManager.class.getName());
 
 	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;

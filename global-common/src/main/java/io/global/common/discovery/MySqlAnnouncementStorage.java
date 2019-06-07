@@ -2,6 +2,7 @@ package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -25,7 +26,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MySqlAnnouncementStorage implements AnnouncementStorage {
-	private static final Logger logger = Logger.getLogger(MySqlAnnouncementStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(MySqlAnnouncementStorage.class.getName());
 
 	private static final StructuredCodec<SignedData<AnnounceData>> ANNOUNCEMENT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});

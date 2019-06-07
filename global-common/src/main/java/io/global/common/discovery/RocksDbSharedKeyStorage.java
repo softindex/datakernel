@@ -3,6 +3,7 @@ package io.global.common.discovery;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Tuple2;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -29,7 +30,7 @@ import static io.datakernel.util.Utils.arrayStartsWith;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public class RocksDbSharedKeyStorage implements SharedKeyStorage {
-	private static final Logger logger = Logger.getLogger(RocksDbAnnouncementStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RocksDbAnnouncementStorage.class.getName());
 
 	private static final StructuredCodec<PubKey> PUB_KEY_CODEC = REGISTRY.get(PubKey.class);
 	private static final StructuredCodec<Tuple2<PubKey, Hash>> KEY_CODEC = REGISTRY.get(new TypeT<Tuple2<PubKey, Hash>>() {});

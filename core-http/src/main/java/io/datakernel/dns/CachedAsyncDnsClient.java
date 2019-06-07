@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.logger.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +37,7 @@ import java.util.logging.Logger;
 import static io.datakernel.dns.DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL;
 
 public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
-	private final Logger logger = Logger.getLogger(CachedAsyncDnsClient.class.getName());
+	private final Logger logger = LoggerFactory.getLogger(CachedAsyncDnsClient.class.getName());
 
 	private final Eventloop eventloop;
 	private final AsyncDnsClient client;

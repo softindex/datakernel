@@ -16,6 +16,8 @@
 
 package io.datakernel.net;
 
+import io.datakernel.logger.LoggerFactory;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -31,7 +33,7 @@ public final class BlockingSocketServer {
 		void onAccept(Socket socket) throws IOException;
 	}
 
-	private static final Logger logger = Logger.getLogger(BlockingSocketServer.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(BlockingSocketServer.class.getName());
 	private ThreadFactory acceptThreadFactory;
 	private final Executor executor;
 	private final AcceptHandler acceptHandler;

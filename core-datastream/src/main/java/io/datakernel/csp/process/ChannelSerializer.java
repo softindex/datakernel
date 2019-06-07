@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
@@ -36,7 +37,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
 
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
-	private static final Logger logger = Logger.getLogger(ChannelSerializer.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class.getName());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 

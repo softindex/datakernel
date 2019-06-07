@@ -24,6 +24,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.JmxRefreshable;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
@@ -47,7 +48,7 @@ import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
-	private static final Logger logger = Logger.getLogger(RpcClientConnection.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RpcClientConnection.class.getName());
 
 	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
 	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);

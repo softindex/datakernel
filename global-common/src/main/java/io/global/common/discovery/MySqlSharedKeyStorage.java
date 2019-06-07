@@ -2,6 +2,7 @@ package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
@@ -28,7 +29,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MySqlSharedKeyStorage implements SharedKeyStorage {
-	private static final Logger logger = Logger.getLogger(MySqlSharedKeyStorage.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(MySqlSharedKeyStorage.class.getName());
 
 	private static final StructuredCodec<SignedData<SharedSimKey>> SHARED_SIM_KEY_CODEC =
 			REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});

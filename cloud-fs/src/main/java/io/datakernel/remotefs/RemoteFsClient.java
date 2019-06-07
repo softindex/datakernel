@@ -30,6 +30,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
@@ -53,7 +54,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * An implementation of {@link FsClient} which connects to a single {@link RemoteFsServer} and communicates with it.
  */
 public final class RemoteFsClient implements FsClient, EventloopService {
-	private static final Logger logger = Logger.getLogger(RemoteFsClient.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class.getName());
 
 	public static final StacklessException INVALID_MESSAGE = new StacklessException(RemoteFsClient.class, "Invalid or unexpected message received");
 	public static final StacklessException TOO_MUCH_DATA = new StacklessException(RemoteFsClient.class, "Received more bytes than expected");

@@ -5,6 +5,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.logger.LoggerFactory;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
@@ -28,7 +29,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 
 public final class ExampleCommonModule extends AbstractModule {
-	private static final Logger logger = Logger.getLogger(ExampleCommonModule.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ExampleCommonModule.class.getName());
 
 	public static final PrivKey DEMO_PRIVATE_KEY =
 			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));

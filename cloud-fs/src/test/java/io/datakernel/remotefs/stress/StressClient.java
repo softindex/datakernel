@@ -22,6 +22,7 @@ import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -49,7 +50,7 @@ import java.util.logging.Logger;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 class StressClient {
-	private final Logger logger = Logger.getLogger(getClass().getName());
+	private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 	private InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = Executors.newCachedThreadPool();

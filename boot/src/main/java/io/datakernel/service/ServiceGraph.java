@@ -20,6 +20,7 @@ import io.datakernel.di.Name;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +51,7 @@ import static java.util.stream.Collectors.toList;
  * {@link ServiceGraphModule}.
  */
 public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxMBean {
-	private static final Logger logger = Logger.getLogger(ServiceGraph.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class.getName());
 
 	public interface Key<T> {
 		@NotNull

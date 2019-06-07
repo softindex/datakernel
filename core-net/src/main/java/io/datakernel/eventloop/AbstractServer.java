@@ -24,6 +24,7 @@ import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Initializable;
@@ -61,7 +62,7 @@ import static java.util.Collections.singletonList;
  */
 @SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
-	protected Logger logger = Logger.getLogger(getClass().getName());
+	protected Logger logger = LoggerFactory.getLogger(getClass().getName());
 
 	@NotNull
 	protected final Eventloop eventloop;

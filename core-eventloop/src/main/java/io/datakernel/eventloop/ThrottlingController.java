@@ -21,6 +21,7 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,7 +37,7 @@ import static java.lang.Math.pow;
 public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxMBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
 
-	private final Logger logger = Logger.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
+	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
 
 	public static final Duration TARGET_TIME = Duration.ofMillis(20);
 	public static final Duration GC_TIME = Duration.ofMillis(20);

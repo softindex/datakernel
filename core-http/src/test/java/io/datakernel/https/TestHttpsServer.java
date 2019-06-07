@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.logger.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
@@ -40,7 +41,7 @@ public class TestHttpsServer {
 	private static final int PORT = getFreePort();
 
 	static {
-		Logger root = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+		Logger root = LoggerFactory.getLogger(Logger.GLOBAL_LOGGER_NAME);
 		root.setLevel(Level.FINE);
 //		System.setProperty("javax.net.debug", "all");
 	}

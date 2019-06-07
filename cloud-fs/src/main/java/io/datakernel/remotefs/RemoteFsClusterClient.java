@@ -31,6 +31,7 @@ import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Tuple2;
 import org.jetbrains.annotations.NotNull;
@@ -55,7 +56,7 @@ import static java.util.stream.Collectors.toList;
  * Contains some redundancy and fail-safety capabilities.
  */
 public final class RemoteFsClusterClient implements FsClient, Initializable<RemoteFsClusterClient>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(RemoteFsClusterClient.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClusterClient.class.getName());
 
 	private final Eventloop eventloop;
 	private final Map<Object, FsClient> clients;

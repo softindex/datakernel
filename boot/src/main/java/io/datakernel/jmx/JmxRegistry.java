@@ -20,6 +20,7 @@ import io.datakernel.di.Key;
 import io.datakernel.di.Name;
 import io.datakernel.di.Scope;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,7 +41,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 
 public final class JmxRegistry implements JmxRegistryMXBean {
-	private static final Logger logger = Logger.getLogger(JmxRegistry.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class.getName());
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
 

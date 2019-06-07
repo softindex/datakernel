@@ -1,5 +1,7 @@
 package io.datakernel.eventloop;
 
+import io.datakernel.logger.LoggerFactory;
+
 import java.lang.reflect.Field;
 import java.nio.channels.Selector;
 import java.util.logging.Level;
@@ -10,7 +12,7 @@ import java.util.logging.Logger;
  * into {@link OptimizedSelectedKeysSet}. Replace fields to advance performance for the {@link Selector}
  */
 final class Utils {
-	private static final Logger logger = Logger.getLogger(Utils.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(Utils.class.getName());
 
 	private static Field SELECTED_KEYS_FIELD;
 	private static Field PUBLIC_SELECTED_KEYS_FIELD;

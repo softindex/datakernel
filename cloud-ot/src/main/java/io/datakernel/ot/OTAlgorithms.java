@@ -4,6 +4,7 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
 import io.datakernel.util.ref.Ref;
@@ -29,7 +30,7 @@ import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTAlgorithms {
-	private static final Logger logger = Logger.getLogger(OTAlgorithms.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class.getName());
 
 	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
 

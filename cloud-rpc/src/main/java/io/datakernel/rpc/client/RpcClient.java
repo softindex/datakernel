@@ -31,6 +31,7 @@ import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
@@ -82,7 +83,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final MemSize DEFAULT_PACKET_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = ChannelSerializer.MAX_SIZE;
 
-	private Logger logger = Logger.getLogger(getClass().getName());
+	private Logger logger = LoggerFactory.getLogger(getClass().getName());
 
 	private final Eventloop eventloop;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;

@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import io.datakernel.logger.LoggerFactory;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.FileNotFoundException;
@@ -43,7 +44,7 @@ import static java.util.Collections.*;
  * Interface for interaction with configs.
  */
 public interface Config {
-	Logger logger = Logger.getLogger(Config.class.getName());
+	Logger logger = LoggerFactory.getLogger(Config.class.getName());
 
 	/**
 	 * Empty config with no values, children, etc...

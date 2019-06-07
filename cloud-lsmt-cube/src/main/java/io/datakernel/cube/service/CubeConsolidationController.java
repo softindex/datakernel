@@ -11,6 +11,7 @@ import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTStateManager;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,7 +28,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(CubeConsolidationController.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class.getName());
 
 	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation,
 			Promise<AggregationDiff>>>() {

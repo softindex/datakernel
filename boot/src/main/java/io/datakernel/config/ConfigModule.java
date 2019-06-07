@@ -19,6 +19,7 @@ package io.datakernel.config;
 import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.service.BlockingService;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -44,7 +45,7 @@ import static io.datakernel.util.Preconditions.checkState;
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
  */
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
-	private static final Logger logger = Logger.getLogger(ConfigModule.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class.getName());
 
 	private Supplier<Config> configSupplier;
 	private Path effectiveConfigPath;

@@ -7,6 +7,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Tuple2;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
@@ -32,7 +33,7 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
 
 public final class CommitStorageRocksDb implements CommitStorage, EventloopService {
-	private static final Logger logger = Logger.getLogger(CommitStorageRocksDb.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CommitStorageRocksDb.class.getName());
 
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 	private static final StructuredCodec<RawCommit> RAW_COMMIT_CODEC = REGISTRY.get(RawCommit.class);

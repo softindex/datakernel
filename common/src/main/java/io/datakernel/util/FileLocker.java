@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import io.datakernel.logger.LoggerFactory;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -28,7 +29,7 @@ import java.util.logging.Logger;
 import static io.datakernel.util.Preconditions.check;
 
 public final class FileLocker {
-	private static final Logger logger = Logger.getLogger(FileLocker.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(FileLocker.class.getName());
 
 	synchronized public static FileLocker obtainLockOrDie(String filename) {
 		FileLocker fileLocker = new FileLocker(filename);

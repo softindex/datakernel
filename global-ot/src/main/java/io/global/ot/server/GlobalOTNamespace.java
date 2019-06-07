@@ -3,6 +3,7 @@ package io.global.ot.server;
 import io.datakernel.async.*;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.Tuple2;
 import io.datakernel.util.ref.Ref;
@@ -31,7 +32,7 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNamespace, GlobalOTNodeImpl, GlobalOTNode> {
-	private static final Logger logger = Logger.getLogger(GlobalOTNamespace.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNamespace.class.getName());
 
 	public static final StacklessException POLLING_HAS_BEEN_STOPPED = new StacklessException(GlobalOTNodeImpl.class, "Polling has been stopped");
 

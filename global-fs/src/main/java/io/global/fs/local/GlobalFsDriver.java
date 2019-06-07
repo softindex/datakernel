@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.ref.RefLong;
 import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
@@ -46,7 +47,7 @@ import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsDriver {
-	private static final Logger logger = Logger.getLogger(GlobalFsDriver.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsDriver.class.getName());
 
 	public static final StacklessException FILE_APPEND_WITH_OTHER_KEY = new StacklessException(GlobalFsDriver.class, "Trying to upload to the file with other symmetric key");
 

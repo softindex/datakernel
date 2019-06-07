@@ -23,6 +23,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +33,7 @@ import java.util.logging.Logger;
 
 @SuppressWarnings("UnusedReturnValue")
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(EventloopTaskScheduler.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class.getName());
 
 	private final Eventloop eventloop;
 	private final AsyncSupplier<?> task;

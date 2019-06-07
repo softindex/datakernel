@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.ParserFunction;
 import io.global.common.Hash;
 import io.global.common.PubKey;
@@ -42,7 +43,7 @@ import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HttpDiscoveryService implements DiscoveryService {
-	private static final Logger logger = Logger.getLogger(HttpDiscoveryService.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(HttpDiscoveryService.class.getName());
 
 	private final IAsyncHttpClient client;
 	private final InetSocketAddress address;

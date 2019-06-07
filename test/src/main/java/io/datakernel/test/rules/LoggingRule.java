@@ -16,6 +16,7 @@
 
 package io.datakernel.test.rules;
 
+import io.datakernel.logger.LoggerFactory;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -46,7 +47,7 @@ public final class LoggingRule implements TestRule {
 			Logger[] loggers = new Logger[clauses.length];
 			for (int i = 0; i < clauses.length; i++) {
 				LoggerConfig clause = clauses[i];
-				Logger logger = Logger.getLogger(clause.logger());
+				Logger logger = LoggerFactory.getLogger(clause.logger());
 				oldLevels[i] = logger.getLevel();
 				loggers[i] = logger;
 				logger.setLevel(Level.parse(clause.value()));

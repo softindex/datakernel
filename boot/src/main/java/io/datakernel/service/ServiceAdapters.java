@@ -20,6 +20,7 @@ import io.datakernel.async.Callback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.BlockingSocketServer;
 
 import javax.sql.DataSource;
@@ -37,7 +38,7 @@ import java.util.logging.Logger;
  */
 @SuppressWarnings("WeakerAccess")
 public final class ServiceAdapters {
-	private static final Logger logger = Logger.getLogger(ServiceAdapters.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ServiceAdapters.class.getName());
 
 	private ServiceAdapters() {
 	}

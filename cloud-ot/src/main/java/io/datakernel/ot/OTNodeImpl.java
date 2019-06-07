@@ -3,6 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.util.ref.Ref;
 import io.datakernel.util.ref.RefInt;
@@ -20,7 +21,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
 
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
-	private static final Logger logger = Logger.getLogger(OTNodeImpl.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class.getName());
 
 	private final OTSystem<D> otSystem;
 	private final OTRepository<K, D> repository;

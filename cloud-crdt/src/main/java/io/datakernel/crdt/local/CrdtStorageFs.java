@@ -33,6 +33,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.stream.StreamConsumer;
@@ -61,7 +62,7 @@ import static java.util.stream.Collectors.toList;
 
 public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStorage<K, S>,
 		Initializable<CrdtStorageFs<K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(CrdtStorageFs.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageFs.class.getName());
 
 	private final Eventloop eventloop;
 	private final FsClient client;

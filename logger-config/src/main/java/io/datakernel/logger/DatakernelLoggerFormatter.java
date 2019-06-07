@@ -13,7 +13,6 @@ public final class DatakernelLoggerFormatter extends Formatter {
 	private static final String DEFAULT_FORMAT = "[%1$tF %1$tT], %2$-7s: [%3$s] - %4$-7s %5$s %n";
 	private static final String format = getFormat();
 
-
 	private static String getFormat() {
 		String format = System.getProperty(FORMAT_PROP_KEY);
 		return format == null ? DEFAULT_FORMAT : format;

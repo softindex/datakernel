@@ -20,6 +20,7 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.time.CurrentTimeProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,7 +39,7 @@ import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
  * Represents a cache for storing resolved domains during its time to live.
  */
 public final class DnsCache {
-	private static final Logger logger = Logger.getLogger(DnsCache.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(DnsCache.class.getName());
 
 	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL = Duration.ofSeconds(1);
 	public static final Duration DEFAULT_ERROR_CACHE_EXPIRATION = Duration.ofMinutes(1);

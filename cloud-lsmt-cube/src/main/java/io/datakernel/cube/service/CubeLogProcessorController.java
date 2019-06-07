@@ -14,6 +14,7 @@ import io.datakernel.etl.LogOTProcessor;
 import io.datakernel.etl.LogOTState;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.ot.OTStateManager;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +32,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeLogProcessorController<K, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = Logger.getLogger(CubeLogProcessorController.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class.getName());
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 

@@ -25,6 +25,7 @@ import io.datakernel.di.util.Trie;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -83,7 +84,7 @@ import static java.util.stream.Collectors.*;
  * An application terminates if a circular dependency found.
  */
 public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
-	private static final Logger logger = Logger.getLogger(ServiceGraphModule.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ServiceGraphModule.class.getName());
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();

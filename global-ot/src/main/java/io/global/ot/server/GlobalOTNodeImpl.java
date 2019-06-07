@@ -22,6 +22,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
@@ -48,7 +49,7 @@ import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
-	private static final Logger logger = Logger.getLogger(GlobalOTNodeImpl.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class.getName());
 
 	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry();
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);

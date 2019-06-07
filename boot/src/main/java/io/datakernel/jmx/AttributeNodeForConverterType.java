@@ -1,5 +1,6 @@
 package io.datakernel.jmx;
 
+import io.datakernel.logger.LoggerFactory;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
@@ -15,7 +16,7 @@ import java.util.logging.Logger;
 
 @SuppressWarnings("unchecked")
 public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstract {
-	private static final Logger logger = Logger.getLogger(AttributeNodeForConverterType.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(AttributeNodeForConverterType.class.getName());
 
 	@Nullable
 	private Method setter;

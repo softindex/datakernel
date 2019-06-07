@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.csp.process.*;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -46,7 +47,7 @@ import static java.lang.String.format;
  * @param <T> type of storing data
  */
 public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> {
-	private static final Logger logger = Logger.getLogger(StreamSorterStorageImpl.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(StreamSorterStorageImpl.class.getName());
 
 	public static final String DEFAULT_FILE_PATTERN = "%d";
 	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);

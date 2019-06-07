@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.exception.CloseException;
 import io.datakernel.file.AsyncFileService;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 
@@ -42,7 +43,7 @@ import static java.nio.file.StandardOpenOption.READ;
  * This supplier allows you to asynchronously read binary data from a file.
  */
 public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
-	private static final Logger logger = Logger.getLogger(ChannelFileReader.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(ChannelFileReader.class.getName());
 
 	public static final Set<OpenOption> READ_OPTIONS = set(READ);
 

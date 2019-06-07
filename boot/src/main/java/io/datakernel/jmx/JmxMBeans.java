@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ReflectionUtils;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +48,7 @@ import static java.util.Collections.singletonList;
 
 @SuppressWarnings("rawtypes")
 public final class JmxMBeans implements DynamicMBeanFactory {
-	private static final Logger logger = Logger.getLogger(JmxMBeans.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class.getName());
 
 	// refreshing jmx
 	public static final Duration DEFAULT_REFRESH_PERIOD_IN_SECONDS = Duration.ofSeconds(1);
