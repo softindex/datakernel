@@ -31,23 +31,28 @@ public class Injector {
 		}
 
 		@Override
-		synchronized public <T> @NotNull T getInstance(@NotNull Class<T> type) {
-			return super.getInstance(type);
-		}
-
-		@Override
 		synchronized public <T> @NotNull T getInstance(@NotNull Key<T> key) {
 			return super.getInstance(key);
 		}
 
 		@Override
-		synchronized public <T> @Nullable T getInstanceOrNull(@NotNull Class<T> type) {
-			return super.getInstanceOrNull(type);
+		synchronized public <T> @Nullable T getInstanceOrNull(@NotNull Key<T> key) {
+			return super.getInstanceOrNull(key);
 		}
 
 		@Override
-		synchronized public <T> @Nullable T getInstanceOrNull(@NotNull Key<T> key) {
-			return super.getInstanceOrNull(key);
+		synchronized public <T> @Nullable T peekInstance(@NotNull Key<T> key) {
+			return super.peekInstance(key);
+		}
+
+		@Override
+		synchronized public Map<Key<?>, Object> peekInstances() {
+			return super.peekInstances();
+		}
+
+		@Override
+		synchronized public boolean hasInstance(@NotNull Key<?> type) {
+			return super.hasInstance(type);
 		}
 	}
 
@@ -180,10 +185,18 @@ public class Injector {
 	}
 
 	public boolean hasInstance(@NotNull Key<?> type) {
-		return instances.containsKey(type);
+		return instances.get(type) != null;
 	}
 
 	public Map<Key<?>, Object> peekInstances() {
+		Map<Key<?>, Object> instances = new HashMap<>();
+		for (Map.Entry<Key<?>, Object> entry : this.instances.entrySet()) {
+			Key<?> key = entry.getKey();
+			Object value = entry.getValue();
+			if (hasBinding(key) && value != null) {
+				instances.put(key, value);
+			}
+		}
 		return instances;
 	}
 
