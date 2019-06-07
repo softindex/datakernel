@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
-public class DatakernelLoggerFormatter extends Formatter {
+public final class DatakernelLoggerFormatter extends Formatter {
 	private final Date dat = new Date();
 	private static final String FORMAT_PROP_KEY = "io.datakernel.logger.DatakernelLoggerFormatter.format";
 	private static final String DEFAULT_FORMAT = "[%1$tF %1$tT], %2$-7s: [%3$s] - %4$-7s %5$s %n";

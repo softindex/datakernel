@@ -26,6 +26,7 @@ import io.datakernel.di.module.Module;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxModule.JmxModuleService;
+import io.datakernel.logger.LoggerFactory;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule.TriggersModuleService;
@@ -79,7 +80,7 @@ import static io.datakernel.di.util.ReflectionUtils.parameterized;
  * @see ConfigModule
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = Logger.getLogger(getClass().getName());
+	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected String[] args = {};
 

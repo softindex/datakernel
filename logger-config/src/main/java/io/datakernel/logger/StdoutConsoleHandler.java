@@ -3,7 +3,7 @@ package io.datakernel.logger;
 import java.util.logging.LogRecord;
 import java.util.logging.StreamHandler;
 
-public class StdoutConsoleHandler extends StreamHandler {
+public final class StdoutConsoleHandler extends StreamHandler {
 	public StdoutConsoleHandler() {
 		super();
 		setOutputStream(System.out);
