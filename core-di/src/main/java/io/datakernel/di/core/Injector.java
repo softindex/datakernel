@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.NoBindingsInScopeException;
@@ -10,15 +9,12 @@ import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.Collections.emptyMap;
-import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
 public class Injector {
@@ -162,15 +158,6 @@ public class Injector {
 		return instance;
 	}
 
-	public Set<Key<?>> getKeySet(Class<? extends Annotation> keySetAnnotation) {
-		return getKeySet(Name.of(keySetAnnotation));
-	}
-
-	public Set<Key<?>> getKeySet(Name keySetName) {
-		checkArgument(keySetName.isMarkedBy(KeySetAnnotation.class));
-		return getInstanceOr(new Key<Set<Key<?>>>(keySetName) {}, emptySet());
-	}
-
 	@NotNull
 	public <T> T createInstance(@NotNull Class<T> type) {
 		return createInstance(Key.of(type));
@@ -183,16 +170,6 @@ public class Injector {
 			throw new CannotConstructException(this, key, localBindings.get(key));
 		}
 		return instance;
-	}
-
-	public <T> T createInstanceOr(@NotNull Class<T> type, T defaultValue) {
-		T instance = createInstanceOrNull(type);
-		return instance != null ? instance : defaultValue;
-	}
-
-	public <T> T createInstanceOr(@NotNull Key<T> key, T defaultValue) {
-		T instance = createInstanceOrNull(key);
-		return instance != null ? instance : defaultValue;
 	}
 
 	@Nullable

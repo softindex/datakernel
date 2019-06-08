@@ -38,7 +38,7 @@ public final class DefaultModule implements Module {
 								return new InstanceProvider<Object>() {
 									@Override
 									public Key<Object> key() {
-										return key;
+										return elementKey;
 									}
 
 									@Override
@@ -63,7 +63,7 @@ public final class DefaultModule implements Module {
 							args -> new InstanceFactory<Object>() {
 								@Override
 								public Key<Object> key() {
-									return key;
+									return elementKey;
 								}
 
 								@Override
@@ -87,7 +87,7 @@ public final class DefaultModule implements Module {
 							args -> new InstanceInjector<Object>() {
 								@Override
 								public Key<Object> key() {
-									return key;
+									return elementKey;
 								}
 
 								@Override

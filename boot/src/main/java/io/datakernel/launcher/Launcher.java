@@ -39,8 +39,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
-import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.module.Modules.*;
 import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -139,7 +137,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
-		injector.getKeySet(EagerSingleton.class).forEach(injector::getInstanceOrNull);
+		injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
 		for (InstanceInjector<?> instanceInjector : injector.getInstance(new Key<Set<InstanceInjector<?>>>() {})) {
 			Object instance = injector.getInstanceOrNull(instanceInjector.key());
 			if (instance != null) ((InstanceInjector<Object>) instanceInjector).inject(instance);

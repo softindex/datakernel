@@ -1,13 +1,14 @@
 package io.datakernel.di;
 
-import io.datakernel.di.annotation.*;
 import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
-import io.datakernel.di.module.*;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
@@ -742,10 +743,10 @@ public final class TestDI {
 			}
 		});
 
-		Set<Key<?>> keys = injector.getKeySet(MyKeySet.class);
+		Set<Key<?>> keys = injector.getInstanceOr(new Key<Set<Key<?>>>(Name.of(MyKeySet.class)) {}, emptySet());
 		assertEquals(Stream.of(Float.class, Double.class, Integer.class).map(Key::of).collect(toSet()), keys);
 
-		Set<Key<?>> keys2 = injector.getKeySet(MyKeySet2.class);
+		Set<Key<?>> keys2 = injector.getInstanceOr(new Key<Set<Key<?>>>(Name.of(MyKeySet2.class)) {}, emptySet());
 
 		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
 	}

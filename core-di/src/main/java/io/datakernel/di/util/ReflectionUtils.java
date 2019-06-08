@@ -1,7 +1,7 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.annotation.*;
 import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.error.BadAnnotationException;
 import io.datakernel.di.error.InjectionFailedException;
@@ -159,7 +159,7 @@ public final class ReflectionUtils {
 				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredFields).stream()
 						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.isAnnotationPresent(Optional.class))),
 				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredMethods).stream()
-						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method, !method.isAnnotationPresent(Optional.class))))
+						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method)))
 				.collect(toList());
 		return BindingInitializer.combine(initializers);
 	}
@@ -168,52 +168,35 @@ public final class ReflectionUtils {
 		field.setAccessible(true);
 
 		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field.getDeclaredAnnotations());
-		Dependency dependency = new Dependency(key, required);
 
-		return BindingInitializer.of(new Dependency[]{dependency}, (instance, args) -> {
-			Object arg = args[0];
-			if (arg == null) {
-				return;
-			}
-			try {
-				field.set(instance, arg);
-			} catch (IllegalAccessException e) {
-				throw new InjectionFailedException(field, e);
-			}
-		});
+		return BindingInitializer.of(
+				(instance, args) -> {
+					Object arg = args[0];
+					if (arg == null) {
+						return;
+					}
+					try {
+						field.set(instance, arg);
+					} catch (IllegalAccessException e) {
+						throw new InjectionFailedException(field, e);
+					}
+				},
+				new Dependency(key, required)
+		);
 	}
 
-	public static <T> BindingInitializer<T> methodInjector(Key<? extends T> container, Method method, boolean required) {
+	public static <T> BindingInitializer<T> methodInjector(Key<? extends T> container, Method method) {
 		method.setAccessible(true);
-
-		Dependency[] dependencies = toDependencies(container, method.getParameters());
-
-		if (required) {
-			return BindingInitializer.of(dependencies, (instance, args) -> {
-				try {
-					method.invoke(instance, args);
-				} catch (IllegalAccessException | InvocationTargetException e) {
-					throw new InjectionFailedException(method, e);
-				}
-			});
-		}
-
-		Dependency[] optionalDependencies = Arrays.stream(dependencies)
-				.map(dependency -> new Dependency(dependency.getKey(), false))
-				.toArray(Dependency[]::new);
-
-		return BindingInitializer.of(optionalDependencies, (instance, args) -> {
-			for (int i = 0; i < args.length; i++) {
-				if (args[i] == null && dependencies[i].isRequired()) {
-					return;
-				}
-			}
-			try {
-				method.invoke(instance, args);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new InjectionFailedException(method, e);
-			}
-		});
+		return BindingInitializer.of(
+				(instance, args) -> {
+					try {
+						method.invoke(instance, args);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						throw new InjectionFailedException(method, e);
+					}
+				},
+				toDependencies(container, method.getParameters())
+		);
 	}
 
 	@NotNull

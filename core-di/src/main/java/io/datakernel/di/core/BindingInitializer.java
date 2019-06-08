@@ -1,7 +1,6 @@
 package io.datakernel.di.core;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -33,12 +32,8 @@ public final class BindingInitializer<T> {
 		return initializer;
 	}
 
-	public static <T> BindingInitializer<T> of(Dependency[] dependencies, Initializer<T> initializer) {
+	public static <T> BindingInitializer<T> of(Initializer<T> initializer, Dependency... dependencies) {
 		return new BindingInitializer<>(dependencies, initializer);
-	}
-
-	public static <T> BindingInitializer<T> of(Key<?>[] dependencies, Initializer<T> initializer) {
-		return new BindingInitializer<>(Arrays.stream(dependencies).map(k -> new Dependency(k, true)).toArray(Dependency[]::new), initializer);
 	}
 
 	@SafeVarargs
@@ -62,7 +57,9 @@ public final class BindingInitializer<T> {
 		if (initializers.isEmpty()) {
 			return noop();
 		}
-		return BindingInitializer.of(keys.toArray(new Dependency[0]), (instance, args) -> initializers.forEach(initializer -> initializer.apply(instance, args)));
+		return BindingInitializer.of(
+				(instance, args) -> initializers.forEach(initializer -> initializer.apply(instance, args)),
+				keys.toArray(new Dependency[0]));
 	}
 
 	@SuppressWarnings("unchecked")

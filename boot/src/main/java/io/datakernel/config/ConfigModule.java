@@ -17,8 +17,8 @@
 package io.datakernel.config;
 
 import io.datakernel.di.annotation.Optional;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.service.BlockingService;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -129,11 +129,9 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return withEffectiveConfigConsumer(writer::print);
 	}
 
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	public ConfigModule printEffectiveConfig() {
 		return withEffectiveConfigConsumer(effectiveConfig -> {
-			System.out.println("# Effective config:\n");
-			System.out.println(effectiveConfig);
+			logger.info("Effective config:\n" + effectiveConfig);
 		});
 	}
 
