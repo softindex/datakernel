@@ -47,7 +47,6 @@ public final class BindingInitializer<T> {
 	}
 
 	public static <T> BindingInitializer<T> combine(Collection<BindingInitializer<T>> bindingInitializers) {
-		List<BindingInitializer<T>> bindingInitializersList = new ArrayList<>();
 		List<Initializer<T>> initializers = new ArrayList<>();
 		List<Dependency> keys = new ArrayList<>();
 		for (BindingInitializer<T> bi : bindingInitializers) {

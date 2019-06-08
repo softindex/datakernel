@@ -34,12 +34,13 @@ import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
-import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.module.Modules.*;
 import static io.datakernel.di.util.ReflectionUtils.parameterized;
+import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -131,17 +132,18 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 *
 	 * @param args program args that will be injected into @Args string array
 	 */
+	@SuppressWarnings("unchecked")
 	public void launch(String[] args) throws Exception {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
-		injector.createEagerSingletons();
-		InstanceInjector<Launcher> instanceInjector = injector.getInstance(
-				Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
-		instanceInjector.inject(this);
+		injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
+		for (InstanceInjector<?> instanceInjector : injector.getInstance(new Key<Set<InstanceInjector<?>>>() {})) {
+			Object instance = injector.getInstanceOrNull(instanceInjector.key());
+			if (instance != null) ((InstanceInjector<Object>) instanceInjector).inject(instance);
+		}
 		try {
-			Set<Runnable> onStart = injector.getInstanceOrNull(new Key<Set<Runnable>>(OnStart.class) {});
-			if (onStart != null) onStart.forEach(Runnable::run);
+			injector.getInstanceOr(new Key<Set<Runnable>>(OnStart.class) {}, emptySet()).forEach(Runnable::run);
 			onStart();
 			try {
 				doStart(injector);
@@ -162,8 +164,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.error("Application failure", e);
 			throw e;
 		} finally {
-			Set<Runnable> onStop = injector.getInstanceOrNull(new Key<Set<Runnable>>(OnStop.class) {});
-			if (onStop != null) onStop.forEach(Runnable::run);
+			injector.getInstanceOr(new Key<Set<Runnable>>(OnStop.class) {}, emptySet()).forEach(Runnable::run);
 			onStop();
 			instantOfComplete = Instant.now();
 			finishLatch.countDown();
@@ -177,7 +178,16 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 						getModule(),
 						new AbstractModule() {{
 							bind(String[].class).annotatedWith(Args.class).toInstance(args);
-							bind(Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
+							bind(Launcher.class).to(Key.ofType(Launcher.this.getClass()));
+							bind(Key.ofType(Launcher.this.getClass())).toInstance(Launcher.this);
+							bind(new Key<InstanceInjector<Launcher>>() {})
+									.to(Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
+
+							multibind(new Key<Set<Runnable>>(OnStart.class) {}, multibinderToSet());
+							multibind(new Key<Set<Runnable>>(OnStop.class) {}, multibinderToSet());
+							multibind(new Key<Set<InstanceInjector<?>>>() {}, multibinderToSet());
+
+							bind(new Key<Set<InstanceInjector<?>>>() {}).to(Collections::singleton, new Key<InstanceInjector<Launcher>>() {});
 
 							addDeclarativeBindingsFrom(Launcher.this);
 						}}),

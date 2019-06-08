@@ -1,8 +1,11 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.*;
+import io.datakernel.di.Binding;
+import io.datakernel.di.Dependency;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.module.BindingTransformer;
-import io.datakernel.di.module.ConflictResolver;
+import io.datakernel.di.module.Multibinder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,19 +57,19 @@ public final class Utils {
 								case 1:
 									return value.iterator().next();
 								default: {
-									Function<Set<V>, V> conflictResolver = reducers.apply(entry.getKey());
-									if (conflictResolver == null) {
+									Function<Set<V>, V> multibinder = reducers.apply(entry.getKey());
+									if (multibinder == null) {
 										throw new IllegalStateException("Duplicate bindings for " + entry.getKey() + "\n" +
 												entry.getValue().stream().map(Object::toString).map(s -> "\t\t" + s).collect(joining("\n")));
 									}
-									return conflictResolver.apply(entry.getValue());
+									return multibinder.apply(entry.getValue());
 								}
 							}
 						})
 				);
 	}
 
-	public static void mergeConflictResolvers(Map<Key<?>, ConflictResolver<?>> into, Map<Key<?>, ConflictResolver<?>> from) {
+	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
 				throw new IllegalStateException("More than one conflict resolver per key");

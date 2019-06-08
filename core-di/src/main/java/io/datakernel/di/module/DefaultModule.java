@@ -48,7 +48,7 @@ public final class DefaultModule implements Module {
 						return null;
 					}
 					//noinspection unchecked
-					return (Binding) bindingForInstanceFactory(elementBinding);
+					return (Binding) bindingForInstanceFactory(elementKey, elementBinding);
 				}
 		));
 
@@ -56,7 +56,7 @@ public final class DefaultModule implements Module {
 				(scope, key, provider) -> {
 					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
 					//noinspection unchecked
-					return (Binding) bindingForInstanceInjector(ReflectionUtils.generateBindingInitializer(elementKey));
+					return (Binding) bindingForInstanceInjector(elementKey, ReflectionUtils.generateBindingInitializer(elementKey));
 				}
 		));
 	}
@@ -77,7 +77,7 @@ public final class DefaultModule implements Module {
 	}
 
 	@Override
-	public Map<Key<?>, ConflictResolver<?>> getConflictResolvers() {
+	public Map<Key<?>, Multibinder<?>> getMultibinders() {
 		return emptyMap();
 	}
 }

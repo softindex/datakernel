@@ -299,23 +299,33 @@ public final class ReflectionUtils {
 				.at(LocationInfo.from(constructor));
 	}
 
-	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> elementKey) {
+	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> key) {
 		return Binding.of(
 				args -> {
 					Injector injector = (Injector) args[0];
 					return new InstanceProvider<T>() {
 						@Override
+						public Key<T> key() {
+							return key;
+						}
+
+						@Override
 						public T get() {
-							return injector.getInstance(elementKey);
+							return injector.getInstance(key);
 						}
 					};
 				},
 				new Dependency[]{new Dependency(Key.of(Injector.class), true)});
 	}
 
-	public static <T> Binding<InstanceFactory<T>> bindingForInstanceFactory(Binding<T> elementBinding) {
+	public static <T> Binding<InstanceFactory<T>> bindingForInstanceFactory(Key<T> key, Binding<T> elementBinding) {
 		return Binding.of(
 				args -> new InstanceFactory<T>() {
+					@Override
+					public Key<T> key() {
+						return key;
+					}
+
 					@Override
 					public T create() {
 						return elementBinding.getFactory().create(args);
@@ -324,10 +334,15 @@ public final class ReflectionUtils {
 				elementBinding.getDependencies());
 	}
 
-	public static <T> Binding<InstanceInjector<T>> bindingForInstanceInjector(BindingInitializer<Object> bindingInitializer) {
+	public static <T> Binding<InstanceInjector<T>> bindingForInstanceInjector(Key<T> key, BindingInitializer<Object> bindingInitializer) {
 		BindingInitializer.Initializer<Object> initializer = bindingInitializer.getInitializer();
 		return Binding.of(
 				args -> new InstanceInjector<T>() {
+					@Override
+					public Key<T> key() {
+						return key;
+					}
+
 					@Override
 					public void inject(T existingInstance) {
 						initializer.apply(existingInstance, args);

@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Set;
 
 @FunctionalInterface
-public interface ConflictResolver<T> {
+public interface Multibinder<T> {
 
 	Binding<T> resolve(Set<@NotNull Binding<T>> elements);
 }

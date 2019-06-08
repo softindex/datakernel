@@ -132,6 +132,16 @@ public class Injector {
 		return instance;
 	}
 
+	public <T> T getInstanceOr(@NotNull Class<T> type, T defaultValue) {
+		T instanceOrNull = getInstanceOrNull(type);
+		return instanceOrNull != null ? instanceOrNull : defaultValue;
+	}
+
+	public <T> T getInstanceOr(@NotNull Key<T> key, T defaultValue) {
+		T instanceOrNull = getInstanceOrNull(key);
+		return instanceOrNull != null ? instanceOrNull : defaultValue;
+	}
+
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Class<T> type) {
 		return getInstanceOrNull(Key.of(type));
@@ -161,6 +171,16 @@ public class Injector {
 			throw new CannotConstructException(this, key, localBindings.get(key));
 		}
 		return instance;
+	}
+
+	public <T> T createInstanceOr(@NotNull Class<T> type, T defaultValue) {
+		T instance = createInstanceOrNull(type);
+		return instance != null ? instance : defaultValue;
+	}
+
+	public <T> T createInstanceOr(@NotNull Key<T> key, T defaultValue) {
+		T instance = createInstanceOrNull(key);
+		return instance != null ? instance : defaultValue;
 	}
 
 	@Nullable
@@ -284,11 +304,4 @@ public class Injector {
 		return this.getClass() == SynchronizedInjector.class;
 	}
 
-	public void createEagerSingletons() {
-		Set<Key<?>> eagerSingletons = getInstanceOrNull(new Key<Set<Key<?>>>(EagerSingleton.class) {});
-		if (eagerSingletons == null) return;
-		for (Key<?> key : eagerSingletons) {
-			getInstanceOrNull(key);
-		}
-	}
 }

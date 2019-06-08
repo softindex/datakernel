@@ -121,7 +121,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving() {
+	public void testMultibinders() {
 		repository.addGraph(g -> g.add(0, 1, asList(add(5))));
 
 		assertEquals(0, testOpState.getValue());
@@ -133,7 +133,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving2() {
+	public void testMultibinders2() {
 		repository.addGraph(g -> g.add(0, 1, set(0, 15)));
 
 		assertEquals(0, testOpState.getValue());
@@ -145,7 +145,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving3() {
+	public void testMultibinders3() {
 		repository.addGraph(g -> g.add(0, 1, set(0, 10)));
 
 		assertEquals(0, testOpState.getValue());
@@ -157,7 +157,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving4() {
+	public void testMultibinders4() {
 		repository.addGraph(g -> g.add(0, 1, add(5)));
 
 		assertEquals(0, testOpState.getValue());
@@ -169,7 +169,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving5() {
+	public void testMultibinders5() {
 		repository.addGraph(g -> g.add(0, 1, add(10)));
 
 		assertEquals(0, testOpState.getValue());

@@ -634,7 +634,7 @@ public final class TestDI {
 
 			@Override
 			protected void configure() {
-				resolve(key, multibinderToMap());
+				multibind(key, multibinderToMap());
 			}
 
 			@Provides

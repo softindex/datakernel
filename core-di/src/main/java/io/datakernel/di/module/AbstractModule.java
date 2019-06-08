@@ -1,6 +1,9 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.*;
+import io.datakernel.di.Binding;
+import io.datakernel.di.Key;
+import io.datakernel.di.Name;
+import io.datakernel.di.Scope;
 import io.datakernel.di.util.BindingUtils;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.ReflectionUtils;
@@ -19,7 +22,6 @@ import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.singleton;
-import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.joining;
 
 public abstract class AbstractModule implements Module {
@@ -28,7 +30,7 @@ public abstract class AbstractModule implements Module {
 
 	private final Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>();
 	private final Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
-	private final Map<Key<?>, ConflictResolver<?>> conflictResolvers = new HashMap<>();
+	private final Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 
 	@Nullable
 	private List<BindingBuilder<?>> builders = new ArrayList<>();
@@ -78,7 +80,7 @@ public abstract class AbstractModule implements Module {
 					.computeIfAbsent(setKey, $ -> new HashSet<>())
 					.add(Binding.of(args -> singleton(factory.create(args)), binding.getDependencies()).at(binding.getLocation()));
 
-			resolve(setKey, multibinderToSet());
+			multibind(setKey, multibinderToSet());
 		}
 	}
 
@@ -219,10 +221,6 @@ public abstract class AbstractModule implements Module {
 			return to(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
 		}
 
-		public BindingBuilder<T> asEagerSingleton() {
-			return as(EagerSingleton.class);
-		}
-
 		public BindingBuilder<T> as(@NotNull Class<? extends Annotation> annotationType) {
 			return as(Name.of(annotationType));
 		}
@@ -236,7 +234,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public BindingBuilder<T> as(@NotNull Name name) {
-			conflictResolvers.put(new Key<Set<Key<?>>>(name) {}, multibinderToSet());
+			multibinders.put(new Key<Set<Key<?>>>(name) {}, multibinderToSet());
 			bind(new Key<Set<Key<?>>>(name) {}).toInstance(singleton(key));
 			return this;
 		}
@@ -248,7 +246,7 @@ public abstract class AbstractModule implements Module {
 	protected final void install(Module module) {
 		bindings.addAll(module.getBindingsMultimap(), multimapMerger());
 		combineMultimap(bindingGenerators, module.getBindingGenerators());
-		mergeConflictResolvers(conflictResolvers, module.getConflictResolvers());
+		mergeMultibinders(multibinders, module.getMultibinders());
 		mergeBindingTransformers(bindingTransformers, module.getBindingTransformers());
 	}
 
@@ -272,12 +270,12 @@ public abstract class AbstractModule implements Module {
 		return builder;
 	}
 
-	protected final <T> void resolve(Key<T> key, ConflictResolver<T> conflictResolver) {
-		mergeConflictResolvers(conflictResolvers, singletonMap(key, conflictResolver));
+	protected final <T> void multibind(Key<T> key, Multibinder<T> multibinder) {
+		multibinders.put(key, multibinder);
 	}
 
-	protected final <T> void generate(Type pattern, BindingGenerator<T> conflictResolver) {
-		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>()).add(conflictResolver);
+	protected final <T> void generate(Type pattern, BindingGenerator<T> bindingGenerator) {
+		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>()).add(bindingGenerator);
 	}
 
 	protected final <T> void transform(int priority, BindingTransformer<T> bindingTransformer) {
@@ -309,7 +307,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Map<Key<?>, ConflictResolver<?>> getConflictResolvers() {
-		return conflictResolvers;
+	public Map<Key<?>, Multibinder<?>> getMultibinders() {
+		return multibinders;
 	}
 }
