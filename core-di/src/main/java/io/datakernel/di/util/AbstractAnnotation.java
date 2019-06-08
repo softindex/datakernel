@@ -32,6 +32,10 @@ public abstract class AbstractAnnotation {
 		return annotation;
 	}
 
+	public boolean isMarkedBy(Class<? extends Annotation> metaAnnotation) {
+		return annotationType.isAnnotationPresent(metaAnnotation);
+	}
+
 	public String getDisplayString() {
 		if (annotation != null) {
 			return ReflectionUtils.getShortName(annotation.toString()).replace("value=", "");

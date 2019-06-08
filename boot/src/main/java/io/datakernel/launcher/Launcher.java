@@ -23,6 +23,7 @@ import io.datakernel.di.InstanceInjector;
 import io.datakernel.di.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.util.Types;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxModule.JmxModuleService;
@@ -38,8 +39,9 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.module.Modules.*;
-import static io.datakernel.di.util.ReflectionUtils.parameterized;
 import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -137,7 +139,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
-		injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
+		injector.getKeySet(EagerSingleton.class).forEach(injector::getInstanceOrNull);
 		for (InstanceInjector<?> instanceInjector : injector.getInstance(new Key<Set<InstanceInjector<?>>>() {})) {
 			Object instance = injector.getInstanceOrNull(instanceInjector.key());
 			if (instance != null) ((InstanceInjector<Object>) instanceInjector).inject(instance);
@@ -181,7 +183,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 							bind(Launcher.class).to(Key.ofType(Launcher.this.getClass()));
 							bind(Key.ofType(Launcher.this.getClass())).toInstance(Launcher.this);
 							bind(new Key<InstanceInjector<Launcher>>() {})
-									.to(Key.ofType(parameterized(InstanceInjector.class, Launcher.this.getClass())));
+									.to(Key.ofType(Types.parameterized(InstanceInjector.class, Launcher.this.getClass())));
 
 							multibind(new Key<Set<Runnable>>(OnStart.class) {}, multibinderToSet());
 							multibind(new Key<Set<Runnable>>(OnStop.class) {}, multibinderToSet());

@@ -1,6 +1,10 @@
 package io.datakernel.test;
 
-import io.datakernel.di.*;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Name;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import org.junit.Test;

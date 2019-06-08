@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.di.util.ReflectionUtils.*;
+import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
 
@@ -22,10 +22,7 @@ public final class DefaultModule implements Module {
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
-		generators.put(Object.class, singleton(
-				(scope, key, provider) ->
-						ReflectionUtils.generateImplicitBinding(key)
-		));
+		generators.put(Object.class, singleton((scope, key, provider) -> ReflectionUtils.generateImplicitBinding(key)));
 
 		// generating bindings for provider requests
 		generators.put(new Key<InstanceProvider<?>>() {}.getType(), singleton(
@@ -35,11 +32,26 @@ public final class DefaultModule implements Module {
 					if (elementBinding == null) {
 						return null;
 					}
-					//noinspection unchecked
-					return (Binding) bindingForInstanceProvider(elementKey);
+					return Binding.of(
+							args -> {
+								Injector injector = (Injector) args[0];
+								return new InstanceProvider<Object>() {
+									@Override
+									public Key<Object> key() {
+										return key;
+									}
+
+									@Override
+									public Object get() {
+										return injector.getInstance(elementKey);
+									}
+								};
+							},
+							new Dependency[]{new Dependency(Key.of(Injector.class), true)});
 				}
 		));
 
+		// generating bindings for factory requests
 		generators.put(new Key<InstanceFactory<?>>() {}.getType(), singleton(
 				(scope, key, provider) -> {
 					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
@@ -47,16 +59,43 @@ public final class DefaultModule implements Module {
 					if (elementBinding == null) {
 						return null;
 					}
-					//noinspection unchecked
-					return (Binding) bindingForInstanceFactory(elementKey, elementBinding);
+					return Binding.of(
+							args -> new InstanceFactory<Object>() {
+								@Override
+								public Key<Object> key() {
+									return key;
+								}
+
+								@Override
+								public Object create() {
+									return elementBinding.getFactory().create(args);
+								}
+							},
+							elementBinding.getDependencies());
 				}
 		));
 
+		// generating bindings for injector requests
 		generators.put(new Key<InstanceInjector<?>>() {}.getType(), singleton(
 				(scope, key, provider) -> {
 					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
-					//noinspection unchecked
-					return (Binding) bindingForInstanceInjector(elementKey, ReflectionUtils.generateBindingInitializer(elementKey));
+
+					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
+					BindingInitializer.Initializer<Object> initializer = injectingInitializer.getInitializer();
+
+					return Binding.of(
+							args -> new InstanceInjector<Object>() {
+								@Override
+								public Key<Object> key() {
+									return key;
+								}
+
+								@Override
+								public void inject(Object existingInstance) {
+									initializer.apply(existingInstance, args);
+								}
+							},
+							injectingInitializer.getDependencies());
 				}
 		));
 	}

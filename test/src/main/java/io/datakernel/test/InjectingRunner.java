@@ -6,6 +6,7 @@ import io.datakernel.di.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.Nullable;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
@@ -15,8 +16,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
-
-import static io.datakernel.di.util.ReflectionUtils.parameterized;
 
 public final class InjectingRunner extends BlockJUnit4ClassRunner {
 
@@ -64,7 +63,7 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 		if (module == null) {
 			return instance;
 		}
-		Key<InstanceInjector<Object>> key = Key.ofType(parameterized(InstanceInjector.class, instance.getClass()));
+		Key<InstanceInjector<Object>> key = Key.ofType(Types.parameterized(InstanceInjector.class, instance.getClass()));
 		Injector injector = Injector.of(module, new AbstractModule() {{
 			bind(key);
 			addDeclarativeBindingsFrom(instance);

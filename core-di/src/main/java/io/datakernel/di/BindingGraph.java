@@ -1,91 +1,48 @@
-package io.datakernel.di.util;
+package io.datakernel.di;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Dependency;
-import io.datakernel.di.Key;
-import io.datakernel.di.Scope;
 import io.datakernel.di.error.CannotGenerateBindingException;
 import io.datakernel.di.module.BindingGenerator;
 import io.datakernel.di.module.BindingProvider;
 import io.datakernel.di.module.BindingTransformer;
+import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
+import static io.datakernel.di.util.Types.findBestMatch;
 import static io.datakernel.di.util.Utils.*;
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public final class BindingUtils {
+public final class BindingGraph {
 	public static final Binding<?> PHANTOM = Binding.of($ -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by generated binding, if you see this message then somethning is really wrong");
 	});
 
-	private BindingUtils() {
+	private BindingGraph() {
 		throw new AssertionError("nope.");
 	}
 
-	public static Set<BindingGenerator<?>> findBestMatch(Type type, Map<Type, Set<BindingGenerator<?>>> generators) {
-		Set<BindingGenerator<?>> found = generators.entrySet().stream()
-				.filter(e -> ReflectionUtils.matches(type, e.getKey()))
-				.map(Entry::getValue)
-				.findFirst()
-				.orElse(null);
-		if (found != null || type == Object.class || type == null) {
-			return found;
-		}
-
-		Class<?> rawType;
-		if (type instanceof Class) {
-			rawType = (Class<?>) type;
-		} else if (type instanceof ParameterizedType) {
-			Type raw = ((ParameterizedType) type).getRawType();
-			if (!(raw instanceof Class)) {
-				throw new AssertionError("In current java all raw types are of type class");
-			}
-			rawType = (Class<?>) raw;
-		} else {
-			throw new IllegalArgumentException("Unsupported type");
-		}
-
-		Type genericSuperclass = rawType.getGenericSuperclass();
-		if (genericSuperclass != null) { // ^ returns null on interfaces, but below we are recursively calling this for them
-			found = findBestMatch(genericSuperclass, generators);
-			if (found != null) {
-				return found;
-			}
-		}
-		for (Type iface : rawType.getGenericInterfaces()) {
-			found = findBestMatch(iface, generators);
-			if (found != null) {
-				return found;
-			}
-		}
-		return emptySet();
-	}
-
-	public static void completeBindings(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+	public static void completeBindingGraph(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			Map<Integer, BindingTransformer<?>> transformers,
 			Map<Type, Set<BindingGenerator<?>>> generators) {
-		completeBindings(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformers, generators);
+		completeBindingGraph(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformers, generators);
 	}
 
-	private static void completeBindings(Map<Key<?>, Binding<?>> known,
+	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			Map<Integer, BindingTransformer<?>> transformers,
 			Map<Type, Set<BindingGenerator<?>>> generators) {
-		completeBindings(known, scope, bindings.get(), transformers, generators);
-		bindings.getChildren().forEach((subscope, subtrie) -> completeBindings(override(known, subtrie.get()), next(scope, subscope), subtrie, transformers, generators));
+		bindings.getChildren().forEach((subscope, subtrie) -> completeBindingGraph(override(known, subtrie.get()), next(scope, subscope), subtrie, transformers, generators));
+		completeBindingGraph(known, scope, bindings.get(), transformers, generators);
 	}
 
 	@SuppressWarnings("unchecked")
-	private static void completeBindings(Map<Key<?>, Binding<?>> known,
+	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
 			Map<Integer, BindingTransformer<?>> transformers,
 			Map<Type, Set<BindingGenerator<?>>> generators) {
@@ -109,8 +66,8 @@ public final class BindingUtils {
 				if (binding != null && binding != PHANTOM) {
 					return binding;
 				}
-				Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(key, k -> findBestMatch(k.getType(), generators));
-				if (found.isEmpty()) {
+				Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(key, k -> generators.get(findBestMatch(k.getType(), generators.keySet())));
+				if (found == null) {
 					return null;
 				}
 				Set<Binding<T>> generatedBindings = found.stream()
@@ -197,14 +154,14 @@ public final class BindingUtils {
 		}
 	}
 
-	public static Set<Key<?>[]> getCycles(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getCycles(new HashSet<>(), bindings).collect(toSet());
+	public static Set<Key<?>[]> getCyclicDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return getCyclicDependencies(new HashSet<>(), bindings).collect(toSet());
 	}
 
-	private static Stream<Key<?>[]> getCycles(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	private static Stream<Key<?>[]> getCyclicDependencies(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return Stream.concat(
 				dfs(visited, bindings.get()).stream(),
-				bindings.getChildren().values().stream().flatMap(scopeBindings -> getCycles(new HashSet<>(visited), scopeBindings))
+				bindings.getChildren().values().stream().flatMap(scopeBindings -> getCyclicDependencies(new HashSet<>(visited), scopeBindings))
 		);
 	}
 

@@ -2,6 +2,7 @@ package io.datakernel.di;
 
 import io.datakernel.di.BindingInitializer.Initializer;
 import io.datakernel.di.util.Constructors.*;
+import io.datakernel.di.util.ReflectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,11 +33,11 @@ public final class Binding<T> {
 	}
 
 	public static <R> Binding<R> of(@NotNull Factory<R> factory) {
-		return new Binding<>(new Dependency[0], factory, null);
+		return new Binding<>(new Dependency[0], factory, ReflectionUtils.getLocation(Binding.class));
 	}
 
 	public static <R> Binding<R> of(@NotNull Factory<R> factory, @NotNull Dependency... dependencies) {
-		return new Binding<>(dependencies, factory, null);
+		return new Binding<>(dependencies, factory, ReflectionUtils.getLocation(Binding.class));
 	}
 
 	public static <R> Binding<R> of(@NotNull Factory<R> factory, @NotNull Key<?>... dependencies) {
@@ -44,7 +45,7 @@ public final class Binding<T> {
 	}
 
 	private static <R> Binding<R> of(@NotNull Factory<R> factory, @NotNull List<Key<?>> dependencies) {
-		return new Binding<>(dependencies.stream().map(k -> new Dependency(k, true)).toArray(Dependency[]::new), factory, null);
+		return new Binding<>(dependencies.stream().map(k -> new Dependency(k, true)).toArray(Dependency[]::new), factory, ReflectionUtils.getLocation(Binding.class));
 	}
 
 	public static <R> Binding<R> of(Constructor0<R> constructor) {
@@ -112,7 +113,7 @@ public final class Binding<T> {
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
-		return new Binding<>(new Dependency[0], $ -> instance, null);
+		return new Binding<>(new Dependency[0], $ -> instance, ReflectionUtils.getLocation(Binding.class));
 	}
 
 	public Binding<T> at(@Nullable LocationInfo location) {

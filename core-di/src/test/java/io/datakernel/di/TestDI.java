@@ -4,20 +4,20 @@ import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Provides;
-import io.datakernel.di.module.ProvidesIntoSet;
+import io.datakernel.di.module.*;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.*;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -36,7 +36,7 @@ public final class TestDI {
 	}
 
 	@Test
-	public void singleton() {
+	public void singletons() {
 		Injector injector = Injector.of(new AbstractModule() {{
 			int[] ref = new int[]{41};
 			bind(Integer.class).to(() -> ++ref[0]);
@@ -319,7 +319,6 @@ public final class TestDI {
 			}};
 
 			Injector.of(module);
-			module.getBindings().get().forEach((k, b) -> System.out.println(k.getDisplayString() + " -> " + b.getDisplayString()));
 			fail("should've detected the cycle and fail");
 		} catch (CyclicDependensiesException e) {
 			e.printStackTrace();
@@ -332,7 +331,8 @@ public final class TestDI {
 		@Inject
 		class ClassWithCustomDeps {
 
-			@Inject(optional = true)
+			@Inject
+			@Optional
 			@Nullable
 			String string;
 
@@ -402,7 +402,7 @@ public final class TestDI {
 	}
 
 	@Test
-	public void container() {
+	public void templatedProvider() {
 
 		class Container<T> {
 			private final T object;
@@ -690,5 +690,60 @@ public final class TestDI {
 			assertNotNull(e.getBinding());
 			assertEquals("Binding refused to construct an instance for key Integer", e.getMessage());
 		}
+	}
+
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	@KeySetAnnotation
+	@interface MyKeySet {
+	}
+
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	@KeySetAnnotation
+	@interface MyKeySet2 {
+	}
+
+	@Test
+	public void keySets() {
+
+		Injector injector = Injector.of(new AbstractModule() {
+
+			@Override
+			protected void configure() {
+				bind(Integer.class).annotatedWith(Name.of("test")).toInstance(123).as(MyKeySet2.class);
+				bind(String.class).annotatedWith(Name.of("test")).toInstance("123").as(MyKeySet2.class);
+			}
+
+			@Provides
+			@MyKeySet
+			Integer integer() {
+				return 42;
+			}
+
+			@Provides
+			@MyKeySet
+			Float f() {
+				return 42f;
+			}
+
+			@Provides
+			@MyKeySet
+			Double d() {
+				return 42d;
+			}
+
+			@Provides
+			String string(Integer integer) {
+				return "str: " + integer;
+			}
+		});
+
+		Set<Key<?>> keys = injector.getKeySet(MyKeySet.class);
+		assertEquals(Stream.of(Float.class, Double.class, Integer.class).map(Key::of).collect(toSet()), keys);
+
+		Set<Key<?>> keys2 = injector.getKeySet(MyKeySet2.class);
+
+		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
 	}
 }

@@ -1,6 +1,7 @@
 package io.datakernel.di;
 
 import io.datakernel.di.util.ReflectionUtils;
+import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -9,7 +10,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
-import static io.datakernel.di.util.ReflectionUtils.canonicalize;
+import static io.datakernel.di.util.Types.ensureEquality;
 
 public abstract class Key<T> {
 	@NotNull
@@ -18,32 +19,32 @@ public abstract class Key<T> {
 	private final Name name;
 
 	public Key() {
-		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
 		this.name = null;
 	}
 
 	public Key(@Nullable Name name) {
-		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
 		this.name = name;
 	}
 
 	public Key(@NotNull String name) {
-		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
 		this.name = Name.of(name);
 	}
 
 	public Key(@NotNull Class<? extends Annotation> annotationType) {
-		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
 		this.name = Name.of(annotationType);
 	}
 
 	public Key(@NotNull Annotation annotation) {
-		this.type = canonicalize(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
 		this.name = Name.of(annotation);
 	}
 
 	Key(@NotNull Type type, @Nullable Name name) {
-		this.type = canonicalize(type);
+		this.type = ensureEquality(type);
 		this.name = name;
 	}
 
@@ -118,13 +119,7 @@ public abstract class Key<T> {
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public Class<T> getRawType() {
-		if (type instanceof Class) {
-			return (Class<T>) type;
-		} else if (type instanceof ParameterizedType) {
-			return (Class<T>) ((ParameterizedType) type).getRawType();
-		} else {
-			throw new IllegalArgumentException(type.getTypeName());
-		}
+		return (Class<T>) Types.getRawType(type);
 	}
 
 	public Type[] getTypeParams() {

@@ -5,17 +5,19 @@ import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.NoBindingsInScopeException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
 import io.datakernel.di.module.*;
-import io.datakernel.di.util.BindingUtils;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
 public class Injector {
@@ -97,14 +99,14 @@ public class Injector {
 		// well, can't do anything better than that
 		bindings.get().put(Key.of(Injector.class), Binding.toInstance(injector));
 
-		BindingUtils.completeBindings(bindings, bindingTransformers, bindingGenerators);
+		BindingGraph.completeBindingGraph(bindings, bindingTransformers, bindingGenerators);
 
-		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingUtils.getUnsatisfiedDependencies(bindings);
+		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {
 			throw new UnsatisfiedDependenciesException(injector, unsatisfied);
 		}
 
-		Set<Key<?>[]> cycles = BindingUtils.getCycles(bindings);
+		Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(bindings);
 		if (!cycles.isEmpty()) {
 			throw new CyclicDependensiesException(injector, cycles);
 		}
@@ -157,6 +159,15 @@ public class Injector {
 		instance = doCreateInstanceOrNull(key);
 		instances.put(key, instance);
 		return instance;
+	}
+
+	public Set<Key<?>> getKeySet(Class<? extends Annotation> keySetAnnotation) {
+		return getKeySet(Name.of(keySetAnnotation));
+	}
+
+	public Set<Key<?>> getKeySet(Name keySetName) {
+		checkArgument(keySetName.isMarkedBy(KeySetAnnotation.class));
+		return getInstanceOr(new Key<Set<Key<?>>>(keySetName) {}, emptySet());
 	}
 
 	@NotNull

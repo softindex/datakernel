@@ -1,7 +1,11 @@
 package io.datakernel.launchers.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.*;
+import io.datakernel.di.Inject;
+import io.datakernel.di.Named;
+import io.datakernel.di.ScopeAnnotation;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Provides;

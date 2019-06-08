@@ -16,8 +16,8 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.Optional;
 import io.datakernel.di.*;
+import io.datakernel.di.Optional;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Provides;
 import io.datakernel.di.util.ScopedValue;

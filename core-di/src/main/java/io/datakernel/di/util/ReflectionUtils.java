@@ -1,9 +1,11 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.Optional;
 import io.datakernel.di.*;
-import io.datakernel.di.error.*;
-import org.jetbrains.annotations.Contract;
+import io.datakernel.di.Optional;
+import io.datakernel.di.error.BadAnnotationException;
+import io.datakernel.di.error.InjectionFailedException;
+import io.datakernel.di.error.InvalidImplicitBindingException;
+import io.datakernel.di.error.ProvisionFailedException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,20 +27,29 @@ public final class ReflectionUtils {
 		return className.replaceAll("(?:\\p{javaJavaIdentifierPart}+\\.)*(\\p{javaJavaIdentifierPart}+)", "$1");
 	}
 
-	public static <T> Key<T> keyOf(@Nullable Key<?> containerType, Type type, Annotation[] annotations) {
+	@Nullable
+	public static Name nameOf(Annotation[] annotations) {
 		Set<Annotation> names = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().isAnnotationPresent(NameAnnotation.class))
 				.collect(toSet());
 		if (names.size() > 1) {
 			throw new BadAnnotationException(annotations, "More than one name annotation");
 		}
-		Type resolved = resolveGenerics(type, containerType);
-		return names.isEmpty() ?
-				Key.ofType(resolved) :
-				Key.ofType(resolved, names.iterator().next());
+		return names.isEmpty() ? null : Name.of(names.iterator().next());
 	}
 
-	public static Scope[] scopesFrom(Annotation[] annotations) {
+	public static Set<Annotation> keySetsOf(Annotation[] annotations) {
+		return Arrays.stream(annotations)
+				.filter(annotation -> annotation.annotationType().isAnnotationPresent(KeySetAnnotation.class))
+				.collect(toSet());
+	}
+
+	public static <T> Key<T> keyOf(@Nullable Type container, Type type, Annotation[] annotations) {
+		Type resolved = container != null ? Types.resolveTypeVariables(type, container) : type;
+		return Key.ofType(resolved, nameOf(annotations));
+	}
+
+	public static Scope[] getScope(Annotation[] annotations) {
 		Set<Annotation> scopes = Arrays.stream(annotations)
 				.filter(annotation -> annotation.annotationType().isAnnotationPresent(ScopeAnnotation.class))
 				.collect(toSet());
@@ -75,7 +86,6 @@ public final class ReflectionUtils {
 
 	@Nullable
 	public static LocationInfo getLocation(Class<?>... skip) {
-		// init reflection here
 		return Arrays.stream(Thread.currentThread().getStackTrace())
 				.skip(2)
 				.filter(trace ->
@@ -91,7 +101,7 @@ public final class ReflectionUtils {
 		if (binding == null) {
 			return null;
 		}
-		return binding.withInitializer(generateBindingInitializer(key));
+		return binding.withInitializer(generateInjectingInitializer(key));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -102,9 +112,6 @@ public final class ReflectionUtils {
 		Inject classInjectAnnotation = cls.getAnnotation(Inject.class);
 
 		if (classInjectAnnotation != null) {
-			if (classInjectAnnotation.optional()) {
-				throw new InvalidImplicitBindingException(key, "inject annotation on class cannot be optional");
-			}
 			try {
 				Class<?> enclosingClass = cls.getEnclosingClass();
 
@@ -118,16 +125,7 @@ public final class ReflectionUtils {
 			}
 		} else {
 			Set<Constructor<?>> injectConstructors = Arrays.stream(cls.getDeclaredConstructors())
-					.filter(c -> {
-						Inject inject = c.getAnnotation(Inject.class);
-						if (inject != null) {
-							if (inject.optional()) {
-								throw new InvalidImplicitBindingException(key, "inject annotation on constructor cannot be optional");
-							}
-							return true;
-						}
-						return false;
-					})
+					.filter(c -> c.isAnnotationPresent(Inject.class))
 					.collect(toSet());
 
 			if (injectConstructors.size() > 1) {
@@ -155,12 +153,12 @@ public final class ReflectionUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> BindingInitializer<T> generateBindingInitializer(Key<? extends T> containingType) {
+	public static <T> BindingInitializer<T> generateInjectingInitializer(Key<? extends T> containingType) {
 		List<BindingInitializer<T>> initializers = Stream.concat(
 				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredFields).stream()
-						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.getAnnotation(Inject.class).optional())),
+						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.isAnnotationPresent(Optional.class))),
 				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredMethods).stream()
-						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method, !method.getAnnotation(Inject.class).optional())))
+						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method, !method.isAnnotationPresent(Optional.class))))
 				.collect(toList());
 		return BindingInitializer.combine(initializers);
 	}
@@ -168,7 +166,7 @@ public final class ReflectionUtils {
 	public static <T> BindingInitializer<T> fieldInjector(Key<? extends T> container, Field field, boolean required) {
 		field.setAccessible(true);
 
-		Key<Object> key = keyOf(container, field.getGenericType(), field.getDeclaredAnnotations());
+		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field.getDeclaredAnnotations());
 		Dependency dependency = new Dependency(key, required);
 
 		return BindingInitializer.of(new Dependency[]{dependency}, (instance, args) -> {
@@ -232,7 +230,7 @@ public final class ReflectionUtils {
 
 			Parameter parameter = parameters[workaround && i != 0 ? i - 1 : i];
 
-			Key<Object> key = keyOf(container, type, parameter.getDeclaredAnnotations());
+			Key<Object> key = keyOf(container != null ? container.getType() : null, type, parameter.getDeclaredAnnotations());
 			dependencies[i] = new Dependency(key, !parameter.isAnnotationPresent(Optional.class));
 		}
 		return dependencies;
@@ -257,16 +255,16 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> bindingForGenericMethod(@Nullable Object module, Key<?> requestedKey, Method method) {
 		method.setAccessible(true);
 
-		Key<?> moduleType = module != null ? Key.of(module.getClass()) : null;
+		Class<?> moduleType = module != null ? module.getClass() : null;
 
 		Type genericReturnType = method.getGenericReturnType();
-		Map<TypeVariable<?>, Type> mapping = extractTypevarValues(genericReturnType, requestedKey.getType());
+		Map<TypeVariable<?>, Type> mapping = Types.extractMatchingGenerics(genericReturnType, requestedKey.getType());
 
 		Dependency[] dependencies = Arrays.stream(method.getParameters())
 				.map(parameter -> {
-					Key<?> paramKey = keyOf(moduleType, parameter.getParameterizedType(), parameter.getDeclaredAnnotations());
-					Key<Object> fullKey = Key.ofType(resolveGenerics(paramKey.getType(), mapping), paramKey.getName());
-					return new Dependency(fullKey, !parameter.isAnnotationPresent(Optional.class));
+					Type type = Types.resolveTypeVariables(parameter.getParameterizedType(), mapping);
+					Name name = nameOf(parameter.getDeclaredAnnotations());
+					return new Dependency(Key.ofType(type, name), !parameter.isAnnotationPresent(Optional.class));
 				})
 				.toArray(Dependency[]::new);
 
@@ -297,329 +295,5 @@ public final class ReflectionUtils {
 				},
 				dependencies)
 				.at(LocationInfo.from(constructor));
-	}
-
-	public static <T> Binding<InstanceProvider<T>> bindingForInstanceProvider(Key<T> key) {
-		return Binding.of(
-				args -> {
-					Injector injector = (Injector) args[0];
-					return new InstanceProvider<T>() {
-						@Override
-						public Key<T> key() {
-							return key;
-						}
-
-						@Override
-						public T get() {
-							return injector.getInstance(key);
-						}
-					};
-				},
-				new Dependency[]{new Dependency(Key.of(Injector.class), true)});
-	}
-
-	public static <T> Binding<InstanceFactory<T>> bindingForInstanceFactory(Key<T> key, Binding<T> elementBinding) {
-		return Binding.of(
-				args -> new InstanceFactory<T>() {
-					@Override
-					public Key<T> key() {
-						return key;
-					}
-
-					@Override
-					public T create() {
-						return elementBinding.getFactory().create(args);
-					}
-				},
-				elementBinding.getDependencies());
-	}
-
-	public static <T> Binding<InstanceInjector<T>> bindingForInstanceInjector(Key<T> key, BindingInitializer<Object> bindingInitializer) {
-		BindingInitializer.Initializer<Object> initializer = bindingInitializer.getInitializer();
-		return Binding.of(
-				args -> new InstanceInjector<T>() {
-					@Override
-					public Key<T> key() {
-						return key;
-					}
-
-					@Override
-					public void inject(T existingInstance) {
-						initializer.apply(existingInstance, args);
-					}
-				},
-				bindingInitializer.getDependencies());
-	}
-
-	// pattern = Map<K, List<V>>
-	// real    = Map<String, List<Integer>>
-	//
-	// result  = {K -> String, V -> Integer}
-	public static Map<TypeVariable<?>, Type> extractTypevarValues(Type pattern, Type real) {
-		Map<TypeVariable<?>, Type> result = new HashMap<>();
-		extractTypevarValues(pattern, real, result);
-		return result;
-	}
-
-	private static void extractTypevarValues(Type pattern, Type real, Map<TypeVariable<?>, Type> result) {
-		if (pattern instanceof TypeVariable) {
-			result.put((TypeVariable<?>) pattern, real);
-			return;
-		}
-		if (pattern.equals(real)) {
-			return;
-		}
-		if (!(pattern instanceof ParameterizedType) || !(real instanceof ParameterizedType)) {
-			return;
-		}
-		ParameterizedType parameterizedPattern = (ParameterizedType) pattern;
-		ParameterizedType parameterizedReal = (ParameterizedType) real;
-		if (!parameterizedPattern.getRawType().equals(parameterizedReal.getRawType())) {
-			return;
-		}
-		if (!Objects.equals(parameterizedPattern.getOwnerType(), parameterizedReal.getOwnerType())) {
-			return;
-		}
-		Type[] patternTypeArgs = parameterizedPattern.getActualTypeArguments();
-		Type[] realTypeArgs = parameterizedReal.getActualTypeArguments();
-		if (patternTypeArgs.length != realTypeArgs.length) {
-			return;
-		}
-		for (int i = 0; i < patternTypeArgs.length; i++) {
-			extractTypevarValues(patternTypeArgs[i], realTypeArgs[i], result);
-		}
-	}
-
-	private static final Map<Key<?>, Map<TypeVariable<?>, Type>> genericMappingCache = new HashMap<>();
-
-	public static Map<TypeVariable<?>, Type> getTypeGenericMapping(Key<?> type) {
-		return genericMappingCache.computeIfAbsent(type, t -> {
-			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
-			Class<?> cls = t.getRawType();
-
-			// first handle possible key params
-			if (t.getTypeParams().length != 0) {
-				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
-				for (TypeVariable<? extends Class<?>> typeVar : typeVars) {
-					mapping.put(typeVar, null); // not putIfAbsent because those all are first puts
-				}
-				Type[] typeArgs = t.getTypeParams();
-				for (int i = 0; i < typeArgs.length; i++) {
-					Type typeArg = typeArgs[i];
-					mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
-				}
-			}
-			// and then tail-recursively the superclasses
-			for (; ; ) {
-				Type genericSuperclass = cls.getGenericSuperclass();
-				cls = cls.getSuperclass();
-				if (cls == Object.class || cls == null) {
-					break;
-				}
-				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
-				for (TypeVariable<? extends Class<?>> typeVar : typeVars) {
-					mapping.putIfAbsent(typeVar, null);
-				}
-				if (genericSuperclass instanceof ParameterizedType) {
-					Type[] typeArgs = ((ParameterizedType) genericSuperclass).getActualTypeArguments();
-					for (int i = 0; i < typeArgs.length; i++) {
-						Type typeArg = typeArgs[i];
-						mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
-					}
-				}
-			}
-			Set<TypeVariable<?>> unsatisfiedGenerics = mapping.entrySet().stream()
-					.filter(e -> e.getValue() == null)
-					.map(e -> (TypeVariable<?>) e.getKey())
-					.collect(toSet());
-			if (!unsatisfiedGenerics.isEmpty()) {
-				throw new UnsatisfiedGenericsException(unsatisfiedGenerics);
-			}
-			return mapping;
-		});
-	}
-
-	public static boolean contains(Type type, Type sub) {
-		if (type.equals(sub)) {
-			return true;
-		}
-		if (!(type instanceof ParameterizedType)) {
-			return false;
-		}
-		ParameterizedType parameterized = (ParameterizedType) type;
-		if (contains(parameterized.getRawType(), sub)) {
-			return true;
-		}
-		if (parameterized.getOwnerType() != null && contains(parameterized.getOwnerType(), sub)) {
-			return true;
-		}
-		Type[] typeArguments = parameterized.getActualTypeArguments();
-		for (Type argument : typeArguments) {
-			if (contains(argument, sub)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public static boolean matches(Type strict, Type pattern) {
-		if (strict.equals(pattern)) {
-			return true;
-		}
-		if (pattern instanceof WildcardType) {
-			WildcardType wildcard = (WildcardType) pattern;
-			if ((wildcard.getUpperBounds().length != 1 && wildcard.getUpperBounds()[0] != Object.class) || wildcard.getLowerBounds().length != 0) {
-				throw new IllegalArgumentException("Bounded wildcards are not supported yet");
-			}
-			return true;
-		}
-		if (pattern instanceof TypeVariable) {
-			TypeVariable<?> typevar = (TypeVariable<?>) pattern;
-			if (typevar.getBounds().length != 1 && typevar.getBounds()[0] != Object.class) {
-				throw new IllegalArgumentException("Bounded wildcards are not supported yet");
-			}
-			return true;
-		}
-		if (!(strict instanceof ParameterizedType) || !(pattern instanceof ParameterizedType)) {
-			return false;
-		}
-		ParameterizedType parameterizedStrict = (ParameterizedType) strict;
-		ParameterizedType parameterizedPattern = (ParameterizedType) pattern;
-
-		if (!Objects.equals(parameterizedPattern.getOwnerType(), parameterizedStrict.getOwnerType())) {
-			return false;
-		}
-		if (!parameterizedPattern.getRawType().equals(parameterizedStrict.getRawType())) {
-			return false;
-		}
-
-		Type[] strictParams = parameterizedStrict.getActualTypeArguments();
-		Type[] patternParams = parameterizedPattern.getActualTypeArguments();
-		if (strictParams.length != patternParams.length) {
-			return false;
-		}
-		for (int i = 0; i < strictParams.length; i++) {
-			if (!matches(strictParams[i], patternParams[i])) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	public static Type resolveGenerics(Type type, @Nullable Key<?> container) {
-		return container != null ? resolveGenerics(type, getTypeGenericMapping(container)) : type;
-	}
-
-	@Contract("null, _ -> null")
-	public static Type resolveGenerics(Type type, Map<TypeVariable<?>, Type> mapping) {
-		if (type == null) {
-			return null;
-		}
-		if (type instanceof TypeVariable) {
-			Type resolved = mapping.get(type);
-			if (resolved != null) {
-				return canonicalize(resolved);
-			}
-		}
-		if (type instanceof ParameterizedType) {
-			ParameterizedType parameterized = (ParameterizedType) type;
-			Type owner = canonicalize(parameterized.getOwnerType());
-			Type raw = canonicalize(parameterized.getRawType());
-			Type[] parameters = Arrays.stream(parameterized.getActualTypeArguments()).map(parameter -> resolveGenerics(parameter, mapping)).toArray(Type[]::new);
-			return new ParameterizedTypeImpl(owner, raw, parameters);
-		}
-		return type;
-	}
-
-	@Contract("null, -> null")
-	public static Type canonicalize(Type type) {
-		if (type == null) {
-			return null;
-		}
-		if (type instanceof ParameterizedTypeImpl) {
-			return type;
-		}
-		if (type instanceof ParameterizedType) {
-			ParameterizedType parameterized = (ParameterizedType) type;
-			Type owner = canonicalize(parameterized.getOwnerType());
-			Type raw = canonicalize(parameterized.getRawType());
-			Type[] actualTypeArguments = parameterized.getActualTypeArguments();
-			Type[] parameters = new Type[actualTypeArguments.length];
-			for (int i = 0; i < actualTypeArguments.length; i++) {
-				parameters[i] = canonicalize(actualTypeArguments[i]);
-			}
-			return new ParameterizedTypeImpl(owner, raw, parameters);
-		}
-		return type;
-	}
-
-	public static Type parameterized(Class<?> rawType, Type... parameters) {
-		return new ParameterizedTypeImpl(null, rawType, Arrays.stream(parameters).map(ReflectionUtils::canonicalize).toArray(Type[]::new));
-	}
-
-	private static class ParameterizedTypeImpl implements ParameterizedType {
-		@Nullable
-		private final Type ownerType;
-		private final Type rawType;
-		private final Type[] parameters;
-
-		public ParameterizedTypeImpl(@Nullable Type ownerType, Type rawType, Type[] parameters) {
-			this.ownerType = ownerType;
-			this.rawType = rawType;
-			this.parameters = parameters;
-		}
-
-		@Override
-		public Type[] getActualTypeArguments() {
-			return parameters;
-		}
-
-		@Override
-		public Type getRawType() {
-			return rawType;
-		}
-
-		@Nullable
-		@Override
-		public Type getOwnerType() {
-			return ownerType;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-
-			ParameterizedTypeImpl that = (ParameterizedTypeImpl) o;
-
-			return Objects.equals(ownerType, that.ownerType) && rawType.equals(that.rawType) && Arrays.equals(parameters, that.parameters);
-		}
-
-		@Override
-		public int hashCode() {
-			return (ownerType != null ? 961 * ownerType.hashCode() : 0) + 31 * rawType.hashCode() + Arrays.hashCode(parameters);
-		}
-
-		private String toString(Type type) {
-			return type instanceof Class ? ((Class) type).getName() : type.toString();
-		}
-
-		@Override
-		public String toString() {
-			if (parameters.length == 0) {
-				return toString(rawType);
-			}
-			StringBuilder sb = new StringBuilder(toString(rawType))
-					.append('<')
-					.append(toString(parameters[0]));
-			for (int i = 1; i < parameters.length; i++) {
-				sb.append(", ").append(toString(parameters[i]));
-			}
-			return sb.append('>').toString();
-		}
 	}
 }

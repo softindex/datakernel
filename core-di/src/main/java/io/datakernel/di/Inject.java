@@ -9,5 +9,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({FIELD, CONSTRUCTOR, METHOD, TYPE})
 @Retention(RUNTIME)
 public @interface Inject {
-	boolean optional() default false;
 }
