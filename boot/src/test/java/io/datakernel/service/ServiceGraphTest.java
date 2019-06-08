@@ -18,11 +18,11 @@ package io.datakernel.service;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
-import io.datakernel.di.Named;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import org.hamcrest.core.IsSame;

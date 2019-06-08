@@ -1,7 +1,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;

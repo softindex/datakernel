@@ -18,7 +18,7 @@ package io.datakernel.examples;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.Inject;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;

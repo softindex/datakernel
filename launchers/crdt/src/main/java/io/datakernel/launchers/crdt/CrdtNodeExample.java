@@ -21,7 +21,7 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;

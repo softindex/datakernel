@@ -1,4 +1,4 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Types;

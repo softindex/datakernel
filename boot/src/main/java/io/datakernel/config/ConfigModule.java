@@ -16,9 +16,9 @@
 
 package io.datakernel.config;
 
-import io.datakernel.di.Optional;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.service.BlockingService;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;

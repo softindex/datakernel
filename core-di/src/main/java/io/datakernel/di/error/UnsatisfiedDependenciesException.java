@@ -1,9 +1,9 @@
 package io.datakernel.di.error;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
-import io.datakernel.di.LocationInfo;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.util.LocationInfo;
 
 import java.util.Map;
 import java.util.Set;

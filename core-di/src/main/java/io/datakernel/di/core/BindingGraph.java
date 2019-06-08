@@ -1,4 +1,4 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
 import io.datakernel.di.error.CannotGenerateBindingException;
 import io.datakernel.di.module.BindingGenerator;

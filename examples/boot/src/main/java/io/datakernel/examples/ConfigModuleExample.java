@@ -18,9 +18,9 @@ package io.datakernel.examples;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.Injector;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 
 import java.net.InetAddress;
 

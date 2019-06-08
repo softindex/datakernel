@@ -18,9 +18,9 @@ package io.datakernel.launcher;
 
 import io.datakernel.config.ConfigModule;
 import io.datakernel.config.ConfigModule.ConfigModuleService;
-import io.datakernel.di.Injector;
-import io.datakernel.di.InstanceInjector;
-import io.datakernel.di.Key;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.InstanceInjector;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.util.Types;

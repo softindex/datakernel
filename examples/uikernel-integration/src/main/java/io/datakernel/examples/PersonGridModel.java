@@ -17,7 +17,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.Inject;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.uikernel.*;
 
 import java.util.*;

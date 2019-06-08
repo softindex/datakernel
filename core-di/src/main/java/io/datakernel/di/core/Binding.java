@@ -1,7 +1,8 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
-import io.datakernel.di.BindingInitializer.Initializer;
+import io.datakernel.di.core.BindingInitializer.Initializer;
 import io.datakernel.di.util.Constructors.*;
+import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.ReflectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

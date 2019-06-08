@@ -1,9 +1,9 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Dependency;
-import io.datakernel.di.Key;
-import io.datakernel.di.Scope;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.Dependency;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.BindingTransformer;
 import io.datakernel.di.module.Multibinder;
 import org.jetbrains.annotations.NotNull;

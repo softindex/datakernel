@@ -1,7 +1,7 @@
 package io.datakernel.di.error;
 
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
 
 import java.util.Arrays;
 import java.util.Set;

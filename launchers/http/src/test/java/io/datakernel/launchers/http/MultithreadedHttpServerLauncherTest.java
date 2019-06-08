@@ -1,6 +1,6 @@
 package io.datakernel.launchers.http;
 
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;

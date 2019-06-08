@@ -1,4 +1,4 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
 public interface InstanceProvider<T> {
 	Key<T> key();

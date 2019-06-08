@@ -4,7 +4,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;

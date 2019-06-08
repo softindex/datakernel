@@ -16,8 +16,8 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.di.Inject;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.launcher.Launcher;
 
 public class HelloWorldLauncher extends Launcher {

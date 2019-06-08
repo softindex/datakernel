@@ -1,8 +1,8 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Key;
-import io.datakernel.di.Scope;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Scope;
 import org.jetbrains.annotations.NotNull;
 
 @FunctionalInterface

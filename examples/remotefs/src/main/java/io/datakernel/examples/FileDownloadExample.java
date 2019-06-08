@@ -18,9 +18,9 @@ package io.datakernel.examples;
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
-import io.datakernel.di.Inject;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;

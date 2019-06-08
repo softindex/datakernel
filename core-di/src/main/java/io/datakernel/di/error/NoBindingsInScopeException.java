@@ -1,7 +1,7 @@
 package io.datakernel.di.error;
 
-import io.datakernel.di.Injector;
-import io.datakernel.di.Scope;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Scope;
 
 public final class NoBindingsInScopeException extends IllegalArgumentException {
 	private final Injector injector;

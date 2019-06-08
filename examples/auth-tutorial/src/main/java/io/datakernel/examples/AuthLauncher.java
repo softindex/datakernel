@@ -1,7 +1,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.*;
 import io.datakernel.http.session.SessionServlet;
 import io.datakernel.http.session.SessionStore;

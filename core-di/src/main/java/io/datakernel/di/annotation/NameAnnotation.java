@@ -1,4 +1,4 @@
-package io.datakernel.di;
+package io.datakernel.di.annotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;

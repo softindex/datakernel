@@ -16,8 +16,8 @@
 
 package io.datakernel.worker;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Injector;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 
 public final class WorkerPoolModule extends AbstractModule {

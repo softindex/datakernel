@@ -1,11 +1,13 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.Binding;
-import io.datakernel.di.Key;
-import io.datakernel.di.Name;
-import io.datakernel.di.Scope;
-import io.datakernel.di.KeySetAnnotation;
-import io.datakernel.di.BindingGraph;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Name;
+import io.datakernel.di.core.Scope;
+import io.datakernel.di.annotation.KeySetAnnotation;
+import io.datakernel.di.core.BindingGraph;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;

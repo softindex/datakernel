@@ -1,4 +1,4 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
 public interface InstanceFactory<T> {
 	Key<T> key();

@@ -1,5 +1,8 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
+import io.datakernel.di.annotation.KeySetAnnotation;
+import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.util.AbstractAnnotation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

@@ -19,7 +19,7 @@ package io.datakernel.launchers.crdt;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
-import io.datakernel.di.Inject;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;

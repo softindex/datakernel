@@ -1,6 +1,6 @@
 package io.datakernel.di.error;
 
-import io.datakernel.di.Key;
+import io.datakernel.di.core.Key;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Executable;

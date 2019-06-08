@@ -1,6 +1,6 @@
 package io.datakernel.jmx;
 
-import io.datakernel.di.Key;
+import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.Initializer;
 

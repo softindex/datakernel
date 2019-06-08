@@ -16,7 +16,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.sender.RpcStrategies;

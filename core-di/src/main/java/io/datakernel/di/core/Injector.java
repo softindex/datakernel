@@ -1,5 +1,6 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
+import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.NoBindingsInScopeException;

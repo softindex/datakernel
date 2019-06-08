@@ -16,9 +16,9 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.di.Injector;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;

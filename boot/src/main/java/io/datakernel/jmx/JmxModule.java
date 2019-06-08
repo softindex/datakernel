@@ -17,11 +17,11 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
-import io.datakernel.di.Optional;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.service.BlockingService;
 import io.datakernel.trigger.Severity;

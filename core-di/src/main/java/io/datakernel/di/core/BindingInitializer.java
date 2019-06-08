@@ -1,4 +1,4 @@
-package io.datakernel.di;
+package io.datakernel.di.core;
 
 import java.util.ArrayList;
 import java.util.Arrays;

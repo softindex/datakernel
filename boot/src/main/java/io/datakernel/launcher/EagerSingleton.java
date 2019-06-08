@@ -1,7 +1,7 @@
 package io.datakernel.launcher;
 
-import io.datakernel.di.KeySetAnnotation;
-import io.datakernel.di.NameAnnotation;
+import io.datakernel.di.annotation.KeySetAnnotation;
+import io.datakernel.di.annotation.NameAnnotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

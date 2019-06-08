@@ -1,5 +1,8 @@
 package io.datakernel.di;
 
+import io.datakernel.di.annotation.*;
+import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.core.*;
 import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.MultipleBindingsException;
@@ -332,7 +335,7 @@ public final class TestDI {
 		class ClassWithCustomDeps {
 
 			@Inject
-			@Optional
+			@io.datakernel.di.annotation.Optional
 			@Nullable
 			String string;
 
@@ -448,7 +451,7 @@ public final class TestDI {
 	public void optionalProvidesParam() {
 		Module module = new AbstractModule() {
 			@Provides
-			String string(Integer integer, @Optional Float f) {
+			String string(Integer integer, @io.datakernel.di.annotation.Optional Float f) {
 				return "str: " + integer + ", " + f;
 			}
 

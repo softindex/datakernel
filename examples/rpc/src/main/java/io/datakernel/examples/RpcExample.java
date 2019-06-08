@@ -17,9 +17,9 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.Inject;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;

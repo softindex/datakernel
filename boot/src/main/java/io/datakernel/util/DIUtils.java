@@ -16,7 +16,7 @@
 
 package io.datakernel.util;
 
-import io.datakernel.di.Key;
+import io.datakernel.di.core.Key;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

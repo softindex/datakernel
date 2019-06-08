@@ -18,8 +18,8 @@ package io.global.launchers;
 
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.Inject;
-import io.datakernel.di.Named;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;

@@ -18,10 +18,10 @@ package io.global.launchers;
 
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
-import io.datakernel.di.Named;
-import io.datakernel.di.Optional;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.DnsCache;

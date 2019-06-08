@@ -16,7 +16,7 @@
 
 package io.datakernel.worker;
 
-import io.datakernel.di.NameAnnotation;
+import io.datakernel.di.annotation.NameAnnotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;

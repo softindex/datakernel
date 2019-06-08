@@ -1,6 +1,6 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.Binding;
+import io.datakernel.di.core.Binding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;

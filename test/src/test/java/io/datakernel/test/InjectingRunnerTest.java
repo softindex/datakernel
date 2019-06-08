@@ -1,12 +1,12 @@
 package io.datakernel.test;
 
-import io.datakernel.di.Inject;
-import io.datakernel.di.Named;
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
-import io.datakernel.di.Name;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

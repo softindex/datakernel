@@ -15,7 +15,7 @@
  */
 package io.datakernel.examples;
 
-import io.datakernel.di.Inject;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Args;
 import io.datakernel.launcher.Launcher;

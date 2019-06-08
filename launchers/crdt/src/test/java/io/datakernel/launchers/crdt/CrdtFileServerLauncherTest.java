@@ -2,7 +2,7 @@ package io.datakernel.launchers.crdt;
 
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import org.junit.Test;
 
 import static io.datakernel.codec.StructuredCodecs.*;

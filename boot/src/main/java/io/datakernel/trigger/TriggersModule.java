@@ -16,11 +16,11 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.di.Injector;
-import io.datakernel.di.Key;
-import io.datakernel.di.Optional;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
 import io.datakernel.util.DIUtils;

@@ -1,7 +1,8 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.*;
-import io.datakernel.di.Optional;
+import io.datakernel.di.annotation.*;
+import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.core.*;
 import io.datakernel.di.error.BadAnnotationException;
 import io.datakernel.di.error.InjectionFailedException;
 import io.datakernel.di.error.InvalidImplicitBindingException;

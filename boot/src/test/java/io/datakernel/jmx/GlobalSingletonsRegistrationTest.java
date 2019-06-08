@@ -1,6 +1,6 @@
 package io.datakernel.jmx;
 
-import io.datakernel.di.Injector;
+import io.datakernel.di.core.Injector;
 import io.datakernel.jmx.GlobalSingletonsRegistrationTest.GlobalSingletonClass1.CustomClass;
 import io.datakernel.jmx.JmxModule.JmxModuleService;
 import io.datakernel.service.ServiceGraph;

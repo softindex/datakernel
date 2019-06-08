@@ -1,14 +1,14 @@
 package io.datakernel.launchers.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.di.Inject;
-import io.datakernel.di.Named;
-import io.datakernel.di.ScopeAnnotation;
-import io.datakernel.di.Key;
-import io.datakernel.di.Scope;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.ScopeAnnotation;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
-import io.datakernel.di.module.Provides;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;

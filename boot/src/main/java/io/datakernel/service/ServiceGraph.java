@@ -16,7 +16,7 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.Name;
+import io.datakernel.di.core.Name;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;

@@ -16,9 +16,9 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.di.Key;
-import io.datakernel.di.Name;
-import io.datakernel.di.Scope;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Name;
+import io.datakernel.di.core.Scope;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.Nullable;
