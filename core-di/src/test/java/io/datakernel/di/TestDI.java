@@ -23,7 +23,8 @@ import java.util.stream.Stream;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -745,10 +746,10 @@ public final class TestDI {
 			}
 		});
 
-		Set<Key<?>> keys = injector.getInstanceOr(new Key<Set<Key<?>>>(Name.of(MyKeySet.class)) {}, emptySet());
+		Set<Key<?>> keys = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet.class)) {});
 		assertEquals(Stream.of(Float.class, Double.class, Integer.class).map(Key::of).collect(toSet()), keys);
 
-		Set<Key<?>> keys2 = injector.getInstanceOr(new Key<Set<Key<?>>>(Name.of(MyKeySet2.class)) {}, emptySet());
+		Set<Key<?>> keys2 = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet2.class)) {});
 
 		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
 	}

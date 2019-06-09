@@ -34,8 +34,11 @@ import org.slf4j.Logger;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 
+import static io.datakernel.di.core.Key.KEY_SET;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static java.util.Collections.emptySet;
@@ -79,6 +82,12 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see ConfigModule
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
+	public static final Key<InstanceInjector<?>> KEY_INSTANCE_INJECTOR = new Key<InstanceInjector<?>>() {};
+	private static final Key<CompletionStage<Void>> KEY_COMPLETION_STAGE = new Key<CompletionStage<Void>>() {};
+	private static final Key<Set<Runnable>> KEY_RUNNABLES = new Key<Set<Runnable>>() {};
+	private static final Key<InstanceInjector<Launcher>> KEY_LAUNCHER_INJECTOR = new Key<InstanceInjector<Launcher>>() {};
+	private static final Key<Set<InstanceInjector<?>>> KEY_INSTANCE_INJECTORS = new Key<Set<InstanceInjector<?>>>() {};
+
 	protected final Logger logger = getLogger(getClass());
 
 	protected String[] args = {};
@@ -91,10 +100,13 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	private volatile Instant instantOfStart;
 	private volatile Instant instantOfRun;
 	private volatile Instant instantOfStop;
-	private volatile Instant instantOfComplete;
 
 	private final CountDownLatch shutdownLatch = new CountDownLatch(1);
 	private final CountDownLatch finishLatch = new CountDownLatch(1);
+
+	private final CompletableFuture<Void> onStart = new CompletableFuture<>();
+	private final CompletableFuture<Void> onRun = new CompletableFuture<>();
+	private final CompletableFuture<Void> onStop = new CompletableFuture<>();
 
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
@@ -135,18 +147,21 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfStart = Instant.now();
 		logger.info("=== INJECTING DEPENDENCIES");
 		Injector injector = createInjector(args);
-		injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
-		for (InstanceInjector<?> instanceInjector : injector.getInstance(new Key<Set<InstanceInjector<?>>>() {})) {
+		injector.getInstanceOr(KEY_SET.named(EagerSingleton.class), emptySet()).forEach(injector::getInstanceOrNull);
+		for (InstanceInjector<?> instanceInjector : injector.getInstance(KEY_INSTANCE_INJECTORS)) {
 			Object instance = injector.getInstanceOrNull(instanceInjector.key());
 			if (instance != null) ((InstanceInjector<Object>) instanceInjector).inject(instance);
 		}
 		try {
-			injector.getInstanceOr(new Key<Set<Runnable>>(OnStart.class) {}, emptySet()).forEach(Runnable::run);
+			injector.getInstanceOr(KEY_RUNNABLES.named(OnStart.class), emptySet()).forEach(Runnable::run);
+			onStart.complete(null);
 			onStart();
 			try {
 				doStart(injector);
 				logger.info("=== RUNNING APPLICATION");
 				instantOfRun = Instant.now();
+				injector.getInstanceOr(KEY_RUNNABLES.named(OnRun.class), emptySet()).forEach(Runnable::run);
+				onRun.complete(null);
 				run();
 			} catch (Throwable e) {
 				applicationError = e;
@@ -162,9 +177,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.error("Application failure", e);
 			throw e;
 		} finally {
-			injector.getInstanceOr(new Key<Set<Runnable>>(OnStop.class) {}, emptySet()).forEach(Runnable::run);
+			injector.getInstanceOr(KEY_RUNNABLES.named(OnStop.class), emptySet()).forEach(Runnable::run);
+			onStop.complete(null);
 			onStop();
-			instantOfComplete = Instant.now();
 			finishLatch.countDown();
 		}
 	}
@@ -178,13 +193,17 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 							bind(String[].class).annotatedWith(Args.class).toInstance(args);
 							bind(Launcher.class).to(Key.ofType(Launcher.this.getClass()));
 							bind(Key.ofType(Launcher.this.getClass())).toInstance(Launcher.this);
-							bind(new Key<InstanceInjector<Launcher>>() {})
+
+							multibind(KEY_RUNNABLES.named(OnStart.class), Multibinder.toSet());
+							multibind(KEY_RUNNABLES.named(OnStop.class), Multibinder.toSet());
+
+							bindIntoSet(KEY_INSTANCE_INJECTOR, KEY_LAUNCHER_INJECTOR);
+							bind(KEY_LAUNCHER_INJECTOR)
 									.to(Key.ofType(Types.parameterized(InstanceInjector.class, Launcher.this.getClass())));
 
-							multibind(new Key<Set<Runnable>>(OnStart.class) {}, Multibinder.toSet());
-							multibind(new Key<Set<Runnable>>(OnStop.class) {}, Multibinder.toSet());
-
-							bindIntoSet(new Key<InstanceInjector<?>>() {}, new Key<InstanceInjector<Launcher>>() {});
+							bind(KEY_COMPLETION_STAGE.named(OnStart.class)).toInstance(onStart);
+							bind(KEY_COMPLETION_STAGE.named(OnRun.class)).toInstance(onRun);
+							bind(KEY_COMPLETION_STAGE.named(OnStop.class)).toInstance(onStop);
 
 							addDeclarativeBindingsFrom(Launcher.this);
 						}}),
@@ -299,7 +318,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		if (instantOfStop == null) {
 			return null;
 		}
-		return Duration.between(instantOfStop, instantOfComplete == null ? Instant.now() : instantOfComplete);
+		return Duration.between(instantOfStop, instantOfStop == null ? Instant.now() : instantOfStop);
 	}
 
 	@JmxAttribute
@@ -308,7 +327,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		if (instantOfStart == null) {
 			return null;
 		}
-		return Duration.between(instantOfStart, instantOfComplete == null ? Instant.now() : instantOfComplete);
+		return Duration.between(instantOfStart, instantOfStop == null ? Instant.now() : instantOfStop);
 	}
 
 	@JmxAttribute

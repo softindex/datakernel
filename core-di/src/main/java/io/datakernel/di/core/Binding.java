@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -171,11 +170,11 @@ public final class Binding<T> {
 				location);
 	}
 
-	public Binding<T> onDependencies(@NotNull BiConsumer<Dependency[], Object[]> consumer) {
+	public <R> Binding<R> mapInstance(@NotNull BiFunction<Object[], ? super T, ? extends R> fn) {
 		return new Binding<>(dependencies,
 				args -> {
-					consumer.accept(dependencies, args);
-					return factory.create(args);
+					T instance = factory.create(args);
+					return instance != null ? fn.apply(args, instance) : null;
 				},
 				location);
 	}
@@ -186,12 +185,6 @@ public final class Binding<T> {
 					consumer.accept(args);
 					return factory.create(args);
 				},
-				location);
-	}
-
-	public Binding<T> mapDependencies(@NotNull BiFunction<Dependency[], Object[], Object[]> fn) {
-		return new Binding<>(dependencies,
-				args -> factory.create(fn.apply(dependencies, args)),
 				location);
 	}
 
@@ -248,7 +241,7 @@ public final class Binding<T> {
 	public Binding<T> addDependency(@NotNull Dependency dependency) {
 		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, dependencies.length + 1);
 		newDependencies[newDependencies.length - 1] = dependency;
-		return new Binding<>(newDependencies, factory, location);
+		return new Binding<>(newDependencies, newArgs -> factory.create(Arrays.copyOf(newArgs, dependencies.length)), location);
 	}
 
 	@NotNull

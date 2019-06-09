@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.di.module.BindingGenerator.combinedGenerator;
+import static io.datakernel.di.module.BindingTransformer.combinedTransformer;
 import static java.util.Collections.emptyMap;
 
 @SuppressWarnings("unused")
@@ -96,7 +98,7 @@ public class Injector {
 		// well, can't do anything better than that
 		bindings.get().put(Key.of(Injector.class), Binding.toInstance(injector));
 
-		BindingGraph.completeBindingGraph(bindings, bindingTransformers, bindingGenerators);
+		BindingGraph.completeBindingGraph(bindings, combinedTransformer(bindingTransformers), combinedGenerator(bindingGenerators));
 
 		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {

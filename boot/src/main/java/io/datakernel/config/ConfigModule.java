@@ -16,15 +16,14 @@
 
 package io.datakernel.config;
 
-import io.datakernel.di.annotation.Optional;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -49,17 +49,19 @@ import static io.datakernel.util.Preconditions.checkState;
  */
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
+	public static final Key<Config> KEY_OF_CONFIG = Key.of(Config.class);
 
+	@Nullable
 	private Supplier<Config> configSupplier;
 	private Path effectiveConfigPath;
 	private Consumer<String> effectiveConfigConsumer;
 
-	static class ProtectedConfig implements Config {
+	static final class ProtectedConfig implements Config {
 		private final Config config;
 		private final Map<String, Config> children;
 		private final AtomicBoolean started;
 
-		private ProtectedConfig(Config config, AtomicBoolean started) {
+		ProtectedConfig(Config config, AtomicBoolean started) {
 			this.config = config;
 			this.started = started;
 			this.children = new LinkedHashMap<>();
@@ -91,8 +93,12 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		}
 	}
 
-	private ConfigModule(Supplier<Config> configSupplier) {
+	private ConfigModule(@Nullable Supplier<Config> configSupplier) {
 		this.configSupplier = configSupplier;
+	}
+
+	public static ConfigModule create() {
+		return new ConfigModule(null);
 	}
 
 	public static ConfigModule create(Supplier<Config> configSupplier) {
@@ -137,31 +143,32 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		});
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void configure() {
-		bind(Config.class).to(EffectiveConfig.class);
 		multibind(new Key<Set<Initializer<ConfigModule>>>() {}, Multibinder.toSet());
+
+		if (configSupplier != null) {
+			bind(Config.class).toInstance(configSupplier.get());
+		}
+
+		transform(0, (provider, scope, key, binding) -> {
+			if (!key.equals(KEY_OF_CONFIG)) return binding;
+			return ((Binding<Config>) (Binding) binding)
+					.addDependency(new Key<CompletionStage<Void>>(OnStart.class) {})
+					.mapInstance((args, config) -> {
+						CompletionStage<Void> onStart = (CompletionStage<Void>) args[args.length - 1];
+						AtomicBoolean started = new AtomicBoolean();
+						ProtectedConfig protectedConfig = new ProtectedConfig(ConfigWithFullPath.wrap(config), started);
+						EffectiveConfig effectiveConfig = EffectiveConfig.wrap(protectedConfig);
+						onStart.thenRun(() -> save(effectiveConfig, started));
+						return effectiveConfig;
+					});
+		});
 	}
 
-	@Provides
-	EffectiveConfig effectiveConfig(ProtectedConfig protectedConfig) {
-		return EffectiveConfig.wrap(protectedConfig);
-	}
-
-	@Provides
-	ProtectedConfig protectedConfig() {
-		return new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()), new AtomicBoolean());
-	}
-
-	@ProvidesIntoSet
-	@OnStart
-	Runnable start(EffectiveConfig config, ProtectedConfig protectedConfig, @Optional Set<Initializer<ConfigModule>> initializers) {
-		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return () -> doStart(config, protectedConfig);
-	}
-
-	private void doStart(EffectiveConfig effectiveConfig, ProtectedConfig protectedConfig) {
-		protectedConfig.started.set(true);
+	private void save(EffectiveConfig effectiveConfig, AtomicBoolean started) {
+		started.set(true);
 		if (effectiveConfigPath != null) {
 			logger.info("Saving effective config to {}", effectiveConfigPath);
 			effectiveConfig.saveEffectiveConfigTo(effectiveConfigPath);

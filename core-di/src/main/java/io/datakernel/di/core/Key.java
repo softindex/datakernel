@@ -9,10 +9,13 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
+import java.util.Set;
 
 import static io.datakernel.di.util.Types.ensureEquality;
 
 public abstract class Key<T> {
+	public static final Key<Set<Key<?>>> KEY_SET = new Key<Set<Key<?>>>() {};
+
 	@NotNull
 	private final Type type;
 	@Nullable
@@ -99,6 +102,22 @@ public abstract class Key<T> {
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @NotNull Annotation annotation) {
+		return new KeyImpl<>(type, Name.of(annotation));
+	}
+
+	public Key<T> named(Name name) {
+		return new KeyImpl<>(type, name);
+	}
+
+	public Key<T> named(String name) {
+		return new KeyImpl<>(type, Name.of(name));
+	}
+
+	public Key<T> named(@NotNull Class<? extends Annotation> annotationType) {
+		return new KeyImpl<>(type, Name.of(annotationType));
+	}
+
+	public Key<T> named(@NotNull Annotation annotation) {
 		return new KeyImpl<>(type, Name.of(annotation));
 	}
 

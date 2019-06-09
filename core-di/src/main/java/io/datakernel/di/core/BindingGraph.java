@@ -7,19 +7,16 @@ import io.datakernel.di.module.BindingTransformer;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
-import static io.datakernel.di.util.Types.findBestMatch;
 import static io.datakernel.di.util.Utils.*;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class BindingGraph {
-	public static final Binding<?> PHANTOM = Binding.to($ -> {
+	public static final Binding<?> TO_BE_GENERATED = Binding.to($ -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by generated binding, if you see this message then somethning is really wrong");
 	});
 
@@ -28,30 +25,21 @@ public final class BindingGraph {
 	}
 
 	public static void completeBindingGraph(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			Map<Integer, BindingTransformer<?>> transformers,
-			Map<Type, Set<BindingGenerator<?>>> generators) {
-		completeBindingGraph(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformers, generators);
+			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
+		completeBindingGraph(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformer, generator);
 	}
 
 	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			Map<Integer, BindingTransformer<?>> transformers,
-			Map<Type, Set<BindingGenerator<?>>> generators) {
-		bindings.getChildren().forEach((subscope, subtrie) -> completeBindingGraph(override(known, subtrie.get()), next(scope, subscope), subtrie, transformers, generators));
-		completeBindingGraph(known, scope, bindings.get(), transformers, generators);
+			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
+		bindings.getChildren().forEach((subscope, subtrie) -> completeBindingGraph(override(known, subtrie.get()), next(scope, subscope), subtrie, transformer, generator));
+		completeBindingGraph(known, scope, bindings.get(), generator, transformer);
 	}
 
 	@SuppressWarnings("unchecked")
 	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
-			Map<Integer, BindingTransformer<?>> transformers,
-			Map<Type, Set<BindingGenerator<?>>> generators) {
-		Map<Key<?>, Set<BindingGenerator<?>>> generatorCache = new HashMap<>();
-
-		List<BindingTransformer<?>> transformerList = transformers.entrySet().stream()
-				.sorted(Comparator.comparing(Entry::getKey))
-				.map(Entry::getValue)
-				.collect(toList());
+			BindingGenerator<?> generator, BindingTransformer<?> transformer) {
 
 		Map<Key<?>, Binding<?>> generated = new HashMap<>();
 
@@ -63,53 +51,43 @@ public final class BindingGraph {
 				if (binding == null) {
 					binding = (Binding<T>) known.get(key);
 				}
-				if (binding != null && binding != PHANTOM) {
+				if (binding != null && binding != TO_BE_GENERATED) {
 					return binding;
 				}
-				Set<BindingGenerator<?>> found = generatorCache.computeIfAbsent(key, k -> generators.get(findBestMatch(k.getType(), generators.keySet())));
-				if (found == null) {
-					return null;
-				}
-				Set<Binding<T>> generatedBindings = found.stream()
-						.map(generator -> ((BindingGenerator<T>) generator).generate(scope, key, this))
-						.filter(Objects::nonNull)
-						.collect(toSet());
 
-				if (generatedBindings.isEmpty()) {
-					return null;
-				}
-				if (generatedBindings.size() > 1) {
-					throw new CannotGenerateBindingException(key, "More than one generator provided a binding");
-				}
-				Binding<T> generatedBinding = generatedBindings.iterator().next();
-				for (BindingTransformer<?> transformer : transformerList) {
-					generatedBinding = ((BindingTransformer<T>) transformer).transform(scope, key, generatedBinding, this);
-					if (generatedBinding == null) {
-						throw new NullPointerException("Transformers should never return null");
-					}
-				}
-				generated.put(key, generatedBinding);
+				binding = ((BindingGenerator<T>) generator).generate(this, scope, key);
+				if (binding == null) return null;
+
+				binding = ((BindingTransformer<T>) transformer).transform(this, scope, key, binding);
+
+				generated.put(key, binding);
 
 				// ensure that its dependencies are generated if nesessary
-				for (Dependency dependency : generatedBinding.getDependencies()) {
+				for (Dependency dependency : binding.getDependencies()) {
 					getBinding(dependency.getKey());
 				}
-				return generatedBinding;
+				return binding;
 			}
 		};
 
 		for (Entry<Key<?>, Binding<?>> entry : localBindings.entrySet()) {
 			Key<Object> key = (Key<Object>) entry.getKey();
-			Binding<?> binding = entry.getValue();
+			Binding<Object> binding = (Binding<Object>) entry.getValue();
 
-			if (binding == PHANTOM) {
+			if (binding == TO_BE_GENERATED) {
 				Binding<Object> generatedBinding = provider.getBinding(key);
 				if (generatedBinding == null) {
-					// phantom bindings are the ones requested with plain `bind(...);` call, here we fail fast
+					// these bindings are the ones requested with plain `bind(...);` call, here we fail fast
 					// see comment below where dependencies are generated
 					throw new CannotGenerateBindingException(key, "Refused to generate a requested binding");
 				}
 				known.put(key, generatedBinding);
+			} else {
+				Binding<Object> originalBinding = binding;
+				binding = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, binding);
+				if (binding != originalBinding) {
+					localBindings.put(key, binding);
+				}
 			}
 
 			for (Dependency dependency : binding.getDependencies()) {

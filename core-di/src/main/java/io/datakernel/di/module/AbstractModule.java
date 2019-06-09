@@ -8,7 +8,6 @@ import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -16,6 +15,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
 
+import static io.datakernel.di.core.Key.KEY_SET;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
@@ -23,20 +23,13 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.joining;
 
 public abstract class AbstractModule implements Module {
+	private boolean configured;
 
 	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
-
 	private final Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>();
 	private final Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 	private final Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
-
-	@Nullable
-	private List<BindingBuilder<Object>> builders = new ArrayList<>();
-
-	public AbstractModule() {
-		configure();
-		addDeclarativeBindingsFrom(this);
-	}
+	private final List<BindingBuilder<Object>> builders = new ArrayList<>();
 
 	protected final <T> void addBinding(Key<T> key, Binding<T> binding) {
 		addBinding(UNSCOPED, key, binding);
@@ -54,7 +47,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	private void addKeyToSet(Name name, Key<?> key) {
-		Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
+		Key<Set<Key<?>>> setKey = KEY_SET.named(name);
 		bind(setKey).toInstance(singleton(key));
 		multibind(setKey, Multibinder.toSet());
 	}
@@ -84,7 +77,7 @@ public abstract class AbstractModule implements Module {
 						throw new IllegalStateException("Generic type variable " + typeVar + " must be used in return type");
 					}
 				}
-				generate(genericReturnType, (scope, key, provider) -> bindingForGenericMethod(instance, key, method));
+				generate(genericReturnType, (provider, scope, key) -> bindingForGenericMethod(instance, key, method));
 			}
 		}
 		for (Method method : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods)) {
@@ -109,7 +102,7 @@ public abstract class AbstractModule implements Module {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
 
-		private Binding<T> binding = (Binding<T>) BindingGraph.PHANTOM;
+		private Binding<T> binding = (Binding<T>) BindingGraph.TO_BE_GENERATED;
 
 		public BindingBuilder(Key<T> key) {
 			this.key = key;
@@ -150,7 +143,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public BindingBuilder<T> to(Binding<T> binding) {
-			if (this.binding != BindingGraph.PHANTOM) {
+			if (this.binding != BindingGraph.TO_BE_GENERATED) {
 				throw new IllegalStateException("Already mapped to a binding");
 			}
 			this.binding = binding;//.at(getLocation(BindingBuilder.class));
@@ -264,7 +257,7 @@ public abstract class AbstractModule implements Module {
 		public BindingBuilder<T> as(@NotNull Name name) {
 			checkArgument(name.isMarkedBy(KeySetAnnotation.class));
 
-			Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
+			Key<Set<Key<?>>> setKey = KEY_SET.named(name);
 			bind(setKey).toInstance(singleton(key));
 			multibind(setKey, Multibinder.toSet());
 			return this;
@@ -286,9 +279,6 @@ public abstract class AbstractModule implements Module {
 		// to support abstract modules with generics
 		Key<T> fullKey = Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName());
 		BindingBuilder<T> builder = new BindingBuilder<>(fullKey);
-		if (builders == null) {
-			throw new AssertionError("cannot call bind after the module was used");
-		}
 		builders.add((BindingBuilder<Object>) builder);
 		return builder;
 	}
@@ -310,9 +300,6 @@ public abstract class AbstractModule implements Module {
 	@SuppressWarnings("unchecked")
 	protected final <T> BindingBuilder<T> bind(Class<T> type) {
 		BindingBuilder<T> builder = new BindingBuilder<>(Key.of(type));
-		if (builders == null) {
-			throw new AssertionError("cannot call bind after the module was used");
-		}
 		builders.add((BindingBuilder<Object>) builder);
 		return builder;
 	}
@@ -329,27 +316,35 @@ public abstract class AbstractModule implements Module {
 		bindingTransformers.put(priority, bindingTransformer);
 	}
 
+	synchronized private void doConfigure() {
+		if (configured) return;
+		configured = true;
+		configure();
+		addDeclarativeBindingsFrom(this);
+		builders.forEach(builder -> addBinding(builder.scope, builder.key, builder.binding));
+	}
+
 	@Override
 	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
-		if (builders != null) {
-			builders.forEach(builder -> addBinding(builder.scope, builder.key, builder.binding));
-			builders = null;
-		}
+		doConfigure();
 		return bindings;
 	}
 
 	@Override
 	public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
+		doConfigure();
 		return bindingTransformers;
 	}
 
 	@Override
 	public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
+		doConfigure();
 		return bindingGenerators;
 	}
 
 	@Override
 	public Map<Key<?>, Multibinder<?>> getMultibinders() {
+		doConfigure();
 		return multibinders;
 	}
 }

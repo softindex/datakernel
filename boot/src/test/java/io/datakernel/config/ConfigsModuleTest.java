@@ -16,11 +16,16 @@
 
 package io.datakernel.config;
 
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.launcher.OnStart;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static org.junit.Assert.assertEquals;
@@ -122,13 +127,25 @@ public class ConfigsModuleTest {
 			}
 		};
 
+		CompletableFuture<Void> onStart = new CompletableFuture<>();
+
 		Injector injector = Injector.of(
-				ConfigModule.create(() ->
-						Config.create()
+				new AbstractModule() {
+					@Provides
+					@OnStart
+					CompletionStage<Void> onStart() {
+						return onStart;
+					}
+
+					@Provides
+					Config config() {
+						return Config.create()
 								.override(Config.ofProperties(properties1))
 								.override(Config.ofProperties(properties2))
-								.override(Config.ofProperties("not-existing.properties", true)))
-						.printEffectiveConfig()
+								.override(Config.ofProperties("not-existing.properties", true));
+					}
+				},
+				ConfigModule.create().printEffectiveConfig()
 		);
 
 		Config config = injector.getInstance(Config.class);
@@ -136,5 +153,7 @@ public class ConfigsModuleTest {
 		assertEquals(1234, (int) config.get(ofInteger(), "port"));
 		assertEquals("Test phrase", config.get("msg"));
 		assertEquals(new TestClass(2, 3.5, true), config.get(configConverter, "innerClass"));
+
+		onStart.complete(null);
 	}
 }
