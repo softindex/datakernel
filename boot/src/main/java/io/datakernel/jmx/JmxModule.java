@@ -17,13 +17,15 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
-import io.datakernel.service.BlockingService;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
@@ -66,9 +68,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	private Duration refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 	private boolean withScopes = true;
-
-	public interface JmxModuleService extends BlockingService {
-	}
 
 	private JmxModule() {
 	}
@@ -171,86 +170,81 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	@Override
 	protected void configure() {
-		super.configure();
+		multibind(new Key<Set<Initializer<JmxModule>>>() {}, Multibinder.toSet());
 	}
 
-	@Provides
-	JmxModuleService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
-			@Optional Set<Initializer<JmxModule>> optionalInitializers) {
-		if (optionalInitializers != null) optionalInitializers.forEach(initializer -> initializer.accept(this));
-		return new JmxModuleService() {
-			private MBeanSettings ensureSettingsFor(Key<?> key) {
-				MBeanSettings settings = MBeanSettings.defaultSettings()
-						.withCustomTypes(customTypes);
-				if (keyToSettings.containsKey(key)) {
-					settings.merge(keyToSettings.get(key));
-				}
-				if (typeToSettings.containsKey(key.getType())) {
-					settings.merge(typeToSettings.get(key.getType()));
-				}
-				return settings;
+	@ProvidesIntoSet
+	@OnStart
+	Runnable start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
+		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
+		return () -> doStart(injector, jmxRegistry, mbeanFactory);
+	}
+
+	private void doStart(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
+		Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
+
+		// register global singletons
+		for (Object globalSingleton : globalSingletons) {
+			Key<?> globalKey = Key.of(globalSingleton.getClass());
+			jmxRegistry.registerSingleton(globalKey, globalSingleton, MBeanSettings.defaultSettings().withCustomTypes(customTypes));
+		}
+
+		// register singletons
+		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
+			Key<?> key = entry.getKey();
+			Object instance = entry.getValue();
+			if (instance == null) continue;
+			jmxRegistry.registerSingleton(key, instance, ensureSettingsFor(key));
+
+			Type type = key.getType();
+			if (globalMBeans.containsKey(type)) {
+				globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(instance);
 			}
+		}
 
-			@Override
-			public void start() {
-				Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
+		// register workers
+		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
+		if (workerPools != null) {
+			// populating workerPoolKeys map
+			injector.peekInstances().entrySet().stream()
+					.filter(entry -> entry.getKey().getRawType().equals(WorkerPool.class))
+					.forEach(entry -> jmxRegistry.addWorkerPoolKey((WorkerPool) entry.getValue(), entry.getKey()));
 
-				// register global singletons
-				for (Object globalSingleton : globalSingletons) {
-					Key<?> globalKey = Key.of(globalSingleton.getClass());
-					jmxRegistry.registerSingleton(globalKey, globalSingleton, MBeanSettings.defaultSettings().withCustomTypes(customTypes));
-				}
-
-				// register singletons
-				for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
+			for (WorkerPool workerPool : workerPools.getWorkerPools()) {
+				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : workerPool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
-					Object instance = entry.getValue();
-					if (instance == null) continue;
-					jmxRegistry.registerSingleton(key, instance, ensureSettingsFor(key));
+					WorkerPool.Instances<?> workerInstances = entry.getValue();
+					jmxRegistry.registerWorkers(workerPool, key, workerInstances.getList(), ensureSettingsFor(key));
 
 					Type type = key.getType();
 					if (globalMBeans.containsKey(type)) {
-						globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(instance);
-					}
-				}
-
-				// register workers
-				WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
-				if (workerPools != null) {
-					// populating workerPoolKeys map
-					injector.peekInstances().entrySet().stream()
-							.filter(entry -> entry.getKey().getRawType().equals(WorkerPool.class))
-							.forEach(entry -> jmxRegistry.addWorkerPoolKey((WorkerPool) entry.getValue(), entry.getKey()));
-
-					for (WorkerPool workerPool : workerPools.getWorkerPools()) {
-						for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : workerPool.peekInstances().entrySet()) {
-							Key<?> key = entry.getKey();
-							WorkerPool.Instances<?> workerInstances = entry.getValue();
-							jmxRegistry.registerWorkers(workerPool, key, workerInstances.getList(), ensureSettingsFor(key));
-
-							Type type = key.getType();
-							if (globalMBeans.containsKey(type)) {
-								for (Object instance : workerInstances) {
-									globalMBeanObjects.computeIfAbsent(type, $ -> new ArrayList<>()).add(instance);
-								}
-							}
+						for (Object instance : workerInstances) {
+							globalMBeanObjects.computeIfAbsent(type, $ -> new ArrayList<>()).add(instance);
 						}
 					}
 				}
-
-				for (Type type : globalMBeanObjects.keySet()) {
-					List<Object> objects = globalMBeanObjects.get(type);
-					Key<?> key = globalMBeans.get(type);
-					DynamicMBean globalMBean =
-							mbeanFactory.createFor(objects, ensureSettingsFor(key), false);
-					jmxRegistry.registerSingleton(key, globalMBean, null);
-				}
 			}
+		}
 
-			@Override
-			public void stop() {
-			}
-		};
+		for (Type type : globalMBeanObjects.keySet()) {
+			List<Object> objects = globalMBeanObjects.get(type);
+			Key<?> key = globalMBeans.get(type);
+			DynamicMBean globalMBean =
+					mbeanFactory.createFor(objects, ensureSettingsFor(key), false);
+			jmxRegistry.registerSingleton(key, globalMBean, null);
+		}
+	}
+
+	private MBeanSettings ensureSettingsFor(Key<?> key) {
+		MBeanSettings settings = MBeanSettings.defaultSettings()
+				.withCustomTypes(customTypes);
+		if (keyToSettings.containsKey(key)) {
+			settings.merge(keyToSettings.get(key));
+		}
+		if (typeToSettings.containsKey(key.getType())) {
+			settings.merge(typeToSettings.get(key.getType()));
+		}
+		return settings;
 	}
 
 	@Provides
@@ -263,4 +257,5 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames, customTypes)
 				.withScopes(withScopes);
 	}
+
 }

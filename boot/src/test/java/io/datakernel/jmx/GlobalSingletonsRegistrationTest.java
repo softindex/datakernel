@@ -1,15 +1,15 @@
 package io.datakernel.jmx;
 
 import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
 import io.datakernel.jmx.GlobalSingletonsRegistrationTest.GlobalSingletonClass1.CustomClass;
-import io.datakernel.jmx.JmxModule.JmxModuleService;
-import io.datakernel.service.ServiceGraph;
-import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.launcher.OnStart;
 import org.junit.Test;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -24,21 +24,17 @@ public class GlobalSingletonsRegistrationTest {
 		globalSingletonClass2.setValue(jmxValue);
 
 		Injector injector = Injector.of(
-				ServiceGraphModule.defaultInstance(),
 				JmxModule.create()
 						.withGlobalSingletons(globalSingletonClass2)
 		);
 
-		injector.getInstance(JmxModuleService.class);
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
 		ObjectName found;
 		try {
-			serviceGraph.startFuture().get();
 			ObjectName objectName = server.queryNames(new ObjectName("*:type=" + GlobalSingletonClass2.class.getSimpleName() + ",*"), null).iterator().next();
 			assertEquals(jmxValue, server.getAttribute(objectName, "Value"));
 			found = objectName;
 		} finally {
-			serviceGraph.stopFuture().get();
 			unregisterMBeans();
 		}
 		assertNotNull(found);
@@ -49,22 +45,18 @@ public class GlobalSingletonsRegistrationTest {
 		GlobalSingletonClass1 globalSingletonClass1 = GlobalSingletonClass1.getInstance();
 
 		Injector injector = Injector.of(
-				ServiceGraphModule.defaultInstance(),
 				JmxModule.create()
 						.withGlobalSingletons(globalSingletonClass1)
 		);
 
-		injector.getInstance(JmxModuleService.class);
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
 		ObjectName found;
 		MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 		try {
-			serviceGraph.startFuture().get();
 			ObjectName objectName = server.queryNames(new ObjectName("*:type=" + GlobalSingletonClass1.class.getSimpleName() + ",*"), null).iterator().next();
 			assertEquals(globalSingletonClass1.custom, server.getAttribute(objectName, "CustomClass"));
 			found = objectName;
 		} finally {
-			serviceGraph.stopFuture().get();
 			unregisterMBeans();
 		}
 		assertNotNull(found);
@@ -72,7 +64,6 @@ public class GlobalSingletonsRegistrationTest {
 
 	private void unregisterMBeans() throws Exception {
 		server.unregisterMBean(new ObjectName("io.datakernel.bytebuf:type=ByteBufPoolStats"));
-		server.unregisterMBean(new ObjectName("io.datakernel.service:type=ServiceGraph"));
 		server.unregisterMBean(new ObjectName("io.datakernel.jmx:type=JmxRegistry"));
 	}
 

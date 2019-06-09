@@ -16,13 +16,14 @@
 
 package io.datakernel.trigger;
 
+import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.KeyWithWorkerData;
-import io.datakernel.service.BlockingService;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.util.DIUtils;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -82,9 +83,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		}
 	}
 
-	public interface TriggersModuleService extends BlockingService {
-	}
-
 	private TriggersModule() {
 	}
 
@@ -117,24 +115,21 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return this;
 	}
 
-	@Provides
-	TriggersModuleService service(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
-		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return new TriggersModuleService() {
-			@Override
-			public void start() {
-				initialize(injector);
-			}
-
-			@Override
-			public void stop() {
-			}
-		};
+	@Override
+	protected void configure() {
+		multibind(new Key<Set<Initializer<TriggersModule>>>() {}, Multibinder.toSet());
 	}
 
 	@Provides
 	Triggers triggersWatcher(Injector injector) {
 		return Triggers.create();
+	}
+
+	@Provides
+	@OnStart
+	Runnable start(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
+		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
+		return () -> initialize(injector);
 	}
 
 	@SuppressWarnings("unchecked")

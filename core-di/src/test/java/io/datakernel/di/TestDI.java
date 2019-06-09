@@ -9,6 +9,7 @@ import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Multibinder;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
@@ -19,7 +20,8 @@ import java.lang.annotation.Target;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.module.Modules.*;
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
@@ -638,7 +640,7 @@ public final class TestDI {
 
 			@Override
 			protected void configure() {
-				multibind(key, multibinderToMap());
+				multibind(key, Multibinder.toMap());
 			}
 
 			@Provides

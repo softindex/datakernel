@@ -16,17 +16,15 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.annotation.Named;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.service.ServiceGraph;
-import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
-import io.datakernel.trigger.TriggersModule.TriggersModuleService;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
@@ -37,7 +35,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -50,7 +48,6 @@ public class TriggersModuleTest {
 		exception.expect(IllegalArgumentException.class);
 		exception.expectMessage("Cannot assign duplicate triggers");
 		Injector.of(
-				ServiceGraphModule.defaultInstance(),
 				TriggersModule.create()
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
@@ -59,11 +56,10 @@ public class TriggersModuleTest {
 	}
 
 	@Test
-	public void testWithSeveralWorkerPools() throws Exception {
+	public void testWithSeveralWorkerPools() {
 		int firstPoolSize = 10;
 		int secondPoolSize = 5;
 		Injector injector = Injector.of(
-				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					int counter = 0;
 
@@ -97,11 +93,9 @@ public class TriggersModuleTest {
 		);
 		injector.getInstance(Key.of(WorkerPool.class, "first")).getInstances(String.class);
 		injector.getInstance(Key.of(WorkerPool.class, "second")).getInstances(String.class);
-		injector.getInstanceOrNull(TriggersModuleService.class);
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
-			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
 			assertEquals(firstPoolSize + secondPoolSize, triggersWatcher.getResults().size());
 			triggersWatcher.getResults()
@@ -109,20 +103,13 @@ public class TriggersModuleTest {
 			wasExecuted.set(true);
 		} finally {
 			assertTrue(wasExecuted.get());
-			serviceGraph.stopFuture().get();
 		}
 	}
 
 	@Test
-	public void testMultiModule() throws ExecutionException, InterruptedException {
+	public void testMultiModule() {
 		Injector injector = Injector.of(
-				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
-					@Override
-					protected void configure() {
-						install(TriggersModule.create());
-					}
-
 					@Provides
 					Eventloop eventloop() {
 						return Eventloop.create();
@@ -147,13 +134,12 @@ public class TriggersModuleTest {
 						return triggersModule -> triggersModule
 								.with(Eventloop.class, Severity.HIGH, "testModule2", $ -> TriggerResult.create());
 					}
-				}
+				},
+				TriggersModule.create()
 		);
-		injector.getInstanceOrNull(TriggersModuleService.class);
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
-			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
 			List<TriggerWithResult> triggerResults = triggersWatcher.getResults();
 			assertEquals(3, triggerResults.size());
@@ -161,7 +147,6 @@ public class TriggersModuleTest {
 			wasExecuted.set(true);
 		} finally {
 			assertTrue(wasExecuted.get());
-			serviceGraph.stopFuture().get();
 		}
 	}
 }

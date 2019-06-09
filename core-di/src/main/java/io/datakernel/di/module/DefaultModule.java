@@ -32,7 +32,7 @@ public final class DefaultModule implements Module {
 					if (elementBinding == null) {
 						return null;
 					}
-					return Binding.of(
+					return Binding.to(
 							args -> {
 								Injector injector = (Injector) args[0];
 								return new InstanceProvider<Object>() {
@@ -59,7 +59,7 @@ public final class DefaultModule implements Module {
 					if (elementBinding == null) {
 						return null;
 					}
-					return Binding.of(
+					return Binding.to(
 							args -> new InstanceFactory<Object>() {
 								@Override
 								public Key<Object> key() {
@@ -83,7 +83,7 @@ public final class DefaultModule implements Module {
 					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
 					BindingInitializer.Initializer<Object> initializer = injectingInitializer.getInitializer();
 
-					return Binding.of(
+					return Binding.to(
 							args -> new InstanceInjector<Object>() {
 								@Override
 								public Key<Object> key() {

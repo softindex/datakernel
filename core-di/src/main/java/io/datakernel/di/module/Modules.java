@@ -1,17 +1,13 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
-import io.datakernel.di.util.Constructors.Factory;
 import io.datakernel.di.util.Trie;
 
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
@@ -81,56 +77,6 @@ public final class Modules {
 	@SuppressWarnings("unchecked")
 	public static <T> Function<Set<Binding<T>>, Binding<T>> getErrorsOnDuplicate() {
 		return (Function) ERRORS_ON_DUPLICATE;
-	}
-
-	public static <T> Multibinder<T> resolverOfReducer(Function<Stream<T>, T> reducerFunction) {
-		return bindings -> {
-			if (bindings.size() == 1) {
-				return bindings.iterator().next();
-			}
-			List<Factory<T>> factories = new ArrayList<>();
-			List<Dependency> dependencies = new ArrayList<>();
-			for (Binding<T> binding : bindings) {
-				int from = dependencies.size();
-				int to = from + binding.getDependencies().length;
-				Collections.addAll(dependencies, binding.getDependencies());
-				factories.add(args -> binding.getFactory().create(Arrays.copyOfRange(args, from, to)));
-			}
-			return Binding.of(
-					args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args))),
-					dependencies.toArray(new Dependency[0]));
-		};
-	}
-
-	@SuppressWarnings("OptionalGetWithoutIsPresent")
-	public static <T> Multibinder<T> resolverOfBinaryOperator(BinaryOperator<T> binaryOperator) {
-		return resolverOfReducer(stream -> stream.reduce(binaryOperator).get());
-	}
-
-	private static final Multibinder<Set<Object>> MULTIBINDER_TO_SET = resolverOfReducer(stream -> {
-		Set<Object> result = new HashSet<>();
-		stream.forEach(result::addAll);
-		return result;
-	});
-
-	private static final Multibinder<Map<Object, Object>> MULTIBINDER_TO_MAP = resolverOfReducer(stream -> {
-		Map<Object, Object> result = new HashMap<>();
-		stream.forEach(map ->
-				map.forEach((k, v) ->
-						result.merge(k, v, ($, $2) -> {
-							throw new IllegalStateException("Duplicate key " + k);
-						})));
-		return result;
-	});
-
-	@SuppressWarnings("unchecked")
-	public static <T> Multibinder<Set<T>> multibinderToSet() {
-		return (Multibinder) MULTIBINDER_TO_SET;
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <K, V> Multibinder<Map<K, V>> multibinderToMap() {
-		return (Multibinder) MULTIBINDER_TO_MAP;
 	}
 
 	private static class ModuleImpl implements Module {

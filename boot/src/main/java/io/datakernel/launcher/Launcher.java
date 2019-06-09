@@ -17,29 +17,27 @@
 package io.datakernel.launcher;
 
 import io.datakernel.config.ConfigModule;
-import io.datakernel.config.ConfigModule.ConfigModuleService;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.InstanceInjector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Multibinder;
 import io.datakernel.di.util.Types;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxModule.JmxModuleService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggersModule.TriggersModuleService;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
-import static io.datakernel.di.module.Modules.*;
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -183,11 +181,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 							bind(new Key<InstanceInjector<Launcher>>() {})
 									.to(Key.ofType(Types.parameterized(InstanceInjector.class, Launcher.this.getClass())));
 
-							multibind(new Key<Set<Runnable>>(OnStart.class) {}, multibinderToSet());
-							multibind(new Key<Set<Runnable>>(OnStop.class) {}, multibinderToSet());
-							multibind(new Key<Set<InstanceInjector<?>>>() {}, multibinderToSet());
+							multibind(new Key<Set<Runnable>>(OnStart.class) {}, Multibinder.toSet());
+							multibind(new Key<Set<Runnable>>(OnStop.class) {}, Multibinder.toSet());
 
-							bind(new Key<Set<InstanceInjector<?>>>() {}).to(Collections::singleton, new Key<InstanceInjector<Launcher>>() {});
+							bindIntoSet(new Key<InstanceInjector<?>>() {}, new Key<InstanceInjector<Launcher>>() {});
 
 							addDeclarativeBindingsFrom(Launcher.this);
 						}}),
@@ -196,9 +193,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	private void doStart(Injector injector) throws Exception {
-		injector.getInstanceOrNull(ConfigModuleService.class);
-		injector.getInstanceOrNull(JmxModuleService.class);
-		injector.getInstanceOrNull(TriggersModuleService.class);
 		serviceGraph = injector.getInstanceOrNull(ServiceGraph.class);
 		if (serviceGraph == null) {
 			return;

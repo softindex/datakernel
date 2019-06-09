@@ -16,13 +16,15 @@
 
 package io.datakernel.config;
 
+import io.datakernel.di.core.Injector;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import java.util.Properties;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class ConfigsModuleTest {
 	private static class TestClass {
@@ -119,13 +121,17 @@ public class ConfigsModuleTest {
 				return testClass;
 			}
 		};
-		Config config = ConfigModule.create(
-				Config.create()
-						.override(Config.ofProperties(properties1))
-						.override(Config.ofProperties(properties2))
-						.override(Config.ofProperties("not-existing.properties", true)))
-				.printEffectiveConfig()
-				.provideConfig();
+
+		Injector injector = Injector.of(
+				ConfigModule.create(() ->
+						Config.create()
+								.override(Config.ofProperties(properties1))
+								.override(Config.ofProperties(properties2))
+								.override(Config.ofProperties("not-existing.properties", true)))
+						.printEffectiveConfig()
+		);
+
+		Config config = injector.getInstance(Config.class);
 
 		assertEquals(1234, (int) config.get(ofInteger(), "port"));
 		assertEquals("Test phrase", config.get("msg"));

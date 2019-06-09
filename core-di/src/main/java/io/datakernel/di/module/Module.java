@@ -27,7 +27,7 @@ public interface Module {
 
 	@SuppressWarnings("unchecked")
 	default Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
-		Map<Key<?>, Multibinder<?>> resolvers = getMultibinders();
+		Map<Key<?>, Multibinder<?>> multibinders = getMultibinders();
 		return getBindingsMultimap().map(scopeBindings ->
 				scopeBindings.entrySet().stream()
 						.collect(toMap(
@@ -47,12 +47,12 @@ public interface Module {
 										case 1:
 											return bindings.iterator().next();
 										default:
-											Multibinder<?> resolver = resolvers.get(key);
-											if (resolver == null) {
+											Multibinder<?> multibinder = multibinders.get(key);
+											if (multibinder == null) {
 												throw new MultipleBindingsException(key, bindings);
 											}
 											// because Java generics are just broken :(
-											return ((Multibinder) resolver).resolve(bindings);
+											return ((Multibinder) multibinder).multibind(bindings);
 									}
 								})
 						));

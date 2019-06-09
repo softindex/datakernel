@@ -102,7 +102,7 @@ public final class ReflectionUtils {
 		if (binding == null) {
 			return null;
 		}
-		return binding.withInitializer(generateInjectingInitializer(key));
+		return binding.initialize(generateInjectingInitializer(key));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -224,7 +224,7 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
 		method.setAccessible(true);
 
-		return Binding.of(
+		return Binding.to(
 				args -> {
 					try {
 						return (T) method.invoke(module, args);
@@ -232,14 +232,13 @@ public final class ReflectionUtils {
 						throw new ProvisionFailedException(null, method, e);
 					}
 				},
-				toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters())).at(LocationInfo.from(method));
+				toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters()))
+				.at(LocationInfo.from(method));
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> Binding<T> bindingForGenericMethod(@Nullable Object module, Key<?> requestedKey, Method method) {
 		method.setAccessible(true);
-
-		Class<?> moduleType = module != null ? module.getClass() : null;
 
 		Type genericReturnType = method.getGenericReturnType();
 		Map<TypeVariable<?>, Type> mapping = Types.extractMatchingGenerics(genericReturnType, requestedKey.getType());
@@ -252,7 +251,7 @@ public final class ReflectionUtils {
 				})
 				.toArray(Dependency[]::new);
 
-		return (Binding<T>) Binding.of(
+		return (Binding<T>) Binding.to(
 				args -> {
 					try {
 						return method.invoke(module, args);
@@ -269,7 +268,7 @@ public final class ReflectionUtils {
 
 		Dependency[] dependencies = toDependencies(null, constructor.getParameters());
 
-		return Binding.of(
+		return Binding.to(
 				args -> {
 					try {
 						return constructor.newInstance(args);

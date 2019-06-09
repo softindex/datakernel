@@ -18,8 +18,11 @@ package io.datakernel.config;
 
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.service.BlockingService;
+import io.datakernel.di.module.Multibinder;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
@@ -34,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -49,28 +53,29 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	private Supplier<Config> configSupplier;
 	private Path effectiveConfigPath;
 	private Consumer<String> effectiveConfigConsumer;
-	private volatile boolean started;
 
-	private class ProtectedConfig implements Config {
+	static class ProtectedConfig implements Config {
 		private final Config config;
 		private final Map<String, Config> children;
+		private final AtomicBoolean started;
 
-		private ProtectedConfig(Config config) {
+		private ProtectedConfig(Config config, AtomicBoolean started) {
 			this.config = config;
+			this.started = started;
 			this.children = new LinkedHashMap<>();
 			config.getChildren().forEach((key, value) ->
-					this.children.put(key, new ProtectedConfig(value)));
+					this.children.put(key, new ProtectedConfig(value, started)));
 		}
 
 		@Override
 		public String getValue(String defaultValue) {
-			checkState(!started, "Config must be used during application start-up time only");
+			checkState(!started.get(), "Config must be used during application start-up time only");
 			return config.getValue(defaultValue);
 		}
 
 		@Override
 		public String getValue() throws NoSuchElementException {
-			checkState(!started, "Config must be used during application start-up time only");
+			checkState(!started.get(), "Config must be used during application start-up time only");
 			return config.getValue();
 		}
 
@@ -82,11 +87,8 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		@Override
 		public Config provideNoKeyChild(String key) {
 			checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
-			return new ProtectedConfig(config.provideNoKeyChild(key));
+			return new ProtectedConfig(config.provideNoKeyChild(key), started);
 		}
-	}
-
-	public interface ConfigModuleService extends BlockingService {
 	}
 
 	private ConfigModule(Supplier<Config> configSupplier) {
@@ -138,34 +140,35 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@Override
 	protected void configure() {
 		bind(Config.class).to(EffectiveConfig.class);
+		multibind(new Key<Set<Initializer<ConfigModule>>>() {}, Multibinder.toSet());
 	}
 
 	@Provides
-	EffectiveConfig provideConfig() {
-		Config config = new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()));
-		return EffectiveConfig.wrap(config);
+	EffectiveConfig effectiveConfig(ProtectedConfig protectedConfig) {
+		return EffectiveConfig.wrap(protectedConfig);
 	}
 
 	@Provides
-	ConfigModuleService service(EffectiveConfig config, @Optional Set<Initializer<ConfigModule>> initializers) {
+	ProtectedConfig protectedConfig() {
+		return new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()), new AtomicBoolean());
+	}
+
+	@ProvidesIntoSet
+	@OnStart
+	Runnable start(EffectiveConfig config, ProtectedConfig protectedConfig, @Optional Set<Initializer<ConfigModule>> initializers) {
 		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return new ConfigModuleService() {
-			@Override
-			public void start() {
-				started = true;
-				if (effectiveConfigPath != null) {
-					logger.info("Saving effective config to {}", effectiveConfigPath);
-					config.saveEffectiveConfigTo(effectiveConfigPath);
-				}
-				if (effectiveConfigConsumer != null) {
-					effectiveConfigConsumer.accept(config.renderEffectiveConfig());
-				}
-			}
+		return () -> doStart(config, protectedConfig);
+	}
 
-			@Override
-			public void stop() {
-			}
-		};
+	private void doStart(EffectiveConfig effectiveConfig, ProtectedConfig protectedConfig) {
+		protectedConfig.started.set(true);
+		if (effectiveConfigPath != null) {
+			logger.info("Saving effective config to {}", effectiveConfigPath);
+			effectiveConfig.saveEffectiveConfigTo(effectiveConfigPath);
+		}
+		if (effectiveConfigConsumer != null) {
+			effectiveConfigConsumer.accept(effectiveConfig.renderEffectiveConfig());
+		}
 	}
 
 }

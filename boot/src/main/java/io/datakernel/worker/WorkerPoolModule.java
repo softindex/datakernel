@@ -29,7 +29,7 @@ public final class WorkerPoolModule extends AbstractModule {
 			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
 				return null;
 			}
-			return Binding.of($ -> {
+			return Binding.to($ -> {
 				throw new RuntimeException("expected instance override for worker id after Injector.enterScope");
 			});
 		});

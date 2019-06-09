@@ -1,13 +1,9 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Name;
-import io.datakernel.di.core.Scope;
 import io.datakernel.di.annotation.KeySetAnnotation;
-import io.datakernel.di.core.BindingGraph;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.core.*;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
@@ -20,7 +16,6 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
 
-import static io.datakernel.di.module.Modules.multibinderToSet;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
@@ -61,7 +56,7 @@ public abstract class AbstractModule implements Module {
 	private void addKeyToSet(Name name, Key<?> key) {
 		Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
 		bind(setKey).toInstance(singleton(key));
-		multibind(setKey, multibinderToSet());
+		multibind(setKey, Multibinder.toSet());
 	}
 
 	protected final void addDeclarativeBindingsFrom(Object instance) {
@@ -103,8 +98,8 @@ public abstract class AbstractModule implements Module {
 			Factory<Object> factory = binding.getFactory();
 			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), name);
 
-			addBinding(scope, setKey, Binding.of(args -> singleton(factory.create(args)), binding.getDependencies()).at(binding.getLocation()));
-			multibind(setKey, multibinderToSet());
+			addBinding(scope, setKey, Binding.to(args -> singleton(factory.create(args)), binding.getDependencies()).at(binding.getLocation()));
+			multibind(setKey, Multibinder.toSet());
 			keySetsOf(annotations).forEach(keySet -> addKeyToSet(Name.of(keySet), setKey));
 		}
 	}
@@ -158,28 +153,70 @@ public abstract class AbstractModule implements Module {
 			if (this.binding != BindingGraph.PHANTOM) {
 				throw new IllegalStateException("Already mapped to a binding");
 			}
-			this.binding = binding.at(getLocation(BindingBuilder.class));
+			this.binding = binding;//.at(getLocation(BindingBuilder.class));
 			return this;
 		}
 
-		public BindingBuilder<T> to(Factory<T> factory, Key<?>... dependencies) {
-			return to(Binding.of(factory, dependencies));
+		public BindingBuilder<T> to(Factory<T> factory) {
+			return to(Binding.to(factory));
 		}
 
-		public BindingBuilder<T> to(Factory<T> factory, List<Key<?>> dependencies) {
-			return to(factory, dependencies.toArray(new Key[0]));
+		public BindingBuilder<T> to(Factory<T> factory, Class<?>[] dependencies) {
+			return to(Binding.to(factory, dependencies));
+		}
+
+		public BindingBuilder<T> to(Factory<T> factory, Key<?>[] dependencies) {
+			return to(Binding.to(factory, dependencies));
+		}
+
+		public BindingBuilder<T> to(Factory<T> factory, Dependency[] dependencies) {
+			return to(Binding.to(factory, dependencies));
 		}
 
 		public BindingBuilder<T> to(Class<? extends T> implementation) {
-			return to(Key.of(implementation));
+			return to(Binding.to(implementation));
 		}
 
 		public BindingBuilder<T> to(Key<? extends T> implementation) {
-			return to(impl -> impl, implementation);
+			return to(Binding.to(implementation));
+		}
+
+		public BindingBuilder<T> toInstance(@NotNull T instance) {
+			return to(Binding.toInstance(instance));
 		}
 
 		public BindingBuilder<T> to(Constructor0<T> constructor) {
-			return to(Binding.of(constructor));
+			return to(Binding.to(constructor));
+		}
+
+		public <T1> BindingBuilder<T> to(Constructor1<T1, T> constructor,
+				Class<T1> dependency1) {
+			return to(Binding.to(constructor, dependency1));
+		}
+
+		public <T1, T2> BindingBuilder<T> to(Constructor2<T1, T2, T> constructor,
+				Class<T1> dependency1, Class<T2> dependency2) {
+			return to(Binding.to(constructor, dependency1, dependency2));
+		}
+
+		public <T1, T2, T3> BindingBuilder<T> to(Constructor3<T1, T2, T3, T> constructor,
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3));
+		}
+
+		public <T1, T2, T3, T4> BindingBuilder<T> to(Constructor4<T1, T2, T3, T4, T> constructor,
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4));
+		}
+
+		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
+		}
+
+		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
+				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
+			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
 		public <T1> BindingBuilder<T> to(Constructor1<T1, T> constructor,
@@ -212,40 +249,6 @@ public abstract class AbstractModule implements Module {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
-		public <T1> BindingBuilder<T> to(Constructor1<T1, T> constructor,
-				Class<T1> dependency1) {
-			return to(Binding.of(constructor, dependency1));
-		}
-
-		public <T1, T2> BindingBuilder<T> to(Constructor2<T1, T2, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2) {
-			return to(Binding.of(constructor, dependency1, dependency2));
-		}
-
-		public <T1, T2, T3> BindingBuilder<T> to(Constructor3<T1, T2, T3, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
-			return to(Binding.of(constructor, dependency1, dependency2, dependency3));
-		}
-
-		public <T1, T2, T3, T4> BindingBuilder<T> to(Constructor4<T1, T2, T3, T4, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
-			return to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4));
-		}
-
-		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(Constructor5<T1, T2, T3, T4, T5, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
-			return to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
-		}
-
-		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(Constructor6<T1, T2, T3, T4, T5, T6, T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
-			return to(Binding.of(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
-		}
-
-		public BindingBuilder<T> toInstance(@NotNull T instance) {
-			return to(Binding.toInstance(instance).at(getLocation(BindingBuilder.class)));
-		}
-
 		public BindingBuilder<T> as(@NotNull Class<? extends Annotation> annotationType) {
 			return as(Name.of(annotationType));
 		}
@@ -263,7 +266,7 @@ public abstract class AbstractModule implements Module {
 
 			Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
 			bind(setKey).toInstance(singleton(key));
-			multibind(setKey, multibinderToSet());
+			multibind(setKey, Multibinder.toSet());
 			return this;
 		}
 	}
@@ -288,7 +291,20 @@ public abstract class AbstractModule implements Module {
 		}
 		builders.add((BindingBuilder<Object>) builder);
 		return builder;
+	}
 
+	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, T element) {
+		bindIntoSet(setOf, Binding.toInstance(element));
+	}
+
+	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, Key<T> item) {
+		bindIntoSet(setOf, Binding.to(item));
+	}
+
+	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, Binding<T> binding) {
+		Key<Set<S>> set = Key.ofType(Types.parameterized(Set.class, setOf.getType()), setOf.getName());
+		multibind(set, Multibinder.toSet());
+		bind(set).to(binding.mapInstance(Collections::singleton));
 	}
 
 	@SuppressWarnings("unchecked")
