@@ -16,12 +16,12 @@ import static java.util.Arrays.asList;
 public interface AsyncServletDecorator {
 	@NotNull AsyncServlet serve(@NotNull AsyncServlet servlet);
 
-	default AsyncServletDecorator combine(AsyncServletDecorator next) {
-		return servlet -> this.serve(next.serve(servlet));
+	static AsyncServletDecorator create() {
+		return servlet -> servlet;
 	}
 
-	static AsyncServletDecorator identity() {
-		return servlet -> servlet;
+	default AsyncServletDecorator then(AsyncServletDecorator next) {
+		return servlet -> this.serve(next.serve(servlet));
 	}
 
 	@NotNull
@@ -32,7 +32,7 @@ public interface AsyncServletDecorator {
 	@NotNull
 	static AsyncServletDecorator combineDecorators(List<AsyncServletDecorator> decorators) {
 		return decorators.stream()
-				.reduce(identity(), AsyncServletDecorator::combine);
+				.reduce(create(), AsyncServletDecorator::then);
 	}
 
 	static AsyncServletDecorator onRequest(Consumer<HttpRequest> consumer) {

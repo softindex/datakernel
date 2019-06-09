@@ -16,11 +16,8 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 public class ServletDecoratorExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
-		return combineDecorators(
-				mapException($ -> HttpResponse.ofCode(404).withPlainText("Error page")),
-				catchRuntimeExceptions(),
-				loadBody())
-				.serve(RoutingServlet.create()
+		return loadBody().serve(
+				RoutingServlet.create()
 						.with(GET, "/", StaticServlet.create(ofClassPath("static/wrapper"))
 								.withMappingTo("page.html"))
 						.with(POST, "/", request -> {
@@ -28,11 +25,13 @@ public class ServletDecoratorExample extends HttpServerLauncher {
 							if (text == null) {
 								return Promise.of(HttpResponse.redirect302("/"));
 							}
-							return Promise.of(HttpResponse.ok200().withPlainText(text));
+							return Promise.of(HttpResponse.ok200().withPlainText("Message: " + text));
 						})
 						.with(GET, "/failPage", request -> {
 							throw new RuntimeException();
-						}));
+						})
+						.then(catchRuntimeExceptions())
+						.then(mapException(e -> HttpResponse.ofCode(404).withPlainText("Error: " + e))));
 	}
 
 	public static void main(String[] args) throws Exception {

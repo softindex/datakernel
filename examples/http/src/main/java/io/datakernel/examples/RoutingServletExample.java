@@ -19,12 +19,16 @@ package io.datakernel.examples;
 import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpHeaderValue;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.http.AsyncServletDecorator.onResponse;
+import static io.datakernel.http.ContentTypes.HTML_UTF_8;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 
 public final class RoutingServletExample extends HttpServerLauncher {
@@ -43,7 +47,9 @@ public final class RoutingServletExample extends HttpServerLauncher {
 								"<a href=\"/\">Go home</a>"))))
 				.with("/*", request -> Promise.of(HttpResponse.ofCode(404)
 						.withBody(wrapUtf8("<h1>404</h1><p>Path '" + request.getRelativePath() + "' not found</p>" +
-								"<a href=\"/\">Go home</a>"))));
+								"<a href=\"/\">Go home</a>"))))
+				.then(onResponse(response ->
+						response.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(HTML_UTF_8))));
 	}
 
 	public static void main(String[] args) throws Exception {

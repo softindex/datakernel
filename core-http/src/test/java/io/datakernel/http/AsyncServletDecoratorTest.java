@@ -59,9 +59,9 @@ public class AsyncServletDecoratorTest {
 	@Test
 	public void testOnRequest() {
 		byte[] body = {0};
-		AsyncServlet rootServlet = AsyncServletDecorator.identity()
-				.combine(onRequest(request -> request.setBody(body)))
-				.combine(loadBody())
+		AsyncServlet rootServlet = AsyncServletDecorator.create()
+				.then(onRequest(request -> request.setBody(body)))
+				.then(loadBody())
 				.serve(request -> {
 					ByteBuf loadedBody = request.getBody();
 					assertArrayEquals(loadedBody.getArray(), body);

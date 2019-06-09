@@ -34,6 +34,10 @@ public interface AsyncServlet {
 	@NotNull
 	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
 
+	default AsyncServlet then(AsyncServletDecorator decorator) {
+		return decorator.serve(this);
+	}
+
 	@NotNull
 	static AsyncServlet of(@NotNull Function<HttpRequest, HttpResponse> fn) {
 		return request -> Promise.of(fn.apply(request));
