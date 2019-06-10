@@ -16,11 +16,11 @@
 
 package io.datakernel.service;
 
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
@@ -97,11 +97,9 @@ public final class WorkerNameTest {
 
 		@Provides
 		@Worker
-		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId,
-		                          @Named("Second") Element4 unusedString) {
+		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId, @Named("Second") Element4 unusedString) {
 			return new Element3();
 		}
-
 	}
 
 	@Test

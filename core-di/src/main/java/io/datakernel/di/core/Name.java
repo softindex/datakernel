@@ -17,14 +17,16 @@ public final class Name extends AbstractAnnotation {
 	}
 
 	public static Name of(Class<? extends Annotation> annotationType) {
-		checkArgument(isMarker(annotationType));
-		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class) || annotationType.isAnnotationPresent(KeySetAnnotation.class));
+		checkArgument(isMarker(annotationType), "Name by annotation type only accepts marker annotations with no arguments");
+		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class) || annotationType.isAnnotationPresent(KeySetAnnotation.class),
+				"Only annotations annotated with @NameAnnotation or @KeySetAnnotation meta-annotations are allowed");
 		return new Name(annotationType, null);
 	}
 
 	public static Name of(Annotation annotation) {
 		Class<? extends Annotation> annotationType = annotation.annotationType();
-		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class) || annotationType.isAnnotationPresent(KeySetAnnotation.class));
+		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class) || annotationType.isAnnotationPresent(KeySetAnnotation.class),
+				"Only annotations annotated with @NameAnnotation or @KeySetAnnotation meta-annotations are allowed");
 		return isMarker(annotationType) ?
 				new Name(annotationType, null) :
 				new Name(annotationType, annotation);

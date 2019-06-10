@@ -106,6 +106,12 @@ public final class Utils {
 		}
 	}
 
+	public static void checkArgument(boolean condition, String message) {
+		if (!condition) {
+			throw new IllegalArgumentException(message);
+		}
+	}
+
 	public static void printGraphVizLink(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
 		try {
 			String encoded = URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20");

@@ -93,12 +93,12 @@ public final class WorkerPool {
 	}
 
 	@Nullable
-	private <T> Instances<T> peekInstances(Class<T> type) {
+	public <T> Instances<T> peekInstances(Class<T> type) {
 		return peekInstances(Key.of(type));
 	}
 
 	@Nullable
-	private <T> Instances<T> peekInstances(Key<T> key) {
+	public <T> Instances<T> peekInstances(Key<T> key) {
 		if (!scopeInjectors[0].getBindings().get().containsKey(key)) return null;
 		Object[] instances = doPeekInstances(key);
 		if (Stream.of(instances).anyMatch(Objects::isNull)) return null;

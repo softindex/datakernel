@@ -37,10 +37,10 @@ public abstract class AbstractAnnotation {
 	}
 
 	public String getDisplayString() {
-		if (annotation != null) {
-			return ReflectionUtils.getShortName(annotation.toString()).replace("value=", "");
+		if (annotation == null) {
+			return "@" + ReflectionUtils.getShortName(annotationType.getName()) + "()";
 		}
-		return "@" + ReflectionUtils.getShortName(annotationType.getName()) + "()";
+		return ReflectionUtils.getShortName(annotation.toString());
 	}
 
 	@Override

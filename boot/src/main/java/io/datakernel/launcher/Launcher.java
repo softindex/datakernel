@@ -82,7 +82,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see ConfigModule
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
-	public static final Key<InstanceInjector<?>> KEY_INSTANCE_INJECTOR = new Key<InstanceInjector<?>>() {};
+	public static final Key<InstanceInjector<?>> POST_INJECTIONS = new Key<InstanceInjector<?>>() {};
 	private static final Key<CompletionStage<Void>> KEY_COMPLETION_STAGE = new Key<CompletionStage<Void>>() {};
 	private static final Key<Set<Runnable>> KEY_RUNNABLES = new Key<Set<Runnable>>() {};
 	private static final Key<InstanceInjector<Launcher>> KEY_LAUNCHER_INJECTOR = new Key<InstanceInjector<Launcher>>() {};
@@ -197,7 +197,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 							multibind(KEY_RUNNABLES.named(OnStart.class), Multibinder.toSet());
 							multibind(KEY_RUNNABLES.named(OnStop.class), Multibinder.toSet());
 
-							bindIntoSet(KEY_INSTANCE_INJECTOR, KEY_LAUNCHER_INJECTOR);
+							bindIntoSet(POST_INJECTIONS, KEY_LAUNCHER_INJECTOR);
 							bind(KEY_LAUNCHER_INJECTOR)
 									.to(Key.ofType(Types.parameterized(InstanceInjector.class, Launcher.this.getClass())));
 

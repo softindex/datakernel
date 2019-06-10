@@ -138,9 +138,8 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	}
 
 	public ConfigModule printEffectiveConfig() {
-		return withEffectiveConfigConsumer(effectiveConfig -> {
-			logger.info("Effective config:\n" + effectiveConfig);
-		});
+		return withEffectiveConfigConsumer(effectiveConfig ->
+				logger.info("Effective config:\n" + effectiveConfig));
 	}
 
 	@SuppressWarnings("unchecked")

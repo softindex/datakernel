@@ -30,7 +30,7 @@ public final class WorkerPoolModule extends AbstractModule {
 				return null;
 			}
 			return Binding.to($ -> {
-				throw new RuntimeException("expected instance override for worker id after Injector.enterScope");
+				throw new IllegalStateException("Expected instance override for the worker id by Injector#enterScope call");
 			});
 		});
 	}

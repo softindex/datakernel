@@ -63,5 +63,4 @@ public interface Multibinder<T> {
 	static <K, V> Multibinder<Map<K, V>> toMap() {
 		return (Multibinder) TO_MAP;
 	}
-
 }

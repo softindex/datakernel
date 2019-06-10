@@ -16,13 +16,15 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.core.Key;
 import io.datakernel.di.annotation.Named;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPools;
 import org.junit.Test;
 
 public class TestGenericGraph {
@@ -62,6 +64,11 @@ public class TestGenericGraph {
 		}
 
 		@Provides
+		WorkerPool pool(WorkerPools workerPools) {
+			return workerPools.createPool(WORKERS);
+		}
+
+		@Provides
 		@Worker
 		@Named("worker")
 		Pojo stringPojoOther() {
@@ -78,14 +85,15 @@ public class TestGenericGraph {
 
 	@Test
 	public void test() throws Exception {
-//		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
-//		Provider<ServiceGraph> serviceGraphProvider = injector.getProvider(ServiceGraph.class);
-//		ServiceGraph serviceGraph = serviceGraphProvider.get();
-//
-//		try {
-//			serviceGraph.startFuture().get();
-//		} finally {
-//			serviceGraph.stopFuture().get();
-//		}
+		Injector injector = Injector.of(new TestModule());
+		injector.getInstance(Pojo.class);
+
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+
+		try {
+			serviceGraph.startFuture().get();
+		} finally {
+			serviceGraph.stopFuture().get();
+		}
 	}
 }

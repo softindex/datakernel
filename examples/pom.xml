@@ -43,6 +43,7 @@
     <module>auth-tutorial</module>
     <module>todo-list-tutorial</module>
     <module>react-getting-started</module>
+    <module>di</module>
   </modules>
 
   <dependencies>
