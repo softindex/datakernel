@@ -78,7 +78,7 @@ public final class MessagingServlet implements WithMiddleware {
 								generateString(RESOURCE_ID_LENGTH);
 						return userContainerHolder.ensureUserContainer(privKey)
 								.then(userContainer -> userContainer.getMessagingService().sendCreateMessage(id, participants))
-								.map($ -> HttpResponse.ok200());
+								.map($ -> HttpResponse.ok200().withBody(id.getBytes(UTF_8)));
 					} catch (ParseException e) {
 						return Promise.<HttpResponse>ofException(e);
 					}
