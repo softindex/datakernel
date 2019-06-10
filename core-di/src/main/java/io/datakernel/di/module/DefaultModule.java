@@ -18,7 +18,6 @@ public final class DefaultModule implements Module {
 	private static final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> emptyTrie = Trie.leaf(new HashMap<>());
 
 	private static final Map<Type, Set<BindingGenerator<?>>> generators = new HashMap<>();
-	private static final Map<Integer, BindingTransformer<?>> transformers = new HashMap<>();
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
@@ -106,8 +105,8 @@ public final class DefaultModule implements Module {
 	}
 
 	@Override
-	public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
-		return transformers;
+	public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
+		return emptyMap();
 	}
 
 	@Override

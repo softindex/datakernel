@@ -4,7 +4,6 @@ import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
-import io.datakernel.di.module.BindingTransformer;
 import io.datakernel.di.module.Multibinder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -73,15 +72,6 @@ public final class Utils {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
 				throw new IllegalStateException("More than one conflict resolver per key");
-			}
-			return oldResolver;
-		}));
-	}
-
-	public static void mergeBindingTransformers(Map<Integer, BindingTransformer<?>> into, Map<Integer, BindingTransformer<?>> from) {
-		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
-			if (!oldResolver.equals(newResolver)) {
-				throw new IllegalStateException("More than one binding transformer with the same priority");
 			}
 			return oldResolver;
 		}));

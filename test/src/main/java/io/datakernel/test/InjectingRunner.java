@@ -7,7 +7,6 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.Types;
-import org.jetbrains.annotations.Nullable;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 
@@ -25,23 +24,20 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 		Class<? extends Module>[] value();
 	}
 
-	@Nullable
 	private final Module module;
-
 
 	public InjectingRunner(Class<?> testClass) throws InitializationError, ReflectiveOperationException {
 		super(testClass);
 
 		UseModules annotation = testClass.getAnnotation(UseModules.class);
 		if (annotation == null) {
-			module = null;
+			module = Module.empty();
 			return;
 		}
 
 		Class<?>[] classes = annotation.value();
-
 		if (classes.length == 0) {
-			module = null;
+			module = Module.empty();
 			return;
 		}
 
@@ -60,9 +56,6 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 	@Override
 	protected Object createTest() throws Exception {
 		Object instance = super.createTest();
-		if (module == null) {
-			return instance;
-		}
 		Key<InstanceInjector<Object>> key = Key.ofType(Types.parameterized(InstanceInjector.class, instance.getClass()));
 		Injector injector = Injector.of(module, new AbstractModule() {{
 			bind(key);

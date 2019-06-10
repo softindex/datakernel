@@ -1,9 +1,6 @@
 package io.datakernel.di.core;
 
 import io.datakernel.di.error.CannotGenerateBindingException;
-import io.datakernel.di.module.BindingGenerator;
-import io.datakernel.di.module.BindingProvider;
-import io.datakernel.di.module.BindingTransformer;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,7 +53,9 @@ public final class BindingGraph {
 				}
 
 				binding = ((BindingGenerator<T>) generator).generate(this, scope, key);
-				if (binding == null) return null;
+				if (binding == null) {
+					return null;
+				}
 
 				binding = ((BindingTransformer<T>) transformer).transform(this, scope, key, binding);
 
@@ -83,10 +82,9 @@ public final class BindingGraph {
 				}
 				known.put(key, generatedBinding);
 			} else {
-				Binding<Object> originalBinding = binding;
-				binding = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, binding);
-				if (binding != originalBinding) {
-					localBindings.put(key, binding);
+				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, binding);
+				if (!transformed.equals(binding)) {
+					localBindings.put(key, transformed);
 				}
 			}
 

@@ -1,7 +1,5 @@
-package io.datakernel.di.module;
+package io.datakernel.di.core;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
 import org.jetbrains.annotations.Nullable;
 
 @FunctionalInterface

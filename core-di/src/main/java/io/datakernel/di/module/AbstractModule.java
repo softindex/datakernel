@@ -26,7 +26,7 @@ public abstract class AbstractModule implements Module {
 	private boolean configured;
 
 	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
-	private final Map<Integer, BindingTransformer<?>> bindingTransformers = new HashMap<>();
+	private final Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
 	private final Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 	private final Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 	private final List<BindingBuilder<Object>> builders = new ArrayList<>();
@@ -271,7 +271,7 @@ public abstract class AbstractModule implements Module {
 		bindings.addAll(module.getBindingsMultimap(), multimapMerger());
 		combineMultimap(bindingGenerators, module.getBindingGenerators());
 		mergeMultibinders(multibinders, module.getMultibinders());
-		mergeBindingTransformers(bindingTransformers, module.getBindingTransformers());
+		combineMultimap(bindingTransformers, module.getBindingTransformers());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -313,11 +313,13 @@ public abstract class AbstractModule implements Module {
 	}
 
 	protected final <T> void transform(int priority, BindingTransformer<T> bindingTransformer) {
-		bindingTransformers.put(priority, bindingTransformer);
+		bindingTransformers.computeIfAbsent(priority, $ -> new HashSet<>()).add(bindingTransformer);
 	}
 
 	synchronized private void doConfigure() {
-		if (configured) return;
+		if (configured) {
+			return;
+		}
 		configured = true;
 		configure();
 		addDeclarativeBindingsFrom(this);
@@ -331,7 +333,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
+	public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
 		doConfigure();
 		return bindingTransformers;
 	}

@@ -4,7 +4,9 @@ import io.datakernel.di.error.CannotConstructException;
 import io.datakernel.di.error.CyclicDependensiesException;
 import io.datakernel.di.error.NoBindingsInScopeException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
-import io.datakernel.di.module.*;
+import io.datakernel.di.module.DefaultModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,8 +16,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.di.module.BindingGenerator.combinedGenerator;
-import static io.datakernel.di.module.BindingTransformer.combinedTransformer;
+import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
+import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
 import static java.util.Collections.emptyMap;
 
 @SuppressWarnings("unused")
@@ -89,7 +91,7 @@ public class Injector {
 
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
 			@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			@NotNull Map<Integer, BindingTransformer<?>> bindingTransformers,
+			@NotNull Map<Integer, Set<BindingTransformer<?>>> bindingTransformers,
 			@NotNull Map<Type, Set<BindingGenerator<?>>> bindingGenerators) {
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :

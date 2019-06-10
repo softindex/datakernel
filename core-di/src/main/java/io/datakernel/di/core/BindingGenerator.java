@@ -1,8 +1,5 @@
-package io.datakernel.di.module;
+package io.datakernel.di.core;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
 import io.datakernel.di.error.CannotGenerateBindingException;
 import org.jetbrains.annotations.Nullable;
 

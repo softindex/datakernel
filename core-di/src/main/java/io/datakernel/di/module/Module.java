@@ -1,8 +1,6 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
+import io.datakernel.di.core.*;
 import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.NoBindingsForKeyException;
 import io.datakernel.di.util.Trie;
@@ -19,7 +17,7 @@ import static java.util.stream.Collectors.toMap;
 public interface Module {
 	Trie<Scope, Map<Key<?>, Set<@Nullable Binding<?>>>> getBindingsMultimap();
 
-	Map<Integer, BindingTransformer<?>> getBindingTransformers();
+	Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers();
 
 	Map<Type, Set<BindingGenerator<?>>> getBindingGenerators();
 
@@ -68,7 +66,7 @@ public interface Module {
 			}
 
 			@Override
-			public Map<Integer, BindingTransformer<?>> getBindingTransformers() {
+			public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
 				return emptyMap();
 			}
 
