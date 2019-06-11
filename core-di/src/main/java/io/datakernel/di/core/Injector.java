@@ -11,14 +11,12 @@ import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
-import static java.util.Collections.emptyMap;
 
 @SuppressWarnings("unused")
 public class Injector {
@@ -82,17 +80,20 @@ public class Injector {
 
 	public static Injector of(Module... modules) {
 		Module module = Modules.combine(Modules.combine(modules), new DefaultModule());
-		return compile(null, new HashMap<>(), true, module.getBindings(), module.getBindingTransformers(), module.getBindingGenerators());
+		return compile(null, new HashMap<>(), true,
+				module.getBindings(),
+				combinedTransformer(module.getBindingTransformers()),
+				combinedGenerator(module.getBindingGenerators()));
 	}
 
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return compile(null, new HashMap<>(), true, bindings, emptyMap(), emptyMap());
+		return compile(null, new HashMap<>(), true, bindings, (provider, scope, key, binding) -> binding, (provider, scope, key) -> null);
 	}
 
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
 			@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			@NotNull Map<Integer, Set<BindingTransformer<?>>> bindingTransformers,
-			@NotNull Map<Type, Set<BindingGenerator<?>>> bindingGenerators) {
+			@NotNull BindingTransformer<?> transformer,
+			@NotNull BindingGenerator<?> generator) {
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :
 				new Injector(parent, bindings, instances);
@@ -100,7 +101,7 @@ public class Injector {
 		// well, can't do anything better than that
 		bindings.get().put(Key.of(Injector.class), Binding.toInstance(injector));
 
-		BindingGraph.completeBindingGraph(bindings, combinedTransformer(bindingTransformers), combinedGenerator(bindingGenerators));
+		BindingGraph.completeBindingGraph(bindings, transformer, generator);
 
 		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {

@@ -2,10 +2,14 @@ package io.datakernel.di.util;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import static java.util.Collections.emptyMap;
@@ -78,30 +82,23 @@ public final class Trie<K, V> {
 		return root;
 	}
 
-	public void dfs(K root, BiConsumer<K, V> consumer) {
-		children.forEach((key, child) -> child.dfs(key, consumer));
-		consumer.accept(root, payload);
+	private void dfs(IntFunction<K[]> arrayConstructor, K[] path, BiConsumer<K[], V> consumer) {
+		children.forEach((key, child) -> {
+			K[] newPath = arrayConstructor.apply(path.length + 1);
+			System.arraycopy(path, 0, newPath, 0, path.length);
+			newPath[path.length] = key;
+			child.dfs(arrayConstructor, newPath, consumer);
+		});
+		consumer.accept(path, payload);
+	}
+
+	public void dfs(IntFunction<K[]> arrayConstructor, BiConsumer<K[], V> consumer) {
+		dfs(arrayConstructor, arrayConstructor.apply(0), consumer);
 	}
 
 	public void dfs(Consumer<V> consumer) {
-		dfs(null, ($, payload) -> consumer.accept(payload));
-	}
-
-	public void bfs(K root, BiConsumer<K, V> consumer) {
-		consumer.accept(root, payload);
-		Map<K, Trie<K, V>> current = children;
-		while (!current.isEmpty()) {
-			Map<K, Trie<K, V>> next = new HashMap<>();
-			current.forEach((key, child) -> {
-				consumer.accept(key, child.get());
-				next.putAll(child.children);
-			});
-			current = next;
-		}
-	}
-
-	public void bfs(Consumer<V> consumer) {
-		bfs(null, ($, payload) -> consumer.accept(payload));
+		children.forEach((key, child) -> child.dfs(consumer));
+		consumer.accept(payload);
 	}
 
 	private static <K, V> void mergeInto(Trie<K, V> into, Trie<K, V> from, BiConsumer<V, V> merger) {

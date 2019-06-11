@@ -45,7 +45,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -118,11 +117,11 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	/**
-	 * Creates a Guice injector with modules and overrides from this launcher and
-	 * a special module which creates a members injector for this launcher.
-	 * Both of those are unused on their own, but on creation they do all the binding checks
-	 * so calling this method causes an exception to be thrown on any incorrect bindings
-	 * which is highly for testing.
+	 * Creates an injector with modules and overrides from this launcher.
+	 * On creation it does all the binding checks so calling this method
+	 * triggers a static check which causes an exception to be thrown on
+	 * any incorrect bindings (unsatisfied or cyclic dependencies)
+	 * which is highly useful for testing.
 	 */
 	public final void testInjector() {
 		createInjector(new String[0]);
@@ -148,19 +147,23 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.info("=== INJECTING DEPENDENCIES");
 
 			Injector injector = createInjector(args);
+
 			injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
+
 			for (InstanceInjector<?> instanceInjector : injector.getInstance(new Key<Set<InstanceInjector<?>>>() {})) {
 				Object instance = injector.getInstanceOrNull(instanceInjector.key());
-				if (instance != null) ((InstanceInjector<Object>) instanceInjector).inject(instance);
+				if (instance != null) {
+					((InstanceInjector<Object>) instanceInjector).inject(instance);
+				}
 			}
 
 			Set<Service> services = injector.getInstanceOr(new Key<Set<Service>>() {}, emptySet());
-			List<Service> startedServices = emptyList();
+			List<Service> startedServices = new ArrayList<>();
 
 			logger.info("=== STARTING APPLICATION");
 			try {
 				instantOfStart = Instant.now();
-				startedServices = startServices(services);
+				startedServices.addAll(startServices(services));
 				onStart();
 				onStart.complete(null);
 			} catch (InterruptedException | RuntimeException e) {
@@ -238,27 +241,29 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		for (Service service : services) {
 			if (exception.get() != null) {
 				latch.countDown();
-			} else {
-				service.start().whenComplete(($, e) -> {
-					synchronized (this) {
-						if (e == null) {
-							startedServices.add(service);
+				continue;
+			}
+			service.start().whenComplete(($, e) -> {
+				synchronized (this) {
+					if (e == null) {
+						startedServices.add(service);
+					} else {
+						if (e instanceof RuntimeException || e instanceof Error) {
+							Throwable e1 = exception.getAndSet(e);
+							if (e1 != null) {
+								e.addSuppressed(e1);
+							}
 						} else {
-							if (e instanceof RuntimeException || e instanceof Error) {
-								Throwable e1 = exception.getAndSet(e);
-								if (e1 != null) e.addSuppressed(e1);
+							if (exception.get() == null) {
+								exception.set(e);
 							} else {
-								if (exception.get() == null) {
-									exception.set(e);
-								} else {
-									exception.get().addSuppressed(e);
-								}
+								exception.get().addSuppressed(e);
 							}
 						}
 					}
-					latch.countDown();
-				});
-			}
+				}
+				latch.countDown();
+			});
 		}
 		latch.await();
 		if (exception.get() != null) {
@@ -280,24 +285,29 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		latch.await();
 	}
 
+	@SuppressWarnings("unchecked")
 	synchronized public Injector createInjector(String[] args) {
 		this.args = args;
 		return Injector.of(override(
 				combine(
 						getModule(),
 						new AbstractModule() {{
-							bind(String[].class).annotatedWith(Args.class).toInstance(args);
-							bind(Launcher.class).to(Key.ofType(Launcher.this.getClass()));
-							bind(Key.ofType(Launcher.this.getClass())).toInstance(Launcher.this);
+							Class<Launcher> subclass = (Class<Launcher>) Launcher.this.getClass();
 
-							multibind(new Key<Set<Service>>() {}, Multibinder.toSet());
+							bind(String[].class).annotatedWith(Args.class).toInstance(args);
+							bind(Launcher.class).to(subclass);
+							bind(subclass).toInstance(Launcher.this);
+
 							bindIntoSet(new Key<InstanceInjector<?>>() {}, new Key<InstanceInjector<Launcher>>() {});
-							bind(new Key<InstanceInjector<Launcher>>() {}).to(Key.ofType(Types.parameterized(InstanceInjector.class, Launcher.this.getClass())));
+							bind(new Key<InstanceInjector<Launcher>>() {}).to(Key.ofType(Types.parameterized(InstanceInjector.class, subclass)));
 
 							Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
+
 							bind(completionStageKey.named(OnStart.class)).toInstance(onStart);
 							bind(completionStageKey.named(OnRun.class)).toInstance(onRun);
 							bind(completionStageKey.named(OnComplete.class)).toInstance(onComplete);
+
+							multibind(new Key<Set<Service>>() {}, Multibinder.toSet());
 
 							addDeclarativeBindingsFrom(Launcher.this);
 						}}),

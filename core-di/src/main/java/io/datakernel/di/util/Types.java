@@ -26,6 +26,27 @@ public final class Types {
 		}
 	}
 
+	public static boolean isInheritedFrom(Type type, Type than) {
+		return isInheritedFrom(type, than, getGenericTypeMapping(type));
+	}
+
+	private static boolean isInheritedFrom(Type type, Type than, Map<TypeVariable<?>, Type> genericMapping) {
+		if (than == Object.class) {
+			return true;
+		}
+		if (matches(resolveTypeVariables(type, genericMapping), than)) {
+			return true;
+		}
+		Class<?> rawType = getRawType(type);
+
+		Type superclass = rawType.getGenericSuperclass();
+		if (superclass != null && isInheritedFrom(superclass, than, genericMapping)) {
+			return true;
+		}
+		return Arrays.stream(rawType.getGenericInterfaces())
+				.anyMatch(iface -> isInheritedFrom(iface, than, genericMapping));
+	}
+
 	public static boolean contains(Type type, Type sub) {
 		if (type.equals(sub)) {
 			return true;
@@ -43,13 +64,8 @@ public final class Types {
 		if (parameterized.getOwnerType() != null && contains(parameterized.getOwnerType(), sub)) {
 			return true;
 		}
-		Type[] typeArguments = parameterized.getActualTypeArguments();
-		for (Type argument : typeArguments) {
-			if (contains(argument, sub)) {
-				return true;
-			}
-		}
-		return false;
+		return Arrays.stream(parameterized.getActualTypeArguments())
+				.anyMatch(argument -> contains(argument, sub));
 	}
 
 	public static boolean matches(Type strict, Type pattern) {
@@ -58,17 +74,12 @@ public final class Types {
 		}
 		if (pattern instanceof WildcardType) {
 			WildcardType wildcard = (WildcardType) pattern;
-			if ((wildcard.getUpperBounds().length != 1 && wildcard.getUpperBounds()[0] != Object.class) || wildcard.getLowerBounds().length != 0) {
-				throw new IllegalArgumentException("Bounded wildcards are not supported yet");
-			}
-			return true;
+			return Arrays.stream(wildcard.getUpperBounds()).allMatch(bound -> isInheritedFrom(strict, bound))
+					&& Arrays.stream(wildcard.getLowerBounds()).allMatch(bound -> isInheritedFrom(bound, strict));
 		}
 		if (pattern instanceof TypeVariable) {
 			TypeVariable<?> typevar = (TypeVariable<?>) pattern;
-			if (typevar.getBounds().length != 1 && typevar.getBounds()[0] != Object.class) {
-				throw new IllegalArgumentException("Bounded wildcards are not supported yet");
-			}
-			return true;
+			return Arrays.stream(typevar.getBounds()).allMatch(bound -> isInheritedFrom(strict, bound));
 		}
 		if (strict instanceof GenericArrayType && pattern instanceof GenericArrayType) {
 			return matches(((GenericArrayType) strict).getGenericComponentType(), ((GenericArrayType) pattern).getGenericComponentType());

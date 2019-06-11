@@ -19,27 +19,27 @@ public abstract class Key<T> {
 	private final Name name;
 
 	public Key() {
-		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getTypeParameter());
 		this.name = null;
 	}
 
 	public Key(@Nullable Name name) {
-		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getTypeParameter());
 		this.name = name;
 	}
 
 	public Key(@NotNull String name) {
-		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getTypeParameter());
 		this.name = Name.of(name);
 	}
 
 	public Key(@NotNull Class<? extends Annotation> annotationType) {
-		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getTypeParameter());
 		this.name = Name.of(annotationType);
 	}
 
 	public Key(@NotNull Annotation annotation) {
-		this.type = ensureEquality(getSuperclassTypeParameter(getClass()));
+		this.type = ensureEquality(getTypeParameter());
 		this.name = Name.of(annotation);
 	}
 
@@ -119,12 +119,9 @@ public abstract class Key<T> {
 	}
 
 	@NotNull
-	private static Type getSuperclassTypeParameter(@NotNull Class<?> subclass) {
-		Type superclass = subclass.getGenericSuperclass();
-		if (superclass instanceof ParameterizedType) {
-			return ((ParameterizedType) superclass).getActualTypeArguments()[0];
-		}
-		throw new IllegalArgumentException("Unsupported type: " + superclass);
+	private Type getTypeParameter() {
+		// this cannot possibly fail so not even a check here
+		return ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
 	}
 
 	@NotNull
@@ -181,5 +178,4 @@ public abstract class Key<T> {
 	public String toString() {
 		return (name != null ? name.toString() + " " : "") + type.getTypeName();
 	}
-
 }

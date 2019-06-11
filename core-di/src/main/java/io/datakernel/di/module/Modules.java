@@ -22,6 +22,13 @@ public final class Modules {
 						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap(), emptyMap(), emptyMap());
 	}
 
+	public static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+			Map<Integer, Set<BindingTransformer<?>>> transformers,
+			Map<Type, Set<BindingGenerator<?>>> generators,
+			Map<Key<?>, Multibinder<?>> multibinders) {
+		return new ModuleImpl(bindings, transformers, generators, multibinders);
+	}
+
 	public static Module combine(Module... modules) {
 		return modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
@@ -66,6 +73,21 @@ public final class Modules {
 		multibinders.putAll(replacements.getMultibinders());
 
 		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, multibinders);
+	}
+
+	public static Module ignoreScopes(Module from) {
+		Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
+		Map<Key<?>, Scope[]> scopes = new HashMap<>();
+		from.getBindingsMultimap().dfs(Scope[]::new, (scope, localBindings) ->
+				localBindings.forEach((k, b) -> {
+					bindings.merge(k, b, ($, $2) -> {
+						Scope[] alreadyThere = scopes.get(k);
+						String where = alreadyThere.length == 0 ? "in root" : "in scope " + getScopeDisplayString(alreadyThere);
+						throw new IllegalStateException("Duplicate key " + k + ", already defined " + where + " and in scope " + getScopeDisplayString(scope));
+					});
+					scopes.put(k, scope);
+				}));
+		return new ModuleImpl(Trie.leaf(bindings), from.getBindingTransformers(), from.getBindingGenerators(), from.getMultibinders());
 	}
 
 	private static final Function<Set<Binding<?>>, Binding<?>> ERRORS_ON_DUPLICATE = bindings -> {

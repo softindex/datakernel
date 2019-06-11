@@ -9,7 +9,10 @@ import io.datakernel.di.error.MultipleBindingsException;
 import io.datakernel.di.error.UnsatisfiedDependenciesException;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Multibinder;
+import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
@@ -17,6 +20,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -752,5 +756,73 @@ public final class TestDI {
 		Set<Key<?>> keys2 = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet2.class)) {});
 
 		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
+	}
+
+	@Test
+	public void sophisticatedMatches() {
+
+		Type funType = new Key<List<? extends Collection<? extends Number>>>() {}.getType();
+
+		assertTrue(Types.matches(new Key<List<Set<Integer>>>() {}.getType(), funType));
+		assertTrue(Types.matches(new Key<List<HashSet<Integer>>>() {}.getType(), funType));
+		assertTrue(Types.matches(new Key<List<LinkedHashSet<Float>>>() {}.getType(), funType));
+
+		assertFalse(Types.matches(new Key<List<Set<String>>>() {}.getType(), funType));
+		assertFalse(Types.matches(new Key<List<List<Object>>>() {}.getType(), funType));
+
+		assertFalse(Types.matches(new Key<Set<Set<Integer>>>() {}.getType(), funType));
+		assertFalse(Types.matches(new Key<Set<Integer>>() {}.getType(), funType));
+
+		assertTrue(Types.isInheritedFrom(new Key<Set<Integer>>() {}.getType(), Object.class));
+
+		assertTrue(Types.matches(new Key<Set<Set<Integer>>>() {}.getType(), new Key<Set<?>>() {}.getType()));
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	@ScopeAnnotation
+	@interface Scope1 {
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	@ScopeAnnotation
+	@interface Scope2 {
+	}
+
+	@Test
+	public void ignoringScopes() {
+		Module module = new AbstractModule() {
+
+			@Provides
+			@Scope1
+			Double first() {
+				return 27d;
+			}
+
+			@Provides
+			@Scope2
+			Float second() {
+				return 34f;
+			}
+
+			@Provides
+			Integer top() {
+				return 42;
+			}
+
+			@Provides
+			@Scopes({Scope1.class, Scope2.class})
+			String deeper() {
+				return "deeper";
+			}
+		};
+
+		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getBindings();
+
+		assertEquals(0, flattened.getChildren().size());
+		assertEquals(Stream.of(Double.class, Float.class, Integer.class, String.class)
+				.map(Key::of)
+				.collect(toSet()), flattened.get().keySet());
 	}
 }

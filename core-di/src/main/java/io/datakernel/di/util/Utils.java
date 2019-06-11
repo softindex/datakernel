@@ -43,6 +43,10 @@ public final class Utils {
 		return ss;
 	}
 
+	public static String getScopeDisplayString(Scope[] scope) {
+		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", ""));
+	}
+
 	@NotNull
 	public static <K, V> Map<K, V> flattenMultimap(Map<K, Set<V>> multimap, Function<K, Function<Set<V>, V>> reducers) {
 		return multimap.entrySet().stream()
@@ -71,7 +75,7 @@ public final class Utils {
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
-				throw new IllegalStateException("More than one conflict resolver per key");
+				throw new IllegalStateException("More than one multibinder per key");
 			}
 			return oldResolver;
 		}));
@@ -82,14 +86,14 @@ public final class Utils {
 	}
 
 	public static <T> Set<T> union(Set<T> first, Set<T> second) {
-		Set<T> result = new HashSet<>((first.size() + second.size()) * 4 / 3);
+		Set<T> result = new HashSet<>((first.size() + second.size()) * 4 / 3 + 1);
 		result.addAll(first);
 		result.addAll(second);
 		return result;
 	}
 
 	public static <K, V> Map<K, V> override(Map<K, V> into, Map<K, V> from) {
-		Map<K, V> result = new HashMap<>((from.size() + into.size()) * 4 / 3);
+		Map<K, V> result = new HashMap<>((from.size() + into.size()) * 4 / 3 + 1);
 		result.putAll(from);
 		result.putAll(into);
 		return result;
@@ -204,7 +208,7 @@ public final class Utils {
 	}
 
 	private static String getScopeId(Scope[] scope) {
-		return Arrays.stream(scope).map(Scope::toString).collect(joining("->", "()", ""));
+		return Arrays.stream(scope).map(Scope::toString).collect(joining("->", "()->", ""));
 	}
 
 	@Nullable
