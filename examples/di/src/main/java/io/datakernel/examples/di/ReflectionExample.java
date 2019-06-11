@@ -46,7 +46,7 @@ import java.util.logging.Logger;
  * Datakernel DI also comes with high-level reflection DSL facade to make it similar to other DI frameworks for the ease of transition
  * and also because the reflection DSL is pretty declarative and consise.
  */
-public final class NamingExample {
+public final class ReflectionExample {
 
 	interface MessageSender {
 
@@ -104,9 +104,14 @@ public final class NamingExample {
 		protected void configure() {
 			bind(Logger.class).toInstance(Logger.getLogger("example"));
 
+			// it knows how to make instances of impls because they have inject annotations
+			// allowing us to know how they can be created
+			// we never automagically create instances of unaware classes
+
 			bind(MessageSender.class).annotatedWith(Name.of("first")).to(ConsoleMessageSenderImpl.class);
 			bind(Key.of(MessageSender.class, SecondKey.class)).to(LoggingMessageSenderImpl.class);
 
+			// same as above, just trigger the automatic factory generation from the marked constructor
 			bind(Application.class);
 		}
 	}

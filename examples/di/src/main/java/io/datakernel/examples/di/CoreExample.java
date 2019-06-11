@@ -47,19 +47,31 @@ public final class CoreExample {
 		}
 	}
 
+	static class SomeModuleWithImpls extends AbstractModule {
+
+		@Override
+		protected void configure() {
+			// this module knows how to make an instance of ConsoleMessageSenderImpl
+			// no reflection yet
+			bind(ConsoleMessageSenderImpl.class).to(ConsoleMessageSenderImpl::new);
+		}
+	}
+
 	static class ApplicationModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			bind(ConsoleMessageSenderImpl.class).to(ConsoleMessageSenderImpl::new);
 
+			// we *bind* the interface to its implementation, just like any other DI
 			bind(MessageSender.class).to(ConsoleMessageSenderImpl.class);
 
+			// and also teach it how to make an application instance
 			bind(Application.class).to(Application::new, MessageSender.class);
 		}
 	}
 
 	public static void main(String[] args) {
-		Injector injector = Injector.of(new ApplicationModule());
+		Injector injector = Injector.of(new SomeModuleWithImpls(), new ApplicationModule());
+
 		Application application = injector.getInstance(Application.class);
 
 		application.hello();

@@ -11,7 +11,8 @@ import static java.util.Arrays.asList;
 
 /**
  * A Key class is a type token by itself, so you can construct complex keys with long generics nicely.
- * If you dont like the excess subclassing, you can use Types.parameterized, as shown in getInstance call.
+ * If you dont like the excess subclassing, you can use Types.parameterized (or even Types.arrayOf),
+ * as shown in getInstance call.
  */
 public final class TypeTokenExample {
 
@@ -24,7 +25,7 @@ public final class TypeTokenExample {
 		Key<List<String>> key = Key.ofType(Types.parameterized(List.class, String.class));
 		System.out.println(injector.getInstance(key));
 
-		Key<List<List<String>>> complex = Key.ofType(Types.parameterized(List.class, Types.parameterized(List.class, String.class)));
+		Key<?> complex = Key.ofType(Types.parameterized(List.class, Types.parameterized(List.class, String.class)));
 		Key<List<List<String>>> subclassedButTypesafe = new Key<List<List<String>>>() {};
 		System.out.println("complex == subclassedButTypesafe = " + (complex.equals(subclassedButTypesafe)));
 	}
