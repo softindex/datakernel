@@ -9,13 +9,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
-import java.util.Set;
 
 import static io.datakernel.di.util.Types.ensureEquality;
 
 public abstract class Key<T> {
-	public static final Key<Set<Key<?>>> KEY_SET = new Key<Set<Key<?>>>() {};
-
 	@NotNull
 	private final Type type;
 	@Nullable

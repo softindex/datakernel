@@ -25,7 +25,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
-import io.datakernel.launcher.OnStart;
+import io.datakernel.service.Service;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
@@ -43,10 +43,12 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Turns on support of Jmx in application.
@@ -174,10 +176,20 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	@ProvidesIntoSet
-	@OnStart
-	Runnable start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
+	Service start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
 		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return () -> doStart(injector, jmxRegistry, mbeanFactory);
+		return new Service() {
+			@Override
+			public CompletableFuture<?> start() {
+				doStart(injector, jmxRegistry, mbeanFactory);
+				return completedFuture(null);
+			}
+
+			@Override
+			public CompletableFuture<?> stop() {
+				return completedFuture(null);
+			}
+		};
 	}
 
 	private void doStart(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {

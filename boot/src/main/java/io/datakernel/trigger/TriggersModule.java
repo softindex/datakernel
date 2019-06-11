@@ -24,7 +24,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.KeyWithWorkerData;
-import io.datakernel.launcher.OnStart;
+import io.datakernel.service.Service;
 import io.datakernel.util.DIUtils;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -32,12 +32,14 @@ import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.util.DIUtils.prettyPrintSimpleKeyName;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
 	private Function<Key<?>, String> keyToString = DIUtils::prettyPrintSimpleKeyName;
@@ -127,10 +129,20 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@ProvidesIntoSet
-	@OnStart
-	Runnable start(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
+	Service start(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
 		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return () -> initialize(injector);
+		return new Service() {
+			@Override
+			public CompletableFuture<?> start() {
+				initialize(injector);
+				return completedFuture(null);
+			}
+
+			@Override
+			public CompletableFuture<?> stop() {
+				return completedFuture(null);
+			}
+		};
 	}
 
 	@SuppressWarnings("unchecked")

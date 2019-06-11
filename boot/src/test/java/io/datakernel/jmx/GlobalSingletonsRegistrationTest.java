@@ -3,7 +3,7 @@ package io.datakernel.jmx;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.jmx.GlobalSingletonsRegistrationTest.GlobalSingletonClass1.CustomClass;
-import io.datakernel.launcher.OnStart;
+import io.datakernel.service.Service;
 import org.junit.Test;
 
 import javax.management.MBeanServer;
@@ -27,8 +27,9 @@ public class GlobalSingletonsRegistrationTest {
 				JmxModule.create()
 						.withGlobalSingletons(globalSingletonClass2)
 		);
-
-		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		ObjectName found;
 		try {
 			ObjectName objectName = server.queryNames(new ObjectName("*:type=" + GlobalSingletonClass2.class.getSimpleName() + ",*"), null).iterator().next();
@@ -48,8 +49,9 @@ public class GlobalSingletonsRegistrationTest {
 				JmxModule.create()
 						.withGlobalSingletons(globalSingletonClass1)
 		);
-
-		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		ObjectName found;
 		MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 		try {

@@ -17,9 +17,10 @@
 package io.datakernel.service;
 
 import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.util.ScopedValue;
 import io.datakernel.di.util.Trie;
 import io.datakernel.eventloop.Eventloop;
@@ -255,6 +256,21 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		public String toString() {
 			return key.toString() + (workerPoolId == 0 ? "" : ":" + workerPoolId);
 		}
+	}
+
+	@ProvidesIntoSet
+	Service service(ServiceGraph serviceGraph) {
+		return new Service() {
+			@Override
+			public CompletableFuture<?> start() {
+				return serviceGraph.startFuture();
+			}
+
+			@Override
+			public CompletableFuture<?> stop() {
+				return serviceGraph.stopFuture();
+			}
+		};
 	}
 
 	@Provides

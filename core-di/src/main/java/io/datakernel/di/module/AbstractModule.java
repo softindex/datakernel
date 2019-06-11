@@ -15,7 +15,6 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
 
-import static io.datakernel.di.core.Key.KEY_SET;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
@@ -47,7 +46,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	private void addKeyToSet(Name name, Key<?> key) {
-		Key<Set<Key<?>>> setKey = KEY_SET.named(name);
+		Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
 		bind(setKey).toInstance(singleton(key));
 		multibind(setKey, Multibinder.toSet());
 	}
@@ -257,7 +256,7 @@ public abstract class AbstractModule implements Module {
 		public BindingBuilder<T> as(@NotNull Name name) {
 			checkArgument(name.isMarkedBy(KeySetAnnotation.class));
 
-			Key<Set<Key<?>>> setKey = KEY_SET.named(name);
+			Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
 			bind(setKey).toInstance(singleton(key));
 			multibind(setKey, Multibinder.toSet());
 			return this;

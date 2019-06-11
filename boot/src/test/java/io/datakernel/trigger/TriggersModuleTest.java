@@ -23,7 +23,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.launcher.OnStart;
+import io.datakernel.service.Service;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
@@ -57,7 +57,7 @@ public class TriggersModuleTest {
 	}
 
 	@Test
-	public void testWithSeveralWorkerPools() {
+	public void testWithSeveralWorkerPools() throws Exception {
 		int firstPoolSize = 10;
 		int secondPoolSize = 5;
 		Injector injector = Injector.of(
@@ -95,7 +95,9 @@ public class TriggersModuleTest {
 		);
 		injector.getInstance(Key.of(WorkerPool.class, "first")).getInstances(String.class);
 		injector.getInstance(Key.of(WorkerPool.class, "second")).getInstances(String.class);
-		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
@@ -109,7 +111,7 @@ public class TriggersModuleTest {
 	}
 
 	@Test
-	public void testMultiModule() {
+	public void testMultiModule() throws Exception {
 		Injector injector = Injector.of(
 				new AbstractModule() {
 					@Provides
@@ -118,28 +120,28 @@ public class TriggersModuleTest {
 					}
 
 					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer(Eventloop eventloop) {
+					Initializer<TriggersModule> triggersModuleInitializer1(Eventloop eventloop) {
 						return triggersModule -> triggersModule
 								.with(Eventloop.class, Severity.HIGH, "test", $ -> TriggerResult.create());
 					}
-				},
-				new AbstractModule() {
+
 					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer() {
+					Initializer<TriggersModule> triggersModuleInitializer2() {
 						return triggersModule -> triggersModule
 								.with(Eventloop.class, Severity.HIGH, "testModule1", $ -> TriggerResult.create());
 					}
-				},
-				new AbstractModule() {
+
 					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer() {
+					Initializer<TriggersModule> triggersModuleInitializer3() {
 						return triggersModule -> triggersModule
 								.with(Eventloop.class, Severity.HIGH, "testModule2", $ -> TriggerResult.create());
 					}
 				},
 				TriggersModule.create()
 		);
-		injector.getInstance(new Key<Set<Runnable>>(OnStart.class) {}).forEach(Runnable::run);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
