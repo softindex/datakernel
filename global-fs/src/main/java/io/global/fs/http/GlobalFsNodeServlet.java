@@ -48,9 +48,6 @@ public final class GlobalFsNodeServlet {
 		return RoutingServlet.create()
 				.with(POST, "/" + UPLOAD + "/:space/*", request -> {
 					String parameterSpace = request.getPathParameter("space");
-					if (parameterSpace == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
 						String path = request.getRelativePath();
@@ -66,9 +63,6 @@ public final class GlobalFsNodeServlet {
 				})
 				.with(GET, "/" + DOWNLOAD + "/:space/*", request -> {
 					String spaceParam = request.getPathParameter("space");
-					if (spaceParam == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(spaceParam);
 						long[] range = parseRange(request);
@@ -84,9 +78,6 @@ public final class GlobalFsNodeServlet {
 				.with(GET, "/" + LIST + "/:space/:name", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					String glob = request.getPathParameter("glob");
-					if (parameterSpace == null || glob == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
 						return node.listEntities(space, glob)
@@ -100,10 +91,6 @@ public final class GlobalFsNodeServlet {
 				})
 				.with(GET, "/" + GET_METADATA + "/:space/*", request -> {
 					String parameterSpace = request.getPathParameter("space");
-					String path = request.getPathParameter("path");
-					if (parameterSpace == null || path == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
 						return node.getMetadata(space, request.getRelativePath())
@@ -118,16 +105,13 @@ public final class GlobalFsNodeServlet {
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
-							if (parameterSpace == null) {
-								return Promise.<HttpResponse>ofException(new ParseException());
-							}
 							try {
 								PubKey space = PubKey.fromString(parameterSpace);
 								SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.getArray());
 								return node.delete(space, checkpoint)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}));
 	}

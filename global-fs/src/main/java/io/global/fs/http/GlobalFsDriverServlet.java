@@ -55,12 +55,8 @@ public final class GlobalFsDriverServlet {
 	public static RoutingServlet create(GlobalFsDriver driver) {
 		return RoutingServlet.create()
 				.with(GET, "/download/:space/*", request -> {
-					String parameterSpace = request.getPathParameter("space");
-					if (parameterSpace == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
-						PubKey space = PubKey.fromString(parameterSpace);
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						SimKey simKey = getSimKey(request);
 						String name = request.getRelativePath();
 						return driver.getMetadata(space, name)
@@ -99,9 +95,6 @@ public final class GlobalFsDriverServlet {
 				})
 				.with("/list/:space", request -> {
 					String space = request.getPathParameter("space");
-					if (space == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						String glob = request.getQueryParameter("glob");
 						return driver.listEntities(PubKey.fromString(space), glob != null ? glob : "**")
@@ -114,10 +107,6 @@ public final class GlobalFsDriverServlet {
 				})
 				.with("/getMetadata/:space/*", request -> {
 					String space = request.getPathParameter("space");
-					String name = request.getPathParameter("name");
-					if (space == null || name == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						return driver.getMetadata(PubKey.fromString(space), request.getRelativePath())
 								.map(list -> HttpResponse.ok200()

@@ -109,19 +109,12 @@ public final class RawServerServlet implements AsyncServlet {
 				})
 				.with(POST, "/" + SAVE + "/:pubKey/:name", loadBody()
 						.serve(req -> {
-							ByteBuf body = req.getBody();
-							String pubKey = req.getPathParameter("pubKey");
-							String name = req.getPathParameter("name");
-							if (pubKey == null || name == null) {
-								return parseException;
-							}
-
 							try {
-								Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), body.getString(UTF_8));
-								return node.save(urlDecodeRepositoryId(pubKey, name), commits)
+								Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), req.getBody().getString(UTF_8));
+								return node.save(urlDecodeRepositoryId(req.getPathParameter("pubKey"), req.getPathParameter("name")), commits)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}))
 				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", loadBody()
@@ -129,9 +122,6 @@ public final class RawServerServlet implements AsyncServlet {
 							ByteBuf body = req.getBody();
 							String pubKey = req.getPathParameter("pubKey");
 							String name = req.getPathParameter("name");
-							if (pubKey == null || name == null) {
-								return parseException;
-							}
 
 							try {
 								Set<SignedData<RawCommitHead>> heads = fromJson(ofSet(SIGNED_COMMIT_HEAD_JSON), body.getString(UTF_8));
@@ -145,7 +135,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String commitId = req.getQueryParameter("commitId");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null || commitId == null) {
+					if (commitId == null) {
 						return parseException;
 					}
 
@@ -165,20 +155,18 @@ public final class RawServerServlet implements AsyncServlet {
 								return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}))
 				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
 					String id = req.getQueryParameter("id");
-					String pubKey = req.getPathParameter("pubKey");
-					String name = req.getPathParameter("name");
-					if (id == null || pubKey == null || name == null) {
+					if (id == null) {
 						return parseException;
 					}
 
 					try {
 						return node.loadSnapshot(
-								urlDecodeRepositoryId(pubKey, name),
+								urlDecodeRepositoryId(req.getPathParameter("pubKey"), req.getPathParameter("name")),
 								urlDecodeCommitId(id))
 								.map(maybeSnapshot -> maybeSnapshot
 										.map(snapshot -> HttpResponse.ok200()
@@ -193,7 +181,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String snapshotsQuery = req.getQueryParameter("snapshots");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (snapshotsQuery == null || pubKey == null || name == null) {
+					if (snapshotsQuery == null) {
 						return parseException;
 					}
 
@@ -208,9 +196,6 @@ public final class RawServerServlet implements AsyncServlet {
 				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null) {
-						return parseException;
-					}
 
 					try {
 						return node.getHeads(urlDecodeRepositoryId(pubKey, name))
@@ -225,7 +210,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String lastHeadsQuery = req.getQueryParameter("lastHeads");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (lastHeadsQuery == null || pubKey == null || name == null) {
+					if (lastHeadsQuery == null) {
 						return parseException;
 					}
 
@@ -250,16 +235,13 @@ public final class RawServerServlet implements AsyncServlet {
 						.serve(req -> {
 							ByteBuf body = req.getBody();
 							String owner = req.getPathParameter("owner");
-							if (owner == null) {
-								return parseException;
-							}
 
 							try {
 								return node.shareKey(PubKey.fromString(owner),
 										fromJson(SIGNED_SHARED_KEY_JSON, body.getString(UTF_8)))
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}))
 				.with(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> {
@@ -268,9 +250,6 @@ public final class RawServerServlet implements AsyncServlet {
 					try {
 						owner = urlDecodePubKey(req.getPathParameter("owner"));
 						String hashParam = req.getPathParameter("hash");
-						if (hashParam == null) {
-							return Promise.ofException(new ParseException());
-						}
 						hash = Hash.fromString(hashParam);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -302,15 +281,12 @@ public final class RawServerServlet implements AsyncServlet {
 								return node.sendPullRequest(pullRequest)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}))
 				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (pubKey == null || name == null) {
-						return parseException;
-					}
 
 					try {
 						return node.getPullRequests(urlDecodeRepositoryId(pubKey, name))
@@ -324,7 +300,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String startNodes = req.getQueryParameter("startNodes");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (startNodes == null || pubKey == null || name == null) {
+					if (startNodes == null) {
 						return parseException;
 					}
 
@@ -346,7 +322,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					String headsQueryString = req.getQueryParameter("heads");
-					if (pubKey == null || name == null || headsQueryString == null) {
+					if (headsQueryString == null) {
 						return parseException;
 					}
 

@@ -53,7 +53,7 @@ public final class StructuredCodecs {
 		public Character decode(StructuredInput in) throws ParseException {
 			String v = in.readString();
 			if (v.length() == 1) return v.charAt(0);
-			throw new ParseException();
+			throw new ParseException("Read a string with length != 1 while trying to read a character");
 		}
 	};
 

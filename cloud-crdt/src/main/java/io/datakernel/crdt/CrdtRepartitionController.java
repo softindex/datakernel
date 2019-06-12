@@ -75,7 +75,7 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 						splitter.<K>newOutput().streamTo(remover);
 						return downloader.streamTo(splitter.getInput());
 					} else {
-						StacklessException exception = new StacklessException();
+						StacklessException exception = new StacklessException("Repartition exceptions:");
 						all.getValue1().consume(Cancellable::cancel, exception::addSuppressed);
 						all.getValue2().consume(Cancellable::cancel, exception::addSuppressed);
 						all.getValue3().consume(Cancellable::cancel, exception::addSuppressed);

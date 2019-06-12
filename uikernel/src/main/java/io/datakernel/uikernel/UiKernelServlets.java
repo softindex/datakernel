@@ -91,7 +91,7 @@ public class UiKernelServlets {
 						return model.create(obj).map(response ->
 								createResponse(response.toJson(gson, model.getIdType())));
 					} catch (ParseException e) {
-						return Promise.ofException((Throwable) e);
+						return Promise.ofException(e);
 					}
 				});
 	}
@@ -106,19 +106,15 @@ public class UiKernelServlets {
 						return model.update(list).map(result ->
 								createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
 					} catch (ParseException e) {
-						return Promise.ofException((Throwable) e);
+						return Promise.ofException(e);
 					}
 				});
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
 		return request -> {
-			String idString = request.getPathParameter("id");
-			if (idString == null) {
-				return Promise.ofException(new ParseException());
-			}
 			try {
-				K id = fromJson(gson, idString, model.getIdType());
+				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
 				return model.delete(id).map(response -> {
 					HttpResponse res = HttpResponse.ok200();
 					if (response.hasErrors()) {

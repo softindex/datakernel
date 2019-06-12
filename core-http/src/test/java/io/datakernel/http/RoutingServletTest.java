@@ -239,8 +239,7 @@ public final class RoutingServletTest {
 	public void testParameter() {
 		AsyncServlet printParameters = request -> {
 			String body = request.getPathParameter("id")
-					+ " " + request.getPathParameter("uid")
-					+ " " + request.getPathParameter("eid");
+					+ " " + request.getPathParameter("uid");
 			ByteBuf bodyByteBuf = wrapUtf8(body);
 			return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
 		};
@@ -250,8 +249,8 @@ public final class RoutingServletTest {
 				.with(GET, "/:id/a/:uid", printParameters);
 
 		System.out.println("Parameter test " + DELIM);
-		check(main.serve(HttpRequest.get("http://example.com/123/a/456/b/789")), "123 456 789", 200);
-		check(main.serve(HttpRequest.get("http://example.com/555/a/777")), "555 777 null", 200);
+		check(main.serve(HttpRequest.get("http://example.com/123/a/456/b/789")), "123 456", 200);
+		check(main.serve(HttpRequest.get("http://example.com/555/a/777")), "555 777", 200);
 		check(main.serve(HttpRequest.get("http://example.com")), "", 404);
 		System.out.println();
 	}

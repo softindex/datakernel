@@ -54,12 +54,8 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 							}
 						}))
 				.with(GET, "/find/:pubKey", request -> {
-					String parameterPubKey = request.getPathParameter("pubKey");
-					if (parameterPubKey == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
-						PubKey pubKey = PubKey.fromString(parameterPubKey);
+						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
 						return driver.find(pubKey)
 								.map(data -> HttpResponse.ok200()
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(JSON_UTF_8))
@@ -72,7 +68,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 						.serve(request -> {
 							String parameterReceiver = request.getPathParameter("receiver");
 							String key = request.getCookie("Key");
-							if (parameterReceiver == null || key == null) {
+							if (key == null) {
 								return Promise.ofException(new ParseException());
 							}
 							try {
@@ -92,7 +88,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 				.with(GET, "/getSharedKey/:hash", request -> {
 					String key = request.getCookie("Key");
 					String parameterHash = request.getPathParameter("hash");
-					if (key == null || parameterHash == null) {
+					if (key == null) {
 						return Promise.ofException(new ParseException());
 					}
 					try {

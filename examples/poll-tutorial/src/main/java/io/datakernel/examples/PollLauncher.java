@@ -49,11 +49,7 @@ public final class PollLauncher extends HttpServerLauncher {
 				//[END REGION_1]
 				//[START REGION_2]
 				.with(GET, "/poll/:id", request -> {
-					String idString = request.getPathParameter("id");
-					if (idString == null) {
-						return Promise.of(HttpResponse.redirect302("/"));
-					}
-					int id = Integer.parseInt(idString);
+					int id = Integer.parseInt(request.getPathParameter("id"));
 					return Promise.of(HttpResponse.ok200()
 							.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
 				})

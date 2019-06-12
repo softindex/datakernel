@@ -303,10 +303,16 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return pathParameters != null ? pathParameters : emptyMap();
 	}
 
-	@Nullable
+	@NotNull
 	public String getPathParameter(@NotNull String key) {
 		assert !isRecycled();
-		return pathParameters != null ? pathParameters.get(key) : null;
+		if (pathParameters != null) {
+			String pathParameter = pathParameters.get(key);
+			if (pathParameter != null) {
+				return pathParameter;
+			}
+		}
+		throw new IllegalArgumentException("No path parameter '" + key + "' found");
 	}
 
 	public Promise<Void> getFiles(Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {

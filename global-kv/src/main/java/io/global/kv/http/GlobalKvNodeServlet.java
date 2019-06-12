@@ -52,9 +52,6 @@ public final class GlobalKvNodeServlet {
 				.with(POST, "/" + UPLOAD + "/:space/:table", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					String table = request.getPathParameter("table");
-					if (parameterSpace == null || table == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
@@ -71,9 +68,6 @@ public final class GlobalKvNodeServlet {
 				.with(GET, "/" + DOWNLOAD + "/:space/:table", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					String table = request.getPathParameter("table");
-					if (parameterSpace == null || table == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
 						long offset;
@@ -96,9 +90,6 @@ public final class GlobalKvNodeServlet {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
 							String table = request.getPathParameter("table");
-							if (parameterSpace == null || table == null) {
-								return Promise.ofException(new ParseException());
-							}
 							try {
 								PubKey space = PubKey.fromString(parameterSpace);
 								return node.get(space, table, body.asArray())
@@ -113,9 +104,6 @@ public final class GlobalKvNodeServlet {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
 							String table = request.getPathParameter("table");
-							if (parameterSpace == null || table == null) {
-								return Promise.ofException(new ParseException());
-							}
 							try {
 								PubKey space = PubKey.fromString(parameterSpace);
 								return node.put(space, table, decode(KV_ITEM_CODEC, body.slice()))
@@ -126,9 +114,6 @@ public final class GlobalKvNodeServlet {
 						}))
 				.with(GET, "/" + LIST + "/:space", request -> {
 					String parameterSpace = request.getPathParameter("space");
-					if (parameterSpace == null) {
-						return Promise.ofException(new ParseException());
-					}
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
 						return node.list(space)

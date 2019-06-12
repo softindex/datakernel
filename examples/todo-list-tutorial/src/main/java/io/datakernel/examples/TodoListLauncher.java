@@ -21,7 +21,6 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 import static java.lang.Integer.parseInt;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Objects.requireNonNull;
 
 //[START EXAMPLE]
 public final class TodoListLauncher extends HttpServerLauncher {
@@ -66,17 +65,14 @@ public final class TodoListLauncher extends HttpServerLauncher {
 				})
 				//[START REGION_3]
 				.with(GET, "/delete/:recordId", request -> {
-					String stringId = request.getPathParameter("recordId");
-					int id = parseInt(requireNonNull(stringId));
+					int id = parseInt(request.getPathParameter("recordId"));
 					recordDAO.delete(id);
 					return Promise.of(HttpResponse.ok200());
 				})
 				//[END REGION_3]
 				.with(GET, "/toggle/:recordId/:planId", request -> {
-					String stringId = request.getPathParameter("recordId");
-					String stringPlanId = request.getPathParameter("planId");
-					int id = parseInt(requireNonNull(stringId));
-					int planId = parseInt(requireNonNull(stringPlanId));
+					int id = parseInt(request.getPathParameter("recordId"));
+					int planId = parseInt(request.getPathParameter("planId"));
 
 					Record record = recordDAO.find(id);
 					Plan plan = record.getPlans().get(planId);
