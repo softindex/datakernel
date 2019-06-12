@@ -24,13 +24,9 @@ import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.stream.processor.DatakernelRunner;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.*;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -40,7 +36,6 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class RpcBlockingTest {
 	private static final int PORT_1 = getFreePort();
 	private static final int PORT_2 = getFreePort();
@@ -52,6 +47,9 @@ public final class RpcBlockingTest {
 	private RpcServer serverOne;
 	private RpcServer serverTwo;
 	private RpcServer serverThree;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

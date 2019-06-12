@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.function.*;
 import java.util.stream.Collector;
@@ -255,8 +256,8 @@ public final class Try<T> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Try<?> other = (Try<?>) o;
-		if (result != null ? !result.equals(other.result) : other.result != null) return false;
-		return throwable != null ? throwable.equals(other.throwable) : other.throwable == null;
+		if (!Objects.equals(result, other.result)) return false;
+		return Objects.equals(throwable, other.throwable);
 	}
 
 	@Override

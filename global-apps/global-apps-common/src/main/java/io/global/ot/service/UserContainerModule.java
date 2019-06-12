@@ -1,11 +1,12 @@
 package io.global.ot.service;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.ot.OTSystem;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.messaging.CreateSharedRepo;
@@ -25,26 +26,23 @@ public class UserContainerModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	UserContainerHolder<D> provideUserContainerHolder(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem,
 			GlobalPmDriver<CreateSharedRepo> pmDriver, StructuredCodec<D> diffCodec) {
 		return UserContainerHolder.create(eventloop, driver, otSystem, diffCodec, pmDriver, indexRepo, repoPrefix);
 	}
 
 	@Provides
-	@Singleton
-	ServiceEnsuringServlet providePrivKeyEnsuringServlet(UserContainerHolder<D> userContainerHolder, MiddlewareServlet servlet) {
+	ServiceEnsuringServlet providePrivKeyEnsuringServlet(UserContainerHolder<D> userContainerHolder, RoutingServlet servlet) {
 		return ServiceEnsuringServlet.create(userContainerHolder, servlet);
 	}
 
 	@Provides
-	@Singleton
-	MessagingServlet provideMessagingServlet(UserContainerHolder<D> userContainerHolder) {
+	@Named("Messaging")
+	AsyncServlet provideMessagingServlet(UserContainerHolder<D> userContainerHolder) {
 		return MessagingServlet.create(userContainerHolder);
 	}
 
 	@Provides
-	@Singleton
 	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode pmNode) {
 		return new GlobalPmDriver<>(pmNode, SHARED_REPO_MESSAGE_CODEC);
 	}

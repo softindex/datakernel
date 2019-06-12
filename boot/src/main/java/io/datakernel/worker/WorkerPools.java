@@ -16,107 +16,35 @@
 
 package io.datakernel.worker;
 
-import com.google.inject.Key;
-import com.google.inject.Provider;
-import com.google.inject.TypeLiteral;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Scope;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static java.util.stream.Collectors.toList;
-
-@SuppressWarnings("unchecked")
 public final class WorkerPools {
-	private final List<WorkerPool> workerPools = new CopyOnWriteArrayList<>();
-	private final ThreadLocal<WorkerPool> threadLocalWorkerPool = ThreadLocal.withInitial(() ->
-			workerPools.stream()
-					// if local worker id exists than this thread is associated with a worker from this pool
-					.filter(pool -> pool.getLocalWorkerId() != null)
-					.findAny()
-					.orElseThrow(() -> new IllegalStateException("No WorkerPool is associated with current thread")));
+	private final Injector injector;
+	private final List<WorkerPool> workerPools = new ArrayList<>();
 
-	private final Map<Key<?>, ThreadLocal<?>> threadLocalCache = new ConcurrentHashMap<>();
+	WorkerPools(Injector injector) {
+		this.injector = injector;
+	}
 
-	void addWorkerPool(WorkerPool workerPool) {
-		checkArgument(!workerPools.contains(workerPool), "WorkerPool has already been added");
+	public synchronized WorkerPool createPool(int size) {
+		return createPool(Scope.of(Worker.class), size);
+	}
+
+	public synchronized WorkerPool createPool(Scope scope, int size) {
+		WorkerPool workerPool = new WorkerPool(injector, scope, size);
 		workerPools.add(workerPool);
+		return workerPool;
 	}
 
 	public List<WorkerPool> getWorkerPools() {
-		return Collections.unmodifiableList(workerPools);
+		return new ArrayList<>(workerPools);
 	}
 
-	public <T> Map<WorkerPool, List<T>> getWorkerPoolObjects(Key<T> key) {
-		return workerPools.stream().collect(Collectors.toMap(Function.identity(), workerPool -> workerPool.getInstances(key)));
-	}
-
-	public <T> List<T> getAllObjects(Key<T> key) {
-		return (List<T>) workerPools.stream().map(workerPool -> workerPool.pool.get(key)).filter(Objects::nonNull).flatMap(List::stream).collect(toList());
-	}
-
-	public WorkerPool getCurrentWorkerPool() {
-		return threadLocalWorkerPool.get();
-	}
-
-	public <T> T getCurrentInstance(Key<T> key) {
-		return getCurrentWorkerPool().getCurrentInstance(key);
-	}
-
-	// region getCurrentInstance overloads
-	public <T> T getCurrentInstance(Class<T> type) {
-		return getCurrentInstance(Key.get(type));
-	}
-
-	public <T> T getCurrentInstance(TypeLiteral<T> type) {
-		return getCurrentInstance(Key.get(type));
-	}
-	// endregion
-
-	public <T> Provider<T> getCurrentInstanceProvider(Key<T> key) {
-		checkArgument(isValidBinding(key), "Cannot get provider for key: %s", key);
-		ThreadLocal<T> threadLocal = (ThreadLocal<T>) threadLocalCache.computeIfAbsent(key, $ ->
-				ThreadLocal.withInitial(() -> getCurrentInstance(key)));
-		return threadLocal::get;
-	}
-
-
-	// region getCurrentInstanceProvider overloads
-	public <T> Provider<T> getCurrentInstanceProvider(Class<T> type) {
-		return getCurrentInstanceProvider(Key.get(type));
-	}
-
-	public <T> Provider<T> getCurrentInstanceProvider(TypeLiteral<T> type) {
-		return getCurrentInstanceProvider(Key.get(type));
-	}
-	// endregion
-
-	public <T> List<T> getInstances(Key<T> key) {
-		return getCurrentWorkerPool().getInstances(key);
-	}
-
-	// region getInstances overloads
-	public <T> List<T> getInstances(Class<T> type) {
-		return getInstances(Key.get(type));
-	}
-
-	public <T> List<T> getInstances(TypeLiteral<T> type) {
-		return getInstances(Key.get(type));
-	}
-	// endregion
-
-	private boolean isValidBinding(Key<?> key) {
-		return workerPools.stream()
-				.anyMatch(workerPool -> workerPool.isValidBinding(key));
-	}
-
-	public int size(){
+	public int size() {
 		return workerPools.size();
 	}
 }

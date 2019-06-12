@@ -1,15 +1,15 @@
 package io.datakernel.jmx;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
 import io.datakernel.jmx.GlobalSingletonsRegistrationTest.GlobalSingletonClass1.CustomClass;
-import io.datakernel.service.ServiceGraph;
-import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.service.Service;
 import org.junit.Test;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -23,21 +23,19 @@ public class GlobalSingletonsRegistrationTest {
 		GlobalSingletonClass2 globalSingletonClass2 = GlobalSingletonClass2.getInstance();
 		globalSingletonClass2.setValue(jmxValue);
 
-		Injector injector = Guice.createInjector(
-				ServiceGraphModule.defaultInstance(),
+		Injector injector = Injector.of(
 				JmxModule.create()
 						.withGlobalSingletons(globalSingletonClass2)
 		);
-
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		ObjectName found;
 		try {
-			serviceGraph.startFuture().get();
 			ObjectName objectName = server.queryNames(new ObjectName("*:type=" + GlobalSingletonClass2.class.getSimpleName() + ",*"), null).iterator().next();
 			assertEquals(jmxValue, server.getAttribute(objectName, "Value"));
 			found = objectName;
 		} finally {
-			serviceGraph.stopFuture().get();
 			unregisterMBeans();
 		}
 		assertNotNull(found);
@@ -47,22 +45,20 @@ public class GlobalSingletonsRegistrationTest {
 	public void testMBeanSingletonRegistration() throws Exception {
 		GlobalSingletonClass1 globalSingletonClass1 = GlobalSingletonClass1.getInstance();
 
-		Injector injector = Guice.createInjector(
-				ServiceGraphModule.defaultInstance(),
+		Injector injector = Injector.of(
 				JmxModule.create()
 						.withGlobalSingletons(globalSingletonClass1)
 		);
-
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		ObjectName found;
 		MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 		try {
-			serviceGraph.startFuture().get();
 			ObjectName objectName = server.queryNames(new ObjectName("*:type=" + GlobalSingletonClass1.class.getSimpleName() + ",*"), null).iterator().next();
 			assertEquals(globalSingletonClass1.custom, server.getAttribute(objectName, "CustomClass"));
 			found = objectName;
 		} finally {
-			serviceGraph.stopFuture().get();
 			unregisterMBeans();
 		}
 		assertNotNull(found);
@@ -70,7 +66,6 @@ public class GlobalSingletonsRegistrationTest {
 
 	private void unregisterMBeans() throws Exception {
 		server.unregisterMBean(new ObjectName("io.datakernel.bytebuf:type=ByteBufPoolStats"));
-		server.unregisterMBean(new ObjectName("io.datakernel.service:type=ServiceGraph"));
 		server.unregisterMBean(new ObjectName("io.datakernel.jmx:type=JmxRegistry"));
 	}
 

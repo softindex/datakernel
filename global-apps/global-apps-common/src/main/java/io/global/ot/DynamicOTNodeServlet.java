@@ -3,6 +3,7 @@ package io.global.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode.FetchData;
@@ -14,9 +15,11 @@ import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
@@ -28,10 +31,12 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 
-public final class DynamicOTNodeServlet<D> implements WithMiddleware {
+public final class DynamicOTNodeServlet<D> implements AsyncServlet {
+	public static final ParseException ID_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Query parameter ID is required");
+	public static final ParseException KEY_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Cookie 'Key' is required");
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 
-	private final MiddlewareServlet servlet;
+	private final AsyncServlet servlet;
 	private final OTSystem<D> otSystem;
 	private final OTDriver driver;
 	private final StructuredCodec<D> diffCodec;
@@ -51,8 +56,8 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 		return new DynamicOTNodeServlet<>(driver, otSystem, diffCodec, prefix);
 	}
 
-	private MiddlewareServlet getServlet() {
-		return MiddlewareServlet.create()
+	private RoutingServlet getServlet() {
+		return RoutingServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> {
 					try {
 						return getNode(request).checkout()
@@ -63,7 +68,11 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 				})
 				.with(GET, "/" + FETCH, request -> {
 					try {
-						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id"));
+						String id = request.getQueryParameter("id");
+						if (id == null) {
+							throw ID_REQUIRED;
+						}
+						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
 						return getNode(request).fetch(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
@@ -72,41 +81,39 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 				})
 				.with(GET, "/" + POLL, request -> {
 					try {
-						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id"));
+						String id = request.getQueryParameter("id");
+						if (id == null) {
+							throw ID_REQUIRED;
+						}
+						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
 						return getNode(request).poll(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + CREATE_COMMIT, request -> request.getBody()
-						.then(body -> {
-							try {
-								FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, body.getString(UTF_8));
-								return getNode(request).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
-										.map(commit -> {
-											assert commit.getSerializedData() != null;
-											return HttpResponse.ok200()
-													.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
-													.withBody(commit.getSerializedData());
-										});
-							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
-							}
-						}))
-				.with(POST, "/" + PUSH, request -> request.getBody()
-						.then(body -> {
+				.with(POST, "/" + CREATE_COMMIT, loadBody().serve(request -> {
+					try {
+						FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, request.getBody().getString(UTF_8));
+						return getNode(request).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
+								.map(commit -> {
+									assert commit.getSerializedData() != null;
+									return HttpResponse.ok200()
+											.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
+											.withBody(commit.getSerializedData());
+								});
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				}))
+				.with(POST, "/" + PUSH, loadBody().serve(request -> {
 							try {
 								OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = getNode(request);
-								OTCommit<CommitId, D> commit = ((OTRepositoryAdapter<D>) node.getRepository()).parseRawBytes(body.getArray());
+								OTCommit<CommitId, D> commit = ((OTRepositoryAdapter<D>) node.getRepository()).parseRawBytes(request.getBody().getArray());
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
+								return Promise.ofException(e);
 							}
 						}));
 	}
@@ -118,8 +125,12 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 	}
 
 	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request) throws ParseException {
-		PrivKey privKey = PrivKey.fromString(request.getCookie("Key"));
-		String suffix = request.getPathParameterOrNull("suffix");
+		String key = request.getCookie("Key");
+		if (key == null) {
+			throw KEY_REQUIRED;
+		}
+		PrivKey privKey = PrivKey.fromString(key);
+		String suffix = request.getPathParameter("suffix");
 		String repositoryName = prefix + (suffix == null ? "" : ('/' + suffix));
 		RepoID repoID = RepoID.of(privKey, repositoryName);
 		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, privKey, diffCodec);
@@ -127,8 +138,9 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 		return OTNodeImpl.create(adapter, otSystem);
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException {
+		return servlet.serve(request);
 	}
 }

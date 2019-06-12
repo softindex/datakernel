@@ -25,7 +25,6 @@ import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
-import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 import io.datakernel.util.Recyclable;
@@ -33,6 +32,7 @@ import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -47,17 +47,16 @@ public abstract class HttpMessage {
 	ChannelSupplier<ByteBuf> bodySupplier;
 	private Recyclable bufs;
 
+	protected ByteBuf body;
+	protected int maxBodySize;
+	protected Map<Type, Object> attachments;
+
 	static final byte ACCESSED_BODY_STREAM = 1 << 0;
 	static final byte USE_GZIP = 1 << 1;
 	static final byte RECYCLED = (byte) (1 << 7);
 
 	@MagicConstant(flags = {ACCESSED_BODY_STREAM, USE_GZIP, RECYCLED})
 	byte flags;
-
-	static final int DEFAULT_LOAD_LIMIT_BYTES =
-			ApplicationSettings.getInt(HttpMessage.class, "loadLimit", 1024 * 1024 * 1024);
-
-	public static final MemSize DEFAULT_LOAD_LIMIT = MemSize.of(DEFAULT_LOAD_LIMIT_BYTES);
 
 	protected HttpMessage() {
 	}
@@ -75,11 +74,6 @@ public abstract class HttpMessage {
 		}
 	}
 
-	void addParsedHeader(@NotNull HttpHeader header, @NotNull byte[] array, int off, int len) {
-		assert !isRecycled();
-		headers.add(header, HttpHeaderValue.ofBytes(array, off, len));
-	}
-
 	public void addHeader(@NotNull HttpHeader header, @NotNull String string) {
 		assert !isRecycled();
 		addHeader(header, HttpHeaderValue.of(string));
@@ -90,29 +84,19 @@ public abstract class HttpMessage {
 		addHeader(header, HttpHeaderValue.ofBytes(value, 0, value.length));
 	}
 
+	public void addHeader(@NotNull HttpHeader header, @NotNull byte[] array, int off, int len) {
+		assert !isRecycled();
+		headers.add(header, HttpHeaderValue.ofBytes(array, off, len));
+	}
+
 	public void addHeader(@NotNull HttpHeader header, @NotNull HttpHeaderValue value) {
 		assert !isRecycled();
 		headers.add(header, value);
 	}
 
 	@NotNull
-	private ByteBuf getHeaderBuf(@NotNull HttpHeader header) throws ParseException {
-		HttpHeaderValue headerBuf = headers.get(header);
-		if (headerBuf != null) {
-			return headerBuf.getBuf();
-		}
-		throw new ParseException(HttpMessage.class, "There is no header: " + header);
-	}
-
-	@Nullable
-	private ByteBuf getHeaderBufOrNull(@NotNull HttpHeader header) {
-		HttpHeaderValue headerBuf = headers.get(header);
-		return headerBuf != null ? headerBuf.getBuf() : null;
-	}
-
-	@NotNull
 	public final Map<HttpHeader, String[]> getHeaders() {
-		LinkedHashMap<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
+		Map<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
 		for (int i = 0; i != headers.kvPairs.length; i += 2) {
 			HttpHeader k = (HttpHeader) headers.kvPairs[i];
 			if (k != null) {
@@ -130,55 +114,49 @@ public abstract class HttpMessage {
 	}
 
 	@NotNull
-	public final String getHeader(@NotNull HttpHeader header) throws ParseException {
-		HttpHeaderValue headerValue = headers.get(header);
-		if (headerValue != null) return headerValue.toString();
-		throw new ParseException(HttpMessage.class, "There is no header: " + header);
+	public final <T> List<T> getHeader(@NotNull HttpHeader header, @NotNull ParserIntoList<T> parser) {
+		try {
+			List<T> list = new ArrayList<>();
+			for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
+				HttpHeader k = (HttpHeader) headers.kvPairs[i];
+				if (k == null) {
+					break;
+				}
+				if (k.equals(header)) {
+					parser.parse(((HttpHeaderValue) headers.kvPairs[i + 1]).getBuf(), list);
+				}
+			}
+			return list;
+		} catch (ParseException e) {
+			return Collections.emptyList();
+		}
 	}
 
 	@Nullable
-	public final String getHeaderOrNull(@NotNull HttpHeader header) {
+	public <T> T getHeader(HttpHeader contentType, ParserFunction<ByteBuf, T> parser) {
+		return parser.parseOrDefault(getHeaderBuf(contentType), null);
+	}
+
+	@Nullable
+	public final String getHeader(@NotNull HttpHeader header) {
 		HttpHeaderValue headerValue = headers.get(header);
-		if (headerValue != null) return headerValue.toString();
-		return null;
+		return headerValue != null ? headerValue.toString() : null;
 	}
 
-	@NotNull
-	public <T> T parseHeader(@NotNull HttpHeader header, @NotNull ParserFunction<ByteBuf, T> parser) throws ParseException {
-		return parser.parse(getHeaderBuf(header));
-	}
-
-	public <T> T parseHeader(@NotNull HttpHeader header, @NotNull ParserFunction<ByteBuf, T> parser, @Nullable T defaultValue) throws ParseException {
-		return parser.parseOrDefault(getHeaderBufOrNull(header), defaultValue);
-	}
-
-	@NotNull
-	public <T> List<T> parseHeader(@NotNull HttpHeader header, @NotNull ParserIntoList<T> parser) throws ParseException {
-		List<T> list = new ArrayList<>();
-		for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
-			HttpHeader k = (HttpHeader) headers.kvPairs[i];
-			if (k == null) {
-				break;
-			}
-			if (k.equals(header)) {
-				parser.parse(((HttpHeaderValue) headers.kvPairs[i + 1]).getBuf(), list);
-			}
-		}
-		return list;
+	@Nullable
+	public final ByteBuf getHeaderBuf(@NotNull HttpHeader header) {
+		HttpHeaderValue headerBuf = headers.get(header);
+		return headerBuf != null ? headerBuf.getBuf() : null;
 	}
 
 	public abstract void addCookies(@NotNull List<HttpCookie> cookies);
 
 	public void addCookies(@NotNull HttpCookie... cookies) {
-		ArrayList<HttpCookie> list = new ArrayList<>(cookies.length);
-		Collections.addAll(list, cookies);
-		addCookies(list);
+		addCookies(Arrays.asList(cookies));
 	}
 
 	public void addCookie(@NotNull HttpCookie cookie) {
-		ArrayList<HttpCookie> list = new ArrayList<>(1);
-		list.add(cookie);
-		addCookies(list);
+		addCookies(Collections.singletonList(cookie));
 	}
 
 	public void setBodyStream(@NotNull ChannelSupplier<ByteBuf> bodySupplier) {
@@ -198,50 +176,109 @@ public abstract class HttpMessage {
 		setBody(ByteBuf.wrapForReading(body));
 	}
 
-	@NotNull
-	public final Promise<ByteBuf> getBody() {
-		return getBody(DEFAULT_LOAD_LIMIT_BYTES);
+	public final ByteBuf getBody() {
+		if (body == null) throw new NullPointerException("Body is not loaded");
+		return body;
 	}
 
-	@NotNull
-	public final Promise<ByteBuf> getBody(@NotNull MemSize loadLimit) {
-		return getBody(loadLimit.toInt());
+	public final ByteBuf takeBody() {
+		ByteBuf body = getBody();
+		this.body = null;
+		return body;
 	}
 
-	@NotNull
-	public final Promise<ByteBuf> getBody(int loadLimit) {
+	public void setMaxBodySize(MemSize maxBodySize) {
+		this.maxBodySize = maxBodySize.toInt();
+	}
+
+	public void setMaxBodySize(int maxBodySize) {
+		this.maxBodySize = maxBodySize;
+	}
+
+	public Promise<ByteBuf> loadBody() {
+		return loadBody(maxBodySize);
+	}
+
+	public Promise<ByteBuf> loadBody(@NotNull MemSize maxBodySize) {
+		return loadBody(maxBodySize.toInt());
+	}
+
+	public Promise<ByteBuf> loadBody(int maxBodySize) {
 		if (this.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue<?>) {
 			flags |= ACCESSED_BODY_STREAM;
-			return Promise.of(((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
+			return Promise.of(body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
 		}
+		if (body != null) return Promise.of(body);
 		return ChannelSuppliers.collect(getBodyStream(),
 				new ByteBufQueue(),
 				(queue, buf) -> {
-					if (queue.hasRemainingBytes(loadLimit)) {
+					if (queue.hasRemainingBytes(maxBodySize)) {
 						queue.recycle();
 						buf.recycle();
 						throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
-								"HTTP body size exceeds load limit " + loadLimit));
+								"HTTP body size exceeds load limit " + maxBodySize));
 					}
 					queue.add(buf);
-				},
-				ByteBufQueue::takeRemaining);
+				}, ByteBufQueue::takeRemaining)
+				.whenComplete((body, e) -> this.body = body);
+	}
+
+	public <T> void attach(Type type, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(type, extra);
+	}
+
+	public <T> void attach(Class<T> type, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(type, extra);
+	}
+
+	public void attach(Object extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(extra.getClass(), extra);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(Class<T> type) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(type);
+		return (T) res;
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(Type type) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(type);
+		return (T) res;
 	}
 
 	public void setBodyGzipCompression() {
 		this.flags |= USE_GZIP;
 	}
 
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	boolean isRecycled() {
 		return (this.flags & RECYCLED) != 0;
 	}
 
-	@SuppressWarnings("AssertWithSideEffects")
 	final void recycle() {
 		assert !isRecycled();
-		assert (this.flags |= RECYCLED) != 0;
 		if (bufs != null) {
 			bufs.recycle();
+		}
+		if (body != null) {
+			body.recycle();
+			body = null;
 		}
 	}
 

@@ -21,7 +21,7 @@ import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -79,10 +79,10 @@ public final class SimpleProxyServerTest {
 				request -> {
 					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
 					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
-							.then(result -> result.getBody()
-									.map(body ->
-											HttpResponse.ofCode(result.getCode())
-													.withBody(encodeAscii("FORWARDED: " + body.asString(UTF_8)))));
+							.then(result -> result.loadBody()
+									.then(body -> Promise.of(HttpResponse.ofCode(result.getCode())
+											.withBody(encodeAscii("FORWARDED: " + body
+													.getString(UTF_8))))));
 				})
 				.withListenPort(PROXY_SERVER_PORT);
 		proxyServer.listen();

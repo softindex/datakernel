@@ -16,51 +16,55 @@
 
 package io.datakernel.launchers.remotefs;
 
-import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.Manual;
+import io.datakernel.di.module.Module;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.Random;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static java.util.Collections.singleton;
+import static io.datakernel.test.TestUtils.getFreePort;
 
-@RunWith(DatakernelRunner.class)
+@Ignore
 public final class RemoteFsClusterLauncherTest {
+	private static final int serverNumber = getFreePort();
 
-	private static final int serverNumber = 5400;
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testInjector() {
-		new RemoteFsClusterLauncher() {
-		}.testInjector();
+		new RemoteFsClusterLauncher() {}.testInjector();
 	}
 
 	@Test
-	@Manual("startup point for the testing launcher override")
+	@Ignore("startup point for the testing launcher override")
 	public void launchServer() throws Exception {
 		new RemoteFsServerLauncher() {
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singleton(ConfigModule.create(Config.create()
-					.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
-					.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber)))));
+			protected Module getOverrideModule() {
+				return ConfigModule.create(Config.create()
+						.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
+						.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber))));
 			}
-		}.launch(false, new String[0]);
+		}.launch(new String[0]);
 	}
 
 	@Test
-	@Manual("manual startup point for the testing launcher override")
+	@Ignore("manual startup point for the testing launcher override")
 	public void launchCluster() throws Exception {
 		long start = System.nanoTime();
 		createFiles(Paths.get("storages/local"), 1000, 10 * 1024, 100 * 1024);
@@ -68,18 +72,18 @@ public final class RemoteFsClusterLauncherTest {
 
 		new RemoteFsClusterLauncher() {
 			@Override
-			protected Collection<Module> getOverrideModules() {
+			protected Module getOverrideModule() {
 				Config config = Config.create()
-					.with("local.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000)))
-					.with("local.path", Config.ofValue("storages/local"))
-					.with("cluster.replicationCount", Config.ofValue("3"))
-					.with("scheduler.repartition.disabled", "true");
+						.with("local.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000)))
+						.with("local.path", Config.ofValue("storages/local"))
+						.with("cluster.replicationCount", Config.ofValue("3"))
+						.with("scheduler.repartition.disabled", "true");
 				for (int i = 0; i < 10; i++) {
 					config = config.with("cluster.partitions.server_" + i, "localhost:" + (5400 + i));
 				}
-				return singleton(ConfigModule.create(config));
+				return ConfigModule.create(config);
 			}
-		}.launch(false, new String[0]);
+		}.launch(new String[0]);
 	}
 
 	private static void createFiles(Path path, int n, int minSize, int maxSize) throws IOException {

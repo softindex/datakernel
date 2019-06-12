@@ -24,9 +24,7 @@ import java.util.List;
 import java.util.function.Function;
 
 public final class Quorum {
-	private Quorum() {
-		throw new AssertionError("nope.");
-	}
+	private Quorum() {}
 
 	public static <T, R> Function<T, Promise<R>> create(Iterator<Function<T, Promise<R>>> functions, Function<List<R>, R> reducer, int requiredSuccesses, int maxParallelCalls) {
 		return new Function<T, Promise<R>>() {

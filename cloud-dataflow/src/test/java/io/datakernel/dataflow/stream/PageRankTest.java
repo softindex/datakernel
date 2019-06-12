@@ -31,13 +31,14 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.StreamJoin.InnerJoiner;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
 import io.datakernel.stream.processor.StreamSorterStorage;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -51,8 +52,12 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class PageRankTest {
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static final class Page {
 		@Serialize(order = 0)
@@ -182,12 +187,7 @@ public class PageRankTest {
 
 	public static SortedDataset<Long, Rank> pageRank(SortedDataset<Long, Page> pages) {
 		SortedDataset<Long, Rank> ranks = castToSorted(map(pages,
-				new Function<Page, Rank>() {
-					@Override
-					public Rank apply(Page page) {
-						return new Rank(page.pageId, 1.0);
-					}
-				},
+				page -> new Rank(page.pageId, 1.0),
 				Rank.class), Long.class, Rank.KEY_FUNCTION, Comparator.naturalOrder());
 
 		for (int i = 0; i < 10; i++) {

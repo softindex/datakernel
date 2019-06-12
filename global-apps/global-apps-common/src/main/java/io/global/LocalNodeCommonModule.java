@@ -1,11 +1,10 @@
 package io.global;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.IAsyncHttpClient;
 import io.global.common.PrivKey;
@@ -45,7 +44,6 @@ public final class LocalNodeCommonModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
 		InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
 		if (discoveryAddress != null) {
@@ -71,13 +69,11 @@ public final class LocalNodeCommonModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	CommitStorage provideCommitStorage() {
 		return new CommitStorageStub();
 	}
 
 	@Provides
-	@Singleton
 	MessageStorage provideMessageStorage() {
 		return new MapMessageStorage();
 	}

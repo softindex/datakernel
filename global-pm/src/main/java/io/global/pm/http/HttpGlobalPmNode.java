@@ -34,8 +34,9 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 		return new HttpGlobalPmNode(url, client);
 	}
 
+	@NotNull
 	@Override
-	public @NotNull Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
+	public Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
 		return client.request(HttpRequest.post(url +
 				UrlBuilder.relative()
 						.appendPathPart(SEND)
@@ -49,8 +50,9 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 				.toVoid();
 	}
 
+	@NotNull
 	@Override
-	public @NotNull Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
+	public Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
 		return client.request(HttpRequest.get(url +
 				UrlBuilder.relative()
 						.appendPathPart(POLL)
@@ -59,7 +61,7 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 						.build()))
 				.then(response -> {
 					if (response.getCode() == 200) {
-						return response.getBody()
+						return response.loadBody()
 								.then(buf -> {
 									try {
 										return Promise.of(BinaryUtils.decode(SIGNED_RAW_MSG_CODEC.nullable(), buf));

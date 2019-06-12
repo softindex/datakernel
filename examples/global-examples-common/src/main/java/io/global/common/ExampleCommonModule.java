@@ -1,9 +1,8 @@
 package io.global.common;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.IAsyncHttpClient;
 import io.global.common.api.AnnounceData;
@@ -19,8 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,15 +31,13 @@ import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 public final class ExampleCommonModule extends AbstractModule {
 	private static final Logger logger = LoggerFactory.getLogger(ExampleCommonModule.class);
 
-	public static final Path DEFAULT_RESOURCES_PATH = Paths.get("front/build");
 	public static final PrivKey DEMO_PRIVATE_KEY =
 			PrivKey.of(new BigInteger("52a8fbf6c82e3e177a07d5fb822bbef07c1f28cfaeeb320964a4598ea82159b", 16));
 	public static final SimKey DEMO_SIM_KEY = SimKey.of(
 			new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 
 	@Provides
-	@Singleton
-	DiscoveryService provideDiscoveryService(Eventloop eventloop, IAsyncHttpClient httpClient, Config config) {
+	DiscoveryService discoveryService(Eventloop eventloop, IAsyncHttpClient httpClient, Config config) {
 		InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
 		if (discoveryAddress != null) {
 			logger.info("Using remote discovery service at " + discoveryAddress);
@@ -71,8 +66,7 @@ public final class ExampleCommonModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
-	CommitStorage provideCommitStorage() {
+	CommitStorage commitStorage() {
 		return new CommitStorageStub();
 	}
 

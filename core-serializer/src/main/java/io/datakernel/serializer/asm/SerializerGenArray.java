@@ -24,6 +24,8 @@ import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
+import java.util.Objects;
+
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -149,9 +151,9 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 
 		if (fixedSize != that.fixedSize) return false;
 		if (nullable != that.nullable) return false;
-		if (valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null)
+		if (!Objects.equals(valueSerializer, that.valueSerializer))
 			return false;
-		return !(type != null ? !type.equals(that.type) : that.type != null);
+		return !(!Objects.equals(type, that.type));
 
 	}
 

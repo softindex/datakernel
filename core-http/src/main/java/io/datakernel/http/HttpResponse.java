@@ -15,16 +15,17 @@
  */
 package io.datakernel.http;
 
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import static io.datakernel.http.ContentTypes.JSON_UTF_8;
 import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.MediaTypes.OCTET_STREAM;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -59,8 +61,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	private final int code;
 
+	@Nullable
+	private Map<String, HttpCookie> parsedCookies;
+
 	// region creators
-	private HttpResponse(int code) {
+	HttpResponse(int code) {
 		this.code = code;
 	}
 
@@ -181,6 +186,45 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				.withBody(JsonUtils.toJson(encoder, object).getBytes(UTF_8));
 	}
 
+	@FunctionalInterface
+	public interface HttpDownloader {
+
+		Promise<? extends ChannelSupplier<ByteBuf>> download(long offset, long limit);
+	}
+
+	public HttpResponse withFile(HttpRequest request, HttpDownloader downloader, String name, long size) throws HttpException {
+		String localName = name.substring(name.lastIndexOf('/') + 1);
+		String headerRange = request.getHeader(RANGE);
+		if (headerRange == null) {
+			return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+					.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
+					.withHeader(ACCEPT_RANGES, "bytes")
+					.withHeader(CONTENT_LENGTH, Long.toString(size))
+					.withBodyStream(ChannelSupplier.ofPromise(downloader.download(0, -1)));
+		}
+		if (!headerRange.startsWith("bytes=")) {
+			throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
+		}
+		headerRange = headerRange.substring(6);
+		if (!headerRange.matches("(\\d+)?-(\\d+)?")) {
+			throw HttpException.ofCode(416, "Only single part ranges are allowed");
+		}
+		String[] parts = headerRange.split("-", 2);
+		long offset = parts[0].isEmpty() ? 0 : Long.parseLong(parts[0]);
+		long endOffset = parts[1].isEmpty() ? -1 : Long.parseLong(parts[1]);
+		if (endOffset != -1 && offset > endOffset) {
+			throw HttpException.ofCode(416, "Invalid range");
+		}
+		long length = (endOffset == -1 ? size : endOffset) - offset + 1;
+
+		return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+				.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + localName + "\""))
+				.withHeader(ACCEPT_RANGES, "bytes")
+				.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
+				.withHeader(CONTENT_LENGTH, "" + length)
+				.withBodyStream(ChannelSupplier.ofPromise(downloader.download(offset, length)));
+	}
+
 	// endregion
 
 	public int getCode() {
@@ -188,32 +232,21 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return code;
 	}
 
-	@Nullable
-	private Map<String, HttpCookie> parsedCookies;
-
 	@NotNull
-	public Map<String, HttpCookie> getCookies() throws ParseException {
+	public Map<String, HttpCookie> getCookies() {
 		if (parsedCookies != null) {
 			return parsedCookies;
 		}
 		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
-		for (HttpCookie cookie : parseHeader(SET_COOKIE, HttpHeaderValue::toFullCookies)) {
+		for (HttpCookie cookie : getHeader(SET_COOKIE, HttpHeaderValue::toFullCookies)) {
+			if (cookie == null) return Collections.emptyMap();
 			cookies.put(cookie.getName(), cookie);
 		}
 		return parsedCookies = cookies;
 	}
 
-	@NotNull
-	public HttpCookie getCookie(@NotNull String cookie) throws ParseException {
-		HttpCookie httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) {
-			return httpCookie;
-		}
-		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
-	}
-
 	@Nullable
-	public HttpCookie getCookieOrNull(@NotNull String cookie) throws ParseException {
+	public HttpCookie getCookie(@NotNull String cookie) {
 		return getCookies().get(cookie);
 	}
 

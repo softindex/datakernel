@@ -22,7 +22,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
-import static java.lang.Integer.numberOfLeadingZeros;
 
 /**
  * Represents a queue of elements which you can {@code put} and {@code take}.

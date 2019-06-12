@@ -1,7 +1,6 @@
 package io.datakernel.jmx;
 
-import com.google.inject.Key;
-import com.google.inject.name.Names;
+import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.Initializer;
 
@@ -9,7 +8,7 @@ public class JmxModuleInitializers {
 	private JmxModuleInitializers() {}
 
 	public static final String GLOBAL_EVENTLOOP_NAME = "GlobalEventloopStats";
-	public static final Key<Eventloop> GLOBAL_EVENTLOOP_KEY = Key.get(Eventloop.class, Names.named(GLOBAL_EVENTLOOP_NAME));
+	public static final Key<Eventloop> GLOBAL_EVENTLOOP_KEY = Key.of(Eventloop.class, GLOBAL_EVENTLOOP_NAME);
 
 	public static Initializer<JmxModule> ofGlobalEventloopStats() {
 		return jmxModule -> jmxModule

@@ -19,16 +19,16 @@ package io.datakernel.csp.file;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
-import io.datakernel.file.AsyncFile;
+import io.datakernel.file.AsyncFileService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
-import java.util.concurrent.Executor;
 
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.*;
@@ -41,24 +41,37 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 
 	public static final Set<OpenOption> CREATE_OPTIONS = set(WRITE, CREATE_NEW, APPEND);
 
-	private final AsyncFile asyncFile;
+	private AsyncFileService fileService = AsyncFileService.DEFAULT_FILE_SERVICE;
+	private final FileChannel channel;
 
 	private boolean forceOnClose = false;
 	private boolean forceMetadata = false;
 	private long startingOffset = 0;
 	private boolean started;
 
+	private long position = 0;
+
 	// region creators
-	private ChannelFileWriter(AsyncFile asyncFile) {
-		this.asyncFile = asyncFile;
+	private ChannelFileWriter(FileChannel channel) {
+		this.channel = channel;
 	}
 
-	public static ChannelFileWriter create(Executor executor, Path path) throws IOException {
-		return create(AsyncFile.open(executor, path, CREATE_OPTIONS));
+	public static ChannelFileWriter create(FileChannel channel) {
+		return new ChannelFileWriter(channel);
 	}
 
-	public static ChannelFileWriter create(AsyncFile asyncFile) {
-		return new ChannelFileWriter(asyncFile);
+	public static Promise<ChannelFileWriter> create(Path path) {
+		try {
+			FileChannel channel = FileChannel.open(path, CREATE_OPTIONS);
+			return Promise.of(create(channel));
+		} catch (IOException e) {
+			return Promise.ofException(e);
+		}
+	}
+
+	public ChannelFileWriter withAsyncFileService(AsyncFileService fileService) {
+		this.fileService = fileService;
+		return this;
 	}
 
 	public ChannelFileWriter withForceOnClose(boolean forceMetadata) {
@@ -80,60 +93,52 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 
 	@Override
 	protected Promise<Void> doAccept(ByteBuf buf) {
-		return ensureOffset()
-				.thenEx(($, e) -> {
-					if (isClosed()) {
-						if (buf != null) {
-							buf.recycle();
-						}
-						return Promise.ofException(getException());
-					}
-					if (e != null) {
-						if (buf != null) {
-							buf.recycle();
-						}
-						close(e);
-						return Promise.ofException(e);
-					}
-					if (buf == null) {
-						return closeFile()
-								.whenComplete(($1, e1) -> close());
-					}
-					return asyncFile.write(buf)
-							.thenEx(($2, e2) -> {
-								if (isClosed()) return Promise.ofException(getException());
-								if (e2 != null) {
-									close(e2);
-								}
-								return Promise.of($2, e2);
-							});
-				});
-	}
-
-	private Promise<Void> closeFile() {
-		if (!asyncFile.isOpen()) {
-			return Promise.complete();
-		}
-		return (forceOnClose ? asyncFile.forceAndClose(forceMetadata) : asyncFile.close())
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						logger.trace(this + ": closed file");
-					} else {
-						logger.error(this + ": failed to close file", e);
-					}
-				});
-	}
-
-	private Promise<Void> ensureOffset() {
-		if (started) {
-			return Promise.complete();
+		if (!started) {
+			position = startingOffset;
 		}
 		started = true;
-		return startingOffset != 0 ? asyncFile.seek(startingOffset) : Promise.complete();
+		if (buf == null) {
+			closeFile();
+			close();
+			return Promise.of(null);
+		}
+		long p = position;
+		position += buf.readRemaining();
+
+		byte[] array = buf.getArray();
+		return fileService.write(channel, p, array, 0, array.length)
+				.thenEx(($, e2) -> {
+					if (isClosed()) return Promise.ofException(getException());
+					if (e2 != null) {
+						close(e2);
+					}
+					return Promise.of($, e2);
+				})
+				.then($ -> {
+					buf.recycle();
+					return Promise.complete();
+				});
+	}
+
+	private void closeFile() {
+		if (!channel.isOpen()) {
+			return;
+		}
+
+		try {
+			if (forceOnClose) {
+				channel.force(forceMetadata);
+			}
+
+			channel.close();
+			logger.trace(this + ": closed file");
+		} catch (IOException e) {
+			logger.error(this + ": failed to close file", e);
+		}
 	}
 
 	@Override
 	public String toString() {
-		return "ChannelFileWriter{" + asyncFile + "}";
+		return "ChannelFileWriter{}";
 	}
 }

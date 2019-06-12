@@ -17,21 +17,17 @@
 package io.datakernel.examples;
 
 import com.google.gson.Gson;
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
-import io.datakernel.loader.StaticLoaders;
 import io.datakernel.uikernel.UiKernelServlets;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
@@ -40,37 +36,35 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class UIKernelWebAppModule extends AbstractModule {
 	private static final int DEFAULT_PORT = 8080;
-	private static final String DEFAULT_PATH_TO_RESOURCES = "src/main/resources/static/";
+	private static final String DEFAULT_PATH_TO_RESOURCES = "/static";
 
 	@Override
 	protected void configure() {
 		bind(ExecutorService.class).toInstance(newCachedThreadPool());
-		bind(PersonGridModel.class).in(Singleton.class);
-		bind(Gson.class).in(Singleton.class);
+		bind(Gson.class).to(Gson::new);
 	}
 
 	@Provides
-	@Singleton
-	AsyncHttpServer server(Eventloop eventloop, ExecutorService executor, Gson gson, PersonGridModel model, Config config) {
-		Path resources = Paths.get(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
-		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, resources);
+	AsyncHttpServer server(Eventloop eventloop, Gson gson, PersonGridModel model, Config config) {
+		String resources = config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES);
+		StaticLoader resourceLoader = StaticLoader.ofClassPath(resources);
 		int port = config.get(ofInteger(), "port", DEFAULT_PORT);
 
 		// middleware used to map requests to appropriate asyncServlets
 
-		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticServlet staticServlet = StaticServlet.create(resourceLoader)
+				.withIndexHtml();
 		AsyncServlet usersApiServlet = UiKernelServlets.apiServlet(model, gson);
 
-		MiddlewareServlet dispatcher = MiddlewareServlet.create()
-				.withFallback(staticServlet)                 // serves request if no other servlet matches
-				.with("/api/users", usersApiServlet);        // our rest crud servlet that would serve the grid
+		RoutingServlet dispatcher = RoutingServlet.create()
+				.with("/*", staticServlet)              // serves request if no other servlet matches
+				.with("/api/users/*", usersApiServlet); // our rest crud servlet that would serve the grid
 
 		// configuring server
 		return AsyncHttpServer.create(eventloop, dispatcher).withListenPort(port);
 	}
 
 	@Provides
-	@Singleton
 	Eventloop eventloop() {
 		return Eventloop.create();
 	}

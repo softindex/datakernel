@@ -7,7 +7,7 @@ import java.util.NoSuchElementException;
 import static io.datakernel.config.Config.concatPath;
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public class ConfigWithFullPath implements Config {
+public final class ConfigWithFullPath implements Config {
 	private final String path;
 	private final Config config;
 	private final Map<String, Config> children;

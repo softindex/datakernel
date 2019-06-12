@@ -16,19 +16,18 @@
 
 package io.datakernel.launchers.http;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.google.inject.Provides;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.service.ServiceGraph;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import org.junit.Rule;
@@ -38,16 +37,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 
-import static com.google.inject.Stage.DEVELOPMENT;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 public final class HttpWorkerServerTest {
@@ -59,26 +55,22 @@ public final class HttpWorkerServerTest {
 	@Test
 	public void test() throws Exception {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
-			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(new AbstractModule() {
-					@Provides
-					@Worker
-					AsyncServlet provideServlet(@WorkerId int worker) {
-						return req -> Promise.of(
-								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
-					}
-				});
+			@Provides
+			@Worker
+			AsyncServlet servlet(@WorkerId int worker) {
+				return req -> Promise.of(
+						HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 			}
 
 			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singletonList(ConfigModule.create(
+			protected Module getOverrideModule() {
+				return ConfigModule.create(
 						Config.create()
-								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))));
+								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(HttpWorkerServerTest.PORT))));
 			}
 		};
-		Injector injector = launcher.createInjector(DEVELOPMENT, new String[]{});
+		Injector injector = launcher.createInjector(new String[]{});
+		injector.getInstance(PrimaryServer.class);
 
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try (Socket socket0 = new Socket(); Socket socket1 = new Socket()) {
@@ -104,8 +96,6 @@ public final class HttpWorkerServerTest {
 		} finally {
 			serviceGraph.stopFuture().get();
 		}
-
-		assertEquals(ByteBufPool.getStats().getPoolItemsString(), ByteBufPool.getStats().getCreatedItems(), ByteBufPool.getStats().getPoolItems());
 	}
 
 	private static void readAndAssert(InputStream is, String expected) throws IOException {

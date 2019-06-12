@@ -16,8 +16,6 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.local.CrdtStorageFs;
@@ -28,7 +26,6 @@ import io.datakernel.stream.StreamConsumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Singleton
 public final class BackupService<K extends Comparable<K>, S> implements EventloopService {
 	private final Eventloop eventloop;
 	private final CrdtStorageMap<K, S> inMemory;
@@ -39,7 +36,6 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	@Nullable
 	private Promise<Void> backupPromise = null;
 
-	@Inject
 	public BackupService(CrdtStorageMap<K, S> inMemory, CrdtStorageFs<K, S> localFiles) {
 		this.inMemory = inMemory;
 		this.localFiles = localFiles;

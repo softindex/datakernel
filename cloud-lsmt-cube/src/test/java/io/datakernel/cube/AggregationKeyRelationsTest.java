@@ -31,16 +31,14 @@ public class AggregationKeyRelationsTest {
 				.withRelation("keyword", "offer");
 	}
 
-/*	@SuppressWarnings("unchecked")
-	@Test
-	public void testDrillDownChains() throws Exception {
-		Set<List<String>> drillDownChains1 = cube.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("advertiser", "banner", "campaign", "offer"));
-		assertEquals(newHashSet(asList("advertiser"), asList("advertiser", "campaign", "offer"), asList("advertiser", "campaign", "offer", "banner"),
-				asList("advertiser", "campaign")), drillDownChains1);
-
-		Set<List<String>> drillDownChains2 = cube.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("banner", "campaign", "offer"));
-		assertEquals(newHashSet(asList("advertiser", "campaign", "offer", "banner"),
-				asList("advertiser", "campaign"), asList("advertiser", "campaign", "offer")), drillDownChains2);
-	}*/
-
+//	@Test
+//	public void testDrillDownChains() throws Exception {
+//		Set<List<String>> drillDownChains1 = cube.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("advertiser", "banner", "campaign", "offer"));
+//		assertEquals(newHashSet(asList("advertiser"), asList("advertiser", "campaign", "offer"), asList("advertiser", "campaign", "offer", "banner"),
+//				asList("advertiser", "campaign")), drillDownChains1);
+//
+//		Set<List<String>> drillDownChains2 = cube.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("banner", "campaign", "offer"));
+//		assertEquals(newHashSet(asList("advertiser", "campaign", "offer", "banner"),
+//				asList("advertiser", "campaign"), asList("advertiser", "campaign", "offer")), drillDownChains2);
+//	}
 }

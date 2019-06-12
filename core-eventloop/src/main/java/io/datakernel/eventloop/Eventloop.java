@@ -368,7 +368,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		breakEventloop = false;
 		boolean setWasOptimized = tryToOptimizeSelector(selector);
 
-		long timeAfterSelectorSelect = 0;
+		long timeAfterSelectorSelect;
 		long timeAfterBusinessLogic = 0;
 		while (true) {
 			if (!isAlive()) {
@@ -514,6 +514,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		for (int i = 0; i < selectedKeys.size(); i++) {
 			SelectionKey key = selectedKeys.get(i);
+			assert key != null;
 			if (!key.isValid()) {
 				invalidKeys++;
 				continue;
@@ -1195,6 +1196,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return tick;
 	}
 
+	@Nullable
 	public FatalErrorHandler getFatalErrorHandler() {
 		return fatalErrorHandler;
 	}

@@ -33,8 +33,7 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.check;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -135,18 +134,18 @@ public class Utils {
 	@SuppressWarnings("unchecked")
 	public static <K, D> List<OTCommit<K, D>> commits(Consumer<OTGraphBuilder<K, D>> graphBuilder, boolean withRoots, long initialLevel) {
 		Map<K, Map<K, List<D>>> graph = new HashMap<>();
-		graphBuilder.accept((parent, child, diffs) -> graph
-				.computeIfAbsent(child, $ -> new HashMap<>())
-				.computeIfAbsent(parent, $ -> new ArrayList<>())
-				.addAll(diffs));
+		graphBuilder.accept((parent, child, diffs) ->
+				graph.computeIfAbsent(child, $ -> new HashMap<>()).computeIfAbsent(parent, $ -> new ArrayList<>()).addAll(diffs));
 		Set<K> heads = difference(
 				graph.keySet(),
-				graph.values().stream()
-						.flatMap(t -> t.keySet().stream())
+				graph.values()
+						.stream()
+						.flatMap(parents -> parents.keySet().stream())
 						.collect(toSet()));
 		Set<K> roots = difference(
-				graph.values().stream()
-						.flatMap(t -> t.keySet().stream())
+				graph.values()
+						.stream()
+						.flatMap(parents -> parents.keySet().stream())
 						.collect(toSet()),
 				graph.keySet());
 		HashMap<K, Long> levels = new HashMap<>();
@@ -157,11 +156,12 @@ public class Utils {
 			if (roots.size() == 1) {
 				graph.put(first(roots), emptyMap()); // true root
 			} else {
-				roots.forEach(root -> graph.put(root, singletonMap((K) INVALID_KEY, null))); // intermediate node
+				roots.forEach(root -> graph.put(root, singletonMap((K) INVALID_KEY, emptyList()))); // intermediate node
 			}
 		}
-		return graph.entrySet().stream()
-				.map(entry -> OTCommit.of(0, entry.getKey(), entry.getValue(), initialLevel - 1L + levels.get(entry.getKey()))
+		return graph.entrySet()
+				.stream()
+				.map(entry -> OTCommit.of(0, entry.getKey(), entry.getValue().keySet(), entry.getValue()::get, id -> initialLevel + levels.getOrDefault(id, 0L) - 1L)
 						.withTimestamp(initialLevel - 1L + levels.get(entry.getKey())))
 				.collect(toList());
 	}

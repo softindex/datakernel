@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.Rule;
 import org.junit.Test;
@@ -145,6 +145,7 @@ public final class HttpUrlTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidPartialUrl() {
+		//noinspection ResultOfMethodCallIgnored
 		UrlParser.of("/path").isRelativePath();
 	}
 

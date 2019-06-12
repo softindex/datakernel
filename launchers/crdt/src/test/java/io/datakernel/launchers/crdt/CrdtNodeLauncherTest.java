@@ -1,50 +1,38 @@
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import org.junit.Test;
 
 import java.nio.file.Paths;
-import java.util.Collection;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static java.util.Collections.singletonList;
 
 public class CrdtNodeLauncherTest {
 	@Test
 	public void testInjector() {
 		new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
 			@Override
-			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getLogicModule() {
-				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {};
-			}
+			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
+				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
+					@Provides
+					CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
+						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
+								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
+								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
+					}
 
-			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(
-						new AbstractModule() {
-							@Provides
-							CrdtDescriptor<String, TimestampContainer<Integer>> provideDescriptor() {
-								return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-										new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-										tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
-							}
-
-							@Provides
-							FsClient provideFsClient() {
-								return LocalFsClient.create(Eventloop.create(), Paths.get(""));
-							}
-						}
-				);
-
+					@Provides
+					FsClient fsClient() {
+						return LocalFsClient.create(Eventloop.create(), Paths.get(""));
+					}
+				};
 			}
 		}.testInjector();
 	}

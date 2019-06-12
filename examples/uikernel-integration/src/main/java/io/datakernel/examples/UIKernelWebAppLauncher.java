@@ -16,22 +16,24 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.module.Module;
+import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
-import static java.util.Arrays.asList;
+import static io.datakernel.di.module.Modules.combine;
 
 public class UIKernelWebAppLauncher extends Launcher {
+	@Inject
+	AsyncHttpServer server;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.ofProperties("configs.properties")),
+	protected Module getModule() {
+		return combine(ServiceGraphModule.defaultInstance(),
+				ConfigModule.create(Config.ofClassPathProperties("configs.properties")),
 				new UIKernelWebAppModule());
 	}
 
@@ -42,6 +44,6 @@ public class UIKernelWebAppLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		UIKernelWebAppLauncher launcher = new UIKernelWebAppLauncher();
-		launcher.launch(true, args);
+		launcher.launch(args);
 	}
 }

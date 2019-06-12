@@ -16,12 +16,14 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
-import com.google.inject.name.Named;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -30,17 +32,16 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.util.Arrays.asList;
 
 @SuppressWarnings("unused")
-public class HttpBenchmark extends Launcher {
+public final class HttpBenchmark extends Launcher {
 
 	private final static int MAX_REQUESTS = 1000000;
 	private final static int WARMUP_ROUNDS = 3;
@@ -57,9 +58,46 @@ public class HttpBenchmark extends Launcher {
 	@Inject
 	AsyncHttpClient httpClient;
 
+	@Provides
+	@Named("client")
+	Eventloop eventloopClient() {
+		return Eventloop.create()
+				.withFatalErrorHandler(rethrowOnAnyError());
+	}
+
+	@Provides
+	@Named("server")
+	Eventloop eventloopServer() {
+		return Eventloop.create()
+				.withFatalErrorHandler(rethrowOnAnyError());
+	}
+
+	@Provides
+	AsyncDnsClient dnsClient(@Named("client") Eventloop eventloop, Config config) {
+		return RemoteAsyncDnsClient.create(eventloop)
+				.withDnsServerAddress(config.get(ofInetAddress(), "http.googlePublicDns"));
+	}
+
+	@Provides
+	AsyncHttpClient httpClient(@Named("client") Eventloop eventloop, AsyncDnsClient dnsClient, Config config) {
+		return AsyncHttpClient.create(eventloop).withDnsClient(dnsClient)
+				.withSocketSettings(config.get(ofSocketSettings(), "client.http.socketSettings"));
+	}
+
+	@Provides
+	AsyncHttpServer httpServer(@Named("server") Eventloop eventloop, AsyncServlet servlet, Config config) {
+		return AsyncHttpServer.create(eventloop, servlet)
+				.initialize(ofHttpServer(config.getChild("server.http")));
+	}
+
+	@Provides
+	AsyncServlet servlet() {
+		return ignored -> Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello world!")));
+	}
+
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(Config.create()
 						.with("benchmark.warmupRounds", "" + WARMUP_ROUNDS)
@@ -73,51 +111,7 @@ public class HttpBenchmark extends Launcher {
 						.with("client.http.port", "25565")
 						.with("client.http.socketSettings.keepAlive", "false")
 						.with("client.http.socketSettings.tcpNoDelay", "true")
-				),
-				new AbstractModule() {
-					@Provides
-					@Singleton
-					@Named("client")
-					Eventloop eventloopClient() {
-						return Eventloop.create()
-								.withFatalErrorHandler(rethrowOnAnyError());
-					}
-
-					@Provides
-					@Singleton
-					@Named("server")
-					Eventloop eventloopServer() {
-						return Eventloop.create()
-								.withFatalErrorHandler(rethrowOnAnyError());
-					}
-
-					@Provides
-					@Singleton
-					AsyncDnsClient dnsClient(@Named("client") Eventloop eventloop, Config config) {
-						return RemoteAsyncDnsClient.create(eventloop)
-								.withDnsServerAddress(config.get(ofInetAddress(), "http.googlePublicDns"));
-					}
-
-					@Provides
-					@Singleton
-					AsyncHttpClient httpClient(@Named("client") Eventloop eventloop, AsyncDnsClient dnsClient, Config config) {
-						return AsyncHttpClient.create(eventloop).withDnsClient(dnsClient)
-								.withSocketSettings(config.get(ofSocketSettings(), "client.http.socketSettings"));
-					}
-
-					@Provides
-					@Singleton
-					AsyncHttpServer httpServer(@Named("server") Eventloop eventloop, AsyncServlet servlet, Config config) {
-						return AsyncHttpServer.create(eventloop, servlet)
-								.initialize(ofHttpServer(config.getChild("server.http")));
-					}
-
-					@Provides
-					@Singleton
-					AsyncServlet servlet() {
-						return ignored -> Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello world!")));
-					}
-				}
+				)
 		);
 	}
 
@@ -239,6 +233,6 @@ public class HttpBenchmark extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		HttpBenchmark benchmark = new HttpBenchmark();
-		benchmark.launch(true, args);
+		benchmark.launch(args);
 	}
 }

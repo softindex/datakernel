@@ -26,11 +26,12 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -46,10 +47,15 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.set;
 import static junit.framework.TestCase.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class CustomFieldsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Measures("eventCount")
 	public static class EventRecord {

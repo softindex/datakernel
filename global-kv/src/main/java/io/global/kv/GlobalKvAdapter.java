@@ -26,7 +26,6 @@ import io.global.common.PubKey;
 import io.global.common.SimKey;
 import io.global.kv.api.KvClient;
 import io.global.kv.api.KvItem;
-import io.global.kv.api.RawKvItem;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;

@@ -88,6 +88,7 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@NotNull
 	@Override
 	public final <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
@@ -98,6 +99,7 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@NotNull
 	@Override
 	public final <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {

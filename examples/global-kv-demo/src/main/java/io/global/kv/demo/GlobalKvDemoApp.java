@@ -16,15 +16,15 @@
 
 package io.global.kv.demo;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -38,19 +38,17 @@ import io.global.kv.api.KvItem;
 import io.global.launchers.GlobalNodesModule;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Arrays.asList;
 
 public final class GlobalKvDemoApp extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globalkv-app.properties";
 	public static final String DEFAULT_SERVER_ID = "KV Demo";
 
@@ -67,37 +65,40 @@ public final class GlobalKvDemoApp extends Launcher {
 	KvClient<String, String> alice;
 
 	@Override
-	protected Collection<com.google.inject.Module> getModules() {
-		return asList(ServiceGraphModule.defaultInstance(),
+	protected Module getModule() {
+		return combine(
+				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("node.serverId", DEFAULT_SERVER_ID)
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				override(new AbstractModule() {
-					@Provides
-					@Singleton
-					GlobalKvDriver<String, String> provide(GlobalKvNode node) {
-						return GlobalKvDriver.create(node, STRING_CODEC, STRING_CODEC);
-					}
+				override(
+						combine(
+								new AbstractModule() {
+									@Provides
+									GlobalKvDriver<String, String> provide(GlobalKvNode node) {
+										return GlobalKvDriver.create(node, STRING_CODEC, STRING_CODEC);
+									}
 
-					@Provides
-					@Singleton
-					@Named("alice")
-					KeyPair provideAlice(Config config) {
-						return config.get(ofPrivKey(), "app.keys.alice").computeKeys();
-					}
+									@Provides
+									@Named("alice")
+									KeyPair provideAlice(Config config) {
+										return config.get(ofPrivKey(), "app.keys.alice").computeKeys();
+									}
 
-					@Provides
-					@Singleton
-					@Named("alice")
-					KvClient<String, String> provideAlice(GlobalKvDriver<String, String> driver, @Named("alice") KeyPair keys) {
-						return driver.adapt(keys);
-					}
-				}, new GlobalNodesModule())
-						.with(new ExampleCommonModule()));
+									@Provides
+									@Named("alice")
+									KvClient<String, String> provideAlice(GlobalKvDriver<String, String> driver, @Named("alice") KeyPair keys) {
+										return driver.adapt(keys);
+									}
+								},
+								new GlobalNodesModule()),
+						new ExampleCommonModule()
+				)
+		);
 	}
 
 	@Override
@@ -120,6 +121,6 @@ public final class GlobalKvDemoApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalKvDemoApp().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new GlobalKvDemoApp().launch(args);
 	}
 }

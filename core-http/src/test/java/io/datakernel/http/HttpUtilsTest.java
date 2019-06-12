@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.processor.LambdaStatement.ThrowingRunnable;
+import io.datakernel.test.rules.LambdaStatement.ThrowingRunnable;
 import org.junit.Test;
 
 import java.util.Arrays;

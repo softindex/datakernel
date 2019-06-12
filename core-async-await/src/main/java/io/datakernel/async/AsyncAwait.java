@@ -46,8 +46,6 @@ public final class AsyncAwait {
 			Throwable cause = e.getCause();
 			if (cause instanceof Exception) throw (Exception) cause;
 			throw e;
-		} catch (InterruptedException e) {
-			throw e;
 		}
 	}
 

@@ -37,6 +37,14 @@ public interface CommitStorage {
 
 	Promise<Boolean> saveCommit(CommitId commitId, RawCommit rawCommit);
 
+	default Promise<Boolean> saveIncompleteCommit(CommitId commitId, RawCommit rawCommit) {
+		return saveCommit(commitId, rawCommit)
+				.then(saved -> {
+					if (saved) return isIncompleteCommit(commitId);
+					return Promise.of(false);
+				});
+	}
+
 	Promise<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot);
 
 	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId);
@@ -50,4 +58,8 @@ public interface CommitStorage {
 	Promise<Void> markCompleteCommits();
 
 	Promise<Boolean> isCompleteCommit(CommitId commitId);
+
+	default Promise<Boolean> isIncompleteCommit(CommitId commitId) {
+		return isCompleteCommit(commitId).map(complete -> !complete);
+	};
 }

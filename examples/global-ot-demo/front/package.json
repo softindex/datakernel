@@ -4,7 +4,9 @@
   "license": "Apache-2.0",
   "repository": "https://github.com/softindex/datakernel/tree/master/examples/global-ot-chat",
   "scripts": {
-    "build": "gulp build"
+    "prebuild": "rm -rf ../src/main/resources/build",
+    "build": "gulp build",
+    "postbuild": "mkdir -p ../src/main/resources; cp -r build ../src/main/resources/"
   },
   "dependencies": {
     "d3-graphviz": "^2.6.1",

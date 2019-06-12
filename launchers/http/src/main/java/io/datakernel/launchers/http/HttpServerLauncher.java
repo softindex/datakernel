@@ -1,13 +1,13 @@
 package io.datakernel.launchers.http;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
@@ -16,22 +16,17 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.guice.OptionalDependency;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 
-import static com.google.inject.util.Modules.combine;
-import static com.google.inject.util.Modules.override;
+import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 /**
  * Preconfigured Http server launcher.
@@ -39,60 +34,45 @@ import static java.util.Collections.singletonList;
  * @see Launcher
  */
 public abstract class HttpServerLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "http-server.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
 
 	@Inject
 	AsyncHttpServer httpServer;
 
-	@Override
-	protected final Collection<com.google.inject.Module> getModules() {
-		return asList(
-				override(getBaseModules()).with(getOverrideModules()),
-				combine(getBusinessLogicModules()));
+	@Provides
+	Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
+		return Eventloop.create()
+				.initialize(ofEventloop(config.getChild("eventloop")))
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
-	private Collection<com.google.inject.Module> getBaseModules() {
-		return asList(
+	@Provides
+	AsyncHttpServer server(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
+		return AsyncHttpServer.create(eventloop, rootServlet)
+				.initialize(ofHttpServer(config.getChild("http")));
+	}
+
+	@Override
+	protected final Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new AbstractModule() {
-					@Provides
-					@Singleton
-					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
-						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
-					}
-
-					@Provides
-					@Singleton
-					AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
-						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(ofHttpServer(config.getChild("http")));
-					}
-				}
-		);
-	}
-
-	/**
-	 * Override this method to override base modules supplied in launcher.
-	 */
-	protected Collection<com.google.inject.Module> getOverrideModules() {
-		return emptyList();
+				getBusinessLogicModule());
 	}
 
 	/**
 	 * Override this method to supply your launcher business logic.
 	 */
-	protected abstract Collection<com.google.inject.Module> getBusinessLogicModules();
+	protected Module getBusinessLogicModule() {
+		return Module.empty();
+	}
 
 	@Override
 	protected void run() throws Exception {
@@ -101,23 +81,25 @@ public abstract class HttpServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
-		com.google.inject.Module businessLogicModule = businessLogicModuleName != null ?
-				(com.google.inject.Module) Class.forName(businessLogicModuleName).newInstance() :
+
+		Module businessLogicModule = businessLogicModuleName != null ?
+				(Module) Class.forName(businessLogicModuleName).newInstance() :
 				new AbstractModule() {
 					@Provides
-					public AsyncServlet provide(Config config) {
+					public AsyncServlet servlet(Config config) {
 						String message = config.get("message", "Hello, world!");
 						return req -> Promise.of(
-								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii(message))));
+								HttpResponse.ok200().withBody(wrapForReading(encodeAscii(message))));
 					}
 				};
 
 		Launcher launcher = new HttpServerLauncher() {
 			@Override
-			protected Collection<com.google.inject.Module> getBusinessLogicModules() {
-				return singletonList(businessLogicModule);
+			protected Module getBusinessLogicModule() {
+				return businessLogicModule;
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+
+		launcher.launch(args);
 	}
 }

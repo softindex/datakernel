@@ -19,9 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -41,8 +42,13 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class HttpTolerantApplicationTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testTolerantServer() throws Exception {
@@ -90,8 +96,8 @@ public final class HttpTolerantApplicationTest {
 					System.out.println("accept: " + socket);
 					DataInputStream in = new DataInputStream(socket.getInputStream());
 					int b = 0;
-					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF)) {
-					}
+					//noinspection StatementWithEmptyBody
+					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF));
 					System.out.println("write: " + socket);
 					write(socket, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc");
 				} catch (IOException ignored) {
@@ -102,7 +108,7 @@ public final class HttpTolerantApplicationTest {
 
 		String header = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + port))
-				.map(response -> response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
+				.map(response -> response.getHeader(HttpHeaders.CONTENT_TYPE))
 				.whenComplete(asserting(($, e) -> {
 					listener.close();
 				})));

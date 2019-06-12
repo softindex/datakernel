@@ -206,11 +206,7 @@ public final class EventloopStats extends ForwardingInspector<EventloopInspector
 		fatalErrors.recordException(e, causedObject);
 
 		Class<? extends Throwable> type = e.getClass();
-		ExceptionStats stats = fatalErrorsMap.get(type);
-		if (stats == null) {
-			stats = ExceptionStats.create();
-			fatalErrorsMap.put(type, stats);
-		}
+		ExceptionStats stats = fatalErrorsMap.computeIfAbsent(type, k -> ExceptionStats.create());
 		stats.recordException(e, causedObject);
 		if (next != null) {
 			next.onFatalError(e, causedObject);

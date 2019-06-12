@@ -1,17 +1,17 @@
 ## FS
 
 FS Module is basis for building efficient, scalable remote file storage. supporting data redundancy, rebalancing and 
-resharding. The key principle is effective data immutability, which enables simple design, low-overhead and aggressive 
-caching. This technology allows to create high-throughput data storage and processing applications.
-All data in FS is organized in file systems.
+resharding. 
 
-This module includes `FsClient` interface which represents a client with *upload*, *download*, *move*, *delete* and 
-*list* operations. There are several implementations of the interface:
+You can add this module to your project by inserting the following dependency to **pom.xml**:
 
-* LocalFsClient - a client which works with local file system and doesn't involve working with networks.
-* RemoteFsClient - connects to a RemoteFsServer and communicates with it.
-* RemoteFsClusterClient - a client which operates on a map of other clients as a cluster.
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-fs</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
 
-Also, there is a `RemoteFsServer` which is an implementation of `AbstractServer` for Cloud-FS.
-
+### To find out more visit [our site](https://datakernel.io/docs/components/cloud/fs.html).
 ### You can explore FS examples [here](https://github.com/softindex/datakernel/tree/master/examples/remotefs)

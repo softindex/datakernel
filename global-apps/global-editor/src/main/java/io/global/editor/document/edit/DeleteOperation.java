@@ -59,9 +59,7 @@ public class DeleteOperation implements EditOperation {
 		DeleteOperation that = (DeleteOperation) o;
 
 		if (position != that.position) return false;
-		if (!content.equals(that.content)) return false;
-
-		return true;
+		return content.equals(that.content);
 	}
 
 	@Override

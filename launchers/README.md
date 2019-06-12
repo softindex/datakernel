@@ -1,12 +1,14 @@
 ## Launchers
 
-This module provides you with launchers for commonly-used solutions:
-* [HTTP](https://github.com/softindex/datakernel/tree/master/core-http) server launcher
-* [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc) server launcher
-* [CRDT](https://github.com/softindex/datakernel/tree/master/cloud-crdt) node launcher
-* [FS](https://github.com/softindex/datakernel/tree/master/cloud-fs) launchers
+This module provides you with handy launchers for commonly-used solutions.
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-launchers</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
 
-If you want to create your own application, you should either extend one of proposed launchers or use it as a reference 
-for your custom launcher.
-
+### To find out more visit [our site](https://datakernel.io/docs/components/core/launchers.html).
 ### You can explore Launchers examples [here](https://github.com/softindex/datakernel/tree/master/examples/launchers).

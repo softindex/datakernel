@@ -184,7 +184,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 						reduceEdges(repository, otSystem, heads, checkpointNode,
 								DiffsReducer.of(
 										new HashSet<>(),
-										(Set<C> accumulatedChunks, List<D> diffs) ->
+										(Set<C> accumulatedChunks, List<? extends D> diffs) ->
 												union(accumulatedChunks, chunksInDiffs(cubeDiffScheme, diffs)),
 										CollectionUtils::union))
 								.whenComplete(promiseCleanupCollectRequiredChunks.recordStats()))

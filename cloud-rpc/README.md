@@ -1,14 +1,17 @@
 ## RPC
 
-RPC module is a framework to build distributed applications which require efficient client-server interconnections between 
+RPC module was designed for creating distributed applications which require efficient client-server interconnections between 
 servers.
 
-* Ideal to create near-realtime (i.e. memcache-like) servers with application-specific business logic
-* Up to ~5.7M of requests per second on single core
-* Pluggable high-performance asynchronous binary RPC streaming protocol
-* Consistent hashing and round-robin distribution strategies
-* Fault tolerance is achieved with reconnections to fallback and replica servers
-* Utilizes Serializer module for fast RPC message transferring.
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-rpc</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
 
+### To find out more visit [our site](https://datakernel.io/docs/components/cloud/rpc.html).
 ### You can explore RPC example [here](https://github.com/softindex/datakernel/tree/master/examples/rpc)
 

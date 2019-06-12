@@ -17,16 +17,13 @@
 package io.global.ot.server;
 
 import io.datakernel.async.*;
+import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelSplitter;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.CollectorsEx;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.RefBoolean;
 import io.global.common.*;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
@@ -42,30 +39,28 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.async.Promises.firstSuccessful;
-import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.util.Utils.nSuccessesOrLess;
 import static io.global.util.Utils.tolerantCollectVoid;
-import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
+	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry();
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
 
 	private final Eventloop eventloop;
 	private final CommitStorage commitStorage;
 
 	boolean pollMasterRepositories = DEFAULT_POLL_MASTER_REPOSITORIES;
+	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
 	private int propagations = 1;
-	private int minimumSuccesses = 0;
 
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
 			DiscoveryService discoveryService,
@@ -84,6 +79,11 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	public GlobalOTNodeImpl withPollMasterRepositories(boolean pollMasterRepositories) {
 		this.pollMasterRepositories = pollMasterRepositories;
+		return this;
+	}
+
+	public GlobalOTNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
+		this.retryPolicy = retryPolicy;
 		return this;
 	}
 
@@ -156,13 +156,9 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits) {
-		return Promises.reduce(CollectorsEx.toAny(), 1,
-				asPromises(newCommits.entrySet().stream().map(entry ->
-						() -> commitStorage.saveCommit(entry.getKey(), entry.getValue()))
-				))
-				.then(savedAny -> savedAny ?
-						toMaster(repositoryId, node -> node.save(repositoryId, newCommits)) :
-						Promise.complete())
+		return Promises.all(newCommits.entrySet()
+				.stream()
+				.map(entry -> commitStorage.saveCommit(entry.getKey(), entry.getValue())))
 				.whenComplete(toLogger(logger, "save", repositoryId, newCommits, this));
 	}
 
@@ -173,7 +169,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		}
 		RepositoryEntry repositoryEntry = ensureRepository(repositoryId);
 		return repositoryEntry.saveHeads(newHeads)
-				.then($ -> toMaster(repositoryId, repositoryEntry::doPush));
+				.whenResult($ -> repositoryEntry.push());
 	}
 
 	@Override
@@ -194,161 +190,64 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	}
 
 	@Override
-	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
-		checkArgument(!hasIntersection(required, existing), "Required heads and existing heads cannot have intersections");
-		Set<CommitId> skipCommits = new HashSet<>(existing);
-		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> nodes) {
+		PriorityQueue<CommitEntry> queue = new PriorityQueue<>();
 		ensureRepository(repositoryId); //ensuring repository to fetch from later
-		return commitStorage.getHeads(repositoryId)
-				.then(thisHeads -> Promises.all(
-						union(thisHeads.keySet(), required, existing).stream()
-								.map(commitId -> tryGetCommit(repositoryId, commitId)
-										.whenResult(maybeCommit -> maybeCommit.ifPresent(commit ->
-												queue.add(new RawCommitEntry(commitId, commit))))))
-						.map($ -> AsyncSupplier.cast(() -> getNextStreamEntry(repositoryId, queue, skipCommits, required, existing)))
-						.map(ChannelSupplier::of)
-						.map(supplier -> supplier.map(
-								entry -> new CommitEntry(entry.commitId, entry.commit, thisHeads.get(entry.commitId))))
-				)
-				.whenComplete(toLogger(logger, TRACE, "download", repositoryId, required, existing, this));
-	}
-
-	private Promise<@Nullable RawCommitEntry> getNextStreamEntry(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-			Set<CommitId> required, Set<CommitId> existing) {
-		return Promise.ofCallback(cb -> getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb));
-	}
-
-	private void getNextStreamEntryImpl(RepoID repositoryId, PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-			Set<CommitId> required, Set<CommitId> existing,
-			SettableCallback<@Nullable RawCommitEntry> cb) {
-		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
-			cb.set(null);
-			return;
-		}
-		RawCommitEntry entry = queue.poll();
-		boolean skipped = skipCommits.remove(entry.commitId);
-		Set<CommitId> nextCommitIds = entry.getCommit().getParents();
-		Promises.all(
-				nextCommitIds.stream()
-						.filter(nextCommitId -> !existing.contains(nextCommitId) && !nextCommitId.isRoot())
-						.filter(nextCommitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(nextCommitId::equals))
-						.map(nextCommitId -> tryGetCommit(repositoryId, nextCommitId)
-								.whenResult(maybeNextCommit -> maybeNextCommit.ifPresent(nextCommit -> {
-									if (skipped && !required.contains(nextCommitId)) {
-										skipCommits.add(nextCommitId);
-									}
-									queue.add(new RawCommitEntry(nextCommitId, nextCommit));
-								}))))
-				.whenResult($ -> {
-					if (!skipped) {
-						cb.set(entry);
-						return;
-					}
-					getNextStreamEntryImpl(repositoryId, queue, skipCommits, required, existing, cb);
-				})
-				.whenException(cb::setException);
+		return Promises.all(
+				nodes.stream()
+						.map(commitId -> tryGetCommit(repositoryId, commitId)
+								.whenResult(maybeCommit -> maybeCommit.ifPresent(commit ->
+										queue.add(new CommitEntry(commitId, commit))))))
+				.map($ -> AsyncSupplier.cast(() -> {
+					if (queue.isEmpty()) return Promise.of(null);
+					CommitEntry entry = queue.poll();
+					return Promises.all(
+							entry.getCommit().getParents()
+									.stream()
+									.filter(nextCommitId -> !nextCommitId.isRoot() && queue.stream().map(CommitEntry::getCommitId).noneMatch(nextCommitId::equals))
+									.map(nextCommitId -> tryGetCommit(repositoryId, nextCommitId)
+											.whenResult(maybeNextCommit -> maybeNextCommit.ifPresent(nextCommit ->
+													queue.add(new CommitEntry(nextCommitId, nextCommit))))))
+							.map($2 -> entry);
+				}))
+				.map(ChannelSupplier::of)
+				.whenComplete(toLogger(logger, TRACE, "download", repositoryId, this));
 	}
 
 	@Override
-	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-		return ensureRepository(repositoryId).ensureUpdated()
-				.then($ -> getLocalHeadsInfo(repositoryId))
-				.whenComplete(toLogger(logger, "getHeadsInfo", repositoryId, this));
-	}
+	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
+		Set<CommitId> incomplete = new HashSet<>();
+		return getIncompleteCommits(heads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet()))
+				.whenResult(incomplete::addAll)
+				.map($ -> new AbstractChannelConsumer<CommitEntry>() {
+					@Override
+					protected Promise<Void> doAccept(@Nullable CommitEntry entry) {
+						if (entry == null) {
+							return Promise.complete();
+						}
+						if (incomplete.isEmpty()) {
+							cancel();
+							return Promise.ofException(CANCEL_EXCEPTION);
+						}
 
-	Promise<HeadsInfo> getLocalHeadsInfo(RepoID repositoryId) {
-		Set<CommitId> existing = new HashSet<>();
-		Set<CommitId> required = new HashSet<>();
-		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
-		return commitStorage.getHeads(repositoryId)
-				.map(Map::keySet)
-				.then(heads -> Promises.all(
-						heads.stream()
-								.map(headId -> commitStorage.loadCommit(headId)
-										.whenResult(maybeCommit -> {
-											if (maybeCommit.isPresent()) {
-												existing.add(headId);
-												queue.add(new RawCommitEntry(headId, maybeCommit.get()));
-											} else {
-												required.add(headId);
-											}
-										})))
-						.then($ -> Promise.<Set<CommitId>>ofCallback(cb ->
-								findMissingParents(queue, new HashSet<>(), cb)))
-						.whenResult(required::addAll)
-						.map($ -> new HeadsInfo(existing, required)));
-	}
-
-	private void findMissingParents(PriorityQueue<RawCommitEntry> queue, Set<CommitId> missingParents, SettableCallback<Set<CommitId>> cb) {
-		RawCommitEntry entry = queue.poll();
-		if (entry == null) {
-			cb.set(missingParents);
-			return;
-		}
-		Promises.all(
-				entry.commit.getParents()
-						.stream()
-						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
-						.map(parentId -> commitStorage.isCompleteCommit(parentId)
-								.then(isCompleteCommit -> isCompleteCommit ?
-										Promise.complete() :
-										commitStorage.loadCommit(parentId)
-												.whenResult(maybeCommit -> {
-													if (maybeCommit.isPresent()) {
-														queue.add(new RawCommitEntry(parentId, maybeCommit.get()));
-													} else {
-														missingParents.add(parentId);
-													}
-												}))))
-				.whenResult($ -> findMissingParents(queue, missingParents, cb))
-				.whenException(cb::setException);
-	}
-
-	@Override
-	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
-		return ensureMasterNodes(repositoryId)
-				.then(nodes -> {
-					if (isMasterFor(repositoryId.getOwner())) {
-						return Promise.of(uploadLocal(repositoryId));
+						if (incomplete.remove(entry.getCommitId())) {
+							return commitStorage.saveCommit(entry.getCommitId(), entry.getCommit()).toVoid()
+									.then($ -> getIncompleteCommits(entry.getCommit().getParents())
+											.then(parents -> {
+												incomplete.addAll(parents);
+												if (incomplete.isEmpty()) {
+													return saveHeads(repositoryId, heads);
+												}
+												return Promise.complete();
+											}));
+						} else {
+							return Promise.complete();
+						}
 					}
-					return nSuccessesOrLess(propagations, nodes
-							.stream()
-							.map(node -> AsyncSupplier.cast(() -> node.upload(repositoryId))))
-							.map(consumers -> {
-								ChannelZeroBuffer<CommitEntry> buffer = new ChannelZeroBuffer<>();
-								ChannelSplitter<CommitEntry> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
-
-								RefBoolean localCompleted = new RefBoolean(false);
-								splitter.addOutput()
-										.set(uploadLocal(repositoryId)
-												.withAcknowledgement(ack -> ack
-														.whenComplete(($, e) -> {
-															if (e == null) {
-																localCompleted.set(true);
-															} else {
-																splitter.close(e);
-															}
-														})));
-
-								MaterializedPromise<Void> process = splitter.splitInto(consumers, minimumSuccesses, localCompleted);
-								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
-							});
-				});
-	}
-
-	public ChannelConsumer<CommitEntry> uploadLocal(RepoID repositoryId) {
-		Set<SignedData<RawCommitHead>> newHeads = new HashSet<>();
-		return ChannelConsumer.of(
-				(CommitEntry entry) -> {
-					if (entry.hasHead()) {
-						newHeads.add(entry.getHead());
-					}
-					return commitStorage.saveCommit(entry.commitId, entry.commit).toVoid();
 				})
-				.withAcknowledgement(ack -> ack
-						.then($ -> commitStorage.markCompleteCommits())
-						.then($ -> ensureRepository(repositoryId).saveHeads(newHeads))
-				);
+				.map(consumer -> consumer
+						.withAcknowledgement(ack -> ack
+								.whenComplete(($, e) -> commitStorage.markCompleteCommits())));
 	}
 
 	@Override
@@ -519,6 +418,17 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 							.map(master -> AsyncSupplier.cast(() -> fn.apply(master))))
 							.toVoid();
 				});
+	}
+
+	private Promise<Set<CommitId>> getIncompleteCommits(Set<CommitId> commitIds) {
+		Set<CommitId> incompleteCommits = new HashSet<>();
+		return Promises.all(commitIds.stream().map(commitId -> commitStorage.isIncompleteCommit(commitId)
+				.whenResult(isIncomplete -> {
+					if (isIncomplete) {
+						incompleteCommits.add(commitId);
+					}
+				})))
+				.map($ -> incompleteCommits);
 	}
 
 	@Override

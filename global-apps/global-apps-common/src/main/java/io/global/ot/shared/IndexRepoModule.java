@@ -1,8 +1,7 @@
 package io.global.ot.shared;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.client.OTDriver;
 
@@ -17,7 +16,6 @@ public final class IndexRepoModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	DynamicOTNodeServlet<SharedReposOperation> provideServlet(OTDriver driver) {
 		return DynamicOTNodeServlet.create(driver, createOTSystem(), SHARED_REPO_OPERATION_CODEC, indexRepo);
 	}

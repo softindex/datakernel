@@ -5,15 +5,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.IntStream;
 
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	Promise<Void> push(Collection<OTCommit<K, D>> commits);
@@ -41,12 +38,16 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	}
 
 	@NotNull
-	Promise<Set<K>> getAllHeads();
+	default Promise<Long> getLevel(@NotNull K commitId) {
+		return loadCommit(commitId)
+				.map(OTCommit::getLevel);
+	}
 
 	@NotNull
-	default Promise<Collection<OTCommit<K, D>>> getAllHeadCommits() {
-		return getAllHeads()
-				.then(allHeads -> Promises.toList(allHeads.stream().map(this::loadCommit)));
+	default Promise<Map<K, Long>> getLevels(@NotNull Set<K> commitIds) {
+		ArrayList<K> ids = new ArrayList<>(commitIds);
+		return Promises.toList(ids.stream().map(this::getLevel))
+				.map(list -> IntStream.range(0, ids.size()).boxed().collect(toMap(ids::get, list::get)));
 	}
 
 	@NotNull
@@ -65,18 +66,31 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	}
 
 	@NotNull
+	Promise<Set<K>> getAllHeads();
+
+	@NotNull
+	default Promise<Collection<OTCommit<K, D>>> getAllHeadCommits() {
+		return getAllHeads()
+				.then(allHeads -> Promises.toList(allHeads.stream().map(this::loadCommit)));
+	}
+
+	@NotNull
 	default AsyncSupplier<Set<K>> pollHeads() {
 		return this::getHeads;
 	}
 
-	Promise<OTCommit<K, D>> loadCommit(K revisionId);
+	@NotNull
+	Promise<OTCommit<K, D>> loadCommit(@NotNull K revisionId);
 
-	default Promise<Boolean> hasSnapshot(K revisionId) {
+	@NotNull
+	default Promise<Boolean> hasSnapshot(@NotNull K revisionId) {
 		return loadSnapshot(revisionId).map(Optional::isPresent);
 	}
 
-	Promise<Optional<List<D>>> loadSnapshot(K revisionId);
+	@NotNull
+	Promise<Optional<List<D>>> loadSnapshot(@NotNull K revisionId);
 
-	Promise<Void> saveSnapshot(K revisionId, List<D> diffs);
+	@NotNull
+	Promise<Void> saveSnapshot(@NotNull K revisionId, @NotNull List<D> diffs);
 
 }

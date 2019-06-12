@@ -13,8 +13,16 @@ import static io.datakernel.jmx.MBeanFormat.formatTimestamp;
 import static io.datakernel.util.StringFormatUtils.formatDuration;
 import static java.lang.System.currentTimeMillis;
 
+/**
+ * The implementation to handle the big amount of date
+ * It works like cache, when you use it you shouldn`t rely on result.
+ * Because it can be rewritten by new date, if the written date was oversize
+ */
 public final class RingBuffer implements RingBufferMBean {
 
+	/**
+	 * The main class for the caching the byte-arrays
+	 */
 	private static class Buffer {
 		private final byte[] array;
 		private final IntLongHashMap indexInt = new IntLongHashMap();
@@ -142,6 +150,12 @@ public final class RingBuffer implements RingBufferMBean {
 		this.ringBuffers = ringBuffers;
 	}
 
+	/**
+	 * The method is used to try to get the from the {@see Buffer}
+	 * It will return the latest actual data for the {@param key}
+	 * @param key of your item
+	 * @return the item in case your item is still present in {@see Buffer}
+	 */
 	public ByteBuf get(byte[] key) {
 		statsGets.recordEvent();
 		for (int i = 0; i < ringBuffers.length; i++) {
@@ -157,10 +171,19 @@ public final class RingBuffer implements RingBufferMBean {
 		return null;
 	}
 
+	/**
+	 * The method is used to cache the actual information for the {@param key}
+	 * @param key is used as a pointer for the cached {@param data}
+	 * @param data is thing to need to cache
+	 */
 	public void put(byte[] key, byte[] data) {
 		put(key, data, 0, data.length);
 	}
 
+	/**
+	 * The same to the above method,
+	 * there are extra params to handle the {@param data}
+	 */
 	public void put(byte[] key, byte[] data, int offset, int length) {
 		statsPuts.recordEvent();
 		if (ringBuffers[currentBuffer].remaining() < length) {
@@ -229,6 +252,10 @@ public final class RingBuffer implements RingBufferMBean {
 		return statsMisses.getTotalCount();
 	}
 
+	/**
+	 * Is used to figure out the amount of byte[] arrays which are stored
+	 * @return	amount of stored data
+	 */
 	@Override
 	public int getItems() {
 		int items = 0;
@@ -238,6 +265,11 @@ public final class RingBuffer implements RingBufferMBean {
 		return items;
 	}
 
+
+	/**
+	 * Is used to get the occupied capacity
+	 * @return amount of occupied capacity
+	 */
 	@Override
 	public long getSize() {
 		long size = 0;

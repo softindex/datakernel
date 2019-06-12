@@ -40,14 +40,12 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
 import org.jetbrains.annotations.Nullable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.nio.file.Path;
@@ -83,7 +81,6 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("rawtypes")
-@RunWith(DatakernelRunner.class)
 public final class ReportingTest {
 	public static final double DELTA = 1E-3;
 
@@ -157,8 +154,6 @@ public final class ReportingTest {
 			switch (key) {
 				case 1:
 					return "first";
-				case 2:
-					return null;
 				case 3:
 					return "third";
 				default:
@@ -262,7 +257,6 @@ public final class ReportingTest {
 						LogItem.class,
 						and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
 
-				@SuppressWarnings("ConstantConditions")
 				@Override
 				public void accept(LogItem item) {
 					if (item.advertiser != EXCLUDE_ADVERTISER && item.campaign != EXCLUDE_CAMPAIGN && item.banner != EXCLUDE_BANNER) {

@@ -1,1 +1,0 @@
-Hello, this is a file used for example purposes.

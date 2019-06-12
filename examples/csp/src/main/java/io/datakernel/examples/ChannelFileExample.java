@@ -42,24 +42,17 @@ public class ChannelFileExample {
 
 	@NotNull
 	private static Promise<Void> writeToFile() {
-		try {
-			return ChannelSupplier.of(
-					ByteBufStrings.wrapAscii("Hello, this is example file\n"),
-					ByteBufStrings.wrapAscii("This is the second line of file"))
-					.streamTo(ChannelFileWriter.create(executorService, PATH));
-		} catch (IOException e) {
-			return Promise.ofException(e);
-		}
+		return ChannelSupplier.of(
+				ByteBufStrings.wrapAscii("Hello, this is example file\n"),
+				ByteBufStrings.wrapAscii("This is the second line of file"))
+				.streamTo(ChannelFileWriter.create(PATH));
 	}
 
 	@NotNull
 	private static Promise<Void> readFile() {
-		try {
-			return ChannelFileReader.readFile(executorService, PATH)
-					.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
-		} catch (IOException e) {
-			return Promise.ofException(e);
-		}
+		return ChannelSupplier.ofPromise(ChannelFileReader.readFile(PATH))
+				.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
+
 	}
 
 	private static void cleanUp() {

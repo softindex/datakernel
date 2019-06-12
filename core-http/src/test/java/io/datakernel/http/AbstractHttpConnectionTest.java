@@ -18,15 +18,16 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.stream.IntStream;
 
@@ -39,10 +40,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-@RunWith(DatakernelRunner.class)
 public final class AbstractHttpConnectionTest {
 	private static final int PORT = getFreePort();
 	private static final String URL = "http://127.0.0.1:" + PORT;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private AsyncHttpClient client;
 
@@ -63,11 +72,12 @@ public final class AbstractHttpConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		ByteBuf body = await(client.request(HttpRequest.get(URL))
-				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
-				.then(HttpMessage::getBody));
-
-		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
+		await(client.request(HttpRequest.get(URL))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals("text/           html", response.getHeader(CONTENT_TYPE));
+							assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.getString(UTF_8));
+						}))));
 	}
 
 	@Test
@@ -82,11 +92,13 @@ public final class AbstractHttpConnectionTest {
 
 		server.listen();
 
-		ByteBuf body = await(client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.whenComplete(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
-				.then(HttpMessage::getBody));
-
-		assertEquals("Test message", body.asString(UTF_8));
+		await(client.request(HttpRequest.get(URL)
+				.withHeader(ACCEPT_ENCODING, "gzip"))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals("Test message", body.getString(UTF_8));
+							assertNotNull(response.getHeader(CONTENT_ENCODING));
+						}))));
 	}
 
 	@Test
@@ -114,18 +126,13 @@ public final class AbstractHttpConnectionTest {
 
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
-				.then(response -> response.getBody()
-						.whenComplete((body, e) -> {
-							if (e != null) throw new AssertionError(e);
-							try {
-								assertEquals(expectedHeader, response.getHeader(CONNECTION));
-								connectionCount.refresh(System.currentTimeMillis());
-								assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
-							} catch (ParseException e1) {
-								throw new AssertionError(e1);
-							}
-						})
-						.map($ -> response));
+				.thenEx((response, e) -> {
+					if (e != null) throw new AssertionError(e);
+					assertEquals(expectedHeader, response.getHeader(CONNECTION));
+					connectionCount.refresh(System.currentTimeMillis());
+					assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
+					return Promise.of(response);
+				});
 	}
 
 	@SuppressWarnings("SameParameterValue")

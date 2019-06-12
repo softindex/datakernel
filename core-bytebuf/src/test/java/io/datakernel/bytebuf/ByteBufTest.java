@@ -230,7 +230,7 @@ public class ByteBufTest {
 		assertTrue(buf.canRead());
 		byte[] bytes = new byte[2];
 		buf.drainTo(bytes, 0, 2);
-		assertTrue(Arrays.equals(new byte[]{'d', 'e'}, bytes));
+		assertArrayEquals(new byte[]{'d', 'e'}, bytes);
 	}
 
 	@Test

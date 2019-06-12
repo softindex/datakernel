@@ -29,6 +29,12 @@
       <artifactId>http-launchers</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>global-fs</artifactId>
+      <version>3.0.0-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -79,7 +85,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.datakernel.examples.MiddlewareServletExample</mainClass>
+              <mainClass>io.datakernel.examples.RoutingServletExample</mainClass>
             </configuration>
           </execution>
           <execution>

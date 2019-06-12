@@ -30,6 +30,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -74,7 +75,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
 	int maxKeepAliveRequests = -1;
-	private int readWriteTimeoutMillis = 0;
+	int readWriteTimeoutMillis = 0;
+	int maxBodySize = Integer.MAX_VALUE;
 
 	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
@@ -186,6 +188,15 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	public AsyncHttpServer withReadWriteTimeout(@NotNull Duration readTimeout) {
 		readWriteTimeoutMillis = (int) readTimeout.toMillis();
+		return this;
+	}
+
+	public AsyncHttpServer withMaxBodySize(MemSize maxBodySize) {
+		return withMaxBodySize(maxBodySize.toInt());
+	}
+
+	public AsyncHttpServer withMaxBodySize(int maxBodySize) {
+		this.maxBodySize = maxBodySize != 0 ? maxBodySize : Integer.MAX_VALUE;
 		return this;
 	}
 

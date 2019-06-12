@@ -16,26 +16,21 @@
 
 package io.global.launchers;
 
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
-import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static io.datakernel.di.module.Modules.combine;
 
 public class GlobalNodesLauncher extends Launcher {
-	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
 
 	@Inject
@@ -50,43 +45,24 @@ public class GlobalNodesLauncher extends Launcher {
 	EventloopTaskScheduler fsCatchUpScheduler;
 
 	@Inject
-	@Named("OT push")
-	EventloopTaskScheduler otPushScheduler;
-
-	@Inject
-	@Named("OT catch up")
-	EventloopTaskScheduler otCatchUpScheduler;
-
-	@Inject
-	@Named("DB push")
+	@Named("KV push")
 	EventloopTaskScheduler kvPushScheduler;
 
 	@Inject
-	@Named("DB catch up")
+	@Named("KV catch up")
 	EventloopTaskScheduler kvCatchUpScheduler;
 
 	@Override
-	protected final Collection<com.google.inject.Module> getModules() {
-		return singletonList(override(getBaseModules()).with(getOverrideModules()));
-	}
-
-	private Collection<com.google.inject.Module> getBaseModules() {
-		return asList(
+	protected final Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
-						ofProperties(PROPERTIES_FILE)
+						ofClassPathProperties(PROPERTIES_FILE)
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new GlobalNodesModule()
 		);
-	}
-
-	/**
-	 * Override this method to override base modules supplied in launcher.
-	 */
-	protected Collection<com.google.inject.Module> getOverrideModules() {
-		return emptyList();
 	}
 
 	@Override
@@ -95,7 +71,6 @@ public class GlobalNodesLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalNodesLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new GlobalNodesLauncher().launch(args);
 	}
-
 }

@@ -16,12 +16,12 @@
 
 package io.global.launchers;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Optional;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.DnsCache;
@@ -31,7 +31,6 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
@@ -50,6 +49,7 @@ import io.global.ot.http.RawServerServlet;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
+import io.global.ot.server.ValidatingGlobalOTNode;
 import io.global.pm.FsMessageStorage;
 import io.global.pm.GlobalPmNodeImpl;
 import io.global.pm.api.GlobalPmNode;
@@ -72,31 +72,26 @@ import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 public class GlobalNodesModule extends AbstractModule {
 	@Override
 	protected void configure() {
-		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
 		bind(GlobalKvNode.class).to(GlobalKvNodeImpl.class);
-		bind(GlobalPmNode.class).to(GlobalPmNodeImpl.class);
 	}
 
 	@Provides
-	@Singleton
-	Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+	Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
 		return Eventloop.create()
 				.initialize(ofEventloop(config.getChild("eventloop")))
-				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
 	@Provides
-	@Singleton
-	GlobalOTNodeImpl provide(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+	GlobalOTNode globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, commitStorage, factory)
 				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
 	}
 
 	@Provides
-	@Singleton
-	GlobalFsNodeImpl provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory,
+	GlobalFsNodeImpl globalFsNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory,
 			@Named("FS") FsClient fsClient) {
 		return GlobalFsNodeImpl.create(serverId, discoveryService, factory, fsClient)
 				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
@@ -104,41 +99,35 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
-	GlobalKvNodeImpl provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
+	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
 		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
 				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
 	}
 
 	@Provides
-	@Singleton
-	GlobalPmNodeImpl provide(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
+	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
 		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
 				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
 
 	@Provides
-	@Singleton
-	RawServerId provideServerId(Config config) {
+	RawServerId rawServerId(Config config) {
 		return config.get(ofRawServerId(), "node.serverId");
 	}
 
 	@Provides
-	@Singleton
-	DiscoveryService provide(Config config, IAsyncHttpClient client) {
+	DiscoveryService discoveryService(Config config, IAsyncHttpClient client) {
 		return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "discovery.address"), client);
 	}
 
 	@Provides
-	@Singleton
-	IAsyncHttpClient provide(Eventloop eventloop, AsyncDnsClient dnsClient) {
+	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient) {
 		return AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient);
 	}
 
 	@Provides
-	@Singleton
-	AsyncDnsClient provideDnsClient(Eventloop eventloop, Config config) {
+	AsyncDnsClient asyncDnsClient(Eventloop eventloop, Config config) {
 		RemoteAsyncDnsClient remoteDnsClient = RemoteAsyncDnsClient.create(eventloop)
 				.withDnsServerAddress(config.get(ofInetSocketAddress(), "dns.serverAddress", GOOGLE_PUBLIC_DNS))
 				.withTimeout(config.get(ofDuration(), "dns.timeout", DEFAULT_TIMEOUT));
@@ -146,8 +135,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
-	AsyncHttpServer provide(Eventloop eventloop, AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 
@@ -157,137 +145,107 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
-	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet, GlobalKvNodeServlet kvServlet,
-			GlobalPmNodeServlet pmServlet) {
-		return MiddlewareServlet.create()
-				.with("/ot", otServlet)
-				.with("/fs", fsServlet)
-				.with("/kv", kvServlet)
-				.with("/pm", pmServlet);
+	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet,
+			@Named("kv") AsyncServlet kvServlet, @Named("pm") AsyncServlet pmServlet) {
+		return RoutingServlet.create()
+				.with("/ot/*", otServlet)
+				.with("/fs/*", fsServlet)
+				.with("/kv/*", kvServlet)
+				.with("/pm/*", pmServlet);
 	}
 
 	@Provides
-	@Singleton
-	RawServerServlet provideRawServerServlet(GlobalOTNode node) {
-		return RawServerServlet.create(node);
+	RawServerServlet rawServerServlet(GlobalOTNode node) {
+		return RawServerServlet.create(ValidatingGlobalOTNode.create(node));
 	}
 
 	@Provides
-	@Singleton
-	GlobalFsNodeServlet provideGlobalFsServlet(GlobalFsNode node) {
+	@Named("fs")
+	AsyncServlet fsServlet(GlobalFsNode node) {
 		return GlobalFsNodeServlet.create(node);
 	}
 
 	@Provides
-	@Singleton
-	GlobalKvNodeServlet provideGlobalKvServlet(GlobalKvNodeImpl node) {
+	@Named("kv")
+	AsyncServlet kvServlet(GlobalKvNode node) {
 		return GlobalKvNodeServlet.create(node);
 	}
 
 	@Provides
-	@Singleton
-	GlobalPmNodeServlet provideGlobalPmServlet(GlobalPmNode node) {
+	@Named("pm")
+	AsyncServlet pmServlet(GlobalPmNode node) {
 		return GlobalPmNodeServlet.create(node);
 	}
 
 	@Provides
-	@Singleton
-	CommitStorage provideCommitStorage(Eventloop eventloop, Config config) {
+	CommitStorage commitStorage(Eventloop eventloop, Config config) {
 		return CommitStorageRocksDb.create(eventloop, config.get("ot.storage"));
 	}
 
 	@Provides
-	@Singleton
 	@Named("FS")
-	FsClient provideFsStorage(Eventloop eventloop, Config config) {
+	FsClient fsClient(Eventloop eventloop, Config config) {
 		return LocalFsClient.create(eventloop, config.get(ofPath(), "fs.storage"))
 				.withRevisions();
 	}
 
 	@Provides
-	@Singleton
 	@Named("PM")
-	FsClient providePmStorage(Eventloop eventloop, Config config) {
+	FsClient pmStorage(Eventloop eventloop, Config config) {
 		return LocalFsClient.create(eventloop, config.get(ofPath(), "pm.storage"))
 				.withRevisions();
 	}
 
 	@Provides
-	@Singleton
-	MessageStorage provideMessageStorage(@Named("PM") FsClient fsClient) {
+	MessageStorage messageStorage(@Named("PM") FsClient fsClient) {
 		return FsMessageStorage.create(fsClient);
 	}
 
 	@Provides
-	@Singleton
-	Function<RawServerId, GlobalFsNode> provideFsNodeFactory(IAsyncHttpClient client) {
+	Function<RawServerId, GlobalFsNode> fsNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalFsNode.create(id.getServerIdString(), client);
 	}
 
 	@Provides
-	@Singleton
-	Function<RawServerId, GlobalOTNode> provideOTNodeFactory(IAsyncHttpClient client) {
-		return id -> HttpGlobalOTNode.create(id.getServerIdString(), client);
+	Function<RawServerId, GlobalOTNode> otNodeFactory(IAsyncHttpClient client) {
+		return id -> ValidatingGlobalOTNode.create(HttpGlobalOTNode.create(id.getServerIdString(), client));
 	}
 
 	@Provides
-	@Singleton
-	Function<RawServerId, GlobalKvNode> provideKvNodeFactory(IAsyncHttpClient client) {
+	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
 	}
 
 	@Provides
-	@Singleton
-	Function<RawServerId, GlobalPmNode> providePmNodeFactory(IAsyncHttpClient client) {
+	Function<RawServerId, GlobalPmNode> pmNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalPmNode.create(id.getServerIdString(), client);
 	}
 
 	// region schedulers
 	@Provides
-	@Singleton
 	@Named("FS push")
-	EventloopTaskScheduler provideFsPushScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
+	EventloopTaskScheduler fsPushScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
 				.initialize(ofEventloopTaskScheduler(config.getChild("fs.push")));
 	}
 
 	@Provides
-	@Singleton
 	@Named("FS catch up")
-	EventloopTaskScheduler provideFsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
+	EventloopTaskScheduler fsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("fs.catchUp")));
 	}
 
 	@Provides
-	@Singleton
-	@Named("OT push")
-	EventloopTaskScheduler provideOTPushScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("ot.push")));
-	}
-
-	@Provides
-	@Singleton
-	@Named("OT catch up")
-	EventloopTaskScheduler provideOTCatchUpScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("ot.catchUp")));
-	}
-
-	@Provides
-	@Singleton
-	@Named("DB push")
-	EventloopTaskScheduler provideDbPushScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
+	@Named("KV push")
+	EventloopTaskScheduler kvPushScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
 				.initialize(ofEventloopTaskScheduler(config.getChild("kv.push")));
 	}
 
 	@Provides
-	@Singleton
-	@Named("DB catch up")
-	EventloopTaskScheduler provideDbCatchUpScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
+	@Named("KV catch up")
+	EventloopTaskScheduler kvCatchUpScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
 	}

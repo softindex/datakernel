@@ -70,7 +70,7 @@ public final class ReadSettings<K> {
 	}
 
 	public static <K> ReadSettings<K> from(Gson gson, HttpRequest request) throws ParseException {
-		String fieldsParameter = request.getQueryParameterOrNull("fields");
+		String fieldsParameter = request.getQueryParameter("fields");
 		List<String> fields;
 		if (fieldsParameter != null && !fieldsParameter.isEmpty()) {
 			fields = fromJson(gson, fieldsParameter, LIST_STRING_TYPE_TOKEN);
@@ -78,19 +78,19 @@ public final class ReadSettings<K> {
 			fields = Collections.emptyList();
 		}
 
-		String offsetParameter = request.getQueryParameterOrNull("offset");
+		String offsetParameter = request.getQueryParameter("offset");
 		int offset = DEFAULT_OFFSET;
 		if (offsetParameter != null && !offsetParameter.isEmpty()) {
 			offset = trimAndDecodePositiveInt(encodeAscii(offsetParameter), 0, offsetParameter.length());
 		}
 
-		String limitParameter = request.getQueryParameterOrNull("limit");
+		String limitParameter = request.getQueryParameter("limit");
 		int limit = DEFAULT_LIMIT;
 		if (limitParameter != null && !limitParameter.isEmpty()) {
 			limit = trimAndDecodePositiveInt(encodeAscii(limitParameter), 0, limitParameter.length());
 		}
 
-		String filtersParameter = request.getQueryParameterOrNull("filters");
+		String filtersParameter = request.getQueryParameter("filters");
 		Map<String, String> filters;
 		if (filtersParameter != null && !filtersParameter.isEmpty()) {
 			filters = fromJson(gson, filtersParameter, MAP_STRING_STRING_TYPE_TOKEN);
@@ -99,7 +99,7 @@ public final class ReadSettings<K> {
 			filters = Collections.emptyMap();
 		}
 
-		String sortParameter = request.getQueryParameterOrNull("sort");
+		String sortParameter = request.getQueryParameter("sort");
 		Map<String, SortOrder> sort;
 		if (sortParameter != null && !sortParameter.isEmpty()) {
 			sort = new LinkedHashMap<>();
@@ -118,7 +118,7 @@ public final class ReadSettings<K> {
 			sort = Collections.emptyMap();
 		}
 
-		String extraParameter = request.getQueryParameterOrNull("extra");
+		String extraParameter = request.getQueryParameter("extra");
 		Set<K> extra;
 		if (extraParameter != null && !extraParameter.isEmpty()) {
 			extra = fromJson(gson, extraParameter, new TypeToken<LinkedHashSet<K>>() {}.getType());

@@ -1,8 +1,10 @@
 package io.global.editor.document;
 
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.SimKey;
@@ -17,8 +19,8 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.stub.CommitStorageStub;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.global.editor.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
@@ -28,8 +30,13 @@ import static io.global.ot.name.ChangeName.changeName;
 import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class DocumentOTSystemTest {
+	@Rule
+	public EventloopRule eventloopRule = new EventloopRule();
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	private OTStateManager<CommitId, DocumentMultiOperation> stateManager1;
 	private OTStateManager<CommitId, DocumentMultiOperation> stateManager2;
 	private DocumentOTState state1 = new DocumentOTState();
@@ -44,9 +51,10 @@ public class DocumentOTSystemTest {
 		LocalDiscoveryService discoveryService = LocalDiscoveryService.create(eventloop, new InMemoryAnnouncementStorage(),
 				new InMemorySharedKeyStorage());
 		OTDriver driver = new OTDriver(GlobalOTNodeImpl.create(eventloop, new RawServerId("test"), discoveryService,
-				new CommitStorageStub(), rawServerId -> {throw new IllegalStateException();}), SimKey.generate());
+				new CommitStorageStub(), rawServerId -> {throw new IllegalStateException();})
+				.withRetryPolicy(RetryPolicy.noRetry()), SimKey.generate());
 		OTRepositoryAdapter<DocumentMultiOperation> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-		OTCommit<CommitId, DocumentMultiOperation> root = await(repository.createCommit(0, emptyMap(), 1));
+		OTCommit<CommitId, DocumentMultiOperation> root = await(repository.createCommit(emptyMap()));
 		await(repository.pushAndUpdateHead(root));
 		await(repository.saveSnapshot(root.getId(), emptyList()));
 

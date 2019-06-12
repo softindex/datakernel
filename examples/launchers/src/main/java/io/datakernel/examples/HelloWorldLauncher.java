@@ -16,25 +16,26 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.Module;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.launcher.Launcher;
 
-import java.util.Collection;
-import java.util.Collections;
+public class HelloWorldLauncher extends Launcher {
+	@Inject
+	String message;
 
-public class HelloWorldLauncher {
+	@Provides
+	String message() {
+		return "Hello, world!";
+	}
+
+	@Override
+	protected void run() {
+		System.out.println(message);
+	}
+
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new Launcher() {
-			@Override
-			protected Collection<Module> getModules() {
-				return Collections.emptyList();
-			}
-
-			@Override
-			protected void run() {
-				System.out.println("Hello World!");
-			}
-		};
-		launcher.launch(true, args);
+		Launcher launcher = new HelloWorldLauncher();
+		launcher.launch(args);
 	}
 }

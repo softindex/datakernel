@@ -18,12 +18,13 @@ import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryMySql;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -41,12 +42,18 @@ import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Collections.emptyList;
 
-@RunWith(DatakernelRunner.class)
 public class CubeCleanerControllerTest {
 	private static final OTSystem<LogDiff<CubeDiff>> OT_SYSTEM = LogOT.createLogOT(CubeOT.createCubeOT());
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private Eventloop eventloop;
 	private OTRepositoryMySql<LogDiff<CubeDiff>> repository;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;

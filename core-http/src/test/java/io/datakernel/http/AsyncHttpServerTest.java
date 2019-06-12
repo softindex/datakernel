@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -358,7 +358,7 @@ public final class AsyncHttpServerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = getFreePort();
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body)))
+				request -> request.loadBody().map(body -> HttpResponse.ok200().withBody(body.slice())))
 				.withListenPort(port);
 
 		server.listen();

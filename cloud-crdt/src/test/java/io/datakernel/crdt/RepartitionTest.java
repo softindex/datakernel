@@ -20,10 +20,10 @@ import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.ref.RefInt;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,8 +31,10 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
 
-@RunWith(DatakernelRunner.class)
 public final class RepartitionTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void test() {

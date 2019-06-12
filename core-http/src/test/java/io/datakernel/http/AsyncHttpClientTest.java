@@ -28,10 +28,11 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.RequiresInternetConnection;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -45,16 +46,22 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.Eventloop.CONNECT_TIMEOUT;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.http.HttpClientConnection.INVALID_RESPONSE;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class AsyncHttpClientTest {
 	private static final int PORT = getFreePort();
 
 	private static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static void startServer() throws IOException {
 		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request ->
@@ -76,14 +83,15 @@ public final class AsyncHttpClientTest {
 		startServer();
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
-		ByteBuf body = await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.then(HttpMessage::getBody));
-
-		assertEquals(decodeAscii(HELLO_WORLD), body.asString(UTF_8));
+		await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.then(response -> response.loadBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals(decodeAscii(HELLO_WORLD), body.getString(UTF_8));
+						}))));
 	}
 
 	@Test
-	@RequiresInternetConnection
+	@Ignore
 	public void testClientTimeoutConnect() {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.withConnectTimeout(Duration.ofMillis(1));
@@ -99,7 +107,7 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		InvalidSizeException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.then(response -> response.getBody(maxBodySize)));
+				.then(response -> response.loadBody(maxBodySize)));
 		assertThat(e.getMessage(), containsString("HTTP body size exceeds load limit " + maxBodySize));
 	}
 
@@ -116,7 +124,8 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		UnknownFormatException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.then(HttpMessage::getBody));
+				.then(HttpMessage::loadBody));
+
 		assertSame(INVALID_RESPONSE, e);
 	}
 

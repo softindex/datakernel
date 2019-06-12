@@ -20,9 +20,10 @@ import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket.EventHandler;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -32,9 +33,14 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static org.junit.Assert.assertArrayEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class UdpSocketHandlerTest {
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("localhost", 45555);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private final byte[] bytesToSend = {-127, 100, 0, 5, 11, 13, 17, 99};
 

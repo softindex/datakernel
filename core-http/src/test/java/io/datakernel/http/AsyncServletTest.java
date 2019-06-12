@@ -20,9 +20,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -30,11 +31,16 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class AsyncServletTest {
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testEnsureRequestBody() {
-		AsyncServlet servlet = request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body));
+		AsyncServlet servlet = request -> request.loadBody(Integer.MAX_VALUE).map(body -> HttpResponse.ok200().withBody(body.slice()));
 
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSupplier.of(
@@ -43,13 +49,16 @@ public class AsyncServletTest {
 				);
 
 		HttpResponse response = await(servlet.serve(testRequest));
-		ByteBuf body = await(response.getBody());
+		testRequest.recycle();
+		ByteBuf body = await(response.loadBody(Integer.MAX_VALUE));
+
 		assertEquals("Test1Test2", body.asString(UTF_8));
 	}
 
 	@Test
 	public void testEnsureRequestBodyWithException() {
-		AsyncServlet servlet = request -> request.getBody().map(body -> HttpResponse.ok200().withBody(body));
+		AsyncServlet servlet = request -> request.loadBody(Integer.MAX_VALUE)
+				.map(body -> HttpResponse.ok200().withBody(body.slice()));
 		Exception exception = new Exception("TestException");
 
 		ByteBuf byteBuf = ByteBufPool.allocate(100);

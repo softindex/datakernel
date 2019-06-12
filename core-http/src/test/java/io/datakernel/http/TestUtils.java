@@ -41,7 +41,7 @@ public class TestUtils {
 		try {
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
-			byte data[] = new byte[1024];
+			byte[] data = new byte[1024];
 			int count;
 
 			while ((count = is.read(data)) != -1) {

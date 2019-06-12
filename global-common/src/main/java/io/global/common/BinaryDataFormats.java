@@ -101,7 +101,6 @@ public final class BinaryDataFormats {
 								SharedSimKey::getEncrypted, registry.get(byte[].class)));
 	}
 
-
 	private static ECPoint parseECPoint(BigInteger x, BigInteger y) throws ParseException {
 		try {
 			return CryptoUtils.CURVE.getCurve().validatePoint(x, y);

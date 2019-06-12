@@ -65,13 +65,13 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		return new ReportingServiceServlet(eventloop, cube, CUBE_TYPES);
 	}
 
-	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
+	public static RoutingServlet createRootServlet(Eventloop eventloop, ICube cube) {
 		return createRootServlet(
 				ReportingServiceServlet.create(eventloop, cube));
 	}
 
-	public static MiddlewareServlet createRootServlet(ReportingServiceServlet reportingServiceServlet) {
-		return MiddlewareServlet.create()
+	public static RoutingServlet createRootServlet(ReportingServiceServlet reportingServiceServlet) {
+		return RoutingServlet.create()
 				.with(GET, "/", reportingServiceServlet);
 	}
 
@@ -143,35 +143,35 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
-		parameter = request.getQueryParameterOrNull(ATTRIBUTES_PARAM);
+		parameter = request.getQueryParameter(ATTRIBUTES_PARAM);
 		if (parameter != null)
 			query.withAttributes(split(parameter));
 
-		parameter = request.getQueryParameterOrNull(MEASURES_PARAM);
+		parameter = request.getQueryParameter(MEASURES_PARAM);
 		if (parameter != null)
 			query.withMeasures(split(parameter));
 
-		parameter = request.getQueryParameterOrNull(WHERE_PARAM);
+		parameter = request.getQueryParameter(WHERE_PARAM);
 		if (parameter != null)
 			query.withWhere(fromJson(getAggregationPredicateCodec(), parameter));
 
-		parameter = request.getQueryParameterOrNull(SORT_PARAM);
+		parameter = request.getQueryParameter(SORT_PARAM);
 		if (parameter != null)
 			query.withOrderings(parseOrderings(parameter));
 
-		parameter = request.getQueryParameterOrNull(HAVING_PARAM);
+		parameter = request.getQueryParameter(HAVING_PARAM);
 		if (parameter != null)
 			query.withHaving(fromJson(getAggregationPredicateCodec(), parameter));
 
-		parameter = request.getQueryParameterOrNull(LIMIT_PARAM);
+		parameter = request.getQueryParameter(LIMIT_PARAM);
 		if (parameter != null)
 			query.withLimit(Integer.valueOf(parameter));// TODO throws ParseException
 
-		parameter = request.getQueryParameterOrNull(OFFSET_PARAM);
+		parameter = request.getQueryParameter(OFFSET_PARAM);
 		if (parameter != null)
 			query.withOffset(Integer.valueOf(parameter));
 
-		parameter = request.getQueryParameterOrNull(REPORT_TYPE_PARAM);
+		parameter = request.getQueryParameter(REPORT_TYPE_PARAM);
 		if (parameter != null)
 			query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
 

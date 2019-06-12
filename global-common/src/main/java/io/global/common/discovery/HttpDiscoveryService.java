@@ -79,14 +79,10 @@ public final class HttpDiscoveryService implements DiscoveryService {
 					return Promise.of(from.parse(body));
 				} catch (ParseException e) {
 					return Promise.ofException(e);
-				} finally {
-					body.recycle();
 				}
 			case 404:
-				body.recycle();
 				return Promise.of(null);
 			default:
-				body.recycle();
 				return Promise.ofException(HttpException.ofCode(response.getCode(), body.getString(UTF_8)));
 		}
 	}
@@ -104,9 +100,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						logger.trace("Failed to find announcements", e);
 						return Promise.of(null);
 					}
-					return response.getBody()
-							.then(body ->
-									tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice())));
+					return response.loadBody()
+							.then(body -> tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice())));
 				});
 	}
 
@@ -134,9 +129,9 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(receiver.asString())
 						.appendPathPart(hash.asString())
 						.build()))
-				.then(response -> response.getBody()
-						.then(body ->
-								tryParseResponse(response, body, buf -> decode(NULLABLE_SIGNED_SHARED_SIM_KEY, buf.slice()))));
+				.then(response -> response.loadBody()
+						.then(body -> tryParseResponse(response, body,
+								buf -> decode(NULLABLE_SIGNED_SHARED_SIM_KEY, buf.slice()))));
 	}
 
 	@Override
@@ -147,8 +142,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(GET_SHARED_KEY)
 						.appendPathPart(receiver.asString())
 						.build()))
-				.then(response -> response.getBody()
-						.then(body -> (
-								tryParseResponse(response, body, buf -> decode(LIST_OF_SIGNED_SHARED_SIM_KEYS, buf.slice())))));
+				.then(response -> response.loadBody()
+						.then(body -> tryParseResponse(response, body,
+								buf -> decode(LIST_OF_SIGNED_SHARED_SIM_KEYS, buf.slice()))));
 	}
 }

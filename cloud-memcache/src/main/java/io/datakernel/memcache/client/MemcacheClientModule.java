@@ -1,9 +1,8 @@
 package io.datakernel.memcache.client;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage;
 import io.datakernel.rpc.client.RpcClient;
@@ -19,7 +18,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public class MemcacheClientModule extends AbstractModule {
 	@Provides
-	@Singleton
 	RpcClient rpcClient(Config config, Eventloop eventloop) {
 		return RpcClient.create(eventloop)
 				.withStrategy(rendezvousHashing(HASH_FUNCTION)

@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 
 public final class CrdtExample {
@@ -43,8 +42,7 @@ public final class CrdtExample {
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create()
-				.withCurrentThread()
-				.withFatalErrorHandler(rethrowOnAnyError());
+				.withCurrentThread();
 
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 

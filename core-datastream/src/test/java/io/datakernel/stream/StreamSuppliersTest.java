@@ -1,9 +1,9 @@
 package io.datakernel.stream;
 
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.ref.RefInt;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,8 +17,10 @@ import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public class StreamSuppliersTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void testErrorDecorator() {

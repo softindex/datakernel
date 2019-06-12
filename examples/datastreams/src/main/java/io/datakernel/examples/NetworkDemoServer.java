@@ -28,7 +28,6 @@ import io.datakernel.stream.processor.StreamMapper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.examples.NetworkDemoClient.PORT;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
@@ -40,7 +39,7 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 public final class NetworkDemoServer {
 
 	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create();
 
 		eventloop.listen(new InetSocketAddress("localhost", PORT), ServerSocketSettings.create(100), channel -> {
 			AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, null);

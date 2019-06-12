@@ -16,63 +16,24 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
-import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.util.Collection;
-
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.launchers.http.HttpServerLauncher.EAGER_SINGLETONS_MODE;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Collections.singletonList;
 
-public class HttpSimpleServer {
-	private static final int SERVICE_PORT = 25565;
+public class HttpSimpleServer extends HttpServerLauncher {
+	@Provides
+	AsyncServlet servlet() {
+		return request -> Promise.of(HttpResponse.ok200()
+				.withBody(encodeAscii("Hello from HTTP server")));
+	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new HttpServerLauncher() {
-			@Override
-			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(
-						new AbstractModule() {
-							@Singleton
-							@Provides
-							AsyncServlet rootServlet() {
-								return request -> {
-									logger.info("Connection received");
-									return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
-								};
-							}
-						}
-				);
-			}
-
-			@Override
-			protected Collection<Module> getOverrideModules() {
-				return singletonList(
-						ConfigModule.create(Config.create()
-								.with("http.listenAddresses", "" + SERVICE_PORT)
-						)
-				);
-			}
-
-			@Override
-			protected void run() throws Exception {
-				System.out.println("Server is running");
-				System.out.println("You can connect from browser by visiting 'http://localhost:" + SERVICE_PORT + "'");
-				awaitShutdown();
-			}
-		};
-
-		launcher.launch(parseBoolean(EAGER_SINGLETONS_MODE), args);
+		Launcher launcher = new HttpSimpleServer();
+		launcher.launch(args);
 	}
 }

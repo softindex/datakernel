@@ -1,9 +1,14 @@
 ## ETL
 
-ETL is a near real-time async data processing system. Unlike traditional ETL(extraction-transformation-loading) systems, 
-this module processes massive parallel [FS](https://github.com/softindex/datakernel/tree/master/cloud-fs) streams of 
-data with its distributed worker servers and then commits partially processed results into commit graph of 
-[OT](https://github.com/softindex/datakernel/tree/master/cloud-ot). These commits are continuously merged into a single 
-coherent result using merge and conflict resolution strategies provided by OT. 
+ETL is a near real-time async data processing system.
 
-* ETL is used as a part of [LSMT OLAP Cube](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-cube).
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-etl</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
+### To find out more visit [our site](https://datakernel.io/docs/components/cloud/etl.html).

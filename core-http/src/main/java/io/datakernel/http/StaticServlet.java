@@ -17,93 +17,154 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.function.Function;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 
 public final class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
-	public static final String DEFAULT_INDEX_FILE_NAME = "index.html"; // response for get request asking for root
-	public static final HttpException BAD_PATH_ERROR = HttpException.ofCode(400, "Bad path and query section");
-	public static final HttpException METHOD_NOT_ALLOWED = HttpException.ofCode(405, "Only GET is being allowed");
 
-	private final Eventloop eventloop;
 	private final StaticLoader resourceLoader;
+	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
+	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
+	private Set<String> indexResources = new LinkedHashSet<>();
 
 	@Nullable
-	private final String defaultResource;
+	private String defaultResource;
 
-	private StaticServlet(Eventloop eventloop, StaticLoader resourceLoader, @Nullable String defaultResource) {
-		this.eventloop = eventloop;
+	private StaticServlet(StaticLoader resourceLoader) {
 		this.resourceLoader = resourceLoader;
-		this.defaultResource = defaultResource;
 	}
 
-	public static StaticServlet create(Eventloop eventloop, StaticLoader resourceLoader) {
-		return new StaticServlet(eventloop, resourceLoader, null);
+	public static StaticServlet create(StaticLoader resourceLoader) {
+		return new StaticServlet(resourceLoader);
 	}
 
-	public static StaticServlet create(Eventloop eventloop, StaticLoader resourceLoader, String defaultResource) {
-		return new StaticServlet(eventloop, resourceLoader, defaultResource);
+	public static StaticServlet create(Path path) {
+		return new StaticServlet(StaticLoader.ofPath(path));
 	}
 
-	static ContentType getContentType(String path) {
-		int pos = path.lastIndexOf(".");
-		if (pos != -1) {
-			path = path.substring(pos + 1);
+	public StaticServlet withContentType(ContentType contentType) {
+		return withContentTypeResolver($ -> contentType);
+	}
+
+	public StaticServlet withContentTypeResolver(Function<String, ContentType> contentTypeResolver) {
+		this.contentTypeResolver = contentTypeResolver;
+		return this;
+	}
+
+	public StaticServlet withMapping(Function<HttpRequest, String> fn) {
+		mapper = fn;
+		return this;
+	}
+
+	public StaticServlet withMappingTo(String path) {
+		if (this.contentTypeResolver == (Function<String, ContentType>) StaticServlet::getContentType) {
+			withContentType(getContentType(path));
 		}
-		MediaType mime = MediaTypes.getByExtension(path);
+		return withMapping($ -> path);
+	}
+
+	public StaticServlet withMappingNotFoundTo(String defaultResource) {
+		this.defaultResource = defaultResource;
+		return this;
+	}
+
+	public StaticServlet withIndexResources(String... indexResources) {
+		this.indexResources.addAll(Arrays.asList(indexResources));
+		return this;
+	}
+
+	public StaticServlet withIndexHtml() {
+		this.indexResources.add("index.html");
+		return this;
+	}
+
+	public static ContentType getContentType(String path) {
+		int pos = path.lastIndexOf(".");
+		if (pos == -1) {
+			return ContentType.of(MediaTypes.OCTET_STREAM);
+		}
+
+		String ext = path.substring(pos + 1);
+
+		MediaType mime = MediaTypes.getByExtension(ext);
 		if (mime == null) {
 			mime = MediaTypes.OCTET_STREAM;
 		}
+
 		ContentType type;
 		if (mime.isTextType()) {
 			type = ContentType.of(mime, DEFAULT_TXT_ENCODING);
 		} else {
 			type = ContentType.of(mime);
 		}
+
 		return type;
 	}
 
-	private HttpResponse createHttpResponse(ByteBuf buf, String path) {
+	private HttpResponse createHttpResponse(ByteBuf buf, ContentType contentType) {
 		return HttpResponse.ofCode(200)
 				.withBody(buf)
-				.withHeader(CONTENT_TYPE, ofContentType(getContentType(path)));
+				.withHeader(CONTENT_TYPE, ofContentType(contentType));
 	}
 
 	@NotNull
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
-		assert eventloop.inEventloopThread();
-		String path = request.getRelativePath();
-		if (request.getMethod() != HttpMethod.GET) {
-			return Promise.ofException(METHOD_NOT_ALLOWED);
-		}
-		if (path.equals("")) {
-			path = DEFAULT_INDEX_FILE_NAME;
-		}
-		String finalPath = path;
-
-		return resourceLoader.getResource(path)
-				.thenEx((byteBuf, e) -> {
-					if (byteBuf != null) {
-						return Promise.of(createHttpResponse(byteBuf, finalPath));
+		String mappedPath = mapper.apply(request);
+		if (mappedPath == null) return Promise.ofException(HttpException.notFound404());
+		ContentType contentType = contentTypeResolver.apply(mappedPath);
+		return Promise.complete()
+				.then($ -> (mappedPath.endsWith("/") || mappedPath.isEmpty()) ?
+						tryLoadIndexResource(mappedPath) :
+						resourceLoader.load(mappedPath)
+								.map(byteBuf -> createHttpResponse(byteBuf, contentType))
+								.thenEx((value, e) -> {
+									if (e == StaticLoader.IS_A_DIRECTORY) {
+										return tryLoadIndexResource(mappedPath);
+									} else {
+										return Promise.of(value, e);
+									}
+								}))
+				.thenEx((response, e) -> {
+					if (e == null) {
+						return Promise.of(response);
+					} else if (e == StaticLoader.NOT_FOUND_EXCEPTION) {
+						return tryLoadDefaultResource();
+					} else {
+						return Promise.ofException(e);
 					}
-					if (defaultResource != null) {
-						return resourceLoader.getResource(defaultResource)
-								.map(byteBuf2 -> HttpResponse.ofCode(200)
-										.withBody(byteBuf2)
-										.withHeader(CONTENT_TYPE, ofContentType(getContentType(defaultResource))));
-					}
-					return Promise.ofException(e);
 				});
+	}
+
+	@NotNull
+	private Promise<HttpResponse> tryLoadIndexResource(String mappedPath) {
+		String dirPath = mappedPath.endsWith("/") || mappedPath.isEmpty() ? mappedPath : (mappedPath + '/');
+		return Promises.<HttpResponse>firstSuccessful(indexResources.stream()
+				.map(indexResource -> () -> resourceLoader.load(dirPath + indexResource)
+						.map(byteBuf -> createHttpResponse(byteBuf, contentTypeResolver.apply(indexResource)))))
+				.thenEx(((response, e) -> e == null ? Promise.of(response) : Promise.ofException(StaticLoader.NOT_FOUND_EXCEPTION)));
+	}
+
+	@NotNull
+	private Promise<? extends HttpResponse> tryLoadDefaultResource() {
+		return defaultResource != null ?
+				resourceLoader.load(defaultResource)
+						.map(buf -> createHttpResponse(buf, contentTypeResolver.apply(defaultResource))) :
+				Promise.ofException(HttpException.notFound404());
 	}
 }

@@ -1,9 +1,11 @@
 package io.global.chat;
 
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Modules;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
@@ -15,15 +17,10 @@ import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
 import io.global.ot.shared.IndexRepoModule;
 
-import java.util.Collection;
-
-import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Arrays.asList;
+import static io.datakernel.di.module.Modules.override;
 
 public final class ChatLauncher extends Launcher {
-	private static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	private static final String PROPERTIES_FILE = "chat.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	private static final String DEFAULT_SERVER_ID = "Global Chat";
@@ -35,8 +32,8 @@ public final class ChatLauncher extends Launcher {
 	AsyncHttpServer server;
 
 	@Override
-	public Collection<com.google.inject.Module> getModules() {
-		return asList(
+	public Module getModule() {
+		return Modules.combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
@@ -51,8 +48,8 @@ public final class ChatLauncher extends Launcher {
 				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
 				new SharedRepoModule<MessageOperation>(CHAT_REPO_PREFIX) {},
 				// override for debug purposes
-				override(new GlobalNodesModule())
-						.with(new LocalNodeCommonModule(DEFAULT_SERVER_ID))
+				override(new GlobalNodesModule(),
+						new LocalNodeCommonModule(DEFAULT_SERVER_ID))
 		);
 	}
 
@@ -62,6 +59,6 @@ public final class ChatLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new ChatLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new ChatLauncher().launch(args);
 	}
 }

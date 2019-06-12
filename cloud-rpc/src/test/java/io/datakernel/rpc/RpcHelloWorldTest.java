@@ -24,14 +24,11 @@ import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.Manual;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.Stopwatch;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.*;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -46,8 +43,16 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(DatakernelRunner.class)
 public final class RpcHelloWorldTest {
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final EventloopRule eventloopRule = new EventloopRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private interface HelloService {
 		String hello(String name) throws Exception;
@@ -130,9 +135,6 @@ public final class RpcHelloWorldTest {
 
 	private static final int PORT = getFreePort(), TIMEOUT = 1500;
 	private RpcServer server;
-
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void setUp() throws Exception {
@@ -220,7 +222,7 @@ public final class RpcHelloWorldTest {
 	}
 
 	@Test
-	@Manual("this is not a test but a benchmark, takes a lot of time")
+	@Ignore("this is not a test but a benchmark, takes a lot of time")
 	public void testRejectedRequests() throws Exception {
 		int count = 1_000_000;
 

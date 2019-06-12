@@ -5,10 +5,11 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import net.jpountz.lz4.LZ4Factory;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -16,8 +17,13 @@ import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_DATA_EXC
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class ChannelLZ4DecompressorTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testTruncatedData() {

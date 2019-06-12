@@ -16,13 +16,17 @@
 
 package io.datakernel.launcher;
 
-import com.google.inject.Guice;
-import com.google.inject.Inject;
-import com.google.inject.Injector;
-import com.google.inject.Stage;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.InstanceInjector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.Multibinder;
+import io.datakernel.di.util.Types;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
@@ -30,10 +34,19 @@ import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.inject.util.Modules.combine;
+import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.util.Utils.makeGraphVizGraph;
+import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -78,34 +91,41 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 	protected String[] args = {};
 
-	@Inject(optional = true)
-	@Nullable
-	protected ServiceGraph serviceGraph;
-
 	private volatile Throwable applicationError;
 
+	private volatile Instant instantOfLaunch;
 	private volatile Instant instantOfStart;
 	private volatile Instant instantOfRun;
 	private volatile Instant instantOfStop;
 	private volatile Instant instantOfComplete;
 
 	private final CountDownLatch shutdownLatch = new CountDownLatch(1);
-	private final CountDownLatch finishLatch = new CountDownLatch(1);
+	private final CountDownLatch completeLatch = new CountDownLatch(1);
+
+	private final CompletableFuture<Void> onStart = new CompletableFuture<>();
+	private final CompletableFuture<Void> onRun = new CompletableFuture<>();
+	private final CompletableFuture<Void> onComplete = new CompletableFuture<>();
 
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
 	 */
-	protected abstract Collection<com.google.inject.Module> getModules();
+	protected Module getModule() {
+		return Module.empty();
+	}
+
+	protected Module getOverrideModule() {
+		return Module.empty();
+	}
 
 	/**
-	 * Creates a Guice injector with modules and overrides from this launcher and
-	 * a special module which creates a members injector for this launcher.
-	 * Both of those are unused on their own, but on creation they do all the binding checks
-	 * so calling this method causes an exception to be thrown on any incorrect bindings
-	 * which is highly for testing.
+	 * Creates an injector with modules and overrides from this launcher.
+	 * On creation it does all the binding checks so calling this method
+	 * triggers a static check which causes an exception to be thrown on
+	 * any incorrect bindings (unsatisfied or cyclic dependencies)
+	 * which is highly useful for testing.
 	 */
 	public final void testInjector() {
-		createInjector(Stage.TOOL, new String[0]);
+		createInjector(new String[0]);
 	}
 
 	/**
@@ -118,64 +138,188 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 * </ul>
 	 * You can override methods mentioned above to execute your code in needed stage.
 	 *
-	 * @param args                program args that will be injected into @Args string array
-	 * @param eagerSingletonsMode passed to Guice
+	 * @param args program args that will be injected into @Args string array
 	 */
-	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
-		instantOfStart = Instant.now();
-		createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
-		logger.info("=== INJECTING DEPENDENCIES");
+	@SuppressWarnings("unchecked")
+	public void launch(String[] args) throws Exception {
+		instantOfLaunch = Instant.now();
+
 		try {
-			onStart();
-			try {
-				doStart();
-				logger.info("=== RUNNING APPLICATION");
-				instantOfRun = Instant.now();
-				run();
-			} catch (Throwable e) {
-				applicationError = e;
-				throw e;
-			} finally {
-				instantOfStop = Instant.now();
-				doStop();
-			}
-		} catch (Exception e) {
-			if (applicationError == null) applicationError = e;
-			logger.error("Application failure", e);
-			throw e;
-		} finally {
-			onStop();
-			instantOfComplete = Instant.now();
-			finishLatch.countDown();
-		}
-	}
+			logger.info("=== INJECTING DEPENDENCIES");
 
-	synchronized public Injector createInjector(Stage stage, String[] args) {
-		this.args = args;
-		return Guice.createInjector(stage,
-				combine(getModules()),
-				binder -> {
-					binder.bind(String[].class).annotatedWith(Args.class).toInstance(args);
-					binder.bind(Launcher.class).toInstance(this);
+			Injector injector = createInjector(args);
+			logger.trace("Dependency graph:\n" + makeGraphVizGraph(injector.getBindings()));
+
+			injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
+
+			for (InstanceInjector<?> instanceInjector : injector.getInstance(new Key<Set<InstanceInjector<?>>>() {})) {
+				Object instance = injector.getInstanceOrNull(instanceInjector.key());
+				if (instance != null) {
+					((InstanceInjector<Object>) instanceInjector).inject(instance);
 				}
-		);
-	}
+			}
 
-	private void doStart() throws Exception {
-		if (serviceGraph != null) {
+			Set<Service> services = injector.getInstanceOr(new Key<Set<Service>>() {}, emptySet());
+			List<Service> startedServices = new ArrayList<>();
+
 			logger.info("=== STARTING APPLICATION");
 			try {
-				serviceGraph.startFuture().get();
-			} finally {
-				logger.info("Services graph: \n" + serviceGraph);
+				instantOfStart = Instant.now();
+				startedServices.addAll(startServices(services));
+				onStart();
+				onStart.complete(null);
+			} catch (InterruptedException | RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				applicationError = e;
+				logger.error("Error", e);
+				onStart.completeExceptionally(e);
 			}
+
+			if (applicationError == null) {
+				logger.info("=== RUNNING APPLICATION");
+				try {
+					instantOfRun = Instant.now();
+					run();
+					onRun.complete(null);
+				} catch (InterruptedException | RuntimeException e) {
+					throw e;
+				} catch (Exception e) {
+					applicationError = e;
+					logger.error("Error", e);
+					onRun.completeExceptionally(e);
+					throw e;
+				}
+			} else {
+				onRun.completeExceptionally(applicationError);
+			}
+
+			logger.info("=== STOPPING APPLICATION");
+			instantOfStop = Instant.now();
+			if (!onStart.isCompletedExceptionally()) {
+				try {
+					onStop();
+				} catch (InterruptedException | RuntimeException e) {
+					throw e;
+				} catch (Exception e) {
+					logger.error("Stop error", e);
+				}
+			}
+
+			stopServices(startedServices);
+
+			if (applicationError == null) {
+				onComplete.complete(null);
+			} else {
+				onComplete.completeExceptionally(applicationError);
+				throw applicationError;
+			}
+
+		} catch (InterruptedException | RuntimeException e) {
+			applicationError = e;
+			logger.error("Runtime Error", e);
+			onStart.completeExceptionally(e);
+			onRun.completeExceptionally(e);
+			onComplete.completeExceptionally(e);
+			throw e;
+		} catch (Error e) {
+			applicationError = e;
+			logger.error("JVM Fatal Error", e);
+			throw e;
+		} catch (Throwable e) {
+			applicationError = e;
+			logger.error("JVM Fatal Error", e);
+			throw new Exception(e);
+		} finally {
+			instantOfComplete = Instant.now();
+			completeLatch.countDown();
 		}
+	}
+
+	private List<Service> startServices(Collection<Service> services) throws Throwable {
+		AtomicReference<Throwable> exception = new AtomicReference<>();
+		List<Service> startedServices = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(services.size());
+		for (Service service : services) {
+			if (exception.get() != null) {
+				latch.countDown();
+				continue;
+			}
+			service.start().whenComplete(($, e) -> {
+				synchronized (this) {
+					if (e == null) {
+						startedServices.add(service);
+					} else {
+						if (e instanceof RuntimeException || e instanceof Error) {
+							Throwable e1 = exception.getAndSet(e);
+							if (e1 != null) {
+								e.addSuppressed(e1);
+							}
+						} else {
+							if (exception.get() == null) {
+								exception.set(e);
+							} else {
+								exception.get().addSuppressed(e);
+							}
+						}
+					}
+				}
+				latch.countDown();
+			});
+		}
+		latch.await();
+		if (exception.get() != null) {
+			throw exception.get();
+		}
+		return startedServices;
+	}
+
+	private void stopServices(List<Service> startedServices) throws InterruptedException {
+		CountDownLatch latch = new CountDownLatch(startedServices.size());
+		for (Service service : startedServices) {
+			service.stop().whenComplete(($, e) -> {
+				if (e != null) {
+					logger.error("Stop error in " + service, e);
+				}
+				latch.countDown();
+			});
+		}
+		latch.await();
+	}
+
+	@SuppressWarnings("unchecked")
+	synchronized public Injector createInjector(String[] args) {
+		this.args = args;
+		return Injector.of(override(
+				combine(
+						getModule(),
+						new AbstractModule() {{
+							Class<Launcher> subclass = (Class<Launcher>) Launcher.this.getClass();
+
+							bind(String[].class).annotatedWith(Args.class).toInstance(args);
+							bind(Launcher.class).to(subclass);
+							bind(subclass).toInstance(Launcher.this);
+
+							bindIntoSet(new Key<InstanceInjector<?>>() {}, new Key<InstanceInjector<Launcher>>() {});
+							bind(new Key<InstanceInjector<Launcher>>() {}).to(Key.ofType(Types.parameterized(InstanceInjector.class, subclass)));
+
+							Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
+
+							bind(completionStageKey.named(OnStart.class)).toInstance(onStart);
+							bind(completionStageKey.named(OnRun.class)).toInstance(onRun);
+							bind(completionStageKey.named(OnComplete.class)).toInstance(onComplete);
+
+							multibind(new Key<Set<Service>>() {}, Multibinder.toSet());
+
+							addDeclarativeBindingsFrom(Launcher.this);
+						}}),
+				getOverrideModule())
+		);
 	}
 
 	/**
 	 * This method runs when application is starting
 	 */
-	@SuppressWarnings("RedundantThrows")
 	protected void onStart() throws Exception {
 	}
 
@@ -187,15 +331,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	/**
 	 * This method runs when application is stopping
 	 */
-	@SuppressWarnings("RedundantThrows")
 	protected void onStop() throws Exception {
-	}
-
-	private void doStop() throws Exception {
-		if (serviceGraph != null) {
-			logger.info("=== STOPPING APPLICATION");
-			serviceGraph.stopFuture().get();
-		}
 	}
 
 	/**
@@ -207,7 +343,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
 				shutdown();
-				finishLatch.await();
+				completeLatch.await();
 				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
 			} catch (InterruptedException e) {
 				logger.error("Shutdown took too long", e);
@@ -223,6 +359,24 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 */
 	public final void shutdown() {
 		shutdownLatch.countDown();
+	}
+
+	public final CompletionStage<Void> getStartFuture() {
+		return onStart;
+	}
+
+	public final CompletionStage<Void> getRunFuture() {
+		return onRun;
+	}
+
+	public final CompletionStage<Void> getCompleteFuture() {
+		return onComplete;
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Instant getInstantOfLaunch() {
+		return instantOfLaunch;
 	}
 
 	@JmxAttribute
@@ -243,38 +397,46 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		return instantOfStop;
 	}
 
-//	@JmxAttribute
-//	@Nullable
-//	public final Instant getInstantOfComplete() {
-//		return instantOfComplete;
-//	}
+	@JmxAttribute
+	@Nullable
+	public final Instant getInstantOfComplete() {
+		return instantOfComplete;
+	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDurationOfStart() {
-		if (instantOfStart == null) return null;
-		return Duration.between(instantOfStart, instantOfRun == null ? Instant.now() : instantOfRun);
+		if (instantOfLaunch == null) {
+			return null;
+		}
+		return Duration.between(instantOfLaunch, instantOfRun == null ? Instant.now() : instantOfRun);
 	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDurationOfRun() {
-		if (instantOfRun == null) return null;
+		if (instantOfRun == null) {
+			return null;
+		}
 		return Duration.between(instantOfRun, instantOfStop == null ? Instant.now() : instantOfStop);
 	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDurationOfStop() {
-		if (instantOfStop == null) return null;
+		if (instantOfStop == null) {
+			return null;
+		}
 		return Duration.between(instantOfStop, instantOfComplete == null ? Instant.now() : instantOfComplete);
 	}
 
 	@JmxAttribute
 	@Nullable
 	public final Duration getDuration() {
-		if (instantOfStart == null) return null;
-		return Duration.between(instantOfStart, instantOfComplete == null ? Instant.now() : instantOfComplete);
+		if (instantOfLaunch == null) {
+			return null;
+		}
+		return Duration.between(instantOfLaunch, instantOfComplete == null ? Instant.now() : instantOfComplete);
 	}
 
 	@JmxAttribute

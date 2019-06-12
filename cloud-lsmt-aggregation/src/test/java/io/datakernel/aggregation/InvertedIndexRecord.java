@@ -19,6 +19,8 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 
+import java.util.Objects;
+
 /**
  * First we define the structure of the input record which represents the word and id of the document that contains this word.
  */
@@ -48,7 +50,7 @@ public class InvertedIndexRecord {
 
 		InvertedIndexRecord that = (InvertedIndexRecord) o;
 
-		if (word != null ? !word.equals(that.word) : that.word != null) return false;
+		if (!Objects.equals(word, that.word)) return false;
 		return documentId == that.documentId;
 
 	}

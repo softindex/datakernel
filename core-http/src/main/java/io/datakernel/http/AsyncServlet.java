@@ -19,9 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.Executor;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -30,15 +31,27 @@ import java.util.function.UnaryOperator;
  */
 @FunctionalInterface
 public interface AsyncServlet {
-
 	@NotNull
-	Promise<HttpResponse> serve(HttpRequest request) throws UncheckedException;
+	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
 
-	default AsyncServlet with(Function<AsyncServlet, AsyncServlet> middleware) {
-		return middleware.apply(this);
+	default AsyncServlet then(AsyncServletDecorator decorator) {
+		return decorator.serve(this);
 	}
 
-	default AsyncServlet map(UnaryOperator<HttpResponse> fn) {
-		return request -> serve(request).map(fn);
+	@NotNull
+	static AsyncServlet of(@NotNull Function<HttpRequest, HttpResponse> fn) {
+		return request -> Promise.of(fn.apply(request));
+	}
+
+	@NotNull
+	static AsyncServlet ofBlocking(@NotNull BlockingServlet blockingServlet) {
+		return ofBlocking(null, blockingServlet);
+	}
+
+	@NotNull
+	static AsyncServlet ofBlocking(@Nullable Executor executor, @NotNull BlockingServlet blockingServlet) {
+		return request -> request.loadBody()
+				.then($ -> Promise.ofBlockingCallable(executor,
+						() -> blockingServlet.serve(request)));
 	}
 }

@@ -16,25 +16,28 @@
 
 package io.datakernel.trigger;
 
-import com.google.inject.*;
-import com.google.inject.multibindings.ProvidesIntoSet;
-import com.google.inject.name.Named;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.service.ServiceGraph;
-import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.service.Service;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Set;
 
-import static com.google.inject.name.Names.named;
 import static org.junit.Assert.*;
 
 public class TriggersModuleTest {
@@ -45,8 +48,7 @@ public class TriggersModuleTest {
 	public void testDuplicatesRejection() {
 		exception.expect(IllegalArgumentException.class);
 		exception.expectMessage("Cannot assign duplicate triggers");
-		Guice.createInjector(
-				ServiceGraphModule.defaultInstance(),
+		Injector.of(
 				TriggersModule.create()
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
@@ -58,33 +60,30 @@ public class TriggersModuleTest {
 	public void testWithSeveralWorkerPools() throws Exception {
 		int firstPoolSize = 10;
 		int secondPoolSize = 5;
-		Injector injector = Guice.createInjector(
-				ServiceGraphModule.defaultInstance(),
+		Injector injector = Injector.of(
+				new WorkerPoolModule(),
 				new AbstractModule() {
 					int counter = 0;
 
 					@Provides
-					@Singleton
 					@Named("first")
-					WorkerPool provideFirstPool() {
-						return new WorkerPool(firstPoolSize);
+					WorkerPool firstPool(WorkerPools workerPools) {
+						return workerPools.createPool(firstPoolSize);
 					}
 
 					@Provides
-					@Singleton
 					@Named("second")
-					WorkerPool provideSecondPool() {
-						return new WorkerPool(secondPoolSize);
+					WorkerPool secondPool(WorkerPools workerPools) {
+						return workerPools.createPool(secondPoolSize);
 					}
 
 					@Provides
 					@Worker
-					String provideWorker() {
+					String worker() {
 						return "" + counter++;
 					}
 
 					@Provides
-					@Singleton
 					Integer provide(@Named("first") WorkerPool workerPool1, @Named("second") WorkerPool workerPool2) {
 						workerPool1.getInstances(String.class);
 						workerPool2.getInstances(String.class);
@@ -94,12 +93,13 @@ public class TriggersModuleTest {
 				TriggersModule.create()
 						.with(String.class, Severity.HIGH, "test", s -> TriggerResult.create())
 		);
-		injector.getInstance(Key.get(WorkerPool.class, named("first"))).getInstances(String.class);
-		injector.getInstance(Key.get(WorkerPool.class, named("second"))).getInstances(String.class);
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		injector.getInstance(Key.of(WorkerPool.class, "first")).getInstances(String.class);
+		injector.getInstance(Key.of(WorkerPool.class, "second")).getInstances(String.class);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
-			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
 			assertEquals(firstPoolSize + secondPoolSize, triggersWatcher.getResults().size());
 			triggersWatcher.getResults()
@@ -107,51 +107,43 @@ public class TriggersModuleTest {
 			wasExecuted.set(true);
 		} finally {
 			assertTrue(wasExecuted.get());
-			serviceGraph.stopFuture().get();
 		}
 	}
 
 	@Test
-	public void testMultiModule() throws ExecutionException, InterruptedException {
-		Injector injector = Guice.createInjector(
-				ServiceGraphModule.defaultInstance(),
+	public void testMultiModule() throws Exception {
+		Injector injector = Injector.of(
 				new AbstractModule() {
-					@Override
-					protected void configure() {
-						install(TriggersModule.create());
-					}
-
 					@Provides
-					@Singleton
-					Eventloop provide() {
+					Eventloop eventloop() {
 						return Eventloop.create();
 					}
 
-					@Provides
-					Initializer<TriggersModule> triggersModuleInitializer(Eventloop _eventloop) {
+					@ProvidesIntoSet
+					Initializer<TriggersModule> triggersModuleInitializer1(Eventloop eventloop) {
 						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create());
+								.with(Eventloop.class, Severity.HIGH, "test", $ -> TriggerResult.create());
+					}
+
+					@ProvidesIntoSet
+					Initializer<TriggersModule> triggersModuleInitializer2() {
+						return triggersModule -> triggersModule
+								.with(Eventloop.class, Severity.HIGH, "testModule1", $ -> TriggerResult.create());
+					}
+
+					@ProvidesIntoSet
+					Initializer<TriggersModule> triggersModuleInitializer3() {
+						return triggersModule -> triggersModule
+								.with(Eventloop.class, Severity.HIGH, "testModule2", $ -> TriggerResult.create());
 					}
 				},
-				new AbstractModule() {
-					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer() {
-						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "testModule1", eventloop -> TriggerResult.create());
-					}
-				},
-				new AbstractModule() {
-					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer() {
-						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "testModule2", eventloop -> TriggerResult.create());
-					}
-				}
+				TriggersModule.create()
 		);
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+			service.start().get();
+		}
 		RefBoolean wasExecuted = new RefBoolean(false);
 		try {
-			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
 			List<TriggerWithResult> triggerResults = triggersWatcher.getResults();
 			assertEquals(3, triggerResults.size());
@@ -159,7 +151,6 @@ public class TriggersModuleTest {
 			wasExecuted.set(true);
 		} finally {
 			assertTrue(wasExecuted.get());
-			serviceGraph.stopFuture().get();
 		}
 	}
 }

@@ -20,7 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.csp.process.*;
-import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -36,10 +35,8 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
-import static java.nio.file.StandardOpenOption.*;
 
 /**
  * This class uses for  splitting a single input stream into smaller partitions during merge sort,
@@ -67,7 +64,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 
 	// region creators
 	private StreamSorterStorageImpl(Executor executor, BinarySerializer<T> serializer,
-			Path path) {
+									Path path) {
 		this.executor = executor;
 		this.serializer = serializer;
 		this.path = path;
@@ -126,15 +123,14 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executor, path, set(WRITE, CREATE_NEW, APPEND))
-				.map(file -> StreamConsumer.<T>ofSupplier(
-						supplier -> supplier
-								.transformWith(ChannelSerializer.create(serializer))
-								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-								.transformWith(ChannelLZ4Compressor.create(compressionLevel))
-								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-								.streamTo(ChannelFileWriter.create(file)))
-						.withLateBinding());
+		return Promise.of(StreamConsumer.<T>ofSupplier(
+				supplier -> supplier
+						.transformWith(ChannelSerializer.create(serializer))
+						.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
+						.transformWith(ChannelLZ4Compressor.create(compressionLevel))
+						.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
+						.streamTo(ChannelFileWriter.create(path)))
+				.withLateBinding());
 	}
 
 	/**
@@ -146,8 +142,9 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executor, path, set(READ))
-				.map(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
+
+		return ChannelFileReader.readFile(path)
+				.map(file -> file
 						.transformWith(ChannelLZ4Decompressor.create())
 						.transformWith(ChannelDeserializer.create(serializer))
 						.withLateBinding());
