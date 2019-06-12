@@ -4,7 +4,6 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -17,16 +16,16 @@ public final class DefaultModule implements Module {
 
 	private static final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> emptyTrie = Trie.leaf(new HashMap<>());
 
-	private static final Map<Type, Set<BindingGenerator<?>>> generators = new HashMap<>();
+	private static final Map<Class<?>, Set<BindingGenerator<?>>> generators = new HashMap<>();
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
 		generators.put(Object.class, singleton((provider, scope, key) -> ReflectionUtils.generateImplicitBinding(key)));
 
 		// generating bindings for provider requests
-		generators.put(new Key<InstanceProvider<?>>() {}.getType(), singleton(
+		generators.put(InstanceProvider.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
+					Key<Object> elementKey = key.getTypeParameter(0);
 					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
@@ -51,9 +50,9 @@ public final class DefaultModule implements Module {
 		));
 
 		// generating bindings for factory requests
-		generators.put(new Key<InstanceFactory<?>>() {}.getType(), singleton(
+		generators.put(InstanceFactory.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
+					Key<Object> elementKey = key.getTypeParameter(0);
 					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
@@ -75,9 +74,9 @@ public final class DefaultModule implements Module {
 		));
 
 		// generating bindings for injector requests
-		generators.put(new Key<InstanceInjector<?>>() {}.getType(), singleton(
+		generators.put(InstanceInjector.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = Key.ofType(key.getTypeParams()[0], key.getName());
+					Key<Object> elementKey = key.getTypeParameter(0);
 
 					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
 					BindingInitializer.Initializer<Object> initializer = injectingInitializer.getInitializer();
@@ -110,7 +109,7 @@ public final class DefaultModule implements Module {
 	}
 
 	@Override
-	public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
+	public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
 		return generators;
 	}
 

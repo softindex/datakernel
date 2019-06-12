@@ -116,32 +116,16 @@ public final class Types {
 	}
 
 	@Nullable
-	public static Type findBestMatch(Type real, Collection<Type> patterns) {
-		Type found = patterns.stream()
-				.filter(type -> Types.matches(real, type))
+	public static Class<?> findClosestAncestor(Class<?> real, Collection<Class<?>> patterns) {
+		return patterns.stream()
+				.filter(pattern -> real == pattern)
 				.findFirst()
-				.orElse(null);
-
-		if (found != null || real == Object.class || real == null) {
-			return found;
-		}
-
-		Class<?> rawType = Types.getRawType(real);
-
-		Type genericSuperclass = rawType.getGenericSuperclass();
-		if (genericSuperclass != null) { // ^ returns null on interfaces, but below we are recursively calling this for them
-			found = findBestMatch(genericSuperclass, patterns);
-			if (found != null) {
-				return found;
-			}
-		}
-		for (Type iface : rawType.getGenericInterfaces()) {
-			found = findBestMatch(iface, patterns);
-			if (found != null) {
-				return found;
-			}
-		}
-		return null;
+				.orElseGet(() -> {
+					Class<?> superclass = real.getSuperclass();
+					return superclass != null ?
+							findClosestAncestor(superclass, patterns) :
+							null;
+				});
 	}
 
 	// pattern = Map<K, List<V>>

@@ -83,7 +83,7 @@ public final class BindingGraph {
 				known.put(key, generatedBinding);
 			} else {
 				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, binding);
-				if (!transformed.equals(binding)) {
+				if (transformed != binding) {
 					localBindings.put(key, transformed);
 				}
 			}

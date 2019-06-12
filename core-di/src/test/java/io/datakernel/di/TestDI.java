@@ -12,7 +12,6 @@ import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.di.util.Trie;
-import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
@@ -20,12 +19,13 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.util.Utils.makeGraphVizGraph;
+import static io.datakernel.di.util.Utils.printGraphVizGraph;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -383,6 +383,43 @@ public final class TestDI {
 			e.printStackTrace();
 			assertTrue(e.getMessage().startsWith("\n\tkey java.lang.Integer\n\t\trequired at"));
 		}
+	}
+
+	static class MyServiceImpl {
+		final String string;
+		int value = 0;
+
+		private MyServiceImpl(String string) {
+			this.string = string;
+		}
+
+		@Inject
+		public void setValue(int value) {
+			this.value = value;
+		}
+
+		@Inject
+		static MyServiceImpl create(String string) {
+			System.out.println("factory method called once");
+			return new MyServiceImpl(string);
+		}
+	}
+
+	@Test
+	public void injectFactoryMethod() {
+
+		Injector injector = Injector.of(new AbstractModule() {{
+			bind(MyServiceImpl.class);
+			bind(String.class).to(() -> "hello");
+			bind(int.class).toInstance(43);
+		}});
+
+		System.out.println(makeGraphVizGraph(injector.getBindings()));
+
+		MyServiceImpl service = injector.getInstance(MyServiceImpl.class);
+
+		assertEquals("hello", service.string);
+		assertEquals(43, service.value);
 	}
 
 	@SuppressWarnings("unused")
@@ -758,26 +795,6 @@ public final class TestDI {
 		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
 	}
 
-	@Test
-	public void sophisticatedMatches() {
-
-		Type funType = new Key<List<? extends Collection<? extends Number>>>() {}.getType();
-
-		assertTrue(Types.matches(new Key<List<Set<Integer>>>() {}.getType(), funType));
-		assertTrue(Types.matches(new Key<List<HashSet<Integer>>>() {}.getType(), funType));
-		assertTrue(Types.matches(new Key<List<LinkedHashSet<Float>>>() {}.getType(), funType));
-
-		assertFalse(Types.matches(new Key<List<Set<String>>>() {}.getType(), funType));
-		assertFalse(Types.matches(new Key<List<List<Object>>>() {}.getType(), funType));
-
-		assertFalse(Types.matches(new Key<Set<Set<Integer>>>() {}.getType(), funType));
-		assertFalse(Types.matches(new Key<Set<Integer>>() {}.getType(), funType));
-
-		assertTrue(Types.isInheritedFrom(new Key<Set<Integer>>() {}.getType(), Object.class));
-
-		assertTrue(Types.matches(new Key<Set<Set<Integer>>>() {}.getType(), new Key<Set<?>>() {}.getType()));
-	}
-
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
 	@ScopeAnnotation
@@ -802,7 +819,9 @@ public final class TestDI {
 
 			@Provides
 			@Scope2
-			Float second() {
+			Float second(Double first, Integer top) {
+				// static check runs on injector creation so it wont fail
+				// (unsatisfied Double from other scope)
 				return 34f;
 			}
 
@@ -813,16 +832,65 @@ public final class TestDI {
 
 			@Provides
 			@Scopes({Scope1.class, Scope2.class})
-			String deeper() {
+			String deeper(Integer top, Double first) {
 				return "deeper";
 			}
 		};
 
+		printGraphVizGraph(module.getBindings());
+
 		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getBindings();
+
+		printGraphVizGraph(flattened);
 
 		assertEquals(0, flattened.getChildren().size());
 		assertEquals(Stream.of(Double.class, Float.class, Integer.class, String.class)
 				.map(Key::of)
 				.collect(toSet()), flattened.get().keySet());
+	}
+
+	@Test
+	public void restrictedContainer() {
+
+		class Container<T> {
+			final T peer;
+
+			public Container(T object) {
+				this.peer = object;
+			}
+		}
+
+		Injector injector = Injector.of(new AbstractModule() {
+
+			@Override
+			protected void configure() {
+				bind(Integer.class).toInstance(42);
+				bind(Float.class).toInstance(34f);
+				bind(Byte.class).toInstance((byte) -1);
+
+				bind(String.class).toInstance("hello");
+
+				bind(new Key<Container<Float>>() {});
+				bind(new Key<Container<Byte>>() {});
+				bind(new Key<Container<Integer>>() {});
+
+				bind(new Key<Container<String>>() {});
+			}
+
+			@Provides
+			<T extends Number> Container<T> provide(T number) {
+				System.out.println("called number provider");
+				return new Container<>(number);
+			}
+
+			@Provides
+			<T extends CharSequence> Container<T> provide2(T str) {
+				System.out.println("called string provider");
+				return new Container<>(str);
+			}
+		});
+
+		assertEquals(42, injector.getInstance(new Key<Container<Integer>>() {}).peer.intValue());
+		assertEquals("hello", injector.getInstance(new Key<Container<String>>() {}).peer);
 	}
 }

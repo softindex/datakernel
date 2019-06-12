@@ -3,7 +3,6 @@ package io.datakernel.di.module;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Trie;
 
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 
@@ -24,7 +23,7 @@ public final class Modules {
 
 	public static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
 			Map<Integer, Set<BindingTransformer<?>>> transformers,
-			Map<Type, Set<BindingGenerator<?>>> generators,
+			Map<Class<?>, Set<BindingGenerator<?>>> generators,
 			Map<Key<?>, Multibinder<?>> multibinders) {
 		return new ModuleImpl(bindings, transformers, generators, multibinders);
 	}
@@ -40,7 +39,7 @@ public final class Modules {
 		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindingsMultimap));
 
 		Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
-		Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
+		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 		Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 
 		for (Module module : modules) {
@@ -66,7 +65,7 @@ public final class Modules {
 		Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>(into.getBindingTransformers());
 		bindingTransformers.putAll(replacements.getBindingTransformers());
 
-		Map<Type, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>(into.getBindingGenerators());
+		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>(into.getBindingGenerators());
 		bindingGenerators.putAll(replacements.getBindingGenerators());
 
 		Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>(into.getMultibinders());
@@ -102,12 +101,12 @@ public final class Modules {
 	private static class ModuleImpl implements Module {
 		private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
 		private final Map<Integer, Set<BindingTransformer<?>>> transformers;
-		private final Map<Type, Set<BindingGenerator<?>>> generators;
+		private final Map<Class<?>, Set<BindingGenerator<?>>> generators;
 		private final Map<Key<?>, Multibinder<?>> multibinders;
 
 		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
 				Map<Integer, Set<BindingTransformer<?>>> transformers,
-				Map<Type, Set<BindingGenerator<?>>> generators,
+				Map<Class<?>, Set<BindingGenerator<?>>> generators,
 				Map<Key<?>, Multibinder<?>> multibinders) {
 			this.bindings = bindings;
 			this.transformers = transformers;
@@ -126,7 +125,7 @@ public final class Modules {
 		}
 
 		@Override
-		public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
+		public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
 			return generators;
 		}
 

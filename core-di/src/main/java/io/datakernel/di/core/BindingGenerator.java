@@ -1,14 +1,13 @@
 package io.datakernel.di.core;
 
 import io.datakernel.di.error.CannotGenerateBindingException;
+import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static io.datakernel.di.util.Types.findBestMatch;
 import static java.util.stream.Collectors.toSet;
 
 @FunctionalInterface
@@ -16,9 +15,14 @@ public interface BindingGenerator<T> {
 	@Nullable Binding<T> generate(BindingProvider provider, Scope[] scope, Key<T> key);
 
 	@SuppressWarnings("unchecked")
-	static BindingGenerator<?> combinedGenerator(Map<Type, Set<BindingGenerator<?>>> generators) {
+	static BindingGenerator<?> combinedGenerator(Map<Class<?>, Set<BindingGenerator<?>>> generators) {
 		return (provider, scope, key) -> {
-			Set<BindingGenerator<?>> found = generators.get(findBestMatch(key.getType(), generators.keySet()));
+			Class<Object> rawType = key.getRawType();
+			Class<?> generatorKey = rawType.isInterface() ? rawType : Types.findClosestAncestor(rawType, generators.keySet());
+			if (generatorKey == null) {
+				return null;
+			}
+			Set<BindingGenerator<?>> found = generators.get(generatorKey);
 			if (found == null) {
 				return null;
 			}

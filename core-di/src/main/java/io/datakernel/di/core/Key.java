@@ -49,7 +49,9 @@ public abstract class Key<T> {
 	}
 
 	private static final class KeyImpl<T> extends Key<T> {
-		KeyImpl(Type type, Name name) {super(type, name);}
+		private KeyImpl(Type type, Name name) {
+			super(type, name);
+		}
 	}
 
 	@NotNull
@@ -135,11 +137,11 @@ public abstract class Key<T> {
 		return (Class<T>) Types.getRawType(type);
 	}
 
-	public Type[] getTypeParams() {
+	public <U> Key<U> getTypeParameter(int index) {
 		if (type instanceof ParameterizedType) {
-			return ((ParameterizedType) type).getActualTypeArguments();
+			return new KeyImpl<>(((ParameterizedType) type).getActualTypeArguments()[index], name);
 		}
-		return new Type[0];
+		throw new IllegalStateException("Expected type from key " + getDisplayString() + " to be parameterized");
 	}
 
 	@Nullable
@@ -163,8 +165,12 @@ public abstract class Key<T> {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof Key)) return false;
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Key)) {
+			return false;
+		}
 		Key<?> that = (Key<?>) o;
 		return type.equals(that.type) && Objects.equals(name, that.name);
 	}

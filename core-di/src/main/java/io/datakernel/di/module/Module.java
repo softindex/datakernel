@@ -6,7 +6,6 @@ import io.datakernel.di.error.NoBindingsForKeyException;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -19,7 +18,7 @@ public interface Module {
 
 	Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers();
 
-	Map<Type, Set<BindingGenerator<?>>> getBindingGenerators();
+	Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators();
 
 	Map<Key<?>, Multibinder<?>> getMultibinders();
 
@@ -71,7 +70,7 @@ public interface Module {
 			}
 
 			@Override
-			public Map<Type, Set<BindingGenerator<?>>> getBindingGenerators() {
+			public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
 				return emptyMap();
 			}
 

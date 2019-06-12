@@ -8,8 +8,6 @@ import io.datakernel.di.module.Multibinder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
@@ -116,12 +114,9 @@ public final class Utils {
 		}
 	}
 
-	public static void printGraphVizLink(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
-		try {
-			String encoded = URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20");
-			System.out.println("https://dreampuf.github.io/GraphvizOnline/#" + encoded);
-		} catch (UnsupportedEncodingException ignored) {
-		}
+	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+//		System.out.println("https://somegraphvizurl/#" + URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20"));
+		System.out.println(makeGraphVizGraph(trie));
 	}
 
 	public static String makeGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
@@ -188,7 +183,7 @@ public final class Utils {
 								.append(dep)
 								.append(" [label=\"")
 								.append(depKey.getDisplayString())
-								.append("\", color=")
+								.append("\", style=dashed, color=")
 								.append(dependency.isRequired() ? "red" : "orange")
 								.append("];\n");
 					}

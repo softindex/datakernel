@@ -2,10 +2,10 @@ package io.datakernel.di.error;
 
 import java.lang.reflect.Member;
 
-public final class InjectionFailedException extends RuntimeException {
+public final class InjectionFailException extends RuntimeException {
 	private final Member member;
 
-	public InjectionFailedException(Member member, ReflectiveOperationException cause) {
+	public InjectionFailException(Member member, ReflectiveOperationException cause) {
 		super("Failed to inject member injectable member " + member, cause);
 		this.member = member;
 	}
