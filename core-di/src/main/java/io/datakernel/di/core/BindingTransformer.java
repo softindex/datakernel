@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.error.CannotGenerateBindingException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -36,7 +35,7 @@ public interface BindingTransformer<T> {
 						continue;
 					}
 					if (transformed != null) {
-						throw new CannotGenerateBindingException(key, "More than one transformer with the same priority transformed a binding");
+						throw new DIException("More than one transformer with the same priority transformed a binding for key " + key.getDisplayString());
 					}
 					transformed = b;
 				}

@@ -6,11 +6,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.stream.Collectors.joining;
 
 public final class ScopedValue<T> {
-	public static final Scope[] UNSCOPED = new Scope[0];
-
 	@NotNull
 	private final Scope[] scope;
 	private final T value;

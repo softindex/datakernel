@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.emptyMap;
 
 public final class Trie<K, V> {
@@ -82,18 +82,16 @@ public final class Trie<K, V> {
 		return root;
 	}
 
-	private void dfs(IntFunction<K[]> arrayConstructor, K[] path, BiConsumer<K[], V> consumer) {
-		children.forEach((key, child) -> {
-			K[] newPath = arrayConstructor.apply(path.length + 1);
-			System.arraycopy(path, 0, newPath, 0, path.length);
-			newPath[path.length] = key;
-			child.dfs(arrayConstructor, newPath, consumer);
-		});
-		consumer.accept(path, payload);
+	public void dfs(K[] path, BiConsumer<K[], V> consumer) {
+		Trie<K, V> sub = get(path);
+		if (sub != null) {
+			sub.dfsImpl(path, consumer);
+		}
 	}
 
-	public void dfs(IntFunction<K[]> arrayConstructor, BiConsumer<K[], V> consumer) {
-		dfs(arrayConstructor, arrayConstructor.apply(0), consumer);
+	private void dfsImpl(K[] path, BiConsumer<K[], V> consumer) {
+		children.forEach((key, child) -> child.dfsImpl(next(path, key), consumer));
+		consumer.accept(path, payload);
 	}
 
 	public void dfs(Consumer<V> consumer) {

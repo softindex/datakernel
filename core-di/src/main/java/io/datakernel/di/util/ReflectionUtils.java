@@ -3,10 +3,6 @@ package io.datakernel.di.util;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
-import io.datakernel.di.error.InjectionFailException;
-import io.datakernel.di.error.InvalidAnnotationException;
-import io.datakernel.di.error.InvalidImplicitBindingException;
-import io.datakernel.di.error.ProvisionFailedException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -34,7 +30,7 @@ public final class ReflectionUtils {
 				.filter(annotation -> annotation.annotationType().isAnnotationPresent(NameAnnotation.class))
 				.collect(toSet());
 		if (names.size() > 1) {
-			throw new InvalidAnnotationException(annotatedElement, "More than one name annotation");
+			throw new DIException("More than one name annotation on " + annotatedElement);
 		}
 		return names.isEmpty() ? null : Name.of(names.iterator().next());
 	}
@@ -63,10 +59,10 @@ public final class ReflectionUtils {
 				.orElse(null);
 
 		if (scopes.size() > 1) {
-			throw new InvalidAnnotationException(annotatedElement, "More than one scope annotation");
+			throw new DIException("More than one scope annotation on " + annotatedElement);
 		}
 		if (!scopes.isEmpty() && nested != null) {
-			throw new InvalidAnnotationException(annotatedElement, "Cannot have both @Scoped and other scope annotations");
+			throw new DIException("Cannot have both @Scoped and other scope annotations on " + annotatedElement);
 		}
 		return nested != null ?
 				Arrays.stream(nested.value()).map(Scope::of).toArray(Scope[]::new) :
@@ -83,7 +79,7 @@ public final class ReflectionUtils {
 			for (T element : extractor.apply(cls)) {
 				if (element.isAnnotationPresent(annotationType)) {
 					if (!allowStatic && Modifier.isStatic(element.getModifiers())) {
-						throw new InvalidAnnotationException(element, "@" + annotationType.getSimpleName() + " annotation is not allowed");
+						throw new DIException("@" + annotationType.getSimpleName() + " annotation is not allowed on " + element);
 					}
 					result.add(element);
 				}
@@ -130,10 +126,10 @@ public final class ReflectionUtils {
 
 		if (classInjectAnnotation != null) {
 			if (!injectConstructors.isEmpty()) {
-				throw new InvalidImplicitBindingException(key, "inject annotation on class with inject constructor");
+				throw failedImplicitBinding(key, "inject annotation on class with inject constructor");
 			}
 			if (!factoryMethods.isEmpty()) {
-				throw new InvalidImplicitBindingException(key, "inject annotation on class with inject factory method");
+				throw failedImplicitBinding(key, "inject annotation on class with inject factory method");
 			}
 			try {
 				Class<?> enclosingClass = cls.getEnclosingClass();
@@ -144,27 +140,31 @@ public final class ReflectionUtils {
 
 				return bindingForConstructor(key, (Constructor<T>) constructor);
 			} catch (NoSuchMethodException e) {
-				throw new InvalidImplicitBindingException(key, "inject annotation on class with no default constructor");
+				throw failedImplicitBinding(key, "inject annotation on class with no default constructor");
 			}
 		} else {
 			if (injectConstructors.size() > 1) {
-				throw new InvalidImplicitBindingException(key, "more than one inject constructor");
+				throw failedImplicitBinding(key, "more than one inject constructor");
 			}
 			if (!injectConstructors.isEmpty()) {
 				if (!factoryMethods.isEmpty()) {
-					throw new InvalidImplicitBindingException(key, "both inject constructor and inject factory method are present");
+					throw failedImplicitBinding(key, "both inject constructor and inject factory method are present");
 				}
 				return bindingForConstructor(key, (Constructor<T>) injectConstructors.iterator().next());
 			}
 		}
 
 		if (factoryMethods.size() > 1) {
-			throw new InvalidImplicitBindingException(key, "more than one inject factory method");
+			throw failedImplicitBinding(key, "more than one inject factory method");
 		}
 		if (!factoryMethods.isEmpty()) {
 			return bindingForMethod(null, factoryMethods.iterator().next());
 		}
 		return null;
+	}
+
+	private static DIException failedImplicitBinding(Key<?> requestedKey, String message) {
+		return new DIException("Failed to generate implicit binding for " + requestedKey.getDisplayString() + ", " + message);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -193,7 +193,7 @@ public final class ReflectionUtils {
 					try {
 						field.set(instance, arg);
 					} catch (IllegalAccessException e) {
-						throw new InjectionFailException(field, e);
+						throw new DIException("Failed to inject member injectable field " + field, e);
 					}
 				},
 				new Dependency(key, required)
@@ -207,7 +207,7 @@ public final class ReflectionUtils {
 					try {
 						method.invoke(instance, args);
 					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new InjectionFailException(method, e);
+						throw new DIException("Failed to inject member injectable method " + method, e);
 					}
 				},
 				toDependencies(container, method.getParameters())
@@ -244,7 +244,7 @@ public final class ReflectionUtils {
 					try {
 						return (T) method.invoke(module, args);
 					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new ProvisionFailedException(null, method, e);
+						throw new DIException("Failed to call method " + method, e);
 					}
 				},
 				toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters()))
@@ -271,7 +271,7 @@ public final class ReflectionUtils {
 					try {
 						return method.invoke(module, args);
 					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new ProvisionFailedException(requestedKey, method, e);
+						throw new DIException("Failed to call generic method " + method + " to provide requested key " + requestedKey);
 					}
 				},
 				dependencies)
@@ -288,7 +288,7 @@ public final class ReflectionUtils {
 					try {
 						return constructor.newInstance(args);
 					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-						throw new ProvisionFailedException(key, constructor, e);
+						throw new DIException("Failed to call constructor " + constructor + " to provide requested key " + key);
 					}
 				},
 				dependencies)

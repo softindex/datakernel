@@ -15,7 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-import static io.datakernel.di.util.ScopedValue.UNSCOPED;
+import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
@@ -34,11 +34,10 @@ public final class Utils {
 		return (BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>>) (BiConsumer) MULTIMAP_MERGER;
 	}
 
-	public static Scope[] next(Scope[] scope, Scope next) {
-		Scope[] ss = new Scope[scope.length + 1];
-		System.arraycopy(scope, 0, ss, 0, scope.length);
-		ss[scope.length] = next;
-		return ss;
+	public static <T> T[] next(T[] items, T item) {
+		T[] next = Arrays.copyOf(items, items.length + 1);
+		next[items.length] = item;
+		return next;
 	}
 
 	public static String getScopeDisplayString(Scope[] scope) {
@@ -59,11 +58,12 @@ public final class Utils {
 									return value.iterator().next();
 								default: {
 									Function<Set<V>, V> multibinder = reducers.apply(entry.getKey());
-									if (multibinder == null) {
-										throw new IllegalStateException("Duplicate bindings for " + entry.getKey() + "\n" +
-												entry.getValue().stream().map(Object::toString).map(s -> "\t\t" + s).collect(joining("\n")));
+									if (multibinder != null) {
+										return multibinder.apply(entry.getValue());
 									}
-									return multibinder.apply(entry.getValue());
+									throw new IllegalStateException(entry.getValue().stream()
+											.map(s -> "\t\t" + s)
+											.collect(joining("\n", "Duplicate bindings for " + entry.getKey() + "\n", "")));
 								}
 							}
 						})
@@ -98,7 +98,7 @@ public final class Utils {
 	}
 
 	public static <T, K, V> Collector<T, ?, Map<K, Set<V>>> toMultimap(Function<? super T, ? extends K> keyMapper,
-																	   Function<? super T, ? extends V> valueMapper) {
+			Function<? super T, ? extends V> valueMapper) {
 		return Collectors.toMap(keyMapper, t -> singleton(valueMapper.apply(t)), Utils::union);
 	}
 

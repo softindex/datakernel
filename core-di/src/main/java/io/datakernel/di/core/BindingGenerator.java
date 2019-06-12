@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.error.CannotGenerateBindingException;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,7 +36,7 @@ public interface BindingGenerator<T> {
 			}
 
 			if (generatedBindings.size() > 1) {
-				throw new CannotGenerateBindingException(key, "More than one generator provided a binding");
+				throw new DIException("More than one generator provided a binding for key " + key.getDisplayString());
 			}
 
 			return generatedBindings.iterator().next();

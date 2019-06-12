@@ -1,12 +1,13 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.error.UnsatisfiedGenericsException;
+import io.datakernel.di.core.DIException;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.*;
 import java.util.*;
 
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
 public final class Types {
@@ -17,55 +18,35 @@ public final class Types {
 	public static Class<?> getRawType(Type type) {
 		if (type instanceof Class) {
 			return (Class<?>) type;
-		} else if (type instanceof ParameterizedType) {
-			return getRawType(((ParameterizedType) type).getRawType());
-		} else if (type instanceof GenericArrayType) {
-			return getRawType(((GenericArrayType) type).getGenericComponentType());
-		} else {
-			throw new IllegalArgumentException("Cannot get raw type from " + type);
 		}
+		if (type instanceof ParameterizedType) {
+			return getRawType(((ParameterizedType) type).getRawType());
+		}
+		if (type instanceof GenericArrayType) {
+			return getRawType(((GenericArrayType) type).getGenericComponentType());
+		}
+		throw new IllegalArgumentException("Cannot get raw type from " + type);
 	}
 
-	public static boolean isInheritedFrom(Type type, Type than) {
-		return isInheritedFrom(type, than, getGenericTypeMapping(type));
+	public static boolean isInheritedFrom(Type type, Type from) {
+		return isInheritedFrom(type, from, getGenericTypeMapping(type));
 	}
 
-	private static boolean isInheritedFrom(Type type, Type than, Map<TypeVariable<?>, Type> genericMapping) {
-		if (than == Object.class) {
+	private static boolean isInheritedFrom(Type type, Type from, Map<TypeVariable<?>, Type> genericMapping) {
+		if (from == Object.class) {
 			return true;
 		}
-		if (matches(resolveTypeVariables(type, genericMapping), than)) {
+		if (matches(resolveTypeVariables(type, genericMapping), from)) {
 			return true;
 		}
 		Class<?> rawType = getRawType(type);
 
 		Type superclass = rawType.getGenericSuperclass();
-		if (superclass != null && isInheritedFrom(superclass, than, genericMapping)) {
+		if (superclass != null && isInheritedFrom(superclass, from, genericMapping)) {
 			return true;
 		}
 		return Arrays.stream(rawType.getGenericInterfaces())
-				.anyMatch(iface -> isInheritedFrom(iface, than, genericMapping));
-	}
-
-	public static boolean contains(Type type, Type sub) {
-		if (type.equals(sub)) {
-			return true;
-		}
-		if (type instanceof GenericArrayType) {
-			return contains(((GenericArrayType) type).getGenericComponentType(), sub);
-		}
-		if (!(type instanceof ParameterizedType)) {
-			return false;
-		}
-		ParameterizedType parameterized = (ParameterizedType) type;
-		if (contains(parameterized.getRawType(), sub)) {
-			return true;
-		}
-		if (parameterized.getOwnerType() != null && contains(parameterized.getOwnerType(), sub)) {
-			return true;
-		}
-		return Arrays.stream(parameterized.getActualTypeArguments())
-				.anyMatch(argument -> contains(argument, sub));
+				.anyMatch(iface -> isInheritedFrom(iface, from, genericMapping));
 	}
 
 	public static boolean matches(Type strict, Type pattern) {
@@ -113,6 +94,27 @@ public final class Types {
 			}
 		}
 		return true;
+	}
+
+	public static boolean contains(Type type, Type sub) {
+		if (type.equals(sub)) {
+			return true;
+		}
+		if (type instanceof GenericArrayType) {
+			return contains(((GenericArrayType) type).getGenericComponentType(), sub);
+		}
+		if (!(type instanceof ParameterizedType)) {
+			return false;
+		}
+		ParameterizedType parameterized = (ParameterizedType) type;
+		if (contains(parameterized.getRawType(), sub)) {
+			return true;
+		}
+		if (parameterized.getOwnerType() != null && contains(parameterized.getOwnerType(), sub)) {
+			return true;
+		}
+		return Arrays.stream(parameterized.getActualTypeArguments())
+				.anyMatch(argument -> contains(argument, sub));
 	}
 
 	@Nullable
@@ -177,7 +179,7 @@ public final class Types {
 
 	private static final Map<Type, Map<TypeVariable<?>, Type>> genericMappingCache = new HashMap<>();
 
-	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container) throws UnsatisfiedGenericsException {
+	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container) {
 		return genericMappingCache.computeIfAbsent(container, t -> {
 			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
 			Class<?> cls = getRawType(t);
@@ -220,7 +222,9 @@ public final class Types {
 					.map(e -> (TypeVariable<?>) e.getKey())
 					.collect(toSet());
 			if (!unsatisfiedGenerics.isEmpty()) {
-				throw new UnsatisfiedGenericsException(unsatisfiedGenerics);
+				throw new DIException(unsatisfiedGenerics.stream()
+						.map(typevar -> typevar + " from " + typevar.getGenericDeclaration())
+						.collect(joining(", ", "Actual types for generics [", "] were not found in class hierarchy")));
 			}
 			return mapping;
 		});

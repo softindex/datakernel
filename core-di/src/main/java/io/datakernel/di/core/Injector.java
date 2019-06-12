@@ -1,22 +1,22 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.error.CannotConstructException;
-import io.datakernel.di.error.CyclicDependensiesException;
-import io.datakernel.di.error.NoBindingsInScopeException;
-import io.datakernel.di.error.UnsatisfiedDependenciesException;
 import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
+import static java.util.stream.Collectors.joining;
 
 @SuppressWarnings("unused")
 public class Injector {
@@ -79,15 +79,18 @@ public class Injector {
 	}
 
 	public static Injector of(Module... modules) {
-		Module module = Modules.combine(Modules.combine(modules), new DefaultModule());
-		return compile(null, new HashMap<>(), true,
-				module.getBindings(),
-				combinedTransformer(module.getBindingTransformers()),
-				combinedGenerator(module.getBindingGenerators()));
+		return compile(Modules.combine(Modules.combine(modules), new DefaultModule()));
 	}
 
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return compile(null, new HashMap<>(), true, bindings, (provider, scope, key, binding) -> binding, (provider, scope, key) -> null);
+	}
+
+	public static Injector compile(Module module) {
+		return compile(null, new HashMap<>(), true,
+				module.getBindings(),
+				combinedTransformer(module.getBindingTransformers()),
+				combinedGenerator(module.getBindingGenerators()));
 	}
 
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
@@ -105,12 +108,24 @@ public class Injector {
 
 		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {
-			throw new UnsatisfiedDependenciesException(injector, unsatisfied);
+			throw new DIException(unsatisfied.entrySet().stream()
+					.map(entry -> entry.getValue().stream()
+							.map(binding -> {
+								LocationInfo location = binding.getLocation();
+								return "at " + (location != null ? location.getDeclaration() : "<unknown binding location>");
+							})
+							.collect(joining("\n\t\t     and ", "\tkey " + entry.getKey() + "\n\t\trequired ", "")))
+					.collect(joining("\n", "\n", "\n")));
 		}
 
 		Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(bindings);
 		if (!cycles.isEmpty()) {
-			throw new CyclicDependensiesException(injector, cycles);
+			throw new DIException(cycles.stream()
+					.map(cycle ->
+							Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
+									.map(Key::getDisplayString)
+									.collect(joining(" -> ", "\t", " -> ...")))
+					.collect(joining("\n", "Cyclic dependencies detected:\n", "\n")));
 		}
 
 		return injector;
@@ -131,7 +146,7 @@ public class Injector {
 		instance = doCreateInstanceOrNull(key);
 		instances.put(key, instance);
 		if (instance == null) {
-			throw new CannotConstructException(this, key, localBindings.get(key));
+			throw cannotConstruct(key, localBindings.get(key));
 		}
 		return instance;
 	}
@@ -172,7 +187,7 @@ public class Injector {
 	public <T> T createInstance(@NotNull Key<T> key) {
 		T instance = doCreateInstanceOrNull(key);
 		if (instance == null) {
-			throw new CannotConstructException(this, key, localBindings.get(key));
+			throw cannotConstruct(key, localBindings.get(key));
 		}
 		return instance;
 	}
@@ -208,7 +223,7 @@ public class Injector {
 					}
 				}
 				if (dependencyInstance == null && dependency.isRequired()) {
-					throw new CannotConstructException(this, dependencyKey, localBindings.get(dependencyKey));
+					throw cannotConstruct(dependencyKey, localBindings.get(dependencyKey));
 				}
 				dependencyInstances[i] = dependencyInstance;
 			}
@@ -218,6 +233,11 @@ public class Injector {
 			return parent.getInstanceOrNull(key);
 		}
 		return null;
+	}
+
+	private static DIException cannotConstruct(Key<?> key, @Nullable Binding<?> binding) {
+		return new DIException((binding != null ? "Binding refused to" : "No binding to") + " construct an instance for key " +
+				key.getDisplayString() + (binding != null && binding.getLocation() != null ? ("\n\t at" + binding.getLocation()) : ""));
 	}
 
 	@Nullable
@@ -287,7 +307,7 @@ public class Injector {
 	public Injector enterScope(@NotNull Scope scope, @NotNull Map<Key<?>, Object> instances, boolean threadsafe) {
 		Trie<Scope, Map<Key<?>, Binding<?>>> subBindings = bindings.get(scope);
 		if (subBindings == null) {
-			throw new NoBindingsInScopeException(this, scope);
+			throw new DIException("Tried to enter a scope " + scope + " that was not represented by any binding");
 		}
 		return threadsafe ?
 				new SynchronizedInjector(this, subBindings, instances) :

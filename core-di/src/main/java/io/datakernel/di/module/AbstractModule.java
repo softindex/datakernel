@@ -16,8 +16,8 @@ import java.lang.reflect.TypeVariable;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.ReflectionUtils.*;
-import static io.datakernel.di.util.ScopedValue.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.joining;

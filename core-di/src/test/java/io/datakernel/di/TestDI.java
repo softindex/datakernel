@@ -3,10 +3,6 @@ package io.datakernel.di;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
-import io.datakernel.di.error.CannotConstructException;
-import io.datakernel.di.error.CyclicDependensiesException;
-import io.datakernel.di.error.MultipleBindingsException;
-import io.datakernel.di.error.UnsatisfiedDependenciesException;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
@@ -123,7 +119,7 @@ public final class TestDI {
 		try {
 			Injector.of(module);
 			fail("should've failed");
-		} catch (MultipleBindingsException e) {
+		} catch (DIException e) {
 			e.printStackTrace();
 			assertTrue(e.getMessage().startsWith("for key java.lang.String"));
 		}
@@ -139,7 +135,7 @@ public final class TestDI {
 		try {
 			Injector.of(module);
 			fail("should've failed here");
-		} catch (CyclicDependensiesException e) {
+		} catch (DIException e) {
 			e.printStackTrace();
 		}
 	}
@@ -165,11 +161,12 @@ public final class TestDI {
 		try {
 			Injector.of(branch, cyclic1);
 			fail("should've failed here");
-		} catch (CyclicDependensiesException e) {
+		} catch (DIException e) {
 			e.printStackTrace();
 
-			assertEquals(1, e.getCycles().size());
-			assertEquals(expected1, Arrays.stream(e.getCycles().iterator().next()).collect(toSet()));
+			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1).getBindings());
+			assertEquals(1, cycles.size());
+			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
 
 		Module cyclic2 = new AbstractModule() {{
@@ -183,14 +180,14 @@ public final class TestDI {
 		try {
 			Injector.of(branch, cyclic1, cyclic2);
 			fail("should've failed here");
-		} catch (CyclicDependensiesException e) {
+		} catch (DIException e) {
 			e.printStackTrace();
 
-			assertEquals(2, e.getCycles().size());
+			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1, cyclic2).getBindings());
+			assertEquals(2, cycles.size());
 
-			Set<Set<Key<?>>> cycles = e.getCycles().stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
-
-			assertEquals(Stream.of(expected1, expected2).collect(toSet()), cycles);
+			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
+			assertEquals(Stream.of(expected1, expected2).collect(toSet()), unorderedCycles);
 		}
 	}
 
@@ -331,7 +328,7 @@ public final class TestDI {
 
 			Injector.of(module);
 			fail("should've detected the cycle and fail");
-		} catch (CyclicDependensiesException e) {
+		} catch (DIException e) {
 			e.printStackTrace();
 		}
 	}
@@ -379,7 +376,7 @@ public final class TestDI {
 			}});
 			injector3.getInstance(ClassWithCustomDeps.class);
 			fail("should've failed, but didn't");
-		} catch (UnsatisfiedDependenciesException e) {
+		} catch (DIException e) {
 			e.printStackTrace();
 			assertTrue(e.getMessage().startsWith("\n\tkey java.lang.Integer\n\t\trequired at"));
 		}
@@ -734,9 +731,8 @@ public final class TestDI {
 
 		try {
 			injector.getInstance(String.class);
-		} catch (CannotConstructException e) {
-			assertNotNull(e.getBinding());
-			assertEquals("Binding refused to construct an instance for key Integer", e.getMessage());
+		} catch (DIException e) {
+			assertTrue(e.getMessage().startsWith("Binding refused to construct an instance for key Integer"));
 		}
 	}
 

@@ -10,6 +10,8 @@ import java.lang.annotation.Annotation;
 import static io.datakernel.di.util.Utils.checkArgument;
 
 public final class Scope extends AbstractAnnotation {
+	public static final Scope[] UNSCOPED = new Scope[0];
+
 	protected Scope(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {
 		super(annotationType, annotation);
 	}

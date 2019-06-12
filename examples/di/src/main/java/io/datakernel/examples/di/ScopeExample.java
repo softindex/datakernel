@@ -2,10 +2,10 @@ package io.datakernel.examples.di;
 
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ScopeAnnotation;
+import io.datakernel.di.core.DIException;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
-import io.datakernel.di.error.NoBindingsInScopeException;
 import io.datakernel.di.module.AbstractModule;
 
 import java.lang.annotation.ElementType;
@@ -127,15 +127,16 @@ public final class ScopeExample {
 				.forEach(s -> {
 					Map<Key<?>, Object> instancesOverride = new HashMap<>(singletonMap(Key.of(HttpRequest.class), new HttpRequest(s)));
 
-					Injector subInjector = injector.enterScope(HTTP_SCOPE, instancesOverride, false);
+					Injector subInjector = injector.enterScope(HTTP_SCOPE, instancesOverride, true);
 
 					System.out.println(subInjector.getInstance(HttpResponse.class).pong);
 				});
 
 		try {
 			Injector subsubInjector = injector.enterScope(HTTP_SCOPE).enterScope(HTTP_SCOPE);
-		} catch (NoBindingsInScopeException e) {
-			System.err.println("\nNo bindings in scope ()->@HttpScope()->@HttpScope()");
+		} catch (DIException e) {
+			System.err.println("\nNo bindings in scope ()->@HttpScope()->@HttpScope()\n");
+			e.printStackTrace();
 		}
 	}
 }

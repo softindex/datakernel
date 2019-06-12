@@ -1,8 +1,7 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.error.MultipleBindingsException;
-import io.datakernel.di.error.NoBindingsForKeyException;
+import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
@@ -11,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import static java.util.Collections.emptyMap;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 
 public interface Module {
@@ -40,13 +40,21 @@ public interface Module {
 
 									switch (bindings.size()) {
 										case 0:
-											throw new NoBindingsForKeyException(key);
+											throw new DIException("Provided a key " + key + " with no associated bindings");
 										case 1:
 											return bindings.iterator().next();
 										default:
 											Multibinder<?> multibinder = multibinders.get(key);
 											if (multibinder == null) {
-												throw new MultipleBindingsException(key, bindings);
+												throw new DIException(bindings.stream()
+														.map(binding -> {
+															LocationInfo location = binding.getLocation();
+															if (location == null) {
+																return "at <unknown binding location>";
+															}
+															return "\tat " + location.getDeclaration();
+														})
+														.collect(joining("\n", "for key " + key + ":\n", "\n")));
 											}
 											// because Java generics are just broken :(
 											return ((Multibinder) multibinder).multibind(bindings);

@@ -6,6 +6,7 @@ import io.datakernel.di.util.Trie;
 import java.util.*;
 import java.util.function.Function;
 
+import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
@@ -77,7 +78,7 @@ public final class Modules {
 	public static Module ignoreScopes(Module from) {
 		Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
 		Map<Key<?>, Scope[]> scopes = new HashMap<>();
-		from.getBindingsMultimap().dfs(Scope[]::new, (scope, localBindings) ->
+		from.getBindingsMultimap().dfs(UNSCOPED, (scope, localBindings) ->
 				localBindings.forEach((k, b) -> {
 					bindings.merge(k, b, ($, $2) -> {
 						Scope[] alreadyThere = scopes.get(k);

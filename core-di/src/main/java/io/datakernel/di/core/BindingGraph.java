@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.error.CannotGenerateBindingException;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,13 +7,13 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.ScopedValue.UNSCOPED;
+import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class BindingGraph {
 	public static final Binding<?> TO_BE_GENERATED = Binding.to($ -> {
-		throw new AssertionError("This binding exists as a marker to be replaced by generated binding, if you see this message then somethning is really wrong");
+		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
 	});
 
 	private BindingGraph() {
@@ -78,7 +77,7 @@ public final class BindingGraph {
 				if (generatedBinding == null) {
 					// these bindings are the ones requested with plain `bind(...);` call, here we fail fast
 					// see comment below where dependencies are generated
-					throw new CannotGenerateBindingException(key, "Refused to generate a requested binding");
+					throw new DIException("Refused to generate a requested binding for key " + key.getDisplayString());
 				}
 				known.put(key, generatedBinding);
 			} else {

@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static java.util.Collections.emptySet;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -147,6 +148,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.info("=== INJECTING DEPENDENCIES");
 
 			Injector injector = createInjector(args);
+			logger.trace("Dependency graph:\n" + makeGraphVizGraph(injector.getBindings()));
 
 			injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
 
