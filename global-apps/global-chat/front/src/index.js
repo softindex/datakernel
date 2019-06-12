@@ -19,12 +19,12 @@ import ContactsService from "./modules/contacts/ContactsService";
 import ContactsContext from "./modules/contacts/ContactsContext";
 
 const roomsOTNode = ClientOTNode.createWithJsonKey({
-  url: '/index',
+  url: '/ot/rooms',
   serializer: roomsSerializer
 });
 
 const contactsOTNode = ClientOTNode.createWithJsonKey({
-  url: '/contacts',
+  url: '/ot/contacts',
   serializer: contactsSerializer
 });
 

@@ -63,9 +63,9 @@ public final class ChatModule extends AbstractModule {
 			StaticServlet staticServlet
 	) {
 		return MiddlewareServlet.create()
-				.with("/contacts", contactsServlet)
-				.with("/index", roomListServlet)
-				.with("/room/:suffix", roomServlet)
+				.with("/ot/contacts", contactsServlet)
+				.with("/ot/rooms", roomListServlet)
+				.with("/ot/room/:suffix", roomServlet)
 				.with("/rooms", messagingServlet)
 				.withFallback(staticServlet);
 	}
