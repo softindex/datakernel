@@ -1,53 +1,47 @@
 package io.datakernel.di.util;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 import static io.datakernel.di.util.ReflectionUtils.getShortName;
 
 public final class LocationInfo {
+	private final Object module;
 	@Nullable
-	private final Class<?> moduleClass;
-	private final String declaration;
+	private final Method provider;
 
-	private LocationInfo(@Nullable Class<?> moduleClass, String declaration) {
-		this.moduleClass = moduleClass;
-		this.declaration = declaration;
+	private LocationInfo(Object module, @Nullable Method provider) {
+		this.module = module;
+		this.provider = provider;
 	}
 
-	public static LocationInfo from(Method providerMethod) {
-		Class<?> declaringClass = providerMethod.getDeclaringClass();
-		Class<?> module = Modifier.isStatic(providerMethod.getModifiers()) ? null : declaringClass;
-		return new LocationInfo(module, declaringClass.getName() + "." + providerMethod.getName() + "(" + getShortName(declaringClass.getName()) + ".java:0)");
+	public static LocationInfo from(@NotNull Object module, @NotNull Method provider) {
+		return new LocationInfo(module, provider);
 	}
 
-	public static LocationInfo from(Constructor<?> injectConstructor) {
-		Class<?> declaringClass = injectConstructor.getDeclaringClass();
-		return new LocationInfo(null, declaringClass.getName() + ".<init>(" + getShortName(declaringClass.getName()) + ".java:0)");
+	public static LocationInfo from(@NotNull Object module) {
+		return new LocationInfo(module, null);
 	}
 
-	public static LocationInfo from(StackTraceElement binderCall) {
-		try {
-			return new LocationInfo(Class.forName(binderCall.getClassName()), binderCall.toString());
-		} catch (ClassNotFoundException e) {
-			return new LocationInfo(null, binderCall.toString());
-		}
+	@NotNull
+	public Object getModule() {
+		return module;
 	}
 
 	@Nullable
-	public Class<?> getModuleClass() {
-		return moduleClass;
-	}
-
-	public String getDeclaration() {
-		return declaration;
+	public Method getProvider() {
+		return provider;
 	}
 
 	@Override
 	public String toString() {
-		return declaration + (moduleClass != null ? " from module " + moduleClass.getSimpleName() : "");
+		if (provider == null) {
+			return "module " + module;
+		}
+		Class<?> declaringClass = provider.getDeclaringClass();
+		String shortName = getShortName(declaringClass.getName());
+		return "module " + module + ", provider method "+shortName+"." + provider.getName() + "(" + shortName + ".java:0)";
 	}
 }

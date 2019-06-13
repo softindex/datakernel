@@ -78,7 +78,7 @@ public final class DefaultModule implements Module {
 				(provider, scope, key) -> {
 					Key<Object> elementKey = key.getTypeParameter(0);
 
-					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
+					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey.getType());
 					BindingInitializer.Initializer<Object> initializer = injectingInitializer.getInitializer();
 
 					return Binding.to(

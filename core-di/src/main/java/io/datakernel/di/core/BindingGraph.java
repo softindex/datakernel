@@ -1,5 +1,6 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.util.Constructors.Factory;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,9 +13,9 @@ import static io.datakernel.di.util.Utils.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class BindingGraph {
-	public static final Binding<?> TO_BE_GENERATED = Binding.to($ -> {
+	public static final Factory<?> TO_BE_GENERATED = $ -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
-	});
+	};
 
 	private BindingGraph() {
 		throw new AssertionError("nope.");
@@ -47,7 +48,7 @@ public final class BindingGraph {
 				if (binding == null) {
 					binding = (Binding<T>) known.get(key);
 				}
-				if (binding != null && binding != TO_BE_GENERATED) {
+				if (binding != null && binding.getFactory() != TO_BE_GENERATED) {
 					return binding;
 				}
 
@@ -72,13 +73,14 @@ public final class BindingGraph {
 			Key<Object> key = (Key<Object>) entry.getKey();
 			Binding<Object> binding = (Binding<Object>) entry.getValue();
 
-			if (binding == TO_BE_GENERATED) {
+			if (binding.getFactory() == TO_BE_GENERATED) {
 				Binding<Object> generatedBinding = provider.getBinding(key);
 				if (generatedBinding == null) {
 					// these bindings are the ones requested with plain `bind(...);` call, here we fail fast
 					// see comment below where dependencies are generated
 					throw new DIException("Refused to generate a requested binding for key " + key.getDisplayString());
 				}
+				generatedBinding.at(binding.getLocation()); // set its location to one from the generation request
 				known.put(key, generatedBinding);
 			} else {
 				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, binding);

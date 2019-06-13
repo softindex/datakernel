@@ -96,24 +96,12 @@ public final class ReflectionUtils {
 		return result;
 	}
 
-	@Nullable
-	public static LocationInfo getLocation(Class<?>... skip) {
-		return Arrays.stream(Thread.currentThread().getStackTrace())
-				.skip(2)
-				.filter(trace ->
-						Stream.concat(Stream.of(ReflectionUtils.class), Arrays.stream(skip))
-								.noneMatch(cls -> trace.getClassName().equals(cls.getName())))
-				.findFirst()
-				.map(LocationInfo::from)
-				.orElse(null);
-	}
-
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Binding<T> binding = generateConstructorBinding(key);
 		if (binding == null) {
 			return null;
 		}
-		return binding.initialize(generateInjectingInitializer(key));
+		return binding.initialize(generateInjectingInitializer(key.getType()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -145,7 +133,7 @@ public final class ReflectionUtils {
 						cls.getDeclaredConstructor(enclosingClass) :
 						cls.getDeclaredConstructor();
 
-				return bindingForConstructor(key, (Constructor<T>) constructor);
+				return bindingFromConstructor(key, (Constructor<T>) constructor);
 			} catch (NoSuchMethodException e) {
 				throw failedImplicitBinding(key, "inject annotation on class with no default constructor");
 			}
@@ -157,7 +145,7 @@ public final class ReflectionUtils {
 				if (!factoryMethods.isEmpty()) {
 					throw failedImplicitBinding(key, "both inject constructor and inject factory method are present");
 				}
-				return bindingForConstructor(key, (Constructor<T>) injectConstructors.iterator().next());
+				return bindingFromConstructor(key, (Constructor<T>) injectConstructors.iterator().next());
 			}
 		}
 
@@ -165,7 +153,7 @@ public final class ReflectionUtils {
 			throw failedImplicitBinding(key, "more than one inject factory method");
 		}
 		if (!factoryMethods.isEmpty()) {
-			return bindingForMethod(null, factoryMethods.iterator().next());
+			return bindingFromMethod(null, factoryMethods.iterator().next());
 		}
 		return null;
 	}
@@ -175,21 +163,21 @@ public final class ReflectionUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> BindingInitializer<T> generateInjectingInitializer(Key<? extends T> containingType) {
+	public static <T> BindingInitializer<T> generateInjectingInitializer(Type containingType) {
 		List<BindingInitializer<T>> initializers = Stream.concat(
-				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredFields, false).stream()
+				getAnnotatedElements(Types.getRawType(containingType), Inject.class, Class::getDeclaredFields, false).stream()
 						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.isAnnotationPresent(Optional.class))),
-				getAnnotatedElements(containingType.getRawType(), Inject.class, Class::getDeclaredMethods, true).stream()
+				getAnnotatedElements(Types.getRawType(containingType), Inject.class, Class::getDeclaredMethods, true).stream()
 						.filter(method -> !Modifier.isStatic(method.getModifiers())) // we allow them and just filter out to allow static factory methods
 						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method)))
 				.collect(toList());
 		return BindingInitializer.combine(initializers);
 	}
 
-	public static <T> BindingInitializer<T> fieldInjector(Key<? extends T> container, Field field, boolean required) {
+	public static <T> BindingInitializer<T> fieldInjector(Type container, Field field, boolean required) {
 		field.setAccessible(true);
 
-		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field);
+		Key<Object> key = keyOf(container, field.getGenericType(), field);
 
 		return BindingInitializer.of(
 				(instance, args) -> {
@@ -207,7 +195,7 @@ public final class ReflectionUtils {
 		);
 	}
 
-	public static <T> BindingInitializer<T> methodInjector(Key<? extends T> container, Method method) {
+	public static <T> BindingInitializer<T> methodInjector(Type container, Method method) {
 		method.setAccessible(true);
 		return BindingInitializer.of(
 				(instance, args) -> {
@@ -222,31 +210,26 @@ public final class ReflectionUtils {
 	}
 
 	@NotNull
-	private static Dependency[] toDependencies(@Nullable Key<?> container, Parameter[] parameters) {
+	private static Dependency[] toDependencies(@Nullable Type container, Parameter[] parameters) {
 		Dependency[] dependencies = new Dependency[parameters.length];
-
 		if (parameters.length == 0) {
 			return dependencies;
 		}
-		// submitted an actual JDK bug report for this
+		// an actual JDK bug (fixed in Java 9)
 		boolean workaround = parameters[0].getDeclaringExecutable().getParameterAnnotations().length != parameters.length;
-
 		for (int i = 0; i < dependencies.length; i++) {
 			Type type = parameters[i].getParameterizedType();
-
 			Parameter parameter = parameters[workaround && i != 0 ? i - 1 : i];
-
-			Key<Object> key = keyOf(container != null ? container.getType() : null, type, parameter);
-			dependencies[i] = new Dependency(key, !parameter.isAnnotationPresent(Optional.class));
+			dependencies[i] = new Dependency(keyOf(container, type, parameter), !parameter.isAnnotationPresent(Optional.class));
 		}
 		return dependencies;
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Binding<T> bindingForMethod(@Nullable Object module, Method method) {
+	public static <T> Binding<T> bindingFromMethod(@Nullable Object module, Method method) {
 		method.setAccessible(true);
 
-		return Binding.to(
+		Binding<T> binding = Binding.to(
 				args -> {
 					try {
 						return (T) method.invoke(module, args);
@@ -254,12 +237,12 @@ public final class ReflectionUtils {
 						throw new DIException("Failed to call method " + method, e);
 					}
 				},
-				toDependencies(module != null ? Key.of(module.getClass()) : null, method.getParameters()))
-				.at(LocationInfo.from(method));
+				toDependencies(module != null ? module.getClass() : method.getDeclaringClass(), method.getParameters()));
+		return module != null ? binding.at(LocationInfo.from(module, method)) : binding;
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Binding<T> bindingForGenericMethod(@Nullable Object module, Key<?> requestedKey, Method method) {
+	public static <T> Binding<T> bindingFromGenericMethod(Object module, Key<?> requestedKey, Method method) {
 		method.setAccessible(true);
 
 		Type genericReturnType = method.getGenericReturnType();
@@ -282,13 +265,13 @@ public final class ReflectionUtils {
 					}
 				},
 				dependencies)
-				.at(LocationInfo.from(method));
+				.at(LocationInfo.from(module, method));
 	}
 
-	public static <T> Binding<T> bindingForConstructor(Key<T> key, Constructor<T> constructor) {
+	public static <T> Binding<T> bindingFromConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
 
-		Dependency[] dependencies = toDependencies(null, constructor.getParameters());
+		Dependency[] dependencies = toDependencies(key.getType(), constructor.getParameters());
 
 		return Binding.to(
 				args -> {
@@ -298,7 +281,6 @@ public final class ReflectionUtils {
 						throw new DIException("Failed to call constructor " + constructor + " to provide requested key " + key);
 					}
 				},
-				dependencies)
-				.at(LocationInfo.from(constructor));
+				dependencies);
 	}
 }

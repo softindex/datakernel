@@ -99,6 +99,11 @@ public final class Utils {
 		}
 	}
 
+	public static String getLocation(Binding<?> binding) {
+		LocationInfo location = binding.getLocation();
+		return "at " + (location != null ? location.toString() : "<unknown binding location>");
+	}
+
 	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
 //		System.out.println("https://somegraphvizurl/#" + URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20"));
 		System.out.println(makeGraphVizGraph(trie));

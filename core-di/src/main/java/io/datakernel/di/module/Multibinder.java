@@ -5,7 +5,7 @@ import io.datakernel.di.core.DIException;
 import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.util.Constructors;
-import io.datakernel.di.util.LocationInfo;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -21,14 +21,8 @@ public interface Multibinder<T> {
 
 	Multibinder<Object> ERROR_ON_DUPLICATE = (key, bindings) -> {
 		throw new DIException(bindings.stream()
-				.map(binding -> {
-					LocationInfo location = binding.getLocation();
-					if (location == null) {
-						return "at <unknown binding location>";
-					}
-					return "\tat " + location.getDeclaration();
-				})
-				.collect(joining("\n", "for key " + key.getDisplayString() + ":\n", "\n")));
+				.map(Utils::getLocation)
+				.collect(joining("\n\t", "Duplicate bindings for key " + key.getDisplayString() + ":\n\t", "\n")));
 	};
 
 	@SuppressWarnings("unchecked")

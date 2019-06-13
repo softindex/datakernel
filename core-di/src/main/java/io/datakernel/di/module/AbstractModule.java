@@ -5,6 +5,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Constructors.*;
+import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
@@ -58,24 +59,28 @@ public abstract class AbstractModule implements Module {
 		for (Method method : getAnnotatedElements(cls, Provides.class, Class::getDeclaredMethods, false)) {
 			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
+			Set<Annotation> keySets = keySetsOf(method);
 
 			if (typeVars.length == 0) {
 				Scope[] scope = getScope(method);
 				Name name = nameOf(method);
 
 				Key<Object> key = Key.ofType(type, name);
-				addBinding(scope, key, bindingForMethod(instance, method));
-				keySetsOf(method).forEach(keySet -> addKeyToSet(Name.of(keySet), key));
+				addBinding(scope, key, bindingFromMethod(instance, method));
+				keySets.forEach(keySet -> addKeyToSet(Name.of(keySet), key));
 			} else {
 				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
 						.filter(typeVar -> !Types.contains(type, typeVar))
 						.collect(Collectors.toSet());
 				if (!unused.isEmpty()) {
-					throw new IllegalStateException("Generic type variables " + unused + " are not used in return type");
+					throw new IllegalStateException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
+				}
+				if (!keySets.isEmpty()) {
+					throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
 				}
 				generate(method.getReturnType(), (provider, scope, key) ->
 						Types.matches(key.getType(), type) ?
-								bindingForGenericMethod(instance, key, method) :
+								bindingFromGenericMethod(instance, key, method) :
 								null);
 			}
 		}
@@ -84,7 +89,7 @@ public abstract class AbstractModule implements Module {
 			Name name = nameOf(method);
 			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
 
-			Binding<Object> binding = bindingForMethod(instance, method);
+			Binding<Object> binding = bindingFromMethod(instance, method);
 			Factory<Object> factory = binding.getFactory();
 			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), name);
 
@@ -99,7 +104,7 @@ public abstract class AbstractModule implements Module {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
 
-		private Binding<? extends T> binding = (Binding<T>) BindingGraph.TO_BE_GENERATED;
+		private Binding<? extends T> binding = (Binding<? extends T>) Binding.to(BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
 
 		public BindingBuilder(Key<T> key) {
 			this.key = key;
@@ -140,8 +145,11 @@ public abstract class AbstractModule implements Module {
 		}
 
 		public BindingBuilder<T> to(Binding<? extends T> binding) {
-			if (this.binding != BindingGraph.TO_BE_GENERATED) {
+			if (this.binding.getFactory() != BindingGraph.TO_BE_GENERATED) {
 				throw new IllegalStateException("Already mapped to a binding");
+			}
+			if (binding.getLocation() == null) {
+				binding.at(LocationInfo.from(AbstractModule.this));
 			}
 			this.binding = binding;
 			return this;

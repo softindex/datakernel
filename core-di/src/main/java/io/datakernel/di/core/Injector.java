@@ -4,7 +4,6 @@ import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.module.Multibinder;
-import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
@@ -122,12 +121,9 @@ public class Injector {
 		if (!unsatisfied.isEmpty()) {
 			throw new DIException(unsatisfied.entrySet().stream()
 					.map(entry -> entry.getValue().stream()
-							.map(binding -> {
-								LocationInfo location = binding.getLocation();
-								return "at " + (location != null ? location.getDeclaration() : "<unknown binding location>");
-							})
-							.collect(joining("\n\t\t     and ", "\tkey " + entry.getKey() + "\n\t\trequired ", "")))
-					.collect(joining("\n", "\n", "\n")));
+							.map(Utils::getLocation)
+							.collect(joining("\n\t\t     and ", "\tfor key " + entry.getKey() + ":\n\t\trequired ", "")))
+					.collect(joining("\n", "Unsatisfied dependencies detected:\n", "\n")));
 		}
 
 		Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(bindings);

@@ -121,7 +121,7 @@ public final class TestDI {
 			fail("should've failed");
 		} catch (DIException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("for key java.lang.String"));
+			assertTrue(e.getMessage().startsWith("Duplicate bindings for key String"));
 		}
 	}
 
@@ -378,7 +378,7 @@ public final class TestDI {
 			fail("should've failed, but didn't");
 		} catch (DIException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("\n\tkey java.lang.Integer\n\t\trequired at"));
+			assertTrue(e.getMessage().startsWith("Unsatisfied dependencies detected:\n\tfor key java.lang.Integer:\n\t\trequired at module io.datakernel.di.TestDI"));
 		}
 	}
 
