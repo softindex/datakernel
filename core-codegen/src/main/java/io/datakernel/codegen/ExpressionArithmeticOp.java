@@ -37,31 +37,29 @@ final class ExpressionArithmeticOp implements Expression {
 
 	public static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {
 		Class<?> resultType = null;
-		int resultOrder = 0;
+		int maxOrder = 0;
 
 		for (Class<?> dataType : dataTypes) {
 			Class<?> t;
 			int order;
-			if (dataType == Byte.TYPE ||
-					dataType == Short.TYPE ||
-					dataType == Character.TYPE ||
-					dataType == Integer.TYPE) {
+			if (dataType == Byte.TYPE || dataType == Short.TYPE || dataType == Character.TYPE || dataType == Integer.TYPE) {
 				t = Integer.TYPE;
 				order = 1;
-			} else if (dataType == Long.TYPE) {
-				t = Long.TYPE;
-				order = 2;
-			} else if (dataType == Float.TYPE) {
-				t = Float.TYPE;
-				order = 3;
-			} else if (dataType == Double.TYPE) {
-				t = Double.TYPE;
-				order = 4;
-			} else
-				throw new IllegalArgumentException();
-			if (resultType == null || order > resultOrder) {
+			} else {
+				t = dataType;
+				if (dataType == Long.TYPE) {
+					order = 2;
+				} else if (dataType == Float.TYPE) {
+					order = 3;
+				} else if (dataType == Double.TYPE) {
+					order = 4;
+				} else {
+					throw new IllegalArgumentException("Not an arithmetic type: " + dataType);
+				}
+			}
+			if (resultType == null || order > maxOrder) {
 				resultType = t;
-				resultOrder = order;
+				maxOrder = order;
 			}
 		}
 

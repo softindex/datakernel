@@ -108,7 +108,7 @@ public final class BinaryStructuredInput implements StructuredInput {
 			if (length == 0)
 				return "";
 			if (length > buf.readRemaining())
-				throw new IllegalArgumentException();
+				throw new IllegalArgumentException("Read string length is greater then the remaining data");
 			String result = new String(buf.array(), buf.head(), length, UTF_8);
 			buf.moveHead(length);
 			return result;
@@ -162,7 +162,7 @@ public final class BinaryStructuredInput implements StructuredInput {
 
 	@Override
 	public boolean hasNext() throws ParseException {
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException("hasNext() is not supported for binary data");
 	}
 
 	@Override
@@ -172,12 +172,12 @@ public final class BinaryStructuredInput implements StructuredInput {
 
 	@Override
 	public <T> T readCustom(Type type) throws ParseException {
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException("No custom type readers");
 	}
 
 	@Override
 	public EnumSet<Token> getNext() throws ParseException {
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException("getNext() is not supported for binary data");
 	}
 
 }

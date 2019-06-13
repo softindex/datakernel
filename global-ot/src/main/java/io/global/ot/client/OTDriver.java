@@ -219,10 +219,9 @@ public final class OTDriver {
 
 	@NotNull
 	public <D> OTCommit<CommitId, D> getOTCommit(MyRepositoryId<D> myRepositoryId, CommitId commitId, RawCommit rawCommit, SimKey simKey) throws ParseException {
-		List<byte[]> list = decode(COMMIT_DIFFS_CODEC,
-				decryptAES(rawCommit.getEncryptedDiffs(), simKey.getAesKey()));
+		List<byte[]> list = decode(COMMIT_DIFFS_CODEC, decryptAES(rawCommit.getEncryptedDiffs(), simKey.getAesKey()));
 		if (list.size() != rawCommit.getParents().size()) {
-			throw new ParseException();
+			throw new ParseException("Number of commit diffs is not equal to number of parents");
 		}
 
 		Map<CommitId, List<D>> parents = new HashMap<>();

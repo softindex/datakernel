@@ -36,7 +36,7 @@ public class JsonUtils {
 		T result = decoder.decode(new JsonStructuredInput(reader));
 		try {
 			if (reader.peek() != JsonToken.END_DOCUMENT) {
-				throw new ParseException();
+				throw new ParseException("Json data was not fully consumed when decoding");
 			}
 		} catch (IOException e) {
 			throw new AssertionError();

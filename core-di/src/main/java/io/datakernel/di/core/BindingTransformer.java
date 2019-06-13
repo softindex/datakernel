@@ -12,7 +12,14 @@ import static java.util.stream.Collectors.toList;
 
 @FunctionalInterface
 public interface BindingTransformer<T> {
+	BindingTransformer<?> IDENTITY = (provider, scope, key, binding) -> binding;
+
 	@NotNull Binding<T> transform(BindingProvider provider, Scope[] scope, Key<T> key, Binding<T> binding);
+
+	@SuppressWarnings("unchecked")
+	static <T> BindingTransformer<T> identity() {
+		return (BindingTransformer<T>) IDENTITY;
+	}
 
 	@SuppressWarnings("unchecked")
 	static BindingTransformer<?> combinedTransformer(Map<Integer, Set<BindingTransformer<?>>> transformers) {

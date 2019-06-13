@@ -36,7 +36,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 						.serve(request -> {
 							String key = request.getCookie("Key");
 							if (key == null) {
-								return Promise.ofException(new ParseException());
+								return Promise.ofException(new ParseException("No 'Key' cookie"));
 							}
 
 							try {
@@ -69,7 +69,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 							String parameterReceiver = request.getPathParameter("receiver");
 							String key = request.getCookie("Key");
 							if (key == null) {
-								return Promise.ofException(new ParseException());
+								return Promise.ofException(new ParseException("No 'Key' cookie"));
 							}
 							try {
 								PubKey receiver = PubKey.fromString(parameterReceiver);
@@ -89,7 +89,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 					String key = request.getCookie("Key");
 					String parameterHash = request.getPathParameter("hash");
 					if (key == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'Key' cookie"));
 					}
 					try {
 						KeyPair keys = PrivKey.fromString(key).computeKeys();
@@ -110,7 +110,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 				.with(GET, "/getSharedKeys", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'Key' cookie"));
 					}
 					try {
 						KeyPair keys = PrivKey.fromString(key).computeKeys();

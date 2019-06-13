@@ -57,7 +57,7 @@ public interface Config {
 
 		@Override
 		public String getValue() throws NoSuchElementException {
-			throw new NoSuchElementException();
+			throw new NoSuchElementException("No value at empty config node");
 		}
 
 		@Override
@@ -78,6 +78,7 @@ public interface Config {
 	static void checkPath(String path) {
 		checkArgument(PATH_PATTERN.matcher(path).matches(), "Invalid path %s", path);
 	}
+
 	/**
 	 * @return value stored in root or defaultValue
 	 */
@@ -107,9 +108,13 @@ public interface Config {
 		checkPath(path);
 		Config config = this;
 		for (String key : DELIMITER_PATTERN.split(path)) {
-			if (key.isEmpty()) continue;
+			if (key.isEmpty()) {
+				continue;
+			}
 			Map<String, Config> children = config.getChildren();
-			if (!children.containsKey(key)) return false;
+			if (!children.containsKey(key)) {
+				return false;
+			}
 			config = children.get(key);
 		}
 		return true;
@@ -121,6 +126,7 @@ public interface Config {
 
 	/**
 	 * Throw {@code NoSuchElementException} if there is no value in path.
+	 *
 	 * @return String value that lays in path
 	 * @see Config#get(ConfigConverter, String, Object)
 	 */
@@ -140,6 +146,7 @@ public interface Config {
 
 	/**
 	 * Throw {@code NoSuchElementException} if there is no value in path.
+	 *
 	 * @return value converted to &lt;T&gt;
 	 * @see Config#get(ConfigConverter, String, Object)
 	 */
@@ -149,8 +156,8 @@ public interface Config {
 
 	/**
 	 * @param converter specifies how to convert config string value into &lt;T&gt;
-	 * @param path path to config value. Example: "rpc.server.port" to get port for rpc server.
-	 * @param <T> return type
+	 * @param path      path to config value. Example: "rpc.server.port" to get port for rpc server.
+	 * @param <T>       return type
 	 * @return value from this {@code Config} in path or defaultValue if there is nothing on that path
 	 * @see ConfigConverters
 	 */
@@ -165,7 +172,9 @@ public interface Config {
 		checkPath(path);
 		Config config = this;
 		for (String key : path.split(Pattern.quote(DELIMITER))) {
-			if (key.isEmpty()) continue;
+			if (key.isEmpty()) {
+				continue;
+			}
 			Map<String, Config> children = config.getChildren();
 			config = children.containsKey(key) ? children.get(key) : config.provideNoKeyChild(key);
 		}
@@ -179,6 +188,7 @@ public interface Config {
 
 	/**
 	 * Applies setter to value in path using converter to get it
+	 *
 	 * @param <T> type of value
 	 */
 	default <T> void apply(ConfigConverter<T> converter, String path, Consumer<T> setter) {
@@ -237,6 +247,7 @@ public interface Config {
 
 	/**
 	 * Creates new config from properties
+	 *
 	 * @return new {@code Config}
 	 */
 	static Config ofProperties(Properties properties) {
@@ -247,6 +258,7 @@ public interface Config {
 
 	/**
 	 * The same as {@link Config#ofProperties(String, boolean)} but with optional=false
+	 *
 	 * @return new {@code Config}
 	 */
 	static Config ofProperties(String fileName) {
@@ -275,9 +287,13 @@ public interface Config {
 
 	static Config ofClassPathProperties(String fileName, ClassLoader classLoader, boolean optional) {
 		Properties props = new Properties();
-		if (fileName.startsWith("/")) fileName = fileName.substring(1);
+		if (fileName.startsWith("/")) {
+			fileName = fileName.substring(1);
+		}
 		try (InputStream resource = classLoader.getResourceAsStream(fileName)) {
-			if (resource == null) throw new FileNotFoundException();
+			if (resource == null) {
+				throw new FileNotFoundException(fileName);
+			}
 			props.load(resource);
 		} catch (IOException e) {
 			if (optional) {
@@ -288,9 +304,11 @@ public interface Config {
 		}
 		return ofProperties(props);
 	}
+
 	/**
 	 * Creates new config from file
-	 * @param file with properties
+	 *
+	 * @param file     with properties
 	 * @param optional if true will log warning "Can't load..." else throws exception
 	 * @return new {@code Config}
 	 */
@@ -310,6 +328,7 @@ public interface Config {
 
 	/**
 	 * Creates config from Map
+	 *
 	 * @param map of path, value pairs
 	 * @return new {@code Config}
 	 */
@@ -340,7 +359,7 @@ public interface Config {
 
 	/**
 	 * @param configConverter specifies converter for &lt;T&gt;
-	 * @param value of type &lt;T&gt;
+	 * @param value           of type &lt;T&gt;
 	 * @return new {@code Config} with given value
 	 */
 	static <T> Config ofValue(ConfigConverter<T> configConverter, T value) {
@@ -407,7 +426,7 @@ public interface Config {
 	}
 
 	/**
-	 * @param path path
+	 * @param path   path
 	 * @param config holds one value at root
 	 * @return new {@code Config} with overridden value in path
 	 * this method returns new config instead of changing the old one.
@@ -418,7 +437,9 @@ public interface Config {
 		String[] keys = path.split(Pattern.quote(DELIMITER));
 		for (int i = keys.length - 1; i >= 0; i--) {
 			String key = keys[i];
-			if (key.isEmpty()) continue;
+			if (key.isEmpty()) {
+				continue;
+			}
 			Map<String, Config> map = singletonMap(key, config);
 			config = new Config() {
 				@Nullable
@@ -429,7 +450,7 @@ public interface Config {
 
 				@Override
 				public String getValue() throws NoSuchElementException {
-					throw new NoSuchElementException();
+					throw new NoSuchElementException("No value at intermediate config node");
 				}
 
 				@Override
@@ -465,8 +486,10 @@ public interface Config {
 
 			@Override
 			public String getValue() throws NoSuchElementException {
-				if (value != null) return value;
-				throw new NoSuchElementException();
+				if (value != null) {
+					return value;
+				}
+				throw new NoSuchElementException("No value at config node");
 			}
 
 			@Override
@@ -478,6 +501,7 @@ public interface Config {
 
 	/**
 	 * Tries to merge two configs into one. Throws {@code IllegalArgumentException} if there are conflicts.
+	 *
 	 * @param other config to merge with
 	 * @return new merged {@code Config}
 	 * this method returns new config instead of changing the old one.
@@ -498,6 +522,7 @@ public interface Config {
 
 	/**
 	 * Converts this config to {@code Map<String, String>}
+	 *
 	 * @return new {@code Map<path, value>} where path and value are Strings
 	 */
 	default Map<String, String> toMap() {
@@ -516,6 +541,7 @@ public interface Config {
 
 	/**
 	 * Converts this config to {@code Properties}
+	 *
 	 * @return Properties with config values
 	 */
 	default Properties toProperties() {

@@ -401,10 +401,10 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			for (Key<?> k : added) {
 				List<ServiceKey> found = instances.keySet().stream().filter(s -> s.getKey().equals(k)).collect(toList());
 				if (found.isEmpty()) {
-					throw new IllegalArgumentException();
+					throw new IllegalArgumentException("Did not find an instance for the added dependency " + key.getDisplayString());
 				}
 				if (found.size() > 1) {
-					throw new IllegalArgumentException();
+					throw new IllegalArgumentException("Found more than one instance for the added dependency " + key.getDisplayString());
 				}
 				dependencies.add(found.get(0));
 			}

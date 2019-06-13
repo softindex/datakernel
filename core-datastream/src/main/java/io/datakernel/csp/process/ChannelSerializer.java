@@ -37,7 +37,7 @@ import static java.lang.Math.max;
 
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class);
-	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
+	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
 	public static final MemSize MAX_SIZE_1 = MemSize.bytes(128); // (1 << (1 * 7))

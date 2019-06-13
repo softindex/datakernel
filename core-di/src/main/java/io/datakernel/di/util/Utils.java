@@ -1,19 +1,15 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Dependency;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
+import io.datakernel.di.core.*;
 import io.datakernel.di.module.Multibinder;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
@@ -44,36 +40,10 @@ public final class Utils {
 		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", ""));
 	}
 
-	@NotNull
-	public static <K, V> Map<K, V> flattenMultimap(Map<K, Set<V>> multimap, Function<K, Function<Set<V>, V>> reducers) {
-		return multimap.entrySet().stream()
-				.collect(toMap(
-						Entry::getKey,
-						entry -> {
-							Set<V> value = entry.getValue();
-							switch (value.size()) {
-								case 0:
-									throw new IllegalStateException();
-								case 1:
-									return value.iterator().next();
-								default: {
-									Function<Set<V>, V> multibinder = reducers.apply(entry.getKey());
-									if (multibinder != null) {
-										return multibinder.apply(entry.getValue());
-									}
-									throw new IllegalStateException(entry.getValue().stream()
-											.map(s -> "\t\t" + s)
-											.collect(joining("\n", "Duplicate bindings for " + entry.getKey() + "\n", "")));
-								}
-							}
-						})
-				);
-	}
-
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
 		from.forEach((k, v) -> into.merge(k, v, (oldResolver, newResolver) -> {
 			if (!oldResolver.equals(newResolver)) {
-				throw new IllegalStateException("More than one multibinder per key");
+				throw new DIException("More than one multibinder per key");
 			}
 			return oldResolver;
 		}));
@@ -99,7 +69,22 @@ public final class Utils {
 
 	public static <T, K, V> Collector<T, ?, Map<K, Set<V>>> toMultimap(Function<? super T, ? extends K> keyMapper,
 			Function<? super T, ? extends V> valueMapper) {
-		return Collectors.toMap(keyMapper, t -> singleton(valueMapper.apply(t)), Utils::union);
+		return toMap(keyMapper, t -> singleton(valueMapper.apply(t)), Utils::union);
+	}
+
+	public static <K, V> Map<K, Set<V>> toMultimap(Map<K, V> map) {
+		return map.entrySet().stream().collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())));
+	}
+
+	public static <K, V> Map<K, V> squash(Map<K, Set<V>> multimap, BiFunction<K, Set<V>, V> squasher) {
+		return multimap.entrySet().stream()
+				.collect(toMap(Entry::getKey, e -> squasher.apply(e.getKey(), e.getValue())));
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolve(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Multibinder<?> multibinder) {
+		return bindings.map(localBindings -> squash(localBindings, (k, v) -> ((Multibinder) multibinder).multibind(k, v)));
+		//                                                                          ^ java generics are just broken
 	}
 
 	public static void checkArgument(boolean condition) {

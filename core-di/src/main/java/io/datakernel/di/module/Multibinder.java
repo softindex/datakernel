@@ -1,21 +1,43 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.DIException;
 import io.datakernel.di.core.Dependency;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.util.Constructors;
+import io.datakernel.di.util.LocationInfo;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
-import java.util.function.Function;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.joining;
 
 @FunctionalInterface
 public interface Multibinder<T> {
-	Binding<T> multibind(Set<@NotNull Binding<T>> elements);
+	Binding<T> multibind(Key<T> key, Set<@NotNull Binding<T>> bindings);
 
-	static <T> Multibinder<T> ofReducer(Function<Stream<T>, T> reducerFunction) {
-		return bindings -> {
+	Multibinder<Object> ERROR_ON_DUPLICATE = (key, bindings) -> {
+		throw new DIException(bindings.stream()
+				.map(binding -> {
+					LocationInfo location = binding.getLocation();
+					if (location == null) {
+						return "at <unknown binding location>";
+					}
+					return "\tat " + location.getDeclaration();
+				})
+				.collect(joining("\n", "for key " + key.getDisplayString() + ":\n", "\n")));
+	};
+
+	@SuppressWarnings("unchecked")
+	static <T> Multibinder<T> getErrorOnDuplicate() {
+		return (Multibinder<T>) ERROR_ON_DUPLICATE;
+	}
+
+	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
+		return (key, bindings) -> {
 			if (bindings.size() == 1) {
 				return bindings.iterator().next();
 			}
@@ -28,17 +50,17 @@ public interface Multibinder<T> {
 				factories.add(args -> binding.getFactory().create(Arrays.copyOfRange(args, from, to)));
 			}
 			return Binding.to(
-					args -> reducerFunction.apply(factories.stream().map(factory -> factory.create(args))),
+					args -> reducerFunction.apply(key, factories.stream().map(factory -> factory.create(args))),
 					dependencies.toArray(new Dependency[0]));
 		};
 	}
 
 	@SuppressWarnings("OptionalGetWithoutIsPresent")
 	static <T> Multibinder<T> ofBinaryOperator(BinaryOperator<T> binaryOperator) {
-		return ofReducer(stream -> stream.reduce(binaryOperator).get());
+		return ofReducer(($, stream) -> stream.reduce(binaryOperator).get());
 	}
 
-	Multibinder<Set<Object>> TO_SET = ofReducer(stream -> {
+	Multibinder<Set<Object>> TO_SET = ofReducer((key, stream) -> {
 		Set<Object> result = new HashSet<>();
 		stream.forEach(result::addAll);
 		return result;
@@ -49,12 +71,12 @@ public interface Multibinder<T> {
 		return (Multibinder) TO_SET;
 	}
 
-	Multibinder<Map<Object, Object>> TO_MAP = ofReducer(stream -> {
+	Multibinder<Map<Object, Object>> TO_MAP = ofReducer((key, stream) -> {
 		Map<Object, Object> result = new HashMap<>();
 		stream.forEach(map ->
 				map.forEach((k, v) ->
 						result.merge(k, v, ($, $2) -> {
-							throw new IllegalStateException("Duplicate key " + k);
+							throw new DIException("Duplicate key " + k + " while merging maps for key " + key.getDisplayString());
 						})));
 		return result;
 	});
@@ -62,5 +84,19 @@ public interface Multibinder<T> {
 	@SuppressWarnings("unchecked")
 	static <K, V> Multibinder<Map<K, V>> toMap() {
 		return (Multibinder) TO_MAP;
+	}
+
+	@SuppressWarnings("unchecked")
+	static Multibinder<?> combinedMultibinder(Map<Key<?>, Multibinder<?>> multibinders) {
+		return (key, bindings) -> {
+			switch (bindings.size()) {
+				case 0:
+					throw new DIException("Provided key " + key + " with no associated bindings");
+				case 1:
+					return bindings.iterator().next();
+				default:
+					return ((Multibinder<Object>) multibinders.getOrDefault(key, ERROR_ON_DUPLICATE)).multibind(key, bindings);
+			}
+		};
 	}
 }

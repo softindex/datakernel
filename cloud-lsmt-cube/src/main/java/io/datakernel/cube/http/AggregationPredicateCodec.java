@@ -199,7 +199,7 @@ final class AggregationPredicateCodec implements StructuredCodec<AggregationPred
 				} else if (predicate instanceof PredicateAlwaysFalse) {
 					writer.writeString(FALSE);
 				} else
-					throw new IllegalArgumentException();
+					throw new IllegalArgumentException("Unknown predicate type");
 			});
 		}
 	}
@@ -237,7 +237,7 @@ final class AggregationPredicateCodec implements StructuredCodec<AggregationPred
 					comparisonPredicate = in(field, (Set<?>) value);
 					break;
 				default:
-					throw new IllegalArgumentException();
+					throw new ParseException("Could not read predicate");
 			}
 			predicates.add(comparisonPredicate);
 		}

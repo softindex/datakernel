@@ -70,7 +70,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 				.with(GET, "/" + FETCH, request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'id' query parameter"));
 					}
 					try {
 						K currentCommitId = fromJson(revisionCodec, id);
@@ -83,7 +83,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 				.with(GET, "/" + POLL, request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'id' query parameter"));
 					}
 					try {
 						K currentCommitId = fromJson(revisionCodec, id);
@@ -107,7 +107,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 												.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
 												.withBody(commitToBytes.apply(commit)));
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}))
 				.with(POST, "/" + PUSH, loadBody()
@@ -118,7 +118,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
+								return Promise.ofException(e);
 							}
 						}));
 	}

@@ -34,9 +34,9 @@ public class CubeOT {
 							return TransformResult.conflict(transformed.resolution);
 
 						if (transformed.left.size() > 1)
-							throw new OTTransformException();
+							throw new OTTransformException("Left transformation result has more than one aggregation diff");
 						if (transformed.right.size() > 1)
-							throw new OTTransformException();
+							throw new OTTransformException("Right transformation result has more than one aggregation diff");
 
 						if (!transformed.left.isEmpty())
 							newOpsLeft.put(aggregation, transformed.left.get(0));

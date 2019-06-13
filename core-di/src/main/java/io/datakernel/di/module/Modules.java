@@ -2,24 +2,20 @@ package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Utils;
 
 import java.util.*;
-import java.util.function.Function;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
-import static java.util.Collections.singleton;
-import static java.util.stream.Collectors.toMap;
 
 public final class Modules {
 	private Modules() {
 	}
 
 	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return new ModuleImpl(bindings.map(map ->
-				map.entrySet().stream()
-						.collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())))), emptyMap(), emptyMap(), emptyMap());
+		return new ModuleImpl(bindings.map(Utils::toMultimap), emptyMap(), emptyMap(), emptyMap());
 	}
 
 	public static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
@@ -37,7 +33,7 @@ public final class Modules {
 		if (modules.size() == 1) {
 			return modules.iterator().next();
 		}
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindingsMultimap));
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindings));
 
 		Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
 		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
@@ -61,7 +57,7 @@ public final class Modules {
 	}
 
 	public static Module override(Module into, Module replacements) {
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindingsMultimap(), replacements.getBindingsMultimap());
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindings(), replacements.getBindings());
 
 		Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>(into.getBindingTransformers());
 		bindingTransformers.putAll(replacements.getBindingTransformers());
@@ -78,7 +74,7 @@ public final class Modules {
 	public static Module ignoreScopes(Module from) {
 		Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
 		Map<Key<?>, Scope[]> scopes = new HashMap<>();
-		from.getBindingsMultimap().dfs(UNSCOPED, (scope, localBindings) ->
+		from.getBindings().dfs(UNSCOPED, (scope, localBindings) ->
 				localBindings.forEach((k, b) -> {
 					bindings.merge(k, b, ($, $2) -> {
 						Scope[] alreadyThere = scopes.get(k);
@@ -88,15 +84,6 @@ public final class Modules {
 					scopes.put(k, scope);
 				}));
 		return new ModuleImpl(Trie.leaf(bindings), from.getBindingTransformers(), from.getBindingGenerators(), from.getMultibinders());
-	}
-
-	private static final Function<Set<Binding<?>>, Binding<?>> ERRORS_ON_DUPLICATE = bindings -> {
-		throw new IllegalArgumentException();
-	};
-
-	@SuppressWarnings("unchecked")
-	public static <T> Function<Set<Binding<T>>, Binding<T>> getErrorsOnDuplicate() {
-		return (Function) ERRORS_ON_DUPLICATE;
 	}
 
 	private static class ModuleImpl implements Module {
@@ -116,7 +103,7 @@ public final class Modules {
 		}
 
 		@Override
-		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
+		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
 			return bindings;
 		}
 

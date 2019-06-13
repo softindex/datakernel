@@ -18,7 +18,7 @@ public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	public Promise<T> get(String sessionId) {
 		T sessionObject = store.get(sessionId);
 		if (sessionObject == null) {
-			return Promise.ofException(new IllegalArgumentException());
+			return Promise.ofException(new IllegalArgumentException("No session stored with id " + sessionId));
 		}
 		return Promise.of(sessionObject);
 	}

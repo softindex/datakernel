@@ -892,7 +892,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 							result |= b << 28;
 							head += 5;
 						} else
-							throw new IllegalArgumentException();
+							throw new IllegalStateException("Read varint was too long");
 					}
 				}
 			}
@@ -931,7 +931,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 			if ((b & 0x80) == 0)
 				return result;
 		}
-		throw new IllegalArgumentException();
+		throw new IllegalStateException("Read varint was too long");
 	}
 	// endregion
 

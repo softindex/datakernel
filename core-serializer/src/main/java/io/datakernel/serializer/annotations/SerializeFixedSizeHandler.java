@@ -32,7 +32,7 @@ public final class SerializeFixedSizeHandler implements AnnotationHandler<Serial
 			if (fallback instanceof SerializerGenList) {
 				throw new UnsupportedOperationException();
 			}
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Unsupported serializer " + fallback);
 		};
 	}
 

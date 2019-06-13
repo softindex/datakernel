@@ -112,7 +112,7 @@ public class AsyncExecutors {
 					});
 				}
 				if (deque.size() > maxBufferedCalls) {
-					throw new RejectedExecutionException();
+					throw new RejectedExecutionException("Too many operations running");
 				}
 				SettablePromise<T> result = new SettablePromise<>();
 				deque.addLast(supplier);

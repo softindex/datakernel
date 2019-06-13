@@ -64,8 +64,6 @@ public class JmxMBeansAttributesBulkGettersTest {
 		mbean.getAttribute("value");
 	}
 
-	public static class CustomException extends RuntimeException {}
-
 	public static final class MBeanStub implements EventloopJmxMBean {
 
 		@JmxAttribute
@@ -75,7 +73,7 @@ public class JmxMBeansAttributesBulkGettersTest {
 
 		@JmxAttribute
 		public int getValue() {
-			throw new CustomException();
+			throw new RuntimeException("custom");
 		}
 
 		@JmxAttribute

@@ -94,18 +94,19 @@ public class Utils {
 
 		@Override
 		public TestOp decode(StructuredInput in) throws ParseException {
-			return in.readObject($1 -> {
-				switch (in.readKey()) {
+			return in.readObject($ -> {
+				String key = in.readKey();
+				switch (key) {
 					case "add":
 						return new TestAdd(in.readInt());
 					case "set":
-						return in.readTuple($ -> {
+						return in.readTuple($2 -> {
 							int prev = in.readInt();
 							int next = in.readInt();
 							return new TestSet(prev, next);
 						});
 					default:
-						throw new ParseException();
+						throw new ParseException("Invalid TestOp key " + key);
 				}
 			});
 		}

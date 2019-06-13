@@ -4,8 +4,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Named;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
@@ -73,7 +73,7 @@ public class OTCommonModule<D> extends AbstractModule {
 				.withCurrentCommit(request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'id' query parameter"));
 					}
 					try {
 						return Promise.of(fromJson(COMMIT_ID_CODEC, id));

@@ -156,7 +156,7 @@ public final class TestDI {
 			bind(Float.class).to(i -> (float) i, Integer.class);
 		}};
 
-		Set<Key<?>> expected1 = cyclic1.getBindings().get().keySet();
+		Set<Key<?>> expected1 = cyclic1.resolveBindings().get().keySet();
 
 		try {
 			Injector.of(branch, cyclic1);
@@ -164,7 +164,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1).getBindings());
+			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1).resolveBindings());
 			assertEquals(1, cycles.size());
 			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
@@ -175,7 +175,7 @@ public final class TestDI {
 			bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
 		}};
 
-		Set<Key<?>> expected2 = cyclic2.getBindings().get().keySet();
+		Set<Key<?>> expected2 = cyclic2.resolveBindings().get().keySet();
 
 		try {
 			Injector.of(branch, cyclic1, cyclic2);
@@ -183,7 +183,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1, cyclic2).getBindings());
+			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1, cyclic2).resolveBindings());
 			assertEquals(2, cycles.size());
 
 			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
@@ -833,9 +833,9 @@ public final class TestDI {
 			}
 		};
 
-		printGraphVizGraph(module.getBindings());
+		printGraphVizGraph(module.resolveBindings());
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getBindings();
+		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).resolveBindings();
 
 		printGraphVizGraph(flattened);
 

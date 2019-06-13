@@ -62,7 +62,7 @@ public class SerializerGenClass implements SerializerGen {
 			if (versionAdded < versionDeleted) {
 				return version >= versionAdded && version < versionDeleted;
 			}
-			throw new IllegalArgumentException();
+			throw new IllegalStateException("Added and deleted versions are equal");
 		}
 
 		public Class<?> getRawType() {
@@ -507,7 +507,7 @@ public class SerializerGenClass implements SerializerGen {
 			case OBJECT:
 				return nullRef(type);
 			default:
-				throw new IllegalArgumentException();
+				throw new IllegalArgumentException("Unsupported type " + type);
 		}
 	}
 }

@@ -69,10 +69,6 @@ public class UiKernelServlets {
 			try {
 				ReadSettings<K> settings = ReadSettings.from(gson, request);
 				K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
-				if (id == null) {
-					return Promise.ofException(new ParseException());
-				}
-
 				return model.read(id, settings).map(obj ->
 						createResponse(gson.toJson(obj, model.getRecordType())));
 			} catch (ParseException e) {

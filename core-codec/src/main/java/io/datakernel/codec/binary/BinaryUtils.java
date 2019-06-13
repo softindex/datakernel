@@ -34,7 +34,7 @@ public final class BinaryUtils {
 			BinaryStructuredInput in = new BinaryStructuredInput(buf);
 			T result = decoder.decode(in);
 			if (buf.readRemaining() != 0) {
-				throw new ParseException();
+				throw new ParseException("Byte buffer was not fully consumed when decoding");
 			}
 			return result;
 		} finally {

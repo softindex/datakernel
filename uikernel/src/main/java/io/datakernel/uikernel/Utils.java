@@ -44,7 +44,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(Utils.class, "Failed to read from Json", e);
+			throw new ParseException(Utils.class, "Failed to read from json", e);
 		}
 	}
 
@@ -52,7 +52,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(Utils.class, "Failed to read from Json", e);
+			throw new ParseException(Utils.class, "Failed to read from json", e);
 		}
 	}
 
@@ -60,7 +60,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(Utils.class, "Failed to read from Json", e);
+			throw new ParseException(Utils.class, "Failed to read from json", e);
 		}
 	}
 
@@ -68,7 +68,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(Utils.class, "Failed to read from Json", e);
+			throw new ParseException(Utils.class, "Failed to read from json", e);
 		}
 	}
 

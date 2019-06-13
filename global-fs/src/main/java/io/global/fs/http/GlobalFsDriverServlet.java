@@ -82,7 +82,7 @@ public final class GlobalFsDriverServlet {
 				.with(POST, "/upload", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'Key' cookie"));
 					}
 
 					try {
@@ -119,7 +119,7 @@ public final class GlobalFsDriverServlet {
 				.with(POST, "/delete/*", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
-						return Promise.ofException(new ParseException());
+						return Promise.ofException(new ParseException("No 'Key' cookie"));
 					}
 					try {
 						KeyPair keys = PrivKey.fromString(key).computeKeys();

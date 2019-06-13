@@ -123,7 +123,7 @@ public final class BinaryInput {
 							result |= b << 28;
 							pos += 5;
 						} else
-							throw new IllegalArgumentException();
+							throw new IllegalStateException("Read varint was is too long");
 					}
 				}
 			}
@@ -139,7 +139,7 @@ public final class BinaryInput {
 			if ((b & 0x80) == 0)
 				return result;
 		}
-		throw new IllegalArgumentException();
+		throw new IllegalStateException("Read varlong was too long");
 	}
 
 	public float readFloat() {

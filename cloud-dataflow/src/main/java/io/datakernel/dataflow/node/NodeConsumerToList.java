@@ -57,8 +57,7 @@ public final class NodeConsumerToList<T> implements Node {
 		Object object = taskContext.environment().get(listId);
 		if (object == null) {
 			object = new ArrayList<>();
-			taskContext.environment()
-					.with(listId, object);
+			taskContext.environment().with(listId, object);
 		}
 		StreamConsumer<T> consumer;
 		if (object instanceof List) {
@@ -66,7 +65,7 @@ public final class NodeConsumerToList<T> implements Node {
 		} else if (object instanceof StreamConsumer) {
 			consumer = (StreamConsumer<T>) object;
 		} else {
-			throw new IllegalArgumentException();
+			throw new IllegalStateException("Object with id " + listId + " is not a list or stream consumer, it is " + object);
 		}
 		taskContext.bindChannel(input, consumer);
 	}

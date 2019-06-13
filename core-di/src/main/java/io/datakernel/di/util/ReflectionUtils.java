@@ -29,10 +29,14 @@ public final class ReflectionUtils {
 		Set<Annotation> names = Arrays.stream(annotatedElement.getDeclaredAnnotations())
 				.filter(annotation -> annotation.annotationType().isAnnotationPresent(NameAnnotation.class))
 				.collect(toSet());
-		if (names.size() > 1) {
-			throw new DIException("More than one name annotation on " + annotatedElement);
+		switch (names.size()) {
+			case 0:
+				return null;
+			case 1:
+				return Name.of(names.iterator().next());
+			default:
+				throw new DIException("More than one name annotation on " + annotatedElement);
 		}
-		return names.isEmpty() ? null : Name.of(names.iterator().next());
 	}
 
 	public static Set<Annotation> keySetsOf(AnnotatedElement annotatedElement) {
@@ -58,17 +62,20 @@ public final class ReflectionUtils {
 				.findAny()
 				.orElse(null);
 
-		if (scopes.size() > 1) {
-			throw new DIException("More than one scope annotation on " + annotatedElement);
+		if (nested != null) {
+			if (scopes.isEmpty()) {
+				return Arrays.stream(nested.value()).map(Scope::of).toArray(Scope[]::new);
+			}
+			throw new DIException("Cannot have both @Scoped and a scope annotation on " + annotatedElement);
 		}
-		if (!scopes.isEmpty() && nested != null) {
-			throw new DIException("Cannot have both @Scoped and other scope annotations on " + annotatedElement);
+		switch (scopes.size()) {
+			case 0:
+				return Scope.UNSCOPED;
+			case 1:
+				return new Scope[]{Scope.of(scopes.iterator().next())};
+			default:
+				throw new DIException("More than one scope annotation on " + annotatedElement);
 		}
-		return nested != null ?
-				Arrays.stream(nested.value()).map(Scope::of).toArray(Scope[]::new) :
-				scopes.isEmpty() ?
-						new Scope[0] :
-						new Scope[]{Scope.of(scopes.iterator().next())};
 	}
 
 	public static <T extends AnnotatedElement & Member> List<T> getAnnotatedElements(Class<?> cls,

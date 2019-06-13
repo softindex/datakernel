@@ -178,7 +178,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		checkArgument(!attributes.containsKey(attribute), "Attribute %s has already been defined", attribute);
 		int pos = attribute.indexOf('.');
 		if (pos == -1)
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Attribute identifier is not split into name and dimension");
 		String dimension = attribute.substring(0, pos);
 		String attributeName = attribute.substring(pos + 1);
 		checkArgument(resolver.getAttributeTypes().containsKey(attributeName), "Resolver does not support %s", attribute);

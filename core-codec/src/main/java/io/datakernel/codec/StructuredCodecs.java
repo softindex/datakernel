@@ -52,7 +52,9 @@ public final class StructuredCodecs {
 		@Override
 		public Character decode(StructuredInput in) throws ParseException {
 			String v = in.readString();
-			if (v.length() == 1) return v.charAt(0);
+			if (v.length() == 1) {
+				return v.charAt(0);
+			}
 			throw new ParseException("Read a string with length != 1 while trying to read a character");
 		}
 	};
@@ -66,8 +68,10 @@ public final class StructuredCodecs {
 		@Override
 		public Byte decode(StructuredInput in) throws ParseException {
 			int v = in.readInt();
-			if (v >= 0 && v <= 0xFF) return (byte) v;
-			throw new ParseException();
+			if (v >= 0 && v <= 0xFF) {
+				return (byte) v;
+			}
+			throw new ParseException("Read an int not in range [0, 255] while trying to read a byte");
 		}
 	};
 
@@ -80,8 +84,10 @@ public final class StructuredCodecs {
 		@Override
 		public Short decode(StructuredInput in) throws ParseException {
 			int v = in.readInt();
-			if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) return (short) v;
-			throw new ParseException();
+			if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
+				return (short) v;
+			}
+			throw new ParseException("Read an int not in range [" + Short.MIN_VALUE + ", " + Short.MAX_VALUE + "] while trying to read a short");
 		}
 	};
 

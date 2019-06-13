@@ -28,7 +28,7 @@ public class ServletDecoratorExample extends HttpServerLauncher {
 							return Promise.of(HttpResponse.ok200().withPlainText("Message: " + text));
 						})
 						.with(GET, "/failPage", request -> {
-							throw new RuntimeException();
+							throw new RuntimeException("fail");
 						})
 						.then(catchRuntimeExceptions())
 						.then(mapException(e -> HttpResponse.ofCode(404).withPlainText("Error: " + e))));

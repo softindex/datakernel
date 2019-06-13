@@ -99,7 +99,7 @@ public final class DefaultModule implements Module {
 	}
 
 	@Override
-	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
+	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
 		return emptyTrie;
 	}
 

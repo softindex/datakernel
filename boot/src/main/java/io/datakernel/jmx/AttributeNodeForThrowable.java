@@ -81,18 +81,17 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	@Nullable
 	private CompositeData createCompositeDataFor(Throwable e) throws OpenDataException {
-		CompositeData compositeData = null;
-		if (e != null) {
-			String type = e.getClass().getName();
-			String msg = e.getMessage();
-			List<String> stackTrace = asList(MBeanFormat.formatException(e));
-			Map<String, Object> nameToValue = new HashMap<>();
-			nameToValue.put(THROWABLE_TYPE_KEY, type);
-			nameToValue.put(THROWABLE_MESSAGE_KEY, msg);
-			nameToValue.put(THROWABLE_STACK_TRACE_KEY, stackTrace.toArray(new String[0]));
-			compositeData = new CompositeDataSupport(compositeType, nameToValue);
+		if (e == null) {
+			return null;
 		}
-		return compositeData;
+		String type = e.getClass().getName();
+		String msg = e.getMessage();
+		List<String> stackTrace = asList(MBeanFormat.formatException(e));
+		Map<String, Object> nameToValue = new HashMap<>();
+		nameToValue.put(THROWABLE_TYPE_KEY, type);
+		nameToValue.put(THROWABLE_MESSAGE_KEY, msg);
+		nameToValue.put(THROWABLE_STACK_TRACE_KEY, stackTrace.toArray(new String[0]));
+		return new CompositeDataSupport(compositeType, nameToValue);
 	}
 
 	@Override
@@ -107,6 +106,6 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) {
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException("Cannot set attributes for throwable attribute node");
 	}
 }

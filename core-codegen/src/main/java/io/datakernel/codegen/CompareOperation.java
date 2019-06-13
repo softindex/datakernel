@@ -24,6 +24,6 @@ public enum CompareOperation {
 				return operation;
 			}
 		}
-		throw new IllegalArgumentException();
+		throw new IllegalArgumentException("Did not found operation for symbol " + symbol);
 	}
 }

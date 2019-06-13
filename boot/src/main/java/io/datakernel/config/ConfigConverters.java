@@ -702,7 +702,7 @@ public final class ConfigConverters {
 
 			@Override
 			public ExecutorService get(Config config, ExecutorService defaultValue) {
-				throw new UnsupportedOperationException();
+				throw new IllegalArgumentException("Should not use executor config converter with default value");
 			}
 		};
 	}

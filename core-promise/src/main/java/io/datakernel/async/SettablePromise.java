@@ -94,13 +94,12 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		super.subscribe(next);
 	}
 
-	@Nullable
 	@Override
 	public T getResult() {
 		if (isResult()) {
 			return result;
 		}
-		throw new IllegalStateException();
+		throw new IllegalStateException("Promise has no result");
 	}
 
 	@NotNull
@@ -109,7 +108,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isException()) {
 			return exception;
 		}
-		throw new IllegalStateException();
+		throw new IllegalStateException("Promise has no exception");
 	}
 
 	@Override
@@ -118,7 +117,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isException()) {
 			return Try.ofException(exception);
 		}
-		throw new IllegalStateException();
+		throw new IllegalStateException("Promise was not completed");
 	}
 
 	@NotNull

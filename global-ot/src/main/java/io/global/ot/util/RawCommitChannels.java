@@ -86,11 +86,11 @@ public class RawCommitChannels {
 				commitChannel::get,
 				rawCommitEntry -> {
 					if (rawCommitEntry == null) {
-						return Promise.ofException(new StacklessException());
+						return Promise.ofException(new StacklessException("Incorrect commit stream"));
 					}
 					int compare = commitId.compareTo(rawCommitEntry.getCommitId());
 					if (compare < 0) {
-						return Promise.ofException(new StacklessException());
+						return Promise.ofException(new StacklessException("Incorrect commit stream"));
 					}
 					return Promise.of(compare == 0);
 				})
@@ -112,7 +112,7 @@ public class RawCommitChannels {
 							if (lastCommitId != null) {
 								int compare = lastCommitId.compareTo(rawCommitEntry.getCommitId());
 								if (compare > 0) {
-									return Promise.ofException(new StacklessException());
+									return Promise.ofException(new StacklessException("Incorrect commit stream"));
 								}
 							}
 							lastCommitId = rawCommitEntry.getCommitId();

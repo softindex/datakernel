@@ -20,7 +20,7 @@ public class MemcacheRpcMessage {
 					PutRequest request = (PutRequest) item;
 					return Arrays.hashCode(request.getKey());
 				}
-				throw new IllegalArgumentException();
+				throw new IllegalArgumentException("Unknown request type " + item);
 			};
 
 	public static final List<Class<?>> MESSAGE_TYPES = Arrays.asList(GetRequest.class, GetResponse.class, PutRequest.class, PutResponse.class);

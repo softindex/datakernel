@@ -162,7 +162,7 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) {
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException("Cannot set attributes for list attribute node");
 	}
 
 	private static Class<?> classOf(OpenType<?> openType) {

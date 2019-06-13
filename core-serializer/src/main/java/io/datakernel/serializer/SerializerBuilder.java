@@ -171,8 +171,9 @@ public final class SerializerBuilder {
 			Class<P> annotationPlural,
 			AnnotationHandler<A, P> annotationHandler) {
 		annotationsMap.put(annotation, annotationHandler);
-		if (annotationPlural != null)
+		if (annotationPlural != null) {
 			annotationsExMap.put(annotation, annotationPlural);
+		}
 		return this;
 	}
 
@@ -310,8 +311,9 @@ public final class SerializerBuilder {
 
 		Class<?> key = findKey(type, typeMap.keySet());
 		SerializerGenBuilder builder = typeMap.get(key);
-		if (builder == null)
-			throw new IllegalArgumentException();
+		if (builder == null) {
+			throw new IllegalArgumentException("No builder for type " + key);
+		}
 		SerializerGen serializer = builder.serializer(type, generics, null);
 		checkNotNull(serializer);
 		return serializer;
@@ -323,8 +325,9 @@ public final class SerializerBuilder {
 
 		if (!serializeSubclasses.extraSubclassesId().isEmpty()) {
 			Collection<Class<?>> registeredSubclasses = extraSubclassesMap.get(serializeSubclasses.extraSubclassesId());
-			if (registeredSubclasses != null)
+			if (registeredSubclasses != null) {
 				subclassesSet.addAll(registeredSubclasses);
+			}
 		}
 		return createSubclassesSerializer(type, subclassesSet, serializeSubclasses.startIndex());
 	}
@@ -362,8 +365,9 @@ public final class SerializerBuilder {
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private TypedModsMap extractMods(Annotation[] annotations) {
 		Builder rootBuilder = TypedModsMap.builder();
-		if (annotations.length == 0)
+		if (annotations.length == 0) {
 			return rootBuilder.build();
+		}
 		for (Class<? extends Annotation> annotationType : annotationsMap.keySet()) {
 			Class<? extends Annotation> annotationExType = annotationsExMap.get(annotationType);
 			AnnotationHandler annotationHandler = annotationsMap.get(annotationType);
@@ -410,7 +414,7 @@ public final class SerializerBuilder {
 			for (int i = 0; i < parameterizedType.getActualTypeArguments().length; i++) {
 				Type typeArgument = parameterizedType.getActualTypeArguments()[i];
 				if (typeArgument instanceof WildcardType) {
-					throw new IllegalArgumentException();
+					throw new IllegalArgumentException("Wildcard types are not supported");
 				}
 				typeArguments[i] = resolveSerializer(classType, classGenerics, typeArgument, typedModsMap.get(i));
 			}
@@ -431,7 +435,7 @@ public final class SerializerBuilder {
 			SerializerGen serializer = createSerializerGen(rawType, generics, typedModsMap.getMods());
 			return new SerializerForType(rawType, serializer);
 		} else {
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Unsupported type " + genericType);
 		}
 
 	}
@@ -453,29 +457,35 @@ public final class SerializerBuilder {
 		}
 
 		public String getName() {
-			if (methodOrField instanceof Field)
+			if (methodOrField instanceof Field) {
 				return ((Field) methodOrField).getName();
-			if (methodOrField instanceof Method)
+			}
+			if (methodOrField instanceof Method) {
 				return ((Method) methodOrField).getName();
+			}
 			throw new AssertionError();
 		}
 
 		private int fieldRank() {
-			if (methodOrField instanceof Field)
+			if (methodOrField instanceof Field) {
 				return 1;
-			if (methodOrField instanceof Method)
+			}
+			if (methodOrField instanceof Method) {
 				return 2;
+			}
 			throw new AssertionError();
 		}
 
 		@Override
 		public int compareTo(FoundSerializer o) {
 			int result = Integer.compare(this.order, o.order);
-			if (result != 0)
+			if (result != 0) {
 				return result;
+			}
 			result = Integer.compare(fieldRank(), o.fieldRank());
-			if (result != 0)
+			if (result != 0) {
 				return result;
+			}
 			result = getName().compareTo(o.getName());
 			return result;
 		}
@@ -501,8 +511,9 @@ public final class SerializerBuilder {
 
 		SerializeProfiles profiles = Annotations.findAnnotation(SerializeProfiles.class, annotations);
 		if (profiles != null) {
-			if (!Arrays.asList(profiles.value()).contains(profile == null ? "" : profile))
+			if (!Arrays.asList(profiles.value()).contains(profile == null ? "" : profile)) {
 				return null;
+			}
 			int addedProfile = getProfileVersion(profiles.value(), profiles.added());
 			if (addedProfile != SerializeProfiles.DEFAULT_VERSION) {
 				added = addedProfile;
@@ -517,18 +528,22 @@ public final class SerializerBuilder {
 			return new FoundSerializer(methodOrField, serialize.order(), added, removed, mods);
 		}
 
-		if (profiles != null || !mods.isEmpty())
+		if (profiles != null || !mods.isEmpty()) {
 			throw new IllegalArgumentException("Serialize modifiers without @Serialize annotation on " + methodOrField);
+		}
 
 		return null;
 	}
 
 	private int getProfileVersion(String[] profiles, int[] versions) {
-		if (profiles == null || profiles.length == 0) return SerializeProfiles.DEFAULT_VERSION;
+		if (profiles == null || profiles.length == 0) {
+			return SerializeProfiles.DEFAULT_VERSION;
+		}
 		for (int i = 0; i < profiles.length; i++) {
 			if (Objects.equals(profile, profiles[i])) {
-				if (i < versions.length)
+				if (i < versions.length) {
 					return versions[i];
+				}
 				return SerializeProfiles.DEFAULT_VERSION;
 			}
 		}
@@ -538,8 +553,9 @@ public final class SerializerBuilder {
 	@Nullable
 	private FoundSerializer tryAddField(Class<?> classType, SerializerForType[] classGenerics, Field field) {
 		FoundSerializer result = findAnnotations(field, field.getAnnotations());
-		if (result == null)
+		if (result == null) {
 			return null;
+		}
 		check(isPublic(field.getModifiers()), "Field %s must be public", field);
 		check(!isStatic(field.getModifiers()), "Field %s must not be static", field);
 		check(!isTransient(field.getModifiers()), "Field %s must not be transient", field);
@@ -553,8 +569,9 @@ public final class SerializerBuilder {
 			return null;
 		}
 		FoundSerializer result = findAnnotations(getter, getter.getAnnotations());
-		if (result == null)
+		if (result == null) {
 			return null;
+		}
 		check(isPublic(getter.getModifiers()), "Getter %s must be public", getter);
 		check(!isStatic(getter.getModifiers()), "Getter %s must not be static", getter);
 		check(getter.getReturnType() != Void.TYPE && getter.getParameterTypes().length == 0, "%s must be getter", getter);
@@ -570,8 +587,9 @@ public final class SerializerBuilder {
 			scanInterface(classType, classGenerics, serializerGenClass, (annotation != null) && annotation.inherit());
 			if (annotation != null) {
 				Class<?> impl = annotation.impl();
-				if (impl == void.class)
+				if (impl == void.class) {
 					return;
+				}
 				scanSetters(impl, serializerGenClass);
 				scanFactories(impl, serializerGenClass);
 				scanConstructors(impl, serializerGenClass);
@@ -591,8 +609,9 @@ public final class SerializerBuilder {
 		List<FoundSerializer> foundSerializers = new ArrayList<>();
 		scanGetters(classType, classGenerics, foundSerializers);
 		addMethodsAndGettersToClass(serializerGenClass, foundSerializers);
-		if (!inheritSerializers)
+		if (!inheritSerializers) {
 			return;
+		}
 
 		SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, classType.getAnnotations());
 		if (annotation != null && !annotation.inherit()) {
@@ -613,18 +632,20 @@ public final class SerializerBuilder {
 		}
 		Collections.sort(foundSerializers);
 		for (FoundSerializer foundSerializer : foundSerializers) {
-			if (foundSerializer.methodOrField instanceof Method)
+			if (foundSerializer.methodOrField instanceof Method) {
 				serializerGenClass.addGetter((Method) foundSerializer.methodOrField, foundSerializer.serializerGen, foundSerializer.added, foundSerializer.removed);
-			else if (foundSerializer.methodOrField instanceof Field)
+			} else if (foundSerializer.methodOrField instanceof Field) {
 				serializerGenClass.addField((Field) foundSerializer.methodOrField, foundSerializer.serializerGen, foundSerializer.added, foundSerializer.removed);
-			else
+			} else {
 				throw new AssertionError();
+			}
 		}
 	}
 
 	private void scanClass(Class<?> classType, SerializerForType[] classGenerics, SerializerGenClass serializerGenClass) {
-		if (classType == Object.class)
+		if (classType == Object.class) {
 			return;
+		}
 
 		Type genericSuperclass = classType.getGenericSuperclass();
 		if (genericSuperclass instanceof ParameterizedType) {
@@ -637,8 +658,9 @@ public final class SerializerBuilder {
 			scanClass(classType.getSuperclass(), superclassGenerics, serializerGenClass);
 		} else if (genericSuperclass instanceof Class) {
 			scanClass(classType.getSuperclass(), new SerializerForType[]{}, serializerGenClass);
-		} else
-			throw new IllegalArgumentException();
+		} else {
+			throw new IllegalArgumentException("Unsupported type " + genericSuperclass);
+		}
 
 		List<FoundSerializer> foundSerializers = scanSerializers(classType, classGenerics);
 		addMethodsAndGettersToClass(serializerGenClass, foundSerializers);
@@ -655,8 +677,9 @@ public final class SerializerBuilder {
 	private void scanFields(Class<?> classType, SerializerForType[] classGenerics, List<FoundSerializer> foundSerializers) {
 		for (Field field : classType.getDeclaredFields()) {
 			FoundSerializer foundSerializer = tryAddField(classType, classGenerics, field);
-			if (foundSerializer != null)
+			if (foundSerializer != null) {
 				foundSerializers.add(foundSerializer);
+			}
 		}
 	}
 
@@ -664,15 +687,17 @@ public final class SerializerBuilder {
 		Method[] methods = classType.getDeclaredMethods();
 		for (Method method : methods) {
 			FoundSerializer foundSerializer = tryAddGetter(classType, classGenerics, method);
-			if (foundSerializer != null)
+			if (foundSerializer != null) {
 				foundSerializers.add(foundSerializer);
+			}
 		}
 	}
 
 	private void scanSetters(Class<?> classType, SerializerGenClass serializerGenClass) {
 		for (Method method : classType.getDeclaredMethods()) {
-			if (isStatic(method.getModifiers()))
+			if (isStatic(method.getModifiers())) {
 				continue;
+			}
 			if (method.getParameterTypes().length != 0) {
 				List<String> fields = new ArrayList<>(method.getParameterTypes().length);
 				for (int i = 0; i < method.getParameterTypes().length; i++) {
@@ -696,8 +721,9 @@ public final class SerializerBuilder {
 		DeserializeFactory annotationFactory = Annotations.findAnnotation(DeserializeFactory.class, classType.getAnnotations());
 		Class<?> factoryClassType = (annotationFactory == null) ? classType : annotationFactory.value();
 		for (Method factory : factoryClassType.getDeclaredMethods()) {
-			if (classType != factory.getReturnType())
+			if (classType != factory.getReturnType()) {
 				continue;
+			}
 			if (factory.getParameterTypes().length != 0) {
 				List<String> fields = new ArrayList<>(factory.getParameterTypes().length);
 				for (int i = 0; i < factory.getParameterTypes().length; i++) {
@@ -772,12 +798,18 @@ public final class SerializerBuilder {
 
 			@Override
 			public boolean equals(Object o) {
-				if (this == o) return true;
-				if (o == null || getClass() != o.getClass()) return false;
+				if (this == o) {
+					return true;
+				}
+				if (o == null || getClass() != o.getClass()) {
+					return false;
+				}
 
 				Key key = (Key) o;
 
-				if (version != key.version) return false;
+				if (version != key.version) {
+					return false;
+				}
 				return !(!Objects.equals(serializerGen, key.serializerGen));
 
 			}
@@ -857,8 +889,9 @@ public final class SerializerBuilder {
 		List<Integer> versions = new ArrayList<>();
 		List<Integer> allVersions = new ArrayList<>();
 		for (int v : VersionsCollector.versions(serializerGen)) {
-			if (v <= serializeVersion)
+			if (v <= serializeVersion) {
 				versions.add(v);
+			}
 			allVersions.add(v);
 		}
 		Collections.sort(versions);
@@ -986,13 +1019,21 @@ public final class SerializerBuilder {
 
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
+			if (this == o) {
+				return true;
+			}
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
 
 			Key key = (Key) o;
 
-			if (!Arrays.equals(generics, key.generics)) return false;
-			if (!type.equals(key.type)) return false;
+			if (!Arrays.equals(generics, key.generics)) {
+				return false;
+			}
+			if (!type.equals(key.type)) {
+				return false;
+			}
 			return mods.equals(key.mods);
 		}
 

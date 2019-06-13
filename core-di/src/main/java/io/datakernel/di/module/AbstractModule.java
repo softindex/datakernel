@@ -265,10 +265,10 @@ public abstract class AbstractModule implements Module {
 	}
 
 	protected final void install(Module module) {
-		bindings.addAll(module.getBindingsMultimap(), multimapMerger());
+		bindings.addAll(module.getBindings(), multimapMerger());
+		combineMultimap(bindingTransformers, module.getBindingTransformers());
 		combineMultimap(bindingGenerators, module.getBindingGenerators());
 		mergeMultibinders(multibinders, module.getMultibinders());
-		combineMultimap(bindingTransformers, module.getBindingTransformers());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -324,7 +324,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindingsMultimap() {
+	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
 		doConfigure();
 		return bindings;
 	}

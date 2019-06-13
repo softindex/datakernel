@@ -98,8 +98,11 @@ public final class RemoteFsServlet implements AsyncServlet {
 				.with(POST, "/" + COPY, request -> {
 					String name = request.getQueryParameter("name");
 					String target = request.getQueryParameter("target");
-					if (name == null || target == null) {
-						return Promise.ofException(new ParseException());
+					if (name == null) {
+						return Promise.ofException(new ParseException("No 'name' query parameter"));
+					}
+					if (target == null) {
+						return Promise.ofException(new ParseException("No 'target' query parameter"));
 					}
 					try {
 						return client.copy(name, target, parseRevision(request))
@@ -111,8 +114,11 @@ public final class RemoteFsServlet implements AsyncServlet {
 				.with(POST, "/" + MOVE, request -> {
 					String name = request.getQueryParameter("name");
 					String target = request.getQueryParameter("target");
-					if (name == null || target == null) {
-						return Promise.ofException(new ParseException());
+					if (name == null) {
+						return Promise.ofException(new ParseException("No 'name' query parameter"));
+					}
+					if (target == null) {
+						return Promise.ofException(new ParseException("No 'target' query parameter"));
 					}
 					try {
 						return client.move(name, target, parseRevision(request), parseRevision(request, "tombstone"))

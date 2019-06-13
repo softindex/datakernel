@@ -67,7 +67,7 @@ public final class Record {
 		} else if (rawType == 0 && objects != null) {
 			objects[index] = value;
 		} else {
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Invalid raw index");
 		}
 	}
 
@@ -85,7 +85,7 @@ public final class Record {
 		} else if (type == 0 && objects != null) {
 			return objects[index];
 		} else {
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Invalid raw index");
 		}
 	}
 

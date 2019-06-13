@@ -41,7 +41,7 @@ public final class SerializeVarLengthHandler implements AnnotationHandler<Serial
 			if (type == Long.class) {
 				return new SerializerGenLong(true);
 			}
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Unsupported type " + type);
 		};
 	}
 

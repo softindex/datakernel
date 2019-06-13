@@ -202,6 +202,6 @@ public class JsonStructuredOutput implements StructuredOutput {
 
 	@Override
 	public <T> void writeCustom(Type type, T value) {
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException("No custom type writers");
 	}
 }

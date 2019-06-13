@@ -3,8 +3,10 @@ package io.datakernel.di.core;
 import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.module.Multibinder;
 import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,8 +16,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
+import static io.datakernel.di.core.BindingTransformer.IDENTITY;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
+import static io.datakernel.di.module.Multibinder.ERROR_ON_DUPLICATE;
+import static io.datakernel.di.module.Multibinder.combinedMultibinder;
+import static io.datakernel.di.util.Utils.resolve;
 import static java.util.stream.Collectors.joining;
 
 @SuppressWarnings("unused")
@@ -83,20 +90,25 @@ public class Injector {
 	}
 
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return compile(null, new HashMap<>(), true, bindings, (provider, scope, key, binding) -> binding, (provider, scope, key) -> null);
+		return compile(null, new HashMap<>(), true, bindings.map(Utils::toMultimap), ERROR_ON_DUPLICATE, IDENTITY, REFUSING);
 	}
 
 	public static Injector compile(Module module) {
 		return compile(null, new HashMap<>(), true,
 				module.getBindings(),
+				combinedMultibinder(module.getMultibinders()),
 				combinedTransformer(module.getBindingTransformers()),
 				combinedGenerator(module.getBindingGenerators()));
 	}
 
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
-			@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
+			@NotNull Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindingsMultimap,
+			@NotNull Multibinder<?> multibinder,
 			@NotNull BindingTransformer<?> transformer,
 			@NotNull BindingGenerator<?> generator) {
+
+		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = resolve(bindingsMultimap, multibinder);
+
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, bindings, instances) :
 				new Injector(parent, bindings, instances);

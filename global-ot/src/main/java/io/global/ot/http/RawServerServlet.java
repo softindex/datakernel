@@ -79,8 +79,6 @@ public final class RawServerServlet implements AsyncServlet {
 	private final AsyncServlet servlet;
 	private Promise<@Nullable Void> closeNotification = new SettablePromise<>();
 
-	private final Promise<HttpResponse> parseException = Promise.ofException(new ParseException());
-
 	private RawServerServlet(GlobalOTNode node) {
 		servlet = servlet(node);
 	}
@@ -136,7 +134,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (commitId == null) {
-						return parseException;
+						return Promise.ofException(new ParseException("No 'commitId' query parameter"));
 					}
 
 					try {
@@ -161,7 +159,7 @@ public final class RawServerServlet implements AsyncServlet {
 				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
 					String id = req.getQueryParameter("id");
 					if (id == null) {
-						return parseException;
+						return Promise.ofException(new ParseException("No 'id' query parameter"));
 					}
 
 					try {
@@ -182,7 +180,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (snapshotsQuery == null) {
-						return parseException;
+						return Promise.ofException(new ParseException("No 'snapshots' query parameter"));
 					}
 
 					try {
@@ -211,7 +209,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (lastHeadsQuery == null) {
-						return parseException;
+						return Promise.ofException(new ParseException("No 'lastHeads' query parameter"));
 					}
 
 					try {
@@ -301,7 +299,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (startNodes == null) {
-						return parseException;
+						return Promise.ofException(new ParseException("No 'startNodes' query parameter"));
 					}
 
 					try {
@@ -323,7 +321,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String name = req.getPathParameter("name");
 					String headsQueryString = req.getQueryParameter("heads");
 					if (headsQueryString == null) {
-						return parseException;
+						return Promise.ofException(new ParseException("No 'heads' query parameter"));
 					}
 
 					try {

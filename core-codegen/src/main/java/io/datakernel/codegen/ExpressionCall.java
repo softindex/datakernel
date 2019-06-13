@@ -47,49 +47,41 @@ final class ExpressionCall implements Expression {
 		List<Class<?>> argumentClasses = new ArrayList<>();
 		List<Type> argumentTypes = new ArrayList<>();
 		for (Expression argument : arguments) {
-			argumentTypes.add(argument.type(ctx));
-			if (argument.type(ctx).equals(getType(Object[].class))) {
-				argumentClasses.add(Object[].class);
-			} else {
-				argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
-			}
+			Type argumentType = argument.type(ctx);
+			argumentTypes.add(argumentType);
+			argumentClasses.add(argumentType.equals(getType(Object[].class)) ?
+					Object[].class :
+					getJavaType(ctx.getClassLoader(), argumentType));
 		}
-		Type returnType;
+		Type ownerType = owner.type(ctx);
 		try {
-			if (ctx.getThisType().equals(owner.type(ctx))) {
-				for (org.objectweb.asm.commons.Method method : ctx.getMethods().keySet()) {
-					if (method.getName().equals(methodName)) {
-						if (method.getArgumentTypes().length == arguments.size()) {
-							Type[] methodTypes = method.getArgumentTypes();
-							boolean isSame = true;
-							for (int i = 0; i < arguments.size(); i++) {
-								if (!methodTypes[i].equals(argumentTypes.get(i))) {
-									isSame = false;
-									break;
-								}
-							}
-							if (isSame) return method.getReturnType();
-						}
+			if (!ctx.getThisType().equals(ownerType)) {
+				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), ownerType);
+				Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
+				return getType(method.getReturnType());
+			}
+			outer:
+			for (org.objectweb.asm.commons.Method method : ctx.getMethods().keySet()) {
+				if (!method.getName().equals(methodName) || method.getArgumentTypes().length != arguments.size()) {
+					continue;
+				}
+				Type[] methodTypes = method.getArgumentTypes();
+				for (int i = 0; i < arguments.size(); i++) {
+					if (!methodTypes[i].equals(argumentTypes.get(i))) {
+						continue outer;
 					}
 				}
-				throw new NoSuchMethodException();
-			} else {
-				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), owner.type(ctx));
-				Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
-				Class<?> returnClass = method.getReturnType();
-				returnType = getType(returnClass);
+				return method.getReturnType();
 			}
-
+			throw new NoSuchMethodException("goto catch block");
 		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No method %s.%s(%s). %s",
-					owner.type(ctx).getClassName(),
+					ownerType.getClassName(),
 					methodName,
 					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
 					exceptionInGeneratedClass(ctx)
 			));
 		}
-
-		return returnType;
 	}
 
 	@Override
@@ -102,65 +94,65 @@ final class ExpressionCall implements Expression {
 		List<Type> argumentTypes = new ArrayList<>();
 		for (Expression argument : arguments) {
 			argument.load(ctx);
-			argumentTypes.add(argument.type(ctx));
-			argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
+			Type argumentType = argument.type(ctx);
+			argumentTypes.add(argumentType);
+			argumentClasses.add(getJavaType(ctx.getClassLoader(), argumentType));
 		}
 
-		Type returnType;
+		Type ownerType = owner.type(ctx);
 		try {
-			if (ctx.getThisType().equals(owner.type(ctx))) {
-				org.objectweb.asm.commons.Method method = null;
-				for (org.objectweb.asm.commons.Method m : ctx.getMethods().keySet()) {
-					if (m.getName().equals(methodName)) {
-						if (m.getArgumentTypes().length == arguments.size()) {
-							Type[] methodTypes = m.getArgumentTypes();
-							boolean isSame = true;
-							for (int i = 0; i < arguments.size(); i++) {
-								if (!methodTypes[i].equals(argumentTypes.get(i))) {
-									isSame = false;
-									break;
-								}
-							}
-							if (isSame) {
-								method = m;
-								break;
-							}
-						}
+			if (!ctx.getThisType().equals(ownerType)) {
+				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), ownerType);
+				Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
+				Type returnType = getType(method.getReturnType());
+				invokeVirtualOrInterface(g, ownerJavaType, new org.objectweb.asm.commons.Method(methodName,returnType, argumentTypes.toArray(new Type[]{})));
+				return returnType;
+			}
+			outer:
+			for (org.objectweb.asm.commons.Method method : ctx.getMethods().keySet()) {
+				if (!method.getName().equals(methodName) || method.getArgumentTypes().length != arguments.size()) {
+					continue;
+				}
+				Type[] methodTypes = method.getArgumentTypes();
+				for (int i = 0; i < arguments.size(); i++) {
+					if (!methodTypes[i].equals(argumentTypes.get(i))) {
+						continue outer;
 					}
 				}
-				if (method == null) throw new NoSuchMethodException();
-				g.invokeVirtual(owner.type(ctx), method);
+				g.invokeVirtual(ownerType, method);
 				return method.getReturnType();
 			}
-			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), owner.type(ctx));
-			Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
-			Class<?> returnClass = method.getReturnType();
-			returnType = getType(returnClass);
-
-			invokeVirtualOrInterface(g, ownerJavaType, new org.objectweb.asm.commons.Method(methodName,
-					returnType, argumentTypes.toArray(new Type[]{})));
-
+			throw new NoSuchMethodException("goto catch block");
 		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No method %s.%s(%s). %s",
-					owner.type(ctx).getClassName(),
+					ownerType.getClassName(),
 					methodName,
 					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
 					exceptionInGeneratedClass(ctx)));
 		}
-		return returnType;
 	}
 
 	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
 
 		ExpressionCall that = (ExpressionCall) o;
 
-		if (!owner.equals(that.owner)) return false;
-		if (!methodName.equals(that.methodName)) return false;
-		if (!arguments.equals(that.arguments)) return false;
+		if (!owner.equals(that.owner)) {
+			return false;
+		}
+		if (!methodName.equals(that.methodName)) {
+			return false;
+		}
+		if (!arguments.equals(that.arguments)) {
+			return false;
+		}
 
 		return true;
 	}

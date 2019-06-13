@@ -11,7 +11,14 @@ import static java.util.stream.Collectors.toSet;
 
 @FunctionalInterface
 public interface BindingGenerator<T> {
+	BindingGenerator<Object> REFUSING = (provider, scope, key) -> null;
+
 	@Nullable Binding<T> generate(BindingProvider provider, Scope[] scope, Key<T> key);
+
+	@SuppressWarnings("unchecked")
+	static <T> BindingGenerator<T> refusing() {
+		return (BindingGenerator<T>) REFUSING;
+	}
 
 	@SuppressWarnings("unchecked")
 	static BindingGenerator<?> combinedGenerator(Map<Class<?>, Set<BindingGenerator<?>>> generators) {
@@ -31,15 +38,14 @@ public interface BindingGenerator<T> {
 					.filter(Objects::nonNull)
 					.collect(toSet());
 
-			if (generatedBindings.isEmpty()) {
-				return null;
+			switch (generatedBindings.size()) {
+				case 0:
+					return null;
+				case 1:
+					return generatedBindings.iterator().next();
+				default:
+					throw new DIException("More than one generator provided a binding for key " + key.getDisplayString());
 			}
-
-			if (generatedBindings.size() > 1) {
-				throw new DIException("More than one generator provided a binding for key " + key.getDisplayString());
-			}
-
-			return generatedBindings.iterator().next();
 		};
 	}
 }

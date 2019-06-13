@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Reads characters from a character-input stream, buffers characters
@@ -83,7 +83,7 @@ public final class BufferReader extends Reader {
 	/**
 	 * Returns elements between the current position and the size of buffer.
 	 */
-	private int remaining() {
+	public int remaining() {
 		return buf.length - pos;
 	}
 
@@ -110,7 +110,7 @@ public final class BufferReader extends Reader {
 				pos += 3;
 			}
 			if (pos > limit)
-				throw new IOException();
+				throw new IOException("Read more bytes than the limit");
 			return c;
 		} catch (ArrayIndexOutOfBoundsException e) {
 			throw new IOException(e);
@@ -148,7 +148,7 @@ public final class BufferReader extends Reader {
 				}
 			}
 			if (pos > limit) {
-				throw new IOException();
+				throw new IOException("Read more bytes than the limit");
 			}
 			if (pos == limit) {
 				pos = Integer.MAX_VALUE;
@@ -161,6 +161,6 @@ public final class BufferReader extends Reader {
 
 	@Override
 	public String toString() {
-		return new String(buf, pos, limit - pos, Charset.forName("UTF-8"));
+		return new String(buf, pos, limit - pos, StandardCharsets.UTF_8);
 	}
 }
