@@ -889,4 +889,33 @@ public final class TestDI {
 		assertEquals(42, injector.getInstance(new Key<Container<Integer>>() {}).peer.intValue());
 		assertEquals("hello", injector.getInstance(new Key<Container<String>>() {}).peer);
 	}
+
+	@Test
+	public void annotatedTemplate() {
+
+		class Container<T> {
+			final T peer;
+
+			public Container(T object) {
+				this.peer = object;
+			}
+		}
+
+		Injector injector = Injector.of(new AbstractModule() {
+
+			@Override
+			protected void configure() {
+				bind(String.class).toInstance("hello");
+				bind(new Key<Container<String>>(Name.of("hello")) {});
+			}
+
+			@Provides
+			@Named("hello")
+			<T> Container<T> provide(T number) {
+				return new Container<>(number);
+			}
+		});
+
+		System.out.println(injector.getInstance(new Key<Container<String>>(Name.of("hello")) {}).peer);
+	}
 }

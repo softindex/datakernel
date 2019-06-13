@@ -39,9 +39,10 @@ public final class ReflectionUtils {
 		}
 	}
 
-	public static Set<Annotation> keySetsOf(AnnotatedElement annotatedElement) {
+	public static Set<Name> keySetsOf(AnnotatedElement annotatedElement) {
 		return Arrays.stream(annotatedElement.getDeclaredAnnotations())
 				.filter(annotation -> annotation.annotationType().isAnnotationPresent(KeySetAnnotation.class))
+				.map(Name::of)
 				.collect(toSet());
 	}
 

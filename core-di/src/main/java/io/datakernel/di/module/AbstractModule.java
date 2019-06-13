@@ -59,15 +59,14 @@ public abstract class AbstractModule implements Module {
 		for (Method method : getAnnotatedElements(cls, Provides.class, Class::getDeclaredMethods, false)) {
 			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
-			Set<Annotation> keySets = keySetsOf(method);
+			Set<Name> keySets = keySetsOf(method);
+			Name name = nameOf(method);
+			Scope[] methodScope = getScope(method);
 
 			if (typeVars.length == 0) {
-				Scope[] scope = getScope(method);
-				Name name = nameOf(method);
-
 				Key<Object> key = Key.ofType(type, name);
-				addBinding(scope, key, bindingFromMethod(instance, method));
-				keySets.forEach(keySet -> addKeyToSet(Name.of(keySet), key));
+				addBinding(methodScope, key, bindingFromMethod(instance, method));
+				keySets.forEach(keySet -> addKeyToSet(keySet, key));
 			} else {
 				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
 						.filter(typeVar -> !Types.contains(type, typeVar))
@@ -78,24 +77,26 @@ public abstract class AbstractModule implements Module {
 				if (!keySets.isEmpty()) {
 					throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
 				}
-				generate(method.getReturnType(), (provider, scope, key) ->
-						Types.matches(key.getType(), type) ?
-								bindingFromGenericMethod(instance, key, method) :
-								null);
+				generate(method.getReturnType(), (provider, scope, key) -> {
+					if (scope.length < methodScope.length || !Objects.equals(key.getName(), name) || !Types.matches(key.getType(), type)) {
+						return null;
+					}
+					for (int i = 0; i < methodScope.length; i++) {
+						if (!scope[i].equals(methodScope[i])) {
+							return null;
+						}
+					}
+					return bindingFromGenericMethod(instance, key, method);
+				});
 			}
 		}
 		for (Method method : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods, false)) {
-			Scope[] scope = getScope(method);
-			Name name = nameOf(method);
 			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
+			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
 
-			Binding<Object> binding = bindingFromMethod(instance, method);
-			Factory<Object> factory = binding.getFactory();
-			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), name);
-
-			addBinding(scope, setKey, Binding.to(args -> singleton(factory.create(args)), binding.getDependencies()).at(binding.getLocation()));
+			addBinding(getScope(method), setKey, bindingFromMethod(instance, method).mapInstance(Collections::singleton));
 			multibind(setKey, Multibinder.toSet());
-			keySetsOf(method).forEach(keySet -> addKeyToSet(Name.of(keySet), setKey));
+			keySetsOf(method).forEach(keySet -> addKeyToSet(keySet, setKey));
 		}
 	}
 
