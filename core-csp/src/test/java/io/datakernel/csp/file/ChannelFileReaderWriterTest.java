@@ -83,7 +83,7 @@ public final class ChannelFileReaderWriterTest {
 	}
 
 	@Test
-	public void streamFileWriterRecycle() throws IOException {
+	public void streamFileWriterRecycle() {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
