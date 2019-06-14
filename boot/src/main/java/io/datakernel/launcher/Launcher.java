@@ -41,12 +41,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static java.util.Collections.emptySet;
+import static java.util.Comparator.comparingInt;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -237,39 +237,32 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	private List<Service> startServices(Collection<Service> services) throws Throwable {
-		AtomicReference<Throwable> exception = new AtomicReference<>();
 		List<Service> startedServices = new ArrayList<>();
+		List<Throwable> exceptions = new ArrayList<>();
 		CountDownLatch latch = new CountDownLatch(services.size());
-		for (Service service : services) {
-			if (exception.get() != null) {
-				latch.countDown();
-				continue;
-			}
-			service.start().whenComplete(($, e) -> {
-				synchronized (this) {
-					if (e == null) {
-						startedServices.add(service);
-					} else {
-						if (e instanceof RuntimeException || e instanceof Error) {
-							Throwable e1 = exception.getAndSet(e);
-							if (e1 != null) {
-								e.addSuppressed(e1);
-							}
-						} else {
-							if (exception.get() == null) {
-								exception.set(e);
-							} else {
-								exception.get().addSuppressed(e);
-							}
-						}
-					}
+		synchronized (this) {
+			for (Service service : services) {
+				if (!exceptions.isEmpty()) {
+					latch.countDown();
+					continue;
 				}
-				latch.countDown();
-			});
+				service.start().whenComplete(($, e) -> {
+					synchronized (this) {
+						if (e == null) {
+							startedServices.add(service);
+						} else {
+							exceptions.add(e);
+						}
+						latch.countDown();
+					}
+				});
+			}
 		}
 		latch.await();
-		if (exception.get() != null) {
-			throw exception.get();
+		if (!exceptions.isEmpty()) {
+			exceptions.sort(comparingInt(e -> (e instanceof RuntimeException) ? 1 : (e instanceof Error ? 0 : 2)));
+			exceptions.stream().skip(1).forEach(e -> exceptions.get(0).addSuppressed(e));
+			throw exceptions.get(0);
 		}
 		return startedServices;
 	}
