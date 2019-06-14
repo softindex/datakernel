@@ -30,7 +30,7 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 public final class RequestParameterExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

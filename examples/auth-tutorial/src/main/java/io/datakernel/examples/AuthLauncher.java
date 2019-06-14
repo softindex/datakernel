@@ -8,6 +8,7 @@ import io.datakernel.http.session.SessionStore;
 import io.datakernel.http.session.SessionStoreInMemory;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.loader.StaticLoader;
+import io.datakernel.logger.LoggerConfigurer;
 
 import java.util.Map;
 import java.util.UUID;
@@ -24,6 +25,10 @@ public class AuthLauncher extends HttpServerLauncher {
 	@Provides
 	AuthService loginService() {
 		return new AuthServiceImpl();
+	}
+
+	static {
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

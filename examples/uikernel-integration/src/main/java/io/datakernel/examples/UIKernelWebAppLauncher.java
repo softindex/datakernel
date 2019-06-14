@@ -29,7 +29,7 @@ import static io.datakernel.di.module.Modules.combine;
 
 public class UIKernelWebAppLauncher extends Launcher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	@Inject
 	AsyncHttpServer server;

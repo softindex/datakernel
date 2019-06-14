@@ -28,7 +28,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public class HttpSimpleServer extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

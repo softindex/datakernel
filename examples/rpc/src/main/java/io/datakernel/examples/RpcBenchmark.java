@@ -43,7 +43,7 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 public class RpcBenchmark extends Launcher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	private final static int MAX_REQUESTS = 1000000;
 	private final static int WARMUP_ROUNDS = 1;

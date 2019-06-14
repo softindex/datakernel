@@ -34,7 +34,7 @@ import static io.datakernel.http.HttpMethod.GET;
 
 public final class RoutingServletExample extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

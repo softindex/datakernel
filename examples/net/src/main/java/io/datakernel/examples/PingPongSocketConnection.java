@@ -39,7 +39,7 @@ public class PingPongSocketConnection {
 	private static final String REQUEST_MSG = "PING";
 	private static final String RESPONSE_MSG = "PONG";
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)

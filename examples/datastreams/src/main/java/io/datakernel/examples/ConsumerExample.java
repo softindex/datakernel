@@ -30,7 +30,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  */
 public class ConsumerExample<T> extends AbstractStreamConsumer<T> {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Override

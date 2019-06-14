@@ -31,9 +31,8 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 public final class TransformerExample implements StreamTransformer<String, Integer> {
 	private static final int MAX_LENGTH = 10;
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
-
 
 	private final AbstractStreamConsumer<String> inputConsumer = new AbstractStreamConsumer<String>() {
 

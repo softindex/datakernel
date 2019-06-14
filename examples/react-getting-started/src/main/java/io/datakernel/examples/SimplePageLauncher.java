@@ -11,7 +11,7 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 //[START EXAMPLE]
 public class SimplePageLauncher extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	@Provides
 	AsyncServlet servlet() {

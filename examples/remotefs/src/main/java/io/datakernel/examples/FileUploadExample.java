@@ -54,7 +54,7 @@ public class FileUploadExample extends Launcher {
 		}
 	}
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

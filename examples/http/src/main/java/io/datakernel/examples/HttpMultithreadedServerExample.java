@@ -33,7 +33,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
  */
 public final class HttpMultithreadedServerExample extends MultithreadedHttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

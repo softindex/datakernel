@@ -28,8 +28,9 @@ import java.util.concurrent.ExecutionException;
 
 public class ServiceGraphModuleExample extends AbstractModule {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
+
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();

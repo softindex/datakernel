@@ -21,7 +21,7 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 public final class HttpFileUploadExample extends HttpServerLauncher {
 	private Path PATH = Paths.get("src/main/resources/");
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Override

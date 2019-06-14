@@ -34,7 +34,7 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 public class RpcExample extends Launcher {
 	private static final int SERVICE_PORT = 34765;
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

@@ -42,7 +42,7 @@ public class TcpClientExample {
 	private final Eventloop eventloop = Eventloop.create();
 	private AsyncTcpSocket socket;
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	/* Thread, which sends characters and prints received responses to the console. */

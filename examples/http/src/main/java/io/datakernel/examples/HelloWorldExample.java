@@ -12,7 +12,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
 public final class HelloWorldExample {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	public static void main(String[] args) throws IOException {

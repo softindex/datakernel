@@ -22,7 +22,7 @@ public final class MasterNodeLauncher extends Launcher {
 	public static final String DEFAULT_FS_STORAGE = Paths.get(System.getProperty("java.io.tmpdir"))
 			.resolve("fs_storage").toString();
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

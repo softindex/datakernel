@@ -41,9 +41,8 @@ public class ChannelFileExample {
 	private static final Path PATH = Paths.get("src/main/resources/NewFile.txt");
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
-
 
 	@NotNull
 	private static Promise<Void> writeToFile() {
@@ -73,7 +72,7 @@ public class ChannelFileExample {
 	public static void main(String[] args) {
 		Promises.sequence(
 				ChannelFileExample::writeToFile,
-				ChannelFileExample::readFile)
+					ChannelFileExample::readFile)
 				.whenComplete(($, e) -> {
 					if (e != null) {
 						e.printStackTrace();

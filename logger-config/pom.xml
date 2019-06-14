@@ -12,6 +12,12 @@
 
   <artifactId>logger-config</artifactId>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>jul-to-slf4j</artifactId>
+    </dependency>
+  </dependencies>
   <build>
     <plugins>
       <plugin>

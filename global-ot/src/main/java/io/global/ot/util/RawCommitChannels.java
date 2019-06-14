@@ -55,7 +55,9 @@ public class RawCommitChannels {
 								return Promises.until(
 										() -> {
 											Tuple2<CommitEntry, ChannelSupplier<CommitEntry>> tuple = queue.peek();
-											if (tuple == null) return Promise.of(null);
+											if (tuple == null) {
+												return Promise.of(null);
+											}
 											return tuple.getValue2()
 													.get()
 													.thenEx(this::sanitize)
@@ -83,9 +85,13 @@ public class RawCommitChannels {
 		return (level, commitId) -> Promises.until(
 				commitChannel::get,
 				rawCommitEntry -> {
-					if (rawCommitEntry == null) return Promise.ofException(new StacklessException());
+					if (rawCommitEntry == null) {
+						return Promise.ofException(new StacklessException("Incorrect commit stream"));
+					}
 					int compare = commitId.compareTo(rawCommitEntry.getCommitId());
-					if (compare < 0) return Promise.ofException(new StacklessException());
+					if (compare < 0) {
+						return Promise.ofException(new StacklessException("Incorrect commit stream"));
+					}
 					return Promise.of(compare == 0);
 				})
 				.map(CommitEntry::getCommit);
@@ -100,11 +106,13 @@ public class RawCommitChannels {
 				return channel.get()
 						.thenEx(this::sanitize)
 						.then(rawCommitEntry -> {
-							if (rawCommitEntry == null) return Promise.of(null);
+							if (rawCommitEntry == null) {
+								return Promise.of(null);
+							}
 							if (lastCommitId != null) {
 								int compare = lastCommitId.compareTo(rawCommitEntry.getCommitId());
 								if (compare > 0) {
-									return Promise.ofException(new StacklessException());
+									return Promise.ofException(new StacklessException("Incorrect commit stream"));
 								}
 							}
 							lastCommitId = rawCommitEntry.getCommitId();

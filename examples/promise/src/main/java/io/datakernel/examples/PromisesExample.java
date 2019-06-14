@@ -27,7 +27,7 @@ public class PromisesExample {
 	private static int counter;
 
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	private static void repeat() {

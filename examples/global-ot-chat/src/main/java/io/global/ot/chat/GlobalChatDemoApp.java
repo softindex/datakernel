@@ -34,7 +34,7 @@ public final class GlobalChatDemoApp extends Launcher {
 	public static final String DEFAULT_STATIC_PATH = "/build";
 
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

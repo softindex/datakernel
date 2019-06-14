@@ -47,7 +47,7 @@ public final class GlobalOTDemoApp extends Launcher {
 	public static final String DEFAULT_RESOURCES = "/build";
 
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

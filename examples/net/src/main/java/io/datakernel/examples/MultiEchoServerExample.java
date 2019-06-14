@@ -44,7 +44,7 @@ public class MultiEchoServerExample {
 	private static final Set<AsyncTcpSocket> sockets = new HashSet<>();
 	private static final byte[] CRLF = {CR, LF};
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	public static void main(String[] args) throws Exception {

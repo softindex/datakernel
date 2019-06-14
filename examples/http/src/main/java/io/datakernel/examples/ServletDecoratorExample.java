@@ -16,7 +16,7 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public class ServletDecoratorExample extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

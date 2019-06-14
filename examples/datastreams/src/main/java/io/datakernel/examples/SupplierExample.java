@@ -27,7 +27,7 @@ import io.datakernel.stream.StreamSupplier;
  */
 public class SupplierExample {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	public static void main(String[] args) {

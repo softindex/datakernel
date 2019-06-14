@@ -38,7 +38,7 @@ public class TcpEchoServerExample {
 	private static final int PORT = 9922;
 	private static final byte[] CRLF = {CR, LF};
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	/* Run server in an event loop. */

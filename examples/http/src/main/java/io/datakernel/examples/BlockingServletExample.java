@@ -13,7 +13,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
 public class BlockingServletExample extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

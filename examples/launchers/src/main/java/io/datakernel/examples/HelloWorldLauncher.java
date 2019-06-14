@@ -23,7 +23,7 @@ import io.datakernel.logger.LoggerConfigurer;
 
 public class HelloWorldLauncher extends Launcher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

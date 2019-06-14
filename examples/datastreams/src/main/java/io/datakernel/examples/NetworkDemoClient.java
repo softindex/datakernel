@@ -43,8 +43,9 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 public final class NetworkDemoClient {
 	public static final int PORT = 9922;
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
+
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());

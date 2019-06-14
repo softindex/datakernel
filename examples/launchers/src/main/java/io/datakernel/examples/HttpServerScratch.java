@@ -39,7 +39,7 @@ import static io.datakernel.di.module.Modules.combine;
 public class HttpServerScratch extends Launcher {
 	private static final int PORT = 8080;
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Inject

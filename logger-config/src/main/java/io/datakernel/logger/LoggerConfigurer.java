@@ -1,5 +1,7 @@
 package io.datakernel.logger;
 
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.logging.Level;
@@ -42,5 +44,27 @@ public final class LoggerConfigurer {
 	public static void enableLogging(String name, Level level) {
 		Logger rootLogger = Logger.getLogger(name);
 		rootLogger.setLevel(level);
+	}
+
+	public static void enableSLF4Jbridge() {
+		enableSLF4Jbridge(ROOT_LOGGER, DEFAULT_LEVEL);
+	}
+
+	public static void enableSLF4Jbridge(Level level) {
+		enableSLF4Jbridge(ROOT_LOGGER, level);
+	}
+
+	public static void enableSLF4Jbridge(String name) {
+		enableSLF4Jbridge(name, DEFAULT_LEVEL);
+	}
+
+	public static void enableSLF4Jbridge(Class<?> cls, Level level) {
+		enableSLF4Jbridge(cls.getName(), level);
+	}
+
+	public static void enableSLF4Jbridge(String name, Level level) {
+		LoggerConfigurer.enableLogging(name, level);
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
 	}
 }

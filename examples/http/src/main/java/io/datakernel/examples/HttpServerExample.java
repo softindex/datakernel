@@ -32,7 +32,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
  */
 public final class HttpServerExample extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

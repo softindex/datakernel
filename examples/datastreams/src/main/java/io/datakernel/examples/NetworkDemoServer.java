@@ -39,7 +39,7 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
  */
 public final class NetworkDemoServer {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	public static void main(String[] args) throws IOException {

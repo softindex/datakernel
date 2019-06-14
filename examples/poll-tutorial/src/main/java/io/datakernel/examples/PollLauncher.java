@@ -26,8 +26,9 @@ import static java.util.Collections.emptyMap;
 //[START EXAMPLE]
 public final class PollLauncher extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
+
 
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
 		ByteBufWriter writer = new ByteBufWriter();

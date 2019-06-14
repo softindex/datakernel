@@ -44,7 +44,7 @@ import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 @SuppressWarnings("unused")
 public final class HttpBenchmark extends Launcher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	private final static int MAX_REQUESTS = 1000000;

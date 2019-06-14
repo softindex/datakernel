@@ -27,7 +27,7 @@ import static java.util.Objects.requireNonNull;
 //[START EXAMPLE]
 public final class TodoListLauncher extends HttpServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	//[START REGION_1]
 	private static final StructuredCodec<Plan> PLAN_CODEC = object(Plan::new,

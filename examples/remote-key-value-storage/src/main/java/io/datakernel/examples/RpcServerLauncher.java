@@ -27,7 +27,7 @@ import static io.datakernel.di.module.Modules.combine;
 // [START EXAMPLE]
 public class RpcServerLauncher extends Launcher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	@Inject
 	private RpcServer server;

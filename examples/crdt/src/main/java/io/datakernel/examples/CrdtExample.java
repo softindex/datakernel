@@ -39,7 +39,7 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 
 public final class CrdtExample {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
 			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));

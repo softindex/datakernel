@@ -36,7 +36,7 @@ import static io.datakernel.di.module.Modules.combine;
  */
 public class ServerSetupExample extends RemoteFsServerLauncher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@Provides

@@ -42,7 +42,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public final class HttpClientExample extends Launcher {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 	@Inject
 	AsyncHttpClient httpClient;

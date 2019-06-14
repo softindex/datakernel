@@ -28,8 +28,9 @@ import static java.util.Arrays.asList;
 
 public class ChannelExample {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
+
 
 	private static void supplierOfValues() {
 		ChannelSupplier.of("1", "2", "3", "4", "5")

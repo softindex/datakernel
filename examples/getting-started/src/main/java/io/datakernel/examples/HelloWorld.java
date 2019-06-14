@@ -21,7 +21,7 @@ import io.datakernel.logger.LoggerConfigurer;
 // [START EXAMPLE]
 public class HelloWorld {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	public static void main(String[] args) {

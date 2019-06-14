@@ -49,7 +49,7 @@ public class AsyncFileServiceExample {
 			throw new UncheckedException(e);
 		}
 
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	@NotNull

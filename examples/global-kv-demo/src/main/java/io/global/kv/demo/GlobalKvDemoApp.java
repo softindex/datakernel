@@ -53,7 +53,7 @@ public final class GlobalKvDemoApp extends Launcher {
 	public static final String PROPERTIES_FILE = "globalkv-app.properties";
 	public static final String DEFAULT_SERVER_ID = "KV Demo";
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
 
 	public static final Consumer<KvItem<String, String>> DB_ITEM_CONSUMER = item -> {

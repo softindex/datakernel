@@ -32,8 +32,9 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  */
 public class BuiltinStreamNodesExample {
 	static {
-		LoggerConfigurer.enableLogging();
+		LoggerConfigurer.enableSLF4Jbridge();
 	}
+
 
 	private static void filter() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
