@@ -32,8 +32,7 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.putPositiveInt;
-import static io.datakernel.http.ContentTypes.JSON_UTF_8;
-import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
+import static io.datakernel.http.ContentTypes.*;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.MediaTypes.OCTET_STREAM;
@@ -177,6 +176,12 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	@NotNull
 	public HttpResponse withPlainText(@NotNull String text) {
 		return withHeader(CONTENT_TYPE, ofContentType(PLAIN_TEXT_UTF_8))
+				.withBody(text.getBytes(UTF_8));
+	}
+
+	@NotNull
+	public HttpResponse withHtml(@NotNull String text) {
+		return withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8))
 				.withBody(text.getBytes(UTF_8));
 	}
 

@@ -43,6 +43,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
+	private static final String ROOT_PACKAGE_NAME = "";
 
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
@@ -335,7 +336,8 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 		Class<?> rawType = key.getRawType();
 		Name keyName = key.getName();
-		String domain = rawType.getPackage().getName();
+		Package domainPackage = rawType.getPackage();
+		String domain = domainPackage == null ? ROOT_PACKAGE_NAME : domainPackage.getName();
 		String name = domain + ":" + "type=" + rawType.getSimpleName();
 
 		if (keyName != null) { // with annotation
