@@ -12,6 +12,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.launchers.GlobalNodesModule;
+import io.global.ot.ProfileModule;
 import io.global.ot.SharedRepoModule;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
@@ -43,6 +44,7 @@ public final class ChatLauncher extends Launcher {
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new ChatModule(),
+				new ProfileModule(),
 				new ContactsModule(),
 				new IndexRepoModule(CHAT_INDEX_REPO),
 				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},

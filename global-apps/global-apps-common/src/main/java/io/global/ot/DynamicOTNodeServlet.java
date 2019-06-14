@@ -9,7 +9,9 @@ import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTSystem;
+import io.global.common.KeyPair;
 import io.global.common.PrivKey;
+import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
@@ -33,7 +35,9 @@ import static java.util.Collections.emptySet;
 
 public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 	public static final ParseException ID_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Query parameter ID is required");
-	public static final ParseException KEY_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Cookie 'Key' is required");
+	public static final ParseException KEYS_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Cookie 'Key' is required");
+	public static final ParseException READ_ONLY = new ParseException(DynamicOTNodeServlet.class,
+			"Only read operations are allowed [checkout, fetch, poll]");
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 
 	private final AsyncServlet servlet;
@@ -60,7 +64,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 		return RoutingServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> {
 					try {
-						return getNode(request).checkout()
+						return getNode(request, true).checkout()
 								.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -73,7 +77,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 							throw ID_REQUIRED;
 						}
 						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
-						return getNode(request).fetch(currentCommitId)
+						return getNode(request, true).fetch(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -86,7 +90,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 							throw ID_REQUIRED;
 						}
 						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
-						return getNode(request).poll(currentCommitId)
+						return getNode(request, true).poll(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -95,7 +99,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 				.with(POST, "/" + CREATE_COMMIT, loadBody().serve(request -> {
 					try {
 						FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, request.getBody().getString(UTF_8));
-						return getNode(request).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
+						return getNode(request, false).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
 								.map(commit -> {
 									assert commit.getSerializedData() != null;
 									return HttpResponse.ok200()
@@ -108,7 +112,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 				}))
 				.with(POST, "/" + PUSH, loadBody().serve(request -> {
 							try {
-								OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = getNode(request);
+								OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = getNode(request, false);
 								OTCommit<CommitId, D> commit = ((OTRepositoryAdapter<D>) node.getRepository()).parseRawBytes(request.getBody().getArray());
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
@@ -124,16 +128,22 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 				.withBody(toJson(codec, item).getBytes(UTF_8));
 	}
 
-	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request) throws ParseException {
-		String key = request.getCookie("Key");
-		if (key == null) {
-			throw KEY_REQUIRED;
-		}
-		PrivKey privKey = PrivKey.fromString(key);
+	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request, boolean read) throws ParseException {
+		String pubKeyParameter = request.getPathParameters().get("pubKey");
 		String suffix = request.getPathParameter("suffix");
 		String repositoryName = prefix + (suffix == null ? "" : ('/' + suffix));
-		RepoID repoID = RepoID.of(privKey, repositoryName);
-		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, privKey, diffCodec);
+		KeyPair keys;
+		if (pubKeyParameter == null) {
+			String key = request.getCookie("Key");
+			if (key == null) throw KEYS_REQUIRED;
+			keys = PrivKey.fromString(key).computeKeys();
+		} else {
+			if (!read) throw READ_ONLY;
+			//noinspection ConstantConditions - will be used for read operations
+			keys = new KeyPair(null, PubKey.fromString(pubKeyParameter));
+		}
+		RepoID repoID = RepoID.of(keys, repositoryName);
+		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
 		OTRepositoryAdapter<D> adapter = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 		return OTNodeImpl.create(adapter, otSystem);
 	}

@@ -19,6 +19,7 @@ import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsOperation;
+import io.global.ot.dictionary.DictionaryOperation;
 import io.global.ot.service.ServiceEnsuringServlet;
 import io.global.ot.shared.SharedReposOperation;
 
@@ -55,6 +56,7 @@ public final class ChatModule extends AbstractModule {
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
 			DynamicOTNodeServlet<MessageOperation> roomServlet,
+			DynamicOTNodeServlet<DictionaryOperation> profileServlet,
 			@Named("Messaging") AsyncServlet messagingServlet,
 			StaticServlet staticServlet
 	) {
@@ -62,6 +64,8 @@ public final class ChatModule extends AbstractModule {
 				.with("/ot/contacts/*", contactsServlet)
 				.with("/ot/rooms/*", roomListServlet)
 				.with("/ot/room/:suffix/*", roomServlet)
+				.with("/ot/profile/:pubKey/*", profileServlet)
+				.with("/ot/myProfile/*", profileServlet)
 				.with("/rooms/*", messagingServlet)
 				.with("/*", staticServlet);
 	}
