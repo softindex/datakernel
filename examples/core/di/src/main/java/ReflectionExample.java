@@ -5,12 +5,15 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.logging.Logger;
+
+import static java.util.logging.Level.INFO;
 
 /**
  * Suppose that you really need to have two distinct recipes for two different implementations
@@ -50,7 +53,10 @@ public final class ReflectionExample {
 
 		void send(String message);
 	}
-
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.FIELD)
@@ -76,7 +82,7 @@ public final class ReflectionExample {
 
 		@Override
 		public void send(String message) {
-			logger.info("received message: " + message);
+			logger.log(INFO, () -> "received message: " + message);
 		}
 	}
 

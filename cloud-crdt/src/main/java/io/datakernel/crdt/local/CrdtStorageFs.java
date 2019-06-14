@@ -48,20 +48,20 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 
 public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStorage<K, S>,
 		Initializable<CrdtStorageFs<K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageFs.class);
+	private static final Logger logger = Logger.getLogger(CrdtStorageFs.class.getName());
 
 	private final Eventloop eventloop;
 	private final FsClient client;
@@ -251,7 +251,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 							.collect(toList());
 					String dump = String.join("\n", files);
 
-					logger.info("started consolidating into {} from {}", name, files);
+					logger.log(INFO, () -> "started consolidating into " + name + " from " + files);
 
 					String metafile = namingStrategy.apply("dump");
 					return consolidationFolderClient.upload(metafile)

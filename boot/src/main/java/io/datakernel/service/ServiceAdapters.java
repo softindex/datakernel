@@ -21,7 +21,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.BlockingSocketServer;
-import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
@@ -29,8 +28,9 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.logging.Logger;
 
-import static org.slf4j.LoggerFactory.getLogger;
+import static java.util.logging.Level.WARNING;
 
 /**
  * Static utility methods pertaining to ConcurrentService. Creates
@@ -38,7 +38,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings("WeakerAccess")
 public final class ServiceAdapters {
-	private static final Logger logger = getLogger(ServiceAdapters.class);
+	private static final Logger logger = Logger.getLogger(ServiceAdapters.class.getName());
 
 	private ServiceAdapters() {
 	}
@@ -258,10 +258,10 @@ public final class ServiceAdapters {
 			protected void stop(ExecutorService instance) throws Exception {
 				List<Runnable> runnables = instance.shutdownNow();
 				if (!runnables.isEmpty()) {
-					logger.warn("Cancelled tasks: " + runnables);
+					logger.log(WARNING, () -> "Cancelled tasks: " + runnables);
 				}
 				if (!instance.isTerminated()) {
-					logger.warn("Awaiting termination of " + instance + " ...");
+					logger.log(WARNING, () -> "Awaiting termination of "+ instance + " ...");
 					instance.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
 				}
 			}

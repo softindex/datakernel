@@ -19,16 +19,14 @@ package io.datakernel.util;
 import io.datakernel.async.Callback;
 import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
-import static io.datakernel.util.LogUtils.Level.INFO;
-import static io.datakernel.util.LogUtils.Level.TRACE;
 import static java.util.stream.Collectors.joining;
 
 public class LogUtils {
@@ -42,38 +40,38 @@ public class LogUtils {
 			}
 		},
 
-		TRACE(Logger::trace) {
+		FINEST((logger, msg) -> logger.log(java.util.logging.Level.FINEST, msg)) {
 			@Override
 			protected boolean isEnabled(Logger logger) {
-				return logger.isTraceEnabled();
+				return logger.isLoggable(java.util.logging.Level.FINEST);
 			}
 		},
 
-		DEBUG(Logger::debug) {
+		FINE((logger, msg) -> logger.log(java.util.logging.Level.FINE, msg)) {
 			@Override
 			protected boolean isEnabled(Logger logger) {
-				return logger.isDebugEnabled();
+				return logger.isLoggable(java.util.logging.Level.FINE);
 			}
 		},
 
-		INFO(Logger::info) {
+		INFO((logger, msg) -> logger.log(java.util.logging.Level.INFO, msg)) {
 			@Override
 			protected boolean isEnabled(Logger logger) {
-				return logger.isInfoEnabled();
+				return logger.isLoggable(java.util.logging.Level.INFO);
 			}
 		},
 
-		WARN(Logger::warn) {
+		WARNING((logger, msg) -> logger.log(java.util.logging.Level.WARNING, msg)) {
 			@Override
 			protected boolean isEnabled(Logger logger) {
-				return logger.isWarnEnabled();
+				return logger.isLoggable(java.util.logging.Level.WARNING);
 			}
 		},
 
-		ERROR(Logger::error) {
+		SEVERE((logger, msg) -> logger.log(java.util.logging.Level.SEVERE, msg)) {
 			@Override
 			protected boolean isEnabled(Logger logger) {
-				return logger.isErrorEnabled();
+				return logger.isLoggable(java.util.logging.Level.SEVERE);
 			}
 		};
 
@@ -108,19 +106,17 @@ public class LogUtils {
 	}
 
 	public static <T> Callback<T> toLogger(Logger logger,
-												 Level callLevel, Supplier<String> callMsg,
-												 Level resultLevel, Function<T, String> resultMsg,
-												 @Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
-		if (!logger.isErrorEnabled()) return ($, e) -> {};
+										   Level callLevel, Supplier<String> callMsg,
+										   Level resultLevel, Function<T, String> resultMsg,
+										   @Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
+		if (!logger.isLoggable(java.util.logging.Level.SEVERE)) return ($, e) -> {};
 		callLevel.log(logger, callMsg);
 		return (result, e) -> {
 			if (e == null) {
 				resultLevel.log(logger, () -> resultMsg.apply(result));
 			} else if (!(e instanceof StacklessException) || !((StacklessException) e).isConstant()) {
 				if (errorLevel == null) {
-					if (logger.isErrorEnabled()) {
-						logger.error(errorMsg.apply(e), e);
-					}
+					logger.log(java.util.logging.Level.SEVERE, e, () -> errorMsg.apply(e));
 				} else {
 					errorLevel.log(logger, () -> errorMsg.apply(e));
 				}
@@ -163,7 +159,7 @@ public class LogUtils {
 	}
 
 	public static <T> Callback<T> toLogger(Logger logger, String methodName, Object... parameters) {
-		return toLogger(logger, TRACE, INFO, methodName, parameters);
+		return toLogger(logger, Level.FINEST, Level.INFO, methodName, parameters);
 	}
 
 	private static String toString(Object object) {

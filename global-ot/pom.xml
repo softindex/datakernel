@@ -35,6 +35,11 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-test</artifactId>
       <version>${project.version}</version>

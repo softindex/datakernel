@@ -6,6 +6,7 @@ import io.datakernel.http.session.SessionStore;
 import io.datakernel.http.session.SessionStoreInMemory;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.loader.StaticLoader;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +19,10 @@ import static io.datakernel.http.HttpMethod.POST;
 //[START EXAMPLE]
 public final class AuthLauncher extends HttpServerLauncher {
 	public static final String SESSION_ID = "SESSION_ID";
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	@Provides
 	AuthService loginService() {

@@ -5,9 +5,9 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -33,12 +33,13 @@ import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
@@ -51,7 +52,12 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.singleton;
 
 public final class GlobalFsApp extends Launcher {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsApp.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsApp.class.getName());
+
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";
@@ -115,10 +121,10 @@ public final class GlobalFsApp extends Launcher {
 							DiscoveryService discoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
 								InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
 								if (discoveryAddress != null) {
-									logger.info("Using remote discovery service at " + discoveryAddress);
+									logger.log(Level.INFO, () -> "Using remote discovery service at " + discoveryAddress);
 									return HttpDiscoveryService.create(discoveryAddress, client);
 								}
-								logger.warn("No discovery.address config found, using discovery stub");
+								logger.log(Level.WARNING, "No discovery.address config found, using discovery stub");
 								PrivKey stubPK = PrivKey.of(BigInteger.ONE);
 								AnnouncementStorage announcementStorage = new AnnouncementStorage() {
 									@Override

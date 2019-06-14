@@ -24,8 +24,6 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -40,15 +38,17 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.logging.Level.INFO;
 
 /**
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
  */
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
-	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
+	private static final Logger logger = Logger.getLogger(ConfigModule.class.getName());
 	public static final Key<Config> KEY_OF_CONFIG = Key.of(Config.class);
 
 	@Nullable
@@ -139,7 +139,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	public ConfigModule printEffectiveConfig() {
 		return withEffectiveConfigConsumer(effectiveConfig ->
-				logger.info("Effective config:\n" + effectiveConfig));
+				logger.log(INFO, "Effective config:\n" + effectiveConfig));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -169,7 +169,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	private void save(EffectiveConfig effectiveConfig, AtomicBoolean started) {
 		started.set(true);
 		if (effectiveConfigPath != null) {
-			logger.info("Saving effective config to {}", effectiveConfigPath);
+			logger.log(INFO, () -> "Saving effective config to " + effectiveConfigPath);
 			effectiveConfig.saveEffectiveConfigTo(effectiveConfigPath);
 		}
 		if (effectiveConfigConsumer != null) {

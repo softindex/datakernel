@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
@@ -41,11 +40,13 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.ot.util.TestUtils.getCommitEntries;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -80,7 +81,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	@BeforeClass
 	public static void disableLogs() {
-		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
+		enableLogging(SteppingCurrentTimeProvider.class, WARNING);
 	}
 
 	@Test

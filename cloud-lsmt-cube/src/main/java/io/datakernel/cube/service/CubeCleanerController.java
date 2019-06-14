@@ -14,13 +14,13 @@ import io.datakernel.ot.OTRepositoryEx;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.util.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
@@ -28,14 +28,15 @@ import static io.datakernel.cube.Utils.chunksInDiffs;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.CollectionUtils.union;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
+import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
+	private static final Logger logger = Logger.getLogger(CubeCleanerController.class.getName());
 
 	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);
 	public static final int DEFAULT_SNAPSHOTS_COUNT = 1;
@@ -154,7 +155,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 														union(chunksInDiffs(cubeDiffScheme, checkpointDiffs), tuple.collectedChunks),
 														tuple.lastSnapshot.getInstant().minus(chunksCleanupDelay)));
 							else {
-								logger.info("Not enough snapshots, skip cleanup");
+								logger.log(INFO, "Not enough snapshots, skip cleanup");
 								return Promise.complete();
 							}
 						}))
@@ -199,8 +200,8 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 						.whenComplete(promiseCleanupRepository.recordStats()))
 				.then($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
 						.whenComplete(promiseCleanupChunks.recordStats()))
-				.whenComplete(logger.isTraceEnabled() ?
-						toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
+				.whenComplete(logger.isLoggable(Level.FINEST) ?
+						toLogger(logger, FINEST, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
 						toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
 	}
 

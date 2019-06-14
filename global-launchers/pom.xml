@@ -45,9 +45,8 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <optional>true</optional>
+      <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-test</artifactId>

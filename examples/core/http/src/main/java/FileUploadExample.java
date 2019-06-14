@@ -6,6 +6,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -24,6 +25,8 @@ public final class FileUploadExample extends HttpServerLauncher {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
 	}
 
 	@Override

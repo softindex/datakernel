@@ -22,5 +22,4 @@
     <module>uikernel-integration</module>
     <module>rpc-kv-storage</module>
   </modules>
-
 </project>

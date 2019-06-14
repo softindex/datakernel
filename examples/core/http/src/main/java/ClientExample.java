@@ -10,6 +10,7 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofDuration;
@@ -22,6 +23,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * You can launch HttpServerExample to test this.
  */
 public final class ClientExample extends Launcher {
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 	@Inject
 	AsyncHttpClient httpClient;
 

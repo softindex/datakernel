@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
@@ -26,7 +25,6 @@ import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -41,6 +39,8 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
+import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.WARNING;
 
 @Ignore("takes forever, only for manual testing")
 public final class TestRepartitionController {
@@ -138,9 +138,9 @@ public final class TestRepartitionController {
 	}
 
 	private void testN(int n, int minSize, int maxSize) throws IOException {
-		enableLogging(Logger.ROOT_LOGGER_NAME, Level.WARN);
-		enableLogging("io.datakernel.remotefs", Level.TRACE);
-		enableLogging("io.datakernel.remotefs", Level.TRACE);
+		enableLogging(WARNING);
+		enableLogging("io.datakernel.remotefs", FINEST);
+		enableLogging("io.datakernel.remotefs", FINEST);
 
 		long start = System.nanoTime();
 

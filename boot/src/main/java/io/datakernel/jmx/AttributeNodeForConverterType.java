@@ -1,8 +1,6 @@
 package io.datakernel.jmx;
 
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
@@ -12,10 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.logging.Logger;
+
+import static java.util.logging.Level.SEVERE;
 
 @SuppressWarnings("unchecked")
 public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstract {
-	private static final Logger logger = LoggerFactory.getLogger(AttributeNodeForConverterType.class);
+	private static final Logger logger = Logger.getLogger(AttributeNodeForConverterType.class.getName());
 
 	@Nullable
 	private Method setter;
@@ -89,7 +90,7 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 			try {
 				setter.invoke(target, result);
 			} catch (Exception e) {
-				logger.error("Can't set attribute " + attrName, e);
+				logger.log(SEVERE, "Can't set attribute " + attrName, e);
 			}
 		}
 	}

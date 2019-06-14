@@ -26,8 +26,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -35,6 +33,7 @@ import java.sql.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
@@ -45,11 +44,12 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.SqlUtils.execute;
 import static io.datakernel.util.Utils.loadResource;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.logging.Level.FINEST;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass().getName());
 	public static final Duration DEFAULT_DELETE_MARGIN = Duration.ofHours(1);
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	public static final String DEFAULT_REVISION_TABLE = "ot_revisions";
@@ -128,7 +128,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	public void initialize() throws IOException, SQLException {
-		logger.trace("Initializing tables");
+		logger.log(FINEST,"Initializing tables");
 		execute(dataSource, sql(new String(loadResource("sql/ot_diffs.sql"), UTF_8)));
 		execute(dataSource, sql(new String(loadResource("sql/ot_revisions.sql"), UTF_8)));
 		if (tableBackup != null) {
@@ -137,7 +137,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	public void truncateTables() throws SQLException {
-		logger.trace("Truncate tables");
+		logger.log(FINEST, "Truncate tables");
 		try (Connection connection = dataSource.getConnection()) {
 			Statement statement = connection.createStatement();
 			statement.execute(sql("TRUNCATE TABLE {diffs}"));

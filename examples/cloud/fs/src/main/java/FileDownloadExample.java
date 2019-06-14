@@ -8,11 +8,14 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import static java.util.logging.Level.SEVERE;
 
 /**
  * This example demonstrates downloading file from RemoteFS server.
@@ -33,6 +36,10 @@ public final class FileDownloadExample extends Launcher {
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
+	}
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
 	}
 
 	@Inject
@@ -63,7 +70,7 @@ public final class FileDownloadExample extends Launcher {
 			ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
 					.streamTo(ChannelFileWriter.create(CLIENT_STORAGE.resolve(DOWNLOADED_FILE)))
 					.whenComplete(($, e) -> {
-						if (e != null) logger.error("Download is failed", e);
+						if (e != null) logger.log(SEVERE, "Download is failed", e);
 						shutdown();
 					});
 		});

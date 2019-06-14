@@ -9,6 +9,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.Map;
 
@@ -22,6 +23,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 //[START EXAMPLE]
 public final class ApplicationLauncher extends HttpServerLauncher {
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 	//[START REGION_1]
 	private static final StructuredCodec<Plan> PLAN_CODEC = object(Plan::new,
 			"text", Plan::getText, STRING_CODEC,

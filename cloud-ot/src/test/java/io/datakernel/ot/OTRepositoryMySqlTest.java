@@ -16,8 +16,6 @@
 
 package io.datakernel.ot;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
@@ -26,7 +24,6 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -34,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
@@ -43,6 +41,7 @@ import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -59,8 +58,7 @@ public class OTRepositoryMySqlTest {
 	private OTRepositoryMySql<TestOp> repository;
 
 	static {
-		Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-		rootLogger.setLevel(Level.toLevel("TRACE"));
+		enableLogging(Level.FINEST);
 	}
 
 	@Before

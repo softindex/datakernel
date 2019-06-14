@@ -39,7 +39,6 @@ import io.datakernel.util.ReflectionUtils;
 import io.datakernel.util.ref.RefInt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.io.File;
 import java.nio.file.attribute.FileTime;
@@ -48,6 +47,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationUtils.createBinarySerializer;
@@ -56,11 +57,10 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
-import static org.slf4j.LoggerFactory.getLogger;
 
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopService, Initializable<RemoteFsChunkStorage<C>>, EventloopJmxMBeanEx {
-	private static final Logger logger = getLogger(RemoteFsChunkStorage.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsChunkStorage.class.getName());
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
@@ -226,7 +226,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 								id = fromFileName(filename.substring(0, filename.length() - LOG.length()));
 							} catch (NumberFormatException e) {
 								cleanupWarnings.recordException(e);
-								logger.warn("Invalid chunk filename: " + file);
+								logger.log(Level.WARNING, () -> "Invalid chunk filename: " + file);
 								return false;
 							}
 							if (preserveChunks.contains(id)) {
@@ -238,15 +238,15 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 							}
 							long difference = fileTimestamp - timestamp;
 							assert difference > 0;
-							logger.trace("File {} timestamp {} > {}", file, fileTimestamp, timestamp);
+							logger.log(Level.FINEST, () -> "File " + file + " timestamp " + fileTimestamp + " > " + timestamp);
 							skipped.inc();
 							return false;
 						})
 						.map(file -> {
-							if (logger.isTraceEnabled()) {
+							if (logger.isLoggable(Level.FINEST)) {
 								FileTime lastModifiedTime = FileTime.fromMillis(file.getTimestamp());
-								logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file.getName(),
-										lastModifiedTime, lastModifiedTime.toMillis());
+								logger.log(Level.FINEST, () -> "Delete file: " + file.getName()
+										+ " with last modifiedTime: " + lastModifiedTime + "(" + lastModifiedTime.toMillis() + " millis)");
 							}
 							deleted.inc();
 							return client.delete(file.getName());

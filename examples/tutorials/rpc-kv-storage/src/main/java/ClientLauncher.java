@@ -4,11 +4,17 @@ import io.datakernel.launcher.Args;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.service.ServiceGraphModule;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class ClientLauncher extends Launcher {
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
+
 	@Inject
 	private RpcClient client;
 

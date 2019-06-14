@@ -16,14 +16,11 @@
 
 package io.datakernel.https;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
-import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
@@ -34,15 +31,16 @@ import java.util.concurrent.Executor;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.https.SslUtils.*;
+import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.logging.Level.FINEST;
 
 public class TestHttpsServer {
 	private static final int PORT = getFreePort();
 
 	static {
-		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-		root.setLevel(Level.TRACE);
+		enableLogging(FINEST);
 //		System.setProperty("javax.net.debug", "all");
 	}
 

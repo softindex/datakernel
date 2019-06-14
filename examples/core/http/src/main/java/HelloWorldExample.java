@@ -2,6 +2,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpResponse;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 
@@ -9,6 +10,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HelloWorldExample {
 	private static final byte[] HELLO_WORLD = "Hello world!".getBytes(UTF_8);
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create();

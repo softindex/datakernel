@@ -7,13 +7,12 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
 import java.util.concurrent.Executor;
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -23,9 +22,10 @@ import static io.datakernel.util.SqlUtils.execute;
 import static io.datakernel.util.Utils.loadResource;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.logging.Level.FINEST;
 
 public class MySqlAnnouncementStorage implements AnnouncementStorage {
-	private static final Logger logger = LoggerFactory.getLogger(MySqlAnnouncementStorage.class);
+	private static final Logger logger = Logger.getLogger(MySqlAnnouncementStorage.class.getName());
 
 	private static final StructuredCodec<SignedData<AnnounceData>> ANNOUNCEMENT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
@@ -98,12 +98,12 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 	}
 
 	public void initialize() throws IOException, SQLException {
-		logger.trace("Initializing table");
+		logger.log(FINEST, "Initializing table");
 		execute(dataSource, sql(new String(loadResource("sql/announcements.sql"), UTF_8)));
 	}
 
 	public void truncateTables() throws SQLException {
-		logger.trace("Truncate tables");
+		logger.log(FINEST, "Truncate tables");
 		try (Connection connection = dataSource.getConnection()) {
 			Statement statement = connection.createStatement();
 			statement.execute(sql("TRUNCATE TABLE {announcements}"));

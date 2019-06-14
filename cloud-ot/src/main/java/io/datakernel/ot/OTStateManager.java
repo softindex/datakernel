@@ -25,12 +25,11 @@ import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.exceptions.OTTransformException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.AsyncSuppliers.coalesce;
 import static io.datakernel.async.Promises.sequence;
@@ -41,9 +40,10 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.logging.Level.INFO;
 
 public final class OTStateManager<K, D> implements EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
+	private static final Logger logger = Logger.getLogger(OTStateManager.class.getName());
 
 	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;
@@ -196,7 +196,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	private void rebase(K originalCommitId, FetchData<K, D> fetchData) {
-		logger.info("Rebasing - {} {}", originalCommitId, fetchData);
+		logger.log(INFO, () -> "Rebasing - " + originalCommitId + " " +  fetchData);
 		if (commitId != originalCommitId) return;
 		if (pendingCommit != null) return;
 

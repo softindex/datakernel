@@ -26,14 +26,15 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.logging.Logger;
+
+import static java.util.logging.Level.SEVERE;
 
 @SuppressWarnings("UnusedReturnValue")
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class);
+	private static final Logger logger = Logger.getLogger(EventloopTaskScheduler.class.getName());
 
 	private final Eventloop eventloop;
 	private final AsyncSupplier<?> task;
@@ -209,7 +210,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 					} else {
 						lastException = e;
 						errorCount++;
-						logger.error("Retry attempt " + errorCount, e);
+						logger.log(SEVERE, "Retry attempt " + errorCount, e);
 						if (abortOnError) {
 							if (scheduledTask != null) {
 								scheduledTask.cancel();

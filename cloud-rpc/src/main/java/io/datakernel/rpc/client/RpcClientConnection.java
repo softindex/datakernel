@@ -31,7 +31,6 @@ import io.datakernel.rpc.protocol.RpcStream.Listener;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -40,14 +39,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static org.slf4j.LoggerFactory.getLogger;
+import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.SEVERE;
 
 public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
-	private static final Logger logger = getLogger(RpcClientConnection.class);
+	private static final Logger logger = Logger.getLogger(RpcClientConnection.class.getName());
 
 	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
 	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);
@@ -129,7 +130,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 			rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
 			connectionStats.getRejectedRequests().recordEvent();
 
-			if (logger.isTraceEnabled()) logger.trace("RPC client uplink is overloaded");
+			logger.log(FINEST, "RPC client uplink is overloaded");
 
 			returnProtocolError(cb, RPC_OVERLOAD_EXCEPTION);
 			return;
@@ -287,7 +288,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 
 		// jmx
 		String causedAddress = "Server address: " + address.getAddress().toString();
-		logger.error("Protocol error. " + causedAddress, e);
+		logger.log(SEVERE, e, () -> "Protocol error. " + causedAddress);
 		rpcClient.getLastProtocolError().recordException(e, causedAddress);
 	}
 

@@ -38,6 +38,7 @@ import java.util.*;
 
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Arrays.asList;
+import static java.util.logging.Level.INFO;
 
 /**
  * An RPC server that works asynchronously. This server uses fast serializers
@@ -205,10 +206,10 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@Override
 	protected void onClose(SettableCallback<Void> cb) {
 		if (connections.size() == 0) {
-			logger.info("RpcServer is closing. Active connections count: 0.");
+			logger.log(INFO,"RpcServer is closing. Active connections count: 0.");
 			cb.set(null);
 		} else {
-			logger.info("RpcServer is closing. Active connections count: " + connections.size());
+			logger.log(INFO,() -> "RpcServer is closing. Active connections count: " + connections.size());
 			for (RpcServerConnection connection : new ArrayList<>(connections)) {
 				connection.close();
 			}
@@ -217,9 +218,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	void add(RpcServerConnection connection) {
-		if (logger.isInfoEnabled())
-			logger.info("Client connected on {}", connection);
-
+		logger.log(INFO, () -> "Client connected on " + connection);
 		if (monitoring) {
 			connection.startMonitoring();
 		}
@@ -228,12 +227,11 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	void remove(RpcServerConnection connection) {
-		if (logger.isInfoEnabled())
-			logger.info("Client disconnected on {}", connection);
+		logger.log(INFO, () -> "Client disconnected on " + connection);
 		connections.remove(connection);
 
 		if (closeCallback != null) {
-			logger.info("RpcServer is closing. One more connection was closed. " +
+			logger.log(INFO,() -> "RpcServer is closing. One more connection was closed. " +
 					"Active connections count: " + connections.size());
 
 			if (connections.size() == 0) {

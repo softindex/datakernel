@@ -24,6 +24,7 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.test.TestUtils;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -66,7 +67,7 @@ public final class AsyncSslSocketTest {
 
 	private static final String TEST_STRING = "Hello world";
 
-	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 37832);
+	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", TestUtils.getFreePort());
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(TEST_STRING.length())
 			.andThen(ByteBuf::asArray)

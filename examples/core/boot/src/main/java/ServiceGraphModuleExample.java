@@ -4,10 +4,15 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.concurrent.ExecutionException;
 
 public final class ServiceGraphModuleExample extends AbstractModule {
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();

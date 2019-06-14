@@ -9,6 +9,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -19,6 +20,10 @@ import java.util.concurrent.Executors;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 
 public final class CrdtExample {
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
 			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));
 

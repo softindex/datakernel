@@ -16,22 +16,22 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.ot.OTStateManager;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.AsyncSuppliers.coalesce;
 import static io.datakernel.async.Promises.asPromises;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
+import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeLogProcessorController<K, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
+	private static final Logger logger = Logger.getLogger(CubeLogProcessorController.class.getName());
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
@@ -68,7 +68,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 		Cube cube = (Cube) state.getDataState();
 		AsyncPredicate<K> predicate = AsyncPredicate.of(commitId -> {
 			if (cube.containsExcessiveNumberOfOverlappingChunks()) {
-				logger.info("Cube contains excessive number of overlapping chunks");
+				logger.log(INFO,"Cube contains excessive number of overlapping chunks");
 				return false;
 			}
 			return true;
@@ -101,7 +101,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 				.then(ok -> {
 					if (!ok) return Promise.of(false);
 
-					logger.info("Pull to commit: {}, start log processing", stateManager.getCommitId());
+					logger.log(INFO, () -> "Pull to commit: " + stateManager.getCommitId() + ", start log processing");
 
 					List<AsyncSupplier<LogDiff<CubeDiff>>> tasks = logProcessors.stream()
 							.map(logProcessor -> AsyncSupplier.cast(logProcessor::processLog))

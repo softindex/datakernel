@@ -20,8 +20,10 @@ import io.datakernel.test.TestUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.logging.Logger;
+
+import static java.util.logging.Level.INFO;
 
 /**
  * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
@@ -29,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * listener attached
  */
 public final class ActivePromisesRule implements TestRule {
-	private static final Logger logger = LoggerFactory.getLogger(ActivePromisesRule.class);
+	private static final Logger logger = Logger.getLogger(ActivePromisesRule.class.getName());
 
 	@Override
 	public Statement apply(Statement base, Description description) {
@@ -40,7 +42,7 @@ public final class ActivePromisesRule implements TestRule {
 			} catch (Throwable t) {
 				int n = TestUtils.getActivePromises();
 				if (n != 0) {
-					logger.info(n + " promise assertion" + (n == 1 ? " was" : "s were") + " not checked");
+					logger.log(INFO, () -> n + " promise assertion" + (n == 1 ? " was" : "s were") + " not checked");
 				}
 				throw t;
 			}

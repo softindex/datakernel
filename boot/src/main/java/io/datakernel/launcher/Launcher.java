@@ -30,7 +30,6 @@ import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -41,13 +40,14 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Logger;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparingInt;
-import static org.slf4j.LoggerFactory.getLogger;
+import static java.util.logging.Level.*;
 
 /**
  * Integrates all modules together and manages application lifecycle by
@@ -87,7 +87,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see ConfigModule
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = getLogger(getClass());
+	protected final Logger logger = Logger.getLogger(getClass().getName());
 
 	protected String[] args = {};
 
@@ -145,10 +145,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		instantOfLaunch = Instant.now();
 
 		try {
-			logger.info("=== INJECTING DEPENDENCIES");
+			logger.log(INFO, "=== INJECTING DEPENDENCIES");
 
 			Injector injector = createInjector(args);
-			logger.trace("Dependency graph:\n" + makeGraphVizGraph(injector.getBindings()));
+			logger.log(FINEST, () -> "Dependency graph:\n" + makeGraphVizGraph(injector.getBindings()));
 
 			injector.getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet()).forEach(injector::getInstanceOrNull);
 
@@ -162,7 +162,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			Set<Service> services = injector.getInstanceOr(new Key<Set<Service>>() {}, emptySet());
 			List<Service> startedServices = new ArrayList<>();
 
-			logger.info("=== STARTING APPLICATION");
+			logger.log(INFO, "=== STARTING APPLICATION");
 			try {
 				instantOfStart = Instant.now();
 				startedServices.addAll(startServices(services));
@@ -172,12 +172,12 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				throw e;
 			} catch (Exception e) {
 				applicationError = e;
-				logger.error("Error", e);
+				logger.log(SEVERE, "Error", e);
 				onStart.completeExceptionally(e);
 			}
 
 			if (applicationError == null) {
-				logger.info("=== RUNNING APPLICATION");
+				logger.log(INFO, "=== RUNNING APPLICATION");
 				try {
 					instantOfRun = Instant.now();
 					run();
@@ -186,7 +186,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 					throw e;
 				} catch (Exception e) {
 					applicationError = e;
-					logger.error("Error", e);
+					logger.log(SEVERE, "Error", e);
 					onRun.completeExceptionally(e);
 					throw e;
 				}
@@ -194,7 +194,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				onRun.completeExceptionally(applicationError);
 			}
 
-			logger.info("=== STOPPING APPLICATION");
+			logger.log(INFO, "=== STOPPING APPLICATION");
 			instantOfStop = Instant.now();
 			if (!onStart.isCompletedExceptionally()) {
 				try {
@@ -202,7 +202,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				} catch (InterruptedException | RuntimeException e) {
 					throw e;
 				} catch (Exception e) {
-					logger.error("Stop error", e);
+					logger.log(SEVERE, "Stop error", e);
 				}
 			}
 
@@ -217,18 +217,18 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 		} catch (InterruptedException | RuntimeException e) {
 			applicationError = e;
-			logger.error("Runtime Error", e);
+			logger.log(SEVERE, "Runtime Error", e);
 			onStart.completeExceptionally(e);
 			onRun.completeExceptionally(e);
 			onComplete.completeExceptionally(e);
 			throw e;
 		} catch (Error e) {
 			applicationError = e;
-			logger.error("JVM Fatal Error", e);
+			logger.log(SEVERE, "JVM Fatal Error", e);
 			throw e;
 		} catch (Throwable e) {
 			applicationError = e;
-			logger.error("JVM Fatal Error", e);
+			logger.log(SEVERE, "JVM Fatal Error", e);
 			throw new Exception(e);
 		} finally {
 			instantOfComplete = Instant.now();
@@ -272,7 +272,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		for (Service service : startedServices) {
 			service.stop().whenComplete(($, e) -> {
 				if (e != null) {
-					logger.error("Stop error in " + service, e);
+					logger.log(SEVERE, e, () -> "Stop error in " + service);
 				}
 				latch.countDown();
 			});
@@ -339,7 +339,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				completeLatch.await();
 				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
 			} catch (InterruptedException e) {
-				logger.error("Shutdown took too long", e);
+				logger.log(SEVERE, "Shutdown took too long", e);
 			}
 		}, "shutdownNotification"));
 		shutdownLatch.await();

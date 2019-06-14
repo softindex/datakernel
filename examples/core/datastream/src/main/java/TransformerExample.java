@@ -2,6 +2,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamTransformer;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -11,6 +12,11 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  */
 public final class TransformerExample implements StreamTransformer<String, Integer> {
 	private static final int MAX_LENGTH = 10;
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
+
 
 	private final AbstractStreamConsumer<String> inputConsumer = new AbstractStreamConsumer<String>() {
 

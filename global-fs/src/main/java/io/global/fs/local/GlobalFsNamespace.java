@@ -8,6 +8,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.util.LogUtils;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
@@ -17,22 +18,22 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FramesFromStorage;
 import io.global.fs.transformers.FramesIntoStorage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.Promises.asPromises;
-import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.util.Utils.tolerantCollectBoolean;
+import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNamespace, GlobalFsNodeImpl, GlobalFsNode> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNamespace.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsNamespace.class.getName());
 
 	private final FsClient storage;
 	private final CheckpointStorage checkpointStorage;
@@ -97,14 +98,15 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 	}
 
 	public Promise<ChannelConsumer<DataFrame>> upload(String filename, long offset, long revision) {
-		logger.trace("uploading to local storage {}, offset: {}", filename, offset);
+		logger.log(FINEST, () -> "uploading to local storage " + filename + ", offset: " + offset);
 		return checkpointStorage.drop(filename, revision)
 				.then($ -> storage.upload(filename, offset, revision))
 				.map(consumer -> consumer.transformWith(FramesIntoStorage.create(filename, space, checkpointStorage)));
 	}
 
 	public Promise<ChannelSupplier<DataFrame>> download(String fileName, long offset, long length) {
-		logger.trace("downloading local copy of {} at {}, offset: {}, length: {}", fileName, space, offset, length);
+		logger.log(FINEST, () -> "downloading local copy of " + fileName + " at " + space + ", " +
+				"offset: " + offset + ", length: " + length);
 		return checkpointStorage.loadIndex(fileName)
 				.then(checkpoints -> {
 					assert Arrays.equals(checkpoints, Arrays.stream(checkpoints).sorted().toArray()) : "Checkpoint array must be sorted!";
@@ -155,26 +157,26 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 								}
 								if (localMeta.isTombstone()) {
 									if (remoteMeta != null && remoteMeta.isTombstone()) {
-										logger.trace("both local and remote files {} are tombstones", remoteMeta.getFilename());
+										logger.log(FINEST, () -> "both local and remote files " + remoteMeta.getFilename() + " are tombstones");
 										return Promise.of(false);
 									} else {
-										logger.info("local file {} is a tombstone, removing remote", localMeta.getFilename());
+										logger.log(INFO, () -> "local file " + localMeta.getFilename() + " is a tombstone, removing remote");
 										return into.delete(space, signedLocalMeta)
 												.map($ -> true);
 									}
 								} else {
 									if (remoteMeta != null && remoteMeta.isTombstone()) {
-										logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+										logger.log(INFO, () -> "remote file " + remoteMeta.getFilename() + " is a tombstone, removing local");
 										return delete(signedLocalMeta)
 												.map($ -> true);
 									}
-									logger.info("pushing local file {} to node {}", localMeta.getFilename(), into);
+									logger.log(INFO, "pushing local file " + localMeta.getFilename() + " to node " + into);
 									return streamDataFrames(node, into, filename, remoteMeta != null ? remoteMeta.getPosition() : 0, localMeta.getRevision())
 											.map($ -> true);
 								}
 							});
 				}))
-				.whenComplete(toLogger(logger, TRACE, "push", space, into, node));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "push", space, into, node));
 	}
 
 	public Promise<Boolean> fetch(GlobalFsNode from, String glob) {
@@ -190,21 +192,21 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 										if (localMeta != null) {
 											// our file is better
 											if (GlobalFsCheckpoint.COMPARATOR.compare(localMeta, remoteMeta) >= 0) {
-												logger.trace("local file {} is better than remote", localMeta.getFilename());
+												logger.log(FINEST, () -> "local file " + localMeta.getFilename() + " is better than remote");
 												return Promise.of(false);
 											}
 											// other file is encrypted with different key
 											if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
-												logger.trace("remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
+												logger.log(FINEST, () -> "remote file " + remoteMeta.getFilename() + " is encrypted with different key, ignoring");
 												return Promise.of(false);
 											}
 										}
 										if (remoteMeta.isTombstone()) {
-											logger.trace("remote file {} is a tombstone with higher revision, removing local", remoteMeta.getFilename());
+											logger.log(FINEST, () -> "remote file " + remoteMeta.getFilename() + " is a tombstone with higher revision, removing local");
 											return delete(signedRemoteMeta)
 													.map($ -> true);
 										}
-										logger.info("remote file {} is better than local", remoteMeta.getFilename());
+										logger.log(INFO, () -> "remote file " + remoteMeta.getFilename() + " is better than local");
 
 										long ourSize = localMeta != null ? localMeta.getPosition() : 0;
 
@@ -215,6 +217,6 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 									});
 						}
 				))
-				.whenComplete(toLogger(logger, TRACE, "fetch", space, from, node));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "fetch", space, from, node));
 	}
 }

@@ -29,18 +29,18 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.logging.Logger;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
-	private static final Logger logger = LoggerFactory.getLogger(RemoteFsAnnouncementStorage.class);
+	private static final Logger logger = Logger.getLogger(RemoteFsAnnouncementStorage.class.getName());
 	private static final StructuredCodec<SignedData<AnnounceData>> ANNOUNCEMENT_CODEC =
 			REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 
@@ -61,7 +61,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 		String file = getFilenameFor(space);
 		return storage.upload(file, 0, now.currentTimeMillis())
 				.then(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
-				.whenComplete(toLogger(logger, TRACE, "store", signedAnnounceData, this));
+				.whenComplete(toLogger(logger, FINEST, "store", signedAnnounceData, this));
 	}
 
 	@Override
@@ -85,7 +85,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, TRACE, "load", space, this));
+				.whenComplete(toLogger(logger, FINEST, "load", space, this));
 	}
 
 	@Override

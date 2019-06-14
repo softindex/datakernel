@@ -31,6 +31,7 @@ import java.net.InetAddress;
 
 import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
+import static java.util.logging.Level.WARNING;
 
 public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer<CrdtServer<K, S>> {
 	private final CrdtStorage<K, S> client;
@@ -94,7 +95,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					if (e == null) {
 						return;
 					}
-					logger.warn("got an error while handling message (" + e + ") : " + this);
+					logger.log(WARNING, () -> "got an error while handling message (" + e + ") : " + this);
 					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
 					messaging.send(new ServerError(prefix + e.getMessage()))
 							.then($1 -> messaging.sendEndOfStream())

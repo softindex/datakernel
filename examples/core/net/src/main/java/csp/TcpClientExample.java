@@ -9,6 +9,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -24,6 +25,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class TcpClientExample {
 	private final Eventloop eventloop = Eventloop.create();
 	private AsyncTcpSocket socket;
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	/* Thread, which sends characters and prints received responses to the console. */
 	private Thread getScannerThread() {

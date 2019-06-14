@@ -23,6 +23,7 @@ import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.LogUtils;
 import io.datakernel.util.ref.RefBoolean;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -34,21 +35,21 @@ import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.util.Utils.nSuccessesOrLess;
 import static io.global.util.Utils.tolerantCollectBoolean;
+import static java.util.logging.Level.FINEST;
+
 
 public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl, GlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<GlobalFsNodeImpl> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeImpl.class);
+	private static final Logger logger = Logger.getLogger(GlobalFsNodeImpl.class.getName());
 
 	private int uploadCallNumber = 1;
 	private int uploadSuccessNumber = 0;
@@ -181,10 +182,10 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 									.map(node -> node.download(space, filename, offset, length)
 											.map(supplier -> {
 												if (!doesDownloadCaching) {
-													logger.trace("Trying to download file at " + filename + " from " + node + "...");
+													logger.log(FINEST, () -> "Trying to download file at " + filename + " from " + node + "...");
 													return supplier;
 												}
-												logger.trace("Trying to download and cache file at " + filename + " from " + node + "...");
+												logger.log(FINEST, () -> "Trying to download and cache file at " + filename + " from " + node + "...");
 
 												ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier);
 
@@ -202,14 +203,14 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> listEntities(PubKey space, String glob) {
 		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob))
-				.whenComplete(toLogger(logger, TRACE, "list", space, glob, this));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "list", space, glob, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
 		return simpleMethod(space, node -> node.getMetadata(space, filename), ns -> ns.getMetadata(filename))
 				.mapEx((res, e) -> e != null ? null : res)
-				.whenComplete(toLogger(logger, TRACE, "getMetadata", space, filename, this));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "getMetadata", space, filename, this));
 	}
 
 	@Override

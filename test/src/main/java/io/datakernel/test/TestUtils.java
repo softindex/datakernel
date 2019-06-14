@@ -16,12 +16,9 @@
 
 package io.datakernel.test;
 
-import ch.qos.logback.classic.Level;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import io.datakernel.async.Callback;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -33,8 +30,14 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static java.util.logging.Level.*;
 
 public final class TestUtils {
+	public static final String ROOT_LOGGER = "";
+	private static final Level DEFAULT_LEVEL = INFO;
 	private static int activePromises = 0;
 
 	public static synchronized int getFreePort() {
@@ -56,32 +59,6 @@ public final class TestUtils {
 		dataSource.setServerTimezone(properties.getProperty("dataSource.timeZone"));
 		dataSource.setAllowMultiQueries(true);
 		return dataSource;
-	}
-
-	public static void enableLogging(String name, Level level) {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(name);
-		logger.setLevel(level);
-	}
-
-	public static void enableLogging(Class<?> cls, Level level) {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(cls);
-		logger.setLevel(level);
-	}
-
-	public static void enableLogging(Level level) {
-		enableLogging(Logger.ROOT_LOGGER_NAME, level);
-	}
-
-	public static void enableLogging(String name) {
-		enableLogging(name, Level.TRACE);
-	}
-
-	public static void enableLogging(Class<?> cls) {
-		enableLogging(cls, Level.TRACE);
-	}
-
-	public static void enableLogging() {
-		enableLogging(Logger.ROOT_LOGGER_NAME, Level.TRACE);
 	}
 
 	public static <T> Callback<T> assertComplete(ThrowingConsumer<T> consumer) {
@@ -115,6 +92,27 @@ public final class TestUtils {
 
 	public static void clearActivePromises() {
 		activePromises = 0;
+	}
+
+	public static void enableLogging(Class<?> cls) {
+		enableLogging(cls.getName(), DEFAULT_LEVEL);
+	}
+
+	public static void enableLogging(String name) {
+		enableLogging(name, DEFAULT_LEVEL);
+	}
+
+	public static void enableLogging(Level level) {
+		enableLogging(ROOT_LOGGER, level);
+	}
+
+	public static void enableLogging(Class<?> cls, Level level) {
+		enableLogging(cls.getName(), level);
+	}
+
+	public static void enableLogging(String name, Level level) {
+		Logger logger = Logger.getLogger(name);
+		logger.setLevel(level);
 	}
 
 	@FunctionalInterface

@@ -29,8 +29,7 @@
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>http-launchers</artifactId>
-      <version>3.0.0-SNAPSHOT</version>
-      <scope>compile</scope>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 

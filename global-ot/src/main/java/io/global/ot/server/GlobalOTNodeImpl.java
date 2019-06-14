@@ -31,17 +31,16 @@ import io.global.ot.api.*;
 import io.global.ot.server.GlobalOTNamespace.RepositoryEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.util.Utils.nSuccessesOrLess;
@@ -49,7 +48,7 @@ import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
-	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
+	private static final Logger logger = Logger.getLogger(GlobalOTNodeImpl.class.getName());
 
 	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry();
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
@@ -211,7 +210,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 							.map($2 -> entry);
 				}))
 				.map(ChannelSupplier::of)
-				.whenComplete(toLogger(logger, TRACE, "download", repositoryId, this));
+				.whenComplete(toLogger(logger, FINEST, "download", repositoryId, this));
 	}
 
 	@Override
@@ -377,7 +376,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	public Promise<Void> fetch() {
 		return forEachRepository(RepositoryEntry::fetch)
-				.whenComplete(toLogger(logger, TRACE, "fetch", this));
+				.whenComplete(toLogger(logger, FINEST, "fetch", this));
 	}
 
 	public Promise<Void> push() {

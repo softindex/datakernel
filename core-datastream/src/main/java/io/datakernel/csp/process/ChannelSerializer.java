@@ -26,17 +26,17 @@ import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayDeque;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
+import static java.util.logging.Level.WARNING;
 
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class);
+	private static final Logger logger = Logger.getLogger(ChannelSerializer.class.getName());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
@@ -272,7 +272,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 
 		private void handleSerializationError(Exception e) {
 			if (skipSerializationErrors) {
-				logger.warn("Skipping serialization error in {}", this, e);
+				logger.log(WARNING, e, () -> "Skipping serialization error in " + this);
 			} else {
 				close(e);
 			}

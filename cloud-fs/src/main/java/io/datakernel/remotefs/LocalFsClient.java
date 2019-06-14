@@ -36,8 +36,6 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,12 +46,12 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
-import static io.datakernel.async.Promise.*;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -62,13 +60,14 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Collections.emptyList;
+import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 
 /**
  * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
  */
 public final class LocalFsClient implements FsClient, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
+	private static final Logger logger = Logger.getLogger(LocalFsClient.class.getName());
 
 	public static final FileNamingScheme REVISION_NAMING_SCHEME = new FileNamingScheme() {
 		private static final String SEPARATOR = "@";
@@ -256,9 +255,9 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						// calling withAcknowledgement in eventloop thread
 						.withAcknowledgement(ack -> ack
 								.whenComplete(writeFinishPromise.recordStats())
-								.whenComplete(toLogger(logger, TRACE, "writing to file", name, offset, revision, this))))
+								.whenComplete(toLogger(logger, FINEST, "writing to file", name, offset, revision, this))))
 				.whenComplete(writeBeginPromise.recordStats())
-				.whenComplete(toLogger(logger, TRACE, "upload", name, offset, revision, this));
+				.whenComplete(toLogger(logger, FINEST, "upload", name, offset, revision, this));
 	}
 
 	@Override
@@ -282,21 +281,21 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						.withLength(length == -1 ? Long.MAX_VALUE : length)
 						// call withAcknowledgement in eventloop thread
 						.withEndOfStream(eos -> eos.whenComplete(readFinishPromise.recordStats())))
-				.whenComplete(toLogger(logger, TRACE, "download", name, offset, length, this))
+				.whenComplete(toLogger(logger, FINEST, "download", name, offset, length, this))
 				.whenComplete(readBeginPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return Promise.ofBlockingCallable(executor, () -> doList(glob, true))
-				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this))
+				.whenComplete(toLogger(logger, FINEST, "listEntities", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return Promise.ofBlockingCallable(executor, () -> doList(glob, false))
-				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
+				.whenComplete(toLogger(logger, FINEST, "list", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
@@ -340,7 +339,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
+				.whenComplete(toLogger(logger, FINEST, "move", name, target, this))
 				.whenComplete(singleMovePromise.recordStats());
 	}
 
@@ -353,7 +352,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					doCopy(name, target, targetRevision);
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "copy", name, target, this))
+				.whenComplete(toLogger(logger, FINEST, "copy", name, target, this))
 				.whenComplete(singleCopyPromise.recordStats());
 	}
 
@@ -366,7 +365,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					doDelete(name, revision);
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, TRACE, "delete", name, this))
+				.whenComplete(toLogger(logger, FINEST, "delete", name, this))
 				.whenComplete(singleDeletePromise.recordStats());
 	}
 
@@ -439,14 +438,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						try {
 							ts = Files.getLastModifiedTime(info.getFilePath()).toMillis();
 						} catch (IOException e) {
-							logger.warn("Failed to get timestamp of the tombstone {}", info.getName());
+							logger.log(WARNING, () -> "Failed to get timestamp of the tombstone " + info.getName());
 							return;
 						}
 						if (ts < border) {
 							try {
 								Files.deleteIfExists(info.getFilePath());
 							} catch (IOException e) {
-								logger.warn("Failed clean up expired tombstone {}", info.getName());
+								logger.log(WARNING, () -> "Failed clean up expired tombstone " + info.getName());
 							}
 						}
 					});
@@ -649,7 +648,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					FileMetadata.tombstone(info.getName(), timestamp, info.getRevision()) :
 					FileMetadata.of(info.getName(), Files.size(path), timestamp, info.getRevision());
 		} catch (Exception e) {
-			logger.warn("error while getting metadata for file {}", info.getFilePath());
+			logger.log(WARNING, () -> "error while getting metadata for file "+ info.getFilePath());
 			return null;
 		}
 	}

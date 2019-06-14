@@ -30,11 +30,10 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
@@ -45,10 +44,12 @@ import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
+import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.SEVERE;
 import static java.util.stream.Collectors.toList;
 
 public final class ReportingServiceServlet extends AsyncServletWithStats {
-	private static final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
+	private static final Logger logger = Logger.getLogger(ReportingServiceServlet.class.getName());
 
 	private final ICube cube;
 	private final CodecFactory mapping;
@@ -92,7 +93,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	@NotNull
 	@Override
 	public Promise<HttpResponse> doServe(@NotNull HttpRequest httpRequest) {
-		logger.info("Received request: {}", httpRequest);
+		logger.log(INFO, () -> "Received request: " + httpRequest);
 		try {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			CubeQuery cubeQuery = parseQuery(httpRequest);
@@ -101,15 +102,15 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 						Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
 						String json = toJson(getQueryResultCodec(), queryResult);
 						HttpResponse httpResponse = createResponse(json);
-						logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
-								cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
+						logger.log(INFO, "Processed request " + httpRequest + " (" + cubeQuery + ") " +
+										"[totalTime=" + totalTimeStopwatch + ", jsonConstruction=" + resultProcessingStopwatch + "]");
 						return httpResponse;
 					});
 		} catch (QueryException e) {
-			logger.error("Query exception: " + httpRequest, e);
+			logger.log(SEVERE,  e, () -> "Query exception: " + httpRequest);
 			return Promise.of(createErrorResponse(e.getMessage()));
 		} catch (ParseException e) {
-			logger.error("Parse exception: " + httpRequest, e);
+			logger.log(SEVERE, e, () -> "Parse exception: " + httpRequest);
 			return Promise.of(createErrorResponse(e.getMessage()));
 		}
 	}

@@ -23,14 +23,13 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -42,6 +41,7 @@ import static java.util.Collections.*;
 import static java.util.Comparator.comparingLong;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.logging.Level.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
@@ -50,7 +50,7 @@ import static java.util.stream.Collectors.toList;
  * {@link ServiceGraphModule}.
  */
 public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxMBean {
-	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
+	private static final Logger logger = Logger.getLogger(ServiceGraph.class.getName());
 
 	public interface Key<T> {
 		@NotNull
@@ -296,17 +296,17 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 				.thenComposeAsync($ -> {
 					Service service = services.get(node);
 					if (service == null) {
-						logger.debug("...skipping no-service node: " + keyToString(node));
+						logger.log(FINEST, () -> "...skipping no-service node: " + keyToString(node));
 						return CompletableFuture.completedFuture(null);
 					}
 
 					if (!start && !nodeStatuses.getOrDefault(node, NodeStatus.DEFAULT).isStartedSuccessfully()) {
-						logger.debug("...skipping not running node: " + keyToString(node));
+						logger.log(FINEST, () -> "...skipping not running node: " + keyToString(node));
 						return CompletableFuture.completedFuture(null);
 					}
 
 					Stopwatch sw = Stopwatch.createStarted();
-					logger.info((start ? "Starting node: " : "Stopping node: ") + keyToString(node));
+					logger.log(INFO, () -> (start ? "Starting node: " : "Stopping node: ") + keyToString(node));
 					NodeStatus nodeStatus = nodeStatuses.computeIfAbsent(node, $1 -> new NodeStatus());
 					if (start) {
 						nodeStatus.startBegin = currentTimeMillis();
@@ -324,7 +324,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 								}
 
 								long elapsed = sw.elapsed(MILLISECONDS);
-								logger.info((start ? "Started " : "Stopped ") + keyToString(node) + (elapsed >= 1L ? (" in " + sw) : ""));
+								logger.log(INFO, () -> (start ? "Started " : "Stopped ") + keyToString(node) + (elapsed >= 1L ? (" in " + sw) : ""));
 							}, executor);
 				}, executor);
 
@@ -384,8 +384,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		if (rootNodes.isEmpty()) {
 			throw new IllegalStateException("No root nodes found, nobody requested a service");
 		}
-		logger.info("Starting services");
-		logger.debug("Root nodes: {}", rootNodes);
+		logger.log(INFO, "Starting services");
+		logger.log(FINEST, () -> "Root nodes: " + rootNodes);
 		startBegin = currentTimeMillis();
 		return doStartStop(true, rootNodes)
 				.whenComplete(($, e) -> {
@@ -404,8 +404,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	 */
 	synchronized public CompletableFuture<?> stopFuture() {
 		Set<Key<?>> leafNodes = difference(union(services.keySet(), backwards.keySet()), forwards.keySet());
-		logger.info("Stopping services");
-		logger.debug("Leaf nodes: {}", leafNodes);
+		logger.log(INFO, "Stopping services");
+		logger.log(FINEST, () -> "Leaf nodes: " + leafNodes);
 		stopBegin = currentTimeMillis();
 		return doStartStop(false, leafNodes)
 				.whenComplete(($, e) -> {
@@ -478,7 +478,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			for (Key<?> node : path.isEmpty() ? services.keySet() : forwards.getOrDefault(path.get(path.size() - 1), emptySet())) {
 				int loopIndex = path.indexOf(node);
 				if (loopIndex != -1) {
-					logger.warn("Circular dependencies found: " + path.subList(loopIndex, path.size()).stream()
+					logger.log(WARNING, () -> "Circular dependencies found: " + path.subList(loopIndex, path.size())
+							.stream()
 							.map(this::keyToString)
 							.collect(joining(", ", "[", "]")));
 					return path.subList(loopIndex, path.size());

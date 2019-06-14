@@ -408,7 +408,7 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	@LoggerConfig(logger = "io.global.fs", value = "TRACE")
+	@LoggerConfig(logger = "io.global.fs", value = "FINEST")
 	@LoggerConfig(logger = "io.global.fs.local.RemoteFsCheckpointStorage", value = "INFO")
 	public void catchUpTombstones() {
 		announce(alice, set(FIRST_ID, SECOND_ID));

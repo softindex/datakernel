@@ -1,6 +1,7 @@
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,6 +9,10 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 
 public final class ChannelExample {
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 	private static void supplierOfValues() {
 		ChannelSupplier.of("1", "2", "3", "4", "5")
 				.streamTo(ChannelConsumer.ofConsumer(System.out::println));

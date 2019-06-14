@@ -24,25 +24,26 @@ import io.datakernel.exception.CloseException;
 import io.datakernel.file.AsyncFileService;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import static io.datakernel.file.AsyncFileService.DEFAULT_FILE_SERVICE;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.file.StandardOpenOption.READ;
+import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.SEVERE;
 
 /**
  * This supplier allows you to asynchronously read binary data from a file.
  */
 public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(ChannelFileReader.class);
+	private static final Logger logger = Logger.getLogger(ChannelFileReader.class.getName());
 
 	public static final Set<OpenOption> READ_OPTIONS = set(READ);
 
@@ -138,10 +139,10 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 			}
 
 			channel.close();
-			logger.trace(this + ": closed file");
+			logger.log(FINEST, () -> this + ": closed file");
 			return Promise.complete();
 		} catch (IOException | CloseException e) {
-			logger.error(this + ": failed to close file", e);
+			logger.log(SEVERE, e, () -> this + ": failed to close file");
 			return Promise.ofException(e);
 		}
 	}

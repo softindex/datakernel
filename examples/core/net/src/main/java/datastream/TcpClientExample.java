@@ -10,6 +10,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -25,6 +26,10 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
  */
 public final class TcpClientExample {
 	public static final int PORT = 9922;
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());

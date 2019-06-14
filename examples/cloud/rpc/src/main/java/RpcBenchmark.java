@@ -11,6 +11,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
@@ -23,7 +24,10 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 public class RpcBenchmark extends Launcher {
-
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 	private final static int MAX_REQUESTS = 1000000;
 	private final static int WARMUP_ROUNDS = 1;
 	private final static int BENCHMARK_ROUNDS = 3;

@@ -13,21 +13,22 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.ot.OTStateManager;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
+import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
+	private static final Logger logger = Logger.getLogger(CubeConsolidationController.class.getName());
 
 	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation,
 			Promise<AggregationDiff>>>() {
@@ -139,9 +140,9 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	}
 
 	private void logCubeDiff(CubeDiff cubeDiff, Throwable e) {
-		if (e != null) logger.warn("Consolidation failed", e);
-		else if (cubeDiff.isEmpty()) logger.info("Previous consolidation did not merge any chunks");
-		else logger.info("Consolidation finished. Launching consolidation task again.");
+		if (e != null) logger.log(WARNING,"Consolidation failed", e);
+		else if (cubeDiff.isEmpty()) logger.log(INFO, "Previous consolidation did not merge any chunks");
+		else logger.log(INFO, "Consolidation finished. Launching consolidation task again.");
 	}
 
 	@JmxAttribute

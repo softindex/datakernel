@@ -21,8 +21,6 @@ import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ReflectionUtils;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import javax.management.openmbean.OpenType;
@@ -35,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.*;
@@ -44,10 +43,12 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
+import static java.util.logging.Level.SEVERE;
+import static java.util.logging.Level.WARNING;
 
 @SuppressWarnings("rawtypes")
 public final class JmxMBeans implements DynamicMBeanFactory {
-	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
+	private static final Logger logger = Logger.getLogger(JmxMBeans.class.getName());
 
 	// refreshing jmx
 	public static final Duration DEFAULT_REFRESH_PERIOD_IN_SECONDS = Duration.ofSeconds(1);
@@ -408,7 +409,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {
 		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
 				!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			logger.warn("JmxRefreshableStats won't be refreshed when used in classes that do not implement" +
+			logger.log(WARNING, () -> "JmxRefreshableStats won't be refreshed when used in classes that do not implement" +
 					" EventloopJmxMBean. MBean class: " + mbeanClass.getName());
 		}
 
@@ -892,7 +893,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					}
 				}
 			} catch (Exception e) {
-				logger.error("Cannot get attributes: " + attrNames, e);
+				logger.log(SEVERE, e, () -> "Cannot get attributes: " + attrNames);
 			}
 			return attrList;
 		}
@@ -906,7 +907,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					setAttribute(attribute);
 					resultList.add(new Attribute(attribute.getName(), attribute.getValue()));
 				} catch (MBeanException e) {
-					logger.error("Cannot set attribute: " + attribute.getName(), e);
+					logger.log(SEVERE, e, () -> "Cannot set attribute: " + attribute.getName());
 				}
 			}
 			return resultList;

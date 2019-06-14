@@ -21,6 +21,7 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -35,6 +36,10 @@ public final class PingPongSocketConnection {
 	private static final int ITERATIONS = 3;
 	private static final String REQUEST_MSG = "PING";
 	private static final String RESPONSE_MSG = "PONG";
+	static {
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
+	}
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
 			.andThen(buf -> buf.asString(UTF_8));
