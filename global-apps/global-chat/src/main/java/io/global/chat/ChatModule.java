@@ -8,7 +8,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
@@ -57,7 +56,6 @@ public final class ChatModule extends AbstractModule {
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
 			DynamicOTNodeServlet<MessageOperation> roomServlet,
 			DynamicOTNodeServlet<DictionaryOperation> profileServlet,
-			@Named("Messaging") AsyncServlet messagingServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()
@@ -66,7 +64,6 @@ public final class ChatModule extends AbstractModule {
 				.with("/ot/room/:suffix/*", roomServlet)
 				.with("/ot/profile/:pubKey/*", profileServlet)
 				.with("/ot/myProfile/*", profileServlet)
-				.with("/rooms/*", messagingServlet)
 				.with("/*", staticServlet);
 	}
 

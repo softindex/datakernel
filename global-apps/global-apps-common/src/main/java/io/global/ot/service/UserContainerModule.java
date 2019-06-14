@@ -1,16 +1,13 @@
 package io.global.ot.service;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.ot.OTSystem;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.messaging.CreateSharedRepo;
-import io.global.ot.service.messaging.MessagingServlet;
 import io.global.pm.GlobalPmDriver;
 import io.global.pm.api.GlobalPmNode;
 
@@ -34,12 +31,6 @@ public class UserContainerModule<D> extends AbstractModule {
 	@Provides
 	ServiceEnsuringServlet providePrivKeyEnsuringServlet(UserContainerHolder<D> userContainerHolder, RoutingServlet servlet) {
 		return ServiceEnsuringServlet.create(userContainerHolder, servlet);
-	}
-
-	@Provides
-	@Named("Messaging")
-	AsyncServlet provideMessagingServlet(UserContainerHolder<D> userContainerHolder) {
-		return MessagingServlet.create(userContainerHolder);
 	}
 
 	@Provides

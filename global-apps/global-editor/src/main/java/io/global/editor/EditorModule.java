@@ -8,7 +8,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
@@ -53,16 +52,14 @@ public final class EditorModule extends AbstractModule {
 	@Provides
 	RoutingServlet provideMainServlet(
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
-			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
-			DynamicOTNodeServlet<DocumentMultiOperation> roomServlet,
-			@Named("Messaging") AsyncServlet messagingServlet,
+			DynamicOTNodeServlet<SharedReposOperation> documentListServlet,
+			DynamicOTNodeServlet<DocumentMultiOperation> documentServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()
-				.with("/contacts/*", contactsServlet)
-				.with("/index/*", roomListServlet)
-				.with("/document/:suffix/*", roomServlet)
-				.with("/documents/*", messagingServlet)
+				.with("/ot/contacts/*", contactsServlet)
+				.with("/ot/documents/*", documentListServlet)
+				.with("/ot/document/:suffix/*", documentServlet)
 				.with("/*", staticServlet);
 	}
 
