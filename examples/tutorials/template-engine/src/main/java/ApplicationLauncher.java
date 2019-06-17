@@ -9,7 +9,6 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.writer.ByteBufWriter;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.Map;
 
@@ -23,11 +22,6 @@ import static java.util.Collections.emptyMap;
 
 //[START EXAMPLE]
 public final class ApplicationLauncher extends HttpServerLauncher {
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
-
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
 		ByteBufWriter writer = new ByteBufWriter();
 		mustache.execute(writer, scopes);

@@ -13,7 +13,6 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.uikernel.UiKernelServlets;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.concurrent.ExecutorService;
 
@@ -25,10 +24,6 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 public class WebappLauncher extends Launcher {
 	private static final int DEFAULT_PORT = 8080;
 	private static final String DEFAULT_PATH_TO_RESOURCES = "/static";
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 
 	@Inject
 	AsyncHttpServer server;

@@ -42,17 +42,12 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 @Ignore
 public final class AsyncDnsClientTest {
-	static {
-		enableLogging("io.datakernel.dns");
-	}
-
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 

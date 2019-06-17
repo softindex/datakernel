@@ -3,7 +3,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -11,10 +10,6 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  * Example of creating the custom StreamConsumer. This implementation just outputs received data to the console.
  */
 public final class ConsumerExample<T> extends AbstractStreamConsumer<T> {
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 	@Override
 	protected void onStarted() {
 		getSupplier().resume(x -> System.out.println("received: " + x));

@@ -9,7 +9,6 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
@@ -21,10 +20,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class TcpServerExample {
 	private static final int PORT = 9922;
 	private static final byte[] CRLF = {CR, LF};
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 
 	/* Run server in an event loop. */
 	public static void main(String[] args) throws Exception {

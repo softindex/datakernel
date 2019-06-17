@@ -128,7 +128,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													})
 													.whenException(e -> {
 														messaging.close(e);
-														logger.log(WARNING, "Cancelled while trying to upload file " + filename + " (" + this +"): ");
+														logger.log(WARNING, "Cancelled while trying to upload file " + filename + " (" + this + "): ");
 													})
 													.whenComplete(uploadFinishPromise.recordStats())));
 								})
@@ -154,7 +154,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									}
 									long receivingSize = ((DownloadSize) msg).getSize();
 
-									logger.log(FINEST, "download size for file " + name +" is " + receivingSize + ": " + this);
+									logger.log(FINEST, "download size for file " + name + " is " + receivingSize + ": " + this);
 
 									RefLong size = new RefLong(0);
 									return Promise.of(messaging.receiveBinaryStream()
@@ -224,8 +224,8 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
 				.map(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
-				.whenResult($ -> logger.log(FINEST, () -> "connected to [" + address +"]: " + this))
-				.whenException(e -> logger.log(WARNING,() -> "failed connecting to [" + address + "] (" + e + "): " + this))
+				.whenResult($ -> logger.log(FINEST, () -> "connected to [" + address + "]: " + this))
+				.whenException(e -> logger.log(WARNING, () -> "failed connecting to [" + address + "] (" + e + "): " + this))
 				.whenComplete(connectPromise.recordStats());
 	}
 
@@ -256,7 +256,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								})
 								.whenException(e -> {
 									messaging.close(e);
-									logger.log(WARNING, "Error while processing command " + command +" (" + e +") : " + this);
+									logger.log(WARNING, "Error while processing command " + command + " (" + e + ") : " + this);
 								}));
 	}
 

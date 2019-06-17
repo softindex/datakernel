@@ -5,7 +5,6 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -50,12 +49,7 @@ import static java.util.logging.Level.INFO;
 public final class ReflectionExample {
 
 	interface MessageSender {
-
 		void send(String message);
-	}
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
@@ -88,7 +82,6 @@ public final class ReflectionExample {
 
 	@Inject
 	static class Application {
-
 		@Inject
 		@Named("first")
 		private MessageSender sender;

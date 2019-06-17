@@ -16,64 +16,89 @@
 
 package io.datakernel.test.rules;
 
-import io.datakernel.test.TestUtils;
+import org.jetbrains.annotations.Nullable;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * {@link TestRule} that enables deeper logger levels for specific tests that request it.
  */
 public final class LoggingRule implements TestRule {
+
+	private interface AnnotationExtractor {
+		<A extends Annotation> @Nullable A get(Class<A> annotation);
+	}
+
+	private static List<LoggerConfig> getAnnotations(AnnotationExtractor fn) {
+		LoggerConfig single = fn.get(LoggerConfig.class);
+		if (single == null) {
+			LoggerConfig.Container container = fn.get(LoggerConfig.Container.class);
+			if (container == null) {
+				return emptyList();
+			}
+			return asList(container.value());
+		} else {
+			return singletonList(single);
+		}
+	}
+
 	@Override
 	public Statement apply(Statement base, Description description) {
-		LoggerConfig[] clauses;
-		LoggerConfig single = description.getAnnotation(LoggerConfig.class);
-		if (single == null) {
-			LoggerConfig.Container container = description.getAnnotation(LoggerConfig.Container.class);
-			if (container == null) {
-				return base;
-			}
-			clauses = container.value();
-		} else {
-			clauses = new LoggerConfig[]{single};
-		}
+		List<LoggerConfig> clauses = new ArrayList<>();
+		description.getTestClass().getAnnotation(LoggerConfig.class);
+		clauses.addAll(getAnnotations(description.getTestClass()::getAnnotation));
+		clauses.addAll(getAnnotations(description::getAnnotation));
 		return new LambdaStatement(() -> {
-			Level[] oldLevels = new Level[clauses.length];
-			Logger[] loggers = new Logger[clauses.length];
-			for (int i = 0; i < clauses.length; i++) {
-				LoggerConfig clause = clauses[i];
-				Logger logger = Logger.getLogger(clause.logger());
+			Logger rootLogger = LogManager.getLogManager().getLogger("");
+			Handler[] oldHandlers = rootLogger.getHandlers();
+			for (Handler handler : oldHandlers) {
+				rootLogger.removeHandler(handler);
+			}
+			Level[] oldLevels = new Level[clauses.size()];
+			Logger[] loggers = new Logger[clauses.size()];
+			rootLogger.setLevel(Level.ALL);
+			for (int i = 0; i < clauses.size(); i++) {
+				LoggerConfig clause = clauses.get(i);
+				Logger logger = Logger.getLogger(
+						clause.logger() != Void.class ?
+								clause.logger().getName() :
+								clause.packageOf() != Void.class ?
+										clause.packageOf().getPackage().getName() :
+										"");
 				oldLevels[i] = logger.getLevel();
 				loggers[i] = logger;
-				logger.setLevel(Level.parse(clause.value()));
+				logger.setLevel(clause.value().getLevel());
 			}
+			rootLogger.addHandler(new SLF4JBridgeHandler());
+
 			try {
 				base.evaluate();
 			} finally {
+				for (Handler handler : rootLogger.getHandlers()) {
+					rootLogger.removeHandler(handler);
+				}
 				for (int i = 0; i < loggers.length; i++) {
 					loggers[i].setLevel(oldLevels[i]);
+				}
+				for (Handler handler : oldHandlers) {
+					rootLogger.addHandler(handler);
 				}
 			}
 		});
 	}
 
-	@Repeatable(LoggerConfig.Container.class)
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.METHOD, ElementType.TYPE})
-	public @interface LoggerConfig {
-		String logger() default TestUtils.ROOT_LOGGER;
-
-		String value();
-
-		@Retention(RetentionPolicy.RUNTIME)
-		@Target({ElementType.METHOD, ElementType.TYPE})
-		@interface Container {
-			LoggerConfig[] value();
-		}
-	}
 }

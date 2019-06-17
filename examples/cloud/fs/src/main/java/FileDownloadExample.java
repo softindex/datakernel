@@ -8,7 +8,6 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -36,10 +35,6 @@ public final class FileDownloadExample extends Launcher {
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
-	}
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
 	}
 
 	@Inject

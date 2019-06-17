@@ -24,8 +24,8 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggerConfig;
 import io.datakernel.test.rules.LoggingRule;
-import io.datakernel.test.rules.LoggingRule.LoggerConfig;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -35,6 +35,7 @@ import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsNodeImpl;
+import io.global.fs.local.RemoteFsCheckpointStorage;
 import io.global.fs.transformers.FrameSigner;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -55,11 +56,13 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.test.rules.ByteBufRule.IgnoreLeaks;
+import static io.datakernel.test.rules.LoggerLevel.*;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
+@LoggerConfig(logger = Eventloop.class, value = WARNING)
 public final class GlobalFsTest {
 	public static final String FILENAME = "folder/test.txt";
 	public static final String SIMPLE_CONTENT = "hello world, this is some string of bytes for Global-FS testing";
@@ -408,8 +411,8 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	@LoggerConfig(logger = "io.global.fs", value = "FINEST")
-	@LoggerConfig(logger = "io.global.fs.local.RemoteFsCheckpointStorage", value = "INFO")
+	@LoggerConfig(packageOf = FsClient.class, value = ALL)
+	@LoggerConfig(logger = RemoteFsCheckpointStorage.class, value = INFO)
 	public void catchUpTombstones() {
 		announce(alice, set(FIRST_ID, SECOND_ID));
 

@@ -24,18 +24,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
-import java.util.logging.Level;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
-
-	static {
-		enableLogging(Level.INFO);
-	}
 
 	static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
 	private static final int PORT = getFreePort();

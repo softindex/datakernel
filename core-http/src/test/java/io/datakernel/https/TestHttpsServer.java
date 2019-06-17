@@ -31,18 +31,11 @@ import java.util.concurrent.Executor;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.https.SslUtils.*;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;
-import static java.util.logging.Level.FINEST;
 
 public class TestHttpsServer {
 	private static final int PORT = getFreePort();
-
-	static {
-		enableLogging(FINEST);
-//		System.setProperty("javax.net.debug", "all");
-	}
 
 	public static void main(String[] args) throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();

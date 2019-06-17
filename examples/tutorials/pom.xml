@@ -13,6 +13,7 @@
 
   <artifactId>tutorials</artifactId>
   <name>Examples : Tutorials</name>
+
   <modules>
     <module>getting-started</module>
     <module>auth</module>
@@ -22,4 +23,5 @@
     <module>uikernel-integration</module>
     <module>rpc-kv-storage</module>
   </modules>
+
 </project>

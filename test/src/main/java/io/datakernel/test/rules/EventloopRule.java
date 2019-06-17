@@ -22,17 +22,12 @@ import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
-import static io.datakernel.test.TestUtils.enableLogging;
-import static java.util.logging.Level.WARNING;
-
 /**
  * {@link TestRule} that creates an eventloop and sets it to ThreadLocal
  */
 public final class EventloopRule implements TestRule {
-
 	static {
 		createEventloop();
-		enableLogging(Eventloop.class, WARNING);
 	}
 
 	private static void createEventloop() {

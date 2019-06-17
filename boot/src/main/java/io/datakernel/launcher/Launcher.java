@@ -31,6 +31,7 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,14 +41,17 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.makeGraphVizGraph;
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparingInt;
 import static java.util.logging.Level.*;
+import static java.util.logging.LogManager.getLogManager;
 
 /**
  * Integrates all modules together and manages application lifecycle by
@@ -86,8 +90,9 @@ import static java.util.logging.Level.*;
  * @see ServiceGraphModule
  * @see ConfigModule
  */
+@SuppressWarnings({"WeakerAccess", "UnusedReturnValue"})
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = Logger.getLogger(getClass().getName());
+	protected final Logger logger = getLogger();
 
 	protected String[] args = {};
 
@@ -222,17 +227,22 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			onRun.completeExceptionally(e);
 			onComplete.completeExceptionally(e);
 			throw e;
-		} catch (Error e) {
-			applicationError = e;
-			logger.log(SEVERE, "JVM Fatal Error", e);
-			throw e;
 		} catch (Throwable e) {
 			applicationError = e;
 			logger.log(SEVERE, "JVM Fatal Error", e);
-			throw new Exception(e);
+			if (e instanceof Error) throw (Error) e;
+			throw new RuntimeException(e);
 		} finally {
 			instantOfComplete = Instant.now();
 			completeLatch.countDown();
+
+			try {
+				LogManager manager = getLogManager();
+				if (manager instanceof LauncherLogManager) {
+					((LauncherLogManager) manager).reset0();
+				}
+			} catch (Throwable ignored) {
+			}
 		}
 	}
 
@@ -333,16 +343,60 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 * Shutdown notification is released on JVM shutdown or by calling {@link Launcher#shutdown()}
 	 */
 	protected final void awaitShutdown() throws InterruptedException {
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+		Runtime.getRuntime().addShutdownHook(new ShutdownNotificationThread());
+		shutdownLatch.await();
+	}
+
+	private class ShutdownNotificationThread extends Thread {
+		private ShutdownNotificationThread() {
+			super("shutdownNotification");
+			this.setContextClassLoader(null);
+		}
+
+		@Override
+		public void run() {
 			try {
 				shutdown();
 				completeLatch.await();
-				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
 			} catch (InterruptedException e) {
 				logger.log(SEVERE, "Shutdown took too long", e);
 			}
-		}, "shutdownNotification"));
-		shutdownLatch.await();
+		}
+	}
+
+	protected Logger getLogger() {
+		if (System.getProperty("java.util.logging.manager") == null) {
+			installLauncherLogManager();
+		}
+		if (System.getProperty("java.util.logging.config.class") == null && System.getProperty("java.util.logging.config.file") == null) {
+			installLogbackBridge();
+		}
+		return Logger.getLogger(getClass().getName());
+	}
+
+	public static void installLauncherLogManager() {
+		System.setProperty("java.util.logging.manager", LauncherLogManager.class.getName());
+	}
+
+	public static boolean installLogbackBridge() {
+		try {
+			Class<?> bridgeHandler = getSystemClassLoader().loadClass("org.slf4j.bridge.SLF4JBridgeHandler");
+			bridgeHandler.getMethod("removeHandlersForRootLogger").invoke(null);
+			bridgeHandler.getMethod("install").invoke(null);
+			return true;
+		} catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+			return false;
+		}
+	}
+
+	public static class LauncherLogManager extends LogManager {
+		@Override
+		public void reset() {
+		}
+
+		protected void reset0() {
+			super.reset();
+		}
 	}
 
 	/**

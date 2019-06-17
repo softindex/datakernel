@@ -7,7 +7,6 @@ import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -30,8 +29,6 @@ public final class ChannelFileExample {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
 	}
 
 	@NotNull

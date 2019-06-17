@@ -38,9 +38,6 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.enableLogging;
-import static java.util.logging.Level.FINEST;
-import static java.util.logging.Level.WARNING;
 
 @Ignore("takes forever, only for manual testing")
 public final class TestRepartitionController {
@@ -138,10 +135,6 @@ public final class TestRepartitionController {
 	}
 
 	private void testN(int n, int minSize, int maxSize) throws IOException {
-		enableLogging(WARNING);
-		enableLogging("io.datakernel.remotefs", FINEST);
-		enableLogging("io.datakernel.remotefs", FINEST);
-
 		long start = System.nanoTime();
 
 		int delta = maxSize - minSize;

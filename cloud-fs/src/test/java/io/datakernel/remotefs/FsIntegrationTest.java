@@ -28,6 +28,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggerConfig;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.Tuple2;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -51,6 +53,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.BAD_PATH;
+import static io.datakernel.test.rules.LoggerLevel.WARNING;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -60,6 +63,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.*;
 
+@LoggerConfig(logger = Eventloop.class, value = WARNING)
 public final class FsIntegrationTest {
 	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private static final byte[] BIG_FILE = new byte[2 * 1024 * 1024]; // 2 MB
@@ -71,6 +75,9 @@ public final class FsIntegrationTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@Rule
+	public LoggingRule loggingRule = new LoggingRule();
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();

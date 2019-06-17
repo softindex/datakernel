@@ -1,14 +1,8 @@
 import io.datakernel.eventloop.Eventloop;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static java.lang.System.currentTimeMillis;
 
 public final class EventloopExample {
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
-
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		long startTime = currentTimeMillis();

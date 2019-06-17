@@ -3,18 +3,12 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class HttpRequestParametersExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
-
 
 	@Provides
 	AsyncServlet servlet() {

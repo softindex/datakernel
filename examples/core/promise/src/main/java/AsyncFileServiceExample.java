@@ -6,7 +6,6 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFileService;
 import io.datakernel.file.ExecutorAsyncFileService;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -30,9 +29,6 @@ public final class AsyncFileServiceExample {
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
-
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
 	}
 
 	@NotNull

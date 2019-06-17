@@ -6,10 +6,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -18,15 +15,11 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class FileUploadExample extends HttpServerLauncher {
-	private final Path path;
-	{
-		try {
-			path = Files.createTempDirectory("upload-example");
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
+	private Path path;
+
+	@Override
+	protected void onStart() throws Exception {
+		path = Files.createTempDirectory("upload-example");
 	}
 
 	@Override

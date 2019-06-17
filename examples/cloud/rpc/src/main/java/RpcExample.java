@@ -7,7 +7,6 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.net.InetSocketAddress;
 
@@ -15,10 +14,6 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 public class RpcExample extends Launcher {
 	private static final int SERVICE_PORT = 34765;
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 
 	@Inject
 	private RpcClient client;

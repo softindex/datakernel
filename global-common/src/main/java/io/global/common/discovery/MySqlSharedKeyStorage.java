@@ -15,7 +15,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
@@ -26,6 +25,7 @@ import static io.datakernel.util.SqlUtils.execute;
 import static io.datakernel.util.Utils.loadResource;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.logging.Level.FINEST;
 
 public class MySqlSharedKeyStorage implements SharedKeyStorage {
 	private static final Logger logger = Logger.getLogger(MySqlSharedKeyStorage.class.getName());
@@ -142,12 +142,12 @@ public class MySqlSharedKeyStorage implements SharedKeyStorage {
 	}
 
 	public void initialize() throws IOException, SQLException {
-		logger.log(Level.FINEST, "Initializing table");
+		logger.log(FINEST, "Initializing table");
 		execute(dataSource, sql(new String(loadResource("sql/sharedKeys.sql"), UTF_8)));
 	}
 
 	public void truncateTables() throws SQLException {
-		logger.log(Level.FINEST, "Truncate tables");
+		logger.log(FINEST, "Truncate tables");
 		try (Connection connection = dataSource.getConnection()) {
 			Statement statement = connection.createStatement();
 			statement.execute(sql("TRUNCATE TABLE {receivers}"));

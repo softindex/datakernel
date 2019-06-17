@@ -33,7 +33,6 @@ import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
@@ -53,11 +52,6 @@ import static java.util.Collections.singleton;
 
 public final class GlobalFsApp extends Launcher {
 	private static final Logger logger = Logger.getLogger(GlobalFsApp.class.getName());
-
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 	public static final String DEFAULT_SERVER_ID = "Global FS";

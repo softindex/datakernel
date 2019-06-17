@@ -5,7 +5,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.http.AsyncServletDecorator.*;
 import static io.datakernel.http.HttpMethod.GET;
@@ -13,10 +12,6 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class ServletDecoratorExample extends HttpServerLauncher {
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 	@Provides
 	AsyncServlet servlet() {
 		return loadBody().serve(

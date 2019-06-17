@@ -1,17 +1,11 @@
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.Arrays;
 
 public final class PromisesExample {
 	private static int counter;
-
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 
 	private static void repeat() {
 		System.out.println("Repeat until exception:");

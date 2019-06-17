@@ -10,7 +10,6 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.net.InetSocketAddress;
 
@@ -19,10 +18,6 @@ import static io.datakernel.di.module.Modules.combine;
 
 public final class ServerScratch extends Launcher {
 	private static final int PORT = 8080;
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 
 	@Inject
 	private AsyncHttpServer server;

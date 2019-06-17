@@ -5,7 +5,6 @@ import io.datakernel.stream.processor.Sharders.HashSharder;
 import io.datakernel.stream.processor.StreamFilter;
 import io.datakernel.stream.processor.StreamMapper;
 import io.datakernel.stream.processor.StreamSharder;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -13,10 +12,6 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  * Example of some simple builtin stream nodes.
  */
 public final class BuiltinNodesExample {
-	static {
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
-	}
 	private static void filter() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 

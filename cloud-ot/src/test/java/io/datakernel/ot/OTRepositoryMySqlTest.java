@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
@@ -41,7 +40,6 @@ import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.test.TestUtils.dataSource;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -56,10 +54,6 @@ public class OTRepositoryMySqlTest {
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private OTRepositoryMySql<TestOp> repository;
-
-	static {
-		enableLogging(Level.FINEST);
-	}
 
 	@Before
 	public void before() throws IOException, SQLException {
