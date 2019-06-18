@@ -24,6 +24,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggerConfig;
 import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.test.rules.LoggerLevel.WARNING;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.ot.util.TestUtils.getCommitEntries;
@@ -49,6 +51,7 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@LoggerConfig(logger = SteppingCurrentTimeProvider.class, value = WARNING)
 public class GlobalOTNodeHttpClientTest {
 	private static final LinkedList<Object> params = new LinkedList<>();
 

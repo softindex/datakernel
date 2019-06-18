@@ -31,8 +31,7 @@ import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
-import static java.util.logging.Level.FINEST;
-import static java.util.logging.Level.WARNING;
+import static java.util.logging.Level.*;
 
 public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxMBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
@@ -193,7 +192,7 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 		int throttlingKeys = lastSelectedKeys + concurrentTasksSize;
 		int lastTimePredicted = (int) (throttlingKeys * smoothedTimePerKeyMillis);
 		if (gcTimeMillis != 0.0 && businessLogicTime > lastTimePredicted + gcTimeMillis) {
-			logger.log(FINEST, "GC detected " + businessLogicTime + " ms, " + throttlingKeys + " keys");
+			logger.log(FINE, "GC detected " + businessLogicTime + " ms, " + throttlingKeys + " keys");
 			businessLogicTime = lastTimePredicted + gcTimeMillis;
 			infoRoundsGc++;
 		}

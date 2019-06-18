@@ -75,8 +75,8 @@ public final class GlobalFsTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	@ClassRule
-	public static final LoggingRule loggingRule = new LoggingRule();
+	@Rule
+	public final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -411,7 +411,7 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	@LoggerConfig(packageOf = FsClient.class, value = ALL)
+	@LoggerConfig(packageOf = FsClient.class, value = FINEST)
 	@LoggerConfig(logger = RemoteFsCheckpointStorage.class, value = INFO)
 	public void catchUpTombstones() {
 		announce(alice, set(FIRST_ID, SECOND_ID));

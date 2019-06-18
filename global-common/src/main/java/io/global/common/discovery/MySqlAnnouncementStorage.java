@@ -22,7 +22,7 @@ import static io.datakernel.util.SqlUtils.execute;
 import static io.datakernel.util.Utils.loadResource;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.FINER;
 
 public class MySqlAnnouncementStorage implements AnnouncementStorage {
 	private static final Logger logger = Logger.getLogger(MySqlAnnouncementStorage.class.getName());
@@ -98,12 +98,12 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 	}
 
 	public void initialize() throws IOException, SQLException {
-		logger.log(FINEST, "Initializing table");
+		logger.log(FINER, "Initializing table");
 		execute(dataSource, sql(new String(loadResource("sql/announcements.sql"), UTF_8)));
 	}
 
 	public void truncateTables() throws SQLException {
-		logger.log(FINEST, "Truncate tables");
+		logger.log(FINER, "Truncate tables");
 		try (Connection connection = dataSource.getConnection()) {
 			Statement statement = connection.createStatement();
 			statement.execute(sql("TRUNCATE TABLE {announcements}"));

@@ -40,7 +40,7 @@ import java.util.stream.Stream;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.util.Utils.nSuccessesOrLess;
@@ -210,7 +210,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 							.map($2 -> entry);
 				}))
 				.map(ChannelSupplier::of)
-				.whenComplete(toLogger(logger, FINEST, "download", repositoryId, this));
+				.whenComplete(toLogger(logger, FINER, "download", repositoryId, this));
 	}
 
 	@Override
@@ -376,7 +376,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	public Promise<Void> fetch() {
 		return forEachRepository(RepositoryEntry::fetch)
-				.whenComplete(toLogger(logger, FINEST, "fetch", this));
+				.whenComplete(toLogger(logger, FINER, "fetch", this));
 	}
 
 	public Promise<Void> push() {

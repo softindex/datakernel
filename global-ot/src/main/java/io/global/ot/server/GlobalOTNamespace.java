@@ -27,7 +27,7 @@ import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.emptySet;
-import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNamespace, GlobalOTNodeImpl, GlobalOTNode> {
@@ -59,7 +59,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 	@NotNull
 	private Promise<Void> doUpdateRepositories() {
-		logger.log(FINEST, "Updating repositories");
+		logger.log(FINER, "Updating repositories");
 		if (updateRepositoriesTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.complete();
 		}
@@ -254,7 +254,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doUpdateHeads() {
-			logger.log(FINEST, "Updating heads");
+			logger.log(FINER, "Updating heads");
 			if (updateHeadsTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -268,7 +268,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doUpdateSnapshots() {
-			logger.log(FINEST, "Updating snapshots");
+			logger.log(FINER, "Updating snapshots");
 			if (updateSnapshotsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -287,7 +287,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doUpdatePullRequests() {
-			logger.log(FINEST, "Updating pull requests");
+			logger.log(FINER, "Updating pull requests");
 			if (updatePullRequestsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -327,7 +327,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doFetch(GlobalOTNode targetNode) {
-			logger.log(FINEST, () -> repositoryId + " fetching from " + targetNode);
+			logger.log(FINER, () -> repositoryId + " fetching from " + targetNode);
 			return transfer(targetNode, node);
 		}
 
@@ -337,7 +337,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private Promise<Void> doPush(GlobalOTNode targetNode) {
-			logger.log(FINEST,() -> repositoryId + " pushing to " + targetNode);
+			logger.log(FINER,() -> repositoryId + " pushing to " + targetNode);
 			return transfer(node, targetNode);
 		}
 
@@ -357,7 +357,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		@NotNull
 		private Promise<Void> doPushSnapshots() {
 			return forEachMaster(master -> {
-				logger.log(FINEST, () -> repositoryId + " pushing snapshots to " + master);
+				logger.log(FINER, () -> repositoryId + " pushing snapshots to " + master);
 				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in node.getCommitStorage().listSnapshotIds()
 				return master.listSnapshots(repositoryId, emptySet())
 						.then(remoteSnapshotIds -> node.getCommitStorage().listSnapshotIds(repositoryId)
@@ -372,7 +372,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		@NotNull
 		private Promise<Void> doPushPullRequests() {
 			return forEachMaster(master -> {
-				logger.log(FINEST, () -> repositoryId + " pushing pull requests to " + master);
+				logger.log(FINER, () -> repositoryId + " pushing pull requests to " + master);
 				return master.getPullRequests(repositoryId)
 						.then(remotePullRequests -> node.getCommitStorage().getPullRequests(repositoryId)
 								.map(localPullRequests -> difference(localPullRequests, remotePullRequests)))

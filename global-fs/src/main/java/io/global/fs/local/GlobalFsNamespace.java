@@ -217,6 +217,6 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 									});
 						}
 				))
-				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "fetch", space, from, node));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINER, "fetch", space, from, node));
 	}
 }

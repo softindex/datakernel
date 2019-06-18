@@ -26,7 +26,7 @@ import static io.datakernel.cube.Utils.chunksInDiffs;
 import static io.datakernel.ot.OTAlgorithms.checkout;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
@@ -95,8 +95,8 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	private Promise<Void> backupChunks(K commitId, Set<C> chunkIds) {
 		return storage.backup(String.valueOf(commitId), chunkIds)
 				.whenComplete(promiseBackupChunks.recordStats())
-				.whenComplete(logger.isLoggable(Level.FINEST) ?
-						toLogger(logger, FINEST, thisMethod(), chunkIds) :
+				.whenComplete(logger.isLoggable(Level.FINER) ?
+						toLogger(logger, FINER, thisMethod(), chunkIds) :
 						toLogger(logger, thisMethod(), toLimitedString(chunkIds, 6)));
 	}
 

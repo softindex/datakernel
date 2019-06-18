@@ -33,8 +33,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptySet;
-import static java.util.logging.Level.FINEST;
-import static java.util.logging.Level.WARNING;
+import static java.util.logging.Level.*;
 
 /**
  * It is basic implementation of {@link StreamSupplier}
@@ -176,7 +175,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void resume(StreamDataAcceptor<T> dataAcceptor) {
-		logger.log(FINEST, () -> "Start producing: " + this);
+		logger.log(FINER, () -> "Start producing: " + this);
 		assert dataAcceptor != null;
 
 		if (currentDataAcceptor == dataAcceptor) return;
@@ -195,7 +194,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void suspend() {
-		logger.log(FINEST, () -> "Suspend supplier: " + this);
+		logger.log(FINER, () -> "Suspend supplier: " + this);
 		if (!isReceiverReady())
 			return;
 		currentDataAcceptor = null;

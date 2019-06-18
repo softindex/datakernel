@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
@@ -61,7 +61,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 		String file = getFilenameFor(space);
 		return storage.upload(file, 0, now.currentTimeMillis())
 				.then(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
-				.whenComplete(toLogger(logger, FINEST, "store", signedAnnounceData, this));
+				.whenComplete(toLogger(logger, FINER, "store", signedAnnounceData, this));
 	}
 
 	@Override
@@ -85,7 +85,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 						buf.recycle();
 					}
 				})
-				.whenComplete(toLogger(logger, FINEST, "load", space, this));
+				.whenComplete(toLogger(logger, FINER, "load", space, this));
 	}
 
 	@Override

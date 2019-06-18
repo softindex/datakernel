@@ -31,7 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
@@ -91,7 +91,7 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.whenComplete(toLogger(logger, FINEST, "list", glob, this));
+				.whenComplete(toLogger(logger, FINER, "list", glob, this));
 	}
 
 
@@ -101,14 +101,14 @@ public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAd
 				.map(res -> res.stream()
 						.map(this::fromCheckpoint)
 						.collect(toList()))
-				.whenComplete(toLogger(logger, FINEST, "list", glob, this));
+				.whenComplete(toLogger(logger, FINER, "list", glob, this));
 	}
 
 	@Override
 	public Promise<FileMetadata> getMetadata(String name) {
 		return driver.getMetadata(space, name)
 				.map(checkpoint -> checkpoint != null ? fromCheckpoint(checkpoint) : null)
-				.whenComplete(toLogger(logger, FINEST, "getMetadata", name, this));
+				.whenComplete(toLogger(logger, FINER, "getMetadata", name, this));
 	}
 
 	@Override

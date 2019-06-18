@@ -44,7 +44,7 @@ import static io.datakernel.async.Promises.reduce;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
@@ -75,7 +75,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 		String file = getFilenameFor(receiver, signedSharedSimKey.getValue().getHash());
 		return storage.upload(file, 0, now.currentTimeMillis())
 				.then(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo)
-				.whenComplete(toLogger(logger, FINEST, "store", receiver, signedSharedSimKey, this));
+				.whenComplete(toLogger(logger, FINER, "store", receiver, signedSharedSimKey, this));
 	}
 
 	private static final BiFunction<ChannelSupplier<ByteBuf>, Throwable, Promise<@Nullable SignedData<SharedSimKey>>> LOAD_SHARED_KEY =
@@ -102,7 +102,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	public Promise<@Nullable SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
 		return storage.download(getFilenameFor(receiver, hash))
 				.thenEx(LOAD_SHARED_KEY)
-				.whenComplete(toLogger(logger, FINEST, "load", receiver, hash, this));
+				.whenComplete(toLogger(logger, FINER, "load", receiver, hash, this));
 	}
 
 	@Override
@@ -112,7 +112,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 						.map(meta -> AsyncSupplier.cast(() -> storage.download(meta.getName()).thenEx(LOAD_SHARED_KEY)))
 						.collect(toList()))))
 				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()))
-				.whenComplete(toLogger(logger, FINEST, "loadAll", receiver, this));
+				.whenComplete(toLogger(logger, FINER, "loadAll", receiver, this));
 	}
 
 	@Override

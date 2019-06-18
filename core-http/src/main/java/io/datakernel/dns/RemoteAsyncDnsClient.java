@@ -134,12 +134,12 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
-			logger.log(Level.FINEST,  () -> query + " already contained an IP address within itself");
+			logger.log(Level.FINE,  () -> query + " already contained an IP address within itself");
 			return Promise.of(fromQuery);
 		}
 
 		if (socket == null) {
-			logger.log(Level.FINEST, "Incoming query, opening UDP socket");
+			logger.log(Level.FINER, "Incoming query, opening UDP socket");
 			try {
 				DatagramChannel channel = Eventloop.createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
 				AsyncUdpSocketImpl s = AsyncUdpSocketImpl.create(eventloop, channel)
@@ -176,7 +176,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 						return Promise.of(queryResult);
 					}
 					if (e == TIMEOUT_EXCEPTION) {
-						logger.log(Level.FINEST, () -> query + " timed out");
+						logger.log(Level.FINE, () -> query + " timed out");
 						e = new DnsQueryException(RemoteAsyncDnsClient.class, DnsResponse.ofFailure(transaction, TIMED_OUT));
 						transactions.remove(transaction);
 						closeIfDone();
@@ -215,7 +215,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler,
 		if (!transactions.isEmpty()) {
 			return;
 		}
-		logger.log(Level.FINEST, "All queries complete, closing UDP socket");
+		logger.log(Level.FINER, "All queries complete, closing UDP socket");
 		close(); // transactions is empty so no loops here
 	}
 

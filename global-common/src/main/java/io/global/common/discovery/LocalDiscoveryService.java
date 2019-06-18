@@ -35,7 +35,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.logging.Level.INFO;
 
@@ -83,7 +83,7 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	@Override
 	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return announcementStorage.load(space)
-				.whenComplete(toLogger(logger, FINEST, "find", space, this));
+				.whenComplete(toLogger(logger, FINER, "find", space, this));
 	}
 
 	@Override
@@ -96,13 +96,13 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	@Override
 	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
 		return sharedKeyStorage.load(receiver, hash)
-				.whenComplete(toLogger(logger, FINEST, "getSharedKey", receiver, hash, this));
+				.whenComplete(toLogger(logger, FINER, "getSharedKey", receiver, hash, this));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
 		return sharedKeyStorage.loadAll(receiver)
-				.whenComplete(toLogger(logger, FINEST, "getSharedKeys", receiver, this));
+				.whenComplete(toLogger(logger, FINER, "getSharedKeys", receiver, this));
 	}
 
 	@NotNull

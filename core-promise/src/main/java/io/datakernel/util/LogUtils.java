@@ -47,6 +47,13 @@ public class LogUtils {
 			}
 		},
 
+		FINER((logger, msg) -> logger.log(java.util.logging.Level.FINER, msg)) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return logger.isLoggable(java.util.logging.Level.FINER);
+			}
+		},
+
 		FINE((logger, msg) -> logger.log(java.util.logging.Level.FINE, msg)) {
 			@Override
 			protected boolean isEnabled(Logger logger) {

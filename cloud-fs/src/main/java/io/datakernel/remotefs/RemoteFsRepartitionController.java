@@ -245,7 +245,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 										});
 							});
 				})
-				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "repartitionFile", meta));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINER, "repartitionFile", meta));
 	}
 
 	private Promise<List<Object>> getPartitionsThatNeedOurFile(FileMetadata fileToUpload, List<Object> selected) {

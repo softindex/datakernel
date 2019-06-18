@@ -39,8 +39,7 @@ import java.util.Objects;
 import java.util.logging.Logger;
 
 import static io.datakernel.remotefs.FsClient.*;
-import static io.datakernel.util.LogUtils.Level.FINEST;
-import static io.datakernel.util.LogUtils.Level.INFO;
+import static io.datakernel.util.LogUtils.Level.*;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
@@ -140,23 +139,23 @@ public final class GlobalFsDriver {
 	public Promise<List<GlobalFsCheckpoint>> listEntities(PubKey space, String glob) {
 		return node.listEntities(space, glob)
 				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, FINEST, "listEntities", glob, this));
+				.whenComplete(toLogger(logger, FINER, "listEntities", glob, this));
 	}
 
 	public Promise<List<GlobalFsCheckpoint>> list(PubKey space, String glob) {
 		return node.list(space, glob)
 				.map(list -> list.stream().map(SignedData::getValue).collect(toList()))
-				.whenComplete(toLogger(logger, FINEST, "list", glob, this));
+				.whenComplete(toLogger(logger, FINER, "list", glob, this));
 	}
 
 	public Promise<@Nullable GlobalFsCheckpoint> getMetadata(PubKey space, String filename) {
 		return node.getMetadata(space, filename)
 				.then(signedCheckpoint -> Promise.of(signedCheckpoint != null ? signedCheckpoint.getValue() : null))
-				.whenComplete(toLogger(logger, FINEST, "getMetadata", filename, this));
+				.whenComplete(toLogger(logger, FINER, "getMetadata", filename, this));
 	}
 
 	public Promise<Void> delete(KeyPair keys, String filename, long revision) {
 		return node.delete(keys.getPubKey(), SignedData.sign(CHECKPOINT_CODEC, GlobalFsCheckpoint.createTombstone(filename, revision), keys.getPrivKey()))
-				.whenComplete(toLogger(logger, FINEST, "delete", filename, revision, this));
+				.whenComplete(toLogger(logger, FINER, "delete", filename, revision, this));
 	}
 }

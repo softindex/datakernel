@@ -44,8 +44,7 @@ import java.util.logging.Logger;
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.util.logging.Level.FINEST;
-import static java.util.logging.Level.SEVERE;
+import static java.util.logging.Level.*;
 
 public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
 	private static final Logger logger = Logger.getLogger(RpcClientConnection.class.getName());
@@ -130,7 +129,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 			rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
 			connectionStats.getRejectedRequests().recordEvent();
 
-			logger.log(FINEST, "RPC client uplink is overloaded");
+			logger.log(FINE, "RPC client uplink is overloaded");
 
 			returnProtocolError(cb, RPC_OVERLOAD_EXCEPTION);
 			return;

@@ -42,7 +42,7 @@ import java.util.logging.Logger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
-import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.CONFIG;
 
 /**
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
@@ -139,7 +139,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	public ConfigModule printEffectiveConfig() {
 		return withEffectiveConfigConsumer(effectiveConfig ->
-				logger.log(INFO, "Effective config:\n" + effectiveConfig));
+				logger.log(CONFIG, "Effective config:\n" + effectiveConfig));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -169,7 +169,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	private void save(EffectiveConfig effectiveConfig, AtomicBoolean started) {
 		started.set(true);
 		if (effectiveConfigPath != null) {
-			logger.log(INFO, () -> "Saving effective config to " + effectiveConfigPath);
+			logger.log(CONFIG, () -> "Saving effective config to " + effectiveConfigPath);
 			effectiveConfig.saveEffectiveConfigTo(effectiveConfigPath);
 		}
 		if (effectiveConfigConsumer != null) {

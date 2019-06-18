@@ -39,7 +39,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.DiscoveryCommand.*;
 import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.logging.Level.FINEST;
+import static java.util.logging.Level.FINER;
 
 public final class HttpDiscoveryService implements DiscoveryService {
 	private static final Logger logger = Logger.getLogger(HttpDiscoveryService.class.getName());
@@ -97,7 +97,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.build()))
 				.thenEx((response, e) -> {
 					if (e != null) {
-						logger.log(FINEST, "Failed to find announcements", e);
+						logger.log(FINER, "Failed to find announcements", e);
 						return Promise.of(null);
 					}
 					return response.loadBody()

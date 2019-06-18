@@ -51,6 +51,7 @@ import java.util.logging.Logger;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.Level.FINEST;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -281,21 +282,21 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						.withLength(length == -1 ? Long.MAX_VALUE : length)
 						// call withAcknowledgement in eventloop thread
 						.withEndOfStream(eos -> eos.whenComplete(readFinishPromise.recordStats())))
-				.whenComplete(toLogger(logger, FINEST, "download", name, offset, length, this))
+				.whenComplete(toLogger(logger, FINER, "download", name, offset, length, this))
 				.whenComplete(readBeginPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> listEntities(String glob) {
 		return Promise.ofBlockingCallable(executor, () -> doList(glob, true))
-				.whenComplete(toLogger(logger, FINEST, "listEntities", glob, this))
+				.whenComplete(toLogger(logger, FINER, "listEntities", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return Promise.ofBlockingCallable(executor, () -> doList(glob, false))
-				.whenComplete(toLogger(logger, FINEST, "list", glob, this))
+				.whenComplete(toLogger(logger, FINER, "list", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
@@ -339,7 +340,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return null;
 				})
-				.whenComplete(toLogger(logger, FINEST, "move", name, target, this))
+				.whenComplete(toLogger(logger, FINER, "move", name, target, this))
 				.whenComplete(singleMovePromise.recordStats());
 	}
 
@@ -352,7 +353,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					doCopy(name, target, targetRevision);
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, FINEST, "copy", name, target, this))
+				.whenComplete(toLogger(logger, FINER, "copy", name, target, this))
 				.whenComplete(singleCopyPromise.recordStats());
 	}
 
@@ -365,7 +366,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					doDelete(name, revision);
 					return (Void) null;
 				})
-				.whenComplete(toLogger(logger, FINEST, "delete", name, this))
+				.whenComplete(toLogger(logger, FINER, "delete", name, this))
 				.whenComplete(singleDeletePromise.recordStats());
 	}
 

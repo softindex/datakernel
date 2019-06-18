@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.FINEST;
 
 /**
@@ -107,7 +108,7 @@ public final class DnsCache {
 		CachedDnsQueryResult cachedResult = cache.get(query);
 
 		if (cachedResult == null) {
-			logger.log(FINEST, " cache miss");
+			logger.log(FINE, " cache miss");
 			return null;
 		}
 
@@ -116,7 +117,7 @@ public final class DnsCache {
 		if (result.isSuccessful()) {
 			logger.log(FINEST, () -> query + " cache hit");
 		} else {
-			logger.log(FINEST, () -> query + " error cache hit");
+			logger.log(FINE, () -> query + " error cache hit");
 		}
 
 		if (isExpired(cachedResult)) {

@@ -28,7 +28,7 @@ import static io.datakernel.cube.Utils.chunksInDiffs;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.CollectionUtils.union;
-import static io.datakernel.util.LogUtils.Level.FINEST;
+import static io.datakernel.util.LogUtils.Level.FINER;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
@@ -200,8 +200,8 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 						.whenComplete(promiseCleanupRepository.recordStats()))
 				.then($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
 						.whenComplete(promiseCleanupChunks.recordStats()))
-				.whenComplete(logger.isLoggable(Level.FINEST) ?
-						toLogger(logger, FINEST, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
+				.whenComplete(logger.isLoggable(Level.FINER) ?
+						toLogger(logger, FINER, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
 						toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
 	}
 

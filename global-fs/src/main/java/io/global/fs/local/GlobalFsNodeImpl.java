@@ -203,14 +203,14 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> listEntities(PubKey space, String glob) {
 		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob))
-				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "list", space, glob, this));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINER, "list", space, glob, this));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
 		return simpleMethod(space, node -> node.getMetadata(space, filename), ns -> ns.getMetadata(filename))
 				.mapEx((res, e) -> e != null ? null : res)
-				.whenComplete(toLogger(logger, LogUtils.Level.FINEST, "getMetadata", space, filename, this));
+				.whenComplete(toLogger(logger, LogUtils.Level.FINER, "getMetadata", space, filename, this));
 	}
 
 	@Override
