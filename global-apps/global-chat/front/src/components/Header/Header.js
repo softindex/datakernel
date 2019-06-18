@@ -9,7 +9,6 @@ import connectService from "../../common/connectService";
 import AccountContext from "../../modules/account/AccountContext";
 
 function Header ({classes, logout}) {
-
     return (
       <AppBar className={classes.appBar} position="fixed">
         <Toolbar>

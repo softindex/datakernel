@@ -4,6 +4,8 @@ import messagesStyles from './messagesStyles';
 import Typography from '@material-ui/core/Typography';
 import Paper from '@material-ui/core/Paper';
 import classNames from 'classnames';
+import DoneIcon from '@material-ui/icons/Done';
+import DoneAllIcon from '@material-ui/icons/DoneAll';
 
 function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
   return (
@@ -20,29 +22,28 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
         })}
       >
         <Typography
-          color="textSecondary"
+          color="secondary"
           variant="subtitle2"
         >
           {author}
         </Typography>
         <Typography
-          color="textPrimary"
+          color="primary"
           variant="h6"
           gutterBottom
         >
           {text}
         </Typography>
         <Typography
-          color="textSecondary"
           variant="caption">
           {time}
         </Typography>
       </Paper>
-      {/*drawSide === 'left' && (
+      {drawSide === 'left' && (
         <div className={classes.statusWrapper}>
           {loaded ? <DoneAllIcon/> : <DoneIcon/>}
         </div>
-      )*/}
+      )}
     </div>
   );
 }

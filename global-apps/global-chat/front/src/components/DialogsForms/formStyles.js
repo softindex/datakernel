@@ -6,7 +6,8 @@ const formStyles = theme => ({
     color: theme.palette.grey[500]
   },
   chip: {
-    margin: `${theme.spacing.unit*1}px`
+    margin: `${theme.spacing.unit*1}px`,
+    marginTop: 0
   }
 });
 

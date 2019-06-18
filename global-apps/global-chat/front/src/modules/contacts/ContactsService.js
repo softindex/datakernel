@@ -1,5 +1,8 @@
 import Service from '../../common/Service';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
+import {ClientOTNode, OTStateManager} from "ot-core/lib";
+import contactsOTSystem from "./ot/ContactsOTSystem";
+import contactsSerializer from "./ot/serializer";
 
 const RETRY_CHECKOUT_TIMEOUT = 1000;
 
@@ -13,12 +16,21 @@ class ContactsService extends Service {
     this._reconnectTimeout = null;
   }
 
+  static create() {
+    const contactsOTNode = ClientOTNode.createWithJsonKey({
+      url: '/ot/contacts',
+      serializer: contactsSerializer
+    });
+    const contactsOTStateManager = new OTStateManager(() => new Map(), contactsOTNode, contactsOTSystem);
+    return new ContactsService(contactsOTStateManager);
+  }
+
   async init() {
     // Get initial state
     try {
       await this._contactsOTStateManager.checkout();
     } catch (err) {
-      console.error(err);
+      console.log(err);
       await this._reconnectDelay();
       await this.init();
       return;
@@ -73,7 +85,7 @@ class ContactsService extends Service {
     try {
       await this._contactsOTStateManager.sync();
     } catch (err) {
-      console.error(err);
+      console.log(err);
       await this._sync();
     }
   }

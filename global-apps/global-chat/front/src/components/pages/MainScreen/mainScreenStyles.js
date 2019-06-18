@@ -1,6 +1,9 @@
 const mainScreenStyles = () => ({
   chat: {
-    display: 'inline-block',
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'stretch'
   }
 });
 

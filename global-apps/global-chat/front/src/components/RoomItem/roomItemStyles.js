@@ -7,6 +7,10 @@ const roomItemStyles = theme => ({
   },
   link: {
     textDecoration: 'none',
+  },
+  avatar: {
+    width: '48px',
+    height: '48px'
   }
 });
 

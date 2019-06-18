@@ -6,8 +6,8 @@ const messageFormStyles = theme => {
       justifyContent: 'center',
       alignItems: 'center',
       flexShrink: 1,
-      margin: `${theme.spacing.unit * 2}px auto`,
-      maxWidth: '900px'
+      margin: `${theme.spacing.unit}px auto`,
+      maxWidth: '850px',
     },
     submitIcon: {
       marginRight: theme.spacing.unit
@@ -25,7 +25,8 @@ const messageFormStyles = theme => {
       color: theme.palette.common.black
     },
     form: {
-      padding: `0px ${theme.spacing.unit * 2}px`
+      padding: `0px ${theme.spacing.unit * 1}px`,
+      marginBottom: `${theme.spacing.unit * 2}px`
     }
   }
 };

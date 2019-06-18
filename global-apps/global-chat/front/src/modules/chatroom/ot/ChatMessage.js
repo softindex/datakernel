@@ -1,12 +1,12 @@
 class ChatMessage {
-  constructor(timestamp, author, content) {
+  constructor(timestamp, authorPublicKey, content) {
     this.timestamp = timestamp;
-    this.author = author;
+    this.author = authorPublicKey;
     this.content = content;
   }
 
   isEmpty() {
-    return !this.author || !this.content;
+    return !this.author && !this.content;
   }
 
   isEqual(chatMessage) {

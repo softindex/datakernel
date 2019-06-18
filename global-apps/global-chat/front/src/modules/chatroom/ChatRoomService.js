@@ -1,17 +1,30 @@
 import Service from '../../common/Service';
 import ChatRoomOTOperation from './ot/ChatRoomOTOperation';
 import ChatMessage from "./ot/ChatMessage";
+import {ClientOTNode, OTStateManager} from "ot-core/lib";
+import chatRoomSerializer from "./ot/serializer";
+import chatRoomOTSystem from "./ot/ChatRoomOTSystem";
 
 const RETRY_CHECKOUT_TIMEOUT = 1000;
 
 class ChatRoomService extends Service {
-  constructor(chatOTStateManager) {
+  constructor(chatOTStateManager, publicKey) {
     super({
       messages: [],
       ready: false,
     });
     this._chatOTStateManager = chatOTStateManager;
     this._reconnectTimeout = null;
+    this._publicKey = publicKey;
+  }
+
+  static createFrom(roomId, publicKey) {
+    const chatRoomOTNode = ClientOTNode.createWithJsonKey({
+      url: '/ot/room/' + roomId,
+      serializer: chatRoomSerializer
+    });
+    const chatRoomStateManager = new OTStateManager(() => new Set(), chatRoomOTNode, chatRoomOTSystem);
+    return new ChatRoomService(chatRoomStateManager, publicKey);
   }
 
   async init() {
@@ -19,7 +32,7 @@ class ChatRoomService extends Service {
     try {
       await this._chatOTStateManager.checkout();
     } catch (err) {
-      console.error(err);
+      console.log(err);
       await this._reconnectDelay();
       await this.init();
       return;
@@ -35,9 +48,9 @@ class ChatRoomService extends Service {
     this._chatOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async sendMessage(author, content) {
+  async sendMessage(content) {
     const timestamp = Date.now();
-    const message = new ChatMessage(timestamp, author, content);
+    const message = new ChatMessage(timestamp, this._publicKey, content);
     const operation = new ChatRoomOTOperation(message, false);
     this._chatOTStateManager.add([operation]);
 
@@ -69,7 +82,7 @@ class ChatRoomService extends Service {
     try {
       await this._chatOTStateManager.sync();
     } catch (err) {
-      console.error(err);
+      console.log(err);
       await this._sync();
     }
   }

@@ -14,7 +14,7 @@ import * as PropTypes from "prop-types";
 import { withSnackbar } from 'notistack';
 import ButtonWithProgress from "../UIElements/ButtonProgress";
 
-class ContactForm extends React.Component {
+class AddContactForm extends React.Component {
   state = {
     pubKey: '',
     name: '',
@@ -110,7 +110,7 @@ class ContactForm extends React.Component {
   }
 }
 
-ContactForm.propTypes = {
+AddContactForm.propTypes = {
   enqueueSnackbar: PropTypes.func.isRequired,
 };
 
@@ -121,5 +121,5 @@ export default connectService(
     }
   })
 )(
-  withSnackbar(withStyles(formStyles)(ContactForm))
+  withSnackbar(withStyles(formStyles)(AddContactForm))
 );

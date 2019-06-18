@@ -1,35 +1,55 @@
-import Room from "./Room";
+import {isArraysEqual} from "../../../common/utils";
 
 class RoomsOTOperation {
-  constructor(room, remove) {
-    this.room = room;
-    this.remove = remove;
+  constructor(roomId, participants, remove) {
+    this._roomId = roomId;
+    this._participants = participants;
+    this._removed = remove;
   }
 
-  static EMPTY = new RoomsOTOperation(new Room('', []), false);
+  static EMPTY = new RoomsOTOperation(null, [], false);
+
+  static createFromJson(json) {
+    const room = json['shared repo'];
+    return new RoomsOTOperation(room.id, room.participants, json.remove);
+  }
 
   apply(state) {
-    const key = JSON.stringify(this.room);
-
-    if (this.remove) {
-      state.delete(key);
+    if (this._removed) {
+      state.delete(this._roomId);
     } else {
-      state.add(key);
+      state.set(this._roomId, {
+        participants: this._participants
+      });
     }
 
     return state;
   }
 
   isEmpty() {
-    return this.room.isEmpty();
+    return this._participants.length === 0;
   }
 
   invert() {
-    return new RoomsOTOperation(this.room, !this.remove);
+    return new RoomsOTOperation(this._roomId, this._participants, !this._removed);
   }
 
-  isEqual(chatOTOperation) {
-    return chatOTOperation.room.isEqual(this.room) && chatOTOperation.remove === this.remove;
+  isEqual(roomOTOperation) {
+    return (
+      roomOTOperation._roomId === this._roomId
+      && isArraysEqual(roomOTOperation._participants, this._participants)
+      && roomOTOperation._removed === this._removed
+    );
+  }
+
+  toJSON() {
+    return {
+      'shared repo': {
+        id: this._roomId,
+        participants: this._participants
+      },
+      remove: this._removed
+    };
   }
 }
 

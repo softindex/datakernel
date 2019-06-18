@@ -1,27 +1,30 @@
 import React from 'react';
 import {withStyles} from '@material-ui/core';
+import PropTypes from 'prop-types';
 import chatStyles from './chatRoomStyles';
 import Messages from '../Messages/Messages';
 import MessageForm from '../MessageForm/MessageForm';
-import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import chatRoomSerializer from "../../modules/chatroom/ot/serializer";
-import chatRoomOTSystem from "../../modules/chatroom/ot/ChatRoomOTSystem";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
+import connectService from '../../common/connectService';
+import AccountContext from '../../modules/account/AccountContext';
 
 class ChatRoom extends React.Component {
+  static propTypes = {
+    roomId: PropTypes.string.isRequired
+  };
+
   constructor(props) {
     super(props);
-    let chatRoomOTNode = ClientOTNode.createWithJsonKey({
-      url: '/index',
-      serializer: chatRoomSerializer
-    });
-    let chatRoomStateManager = new OTStateManager(() => new Set(), chatRoomOTNode, chatRoomOTSystem);
-    this.chatRoomService = new ChatRoomService(chatRoomStateManager);
+    this.chatRoomService = ChatRoomService.createFrom(props.roomId, props.publicKey);
   }
 
   componentDidMount() {
-    this.chatRoomService.init();
+     this.chatRoomService.init();
+  }
+
+  componentWillUnmount() {
+    this.chatRoomService.stop();
   }
 
   update = newState => this.setState(newState);
@@ -40,4 +43,6 @@ class ChatRoom extends React.Component {
   }
 }
 
-export default withStyles(chatStyles)(ChatRoom);
+export default connectService(AccountContext, ({publicKey}) => ({publicKey}))(
+  withStyles(chatStyles)(ChatRoom)
+);

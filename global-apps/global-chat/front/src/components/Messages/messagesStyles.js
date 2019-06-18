@@ -6,7 +6,8 @@ const messageFormStyles = theme => {
       justifyContent: 'flex-end',
       flexGrow: 1,
       width: '100%',
-      height: 'calc(100% - 145px)'
+      height: 'calc(100% - 1px)',
+      marginTop: '-150px'
     },
     messageRow: {
       display: 'flex',
@@ -22,7 +23,14 @@ const messageFormStyles = theme => {
     wrapper: {
       width: '100%',
       overflowY: 'auto',
-      paddingTop: theme.spacing.unit * 2
+      paddingTop: theme.spacing.unit * 2,
+      marginTop: 165,
+      '&::-webkit-scrollbar-track': {
+        background: 'border-box'
+      },
+      '&::-webkit-scrollbar-thumb': {
+        background: '#66666680'
+      }
     },
     message: {
       display: 'flex',
@@ -47,16 +55,20 @@ const messageFormStyles = theme => {
     },
     progressWrapper: {
       width: '100%',
+      marginTop: 300,
+      position: 'relative',
       padding: theme.spacing.unit * 10,
       boxSizing: 'border-box',
-      position: 'absolute',
-      top: 0,
-      left: 0,
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center'
     },
-    headerPadding: theme.mixins.toolbar
+    headerPadding: theme.mixins.toolbar,
+    paper: {
+      borderRadius: '7px',
+      backgroundColor: '#F5F5DC',
+      alignSelf: 'center'
+    }
   }
 };
 
