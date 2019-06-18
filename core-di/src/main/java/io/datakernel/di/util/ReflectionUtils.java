@@ -211,7 +211,7 @@ public final class ReflectionUtils {
 	}
 
 	@NotNull
-	private static Dependency[] toDependencies(@Nullable Type container, Parameter[] parameters) {
+	public static Dependency[] toDependencies(@Nullable Type container, Parameter[] parameters) {
 		Dependency[] dependencies = new Dependency[parameters.length];
 		if (parameters.length == 0) {
 			return dependencies;

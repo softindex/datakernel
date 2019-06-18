@@ -19,6 +19,8 @@ package io.datakernel.test.rules;
 import org.junit.runners.model.Statement;
 
 public final class LambdaStatement extends Statement {
+	public static final Statement EMPTY = new LambdaStatement(() -> {});
+
 	private final ThrowingRunnable body;
 
 	public LambdaStatement(ThrowingRunnable body) {
