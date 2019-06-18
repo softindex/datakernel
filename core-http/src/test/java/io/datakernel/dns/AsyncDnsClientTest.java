@@ -54,6 +54,9 @@ public final class AsyncDnsClientTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
+
 	@Rule
 	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 

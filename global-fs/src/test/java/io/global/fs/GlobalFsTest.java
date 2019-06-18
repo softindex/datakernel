@@ -411,7 +411,6 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	@LoggerConfig(packageOf = FsClient.class, value = FINEST)
 	@LoggerConfig(logger = RemoteFsCheckpointStorage.class, value = INFO)
 	public void catchUpTombstones() {
 		announce(alice, set(FIRST_ID, SECOND_ID));

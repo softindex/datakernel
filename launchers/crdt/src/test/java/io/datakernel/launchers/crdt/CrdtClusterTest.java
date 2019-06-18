@@ -35,7 +35,10 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.test.rules.*;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -54,11 +57,9 @@ import static io.datakernel.http.HttpMethod.PUT;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.rules.LoggerLevel.FINEST;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Ignore("manual demos")
-@LoggerConfig(FINEST)
 public final class CrdtClusterTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();

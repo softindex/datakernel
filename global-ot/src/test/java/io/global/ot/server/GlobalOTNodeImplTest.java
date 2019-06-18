@@ -60,6 +60,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.test.rules.LoggerLevel.WARNING;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.CollectorsEx.toAll;
 import static io.datakernel.util.CollectorsEx.toAny;
@@ -73,7 +74,7 @@ import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
-@LoggerConfig(logger = SteppingCurrentTimeProvider.class, value = LoggerLevel.WARNING)
+@LoggerConfig(logger = SteppingCurrentTimeProvider.class, value = WARNING)
 public class GlobalOTNodeImplTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -418,7 +419,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(LoggerLevel.WARNING) // too many logs
+	@LoggerConfig(WARNING) // too many logs
 	public void testSyncRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -478,7 +479,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(LoggerLevel.WARNING) // too many logs
+	@LoggerConfig(WARNING) // too many logs
 	public void testCatchupRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1, () -> 10);
 
@@ -534,7 +535,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(LoggerLevel.WARNING) // too many logs
+	@LoggerConfig(WARNING) // too many logs
 	public void testPushRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -560,7 +561,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(LoggerLevel.WARNING) // too many logs
+	@LoggerConfig(WARNING) // too many logs
 	public void testPushIntermediateToMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 

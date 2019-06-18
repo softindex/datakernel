@@ -36,10 +36,12 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.rules.LoggerLevel.FINEST;
+import static io.datakernel.test.rules.LoggerLevel.WARNING;
 
 @Ignore("takes forever, only for manual testing")
-@LoggerConfig(value = LoggerLevel.WARNING)
-@LoggerConfig(packageOf = RemoteFsClusterClient.class, value = LoggerLevel.FINEST)
+@LoggerConfig(WARNING)
+@LoggerConfig(packageOf = RemoteFsClusterClient.class, value = FINEST)
 public final class TestRepartitionController {
 	private static final int CLIENT_SERVER_PAIRS = 10;
 
