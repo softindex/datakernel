@@ -1,11 +1,10 @@
 package io.datakernel.memcache.server;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.server.RpcServer;
 
@@ -19,13 +18,11 @@ import static io.datakernel.util.MemSize.kilobytes;
 
 public class MemcacheServerModule extends AbstractModule {
 	@Provides
-	@Singleton
 	Eventloop eventloop() {
 		return Eventloop.create();
 	}
 
 	@Provides
-	@Singleton
 	RingBuffer ringBuffer(Eventloop eventloop, Config config) {
 		return RingBuffer.create(
 				config.get(ofInteger(), "memcache.buffers"),
@@ -33,7 +30,6 @@ public class MemcacheServerModule extends AbstractModule {
 	}
 
 	@Provides
-	@Singleton
 	RpcServer server(Eventloop eventloop, Config config, RingBuffer storage) {
 		return RpcServer.create(eventloop)
 				.withHandler(GetRequest.class, GetResponse.class,

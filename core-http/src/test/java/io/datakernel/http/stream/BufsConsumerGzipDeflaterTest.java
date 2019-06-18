@@ -20,10 +20,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -35,8 +36,14 @@ import java.util.zip.GZIPOutputStream;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 
-@RunWith(DatakernelRunner.class)
 public final class BufsConsumerGzipDeflaterTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private final AssertingConsumer consumer = new AssertingConsumer();
 	private final BufsConsumerGzipDeflater gzip = BufsConsumerGzipDeflater.create();
 	private final ArrayList<ByteBuf> list = new ArrayList<>();

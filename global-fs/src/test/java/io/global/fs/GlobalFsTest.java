@@ -22,8 +22,10 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.LoggingRule.LoggerConfig;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
+import io.datakernel.test.rules.LoggingRule.LoggerConfig;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -34,12 +36,8 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.fs.transformers.FrameSigner;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
@@ -56,18 +54,26 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
+import static io.datakernel.test.rules.ByteBufRule.IgnoreLeaks;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class GlobalFsTest {
 	public static final String FILENAME = "folder/test.txt";
 	public static final String SIMPLE_CONTENT = "hello world, this is some string of bytes for Global-FS testing";
 	private static final RawServerId FIRST_ID = new RawServerId("http://127.0.0.1:1001");
 	private static final RawServerId SECOND_ID = new RawServerId("http://127.0.0.1:1002");
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -107,6 +113,7 @@ public final class GlobalFsTest {
 		Function<RawServerId, GlobalFsNode> clientFactory = new Function<RawServerId, GlobalFsNode>() {
 			@Override
 			public GlobalFsNode apply(RawServerId serverId) {
+				@SuppressWarnings("UnnecessaryLocalVariable")
 				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> GlobalFsNodeImpl.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
 				// StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
 				// return HttpGlobalFsNode.create(serverId.getServerIdString(), client);

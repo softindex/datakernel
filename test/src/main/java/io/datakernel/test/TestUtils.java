@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.io.*;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -54,6 +53,7 @@ public final class TestUtils {
 		dataSource.setUrl("jdbc:mysql://" + properties.getProperty("dataSource.serverName") + '/' + properties.getProperty("dataSource.databaseName"));
 		dataSource.setUser(properties.getProperty("dataSource.user"));
 		dataSource.setPassword(properties.getProperty("dataSource.password"));
+		dataSource.setServerTimezone(properties.getProperty("dataSource.timeZone"));
 		dataSource.setAllowMultiQueries(true);
 		return dataSource;
 	}

@@ -6,11 +6,11 @@ import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.function.Consumer;
 
@@ -26,9 +26,12 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-@RunWith(DatakernelRunner.class)
 public class OTNodeImplTest {
 	private static final TestOpState state = new TestOpState();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	private final OTRepositoryStub<Integer, TestOp> REPOSITORY = OTRepositoryStub.create();
 
 	private OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> node;

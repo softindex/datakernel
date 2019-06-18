@@ -26,13 +26,14 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.Tuple2;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -59,7 +60,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class FsIntegrationTest {
 	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private static final byte[] BIG_FILE = new byte[2 * 1024 * 1024]; // 2 MB
@@ -69,17 +69,22 @@ public final class FsIntegrationTest {
 		ThreadLocalRandom.current().nextBytes(BIG_FILE);
 	}
 
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	private Path storage;
 	private RemoteFsServer server;
 	private FsClient client;
-	private Executor executor;
 
 	@Before
 	public void setup() throws IOException {
-		executor = newCachedThreadPool();
+		Executor executor = newCachedThreadPool();
 
 		storage = temporaryFolder.newFolder("server_storage").toPath();
 		server = RemoteFsServer.create(Eventloop.getCurrentEventloop(), executor, storage).withListenAddress(address);
@@ -143,13 +148,11 @@ public final class FsIntegrationTest {
 	public void testOnClientExceptionWhileUploading() throws IOException {
 		String resultFile = "upload_with_exceptions.txt";
 
-		ByteBuf test4 = wrapUtf8("Test4");
-
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
 				ChannelSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")).async(),
 				ChannelSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
 				ChannelSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
-				ChannelSupplier.of(test4));
+				ChannelSupplier.of(wrapUtf8("Test4")));
 
 		Throwable exception = awaitException(supplier.streamTo(ChannelConsumer.ofPromise(client.upload(resultFile)))
 				.whenComplete(($, e) -> server.close()));
@@ -157,7 +160,6 @@ public final class FsIntegrationTest {
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Test exception"));
 
-		test4.recycle();
 		ByteBufQueue queue = new ByteBufQueue();
 		queue.addAll(asList(wrapUtf8("Test1 Test2 Test3"), ByteBuf.wrapForReading(BIG_FILE)));
 		assertArrayEquals(queue.takeRemaining().asArray(), Files.readAllBytes(storage.resolve(resultFile)));
@@ -210,7 +212,7 @@ public final class FsIntegrationTest {
 
 		for (int i = 0; i < 10; i++) {
 			tasks.add(ChannelSupplier.ofPromise(client.download(file))
-					.streamTo(ChannelFileWriter.create(executor, storage.resolve("file" + i))));
+					.streamTo(ChannelFileWriter.create(storage.resolve("file" + i))));
 		}
 
 		await(Promises.all(tasks)

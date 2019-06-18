@@ -29,9 +29,9 @@ public final class HelloWorldPostServer {
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				request -> request.getBody()
+				request -> request.loadBody()
 						.map(body -> HttpResponse.ok200()
-								.withBody(encodeAscii(HELLO_WORLD + body.asString(UTF_8)))))
+								.withBody(encodeAscii(HELLO_WORLD + body.getString(UTF_8)))))
 				.withListenPort(port);
 	}
 

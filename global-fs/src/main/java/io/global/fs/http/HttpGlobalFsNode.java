@@ -131,7 +131,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.build()))
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.then(res -> res.getBody()
+				.then(response -> response.loadBody()
 						.then(body -> {
 							try {
 								return Promise.of(decode(NULLABLE_SIGNED_CHECKPOINT_CODEC, body));

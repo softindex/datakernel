@@ -4,8 +4,8 @@ import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
-import io.datakernel.util.Tuple2;
 import io.datakernel.util.ref.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -14,17 +14,18 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
-import static io.datakernel.async.Promises.mapTuple;
 import static io.datakernel.async.Promises.toList;
 import static io.datakernel.ot.GraphReducer.resume;
 import static io.datakernel.ot.GraphReducer.skip;
 import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.CollectorsEx.throwingMerger;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Collections.*;
+import static java.util.Comparator.comparingLong;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTAlgorithms {
@@ -36,28 +37,15 @@ public final class OTAlgorithms {
 		throw new AssertionError();
 	}
 
-	public static <K, D, R> Promise<R> reduce(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads, GraphReducer<K, D, R> reducer) {
-		return loadAndReduce(repository, system, heads, reducer)
-				.map(Tuple2::getValue2);
-	}
-
-	public static <K, D, R> Promise<Tuple2<List<OTCommit<K, D>>, R>> loadAndReduce(OTRepository<K, D> repository, OTSystem<D> system,
+	public static <K, D, R> Promise<R> reduce(OTRepository<K, D> repository, OTSystem<D> system,
 			Set<K> heads, GraphReducer<K, D, R> reducer) {
 		return toList(heads.stream().map(repository::loadCommit))
-				.map(OTAlgorithms::filterEpoch)
 				.then(headCommits -> {
-					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
+					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(comparingLong(OTCommit::getLevel)));
 					queue.addAll(headCommits);
 					reducer.onStart(unmodifiableCollection(queue));
-					return Promise.<R>ofCallback(cb -> walkGraphImpl(repository, reducer, queue, new HashSet<>(heads), cb))
-							.map(result -> new Tuple2<>(headCommits, result));
+					return Promise.ofCallback(cb -> walkGraphImpl(repository, reducer, queue, new HashSet<>(heads), cb));
 				});
-	}
-
-	@NotNull
-	private static <K, D> List<OTCommit<K, D>> filterEpoch(List<OTCommit<K, D>> commits) {
-		int maxEpoch = commits.stream().mapToInt(OTCommit::getEpoch).max().orElse(0);
-		return commits.stream().filter(commit -> commit.getEpoch() == maxEpoch).collect(Collectors.toList());
 	}
 
 	private static <K, D, R> void walkGraphImpl(OTRepository<K, D> repository, GraphReducer<K, D, R> reducer,
@@ -147,9 +135,8 @@ public final class OTAlgorithms {
 		}
 	}
 
-	public static <K, D, A> Promise<FindResult<K, A>> findParent(OTRepository<K, D> repository, OTSystem<D> system, Set<K> startNodes,
-			DiffsReducer<A, D> diffsReducer,
-			AsyncPredicate<OTCommit<K, D>> matchPredicate) {
+	public static <K, D, A> Promise<FindResult<K, A>> findParent(OTRepository<K, D> repository, OTSystem<D> system,
+			Set<K> startNodes, DiffsReducer<A, D> diffsReducer, AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return reduce(repository, system, startNodes,
 				new AbstractGraphReducer<K, D, A, FindResult<K, A>>(diffsReducer) {
 					int epoch;
@@ -211,32 +198,32 @@ public final class OTAlgorithms {
 		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
 
 		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
-		return loadAndReduce(repository, system, heads, new LoadGraphReducer<>(system))
-				.then(mapTuple(Tuple2::new,
-						Tuple2::getValue1, Promise::of,
-						Tuple2::getValue2, graph -> {
-							try {
-								Map<K, List<D>> mergeResult = graph.merge(graph.excludeParents(heads));
-								if (logger.isTraceEnabled()) {
-									logger.info(graph.toGraphViz() + "\n");
-								}
-								return Promise.of(mergeResult);
-							} catch (OTException e) {
-								if (logger.isTraceEnabled()) {
-									logger.error(graph.toGraphViz() + "\n", e);
-								}
-								return Promise.ofException(e);
-							}
-						}))
-				.then(tuple -> {
-					List<OTCommit<K, D>> headCommits = tuple.getValue1();
-					int epoch = headCommits.get(0).getEpoch();
-					long parentLevel = headCommits.stream().mapToLong(OTCommit::getLevel).max().getAsLong();
-					Map<K, List<D>> mergeResult = tuple.getValue2();
-					return repository.createCommit(epoch, mergeResult, parentLevel + 1L);
-				})
-				.then(mergeCommit -> repository.push(mergeCommit)
-						.map($ -> mergeCommit.getId()));
+		return repository.getLevels(heads)
+				.then(levels ->
+						reduce(repository, system, heads, new LoadGraphReducer<>(system))
+								.then(graph -> {
+									try {
+										Map<K, List<D>> mergeResult = graph.merge(graph.excludeParents(heads));
+										if (logger.isTraceEnabled()) {
+											logger.info(graph.toGraphViz() + "\n");
+										}
+										return Promise.of(mergeResult);
+									} catch (OTException e) {
+										if (logger.isTraceEnabled()) {
+											logger.error(graph.toGraphViz() + "\n", e);
+										}
+										return Promise.ofException(e);
+									}
+								})
+								.then(mergeResult -> repository.createCommit(
+										heads.stream()
+												.collect(toMap(
+														head -> head,
+														head -> new DiffsWithLevel<>(levels.get(head), mergeResult.get(head)),
+														throwingMerger(),
+														LinkedHashMap::new))))
+								.then(mergeCommit -> repository.push(mergeCommit)
+										.map($ -> mergeCommit.getId())));
 	}
 
 	public static <K, D> Promise<Set<K>> findCut(OTRepository<K, D> repository, OTSystem<D> system, Set<K> startNodes,

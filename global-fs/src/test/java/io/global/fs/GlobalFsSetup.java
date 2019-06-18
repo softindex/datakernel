@@ -25,8 +25,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.Manual;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.RawServerId;
@@ -37,8 +37,9 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.net.InetSocketAddress;
 import java.util.HashSet;
@@ -56,11 +57,16 @@ import static java.lang.System.getProperty;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-@Manual("setting up methods that require running instances of servers")
-@RunWith(DatakernelRunner.class)
+@Ignore("setting up methods that require running instances of servers")
 public final class GlobalFsSetup {
-
 	public static final StructuredCodec<AnnounceData> ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private KeyPair alice, bob;
 
 	@Before

@@ -121,7 +121,7 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 		onClosed();
 
 		// jmx
-		String causedAddress = "Remote address: " + remoteAddress.getAddress().toString();
+		String causedAddress = "Remote address: " + remoteAddress;
 		logger.error("Protocol error. " + causedAddress, e);
 		rpcServer.getLastProtocolError().recordException(e, causedAddress);
 	}

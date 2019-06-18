@@ -22,14 +22,16 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -43,10 +45,15 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class InvertedIndexTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static class InvertedIndexQueryResult {
 		public String word;
@@ -68,8 +75,8 @@ public class InvertedIndexTest {
 
 			InvertedIndexQueryResult that = (InvertedIndexQueryResult) o;
 
-			if (word != null ? !word.equals(that.word) : that.word != null) return false;
-			return !(documents != null ? !documents.equals(that.documents) : that.documents != null);
+			if (!Objects.equals(word, that.word)) return false;
+			return !(!Objects.equals(documents, that.documents));
 
 		}
 

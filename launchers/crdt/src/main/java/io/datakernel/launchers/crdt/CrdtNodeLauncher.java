@@ -16,24 +16,20 @@
 
 package io.datakernel.launchers.crdt;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.module.Module;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.crdt.CrdtNodeLogicModule.Cluster;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule;
 
-import java.util.Collection;
-
-import static com.google.inject.util.Modules.combine;
-import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
+import static io.datakernel.di.module.Modules.combine;
 
 public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launcher {
 	public static final String PROPERTIES_FILE = "crdt-node.properties";
@@ -45,35 +41,21 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 	@Inject
 	CrdtServer<K, S> crdtServer;
 
-	private CrdtNodeLogicModule<K, S> logicModule = getLogicModule();
-
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(override(getBaseModules()).with(getOverrideModules()),
-				combine(getBusinessLogicModules()));
-	}
-
-	protected Collection<Module> getOverrideModules() {
-		return emptyList();
-	}
-
-	protected abstract CrdtNodeLogicModule<K, S> getLogicModule();
-
-	protected abstract Collection<Module> getBusinessLogicModules();
-
-	private Collection<Module> getBaseModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofClassPathProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				logicModule
-		);
+				getBusinessLogicModule());
 	}
+
+	protected abstract CrdtNodeLogicModule<K, S> getBusinessLogicModule();
 
 	@Override
 	protected void run() throws Exception {

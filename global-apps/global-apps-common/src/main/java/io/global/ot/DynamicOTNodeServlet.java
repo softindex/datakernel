@@ -3,20 +3,25 @@ package io.global.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTSystem;
+import io.global.common.KeyPair;
 import io.global.common.PrivKey;
+import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
@@ -28,10 +33,14 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 
-public final class DynamicOTNodeServlet<D> implements WithMiddleware {
+public final class DynamicOTNodeServlet<D> implements AsyncServlet {
+	public static final ParseException ID_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Query parameter ID is required");
+	public static final ParseException KEYS_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Cookie 'Key' is required");
+	public static final ParseException READ_ONLY = new ParseException(DynamicOTNodeServlet.class,
+			"Only read operations are allowed [checkout, fetch, poll]");
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 
-	private final MiddlewareServlet servlet;
+	private final AsyncServlet servlet;
 	private final OTSystem<D> otSystem;
 	private final OTDriver driver;
 	private final StructuredCodec<D> diffCodec;
@@ -51,11 +60,11 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 		return new DynamicOTNodeServlet<>(driver, otSystem, diffCodec, prefix);
 	}
 
-	private MiddlewareServlet getServlet() {
-		return MiddlewareServlet.create()
+	private RoutingServlet getServlet() {
+		return RoutingServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> {
 					try {
-						return getNode(request).checkout()
+						return getNode(request, true).checkout()
 								.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -63,8 +72,12 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 				})
 				.with(GET, "/" + FETCH, request -> {
 					try {
-						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id"));
-						return getNode(request).fetch(currentCommitId)
+						String id = request.getQueryParameter("id");
+						if (id == null) {
+							throw ID_REQUIRED;
+						}
+						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
+						return getNode(request, true).fetch(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
@@ -72,41 +85,39 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 				})
 				.with(GET, "/" + POLL, request -> {
 					try {
-						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, request.getQueryParameter("id"));
-						return getNode(request).poll(currentCommitId)
+						String id = request.getQueryParameter("id");
+						if (id == null) {
+							throw ID_REQUIRED;
+						}
+						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
+						return getNode(request, true).poll(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + CREATE_COMMIT, request -> request.getBody()
-						.then(body -> {
+				.with(POST, "/" + CREATE_COMMIT, loadBody().serve(request -> {
+					try {
+						FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, request.getBody().getString(UTF_8));
+						return getNode(request, false).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
+								.map(commit -> {
+									assert commit.getSerializedData() != null;
+									return HttpResponse.ok200()
+											.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
+											.withBody(commit.getSerializedData());
+								});
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				}))
+				.with(POST, "/" + PUSH, loadBody().serve(request -> {
 							try {
-								FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, body.getString(UTF_8));
-								return getNode(request).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
-										.map(commit -> {
-											assert commit.getSerializedData() != null;
-											return HttpResponse.ok200()
-													.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
-													.withBody(commit.getSerializedData());
-										});
-							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
-							}
-						}))
-				.with(POST, "/" + PUSH, request -> request.getBody()
-						.then(body -> {
-							try {
-								OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = getNode(request);
-								OTCommit<CommitId, D> commit = ((OTRepositoryAdapter<D>) node.getRepository()).parseRawBytes(body.getArray());
+								OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = getNode(request, false);
+								OTCommit<CommitId, D> commit = ((OTRepositoryAdapter<D>) node.getRepository()).parseRawBytes(request.getBody().getArray());
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
-								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
+								return Promise.ofException(e);
 							}
 						}));
 	}
@@ -117,18 +128,29 @@ public final class DynamicOTNodeServlet<D> implements WithMiddleware {
 				.withBody(toJson(codec, item).getBytes(UTF_8));
 	}
 
-	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request) throws ParseException {
-		PrivKey privKey = PrivKey.fromString(request.getCookie("Key"));
-		String suffix = request.getPathParameterOrNull("suffix");
+	private OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> getNode(HttpRequest request, boolean read) throws ParseException {
+		String pubKeyParameter = request.getPathParameters().get("pubKey");
+		String suffix = request.getPathParameter("suffix");
 		String repositoryName = prefix + (suffix == null ? "" : ('/' + suffix));
-		RepoID repoID = RepoID.of(privKey, repositoryName);
-		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, privKey, diffCodec);
+		KeyPair keys;
+		if (pubKeyParameter == null) {
+			String key = request.getCookie("Key");
+			if (key == null) throw KEYS_REQUIRED;
+			keys = PrivKey.fromString(key).computeKeys();
+		} else {
+			if (!read) throw READ_ONLY;
+			//noinspection ConstantConditions - will be used for read operations
+			keys = new KeyPair(null, PubKey.fromString(pubKeyParameter));
+		}
+		RepoID repoID = RepoID.of(keys, repositoryName);
+		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
 		OTRepositoryAdapter<D> adapter = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 		return OTNodeImpl.create(adapter, otSystem);
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException {
+		return servlet.serve(request);
 	}
 }

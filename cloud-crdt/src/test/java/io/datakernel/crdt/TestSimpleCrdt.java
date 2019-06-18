@@ -19,10 +19,10 @@ package io.datakernel.crdt;
 import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -34,11 +34,13 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class TestSimpleCrdt {
 	private CrdtStorageMap<String, TimestampContainer<Integer>> remoteStorage;
 	private CrdtServer<String, TimestampContainer<Integer>> server;
 	private CrdtStorage<String, TimestampContainer<Integer>> client;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Before
 	public void setup() throws IOException {

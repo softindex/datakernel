@@ -1,6 +1,7 @@
 package io.global.ot.server;
 
 import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.OTNodeImpl;
@@ -8,7 +9,8 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -22,8 +24,8 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.stub.CommitStorageStub;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.time.Duration;
 import java.util.Set;
@@ -42,9 +44,14 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public class GlobalOTNodeSynchronizationTest {
 	private static final OTSystem<TestOp> otSystem = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private final CommitStorage commitStorage1 = new CommitStorageStub();
 	private final CommitStorage commitStorage2 = new CommitStorageStub();
@@ -93,10 +100,10 @@ public class GlobalOTNodeSynchronizationTest {
 
 		master1 = GlobalOTNodeImpl.create(eventloop, master1ID, discoveryService, commitStorage1, $ -> {
 			throw new IllegalStateException();
-		});
+		}).withRetryPolicy(RetryPolicy.noRetry());
 		master2 = GlobalOTNodeImpl.create(eventloop, master2ID, discoveryService, commitStorage2, $ -> {
 			throw new IllegalStateException();
-		});
+		}).withRetryPolicy(RetryPolicy.noRetry());
 		GlobalOTNodeImpl intermediate = GlobalOTNodeImpl.create(eventloop, intermediateID, discoveryService, new CommitStorageStub(), serverId -> {
 			if (serverId.equals(master1ID)) return master1;
 			if (serverId.equals(master2ID)) return master2;
@@ -130,9 +137,6 @@ public class GlobalOTNodeSynchronizationTest {
 		stateManager1.add(add(10));
 
 		syncAll();
-
-		System.out.println(await(repository1.getHeads()));
-		System.out.println(await(repository2.getHeads()));
 
 		assertSynced(10);
 	}

@@ -17,6 +17,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.Promise;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.uikernel.*;
 
 import java.util.*;
@@ -25,6 +26,7 @@ import java.util.function.Predicate;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.toList;
 
+@Inject
 public class PersonGridModel implements GridModel<Integer, Person> {
 	private final static Map<String, Comparator<Person>> comparators = createComparators();
 	private final static Map<Integer, Person> storage = initStorage();

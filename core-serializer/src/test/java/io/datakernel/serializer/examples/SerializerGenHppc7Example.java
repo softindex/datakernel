@@ -19,7 +19,7 @@ package io.datakernel.serializer.examples;
 import com.carrotsearch.hppc.*;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 

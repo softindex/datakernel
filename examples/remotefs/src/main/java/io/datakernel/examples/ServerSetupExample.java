@@ -16,48 +16,49 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
 
-import java.util.Collection;
+import java.io.IOException;
+import java.nio.file.Files;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.launchers.remotefs.RemoteFsServerLauncher.EAGER_SINGLETONS_MODE;
-import static java.lang.Boolean.parseBoolean;
-import static java.util.Arrays.asList;
+import static io.datakernel.di.module.Modules.combine;
 
 /**
  * This example demonstrates configuring and launching RemoteFsServer.
  */
-public class ServerSetupExample {
+public class ServerSetupExample extends RemoteFsServerLauncher {
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
+	@Override
+	protected Module getOverrideModule() {
+		try {
+			return combine(
+					ConfigModule.create(
+							Config.create()
+									.with("remotefs.path", Files.createTempDirectory("server_storage").toString())
+									.with("remotefs.listenAddresses", "6732")));
+		} catch (IOException e) {
+			throw new UncheckedException(e);
+		}
+	}
+
+	@Override
+	protected void run() throws Exception {
+		awaitShutdown();
+	}
+
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new RemoteFsServerLauncher() {
-			@Override
-			protected Collection<Module> getOverrideModules() {
-				return asList(
-						ConfigModule.create(Config.create()
-								.with("remotefs.path", "src/main/resources/server_storage")
-								.with("remotefs.listenAddresses", "6732")
-						),
-						new AbstractModule() {
-							@Provides
-							@Singleton
-							Eventloop eventloop() {
-								return Eventloop.create()
-										.withFatalErrorHandler(rethrowOnAnyError())
-										.withCurrentThread();
-							}
-						}
-				);
-			}
-		};
-		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		Launcher launcher = new ServerSetupExample();
+		launcher.launch(args);
 	}
 }

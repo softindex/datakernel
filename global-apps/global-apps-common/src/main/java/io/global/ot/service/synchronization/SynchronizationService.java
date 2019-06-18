@@ -6,19 +6,23 @@ import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.ot.OTSystem;
+import io.global.common.PubKey;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.RepoSynchronizer;
 import io.global.ot.service.UserContainer;
+import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
-import io.global.ot.shared.SharedReposOperation;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Set;
+
+import static io.datakernel.async.AsyncSuppliers.retry;
+import static io.datakernel.util.CollectionUtils.first;
 
 public final class SynchronizationService<D> implements EventloopService {
 	private final Eventloop eventloop;
@@ -48,9 +52,23 @@ public final class SynchronizationService<D> implements EventloopService {
 	@Override
 	public MaterializedPromise<Void> start() {
 		SharedReposOTState resourceListState = userContainer.getResourceListState();
-		resourceListState.getSharedRepos()
-				.forEach(resource -> ensureSynchronizer(resource.getId()).sync(resource.getParticipants()));
-		resourceListState.setListener(new ResourceListListener());
+		Set<SharedRepo> sharedRepos = resourceListState.getSharedRepos();
+		sharedRepos.forEach(resource -> {
+					ensureSynchronizer(resource.getId()).sync(resource.getParticipants());
+					sendMessageToParticipants(resource);
+				}
+		);
+
+		resourceListState.setListener(sharedReposOperation -> {
+			SharedRepo sharedRepo = sharedReposOperation.getSharedRepo();
+			if (sharedReposOperation.isRemove()) {
+				synchronizers.remove(sharedRepo.getId()).stop();
+			} else {
+				ensureSynchronizer(sharedRepo.getId()).sync(sharedRepo.getParticipants());
+				sendMessageToParticipants(sharedRepo);
+			}
+		});
+
 		return Promise.complete();
 	}
 
@@ -59,7 +77,6 @@ public final class SynchronizationService<D> implements EventloopService {
 	public MaterializedPromise<Void> stop() {
 		return Promises.all(synchronizers.values().stream().map(RepoSynchronizer::stop))
 				.materialize();
-
 	}
 
 	public RepoSynchronizer<D> ensureSynchronizer(String id) {
@@ -74,15 +91,25 @@ public final class SynchronizationService<D> implements EventloopService {
 		return new MyRepositoryId<>(repoId, myRepositoryId.getPrivKey(), myRepositoryId.getDiffCodec());
 	}
 
-	final class ResourceListListener implements Consumer<SharedReposOperation> {
-		@Override
-		public void accept(SharedReposOperation sharedReposOperation) {
-			SharedRepo sharedRepo = sharedReposOperation.getSharedRepo();
-			if (sharedReposOperation.isRemove()) {
-				synchronizers.remove(sharedRepo.getId()).stop();
-			} else {
-				ensureSynchronizer(sharedRepo.getId()).sync(sharedRepo.getParticipants());
-			}
-		}
+	public void sendMessageToParticipants(SharedRepo sharedRepo) {
+		RepoID repoId = userContainer.getMyRepositoryId().getRepositoryId();
+		MessagingService messagingService = userContainer.getMessagingService();
+		Set<PubKey> participants = sharedRepo.getParticipants();
+		String id = sharedRepo.getId();
+		Promises.all(participants.stream()
+				.filter(participant -> !sharedRepo.isMessageSent(participant) &&
+						!participant.equals(repoId.getOwner()))
+				.map(participant ->
+						driver.getHeads(RepoID.of(participant, repoId + "/" + id))
+								.whenComplete((heads, e) -> {
+									if (e == null && !heads.isEmpty() && !first(heads).isRoot()) {
+										sharedRepo.setMessageSent(participant);
+									} else {
+										retry(() -> messagingService
+												.sendCreateMessage(participant, id, participants))
+												.get()
+												.whenResult($ -> sharedRepo.setMessageSent(participant));
+									}
+								})));
 	}
 }

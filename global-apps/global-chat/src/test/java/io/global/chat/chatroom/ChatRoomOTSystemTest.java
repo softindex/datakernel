@@ -1,8 +1,10 @@
 package io.global.chat.chatroom;
 
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.chat.chatroom.messages.Message;
 import io.global.common.KeyPair;
@@ -19,8 +21,8 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.stub.CommitStorageStub;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.Iterator;
 
@@ -33,8 +35,14 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public class ChatRoomOTSystemTest {
+
+	@Rule
+	public EventloopRule eventloopRule = new EventloopRule();
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	private final String auth1 = "author1";
 	private final String auth2 = "author2";
 	private OTStateManager<CommitId, ChatMultiOperation> stateManager1;
@@ -52,9 +60,10 @@ public class ChatRoomOTSystemTest {
 		LocalDiscoveryService discoveryService = LocalDiscoveryService.create(eventloop, new InMemoryAnnouncementStorage(),
 				new InMemorySharedKeyStorage());
 		OTDriver driver = new OTDriver(GlobalOTNodeImpl.create(eventloop, new RawServerId("test"), discoveryService,
-				new CommitStorageStub(), rawServerId -> {throw new IllegalStateException();}), SimKey.generate());
+				new CommitStorageStub(), rawServerId -> {throw new IllegalStateException();})
+				.withRetryPolicy(RetryPolicy.noRetry()), SimKey.generate());
 		OTRepositoryAdapter<ChatMultiOperation> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-		OTCommit<CommitId, ChatMultiOperation> root = await(repository.createCommit(0, emptyMap(), 1));
+		OTCommit<CommitId, ChatMultiOperation> root = await(repository.createCommit(emptyMap()));
 		await(repository.pushAndUpdateHead(root));
 		await(repository.saveSnapshot(root.getId(), emptyList()));
 

@@ -95,7 +95,6 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * Wraps provided default {@link Supplier} to ChannelSupplier.
 	 */
 	static <T> ChannelSupplier<T> ofSupplier(Supplier<? extends Promise<T>> supplier) {
-		//noinspection NullableProblems
 		return of(supplier::get);
 	}
 
@@ -415,7 +414,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 		return ChannelSuppliers.streamTo(this, consumer);
 	}
 
-	default MaterializedPromise<Void> streamTo(Promise<ChannelConsumer<T>> consumer) {
+	default MaterializedPromise<Void> streamTo(Promise<? extends ChannelConsumer<T>> consumer) {
 		return ChannelSuppliers.streamTo(this, ChannelConsumer.ofPromise(consumer));
 	}
 
@@ -444,7 +443,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	default ChannelSupplier<T> withEndOfStream(Function<Promise<Void>, Promise<Void>> fn) {
 		SettablePromise<Void> endOfStream = new SettablePromise<>();
 		MaterializedPromise<Void> newEndOfStream = fn.apply(endOfStream).materialize();
-		return new AbstractChannelSupplier<T>() {
+		return new AbstractChannelSupplier<T>(this) {
 			@SuppressWarnings("unchecked")
 			@Override
 			protected Promise<T> doGet() {

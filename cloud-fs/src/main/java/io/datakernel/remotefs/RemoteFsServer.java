@@ -106,14 +106,11 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					return handler.onMessage(messaging, msg);
 				})
 				.whenComplete(handleRequestPromise.recordStats())
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return Promise.complete();
-					}
+				.whenException(e -> {
 					logger.warn("got an error while handling message (" + e + ") : " + this);
-					return messaging.send(new ServerError(getErrorCode(e)))
-							.then($2 -> messaging.sendEndOfStream())
-							.whenResult($2 -> messaging.close());
+					messaging.send(new ServerError(getErrorCode(e)))
+							.then($ -> messaging.sendEndOfStream())
+							.whenResult($ -> messaging.close());
 				});
 	}
 

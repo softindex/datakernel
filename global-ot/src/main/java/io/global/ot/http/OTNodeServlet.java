@@ -2,24 +2,24 @@ package io.global.ot.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.ContentType;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.http.WithMiddleware;
+import io.datakernel.http.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTNode;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.util.ParserFunction;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.OTRepositoryAdapter;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
@@ -31,8 +31,8 @@ import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.util.Utils.eitherComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class OTNodeServlet<K, D, C> implements WithMiddleware {
-	private final MiddlewareServlet servlet;
+public class OTNodeServlet<K, D, C> implements AsyncServlet {
+	private final RoutingServlet servlet;
 	private final StructuredCodec<K> revisionCodec;
 	private final StructuredCodec<FetchData<K, D>> fetchDataCodec;
 	private final Function<C, byte[]> commitToBytes;
@@ -63,13 +63,17 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 		this.closeNotification = closeNotification;
 	}
 
-	private MiddlewareServlet getServlet(OTNode<K, D, C> node) {
-		return MiddlewareServlet.create()
+	private RoutingServlet getServlet(OTNode<K, D, C> node) {
+		return RoutingServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> node.checkout()
 						.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
 				.with(GET, "/" + FETCH, request -> {
+					String id = request.getQueryParameter("id");
+					if (id == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
+						K currentCommitId = fromJson(revisionCodec, id);
 						return node.fetch(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
@@ -77,8 +81,12 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 					}
 				})
 				.with(GET, "/" + POLL, request -> {
+					String id = request.getQueryParameter("id");
+					if (id == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						K currentCommitId = fromJson(revisionCodec, request.getQueryParameter("id"));
+						K currentCommitId = fromJson(revisionCodec, id);
 						return eitherComplete(
 								node.poll(currentCommitId)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData)),
@@ -89,8 +97,9 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + CREATE_COMMIT, request -> request.getBody()
-						.then(body -> {
+				.with(POST, "/" + CREATE_COMMIT, loadBody()
+						.serve(request -> {
+							ByteBuf body = request.getBody();
 							try {
 								FetchData<K, D> fetchData = fromJson(fetchDataCodec, body.getString(UTF_8));
 								return node.createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
@@ -99,20 +108,17 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 												.withBody(commitToBytes.apply(commit)));
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
 							}
 						}))
-				.with(POST, "/" + PUSH, request -> request.getBody()
-						.then(body -> {
+				.with(POST, "/" + PUSH, loadBody()
+						.serve(request -> {
+							ByteBuf body = request.getBody();
 							try {
 								C commit = bytesToCommit.parse(body.getArray());
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
 								return Promise.<HttpResponse>ofException(e);
-							} finally {
-								body.recycle();
 							}
 						}));
 	}
@@ -123,8 +129,9 @@ public class OTNodeServlet<K, D, C> implements WithMiddleware {
 				.withBody(toJson(codec, item).getBytes(UTF_8));
 	}
 
+	@NotNull
 	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+		return servlet.serve(request);
 	}
 }

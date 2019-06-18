@@ -19,7 +19,6 @@ package io.datakernel.crdt;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.crdt.CrdtMessaging.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.csp.process.ChannelDeserializer;
@@ -100,7 +99,6 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 		return eventloop;
 	}
 
-	@SuppressWarnings("Duplicates") // see remove
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return connect()
@@ -146,7 +144,6 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 										.withLateBinding()));
 	}
 
-	@SuppressWarnings("Duplicates") // similar to upload but still to many different stuff
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return connect()

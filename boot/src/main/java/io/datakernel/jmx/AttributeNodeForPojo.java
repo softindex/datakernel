@@ -187,11 +187,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 		Map<AttributeNode, Set<String>> selectedSubnodes = new HashMap<>();
 		for (String attrName : attrNames) {
 			AttributeNode subnode = fullNameToNode.get(attrName);
-			Set<String> subnodeAttrs = selectedSubnodes.get(subnode);
-			if (subnodeAttrs == null) {
-				subnodeAttrs = new HashSet<>();
-				selectedSubnodes.put(subnode, subnodeAttrs);
-			}
+			Set<String> subnodeAttrs = selectedSubnodes.computeIfAbsent(subnode, k -> new HashSet<>());
 			String adjustedName = removePrefix(attrName);
 			subnodeAttrs.add(adjustedName);
 		}

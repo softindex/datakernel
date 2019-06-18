@@ -77,8 +77,10 @@ class StressClient {
 
 				Path file = clientStorage.resolve(fileName);
 
-				ChannelFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
-						.streamTo(ChannelConsumer.ofPromise(client.upload(fileName)))
+				ChannelFileReader.readFile(file)
+						.then(cfr -> cfr
+								.withBufferSize(MemSize.kilobytes(16))
+								.streamTo(ChannelConsumer.ofPromise(client.upload(fileName))))
 						.whenComplete(($, e) -> {
 							if (e == null) {
 								logger.info("Uploaded: " + fileName);
@@ -100,22 +102,15 @@ class StressClient {
 
 			if (fileName == null) return;
 
-			try {
-				ChannelFileWriter consumer = ChannelFileWriter.create(executor, downloads.resolve(fileName));
-
-				client.download(fileName, 0)
-						.then(supplier -> supplier.streamTo(consumer))
-						.whenComplete((supplier, e) -> {
-							if (e == null) {
-								logger.info("Downloaded: " + fileName);
-							} else {
-								logger.info("Failed to download: {}", e.getMessage());
-							}
-						});
-			} catch (IOException e) {
-				logger.info("Can't create consumer: {}", e.getMessage());
-			}
-
+			client.download(fileName, 0)
+					.then(supplier -> supplier.streamTo(ChannelFileWriter.create(downloads.resolve(fileName))))
+					.whenComplete((supplier, e) -> {
+						if (e == null) {
+							logger.info("Downloaded: " + fileName);
+						} else {
+							logger.info("Failed to download: {}", e.getMessage());
+						}
+					});
 		});
 
 		// delete file

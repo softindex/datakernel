@@ -16,16 +16,14 @@
 
 package io.datakernel.config;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.TypeLiteral;
-import io.datakernel.service.BlockingService;
-import io.datakernel.service.ServiceGraph;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Multibinder;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.OptionalInitializer;
-import io.datakernel.util.guice.RequiredDependency;
+import io.datakernel.util.Initializer;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +35,9 @@ import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -48,32 +49,35 @@ import static io.datakernel.util.Preconditions.checkState;
  */
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
+	public static final Key<Config> KEY_OF_CONFIG = Key.of(Config.class);
 
+	@Nullable
 	private Supplier<Config> configSupplier;
 	private Path effectiveConfigPath;
 	private Consumer<String> effectiveConfigConsumer;
-	private volatile boolean started;
 
-	private class ProtectedConfig implements Config {
+	static final class ProtectedConfig implements Config {
 		private final Config config;
 		private final Map<String, Config> children;
+		private final AtomicBoolean started;
 
-		private ProtectedConfig(Config config) {
+		ProtectedConfig(Config config, AtomicBoolean started) {
 			this.config = config;
+			this.started = started;
 			this.children = new LinkedHashMap<>();
 			config.getChildren().forEach((key, value) ->
-					this.children.put(key, new ProtectedConfig(value)));
+					this.children.put(key, new ProtectedConfig(value, started)));
 		}
 
 		@Override
 		public String getValue(String defaultValue) {
-			checkState(!started, "Config must be used during application start-up time only");
+			checkState(!started.get(), "Config must be used during application start-up time only");
 			return config.getValue(defaultValue);
 		}
 
 		@Override
 		public String getValue() throws NoSuchElementException {
-			checkState(!started, "Config must be used during application start-up time only");
+			checkState(!started.get(), "Config must be used during application start-up time only");
 			return config.getValue();
 		}
 
@@ -85,15 +89,16 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		@Override
 		public Config provideNoKeyChild(String key) {
 			checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
-			return new ProtectedConfig(config.provideNoKeyChild(key));
+			return new ProtectedConfig(config.provideNoKeyChild(key), started);
 		}
 	}
 
-	public interface ConfigModuleService extends BlockingService {
+	private ConfigModule(@Nullable Supplier<Config> configSupplier) {
+		this.configSupplier = configSupplier;
 	}
 
-	private ConfigModule(Supplier<Config> configSupplier) {
-		this.configSupplier = configSupplier;
+	public static ConfigModule create() {
+		return new ConfigModule(null);
 	}
 
 	public static ConfigModule create(Supplier<Config> configSupplier) {
@@ -132,50 +137,44 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return withEffectiveConfigConsumer(writer::print);
 	}
 
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	public ConfigModule printEffectiveConfig() {
-		return withEffectiveConfigConsumer(effectiveConfig -> {
-			System.out.println("# Effective config:\n");
-			System.out.println(effectiveConfig);
+		return withEffectiveConfigConsumer(effectiveConfig ->
+				logger.info("Effective config:\n" + effectiveConfig));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	protected void configure() {
+		multibind(new Key<Set<Initializer<ConfigModule>>>() {}, Multibinder.toSet());
+
+		if (configSupplier != null) {
+			bind(Config.class).toInstance(configSupplier.get());
+		}
+
+		transform(0, (provider, scope, key, binding) -> {
+			if (!key.equals(KEY_OF_CONFIG)) return binding;
+			return ((Binding<Config>) (Binding) binding)
+					.addDependency(new Key<CompletionStage<Void>>(OnStart.class) {})
+					.mapInstance((args, config) -> {
+						CompletionStage<Void> onStart = (CompletionStage<Void>) args[args.length - 1];
+						AtomicBoolean started = new AtomicBoolean();
+						ProtectedConfig protectedConfig = new ProtectedConfig(ConfigWithFullPath.wrap(config), started);
+						EffectiveConfig effectiveConfig = EffectiveConfig.wrap(protectedConfig);
+						onStart.thenRun(() -> save(effectiveConfig, started));
+						return effectiveConfig;
+					});
 		});
 	}
 
-	@Override
-	protected void configure() {
-		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<ConfigModuleService>>() {}).asEagerSingleton();
-
-		bind(Config.class).to(EffectiveConfig.class);
-	}
-
-	@Provides
-	@Singleton
-	EffectiveConfig provideConfig() {
-		Config config = new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()));
-		return EffectiveConfig.wrap(config);
-	}
-
-	@Provides
-	@Singleton
-	ConfigModuleService service(EffectiveConfig config, OptionalInitializer<ConfigModule> optionalInitializer) {
-		optionalInitializer.accept(this);
-		return new ConfigModuleService() {
-			@Override
-			public void start() {
-				started = true;
-				if (effectiveConfigPath != null) {
-					logger.info("Saving effective config to {}", effectiveConfigPath);
-					config.saveEffectiveConfigTo(effectiveConfigPath);
-				}
-				if (effectiveConfigConsumer != null) {
-					effectiveConfigConsumer.accept(config.renderEffectiveConfig());
-				}
-			}
-
-			@Override
-			public void stop() {
-			}
-		};
+	private void save(EffectiveConfig effectiveConfig, AtomicBoolean started) {
+		started.set(true);
+		if (effectiveConfigPath != null) {
+			logger.info("Saving effective config to {}", effectiveConfigPath);
+			effectiveConfig.saveEffectiveConfigTo(effectiveConfigPath);
+		}
+		if (effectiveConfigConsumer != null) {
+			effectiveConfigConsumer.accept(effectiveConfig.renderEffectiveConfig());
+		}
 	}
 
 }

@@ -27,9 +27,7 @@ import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.global.common.BinaryDataFormats.createGlobal;
 
 public final class BinaryDataFormats {
-	private BinaryDataFormats() {
-		throw new AssertionError("nope.");
-	}
+	private BinaryDataFormats() {}
 
 	public static final CodecFactory REGISTRY = createGlobal()
 			.with(FileMetadata.class, registry ->

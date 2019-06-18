@@ -18,6 +18,7 @@ package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -25,6 +26,7 @@ import io.datakernel.http.*;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.*;
@@ -40,8 +42,8 @@ public class UiKernelServlets {
 
 	private static final String ID_PARAMETER_NAME = "id";
 
-	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel<K, R> model, Gson gson) {
-		return MiddlewareServlet.create()
+	public static <K, R extends AbstractRecord<K>> RoutingServlet apiServlet(GridModel<K, R> model, Gson gson) {
+		return RoutingServlet.create()
 				.with(POST, "/", create(model, gson))
 				.with(GET, "/", read(model, gson))
 				.with(PUT, "/", update(model, gson))
@@ -67,6 +69,10 @@ public class UiKernelServlets {
 			try {
 				ReadSettings<K> settings = ReadSettings.from(gson, request);
 				K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
+				if (id == null) {
+					return Promise.ofException(new ParseException());
+				}
+
 				return model.read(id, settings).map(obj ->
 						createResponse(gson.toJson(obj, model.getRecordType())));
 			} catch (ParseException e) {
@@ -76,35 +82,43 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
-		return request -> request.getBody().then(body -> {
-			try {
-				String json = body.asString(UTF_8);
-				R obj = fromJson(gson, json, model.getRecordType());
-				return model.create(obj).map(response ->
-						createResponse(response.toJson(gson, model.getIdType())));
-			} catch (ParseException e) {
-				return Promise.ofException((Throwable) e);
-			}
-		});
+		return loadBody()
+				.serve(request -> {
+					ByteBuf body = request.getBody();
+					try {
+						String json = body.asString(UTF_8);
+						R obj = fromJson(gson, json, model.getRecordType());
+						return model.create(obj).map(response ->
+								createResponse(response.toJson(gson, model.getIdType())));
+					} catch (ParseException e) {
+						return Promise.ofException((Throwable) e);
+					}
+				});
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
-		return request -> request.getBody().then(body -> {
-			try {
-				String json = body.asString(UTF_8);
-				List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
-				return model.update(list).map(result ->
-						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
-			} catch (ParseException e) {
-				return Promise.ofException((Throwable) e);
-			}
-		});
+		return loadBody()
+				.serve(request -> {
+					ByteBuf body = request.getBody();
+					try {
+						String json = body.asString(UTF_8);
+						List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
+						return model.update(list).map(result ->
+								createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
+					} catch (ParseException e) {
+						return Promise.ofException((Throwable) e);
+					}
+				});
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
 		return request -> {
+			String idString = request.getPathParameter("id");
+			if (idString == null) {
+				return Promise.ofException(new ParseException());
+			}
 			try {
-				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
+				K id = fromJson(gson, idString, model.getIdType());
 				return model.delete(id).map(response -> {
 					HttpResponse res = HttpResponse.ok200();
 					if (response.hasErrors()) {

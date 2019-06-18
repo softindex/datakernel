@@ -1,11 +1,16 @@
 ## LSMT OLAP Cube
 
 LSMT OLAP Cube is a log-structured merge-tree database designed for processing massive partial aggregations of 
-raw data and forms a multidimensional OLAP (online analytical processing). It utilizes [Cloud-OT](https://github.com/softindex/datakernel/tree/master/cloud-ot) 
-and [Cloud-FS](https://github.com/softindex/datakernel/tree/master/cloud-fs) technologies. LSMT database is truly 
-asynchronous and distributed, with full support of transaction semantics. Dimension here can be treated as categories 
-while measures represent values.
+raw data and forms a multidimensional OLAP (online analytical processing). 
 
-`Cube` class represents an OLAP cube. It provides methods for loading and querying data along with functionality for 
-managing aggregations.
- 
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-cube</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+### To find out more visit [our site](https://datakernel.io/docs/components/cloud/cube.html).

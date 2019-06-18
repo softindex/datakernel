@@ -1,11 +1,14 @@
 ## Multilog
 
-* Utilizes FS module to operate on logs stored on different partitions.
-* Log data is transferred using Datastream module which is perfect for large amount of lightweight items (just like logs).
-* Uses LZ4 compression algorithm which is fast and allows to save storage space.
+Utilizes FS module to operate logs that are stored on different partitions.
 
-`Multilog` interface manages persistence of logs and `MultilogImpl` is an example implementation of the interface. It has 
-the following core operations:
-* *create()* - returns a new MultilogImpl.
-* *write()*
-* *read()*
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-multilog</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+### To find out more visit [our site](https://datakernel.io/docs/components/cloud/multilog.html).

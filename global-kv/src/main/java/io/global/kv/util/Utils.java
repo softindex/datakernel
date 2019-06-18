@@ -29,9 +29,7 @@ import java.math.BigInteger;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 
 public final class Utils {
-	private Utils() {
-		throw new AssertionError("nope.");
-	}
+	private Utils() {}
 
 	public static byte[] packValue(SignedData<RawKvItem> signedDbItem) {
 		RawKvItem rawKvItem = signedDbItem.getValue();

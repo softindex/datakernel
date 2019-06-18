@@ -18,12 +18,12 @@ package io.datakernel;
 
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -41,9 +41,14 @@ import static java.time.ZoneOffset.UTC;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class HttpApiTest {
 	public static final int PORT = getFreePort();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private AsyncHttpServer server;
 	private AsyncHttpClient client;
@@ -134,31 +139,24 @@ public final class HttpApiTest {
 				.initialize(httpRequest -> requestCookies.forEach(httpRequest::addCookie));
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	private void testResponse(HttpResponse response) {
-		try {
-			assertEquals(responseContentType, response.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
-			assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
-			assertEquals(responseDate, response.parseHeader(DATE, HttpHeaderValue::toInstant));
-			assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toPositiveInt));
-			assertEquals(expiresDate, response.parseHeader(EXPIRES, HttpHeaderValue::toInstant));
-			assertEquals(lastModified, response.parseHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
-		} catch (ParseException e) {
-			throw new AssertionError(e);
-		}
+		assertEquals(responseContentType, response.getHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
+		assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
+		assertEquals(responseDate, response.getHeader(DATE, HttpHeaderValue::toInstant));
+		assertEquals(age, (int) response.getHeader(AGE, HttpHeaderValue::toPositiveInt));
+		assertEquals(expiresDate, response.getHeader(EXPIRES, HttpHeaderValue::toInstant));
+		assertEquals(lastModified, response.getHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
 	}
 
 	private void testRequest(HttpRequest request) {
-		try {
-			assertEquals(requestAcceptContentTypes, request.parseHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
-			assertEquals(requestAcceptCharsets, request.parseHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
-			assertEquals(requestDate, request.parseHeader(DATE, HttpHeaderValue::toInstant));
-			assertEquals(dateIMS, request.parseHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
-			assertEquals(dateIUMS, request.parseHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
-			assertEquals(requestContentType, request.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
-			assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));
-		} catch (ParseException e) {
-			throw new AssertionError(e);
-		}
+		assertEquals(requestAcceptContentTypes, request.getHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
+		assertEquals(requestAcceptCharsets, request.getHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
+		assertEquals(requestDate, request.getHeader(DATE, HttpHeaderValue::toInstant));
+		assertEquals(dateIMS,request.getHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
+		assertEquals(dateIUMS, request.getHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
+		assertEquals(requestContentType, request.getHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
+		assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));
 	}
 
 	private static Instant createDate(int year, int month, int day) {

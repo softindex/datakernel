@@ -57,7 +57,6 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 		return new StreamReducerSimple<>(keyFunction, keyComparator, reducer);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public StreamReducerSimple<K, I, O, A> withBufferSize(int bufferSize) {
 		return (StreamReducerSimple<K, I, O, A>) super.withBufferSize(bufferSize);

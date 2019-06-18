@@ -21,13 +21,11 @@ import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.Manual;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -44,16 +42,24 @@ import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
 
-@RunWith(DatakernelRunner.class)
-@Manual("takes forever, only for manual testing")
+@Ignore("takes forever, only for manual testing")
 public final class TestRepartitionController {
 	private static final int CLIENT_SERVER_PAIRS = 10;
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 	private List<RemoteFsServer> servers;
 
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private Path localStorage;
 	private RemoteFsClusterClient cluster;

@@ -21,11 +21,12 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,8 +43,14 @@ import static java.lang.Math.min;
 import static java.util.Arrays.copyOfRange;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class BufsConsumerGzipInflaterTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	public final String[] plainText = {
 			"Suspendisse faucibus enim curabitur tempus leo viverra massa accumsan nisl nunc\n",
 			"Interdum sapien vehicula\nOrnare odio feugiat fringilla ",

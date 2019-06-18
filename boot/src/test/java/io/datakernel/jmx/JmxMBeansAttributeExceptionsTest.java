@@ -137,10 +137,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 	public static final class JmxStatsWithNoPublicNoArgConstructor
 			implements JmxRefreshableStats<JmxStatsWithNoPublicNoArgConstructor> {
-		private final int count;
-
 		public JmxStatsWithNoPublicNoArgConstructor(int count) {
-			this.count = count;
 		}
 
 		@JmxAttribute

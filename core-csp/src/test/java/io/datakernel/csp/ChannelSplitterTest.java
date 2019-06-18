@@ -19,9 +19,9 @@ package io.datakernel.csp;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,8 +33,10 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class ChannelSplitterTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
 	public void simpleCase() {

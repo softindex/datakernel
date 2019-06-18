@@ -634,7 +634,7 @@ public class AggregationPredicates {
 			PredicateEq that = (PredicateEq) o;
 
 			if (!key.equals(that.key)) return false;
-			return value != null ? value.equals(that.value) : that.value == null;
+			return Objects.equals(value, that.value);
 		}
 
 		@Override
@@ -698,7 +698,7 @@ public class AggregationPredicates {
 			PredicateNotEq that = (PredicateNotEq) o;
 
 			if (!key.equals(that.key)) return false;
-			return value != null ? value.equals(that.value) : that.value == null;
+			return Objects.equals(value, that.value);
 		}
 
 		@Override
@@ -761,7 +761,7 @@ public class AggregationPredicates {
 			PredicateLe that = (PredicateLe) o;
 
 			if (!key.equals(that.key)) return false;
-			return value != null ? value.equals(that.value) : that.value == null;
+			return Objects.equals(value, that.value);
 		}
 
 		@Override
@@ -824,7 +824,7 @@ public class AggregationPredicates {
 			PredicateLt that = (PredicateLt) o;
 
 			if (!key.equals(that.key)) return false;
-			return value != null ? value.equals(that.value) : that.value == null;
+			return Objects.equals(value, that.value);
 		}
 
 		@Override
@@ -887,7 +887,7 @@ public class AggregationPredicates {
 			PredicateGe that = (PredicateGe) o;
 
 			if (!key.equals(that.key)) return false;
-			return value != null ? value.equals(that.value) : that.value == null;
+			return Objects.equals(value, that.value);
 		}
 
 		@Override
@@ -950,7 +950,7 @@ public class AggregationPredicates {
 			PredicateGt that = (PredicateGt) o;
 
 			if (!key.equals(that.key)) return false;
-			return value != null ? value.equals(that.value) : that.value == null;
+			return Objects.equals(value, that.value);
 		}
 
 		@Override
@@ -1131,7 +1131,7 @@ public class AggregationPredicates {
 			PredicateIn that = (PredicateIn) o;
 
 			if (!key.equals(that.key)) return false;
-			return values != null ? values.equals(that.values) : that.values == null;
+			return Objects.equals(values, that.values);
 
 		}
 

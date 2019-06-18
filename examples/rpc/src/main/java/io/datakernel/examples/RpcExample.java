@@ -16,8 +16,10 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
 import io.datakernel.async.Promise;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
@@ -25,11 +27,8 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.Collection;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static java.util.Arrays.asList;
 
 public class RpcExample extends Launcher {
 	private static final int SERVICE_PORT = 34765;
@@ -37,36 +36,32 @@ public class RpcExample extends Launcher {
 	@Inject
 	private RpcClient client;
 
+	@Inject
+	private RpcServer server;
+
+	@Provides
+	Eventloop eventloop() {
+		return Eventloop.create();
+	}
+
+	@Provides
+	RpcServer rpcServer(Eventloop eventloop) {
+		return RpcServer.create(eventloop)
+				.withMessageTypes(String.class)
+				.withHandler(String.class, String.class, request -> Promise.of("Hello " + request))
+				.withListenPort(SERVICE_PORT);
+	}
+
+	@Provides
+	RpcClient rpcClient(Eventloop eventloop) {
+		return RpcClient.create(eventloop)
+				.withMessageTypes(String.class)
+				.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
+	}
+
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
-				ServiceGraphModule.defaultInstance(),
-				new AbstractModule() {
-					@Provides
-					@Singleton
-					Eventloop eventloop() {
-						return Eventloop.create()
-								.withFatalErrorHandler(rethrowOnAnyError());
-					}
-
-					@Provides
-					@Singleton
-					RpcServer rpcServer(Eventloop eventloop) {
-						return RpcServer.create(eventloop)
-								.withMessageTypes(String.class)
-								.withHandler(String.class, String.class, request -> Promise.of("Hello " + request))
-								.withListenPort(SERVICE_PORT);
-					}
-
-					@Provides
-					@Singleton
-					RpcClient rpcClient(Eventloop eventloop) {
-						return RpcClient.create(eventloop)
-								.withMessageTypes(String.class)
-								.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
-					}
-				}
-		);
+	protected Module getModule() {
+		return ServiceGraphModule.defaultInstance();
 	}
 
 	@Override
@@ -82,6 +77,6 @@ public class RpcExample extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		RpcExample example = new RpcExample();
-		example.launch(true, args);
+		example.launch(args);
 	}
 }

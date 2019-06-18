@@ -5,7 +5,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpException;
-import io.datakernel.http.HttpMessage;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.ot.OTNode;
@@ -45,34 +44,35 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 		return new OTNodeHttpClient<>(httpClient, url, REGISTRY.get(CommitId.class), diffCodec);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<byte[]> createCommit(K parent, List<? extends D> diffs, long level) {
-		FetchData<K, D> fetchData = new FetchData<>(parent, level, (List<D>) diffs);
+	public Promise<byte[]> createCommit(K parent, List<D> diffs, long parentLevel) {
+		FetchData<K, D> fetchData = new FetchData<>(parent, parentLevel, diffs);
 		return httpClient.request(post(url + CREATE_COMMIT)
 				.withBody(toJson(fetchDataCodec, fetchData).getBytes(UTF_8)))
-				.then(HttpMessage::getBody)
-				.map(ByteBuf::asArray);
+				.then(response -> response.loadBody()
+						.map(ByteBuf::asArray));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> push(byte[] commit) {
 		return httpClient.request(post(url + PUSH)
 				.withBody(commit))
-				.then(response -> response.getBody()
+				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, fetchDataCodec)));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
 		return httpClient.request(get(url + CHECKOUT))
-				.then(response -> response.getBody()
+				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, fetchDataCodec)));
 	}
 
 	@Override
 	public Promise<FetchData<K, D>> fetch(K currentCommitId) {
 		return httpClient.request(get(url + FETCH + "?id=" + urlEncode(toJson(revisionCodec, currentCommitId))))
-				.then(response -> response.getBody()
+				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, fetchDataCodec)));
 	}
 
@@ -84,8 +84,6 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 			return Promise.of(fromJson(json, body.getString(UTF_8)));
 		} catch (ParseException e) {
 			return Promise.ofException(e);
-		} finally {
-			body.recycle();
 		}
 	}
 }

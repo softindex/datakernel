@@ -26,8 +26,7 @@ import java.util.Arrays;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.time.Month.JANUARY;
 import static java.time.ZoneOffset.UTC;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class HttpDateTest {
 
@@ -37,7 +36,7 @@ public class HttpDateTest {
 		byte[] bytes = new byte[29];
 		int end = HttpDate.render(date.atStartOfDay().toInstant(UTC).getEpochSecond(), bytes, 0);
 		assertEquals(29, end);
-		assertTrue(Arrays.equals("Thu, 01 Jan 2015 00:00:00 GMT".getBytes(ISO_8859_1), bytes));
+		assertArrayEquals("Thu, 01 Jan 2015 00:00:00 GMT".getBytes(ISO_8859_1), bytes);
 	}
 
 	@Test

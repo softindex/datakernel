@@ -1,11 +1,13 @@
 package io.global.editor.document;
 
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -23,8 +25,8 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.stub.CommitStorageStub;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.map;
@@ -37,9 +39,14 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class DocumentTest {
 	private static final OTSystem<DocumentMultiOperation> otSystem = createMergedOTSystem();
+
+	@Rule
+	public EventloopRule eventloopRule = new EventloopRule();
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	private CommitStorageStub commitStorage = new CommitStorageStub();
 
@@ -71,7 +78,7 @@ public class DocumentTest {
 		DiscoveryService discoveryService = LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
 		GlobalOTNodeImpl globalNode = GlobalOTNodeImpl.create(eventloop, rawServerId, discoveryService, commitStorage, $ -> {
 			throw new IllegalStateException();
-		});
+		}).withRetryPolicy(RetryPolicy.noRetry());
 		OTDriver driver = new OTDriver(globalNode, SimKey.generate());
 
 		repository1 = new OTRepositoryAdapter<>(

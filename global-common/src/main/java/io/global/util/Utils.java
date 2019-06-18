@@ -65,7 +65,6 @@ public class Utils {
 	}
 
 	@NotNull
-	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> eitherComplete(@NotNull Promise<? extends T> promise1, @NotNull Promise<? extends T> promise2) {
 		SettablePromise<T> result = new SettablePromise<>();
 		promise1.whenComplete(result::trySet);

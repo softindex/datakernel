@@ -421,7 +421,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	default ChannelConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
 		SettablePromise<Void> acknowledgement = new SettablePromise<>();
 		MaterializedPromise<Void> newAcknowledgement = fn.apply(acknowledgement).materialize();
-		return new AbstractChannelConsumer<T>() {
+		return new AbstractChannelConsumer<T>(this) {
 			@Override
 			protected Promise<Void> doAccept(@Nullable T value) {
 				if (value != null) {

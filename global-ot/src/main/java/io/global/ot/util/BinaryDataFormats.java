@@ -16,32 +16,31 @@
 
 package io.global.ot.util;
 
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
-import io.global.common.SignedData;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.CommitEntry;
 
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
+import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.global.common.BinaryDataFormats.createGlobal;
 
 public final class BinaryDataFormats {
-	private BinaryDataFormats() {
-		throw new AssertionError("nope.");
-	}
+	private BinaryDataFormats() {}
 
 	public static final CodecFactory REGISTRY = createGlobal()
-			.with(CommitEntry.class, registry ->
-					tuple(CommitEntry::parse,
-							CommitEntry::getCommitId, registry.get(CommitId.class),
-							CommitEntry::getCommit, registry.get(RawCommit.class),
-							CommitEntry::getHead, registry.get(new TypeT<SignedData<RawCommitHead>>() {}).nullable()))
-
+			.with(CommitEntry.class, registry -> {
+				StructuredCodec<RawCommit> commitCodec = registry.get(RawCommit.class);
+				return commitCodec.transform(commit -> {
+					CommitId commitId = CommitId.ofCommitData(commit.getLevel(), encodeAsArray(commitCodec, commit));
+					return new CommitEntry(commitId, commit);
+				}, CommitEntry::getCommit);
+			})
 			.with(CommitId.class, registry ->
 					registry.get(byte[].class)
 							.transform(CommitId::parse, CommitId::toBytes))
@@ -75,6 +74,5 @@ public final class BinaryDataFormats {
 							RawCommit::getParents, registry.get(new TypeT<Set<CommitId>>() {}),
 							RawCommit::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawCommit::getSimKeyHash, registry.get(Hash.class),
-							RawCommit::getLevel, registry.get(Long.class),
 							RawCommit::getTimestamp, registry.get(Long.class)));
 }

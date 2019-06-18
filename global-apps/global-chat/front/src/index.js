@@ -20,12 +20,12 @@ import ContactsContext from "./modules/contacts/ContactsContext";
 import {SnackbarProvider} from "notistack";
 
 const roomsOTNode = ClientOTNode.createWithJsonKey({
-  url: '/index',
+  url: '/ot/rooms',
   serializer: roomsSerializer
 });
 
 const contactsOTNode = ClientOTNode.createWithJsonKey({
-  url: '/contacts',
+  url: '/ot/contacts',
   serializer: contactsSerializer
 });
 

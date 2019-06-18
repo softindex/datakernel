@@ -3,17 +3,14 @@
 Net module abstracts async sockets and channels using [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop) 
 and [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf) modules.
 
-Core classes and interfaces: 
+You can add this module to your project by inserting the following dependency to **pom.xml**:
+```xml
+<dependency>
+    <groupId>io.datakernel</groupId>
+    <artifactId>datakernel-net</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+</dependency>
+```
 
-* `EventloopServer` interface represents non-blocking server which listens new connection and accepts it asynchronous.
-
-* `AbstractServer` - non-blocking server which works in Eventloop and implements `EventloopServer` interface. There are 
-also `PrimaryServer` and `SimpleServer` classes in the module which extend the `AbstractServer`.
-
-* `AsyncTcpSocket` is a common interface for connection-oriented transport protocols. Module contains `AsyncTcpSocketImpl` 
-class which implements the interface.
-
-* `UdpPacket` represents a UDP packet. Each message routed from one machine to another is solely based on information 
-contained within that packet
-
-### You can explore Net examples [here](https://github.com/softindex/datakernel/tree/master/examples/net)
+### To find out more visit [our site](https://datakernel.io/docs/components/core/net.html).
+### You can explore Net examples [here](https://github.com/softindex/datakernel/tree/master/examples/net).

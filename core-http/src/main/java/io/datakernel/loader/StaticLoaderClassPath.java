@@ -2,50 +2,98 @@ package io.datakernel.loader;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.http.HttpException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.JarURLConnection;
 import java.net.URL;
-import java.nio.file.NoSuchFileException;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
+import static java.lang.ClassLoader.getSystemClassLoader;
+
 class StaticLoaderClassPath implements StaticLoader {
+	private static final String ROOT = "/";
+	private static final int ROOT_OFFSET = 1;
+	@Nullable
 	private final Executor executor;
 	private final ClassLoader classLoader;
+	private final String root;
 
-	public StaticLoaderClassPath(Executor executor, @Nullable Class<?> classLoader) {
+	private StaticLoaderClassPath(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
+		this.root = root;
 		this.executor = executor;
-		this.classLoader = classLoader == null ?
-				Thread.currentThread().getContextClassLoader() :
-				classLoader.getClassLoader();
+		this.classLoader = classLoader;
+	}
+
+	public static StaticLoaderClassPath create(String root) {
+		return create(null, getSystemClassLoader(), root);
+	}
+
+	public static StaticLoaderClassPath create(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
+		if (root.startsWith(ROOT)) {
+			root = root.substring(ROOT_OFFSET);
+		}
+		if (!root.endsWith(ROOT) && root.length() > 0) {
+			root = root + ROOT;
+		}
+
+		return new StaticLoaderClassPath(executor, classLoader, root);
 	}
 
 	@Override
-	public Promise<ByteBuf> getResource(String name) {
-		URL file = classLoader.getResource(name);
-
-		if (file == null) {
-			return Promise.ofException(HttpException.notFound404());
+	public Promise<ByteBuf> load(String name) {
+		String path = root;
+		int begin = 0;
+		if (name.startsWith(ROOT)) {
+			begin++;
 		}
+		path += name.substring(begin);
 
-		return Promise.ofBlockingCallable(executor, () -> ByteBuf.wrapForReading(loadResource(file)))
-				.thenEx((buf, e) ->
-						Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
+		String finalPath = path;
+
+		return Promise.ofBlockingCallable(executor, () -> {
+			URL resource = classLoader.getResource(finalPath);
+			if (resource == null) {
+				throw NOT_FOUND_EXCEPTION;
+			}
+
+			URLConnection connection = resource.openConnection();
+
+			if (connection instanceof JarURLConnection) {
+				if (((JarURLConnection) connection).getJarEntry().isDirectory()) {
+					throw IS_A_DIRECTORY;
+				}
+			} else if ("file".equals(resource.getProtocol())) {
+				Path filePath = Paths.get(resource.getPath());
+				if (!Files.isRegularFile(filePath)) {
+					if (Files.isDirectory(filePath)) {
+						throw IS_A_DIRECTORY;
+					} else {
+						throw NOT_FOUND_EXCEPTION;
+					}
+				}
+			}
+			return ByteBuf.wrapForReading(loadResource(connection));
+		});
 	}
 
-	private byte[] loadResource(URL file) throws IOException {
-		try (InputStream in = file.openStream()) {
-			// reading file as resource
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[4096];
-			int size;
-			while ((size = in.read(buffer)) != -1) {
+	private byte[] loadResource(URLConnection connection) throws IOException {
+		// reading file as resource
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		byte[] buffer = new byte[8192];
+		int size;
+		try (InputStream stream = connection.getInputStream()) {
+			while ((size = stream.read(buffer)) != -1) {
 				out.write(buffer, 0, size);
 			}
-			return out.toByteArray();
 		}
+		return out.toByteArray();
 	}
 }

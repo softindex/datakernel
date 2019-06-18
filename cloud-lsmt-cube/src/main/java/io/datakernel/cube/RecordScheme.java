@@ -66,7 +66,7 @@ public final class RecordScheme {
 			rawIndex = (4 << 16) + floats;
 			floats++;
 		} else {
-			rawIndex = (0 << 16) + objects;
+			rawIndex = objects;
 			objects++;
 		}
 		fieldIndices.put(field, fieldIndices.size());

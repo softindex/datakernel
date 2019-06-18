@@ -18,16 +18,17 @@ package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.local.RemoteFsCheckpointStorage;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
@@ -36,15 +37,22 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public final class CheckpointStorageTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
 	private RemoteFsCheckpointStorage storage;
 
 	@Before
@@ -84,12 +92,12 @@ public final class CheckpointStorageTest {
 		assertArrayEquals(new long[]{123, 321, 567}, positions);
 
 		SignedData<GlobalFsCheckpoint> checkpoint1 = await(storage.load("test.txt", 321));
-		assertTrue(checkpoint1.verify(keys.getPubKey()));
+		assertTrue(checkNotNull(checkpoint1).verify(keys.getPubKey()));
 
 		SignedData<GlobalFsCheckpoint> checkpoint2 = await(storage.load("test.txt", 567));
-		assertTrue(checkpoint2.verify(keys.getPubKey()));
+		assertTrue(checkNotNull(checkpoint2).verify(keys.getPubKey()));
 
 		SignedData<GlobalFsCheckpoint> checkpoint3 = await(storage.load("test.txt", 123));
-		assertTrue(checkpoint3.verify(keys.getPubKey()));
+		assertTrue(checkNotNull(checkpoint3).verify(keys.getPubKey()));
 	}
 }

@@ -1,19 +1,16 @@
 package io.global.ot.server;
 
 import io.datakernel.async.*;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.util.CollectionUtils;
+import io.datakernel.util.Tuple2;
 import io.datakernel.util.ref.Ref;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
-import io.global.ot.api.CommitId;
-import io.global.ot.api.GlobalOTNode;
-import io.global.ot.api.RawCommitHead;
-import io.global.ot.api.RepoID;
+import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -23,7 +20,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.AsyncSuppliers.*;
+import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
 import static io.datakernel.async.Promises.firstSuccessful;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
@@ -102,7 +100,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
 		private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
 		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = reuse(this::doPush);
+		private final AsyncSupplier<Void> push = coalesce(retry(this::doPush, node.retryPolicy));
 		private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
 		private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
 		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(this::doSaveHeads, CollectionUtils::union);
@@ -120,7 +118,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		public void start() {
-			Promises.loop(AsyncPredicate.of($ -> node.pollMasterRepositories), this::doPollMasterHeads);
+			Promises.loop(AsyncPredicate.of($ -> node.pollMasterRepositories), retry(this::doPollMasterHeads, node.retryPolicy));
 		}
 
 		// region API methods
@@ -221,19 +219,23 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private Promise<Void> doPollMasterHeads() {
 			return ensureMasterRepositories()
 					.then(masterRepositories -> Promises.until(
-							() -> Promises.any(masterRepositories.values().stream().map(MasterRepository::poll))
-									.map($ -> masterRepositories.values()
+							() -> Promises.any(masterRepositories.values().stream().map(masterRepo -> masterRepo.poll()
+									.map($ -> masterRepo)))
+									.map(masterRepo -> new Tuple2<>(masterRepo.getNode(), masterRepositories.values()
 											.stream()
+											.filter(masterRepository -> masterRepository.getHeads() != null)
 											.map(MasterRepository::getHeads)
-											.filter(Objects::nonNull)
 											.flatMap(Collection::stream)
-											.collect(toSet())),
-							AsyncPredicate.of(polledHeads -> {
+											.collect(toSet()))),
+							AsyncPredicate.of(nodeAndHeads -> {
+								Set<SignedData<RawCommitHead>> polledHeads = nodeAndHeads.getValue2();
 								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads);
 								this.polledHeads = polledHeads;
 								return found;
 							})))
-					.then(this::saveHeads)
+					.then(nodeAndHeads -> node.isMasterFor(space) ?
+							doFetch(nodeAndHeads.getValue1()) :
+							saveHeads(nodeAndHeads.getValue2()))
 					.whenResult($ -> updateHeadsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
@@ -320,13 +322,13 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		@NotNull
 		private Promise<Void> doFetch() {
-			return forEachMaster(master -> {
-				logger.trace("{} fetching from {}", repositoryId, master);
-				return node.getLocalHeadsInfo(repositoryId)
-						.then(headsInfo -> ChannelSupplier.ofPromise(master.download(repositoryId, headsInfo.getRequired(),
-								headsInfo.getExisting()))
-								.streamTo(node.uploadLocal(repositoryId)));
-			});
+			return forEachMaster(this::doFetch);
+		}
+
+		@NotNull
+		private Promise<Void> doFetch(GlobalOTNode targetNode) {
+			logger.trace("{} fetching from {}", repositoryId, targetNode);
+			return transfer(targetNode, node);
 		}
 
 		@NotNull
@@ -334,11 +336,22 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return forEachMaster(this::doPush);
 		}
 
-		Promise<Void> doPush(GlobalOTNode master) {
-			logger.trace("{} pushing to {}", repositoryId, master);
-			return master.getHeadsInfo(repositoryId)
-					.then(headsInfo -> ChannelSupplier.ofPromise(node.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
-							.streamTo(ChannelConsumer.ofPromise(master.upload(repositoryId))));
+		private Promise<Void> doPush(GlobalOTNode targetNode) {
+			logger.trace("{} pushing to {}", repositoryId, targetNode);
+			return transfer(node, targetNode);
+		}
+
+		private Promise<Void> transfer(GlobalOTNode from, GlobalOTNode to) {
+			return from.getHeads(repositoryId)
+					.then(heads -> ChannelSupplier.ofPromise(
+							from.download(
+									repositoryId,
+									heads.stream()
+											.map(signedHead -> signedHead.getValue().getCommitId())
+											.collect(toSet())
+							))
+							.streamTo(to.upload(repositoryId, new HashSet<>(heads))))
+					.thenEx(($, e) -> e == CANCEL_EXCEPTION ? Promise.complete() : Promise.of($, e));
 		}
 
 		@NotNull
@@ -370,36 +383,36 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		// region Helper methods
 		public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
-			PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(Collections.reverseOrder());
+			PriorityQueue<CommitEntry> queue = new PriorityQueue<>();
 			return Promises.all(heads.stream()
 					.map(head -> node.loadCommit(repositoryId, head)
 							.whenResult(commit ->
-									queue.add(new RawCommitEntry(head, commit)))))
+									queue.add(new CommitEntry(head, commit)))))
 					.then($ -> Promise.<Set<CommitId>>ofCallback(cb ->
 							doExcludeParents(
 									queue,
-									queue.stream().mapToLong(entry -> entry.commit.getLevel()).min().orElse(0L),
+									queue.stream().mapToLong(CommitEntry::getLevel).min().orElse(0L),
 									new HashSet<>(heads),
 									cb)))
 					.whenComplete(toLogger(logger, "excludeParents", heads, this));
 		}
 
-		private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
-									  Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
-			RawCommitEntry entry = queue.poll();
-			if (entry == null || entry.commit.getLevel() < minLevel) {
+		private void doExcludeParents(PriorityQueue<CommitEntry> queue, long minLevel,
+				Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
+			CommitEntry entry = queue.poll();
+			if (entry == null || entry.getLevel() < minLevel) {
 				cb.set(resultHeads);
 				return;
 			}
-			resultHeads.removeAll(entry.commit.getParents());
+			resultHeads.removeAll(entry.getParents());
 			Promises.all(
-					entry.commit.getParents()
+					entry.getParents()
 							.stream()
-							.filter(commitId -> !commitId.isRoot() && queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
+							.filter(commitId -> !commitId.isRoot() && queue.stream().map(CommitEntry::getCommitId).noneMatch(commitId::equals))
 							.map(parentId ->
 									node.loadCommit(repositoryId, parentId)
 											.whenResult(parentRawCommit ->
-													queue.add(new RawCommitEntry(parentId, parentRawCommit)))))
+													queue.add(new CommitEntry(parentId, parentRawCommit)))))
 					.whenResult($ -> doExcludeParents(
 							queue, minLevel,
 							resultHeads,

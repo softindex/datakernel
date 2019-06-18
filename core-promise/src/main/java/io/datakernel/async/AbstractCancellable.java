@@ -19,6 +19,8 @@ package io.datakernel.async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.util.Recyclable.tryRecycle;
+
 public abstract class AbstractCancellable implements Cancellable {
 	@Nullable
 	private Cancellable cancellable;
@@ -49,4 +51,28 @@ public abstract class AbstractCancellable implements Cancellable {
 	public final boolean isClosed() {
 		return exception != null;
 	}
+
+	@NotNull
+	public final <T> Promise<T> sanitize(Promise<T> promise) {
+		return promise
+				.thenEx(this::sanitize);
+	}
+
+	@NotNull
+	public final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
+		if (exception != null) {
+			tryRecycle(value);
+			if (value instanceof Cancellable) {
+				((Cancellable) value).close(exception);
+			}
+			return Promise.ofException(exception);
+		}
+		if (e == null) {
+			return Promise.of(value);
+		} else {
+			close(e);
+			return Promise.ofException(e);
+		}
+	}
+
 }

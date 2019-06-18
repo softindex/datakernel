@@ -23,7 +23,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class OTGraphServlet<K, D> implements AsyncServlet {
 	private static final Logger logger = LoggerFactory.getLogger(OTGraphServlet.class);
 
-	public static final Function<CommitId, String> COMMIT_ID_TO_STRING = commitId -> limit(commitId.toString(), 7);
+	public static final Function<CommitId, String> COMMIT_ID_TO_STRING = commitId -> limit(commitId.toString(), 10);
 
 	@NotNull
 	private final OTRepository<K, D> repository;

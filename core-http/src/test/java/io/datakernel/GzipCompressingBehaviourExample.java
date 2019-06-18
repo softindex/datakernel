@@ -30,7 +30,7 @@ import static io.datakernel.test.TestUtils.getFreePort;
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		MiddlewareServlet servlet = MiddlewareServlet.create()
+		RoutingServlet servlet = RoutingServlet.create()
 				// always responds in gzip
 				.with(HttpMethod.GET, "/gzip/",
 						request -> Promise.of(

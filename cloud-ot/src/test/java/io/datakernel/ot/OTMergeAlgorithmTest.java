@@ -4,9 +4,9 @@ import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.Utils;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -22,9 +22,11 @@ import static io.datakernel.util.Utils.coalesce;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("CodeBlock2Expr")
-@RunWith(DatakernelRunner.class)
 public class OTMergeAlgorithmTest {
-	OTSystem<TestOp> system = createTestOp();
+	private static final OTSystem<TestOp> system = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	static <K, D> OTLoadedGraph<K, D> buildGraph(Consumer<OTGraphBuilder<K, D>> consumer, OTSystem<D> system) {
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(system);

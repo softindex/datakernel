@@ -22,13 +22,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.RequiresInternetConnection;
+import io.datakernel.test.rules.ActivePromisesRule;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.ref.RefInt;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.*;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -49,12 +47,20 @@ import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-@RunWith(DatakernelRunner.class)
-@RequiresInternetConnection
+@Ignore
 public final class AsyncDnsClientTest {
 	static {
 		enableLogging("io.datakernel.dns");
 	}
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private CachedAsyncDnsClient cachedDnsClient;
 	private static final int DNS_SERVER_PORT = 53;

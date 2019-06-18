@@ -16,13 +16,20 @@
 
 package io.datakernel.config;
 
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.launcher.OnStart;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class ConfigsModuleTest {
 	private static class TestClass {
@@ -47,6 +54,48 @@ public class ConfigsModuleTest {
 					&& Double.compare(testClass.field2, field2) == 0
 					&& field3 == testClass.field3;
 		}
+	}
+
+	@Test
+	public void testClassPathConfig() {
+		Config config = Config.ofClassPathProperties("test.properties");
+		assertNotNull(config);
+	}
+
+	@Test
+	public void testClassPathConfigWithRoots() {
+		Config config = Config.ofClassPathProperties("/test.properties");
+		assertNotNull(config);
+		config = Config.ofClassPathProperties("test.properties/");
+		assertNotNull(config);
+		config = Config.ofClassPathProperties("/test.properties/");
+		assertNotNull(config);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testPathConfig() {
+		Config config = Config.ofProperties("test.properties");
+		assertNotNull(config);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testClassPathNotFoundProperties() {
+		Config.ofClassPathProperties("notFound.properties");
+	}
+
+	@Test
+	public void testClassPathNotFoundPropertiesOptional() {
+		Config.ofClassPathProperties("notFound.properties", true);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testPathNameNotFoundProperties() {
+		Config.ofProperties("notFound.properties");
+	}
+
+	@Test
+	public void testPathNameNotFoundPropertiesOptional() {
+		Config.ofProperties("notFound.properties", true);
 	}
 
 	@Test
@@ -77,16 +126,34 @@ public class ConfigsModuleTest {
 				return testClass;
 			}
 		};
-		Config config = ConfigModule.create(
-				Config.create()
-						.override(Config.ofProperties(properties1))
-						.override(Config.ofProperties(properties2))
-						.override(Config.ofProperties("not-existing.properties", true)))
-				.printEffectiveConfig()
-				.provideConfig();
+
+		CompletableFuture<Void> onStart = new CompletableFuture<>();
+
+		Injector injector = Injector.of(
+				new AbstractModule() {
+					@Provides
+					@OnStart
+					CompletionStage<Void> onStart() {
+						return onStart;
+					}
+
+					@Provides
+					Config config() {
+						return Config.create()
+								.override(Config.ofProperties(properties1))
+								.override(Config.ofProperties(properties2))
+								.override(Config.ofProperties("not-existing.properties", true));
+					}
+				},
+				ConfigModule.create().printEffectiveConfig()
+		);
+
+		Config config = injector.getInstance(Config.class);
 
 		assertEquals(1234, (int) config.get(ofInteger(), "port"));
 		assertEquals("Test phrase", config.get("msg"));
 		assertEquals(new TestClass(2, 3.5, true), config.get(configConverter, "innerClass"));
+
+		onStart.complete(null);
 	}
 }

@@ -16,31 +16,27 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.*;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPoolModule;
-
-import java.util.List;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.worker.*;
 
 public class WorkerPoolModuleExample extends AbstractModule {
 	@Provides
-	@Singleton
-	WorkerPool provideWorkerPool() {
-		return new WorkerPool(4);
+	WorkerPool workerPool(WorkerPools workerPools) {
+		return workerPools.createPool(4);
 	}
 
 	@Provides
 	@Worker
-	String provideString(@WorkerId int workerId) {
+	String string(@WorkerId int workerId) {
 		return "Hello from worker #" + workerId;
 	}
 
 	public static void main(String[] args) {
-		Injector injector = Guice.createInjector(new WorkerPoolModule(), new WorkerPoolModuleExample());
+		Injector injector = Injector.of(new WorkerPoolModule(), new WorkerPoolModuleExample());
 		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
-		List<String> strings = workerPool.getInstances(String.class);
+		WorkerPool.Instances<String> strings = workerPool.getInstances(String.class);
 		strings.forEach(System.out::println);
 	}
 }

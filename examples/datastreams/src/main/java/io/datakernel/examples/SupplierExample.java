@@ -28,7 +28,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  */
 public class SupplierExample {
 	public static void main(String[] args) {
-		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		StreamSupplier<Integer> supplier = StreamSupplier.of(0, 1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 

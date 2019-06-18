@@ -2,6 +2,8 @@ package io.global.ot;
 
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.codec.StructuredCodec;
+import io.global.ot.dictionary.DictionaryOperation;
+import io.global.ot.dictionary.SetOperation;
 import io.global.ot.name.ChangeName;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.SharedRepo;
@@ -32,4 +34,13 @@ public final class OTUtils {
 
 	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = SHARED_REPO_CODEC
 			.transform(CreateSharedRepo::new, CreateSharedRepo::getSharedRepo);
+
+	public static final StructuredCodec<SetOperation> SET_OPERATION_CODEC = object(SetOperation::set,
+			"prev", SetOperation::getPrev, STRING_CODEC.nullable(),
+			"next", SetOperation::getNext, STRING_CODEC.nullable()
+	);
+
+	public static final StructuredCodec<DictionaryOperation> DICTIONARY_OPERATION_CODEC = ofMap(STRING_CODEC, SET_OPERATION_CODEC)
+			.transform(DictionaryOperation::of, DictionaryOperation::getOperations);
+
 }

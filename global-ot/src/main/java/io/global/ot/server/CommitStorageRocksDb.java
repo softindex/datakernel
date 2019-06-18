@@ -329,10 +329,13 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 
 	@Override
 	public Promise<Boolean> isCompleteCommit(CommitId commitId) {
+		if (commitId.isRoot()) return Promise.of(true);
+
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					Integer count = get(incompleteParentsCount, commitId);
-					return count == null || count == 0;
+					RawCommit commit = get(commits, commitId);
+					return commit != null && (count == null || count == 0);
 				})
 				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
 	}

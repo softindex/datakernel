@@ -44,7 +44,7 @@ public class CommitStorageStub implements CommitStorage {
 	public Promise<Void> updateHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
 		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, $ -> new HashMap<>());
 		for (SignedData<RawCommitHead> head : newHeads) {
-			map.put(head.getValue().commitId, head);
+			map.put(head.getValue().getCommitId(), head);
 		}
 		excludedHeads.forEach(map::remove);
 		return Promise.complete();
@@ -138,7 +138,16 @@ public class CommitStorageStub implements CommitStorage {
 
 	@Override
 	public Promise<Boolean> isCompleteCommit(CommitId commitId) {
-		return Promise.of(incompleteParentsCount.getOrDefault(commitId, 0) == 0);
+		return Promise.of(commitId.isRoot() || commits.containsKey(commitId) && incompleteParentsCount.getOrDefault(commitId, 0) == 0);
 	}
 
+	public void clear() {
+		commits.clear();
+		snapshots.clear();
+		heads.clear();
+		pendingCompleteCommits.clear();
+		incompleteParentsCount.clear();
+		parentToChildren.clear();
+		pullRequests.clear();
+	}
 }

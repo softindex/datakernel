@@ -28,13 +28,11 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
 public class CubeOTTest {
-	private OTSystem<CubeDiff> cubeSystem;
 	private OTSystem<LogDiff<CubeDiff>> logSystem;
 
 	@Before
 	public void before() {
-		cubeSystem = CubeOT.createCubeOT();
-		logSystem = LogOT.createLogOT(cubeSystem);
+		logSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 	}
 
 	private static LogPositionDiff positionDiff(LogFile logFile, long start, long end) {

@@ -88,14 +88,18 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	// endregion
 
 	private <T> Promise<T> sanitize(Promise<T> promise) {
-		return promise.thenEx((value, e) -> {
-			if (e == null) {
-				return Promise.of(value);
-			} else {
-				close(e);
-				return Promise.ofException(e);
-			}
-		});
+		return promise
+				.thenEx(this::sanitize);
+	}
+
+	@NotNull
+	private <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
+		if (e == null) {
+			return Promise.of(value);
+		} else {
+			close(e);
+			return Promise.ofException(e);
+		}
 	}
 
 	@NotNull
@@ -135,7 +139,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	private void doRead() {
-		sanitize(upstream.read())
+		upstream.read()
+				.thenEx(this::sanitize)
 				.whenResult(buf -> {
 					assert isOpen();
 					if (buf != null) {
@@ -153,7 +158,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	private void doWrite(ByteBuf dstBuf) {
-		sanitize(upstream.write(dstBuf))
+		upstream.write(dstBuf)
+				.thenEx(this::sanitize)
 				.whenResult($ -> {
 					assert isOpen();
 					if (engine.isOutboundDone()) {
@@ -319,7 +325,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			}
 		}
 
-		if (result != null && isOpen() && result.getStatus() == CLOSED) {
+		if (result != null && result.getStatus() == CLOSED) {
 			close();
 			return;
 		}

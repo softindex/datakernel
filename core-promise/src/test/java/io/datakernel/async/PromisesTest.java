@@ -17,10 +17,10 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.*;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.time.Duration;
 import java.util.Comparator;
@@ -40,8 +40,11 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class PromisesTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	private final AtomicInteger counter = new AtomicInteger();
 
 	@Test

@@ -3,7 +3,6 @@ package io.datakernel.ot;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 
-import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.codec.StructuredCodecs.*;
@@ -49,7 +48,7 @@ public interface OTNode<K, D, C> {
 		return fetch(currentCommitId);
 	}
 
-	Promise<C> createCommit(K parent, List<? extends D> diffs, long level);
+	Promise<C> createCommit(K parent, List<D> diffs, long parentLevel);
 
 	Promise<FetchData<K, D>> push(C commit);
 

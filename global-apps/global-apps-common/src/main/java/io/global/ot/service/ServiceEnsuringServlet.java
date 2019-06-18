@@ -24,11 +24,11 @@ public final class ServiceEnsuringServlet implements AsyncServlet {
 
 	@NotNull
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest request) throws UncheckedException {
+	public Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException {
 		return Promise.complete()
 				.then($ -> {
 					try {
-						String key = request.getCookieOrNull("Key");
+						String key = request.getCookie("Key");
 						if (key != null) {
 							PrivKey privKey = PrivKey.fromString(key);
 							return serviceHolder.ensureUserContainer(privKey);

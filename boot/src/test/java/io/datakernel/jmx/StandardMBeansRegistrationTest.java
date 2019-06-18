@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import com.google.inject.Key;
+import io.datakernel.di.core.Key;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -43,7 +43,7 @@ public class StandardMBeansRegistrationTest {
 			oneOf(mBeanServer).registerMBean(with(service), with(objectname(domain + ":type=ServiceStub")));
 		}});
 
-		Key<?> key = Key.get(ServiceStub.class);
+		Key<?> key = Key.of(ServiceStub.class);
 		jmxRegistry.registerSingleton(key, service, null);
 	}
 
@@ -56,7 +56,7 @@ public class StandardMBeansRegistrationTest {
 			// any call of mBeanServer will produce error
 		}});
 
-		Key<?> key = Key.get(NonMBeanServiceImpl.class);
+		Key<?> key = Key.of(NonMBeanServiceImpl.class);
 		jmxRegistry.registerSingleton(key, nonMBean, null);
 	}
 

@@ -33,7 +33,6 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
-@SuppressWarnings("serial")
 public class AsmSerializerTest {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 
@@ -1022,7 +1021,7 @@ public class AsmSerializerTest {
 		testData1.next = new TestDataRecursive("b");
 		testData1.next.next = new TestDataRecursive("c");
 		TestDataRecursive testData2 = doTest(TestDataRecursive.class, testData1);
-		assertTrue(testData1 != testData2 && testData1.next != testData2.next && testData1.next.next != testData2.next.next);
+		assertTrue(testData1 != testData2 && testData1.next.next != testData2.next.next);
 		assertEquals(testData1.s, testData2.s);
 		assertEquals(testData1.next.s, testData2.next.s);
 		assertEquals(testData1.next.next.s, testData2.next.next.s);
@@ -1550,8 +1549,8 @@ public class AsmSerializerTest {
 
 			TestObj testObj = (TestObj) o;
 
-			if (string != null ? !string.equals(testObj.string) : testObj.string != null) return false;
-			return !(integer != null ? !integer.equals(testObj.integer) : testObj.integer != null);
+			if (!Objects.equals(string, testObj.string)) return false;
+			return !(!Objects.equals(integer, testObj.integer));
 
 		}
 
@@ -1884,7 +1883,7 @@ public class AsmSerializerTest {
 
 			StringWrapper that = (StringWrapper) o;
 
-			return str != null ? str.equals(that.str) : that.str == null;
+			return Objects.equals(str, that.str);
 
 		}
 

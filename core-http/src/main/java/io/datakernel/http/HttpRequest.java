@@ -18,22 +18,26 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ParserFunction;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
+import static java.util.Collections.emptyMap;
 
 /**
  * Represents the HTTP request which {@link AsyncHttpClient} sends to
@@ -54,8 +58,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private InetAddress remoteAddress;
 	private Map<String, String> pathParameters;
 	private Map<String, String> queryParameters;
-
-	private Map<Class<?>, Object> attachments;
+	private Map<String, String> postParameters;
 
 	// region creators
 	HttpRequest(@NotNull HttpMethod method, @Nullable UrlParser url) {
@@ -169,14 +172,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		remoteAddress = inetAddress;
 	}
 
-	@NotNull
-	public String getFullUrl() {
-		if (!url.isRelativePath()) {
-			return url.toString();
-		}
-		return "http://" + getHeaderOrNull(HOST) + url.getPathAndQuery();
-	}
-
 	public boolean isHttps() {
 		return url.isHttps();
 	}
@@ -216,28 +211,20 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private Map<String, String> parsedCookies;
 
 	@NotNull
-	public Map<String, String> getCookies() throws ParseException {
+	public Map<String, String> getCookies() {
 		if (parsedCookies != null) {
 			return parsedCookies;
 		}
 		Map<String, String> cookies = new LinkedHashMap<>();
-		for (HttpCookie cookie : parseHeader(COOKIE, HttpHeaderValue::toSimpleCookies)) {
+		for (HttpCookie cookie : getHeader(COOKIE, HttpHeaderValue::toSimpleCookies)) {
+			if (cookie == null) return emptyMap();
 			cookies.put(cookie.getName(), cookie.getValue());
 		}
 		return parsedCookies = cookies;
 	}
 
-	@NotNull
-	public String getCookie(@NotNull String cookie) throws ParseException {
-		String httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) {
-			return httpCookie;
-		}
-		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
-	}
-
 	@Nullable
-	public String getCookieOrNull(@NotNull String cookie) throws ParseException {
+	public String getCookie(@NotNull String cookie) {
 		return getCookies().get(cookie);
 	}
 
@@ -261,24 +248,8 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return queryParameters;
 	}
 
-	@NotNull
-	public String getQueryParameter(@NotNull String key) throws ParseException {
-		assert !isRecycled();
-		String result = url.getQueryParameter(key);
-		if (result != null) {
-			return result;
-		}
-		throw new ParseException(HttpRequest.class, "Query parameter '" + key + "' is required");
-	}
-
-	public String getQueryParameter(@NotNull String key, @Nullable String defaultValue) {
-		assert !isRecycled();
-		String result = url.getQueryParameter(key);
-		return result != null ? result : defaultValue;
-	}
-
 	@Nullable
-	public String getQueryParameterOrNull(@NotNull String key) {
+	public String getQueryParameter(@NotNull String key) {
 		assert !isRecycled();
 		return url.getQueryParameter(key);
 	}
@@ -295,78 +266,62 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.getQueryParametersIterable();
 	}
 
-	@NotNull
-	public <T> T parseQueryParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser) throws ParseException {
-		return parser.parse(getQueryParameter(key));
-	}
-
-	public <T> T parseQueryParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser, @Nullable T defaultValue) throws ParseException {
-		return parser.parseOrDefault(getQueryParameterOrNull(key), defaultValue);
+	@Nullable
+	public String getPostParameter(String name) {
+		return getPostParameters().get(name);
 	}
 
 	@NotNull
-	public Promise<Map<String, String>> getPostParameters() {
-		return getPostParameters(DEFAULT_LOAD_LIMIT_BYTES);
+	public Map<String, String> getPostParameters() {
+		if (postParameters != null) return postParameters;
+		if (body == null) throw new NullPointerException("Body must be loaded to parse post parameters");
+		return postParameters =
+				containsPostParameters() ?
+						UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining())) :
+						emptyMap();
 	}
 
-	@NotNull
-	public Promise<Map<String, String>> getPostParameters(@NotNull MemSize memSize) {
-		return getPostParameters(memSize.toInt());
-	}
-
-	@NotNull
-	public Promise<Map<String, String>> getPostParameters(int maxSize) {
-		assert !isRecycled();
-		ContentType contentType;
+	private boolean containsPostParameters() {
+		ByteBuf buf = getHeaderBuf(CONTENT_TYPE);
+		if (buf == null) {
+			return false;
+		}
 		try {
-			contentType = parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType, null);
+			ContentType contentType = HttpHeaderValue.toContentType(buf);
+			if (method != POST || contentType.getMediaType() != MediaTypes.X_WWW_FORM_URLENCODED) {
+				return false;
+			}
 		} catch (ParseException e) {
-			return Promise.ofException(e);
+			return false;
 		}
-		if (method != POST
-				|| contentType == null
-				|| contentType.getMediaType() != MediaTypes.X_WWW_FORM_URLENCODED) {
-			return Promise.ofException(new ParseException(HttpRequest.class, "Invalid request type"));
-		}
-		return getBody(maxSize)
-				.map(body -> {
-					try {
-						return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.head(), body.readRemaining()));
-					} finally {
-						body.recycle();
-					}
-				});
+		return true;
 	}
 
 	@NotNull
 	public Map<String, String> getPathParameters() {
 		assert !isRecycled();
-		return pathParameters != null ? pathParameters : Collections.emptyMap();
-	}
-
-	@NotNull
-	public String getPathParameter(@NotNull String key) throws ParseException {
-		assert !isRecycled();
-		String result = pathParameters != null ? pathParameters.get(key) : null;
-		if (result != null) {
-			return result;
-		}
-		throw new ParseException(HttpRequest.class, "There is no path parameter with key: " + key);
+		return pathParameters != null ? pathParameters : emptyMap();
 	}
 
 	@Nullable
-	public String getPathParameterOrNull(@NotNull String key) {
+	public String getPathParameter(@NotNull String key) {
 		assert !isRecycled();
 		return pathParameters != null ? pathParameters.get(key) : null;
 	}
 
-	@NotNull
-	public <T> T parsePathParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser) throws ParseException {
-		return parser.parse(getPathParameter(key));
-	}
-
-	public <T> T parsePathParameter(@NotNull String key, @NotNull ParserFunction<String, T> parser, @Nullable T defaultValue) throws ParseException {
-		return parser.parseOrDefault(getPathParameterOrNull(key), defaultValue);
+	public Promise<Void> getFiles(Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
+		String contentType = getHeader(CONTENT_TYPE);
+		if (contentType == null) {
+			return Promise.ofException(new ParseException());
+		}
+		if (!contentType.startsWith("multipart/form-data; boundary=")) {
+			return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
+		}
+		String boundary = contentType.substring(30);
+		if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
+			boundary = boundary.substring(1, boundary.length() - 1);
+		}
+		return MultipartParser.create(boundary).splitByFiles(getBodyStream(), name -> ChannelConsumer.ofPromise(uploader.apply(name)));
 	}
 
 	int getPos() {
@@ -384,14 +339,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return partialPath.startsWith("/") ? partialPath.substring(1) : partialPath; // strip first '/'
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> T get(Class<T> type) {
-		assert attachments != null;
-		Object res = attachments.get(type);
-		assert res != null;
-		return (T) res;
-	}
-
 	String pollUrlPart() {
 		assert !isRecycled();
 		return url.pollUrlPart();
@@ -406,13 +353,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 			pathParameters = new HashMap<>();
 		}
 		pathParameters.put(key, UrlParser.urlDecode(value));
-	}
-
-	void attach(Object extra) {
-		if (attachments == null) {
-			attachments = new HashMap<>();
-		}
-		attachments.put(extra.getClass(), extra);
 	}
 
 	@Override
@@ -434,6 +374,10 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Override
 	public String toString() {
-		return getFullUrl();
+		if (url.isRelativePath()) {
+			String host = getHeader(HOST);
+			return (host != null ? host : "") + url.getPathAndQuery();
+		}
+		return url.toString();
 	}
 }

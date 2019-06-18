@@ -25,9 +25,7 @@ public final class RemoteFsUtils {
 			UNSUPPORTED_REVISION
 	};
 
-	private RemoteFsUtils() {
-		throw new AssertionError("nope.");
-	}
+	private RemoteFsUtils() {}
 
 	/**
 	 * Escapes any glob metacharacters so that given path string can ever only match one file.

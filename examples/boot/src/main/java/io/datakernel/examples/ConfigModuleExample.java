@@ -16,12 +16,11 @@
 
 package io.datakernel.examples;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Provides;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Provides;
 
 import java.net.InetAddress;
 
@@ -32,24 +31,24 @@ public class ConfigModuleExample extends AbstractModule {
 	private static final String PROPERTIES_FILE = "example.properties";
 
 	@Provides
-	String providePhrase(Config config) {
+	String phrase(Config config) {
 		return config.get("phrase");
 	}
 
 	@Provides
-	Integer provideNumber(Config config) {
+	Integer number(Config config) {
 		return config.get(ofInteger(), "number");
 	}
 
 	@Provides
-	InetAddress provideAddress(Config config) {
+	InetAddress address(Config config) {
 		return config.get(ofInetAddress(), "address");
 	}
 
 	public static void main(String[] args) {
-		Injector injector = Guice.createInjector(
+		Injector injector = Injector.of(
 				new ConfigModuleExample(),
-				ConfigModule.create(Config.ofProperties(PROPERTIES_FILE))
+				ConfigModule.create(Config.ofClassPathProperties(PROPERTIES_FILE))
 		);
 
 		String phrase = injector.getInstance(String.class);

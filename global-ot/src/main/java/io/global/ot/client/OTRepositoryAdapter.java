@@ -47,8 +47,8 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	}
 
 	@Override
-	public Promise<OTCommit<CommitId, D>> createCommit(int epoch, Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
-		return Promise.of(driver.createCommit(epoch, myRepositoryId, parentDiffs, level));
+	public Promise<OTCommit<CommitId, D>> createCommit(Map<CommitId, DiffsWithLevel<D>> parentDiffs) {
+		return Promise.of(driver.createCommit(0, myRepositoryId, parentDiffs));
 	}
 
 	@Override
@@ -78,25 +78,34 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 		return driver.pollHeads(myRepositoryId.getRepositoryId());
 	}
 
+	@NotNull
 	@Override
-	public Promise<OTCommit<CommitId, D>> loadCommit(CommitId revisionId) {
+	public Promise<OTCommit<CommitId, D>> loadCommit(@NotNull CommitId revisionId) {
 		return driver.loadCommit(myRepositoryId, originRepositoryIds, revisionId);
 	}
 
+	@NotNull
 	@Override
-	public Promise<Optional<List<D>>> loadSnapshot(CommitId revisionId) {
+	public Promise<Optional<List<D>>> loadSnapshot(@NotNull CommitId revisionId) {
 		return driver.loadSnapshot(myRepositoryId, originRepositoryIds, revisionId);
 	}
 
+	@NotNull
 	@Override
-	public Promise<Void> saveSnapshot(CommitId revisionId, List<D> diffs) {
+	public Promise<Void> saveSnapshot(@NotNull CommitId revisionId, @NotNull List<D> diffs) {
 		return driver.saveSnapshot(myRepositoryId, revisionId, diffs);
 	}
 
 	@NotNull
 	public OTCommit<CommitId, D> parseRawBytes(byte[] rawBytes) throws ParseException {
 		RawCommit rawCommit = BinaryUtils.decode(REGISTRY.get(RawCommit.class), rawBytes);
-		return driver.getOTCommit(myRepositoryId, CommitId.ofBytes(sha256(rawBytes)), rawCommit, driver.getCurrentSimKey())
+		return driver.getOTCommit(myRepositoryId, CommitId.of(rawCommit.getLevel(), sha256(rawBytes)), rawCommit, driver.getCurrentSimKey())
 				.withSerializedData(rawBytes);
+	}
+
+	@NotNull
+	@Override
+	public Promise<Long> getLevel(@NotNull CommitId commitId) {
+		return Promise.of(commitId.getLevel());
 	}
 }

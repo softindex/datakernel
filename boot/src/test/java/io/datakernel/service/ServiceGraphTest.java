@@ -16,11 +16,13 @@
 
 package io.datakernel.service;
 
-import com.google.inject.*;
-import com.google.inject.name.Named;
-import com.google.inject.name.Names;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import org.hamcrest.core.IsSame;
@@ -35,8 +37,8 @@ public class ServiceGraphTest {
 
 	@Test
 	public void testProperClosingForFailingServiceOneComponent() throws Exception {
-		Injector injector = Guice.createInjector(new FailingModule());
-		injector.getInstance(Key.get(EventloopService.class, Names.named("TopService1")));
+		Injector injector = Injector.of(new FailingModule());
+		injector.getInstance(Key.of(EventloopService.class, "TopService1"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();
@@ -44,9 +46,9 @@ public class ServiceGraphTest {
 
 	@Test
 	public void testProperClosingForFailingServiceTwoComponents() throws Exception {
-		Injector injector = Guice.createInjector(new FailingModule());
-		injector.getInstance(Key.get(EventloopService.class, Names.named("TopService1")));
-		injector.getInstance(Key.get(EventloopService.class, Names.named("TopService2")));
+		Injector injector = Injector.of(new FailingModule());
+		injector.getInstance(Key.of(EventloopService.class, "TopService1"));
+		injector.getInstance(Key.of(EventloopService.class, "TopService2"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();
@@ -62,13 +64,11 @@ public class ServiceGraphTest {
 		}
 
 		@Provides
-		@Singleton
 		Eventloop eventloop() {
 			return Eventloop.create();
 		}
 
 		@Provides
-		@Singleton
 		@Named("FailService")
 		EventloopService failService(Eventloop eventloop) {
 			return new EventloopServiceEmpty(eventloop) {
@@ -81,14 +81,12 @@ public class ServiceGraphTest {
 		}
 
 		@Provides
-		@Singleton
 		@Named("TopService1")
 		EventloopService service1(Eventloop eventloop, @Named("FailService") EventloopService failService) {
 			return new EventloopServiceEmpty(eventloop);
 		}
 
 		@Provides
-		@Singleton
 		@Named("TopService2")
 		EventloopService service2(Eventloop eventloop, @Named("FailService") EventloopService failService) {
 			return new EventloopServiceEmpty(eventloop);

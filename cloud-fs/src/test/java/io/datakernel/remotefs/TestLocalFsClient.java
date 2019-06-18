@@ -21,18 +21,21 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.file.AsyncFile;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.file.AsyncFileService;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -45,7 +48,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.csp.file.ChannelFileReader.READ_OPTIONS;
 import static io.datakernel.csp.file.ChannelFileReader.readFile;
 import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
 import static io.datakernel.remotefs.FsClient.FILE_EXISTS;
@@ -57,9 +59,14 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
-@RunWith(DatakernelRunner.class)
 public final class TestLocalFsClient {
 	private static final MemSize BUFFER_SIZE = MemSize.of(2);
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -116,10 +123,10 @@ public final class TestLocalFsClient {
 	@Test
 	public void testDoUpload() throws IOException {
 		Path path = clientPath.resolve("c.txt");
-		AsyncFile file = AsyncFile.open(executor, path, READ_OPTIONS);
 
 		await(client.upload("1/c.txt")
-				.then(readFile(file).withBufferSize(BUFFER_SIZE)::streamTo));
+				.then(consumer -> readFile(path)
+						.then(file -> file.withBufferSize(BUFFER_SIZE).streamTo(consumer))));
 
 		assertArrayEquals(Files.readAllBytes(path), Files.readAllBytes(storagePath.resolve("1/c.txt")));
 	}
@@ -243,9 +250,9 @@ public final class TestLocalFsClient {
 	@Test
 	public void testDoDownload() throws IOException {
 		Path outputFile = clientPath.resolve("d.txt");
-		AsyncFile open = AsyncFile.open(executor, outputFile, CREATE_OPTIONS);
+
 		ChannelSupplier<ByteBuf> supplier = await(client.download("2/b/d.txt"));
-		await(supplier.streamTo(ChannelFileWriter.create(open)));
+		await(supplier.streamTo(ChannelFileWriter.create(outputFile)));
 
 		assertArrayEquals(Files.readAllBytes(storagePath.resolve("2/b/d.txt")), Files.readAllBytes(outputFile));
 	}

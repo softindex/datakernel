@@ -19,7 +19,9 @@
   },
   "scripts": {
     "start": "react-app-rewired start",
+    "prebuild": "rm -rf ../src/main/resources/build",
     "build": "react-app-rewired build",
+    "postbuild": "mkdir -p ../src/main/resources; mv build ../src/main/resources/",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },

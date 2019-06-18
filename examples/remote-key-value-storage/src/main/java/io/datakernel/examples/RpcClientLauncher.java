@@ -15,16 +15,14 @@
  */
 package io.datakernel.examples;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Args;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.Collection;
-
-import static java.util.Arrays.asList;
+import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class RpcClientLauncher extends Launcher {
@@ -36,11 +34,10 @@ public class RpcClientLauncher extends Launcher {
 	private String[] args;
 
 	@Override
-	protected Collection<Module> getModules() {
-		return asList(
+	protected Module getModule() {
+		return combine(
 				ServiceGraphModule.defaultInstance(),
-				new RpcClientModule()
-		);
+				new RpcClientModule());
 	}
 
 	@Override
@@ -84,7 +81,7 @@ public class RpcClientLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		RpcClientLauncher launcher = new RpcClientLauncher();
-		launcher.launch(true, args);
+		launcher.launch(args);
 	}
 }
 // [END EXAMPLE]

@@ -109,8 +109,8 @@ public class ExpressionTest {
 			if (Float.compare(testPojo2.property4, property4) != 0) return false;
 			if (property5 != testPojo2.property5) return false;
 			if (Double.compare(testPojo2.property6, property6) != 0) return false;
-			if (property1 != null ? !property1.equals(testPojo2.property1) : testPojo2.property1 != null) return false;
-			return !(property7 != null ? !property7.equals(testPojo2.property7) : testPojo2.property7 != null);
+			if (!Objects.equals(property1, testPojo2.property1)) return false;
+			return !(!Objects.equals(property7, testPojo2.property7));
 
 		}
 
@@ -235,7 +235,6 @@ public class ExpressionTest {
 		assertTrue(test.compare(new TestPojo(2, 10), new TestPojo(1, 10)) > 0);
 		assertTrue(test.compare(new TestPojo(0, 10), new TestPojo(1, 10)) < 0);
 		assertTrue(test.compare(new TestPojo(1, 0), new TestPojo(1, 10)) < 0);
-		assertEquals(0, test.compareTo(test));
 
 		Test test1 = testClass.newInstance();
 		Test test2 = testClass.newInstance();
@@ -329,7 +328,7 @@ public class ExpressionTest {
 				.withMethod("negDouble", neg(value(d)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(!testClass.negBoolean());
+		assertFalse(testClass.negBoolean());
 		assertEquals(testClass.negShort(), -s);
 		assertEquals(testClass.negByte(), -b);
 		assertEquals(testClass.negChar(), -c);
@@ -812,8 +811,8 @@ public class ExpressionTest {
 				new StringHolder("c", "d"), new StringHolder(null, null), new StringHolder("d", "z"),
 				new StringHolder(null, null));
 		List<StringHolder> strings2 = new ArrayList<>(strings);
-		Collections.sort(strings, generatedComparator);
-		Collections.sort(strings2, new StringHolderComparator());
+		strings.sort(generatedComparator);
+		strings2.sort(new StringHolderComparator());
 
 		assertEquals(strings, strings2);
 	}

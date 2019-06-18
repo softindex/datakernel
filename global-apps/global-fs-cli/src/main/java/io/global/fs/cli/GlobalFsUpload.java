@@ -36,6 +36,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.Promise.of;
 import static io.global.fs.cli.GlobalFs.err;
 import static io.global.fs.cli.GlobalFs.info;
 import static picocli.CommandLine.Help.Visibility.ALWAYS;
@@ -73,7 +74,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 
 
 		String name;
-		ChannelSupplier<ByteBuf> reader;
+		Promise<? extends ChannelSupplier<ByteBuf>> reader;
 
 		if (file == null) {
 			if (remoteName == null) {
@@ -81,7 +82,8 @@ public final class GlobalFsUpload implements Callable<Void> {
 				return null;
 			}
 			name = remoteName;
-			reader = ChannelSupplier.of(() ->
+
+			reader = of(ChannelSupplier.of(() ->
 					Promise.ofBlockingCallable(executor, () -> {
 						ByteBuf buffer = ByteBufPool.allocate(4096);
 						int bytes = System.in.read(buffer.array());
@@ -91,11 +93,11 @@ public final class GlobalFsUpload implements Callable<Void> {
 						}
 						buffer.moveTail(bytes);
 						return buffer;
-					}));
+					})));
 			info("Uploading data from standard input as " + name + " ...");
 		} else {
 			Path path = Paths.get(file);
-			reader = ChannelFileReader.readFile(executor, path);
+			reader = ChannelFileReader.readFile(path);
 			if (remoteName == null) {
 				name = path.getFileName().toString();
 				info("Uploading " + name + " ...");
@@ -105,14 +107,16 @@ public final class GlobalFsUpload implements Callable<Void> {
 			}
 		}
 
-		reader.streamTo(gateway.upload(name, offset, revision))
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						info(name + " upload finished");
-						return;
-					}
-					err("Upload '" + name + "' finished with exception " + e);
-				});
+		reader.whenResult(channel -> {
+			channel.streamTo(gateway.upload(name, offset, revision))
+					.whenComplete(($, e) -> {
+						if (e == null) {
+							info(name + " upload finished");
+							return;
+						}
+						err("Upload '" + name + "' finished with exception " + e);
+					});
+		});
 
 		eventloop.run();
 		executor.shutdown();

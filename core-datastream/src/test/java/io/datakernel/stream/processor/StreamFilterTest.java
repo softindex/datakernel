@@ -19,8 +19,9 @@ package io.datakernel.stream.processor;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,8 +36,11 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-@RunWith(DatakernelRunner.class)
 public class StreamFilterTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	@Test
 	public void test1() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3);
@@ -56,8 +60,8 @@ public class StreamFilterTest {
 	public void testWithError() {
 		List<Integer> list = new ArrayList<>();
 
-		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4, 5);
-		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4, 5, 6);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 1);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 		ExpectedException exception = new ExpectedException("Test Exception");
 
@@ -66,14 +70,14 @@ public class StreamFilterTest {
 						.transformWith(decorator((context, dataAcceptor) ->
 								item -> {
 									dataAcceptor.accept(item);
-									if (item == 3) {
+									if (item == 4) {
 										context.closeWithError(exception);
 									}
 								}))));
 
 		assertSame(exception, e);
 
-		assertEquals(asList(1, 2, 3), list);
+		assertEquals(asList(2, 4), list);
 		assertClosedWithError(source);
 		assertClosedWithError(consumer);
 		assertClosedWithError(streamFilter.getInput());
@@ -84,10 +88,10 @@ public class StreamFilterTest {
 	public void testSupplierDisconnectWithError() {
 		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamSupplier<Integer> source = StreamSupplier.concat(
-				StreamSupplier.ofIterable(Arrays.asList(1, 2, 3)),
+				StreamSupplier.ofIterable(Arrays.asList(1, 2, 3, 4, 5, 6)),
 				StreamSupplier.closingWithError(exception));
 
-		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 1);
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);

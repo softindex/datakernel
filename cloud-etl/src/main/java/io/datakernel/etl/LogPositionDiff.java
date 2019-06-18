@@ -2,6 +2,8 @@ package io.datakernel.etl;
 
 import io.datakernel.multilog.LogPosition;
 
+import java.util.Objects;
+
 public final class LogPositionDiff implements Comparable<LogPositionDiff> {
 	public final LogPosition from;
 	public final LogPosition to;
@@ -39,8 +41,8 @@ public final class LogPositionDiff implements Comparable<LogPositionDiff> {
 
 		LogPositionDiff that = (LogPositionDiff) o;
 
-		if (from != null ? !from.equals(that.from) : that.from != null) return false;
-		return to != null ? to.equals(that.to) : that.to == null;
+		if (!Objects.equals(from, that.from)) return false;
+		return Objects.equals(to, that.to);
 	}
 
 	@Override

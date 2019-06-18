@@ -2,15 +2,18 @@ package io.global.ot.shared;
 
 import io.global.common.PubKey;
 
+import java.util.Map;
 import java.util.Set;
+
+import static io.datakernel.util.CollectionUtils.keysToMap;
 
 public final class SharedRepo {
 	private final String id;
-	private final Set<PubKey> participants;
+	private final Map<PubKey, Boolean> participants;
 
 	public SharedRepo(String id, Set<PubKey> participants) {
 		this.id = id;
-		this.participants = participants;
+		this.participants = keysToMap(participants, $ -> false);
 	}
 
 	public String getId() {
@@ -18,7 +21,15 @@ public final class SharedRepo {
 	}
 
 	public Set<PubKey> getParticipants() {
-		return participants;
+		return participants.keySet();
+	}
+
+	public void setMessageSent(PubKey participant) {
+		participants.computeIfPresent(participant, ($1, $2) -> true);
+	}
+
+	public boolean isMessageSent(PubKey participant) {
+		return participants.get(participant);
 	}
 
 	@Override
@@ -29,7 +40,7 @@ public final class SharedRepo {
 		SharedRepo sharedRepo = (SharedRepo) o;
 
 		if (!id.equals(sharedRepo.id)) return false;
-		if (!participants.equals(sharedRepo.participants)) return false;
+		if (!participants.keySet().equals(sharedRepo.participants.keySet())) return false;
 
 		return true;
 	}
@@ -37,7 +48,7 @@ public final class SharedRepo {
 	@Override
 	public int hashCode() {
 		int result = id.hashCode();
-		result = 31 * result + participants.hashCode();
+		result = 31 * result + participants.keySet().hashCode();
 		return result;
 	}
 }

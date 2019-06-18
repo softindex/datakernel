@@ -51,26 +51,25 @@ public final class HttpFsClient implements FsClient {
 	}
 
 	private static final Function<HttpResponse, Promise<HttpResponse>> checkResponse =
-			response -> {
-				switch (response.getCode()) {
-					case 200:
-						return Promise.of(response);
-					case 500:
-						return response.getBody()
-								.then(body -> {
-									try {
-										int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.asString(UTF_8)).getValue1();
-										return Promise.ofException(code >= 1 && code <= KNOWN_ERRORS.length ?
-												KNOWN_ERRORS[code - 1] :
-												HttpException.ofCode(500));
-									} catch (ParseException ignored) {
-										return Promise.ofException(HttpException.ofCode(500));
-									}
-								});
-					default:
-						return Promise.ofException(HttpException.ofCode(response.getCode()));
-				}
-			};
+			response -> response.loadBody()
+					.then(body -> {
+						switch (response.getCode()) {
+							case 200:
+								return Promise.of(response);
+							case 500:
+								try {
+									int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.asString(UTF_8)).getValue1();
+									return Promise.ofException(code >= 1 && code <= KNOWN_ERRORS.length ?
+											KNOWN_ERRORS[code - 1] :
+											HttpException.ofCode(500));
+								} catch (ParseException ignored) {
+									return Promise.ofException(HttpException.ofCode(500));
+								}
+
+							default:
+								return Promise.ofException(HttpException.ofCode(response.getCode()));
+						}
+					});
 
 
 	@Override
@@ -122,16 +121,14 @@ public final class HttpFsClient implements FsClient {
 								.appendQuery("glob", glob)
 								.build()))
 				.then(checkResponse)
-				.then(HttpMessage::getBody)
-				.then(body -> {
-					try {
-						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					} finally {
-						body.recycle();
-					}
-				});
+				.then(response -> response.loadBody()
+						.then(body -> {
+							try {
+								return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}));
 	}
 
 	@Override

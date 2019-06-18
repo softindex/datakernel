@@ -62,7 +62,7 @@ public final class Utils {
 			});
 
 	public static final StructuredCodec<CommitId> COMMIT_ID_HASH = StructuredCodec.of(
-			in -> CommitId.ofBytes(fromHexString(in.readString())),
+			in -> CommitId.parse(fromHexString(in.readString())),
 			(out, item) -> out.writeString(toHexString(item.toBytes()))
 	);
 
@@ -90,7 +90,7 @@ public final class Utils {
 	}
 
 	public static Promise<@Nullable OTStateManager<CommitId, Operation>> getManager(ManagerProvider<Operation> managerProvider, HttpRequest request) {
-		String id = request.getQueryParameterOrNull("id");
+		String id = request.getQueryParameter("id");
 		if (id == null || id.isEmpty()) {
 			return Promise.of(null);
 		} else {

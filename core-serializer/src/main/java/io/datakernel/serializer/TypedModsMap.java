@@ -47,8 +47,7 @@ final class TypedModsMap {
 
 		public Builder ensureChild(int[] path) {
 			Builder result = this;
-			for (int i = 0; i < path.length; i++) {
-				int n = path[i];
+			for (int n : path) {
 				result = result.ensureChild(n);
 			}
 			return result;

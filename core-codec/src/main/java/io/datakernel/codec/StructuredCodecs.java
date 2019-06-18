@@ -217,7 +217,7 @@ public final class StructuredCodecs {
 		@Override
 		public Class<?> decode(StructuredInput in) throws ParseException {
 			try {
-				return (Class<?>) Class.forName(in.readString());
+				return Class.forName(in.readString());
 			} catch (ClassNotFoundException e) {
 				throw new ParseException(e);
 			}

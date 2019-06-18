@@ -16,36 +16,39 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.async.Promise;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.*;
-import io.datakernel.loader.StaticLoaders;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import io.datakernel.launcher.Launcher;
+import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static java.util.concurrent.Executors.newCachedThreadPool;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
 
-public class RequestParameterExample {
-	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/query");
+public final class RequestParameterExample extends HttpServerLauncher {
+	private static final String RESOURCE_DIR = "static/query";
 
-	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withCurrentThread();
+	@Provides
+	AsyncServlet servlet() {
+		return RoutingServlet.create()
+				.with(HttpMethod.POST, "/hello", loadBody()
+						.serve(request -> {
+							String name = request.getPostParameters().get("name");
+							return Promise.of(HttpResponse.ok200()
+									.withBody(wrapUtf8("<h1><center>Hello from POST, " + name + "!</center></h1>")));
+						}))
+				.with(HttpMethod.GET, "/hello", request -> {
+					String name = request.getQueryParameter("name");
+					return Promise.of(HttpResponse.ok200()
+							.withBody(wrapUtf8("<h1><center>Hello from GET, " + name + "!</center></h1>")));
+				})
+						.with("/*", StaticServlet.create(ofClassPath(RESOURCE_DIR))
+								.withIndexHtml());
+	}
 
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				MiddlewareServlet.create()
-						.with(HttpMethod.POST, "/hello", request -> request.getPostParameters().map(postParameters ->
-								HttpResponse.ok200()
-										.withBody(wrapUtf8("<center><h2>Hello, " + postParameters.get("name") + "!</h2></center>"))))
-						.withFallback(StaticServlet.create(eventloop, StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR))))
-				.withListenPort(8080);
-
-		server.listen();
-
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:8080/'");
-
-		eventloop.run();
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new RequestParameterExample();
+		launcher.launch(args);
 	}
 }

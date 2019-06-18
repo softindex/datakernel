@@ -1,6 +1,5 @@
 package io.global.common.api;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.time.CurrentTimeProvider;

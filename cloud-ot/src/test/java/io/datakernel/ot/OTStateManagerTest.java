@@ -7,10 +7,10 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Random;
@@ -28,10 +28,12 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-@RunWith(DatakernelRunner.class)
 public class OTStateManagerTest {
 	private static final StacklessException FAILED = new StacklessException("Failed");
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private OTRepositoryStub<Integer, TestOp> repository;
 	private OTNodeImpl<Integer, TestOp, OTCommit<Integer, TestOp>> node;
@@ -119,7 +121,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving() {
+	public void testMultibinders() {
 		repository.addGraph(g -> g.add(0, 1, asList(add(5))));
 
 		assertEquals(0, testOpState.getValue());
@@ -131,7 +133,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving2() {
+	public void testMultibinders2() {
 		repository.addGraph(g -> g.add(0, 1, set(0, 15)));
 
 		assertEquals(0, testOpState.getValue());
@@ -143,7 +145,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving3() {
+	public void testMultibinders3() {
 		repository.addGraph(g -> g.add(0, 1, set(0, 10)));
 
 		assertEquals(0, testOpState.getValue());
@@ -155,7 +157,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving4() {
+	public void testMultibinders4() {
 		repository.addGraph(g -> g.add(0, 1, add(5)));
 
 		assertEquals(0, testOpState.getValue());
@@ -167,7 +169,7 @@ public class OTStateManagerTest {
 	}
 
 	@Test
-	public void testConflictResolving5() {
+	public void testMultibinders5() {
 		repository.addGraph(g -> g.add(0, 1, add(10)));
 
 		assertEquals(0, testOpState.getValue());
@@ -183,8 +185,8 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = () -> 1;
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
-			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
-				return failOnce(() -> super.createCommit(parent, diffs, level));
+			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
+				return failOnce(() -> super.createCommit(parent, diffs, parentLevel));
 			}
 		};
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
@@ -294,8 +296,8 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<? extends TestOp> diffs, long level) {
-			return node.createCommit(parent, diffs, level);
+		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
+			return node.createCommit(parent, diffs, parentLevel);
 		}
 
 		@Override

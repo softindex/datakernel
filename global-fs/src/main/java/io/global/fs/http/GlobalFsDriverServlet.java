@@ -19,10 +19,11 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.global.fs.util.HttpDataFormats.*;
+import static io.global.fs.util.HttpDataFormats.httpUpload;
+import static io.global.fs.util.HttpDataFormats.parseRevision;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class GlobalFsDriverServlet implements WithMiddleware {
+public final class GlobalFsDriverServlet {
 	private static final StructuredCodec<GlobalFsCheckpoint> CHECKPOINT_CODEC = tuple(GlobalFsCheckpoint::of,
 			GlobalFsCheckpoint::getFilename, STRING_CODEC,
 			GlobalFsCheckpoint::getPosition, LONG_CODEC,
@@ -38,37 +39,43 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 				return CryptoUtils.toHexString(hash);
 			})),
 			GlobalFsCheckpoint::getSimKeyHash, STRING_CODEC.transform(Hash::fromString, Hash::asString).nullable());
+
 	private static final StructuredCodec<@Nullable GlobalFsCheckpoint> NULLABLE_CHECKPOINT_CODEC = CHECKPOINT_CODEC.nullable();
 	private static final StructuredCodec<List<GlobalFsCheckpoint>> LIST_CODEC = ofList(CHECKPOINT_CODEC);
 
-	private final MiddlewareServlet servlet;
-
-	public GlobalFsDriverServlet(GlobalFsDriver driver) {
-		servlet = servlet(driver);
+	private GlobalFsDriverServlet() {
 	}
 
 	@Nullable
 	private static SimKey getSimKey(HttpRequest request) throws ParseException {
-		String simKeyString = request.getCookieOrNull("Sim-Key");
+		String simKeyString = request.getCookie("Sim-Key");
 		return simKeyString != null ? SimKey.fromString(simKeyString) : null;
 	}
 
-	private static MiddlewareServlet servlet(GlobalFsDriver driver) {
-		return MiddlewareServlet.create()
-				.with(GET, "/download/:space/:name*", request -> {
+	public static RoutingServlet create(GlobalFsDriver driver) {
+		return RoutingServlet.create()
+				.with(GET, "/download/:space/*", request -> {
+					String parameterSpace = request.getPathParameter("space");
+					if (parameterSpace == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						PubKey space = PubKey.fromString(parameterSpace);
 						SimKey simKey = getSimKey(request);
-						String name = request.getPathParameter("name");
+						String name = request.getRelativePath();
 						return driver.getMetadata(space, name)
 								.then(meta -> {
 									if (meta != null) {
-										return httpDownload(request,
-												(offset, limit) ->
-														driver.download(space, name, offset, limit)
-																.map(supplier -> supplier
-																		.transformWith(CipherTransformer.create(simKey, CryptoUtils.nonceFromString(name), offset))),
-												name, meta.getPosition());
+										try {
+											return Promise.of(HttpResponse.ok200()
+													.withFile(request, (offset, limit) ->
+															driver.download(space, name, offset, limit)
+																	.map(supplier -> supplier
+																			.transformWith(CipherTransformer.create(simKey,
+																					CryptoUtils.nonceFromString(name), offset))), name, meta.getPosition()));
+										} catch (HttpException e) {
+											return Promise.<HttpResponse>ofException(e);
+										}
 									}
 									return Promise.ofException(FILE_NOT_FOUND);
 								});
@@ -77,8 +84,13 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 					}
 				})
 				.with(POST, "/upload", request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return Promise.ofException(new ParseException());
+					}
+
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
 						SimKey simKey = getSimKey(request);
 						return httpUpload(request, (name, offset, revision) -> driver.upload(keys, name, offset, revision, simKey));
 					} catch (ParseException e) {
@@ -86,8 +98,13 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 					}
 				})
 				.with("/list/:space", request -> {
+					String space = request.getPathParameter("space");
+					if (space == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return driver.listEntities(PubKey.fromString(request.getPathParameter("space")), request.getQueryParameter("glob", "**"))
+						String glob = request.getQueryParameter("glob");
+						return driver.listEntities(PubKey.fromString(space), glob != null ? glob : "**")
 								.map(list -> HttpResponse.ok200()
 										.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
@@ -95,9 +112,14 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with("/getMetadata/:space/:name*", request -> {
+				.with("/getMetadata/:space/*", request -> {
+					String space = request.getPathParameter("space");
+					String name = request.getPathParameter("name");
+					if (space == null || name == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						return driver.getMetadata(PubKey.fromString(request.getPathParameter("space")), request.getPathParameter("name"))
+						return driver.getMetadata(PubKey.fromString(space), request.getRelativePath())
 								.map(list -> HttpResponse.ok200()
 										.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
@@ -105,20 +127,19 @@ public final class GlobalFsDriverServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/delete/:name*", request -> {
+				.with(POST, "/delete/*", request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return Promise.ofException(new ParseException());
+					}
 					try {
-						KeyPair keys = PrivKey.fromString(request.getCookie("Key")).computeKeys();
-						String name = request.getPathParameter("name");
+						KeyPair keys = PrivKey.fromString(key).computeKeys();
+						String name = request.getRelativePath();
 						return driver.delete(keys, name, parseRevision(request))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				});
-	}
-
-	@Override
-	public MiddlewareServlet getMiddlewareServlet() {
-		return servlet;
 	}
 }

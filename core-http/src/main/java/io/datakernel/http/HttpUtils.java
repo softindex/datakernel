@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UnknownFormatException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -219,7 +220,10 @@ public final class HttpUtils {
 		}
 	}
 
-	public static String urlDecode(String string, String enc) throws ParseException {
+	public static String urlDecode(@Nullable String string, String enc) throws ParseException {
+		if (string == null) {
+			throw new ParseException(HttpUtils.class, "No string to decode");
+		}
 		try {
 			return URLDecoder.decode(string, enc);
 		} catch (UnsupportedEncodingException e) {

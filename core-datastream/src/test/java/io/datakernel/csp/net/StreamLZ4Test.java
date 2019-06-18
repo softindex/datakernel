@@ -22,10 +22,11 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.MemSize;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -35,8 +36,13 @@ import static io.datakernel.async.TestUtils.await;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertArrayEquals;
 
-@RunWith(DatakernelRunner.class)
 public final class StreamLZ4Test {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() {

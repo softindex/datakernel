@@ -21,10 +21,11 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +38,13 @@ import static io.datakernel.util.Recyclable.tryRecycle;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(DatakernelRunner.class)
 public final class AbstractCommunicatingProcessTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private final int size = 10;
 	private final List<ByteBuf> actualData = new ArrayList<>();

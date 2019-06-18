@@ -20,11 +20,9 @@ import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestSet;
 import io.datakernel.ot.utils.TestSetName;
-import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.Tuple3;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 
@@ -40,8 +38,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
-@SuppressWarnings("ConstantConditions")
-@RunWith(DatakernelRunner.class)
 public final class MergedOTSystemTest {
 	private static final OTSystem<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> MERGED = mergeOtSystems(Tuple3::new,
 			Tuple3::getValue1, createAddIntSystem(),
@@ -283,9 +279,8 @@ public final class MergedOTSystemTest {
 
 			if (addVal != state.addVal) return false;
 			if (Double.compare(state.setVal, setVal) != 0) return false;
-			if (!name.equals(state.name)) return false;
+			return name.equals(state.name);
 
-			return true;
 		}
 
 		@Override

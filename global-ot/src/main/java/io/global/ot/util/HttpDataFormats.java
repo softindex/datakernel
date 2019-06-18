@@ -18,7 +18,6 @@ package io.global.ot.util;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.util.TypeT;
 import io.global.common.CryptoUtils;
@@ -26,13 +25,13 @@ import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.HeadsInfo;
+import org.jetbrains.annotations.Nullable;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 import java.util.Base64;
 
-import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.StructuredCodecs.BYTES_CODEC;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.datakernel.http.HttpUtils.urlEncode;
@@ -43,10 +42,10 @@ public class HttpDataFormats {
 		throw new AssertionError();
 	}
 
-	private static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_CODEC = REGISTRY.get(new TypeT<SignedData<RawCommitHead>>() {});
-	private static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_CODEC = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
-	private static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
-	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
+	public static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_CODEC = REGISTRY.get(new TypeT<SignedData<RawCommitHead>>() {});
+	public static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_CODEC = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
+	public static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
+	public static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 
 	private static <T> StructuredCodec<T> ofBinaryCodec(StructuredCodec<T> binaryCodec) {
 		return BYTES_CODEC.transform(
@@ -56,15 +55,10 @@ public class HttpDataFormats {
 
 	public static final StructuredCodec<SignedData<RawPullRequest>> SIGNED_PULL_REQUEST_CODEC = REGISTRY.get(new TypeT<SignedData<RawPullRequest>>() {});
 	public static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
-	public static final StructuredCodec<GlobalOTNode.CommitEntry> COMMIT_ENTRY_CODEC = REGISTRY.get(GlobalOTNode.CommitEntry.class);
 	public static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_JSON = ofBinaryCodec(SIGNED_COMMIT_HEAD_CODEC);
-	public static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_JSON = ofBinaryCodec(SIGNED_SHARED_KEY_CODEC);
+	public static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_JSON = ofBinaryCodec(SIGNED_SHARED_KEY_CODEC).nullable();
 	public static final StructuredCodec<RawCommit> COMMIT_JSON = ofBinaryCodec(COMMIT_CODEC);
 	public static final StructuredCodec<CommitId> COMMIT_ID_JSON = ofBinaryCodec(COMMIT_ID_CODEC);
-
-	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = object(HeadsInfo::new,
-			"existing", HeadsInfo::getExisting, ofSet(COMMIT_ID_JSON),
-			"required", HeadsInfo::getRequired, ofSet(COMMIT_ID_JSON));
 
 	public static String urlEncodeCommitId(CommitId commitId) {
 		return Base64.getUrlEncoder().encodeToString(commitId.toBytes());
@@ -82,9 +76,7 @@ public class HttpDataFormats {
 		return urlEncodePubKey(repositoryId.getOwner()) + '/' + urlEncode(repositoryId.getName(), "UTF-8");
 	}
 
-	public static RepoID urlDecodeRepositoryId(HttpRequest httpRequest) throws ParseException {
-		String pubKey = httpRequest.getPathParameter("pubKey");
-		String name = httpRequest.getPathParameter("name");
+	public static RepoID urlDecodeRepositoryId(@Nullable String pubKey, @Nullable String name) throws ParseException {
 		return RepoID.of(urlDecodePubKey(pubKey), HttpUtils.urlDecode(name, "UTF-8"));
 	}
 
@@ -95,7 +87,10 @@ public class HttpDataFormats {
 				Base64.getUrlEncoder().encodeToString(q.getYCoord().toBigInteger().toByteArray());
 	}
 
-	public static PubKey urlDecodePubKey(String str) throws ParseException {
+	public static PubKey urlDecodePubKey(@Nullable String str) throws ParseException {
+		if (str == null) {
+			throw new ParseException(HttpDataFormats.class, "No pubkey parameter string");
+		}
 		try {
 			int pos = str.indexOf(':');
 			BigInteger x = new BigInteger(Base64.getUrlDecoder().decode(str.substring(0, pos)));

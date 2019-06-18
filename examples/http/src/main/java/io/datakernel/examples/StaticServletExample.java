@@ -16,33 +16,23 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
-import io.datakernel.loader.StaticLoaders;
+import io.datakernel.launcher.Launcher;
+import io.datakernel.launchers.http.HttpServerLauncher;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
 
-import static java.util.concurrent.Executors.newCachedThreadPool;
+public final class StaticServletExample extends HttpServerLauncher {
+	@Provides
+	AsyncServlet servlet() {
+		return StaticServlet.create(ofClassPath("static/site"))
+				.withIndexHtml();
+	}
 
-public class StaticServletExample {
-	private static final Path RESOURCE_DIR = Paths.get("src/main/resources/static/site");
-
-	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withCurrentThread();
-
-		StaticServlet staticServlet = StaticServlet.create(eventloop, StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR));
-
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, staticServlet)
-				.withListenPort(8080);
-
-		server.listen();
-
-		System.out.println("Server is running");
-		System.out.println("You can connect from browser by visiting 'http://localhost:8080/'");
-
-		eventloop.run();
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new StaticServletExample();
+		launcher.launch(args);
 	}
 }

@@ -169,7 +169,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		assert (1 << compressionLevel) >= blockSize;
 		assert blockSize * 2 > (1 << compressionLevel);
 		compressionLevel = Math.max(0, compressionLevel - COMPRESSION_LEVEL_BASE);
-		assert compressionLevel >= 0 && compressionLevel <= 0x0F;
+		assert compressionLevel <= 0x0F;
 		return compressionLevel;
 	}
 

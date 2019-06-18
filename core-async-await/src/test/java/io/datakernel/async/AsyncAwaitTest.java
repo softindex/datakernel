@@ -1,8 +1,8 @@
 package io.datakernel.async;
 
-import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.test.rules.EventloopRule;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -14,8 +14,11 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.util.Arrays.asList;
 import static junit.framework.TestCase.assertEquals;
 
-@RunWith(DatakernelRunner.class)
 public class AsyncAwaitTest {
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
+
 	@Test
 	public void test1() throws ExecutionException, InterruptedException {
 		CompletableFuture<List<String>> future = async(this::blockingMethod)
