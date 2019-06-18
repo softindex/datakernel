@@ -3,6 +3,7 @@ package io.global.common;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.api.SharedKeyStorage;
 import io.global.common.discovery.MySqlSharedKeyStorage;
 import io.global.common.discovery.RocksDbSharedKeyStorage;
@@ -42,6 +43,9 @@ public class SharedKeyStorageTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufPool = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();

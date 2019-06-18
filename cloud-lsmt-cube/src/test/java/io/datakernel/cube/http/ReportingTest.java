@@ -40,11 +40,9 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.LoggingRule;
 import org.jetbrains.annotations.Nullable;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 import javax.sql.DataSource;
@@ -91,6 +89,9 @@ public final class ReportingTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static final int SERVER_PORT = getFreePort();
 

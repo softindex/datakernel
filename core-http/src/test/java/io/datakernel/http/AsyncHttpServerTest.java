@@ -21,6 +21,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,6 +48,9 @@ import static org.junit.Assert.assertTrue;
 public final class AsyncHttpServerTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,

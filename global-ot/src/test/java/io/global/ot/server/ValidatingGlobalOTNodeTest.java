@@ -6,6 +6,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.common.discovery.LocalDiscoveryService;
@@ -41,6 +42,9 @@ public final class ValidatingGlobalOTNodeTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static final KeyPair KEYS = KeyPair.generate();
 	private static final SimKey SIM_KEY = SimKey.generate();

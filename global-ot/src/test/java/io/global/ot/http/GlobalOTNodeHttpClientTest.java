@@ -24,6 +24,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
@@ -56,6 +57,9 @@ public class GlobalOTNodeHttpClientTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static final CurrentTimeProvider now = SteppingCurrentTimeProvider.create(10, 10);
 

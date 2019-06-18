@@ -21,6 +21,7 @@ import io.datakernel.aggregation.util.SqlAtomicSequence;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -45,6 +46,9 @@ public class IdGeneratorSqlTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Before
 	public void before() throws IOException, SQLException {

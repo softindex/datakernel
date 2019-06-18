@@ -30,7 +30,6 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
-
 	static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
 	private static final int PORT = getFreePort();
 

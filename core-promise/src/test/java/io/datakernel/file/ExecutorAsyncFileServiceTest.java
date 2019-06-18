@@ -18,6 +18,7 @@ package io.datakernel.file;
 
 import io.datakernel.async.Promises;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -43,8 +44,12 @@ import static org.junit.Assert.fail;
 public final class ExecutorAsyncFileServiceTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private ExecutorAsyncFileService service = new ExecutorAsyncFileService(Executors.newCachedThreadPool());
 

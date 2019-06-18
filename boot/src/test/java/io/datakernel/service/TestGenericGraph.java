@@ -22,13 +22,18 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 public class TestGenericGraph {
 	public static final int WORKERS = 4;
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public static class Pojo {
 		private final String object;

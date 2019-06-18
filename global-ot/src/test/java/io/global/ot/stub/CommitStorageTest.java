@@ -3,6 +3,7 @@ package io.global.ot.stub;
 import io.datakernel.async.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.Hash;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
@@ -48,6 +49,9 @@ public class CommitStorageTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Parameter()
 	public Function<Path, CommitStorage> storageFn;

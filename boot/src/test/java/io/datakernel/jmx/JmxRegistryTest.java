@@ -20,12 +20,14 @@ import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -41,8 +43,11 @@ import static java.util.Collections.singletonList;
 
 public class JmxRegistryTest {
 
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
+
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
 	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
 	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);

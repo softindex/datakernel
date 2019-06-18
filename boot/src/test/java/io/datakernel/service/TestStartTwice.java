@@ -19,6 +19,8 @@ package io.datakernel.service;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -29,6 +31,9 @@ import static org.junit.Assert.assertEquals;
 public class TestStartTwice {
 	private static AtomicInteger countStart = new AtomicInteger(0);
 	private static AtomicInteger countStop = new AtomicInteger(0);
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	interface A extends Service {}
 

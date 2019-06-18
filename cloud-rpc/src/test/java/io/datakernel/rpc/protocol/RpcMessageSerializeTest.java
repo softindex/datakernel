@@ -21,6 +21,8 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -29,6 +31,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class RpcMessageSerializeTest {
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public static class TestRpcMessageData {
 		private final String s;

@@ -20,6 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -52,6 +53,9 @@ public final class CheckpointStorageTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private RemoteFsCheckpointStorage storage;
 

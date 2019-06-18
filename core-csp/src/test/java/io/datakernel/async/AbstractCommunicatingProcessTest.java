@@ -23,6 +23,7 @@ import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -45,6 +46,9 @@ public final class AbstractCommunicatingProcessTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private final int size = 10;
 	private final List<ByteBuf> actualData = new ArrayList<>();

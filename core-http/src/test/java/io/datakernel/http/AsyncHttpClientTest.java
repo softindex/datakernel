@@ -30,6 +30,7 @@ import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -62,6 +63,9 @@ public final class AsyncHttpClientTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public static void startServer() throws IOException {
 		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request ->

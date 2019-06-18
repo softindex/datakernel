@@ -23,7 +23,9 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.cube.Cube.AggregationConfig;
 import io.datakernel.cube.Cube.AggregationContainer;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.time.LocalDate;
@@ -44,6 +46,9 @@ import static org.junit.Assert.*;
 
 @SuppressWarnings("rawtypes")
 public class TestCompatibleAggregations {
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
+
 	private static final Map<String, String> DATA_ITEM_DIMENSIONS = entriesToMap(of(
 			new SimpleEntry<>("date", "date"),
 			new SimpleEntry<>("advertiser", "advertiser"),

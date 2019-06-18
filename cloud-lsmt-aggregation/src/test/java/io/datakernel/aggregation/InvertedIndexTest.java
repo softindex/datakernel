@@ -24,6 +24,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -51,6 +52,9 @@ public class InvertedIndexTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();

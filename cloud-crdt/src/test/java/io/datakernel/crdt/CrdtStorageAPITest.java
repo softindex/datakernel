@@ -24,6 +24,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
@@ -58,6 +59,9 @@ public class CrdtStorageAPITest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Parameter()
 	public String testName;

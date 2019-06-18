@@ -66,8 +66,8 @@ public final class CrdtClusterTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	@Rule
-	public final LoggingRule loggingRule = new LoggingRule();
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();

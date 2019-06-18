@@ -22,9 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.test.rules.ActivePromisesRule;
-import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.*;
 import io.datakernel.util.ref.RefInt;
 import org.junit.*;
 
@@ -42,11 +40,13 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.rules.LoggerLevel.INFO;
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 @Ignore
+@LoggerConfig(packageOf = CachedAsyncDnsClient.class, value = INFO)
 public final class AsyncDnsClientTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();

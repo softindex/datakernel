@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -49,6 +50,9 @@ public final class HttpApiTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private AsyncHttpServer server;
 	private AsyncHttpClient client;

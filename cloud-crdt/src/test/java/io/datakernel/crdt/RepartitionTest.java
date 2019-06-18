@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.ref.RefInt;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -35,6 +36,9 @@ public final class RepartitionTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void test() {

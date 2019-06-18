@@ -22,6 +22,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamTransformer;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -42,6 +43,9 @@ public class StreamConsumersTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void testErrorDecorator() {

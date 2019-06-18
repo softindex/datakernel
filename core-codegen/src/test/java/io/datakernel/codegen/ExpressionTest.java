@@ -16,7 +16,9 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.test.rules.LoggingRule;
 import org.jetbrains.annotations.NotNull;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
@@ -33,6 +35,9 @@ import static org.junit.Assert.*;
 public class ExpressionTest {
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public static class TestPojo {
 		public int property1;

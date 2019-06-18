@@ -4,6 +4,7 @@ import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.ref.RefBoolean;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -22,6 +23,9 @@ public class StreamSuspendBufferTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private void testImmediateSuspend(StreamSupplierTransformer<String, StreamSupplier<String>> suspendingModifier) {
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());

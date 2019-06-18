@@ -21,6 +21,8 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 import io.datakernel.serializer.asm.SerializerGenByteBuffer;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -29,6 +31,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class CodeGenSerializerGenByteBufferTestX {
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static <T> T doTest(T testData1, BinarySerializer<T> serializer, BinarySerializer<T> deserializer) {
 		byte[] array = new byte[1000];

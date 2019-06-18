@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -53,6 +54,9 @@ public final class StaticServletsTest {
 
 	@ClassRule
 	public static final TemporaryFolder tmpFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static Path resourcesPath;
 	private static File resourcesFile;

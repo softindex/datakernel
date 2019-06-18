@@ -6,6 +6,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -28,6 +29,9 @@ public final class TestLocalFsClientRevisions {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();

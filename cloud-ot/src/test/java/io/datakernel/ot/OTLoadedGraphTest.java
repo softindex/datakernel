@@ -3,6 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -23,6 +24,9 @@ public class OTLoadedGraphTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private OTRepositoryStub<Integer, TestOp> repository;
 

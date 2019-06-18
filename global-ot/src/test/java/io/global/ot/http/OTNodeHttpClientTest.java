@@ -11,6 +11,7 @@ import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.SimKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
@@ -44,6 +45,9 @@ public class OTNodeHttpClientTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private OTNodeHttpClient<CommitId, TestOp> client;
 	private OTRepositoryStub<CommitId, TestOp> repository;

@@ -24,6 +24,7 @@ import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.MemSize;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -43,6 +44,9 @@ public final class StreamLZ4Test {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void test() {

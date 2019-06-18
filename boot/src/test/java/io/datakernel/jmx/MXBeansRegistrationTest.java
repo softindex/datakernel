@@ -17,8 +17,10 @@
 package io.datakernel.jmx;
 
 import io.datakernel.di.core.Key;
+import io.datakernel.test.rules.LoggingRule;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -28,8 +30,11 @@ import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
 public class MXBeansRegistrationTest {
 
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
+
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
 	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);

@@ -20,7 +20,9 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.test.rules.LoggingRule;
 import org.jetbrains.annotations.NotNull;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Properties;
@@ -32,6 +34,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class ConfigsModuleTest {
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
+
 	private static class TestClass {
 		int field1;
 		double field2;

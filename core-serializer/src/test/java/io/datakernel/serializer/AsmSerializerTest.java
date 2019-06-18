@@ -19,7 +19,9 @@ package io.datakernel.serializer;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
+import io.datakernel.test.rules.LoggingRule;
 import org.jetbrains.annotations.Nullable;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.net.Inet4Address;
@@ -35,6 +37,9 @@ import static org.junit.Assert.*;
 
 public class AsmSerializerTest {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static <T> T doTest(Class<T> type, T testData1) {
 		BinarySerializer<T> serializer = SerializerBuilder

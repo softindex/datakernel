@@ -75,8 +75,8 @@ public final class GlobalFsTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	@Rule
-	public final LoggingRule loggingRule = new LoggingRule();
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();

@@ -7,6 +7,7 @@ import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -52,6 +53,9 @@ public class OTStateManagerGlobalTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private TestOpState state;
 	private OTRepository<CommitId, TestOp> repository;

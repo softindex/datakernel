@@ -76,8 +76,8 @@ public final class FsIntegrationTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
-	@Rule
-	public LoggingRule loggingRule = new LoggingRule();
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();

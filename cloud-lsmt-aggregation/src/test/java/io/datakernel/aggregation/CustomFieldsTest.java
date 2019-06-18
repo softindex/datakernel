@@ -28,6 +28,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -56,6 +57,9 @@ public class CustomFieldsTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Measures("eventCount")
 	public static class EventRecord {

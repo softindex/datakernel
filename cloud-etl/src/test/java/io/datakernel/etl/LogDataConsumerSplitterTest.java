@@ -22,6 +22,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -40,6 +41,9 @@ public class LogDataConsumerSplitterTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private <T> void assertStreamResult(List<T> values, StreamConsumerWithResult<T, List<T>> consumer, Promise<List<T>> result) {
 		await(StreamSupplier.ofIterable(values).streamTo(consumer.getConsumer()));

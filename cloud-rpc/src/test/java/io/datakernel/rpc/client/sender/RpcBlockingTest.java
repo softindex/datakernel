@@ -26,6 +26,7 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.*;
 
 import java.net.InetAddress;
@@ -50,6 +51,9 @@ public final class RpcBlockingTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

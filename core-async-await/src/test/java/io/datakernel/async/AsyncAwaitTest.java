@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -18,6 +19,9 @@ public class AsyncAwaitTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void test1() throws ExecutionException, InterruptedException {

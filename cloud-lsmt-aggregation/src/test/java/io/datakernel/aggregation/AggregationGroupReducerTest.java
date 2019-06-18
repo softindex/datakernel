@@ -25,6 +25,7 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,6 +58,9 @@ public class AggregationGroupReducerTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void test() {

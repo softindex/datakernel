@@ -21,12 +21,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.file.AsyncFileService;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -35,7 +34,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -49,7 +47,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.csp.file.ChannelFileReader.readFile;
-import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
 import static io.datakernel.remotefs.FsClient.FILE_EXISTS;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.set;
@@ -67,6 +64,9 @@ public final class TestLocalFsClient {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();

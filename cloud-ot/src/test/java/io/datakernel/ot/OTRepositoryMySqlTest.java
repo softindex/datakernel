@@ -20,6 +20,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggerConfig;
+import io.datakernel.test.rules.LoggerLevel;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -47,11 +50,15 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
 @Ignore
+@LoggerConfig(value = LoggerLevel.FINEST)
 public class OTRepositoryMySqlTest {
 	private static final OTSystem<TestOp> SYSTEM = createTestOp();
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private OTRepositoryMySql<TestOp> repository;
 

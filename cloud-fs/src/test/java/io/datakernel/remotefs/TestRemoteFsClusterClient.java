@@ -27,6 +27,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
@@ -61,6 +62,9 @@ public final class TestRemoteFsClusterClient {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 

@@ -22,10 +22,12 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -37,6 +39,9 @@ public final class WorkerNameTest {
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public static class Element1 {}
 

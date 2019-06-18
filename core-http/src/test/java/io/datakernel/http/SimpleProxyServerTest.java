@@ -22,6 +22,8 @@ import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -47,6 +49,9 @@ public final class SimpleProxyServerTest {
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];

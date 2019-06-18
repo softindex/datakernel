@@ -18,6 +18,8 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.*;
@@ -29,6 +31,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class ConsolidationChunkSelectionTest {
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
+
 	@Test
 	public void testRangeExpansion() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong()).withKey("key", ofInt());

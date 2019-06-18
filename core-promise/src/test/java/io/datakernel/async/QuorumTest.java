@@ -18,6 +18,7 @@ package io.datakernel.async;
 
 import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.ref.RefInt;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -36,6 +37,9 @@ import static org.junit.Assert.*;
 public final class QuorumTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void simple() {

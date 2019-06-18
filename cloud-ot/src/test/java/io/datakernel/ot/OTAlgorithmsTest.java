@@ -5,6 +5,7 @@ import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.ot.utils.Utils;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -30,6 +31,9 @@ public class OTAlgorithmsTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Before
 	public void reset() {

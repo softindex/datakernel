@@ -20,9 +20,7 @@ import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.test.rules.ActivePromisesRule;
-import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.*;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
@@ -40,6 +38,8 @@ import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
 
 @Ignore("takes forever, only for manual testing")
+@LoggerConfig(value = LoggerLevel.WARNING)
+@LoggerConfig(packageOf = RemoteFsClusterClient.class, value = LoggerLevel.FINEST)
 public final class TestRepartitionController {
 	private static final int CLIENT_SERVER_PAIRS = 10;
 
@@ -51,6 +51,9 @@ public final class TestRepartitionController {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();

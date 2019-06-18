@@ -25,6 +25,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -60,6 +61,9 @@ public final class TestCachedFsClient {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();

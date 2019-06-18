@@ -21,6 +21,7 @@ import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -39,6 +40,9 @@ public final class OTSystemTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void testTransform1() throws Exception {

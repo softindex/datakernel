@@ -25,8 +25,10 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.test.rules.LoggingRule;
 import org.hamcrest.core.IsSame;
 import org.jetbrains.annotations.NotNull;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -34,6 +36,8 @@ import org.junit.rules.ExpectedException;
 public class ServiceGraphTest {
 	@Rule
 	public final ExpectedException expected = ExpectedException.none();
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void testProperClosingForFailingServiceOneComponent() throws Exception {

@@ -3,6 +3,7 @@ package io.global.common;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 import io.global.common.discovery.MySqlAnnouncementStorage;
@@ -48,6 +49,9 @@ public class AnnouncementStorageTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Parameter()
 	public Function<Path, AnnouncementStorage> storageFn;

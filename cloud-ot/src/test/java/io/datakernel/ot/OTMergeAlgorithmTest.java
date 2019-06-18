@@ -5,6 +5,7 @@ import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.Utils;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -27,6 +28,9 @@ public class OTMergeAlgorithmTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	static <K, D> OTLoadedGraph<K, D> buildGraph(Consumer<OTGraphBuilder<K, D>> consumer, OTSystem<D> system) {
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(system);

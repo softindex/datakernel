@@ -18,12 +18,12 @@ package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.HttpException;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -57,6 +57,9 @@ public final class DiscoveryHttpTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void test() throws IOException, CryptoException {

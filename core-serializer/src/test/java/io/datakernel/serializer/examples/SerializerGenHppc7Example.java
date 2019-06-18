@@ -20,6 +20,8 @@ import com.carrotsearch.hppc.*;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.test.rules.ByteBufRule;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -29,6 +31,9 @@ import static org.junit.Assert.assertNotNull;
 public final class SerializerGenHppc7Example {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private static <T> T doTest(T testData1, BinarySerializer<T> serializer) {
 		byte[] array = new byte[1000];

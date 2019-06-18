@@ -20,6 +20,7 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -53,6 +54,9 @@ public class CubeCleanerControllerTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private Eventloop eventloop;
 	private OTRepositoryMySql<LogDiff<CubeDiff>> repository;

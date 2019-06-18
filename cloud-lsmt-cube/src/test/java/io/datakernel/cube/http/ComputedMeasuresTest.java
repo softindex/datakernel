@@ -22,6 +22,8 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.cube.ComputedMeasure;
 import io.datakernel.cube.ComputedMeasures;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Map;
@@ -40,6 +42,8 @@ import static io.datakernel.util.CollectionUtils.keysToMap;
 import static org.junit.Assert.assertEquals;
 
 public class ComputedMeasuresTest {
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	public interface TestQueryResultPlaceholder {
 		void computeMeasures();

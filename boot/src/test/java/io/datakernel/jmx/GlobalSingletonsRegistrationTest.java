@@ -4,6 +4,8 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.jmx.GlobalSingletonsRegistrationTest.GlobalSingletonClass1.CustomClass;
 import io.datakernel.service.Service;
+import io.datakernel.test.rules.LoggingRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import javax.management.MBeanServer;
@@ -16,6 +18,9 @@ import static org.junit.Assert.assertNotNull;
 
 public class GlobalSingletonsRegistrationTest {
 	private final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void testMXBeanSingletonRegistration() throws Exception {

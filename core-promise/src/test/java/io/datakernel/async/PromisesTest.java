@@ -18,6 +18,7 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.util.*;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -44,6 +45,9 @@ public final class PromisesTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	private final AtomicInteger counter = new AtomicInteger();
 

@@ -7,6 +7,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggingRule;
 import net.jpountz.lz4.LZ4Factory;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -24,6 +25,9 @@ public class ChannelLZ4DecompressorTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Test
 	public void testTruncatedData() {
