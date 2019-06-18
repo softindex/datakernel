@@ -49,7 +49,6 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.Promise.*;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static io.datakernel.util.CollectionUtils.set;
@@ -549,7 +548,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 
 		int idx = name.lastIndexOf('/');
-		Path folder = idx != -1 ? storage.resolve(name.substring(0, idx)) : storage;
+		Path folder = idx != -1 ? resolve(name.substring(0, idx)) : storage;
 
 		Map<String, FilenameInfo> files = new HashMap<>();
 
@@ -643,11 +642,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	private FileMetadata toFileMetadata(FilenameInfo info) {
 		try {
+			String name = File.separatorChar == '\\' ? info.getName().replace('/', '\\') : info.getName();
 			Path path = info.getFilePath();
 			long timestamp = Files.getLastModifiedTime(path).toMillis();
 			return info.isTombstone() ?
-					FileMetadata.tombstone(info.getName(), timestamp, info.getRevision()) :
-					FileMetadata.of(info.getName(), Files.size(path), timestamp, info.getRevision());
+					FileMetadata.tombstone(name, timestamp, info.getRevision()) :
+					FileMetadata.of(name, Files.size(path), timestamp, info.getRevision());
 		} catch (Exception e) {
 			logger.warn("error while getting metadata for file {}", info.getFilePath());
 			return null;
