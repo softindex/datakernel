@@ -274,18 +274,18 @@ public interface Config {
 
 
 	static Config ofClassPathProperties(String fileName) {
-		return ofClassPathProperties(fileName, getSystemClassLoader(), false);
+		return ofClassPathProperties(getSystemClassLoader(), fileName, false);
 	}
 
-	static Config ofClassPathProperties(String fileName, ClassLoader classLoader) {
-		return ofClassPathProperties(fileName, classLoader, false);
+	static Config ofClassPathProperties(ClassLoader classLoader, String fileName) {
+		return ofClassPathProperties(classLoader, fileName, false);
 	}
 
 	static Config ofClassPathProperties(String fileName, boolean optional) {
-		return ofClassPathProperties(fileName, getSystemClassLoader(), optional);
+		return ofClassPathProperties(getSystemClassLoader(), fileName, optional);
 	}
 
-	static Config ofClassPathProperties(String fileName, ClassLoader classLoader, boolean optional) {
+	static Config ofClassPathProperties(ClassLoader classLoader, String fileName, boolean optional) {
 		Properties props = new Properties();
 		if (fileName.startsWith("/")) {
 			fileName = fileName.substring(1);

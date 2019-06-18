@@ -6,7 +6,7 @@ import io.datakernel.serializer.annotations.SerializeNullable;
 
 import java.util.Arrays;
 
-import static java.lang.ClassLoader.getSystemClassLoader;
+import static java.lang.Thread.currentThread;
 
 /**
  * Example of serialization and deserialization of an object with fixed size fields.
@@ -26,7 +26,7 @@ public final class FixedSizeFieldsExample {
 	@SuppressWarnings("SameParameterValue")
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+				.create(currentThread().getContextClassLoader())
 				.build(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}

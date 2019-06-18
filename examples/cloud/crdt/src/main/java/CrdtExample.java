@@ -10,7 +10,10 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -21,6 +24,15 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 public final class CrdtExample {
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
 			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));
+	private static final Path PATH;
+
+	static {
+		try {
+			PATH = Files.createTempDirectory("crdt");
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create()
@@ -77,7 +89,7 @@ public final class CrdtExample {
 	}
 
 	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, int n) {
-		FsClient storage = LocalFsClient.create(eventloop, Paths.get("/tmp/TESTS/crdt_" + n));
+		FsClient storage = LocalFsClient.create(eventloop, PATH.resolve(Integer.toString(n)));
 		return CrdtStorageFs.create(eventloop, storage, SERIALIZER);
 	}
 }

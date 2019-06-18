@@ -6,6 +6,7 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
+import static java.lang.Thread.currentThread;
 
 public final class HttpRequestParametersExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
@@ -26,7 +27,7 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 							HttpResponse.ok200()
 									.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>"));
 				})
-				.with("/*", StaticServlet.create(ofClassPath(RESOURCE_DIR))
+				.with("/*", StaticServlet.create(ofClassPath(currentThread().getContextClassLoader(), RESOURCE_DIR))
 						.withIndexHtml());
 	}
 

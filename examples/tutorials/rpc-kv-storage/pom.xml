@@ -32,21 +32,21 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>RpcServerLauncher</id>
+            <id>ServerLauncher</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>RpcServerLauncher</mainClass>
+              <mainClass>ServerLauncher</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>RpcClientLauncher</id>
+            <id>ClientLauncher</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>RpcClientLauncher</mainClass>
+              <mainClass>ClientLauncher</mainClass>
             </configuration>
           </execution>
         </executions>

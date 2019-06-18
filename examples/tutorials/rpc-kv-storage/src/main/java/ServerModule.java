@@ -6,6 +6,7 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static java.lang.Thread.currentThread;
 
 // [START EXAMPLE]
 public class ServerModule extends AbstractModule {
@@ -25,7 +26,7 @@ public class ServerModule extends AbstractModule {
 	@Provides
 	RpcServer rpcServer(Eventloop eventloop, KeyValueStore store) {
 		return RpcServer.create(eventloop)
-				.withSerializerBuilder(SerializerBuilder.create(Thread.currentThread().getContextClassLoader()))
+				.withSerializerBuilder(SerializerBuilder.create(currentThread().getContextClassLoader()))
 				.withMessageTypes(PutRequest.class, PutResponse.class, GetRequest.class, GetResponse.class)
 				.withHandler(PutRequest.class, PutResponse.class, req -> Promise.of(new PutResponse(store.put(req.getKey(), req.getValue()))))
 				.withHandler(GetRequest.class, GetResponse.class, req -> Promise.of(new GetResponse(store.get(req.getKey()))))

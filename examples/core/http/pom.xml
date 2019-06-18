@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -42,111 +43,102 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>HttpBenchmark</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpBenchmark</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpClientExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpClientExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpMultithreadedServerExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpMultithreadedServerExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpRoutingServletExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpRoutingServletExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpRequestParameterExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpRequestParameterExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpStaticServletExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpStaticServletExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpBlockingServletExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpBlockingServletExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpFileUploadExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpFileUploadExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpHelloWorldExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpHelloWorldExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpServerScratch</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpServerScratch</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>HttpServletDecoratorExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpServletDecoratorExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
             <id>HttpParamParserExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
               <mainClass>decoder.HttpParamParserExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>BlockingServletExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>BlockingServletExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>ClientExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>ClientExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>FileUploadExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>FileUploadExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>HelloWorldExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>HelloWorldExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>HttpRequestParametersExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>HttpRequestParametersExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>MultithreadedServerExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>MultithreadedServerExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>RoutingServletExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>RoutingServletExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>ServerScratch</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>ServerScratch</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>ServletDecoratorExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>ServletDecoratorExample</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>StaticServletExample</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>StaticServletExample</mainClass>
             </configuration>
           </execution>
         </executions>

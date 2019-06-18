@@ -27,30 +27,30 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>CspByteBufsParserExample</id>
+            <id>ByteBufsParserExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>CspByteBufsParserExample</mainClass>
+              <mainClass>ByteBufsParserExample</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>CspChannelExample</id>
+            <id>ChannelExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>CspChannelExample</mainClass>
+              <mainClass>ChannelExample</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>CspChannelFileExample</id>
+            <id>ChannelFileExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>CspChannelFileExample</mainClass>
+              <mainClass>ChannelFileExample</mainClass>
             </configuration>
           </execution>
           <execution>

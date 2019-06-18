@@ -75,12 +75,12 @@
             </configuration>
           </execution>
           <execution>
-            <id>TcpEchoServerExample</id>
+            <id>csp.TcpServerExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>CspTcpServerExample</mainClass>
+              <mainClass>csp.TcpServerExample</mainClass>
             </configuration>
           </execution>
         </executions>

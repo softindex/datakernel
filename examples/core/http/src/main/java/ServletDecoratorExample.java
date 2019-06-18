@@ -10,13 +10,14 @@ import static io.datakernel.http.AsyncServletDecorator.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
+import static java.lang.Thread.currentThread;
 
 public final class ServletDecoratorExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
 		return loadBody().serve(
 				RoutingServlet.create()
-						.with(GET, "/", StaticServlet.create(ofClassPath("static/wrapper"))
+						.with(GET, "/", StaticServlet.create(ofClassPath(currentThread().getContextClassLoader(), "static/wrapper"))
 								.withMappingTo("page.html"))
 						.with(POST, "/", request -> {
 							String text = request.getPostParameter("text");

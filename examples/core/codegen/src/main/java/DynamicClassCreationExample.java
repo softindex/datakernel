@@ -4,6 +4,7 @@ import io.datakernel.codegen.ExpressionToString;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codegen.Expressions.*;
+import static java.lang.Thread.currentThread;
 
 /**
  * In this example a Class that implements the specified interface is dynamically created.
@@ -12,7 +13,7 @@ import static io.datakernel.codegen.Expressions.*;
 public class DynamicClassCreationExample {
 	public static void main(String[] args) throws IllegalAccessException, InstantiationException {
 		// Construct a Class that implements Person interface
-		Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Person.class)
+		Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(currentThread().getContextClassLoader()), Person.class)
 				// declare fields
 				.withField("id", int.class)
 				.withField("name", String.class)

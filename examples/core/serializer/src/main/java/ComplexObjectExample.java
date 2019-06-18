@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.lang.Thread.currentThread;
+
 /**
  * Example of serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
  */
@@ -89,6 +91,6 @@ public final class ComplexObjectExample {
 	}
 
 	private static ClassLoader getContextClassLoader() {
-		return Thread.currentThread().getContextClassLoader();
+		return currentThread().getContextClassLoader();
 	}
 }

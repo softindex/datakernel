@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigConverters.ofString;
 import static io.datakernel.di.module.Modules.combine;
+import static java.lang.Thread.currentThread;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class WebappLauncher extends Launcher {
@@ -35,7 +36,7 @@ public class WebappLauncher extends Launcher {
 
 	@Provides
 	Config config() {
-		return Config.ofClassPathProperties("configs.properties");
+		return Config.ofClassPathProperties(currentThread().getContextClassLoader(), "configs.properties");
 	}
 
 	@Provides
@@ -50,7 +51,8 @@ public class WebappLauncher extends Launcher {
 
 	@Provides
 	StaticLoader staticLoader(Config config) {
-		return StaticLoader.ofClassPath(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
+		return StaticLoader.ofClassPath(currentThread().getContextClassLoader(),
+				config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
 	}
 
 	@Provides

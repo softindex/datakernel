@@ -18,6 +18,7 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 import static java.lang.Integer.parseInt;
+import static java.lang.Thread.currentThread;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 //[START EXAMPLE]
@@ -41,7 +42,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 	AsyncServlet servlet(RecordDAO recordDAO) {
 		return RoutingServlet.create()
 				//[START REGION_2]
-				.with("/*", StaticServlet.create(ofClassPath("build/"))
+				.with("/*", StaticServlet.create(ofClassPath(currentThread().getContextClassLoader(), "build/"))
 						.withIndexHtml())
 				//[END REGION_2]
 				.with(POST, "/add", loadBody()

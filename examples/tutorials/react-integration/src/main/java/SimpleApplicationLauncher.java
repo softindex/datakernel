@@ -4,12 +4,13 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.loader.StaticLoader.ofClassPath;
+import static java.lang.Thread.currentThread;
 
 //[START EXAMPLE]
 public final class SimpleApplicationLauncher extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
-		return StaticServlet.create(ofClassPath("build"))
+		return StaticServlet.create(ofClassPath(currentThread().getContextClassLoader(), "build"))
 				.withIndexHtml();
 	}
 

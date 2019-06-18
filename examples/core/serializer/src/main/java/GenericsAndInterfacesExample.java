@@ -5,6 +5,8 @@ import io.datakernel.serializer.annotations.Serialize;
 import java.util.Arrays;
 import java.util.List;
 
+import static java.lang.Thread.currentThread;
+
 /**
  * Example of using generics and interfaces with serializers and deserializers.
  */
@@ -97,7 +99,7 @@ public final class GenericsAndInterfacesExample {
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getContextClassLoader())
+				.create(currentThread().getContextClassLoader())
 				.build(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
@@ -110,6 +112,6 @@ public final class GenericsAndInterfacesExample {
 	}
 
 	private static ClassLoader getContextClassLoader() {
-		return Thread.currentThread().getContextClassLoader();
+		return currentThread().getContextClassLoader();
 	}
 }

@@ -3,6 +3,8 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
+import static java.lang.Thread.currentThread;
+
 /**
  * Example of serialization and deserialization of a simple object with no {@code null}
  * fields, generics or complex objects (such as maps or arrays) as fields.
@@ -30,7 +32,7 @@ public final class SimpleObjectExample {
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getContextClassLoader())
+				.create(currentThread().getContextClassLoader())
 				.build(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
@@ -97,6 +99,6 @@ public final class SimpleObjectExample {
 	}
 
 	private static ClassLoader getContextClassLoader() {
-		return Thread.currentThread().getContextClassLoader();
+		return currentThread().getContextClassLoader();
 	}
 }

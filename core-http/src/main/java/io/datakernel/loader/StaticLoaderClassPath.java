@@ -32,8 +32,12 @@ class StaticLoaderClassPath implements StaticLoader {
 		this.classLoader = classLoader;
 	}
 
-	public static StaticLoaderClassPath create(String root) {
+	public static StaticLoaderClassPath create(@NotNull String root) {
 		return create(null, getSystemClassLoader(), root);
+	}
+
+	public static StaticLoader create(@NotNull String root, @NotNull ClassLoader classLoader) {
+		return create(null, classLoader, root);
 	}
 
 	public static StaticLoaderClassPath create(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {

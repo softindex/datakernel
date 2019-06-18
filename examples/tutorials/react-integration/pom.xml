@@ -36,7 +36,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>HttpHelloWorldExample</id>
+            <id>SimpleApplicationLauncher</id>
             <goals>
               <goal>java</goal>
             </goals>

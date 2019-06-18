@@ -7,13 +7,14 @@ import java.net.InetAddress;
 
 import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
+import static java.lang.Thread.currentThread;
 
 public final class ConfigModuleExample extends AbstractModule {
 	private static final String PROPERTIES_FILE = "example.properties";
 
 	@Provides
 	Config config() {
-		return Config.ofClassPathProperties(PROPERTIES_FILE);
+		return Config.ofClassPathProperties(currentThread().getContextClassLoader(), PROPERTIES_FILE);
 	}
 
 	@Provides

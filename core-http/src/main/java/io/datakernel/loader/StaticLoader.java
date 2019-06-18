@@ -59,6 +59,10 @@ public interface StaticLoader {
 		return StaticLoaderClassPath.create(root);
 	}
 
+	static StaticLoader ofClassPath(ClassLoader classLoader, String root) {
+		return StaticLoaderClassPath.create(root, classLoader);
+	}
+
 	static StaticLoader ofClassPath(@Nullable Executor executor, ClassLoader classLoader, String root) {
 		return StaticLoaderClassPath.create(executor, classLoader, root);
 	}
