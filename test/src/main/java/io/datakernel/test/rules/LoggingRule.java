@@ -16,11 +16,12 @@
 
 package io.datakernel.test.rules;
 
+import io.datakernel.test.SimpleLoggingFormatter;
+import io.datakernel.test.StdoutConsoleHandler;
 import org.jetbrains.annotations.Nullable;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -38,7 +39,6 @@ import static java.util.Collections.singletonList;
  * {@link TestRule} that enables deeper logger levels for specific tests that request it.
  */
 public final class LoggingRule implements TestRule {
-
 	private interface AnnotationExtractor {
 		<A extends Annotation> @Nullable A get(Class<A> annotation);
 	}
@@ -83,7 +83,9 @@ public final class LoggingRule implements TestRule {
 				loggers[i] = logger;
 				logger.setLevel(clause.value().getLevel());
 			}
-			rootLogger.addHandler(new SLF4JBridgeHandler());
+			StdoutConsoleHandler stdoutConsoleHandler = new StdoutConsoleHandler();
+			stdoutConsoleHandler.setFormatter(new SimpleLoggingFormatter());
+			rootLogger.addHandler(stdoutConsoleHandler);
 
 			try {
 				base.evaluate();

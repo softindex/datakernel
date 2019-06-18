@@ -18,15 +18,4 @@
     <module>cloud</module>
     <module>tutorials</module>
   </modules>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>jul-to-slf4j</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-    </dependency>
-  </dependencies>
 </project>

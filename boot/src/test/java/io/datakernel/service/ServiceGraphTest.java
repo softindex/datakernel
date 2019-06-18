@@ -36,6 +36,7 @@ import org.junit.rules.ExpectedException;
 public class ServiceGraphTest {
 	@Rule
 	public final ExpectedException expected = ExpectedException.none();
+
 	@ClassRule
 	public static final LoggingRule loggingRule = new LoggingRule();
 
