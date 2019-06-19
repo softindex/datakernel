@@ -54,6 +54,7 @@ import static java.util.Collections.singletonMap;
  * Scopes are a very powerful tool for managing numbers of instances that you create (since one Injector creates at most one instance per key)
  * yet still maintaining the simplicity and speed of the datakernel DI framework.
  */
+//[START EXAMPLE]
 public final class ScopeExample {
 
 	@Retention(RetentionPolicy.RUNTIME)
@@ -124,9 +125,7 @@ public final class ScopeExample {
 				.mapToObj(i -> "ping: " + i)
 				.forEach(s -> {
 					Map<Key<?>, Object> instancesOverride = new HashMap<>(singletonMap(Key.of(HttpRequest.class), new HttpRequest(s)));
-
 					Injector subInjector = injector.enterScope(HTTP_SCOPE, instancesOverride, true);
-
 					System.out.println(subInjector.getInstance(HttpResponse.class).pong);
 				});
 
@@ -138,3 +137,4 @@ public final class ScopeExample {
 		}
 	}
 }
+//[END EXAMPLE]

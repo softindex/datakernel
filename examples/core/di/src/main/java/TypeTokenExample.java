@@ -12,6 +12,7 @@ import static java.util.Arrays.asList;
  * If you dont like the excess subclassing, you can use Types.parameterized (or even Types.arrayOf),
  * as shown in getInstance call.
  */
+//[START EXAMPLE]
 public final class TypeTokenExample {
 
 	public static void main(String[] args) {
@@ -28,3 +29,4 @@ public final class TypeTokenExample {
 		System.out.println("complex == subclassedButTypesafe = " + (complex.equals(subclassedButTypesafe)));
 	}
 }
+//[END EXAMPLE]

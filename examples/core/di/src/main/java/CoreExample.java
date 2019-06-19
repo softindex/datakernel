@@ -18,6 +18,7 @@ import io.datakernel.di.module.AbstractModule;
  * <p>
  * Zero reflection, explicit, simple and powerful DSL - this is the core of the datakernel DI.
  */
+//[START EXAMPLE]
 public final class CoreExample {
 
 	interface MessageSender {
@@ -69,9 +70,9 @@ public final class CoreExample {
 
 	public static void main(String[] args) {
 		Injector injector = Injector.of(new SomeModuleWithImpls(), new ApplicationModule());
-
 		Application application = injector.getInstance(Application.class);
 
 		application.hello();
 	}
 }
+//[END EXAMPLE]

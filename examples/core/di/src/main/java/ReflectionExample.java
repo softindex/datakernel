@@ -44,6 +44,7 @@ import java.util.logging.Logger;
  * Datakernel DI also comes with high-level reflection DSL facade to make it similar to other DI frameworks for the ease of transition
  * and also because the reflection DSL is pretty declarative and consise.
  */
+//[START EXAMPLE]
 public final class ReflectionExample {
 
 	interface MessageSender {
@@ -121,3 +122,4 @@ public final class ReflectionExample {
 		application.hello();
 	}
 }
+//[END EXAMPLE]
