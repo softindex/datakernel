@@ -28,7 +28,6 @@
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-datastream</artifactId>
       <version>${project.version}</version>
-      <scope>compile</scope>
     </dependency>
   </dependencies>
 

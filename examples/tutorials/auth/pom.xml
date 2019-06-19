@@ -16,14 +16,8 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-http</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.datakernel</groupId>
       <artifactId>http-launchers</artifactId>
       <version>${project.version}</version>
-      <scope>compile</scope>
     </dependency>
   </dependencies>
 </project>

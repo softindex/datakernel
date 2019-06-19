@@ -195,6 +195,10 @@ public abstract class HttpMessage {
 		return body;
 	}
 
+	public final boolean isBodyLoaded() {
+		return (flags & MUST_LOAD_BODY) == 0 && body != null;
+	}
+
 	public void setMaxBodySize(MemSize maxBodySize) {
 		this.maxBodySize = maxBodySize.toInt();
 	}

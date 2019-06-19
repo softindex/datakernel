@@ -23,6 +23,7 @@ import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.net.InetSocketAddress;
+import java.util.stream.Stream;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -33,6 +34,7 @@ import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static io.datakernel.launchers.initializers.Initializers.*;
+import static java.util.stream.Collectors.joining;
 
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	public static final int PORT = 8080;
@@ -103,6 +105,10 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		logger.info("HTTP Server is listening on " + Stream.concat(
+				primaryServer.getListenAddresses().stream().map(address -> "http://" + address.getHostName() + ":" + address.getPort() + "/"),
+				primaryServer.getSslListenAddresses().stream().map(address -> "http://" + address.getHostName() + ":" + address.getPort() + "/"))
+				.collect(joining(", ")));
 		awaitShutdown();
 	}
 

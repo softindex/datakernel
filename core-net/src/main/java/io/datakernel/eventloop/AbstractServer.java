@@ -343,6 +343,14 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return serverSocketSettings;
 	}
 
+	public List<InetSocketAddress> getListenAddresses() {
+		return listenAddresses;
+	}
+
+	public List<InetSocketAddress> getSslListenAddresses() {
+		return sslListenAddresses;
+	}
+
 	public SocketSettings getSocketSettings() {
 		return socketSettings;
 	}
