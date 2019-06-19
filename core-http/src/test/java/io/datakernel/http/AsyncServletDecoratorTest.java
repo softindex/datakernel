@@ -106,11 +106,11 @@ public class AsyncServletDecoratorTest {
 
 	@Test
 	public void testMapResponse() {
-		AsyncServlet servlet = mapResponse(
-				response -> HttpResponse.ok200())
-				.serve(request -> Promise.of(HttpResponse.ok200()
-						.withCookie(HttpCookie.of("test2", "test2"))
-						.withBody(ByteBufPool.allocate(100))));
+		AsyncServlet servlet = mapResponse(response -> HttpResponse.ok200())
+				.serve(request -> Promise.of(
+						HttpResponse.ok200()
+								.withCookie(HttpCookie.of("test2", "test2"))
+								.withBody(ByteBufPool.allocate(100))));
 
 		ByteBuf body = ByteBufPool.allocate(100);
 		await(servlet.serve(HttpRequest.get("http://example.com")

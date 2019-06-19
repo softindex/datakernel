@@ -60,10 +60,6 @@ public interface AsyncServletDecorator {
 						.map(response -> {
 							HttpResponse newResponse = fn.apply(response);
 							if (response != newResponse) {
-								ChannelSupplier<ByteBuf> bodyStream = response.getBodyStream();
-								if (bodyStream != null) {
-									bodyStream.streamTo(recycling());
-								}
 								response.recycle();
 							}
 							return newResponse;

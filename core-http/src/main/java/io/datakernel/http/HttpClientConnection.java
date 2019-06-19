@@ -20,7 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -34,6 +33,7 @@ import java.net.InetSocketAddress;
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodePositiveInt;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
+import static io.datakernel.http.HttpMessage.MUST_LOAD_BODY;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 /**
@@ -168,24 +168,18 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(ChannelSupplier<ByteBuf> bodySupplier) {
+	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
 		assert !isClosed();
 
 		HttpResponse response = this.response;
-		response.bodySupplier = bodySupplier;
+		response.flags |= MUST_LOAD_BODY;
+		response.body = body;
+		response.bodyStream = bodySupplier;
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
 		SettablePromise<HttpResponse> promise = this.promise;
 		this.promise = null;
 		promise.set(response);
-
-		if ((response.flags & HttpMessage.ACCESSED_BODY_STREAM) == 0) {
-			if (bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
-				((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue().recycle();
-			} else {
-				bodySupplier.streamTo(BUF_RECYCLER);
-			}
-		}
 	}
 
 	@Override

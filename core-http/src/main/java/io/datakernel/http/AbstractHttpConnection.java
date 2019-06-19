@@ -129,7 +129,7 @@ public abstract class AbstractHttpConnection {
 
 	protected abstract void onHeader(HttpHeader header, byte[] array, int off, int len) throws ParseException;
 
-	protected abstract void onHeadersReceived(ChannelSupplier<ByteBuf> bodySupplier);
+	protected abstract void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier);
 
 	protected abstract void onBodyReceived();
 
@@ -305,7 +305,7 @@ public abstract class AbstractHttpConnection {
 	private void readBody() {
 		if ((flags & (CHUNKED | GZIPPED)) == 0 && readQueue.hasRemainingBytes(contentLength)) {
 			ByteBuf body = readQueue.takeExactSize(contentLength);
-			onHeadersReceived(new ChannelSuppliers.ChannelSupplierOfValue<>(body));
+			onHeadersReceived(body, null);
 			if (isClosed()) return;
 			flags |= BODY_RECEIVED;
 			onBodyReceived();
@@ -359,7 +359,7 @@ public abstract class AbstractHttpConnection {
 
 		if (isClosed()) return;
 
-		onHeadersReceived(supplier);
+		onHeadersReceived(null, supplier);
 
 		process.getProcessCompletion()
 				.whenComplete(($, e) -> {
@@ -374,9 +374,9 @@ public abstract class AbstractHttpConnection {
 
 	@Nullable
 	public static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
-		if (httpMessage.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
-			ByteBuf body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) httpMessage.bodySupplier).getValue();
-			httpMessage.flags |= HttpMessage.ACCESSED_BODY_STREAM;
+		if (httpMessage.body != null) {
+			ByteBuf body = httpMessage.body;
+			httpMessage.body = null;
 			if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
 				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
@@ -396,7 +396,7 @@ public abstract class AbstractHttpConnection {
 			}
 		}
 
-		if (httpMessage.bodySupplier == null) {
+		if (httpMessage.bodyStream == null) {
 			httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(0));
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
@@ -408,12 +408,13 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeHttpMessageAsChunkedStream(HttpMessage httpMessage) {
 		httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
-		httpMessage.flags |= HttpMessage.ACCESSED_BODY_STREAM;
+		ChannelSupplier<ByteBuf> bodyStream = httpMessage.bodyStream;
+		httpMessage.bodyStream = null;
 		if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-			httpMessage.bodySupplier.bindTo(chunker.getInput());
+			bodyStream.bindTo(chunker.getInput());
 			writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier()));
 		} else {
 			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
@@ -421,7 +422,7 @@ public abstract class AbstractHttpConnection {
 			httpMessage.writeTo(buf);
 			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
 			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-			httpMessage.bodySupplier.bindTo(deflater.getInput());
+			bodyStream.bindTo(deflater.getInput());
 			deflater.getOutput().bindTo(chunker.getInput());
 			writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier()));
 		}

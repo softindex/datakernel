@@ -36,6 +36,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.csp.ChannelConsumers.recycling;
 import static java.util.Arrays.copyOf;
 
 /**
@@ -43,20 +44,20 @@ import static java.util.Arrays.copyOf;
  */
 @SuppressWarnings({"unused", "WeakerAccess", "PointlessBitwiseExpression"})
 public abstract class HttpMessage {
-	final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
-	ChannelSupplier<ByteBuf> bodySupplier;
-	private Recyclable bufs;
-
-	protected ByteBuf body;
-	protected int maxBodySize;
-	protected Map<Type, Object> attachments;
-
-	static final byte ACCESSED_BODY_STREAM = 1 << 0;
+	static final byte MUST_LOAD_BODY = 1 << 0;
 	static final byte USE_GZIP = 1 << 1;
 	static final byte RECYCLED = (byte) (1 << 7);
 
-	@MagicConstant(flags = {ACCESSED_BODY_STREAM, USE_GZIP, RECYCLED})
+	@MagicConstant(flags = {MUST_LOAD_BODY, USE_GZIP, RECYCLED})
 	byte flags;
+
+	final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
+	ByteBuf body;
+	ChannelSupplier<ByteBuf> bodyStream;
+	Recyclable bufs;
+
+	protected int maxBodySize;
+	protected Map<Type, Object> attachments;
 
 	protected HttpMessage() {
 	}
@@ -160,16 +161,23 @@ public abstract class HttpMessage {
 	}
 
 	public void setBodyStream(@NotNull ChannelSupplier<ByteBuf> bodySupplier) {
-		this.bodySupplier = bodySupplier;
+		this.bodyStream = bodySupplier;
 	}
 
 	public ChannelSupplier<ByteBuf> getBodyStream() {
-		flags |= ACCESSED_BODY_STREAM;
-		return this.bodySupplier;
+		ChannelSupplier<ByteBuf> bodyStream = this.bodyStream;
+		this.bodyStream = null;
+		if (bodyStream != null) return bodyStream;
+		if (body != null) {
+			ByteBuf body = this.body;
+			this.body = null;
+			return ChannelSupplier.of(body);
+		}
+		return ChannelSupplier.of();
 	}
 
 	public void setBody(@NotNull ByteBuf body) {
-		this.bodySupplier = ChannelSupplier.of(body);
+		this.body = body;
 	}
 
 	public void setBody(@NotNull byte[] body) {
@@ -177,7 +185,7 @@ public abstract class HttpMessage {
 	}
 
 	public final ByteBuf getBody() {
-		if (body == null) throw new NullPointerException("Body is not loaded");
+		if ((flags & MUST_LOAD_BODY) != 0) throw new IllegalStateException("Body is not loaded");
 		return body;
 	}
 
@@ -204,12 +212,10 @@ public abstract class HttpMessage {
 	}
 
 	public Promise<ByteBuf> loadBody(int maxBodySize) {
-		if (this.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue<?>) {
-			flags |= ACCESSED_BODY_STREAM;
-			return Promise.of(body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
-		}
 		if (body != null) return Promise.of(body);
-		return ChannelSuppliers.collect(getBodyStream(),
+		ChannelSupplier<ByteBuf> bodyStream = this.bodyStream;
+		this.bodyStream = null;
+		return ChannelSuppliers.collect(bodyStream,
 				new ByteBufQueue(),
 				(queue, buf) -> {
 					if (queue.hasRemainingBytes(maxBodySize)) {
@@ -219,8 +225,16 @@ public abstract class HttpMessage {
 								"HTTP body size exceeds load limit " + maxBodySize));
 					}
 					queue.add(buf);
-				}, ByteBufQueue::takeRemaining)
-				.whenComplete((body, e) -> this.body = body);
+				},
+				ByteBufQueue::takeRemaining)
+				.whenComplete((body, e) -> {
+					if (!isRecycled()) {
+						this.flags &= ~MUST_LOAD_BODY;
+						this.body = body;
+					} else {
+						body.recycle();
+					}
+				});
 	}
 
 	public <T> void attach(Type type, T extra) {
@@ -278,7 +292,9 @@ public abstract class HttpMessage {
 		}
 		if (body != null) {
 			body.recycle();
-			body = null;
+		}
+		if (bodyStream != null) {
+			bodyStream.streamTo(recycling());
 		}
 	}
 
