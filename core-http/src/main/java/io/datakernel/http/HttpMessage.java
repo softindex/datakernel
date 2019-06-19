@@ -173,7 +173,7 @@ public abstract class HttpMessage {
 			this.body = null;
 			return ChannelSupplier.of(body);
 		}
-		return ChannelSupplier.of();
+		throw new IllegalStateException("Body stream is missing or already consumed");
 	}
 
 	public void setBody(@NotNull ByteBuf body) {
@@ -186,7 +186,8 @@ public abstract class HttpMessage {
 
 	public final ByteBuf getBody() {
 		if ((flags & MUST_LOAD_BODY) != 0) throw new IllegalStateException("Body is not loaded");
-		return body;
+		if (body != null) return body;
+		throw new IllegalStateException("Body is missing or already consumed");
 	}
 
 	public final ByteBuf takeBody() {
