@@ -51,21 +51,21 @@ public final class SynchronizationService<D> implements EventloopService {
 	@Override
 	public Promise<Void> start() {
 		SharedReposOTState resourceListState = commonUserContainer.getResourceListState();
-		Set<SharedRepo> sharedRepos = resourceListState.getSharedRepos();
-		sharedRepos.forEach(resource -> {
-			ensureSynchronizer(resource.getId()).sync(resource.getParticipants());
-			sendMessageToParticipants(resource);
+		Map<String, SharedRepo> sharedRepos = resourceListState.getSharedRepos();
+		sharedRepos.forEach((id, sharedRepo) -> {
+			ensureSynchronizer(id).sync(sharedRepo.getParticipants());
+			sendMessageToParticipants(id, sharedRepo);
 		});
 
-		resourceListState.setListener(sharedReposOperation -> {
-			SharedRepo sharedRepo = sharedReposOperation.getSharedRepo();
-			if (sharedReposOperation.isRemove()) {
-				synchronizers.remove(sharedRepo.getId()).stop();
-			} else {
-				ensureSynchronizer(sharedRepo.getId()).sync(sharedRepo.getParticipants());
-				sendMessageToParticipants(sharedRepo);
-			}
-		});
+		resourceListState.setListener(sharedReposOperation -> sharedReposOperation.getRepoInfos()
+				.forEach((id, repo) -> {
+					if (repo.isRemove()) {
+						synchronizers.remove(id).stop();
+					} else {
+						ensureSynchronizer(id).sync(repo.getParticipants());
+						sendMessageToParticipants(id, new SharedRepo(repo.getName(), repo.getParticipants()));
+					}
+				}));
 
 		return Promise.complete();
 	}
@@ -88,11 +88,10 @@ public final class SynchronizationService<D> implements EventloopService {
 		return new MyRepositoryId<>(repoId, myRepositoryId.getPrivKey(), myRepositoryId.getDiffCodec());
 	}
 
-	public void sendMessageToParticipants(SharedRepo sharedRepo) {
+	public void sendMessageToParticipants(String id, SharedRepo sharedRepo) {
 		RepoID repoId = commonUserContainer.getMyRepositoryId().getRepositoryId();
 		MessagingService messagingService = commonUserContainer.getMessagingService();
 		Set<PubKey> participants = sharedRepo.getParticipants();
-		String id = sharedRepo.getId();
 		Promises.all(participants.stream()
 				.filter(participant -> !sharedRepo.isMessageSent(participant) &&
 						!participant.equals(repoId.getOwner()))

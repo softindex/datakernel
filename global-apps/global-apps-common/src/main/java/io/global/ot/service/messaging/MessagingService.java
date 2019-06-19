@@ -13,8 +13,7 @@ import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.service.CommonUserContainer;
-import io.global.ot.shared.CreateOrDropRepo;
-import io.global.ot.shared.SharedRepo;
+import io.global.ot.shared.CreateOrDropRepos;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.Message;
@@ -76,7 +75,7 @@ public final class MessagingService implements EventloopService {
 
 	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
 		KeyPair keys = commonUserContainer.getKeys();
-		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
+		CreateSharedRepo payload = new CreateSharedRepo(id, name, participants);
 		return messenger.send(keys, receiver, mailBox, payload).toVoid();
 	}
 
@@ -90,25 +89,26 @@ public final class MessagingService implements EventloopService {
 
 		repeat(() -> eitherComplete(messagesSupplier.get(), stopPromise)
 				.then(message -> {
-					if (message != null) {
-						CreateSharedRepo createSharedRepo = message.getPayload();
-						SharedRepo sharedRepo = createSharedRepo.getSharedRepo();
-						return Promise.complete()
-								.then($ -> {
-									if (!state.getSharedRepos().contains(sharedRepo)) {
-										CreateOrDropRepo createOp = CreateOrDropRepo.create(sharedRepo);
-										stateManager.add(createOp);
-										return stateManager.sync()
-												.whenException(e -> stateManager.reset());
-									} else {
-										return Promise.complete();
-									}
-								})
-								.then($ -> messenger.drop(keys, mailBox, message.getId()))
-								.toTry()
-								.toVoid();
+					if (message == null) {
+						return Promises.delay(POLL_INTERVAL, Promise.complete());
 					}
-					return Promises.delay(POLL_INTERVAL, Promise.complete());
+					CreateSharedRepo createSharedRepo = message.getPayload();
+					return Promise.complete()
+							.then($ -> {
+								String id = createSharedRepo.getId();
+								if (state.getSharedRepos().containsKey(id)) {
+									return Promise.complete();
+								}
+								String name = createSharedRepo.getName();
+								Set<PubKey> participants = createSharedRepo.getParticipants();
+								SharedReposOperation createOp = CreateOrDropRepos.create(id, name, participants);
+								stateManager.add(createOp);
+								return stateManager.sync()
+										.whenException(e -> stateManager.reset());
+							})
+							.then($ -> messenger.drop(keys, mailBox, message.getId()))
+							.toTry()
+							.toVoid();
 				}));
 	}
 

@@ -10,21 +10,13 @@ import static io.datakernel.util.CollectionUtils.keysToMap;
 
 public final class SharedRepo {
 	@NotNull
-	private final String id;
-	@NotNull
 	private final Map<PubKey, Boolean> participants;
 	@NotNull
 	private String name;
 
-	public SharedRepo(@NotNull String id, @NotNull String name, Set<PubKey> participants) {
-		this.id = id;
+	public SharedRepo(@NotNull String name, Set<PubKey> participants) {
 		this.name = name;
 		this.participants = keysToMap(participants, $ -> false);
-	}
-
-	@NotNull
-	public String getId() {
-		return id;
 	}
 
 	@NotNull
@@ -55,7 +47,6 @@ public final class SharedRepo {
 
 		SharedRepo that = (SharedRepo) o;
 
-		if (!id.equals(that.id)) return false;
 		if (!name.equals(that.name)) return false;
 		if (!participants.keySet().equals(that.participants.keySet())) return false;
 
@@ -64,8 +55,7 @@ public final class SharedRepo {
 
 	@Override
 	public int hashCode() {
-		int result = id.hashCode();
-		result = 31 * result + name.hashCode();
+		int result = name.hashCode();
 		result = 31 * result + participants.keySet().hashCode();
 		return result;
 	}

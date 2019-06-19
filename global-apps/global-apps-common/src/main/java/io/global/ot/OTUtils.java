@@ -3,7 +3,6 @@ package io.global.ot;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.exception.ParseException;
 import io.global.ot.edit.DeleteOperation;
@@ -12,9 +11,9 @@ import io.global.ot.edit.InsertOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
 import io.global.ot.service.messaging.CreateSharedRepo;
-import io.global.ot.shared.CreateOrDropRepo;
-import io.global.ot.shared.RenameRepo;
-import io.global.ot.shared.SharedRepo;
+import io.global.ot.shared.CreateOrDropRepos;
+import io.global.ot.shared.RenameRepos;
+import io.global.ot.shared.RepoInfo;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.ot.value.ChangeValue;
 
@@ -30,30 +29,31 @@ public final class OTUtils {
 
 	public static final RetryPolicy POLL_RETRY_POLICY = RetryPolicy.exponentialBackoff(1000, 1000 * 60);
 
-	public static final StructuredCodec<SharedRepo> SHARED_REPO_CODEC = object(SharedRepo::new,
-			"id", SharedRepo::getId, STRING_CODEC,
-			"name", SharedRepo::getName, STRING_CODEC,
-			"participants", SharedRepo::getParticipants, ofSet(PUB_KEY_HEX_CODEC));
+	public static final StructuredCodec<RepoInfo> REPO_INFO_CODEC = object(RepoInfo::new,
+			"name", RepoInfo::getName, STRING_CODEC,
+			"participants", RepoInfo::getParticipants, ofSet(PUB_KEY_HEX_CODEC),
+			"remove", RepoInfo::isRemove, BOOLEAN_CODEC);
 
-	public static final StructuredCodec<CreateOrDropRepo> CREATE_OR_DROP_REPO_CODEC = object(CreateOrDropRepo::new,
-			"shared_repo", CreateOrDropRepo::getSharedRepo, SHARED_REPO_CODEC,
-			"remove", CreateOrDropRepo::isRemove, BOOLEAN_CODEC);
+	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = object(CreateSharedRepo::new,
+			"id", CreateSharedRepo::getId, STRING_CODEC,
+			"name", CreateSharedRepo::getName, STRING_CODEC,
+			"participants", CreateSharedRepo::getParticipants, ofSet(PUB_KEY_HEX_CODEC));
 
-	public static final StructuredCodec<RenameRepo> RENAME_REPO_CODEC = object(RenameRepo::of,
-			"id", RenameRepo::getId, STRING_CODEC,
-			"changeName", RenameRepo::getChangeNameOp, ofChangeValue(STRING_CODEC));
+	public static final StructuredCodec<CreateOrDropRepos> CREATE_OR_DROP_REPO_CODEC = ofMap(STRING_CODEC, REPO_INFO_CODEC)
+			.transform(CreateOrDropRepos::new, CreateOrDropRepos::getRepoInfos);
 
-	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = SHARED_REPO_CODEC
-			.transform(CreateSharedRepo::new, CreateSharedRepo::getSharedRepo);
+	public static final StructuredCodec<RenameRepos> RENAME_REPO_CODEC = getMapOperationCodec(STRING_CODEC, STRING_CODEC)
+			.transform(RenameRepos::new, RenameRepos::getRenames);
 
 	public static <V> StructuredCodec<SetValue<V>> getSetValueCodec(StructuredCodec<V> valueCodec) {
-		return StructuredCodecs.object(SetValue::set,
+		return object(SetValue::set,
 				"prev", SetValue::getPrev, valueCodec.nullable(),
 				"next", SetValue::getNext, valueCodec.nullable());
 	}
+
 	public static final StructuredCodec<SharedReposOperation> SHARED_REPOS_OPERATION_CODEC = CodecSubtype.<SharedReposOperation>create()
-			.with(CreateOrDropRepo.class, "CreateOrDropRepo", CREATE_OR_DROP_REPO_CODEC)
-			.with(RenameRepo.class, "RenameRepo", RENAME_REPO_CODEC)
+			.with(CreateOrDropRepos.class, "CreateOrDropRepo", CREATE_OR_DROP_REPO_CODEC)
+			.with(RenameRepos.class, "RenameRepo", RENAME_REPO_CODEC)
 			.withTagName("type", "value");
 
 	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
@@ -87,6 +87,7 @@ public final class OTUtils {
 				}
 			}
 	);
+
 	public static <T> StructuredCodec<ChangeValue<T>> ofChangeValue(StructuredCodec<T> underlying) {
 		return object(ChangeValue::of,
 				"prev", ChangeValue::getPrev, underlying,

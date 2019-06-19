@@ -1,13 +1,7 @@
 package io.global.ot.shared;
 
-import java.util.Set;
+import java.util.Map;
 
 public interface SharedReposOperation {
-	void apply(Set<SharedRepo> repos);
-
-	String getId();
-
-	boolean isEmpty();
-
-	SharedReposOperation invert();
+	void apply(Map<String, SharedRepo> repos);
 }
