@@ -106,9 +106,9 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	@Override
 	protected void run() throws Exception {
 		logger.info("HTTP Server is listening on " + Stream.concat(
-				primaryServer.getListenAddresses().stream().map(address -> "http://" + address.getHostName() + ":" + address.getPort() + "/"),
-				primaryServer.getSslListenAddresses().stream().map(address -> "http://" + address.getHostName() + ":" + address.getPort() + "/"))
-				.collect(joining(", ")));
+				primaryServer.getListenAddresses().stream().map(address -> "http://" + ("0.0.0.0".equals(address.getHostName()) ? "localhost" : address.getHostName()) + (address.getPort() != 80 ? ":" + address.getPort() : "") + "/"),
+				primaryServer.getSslListenAddresses().stream().map(address -> "https://" + ("0.0.0.0".equals(address.getHostName()) ? "localhost" : address.getHostName()) + (address.getPort() != 80 ? ":" + address.getPort() : "") + "/"))
+				.collect(joining(" ")));
 		awaitShutdown();
 	}
 

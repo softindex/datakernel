@@ -79,9 +79,9 @@ public abstract class HttpServerLauncher extends Launcher {
 	@Override
 	protected void run() throws Exception {
 		logger.info("HTTP Server is listening on " + Stream.concat(
-				httpServer.getListenAddresses().stream().map(address -> "http://" + address.getHostName() + ":" + address.getPort() + "/"),
-				httpServer.getSslListenAddresses().stream().map(address -> "https://" + address.getHostName() + ":" + address.getPort() + "/"))
-				.collect(joining(", ")));
+				httpServer.getListenAddresses().stream().map(address -> "http://" + ("0.0.0.0".equals(address.getHostName()) ? "localhost" : address.getHostName()) + (address.getPort() != 80 ? ":" + address.getPort() : "") + "/"),
+				httpServer.getSslListenAddresses().stream().map(address -> "https://" + ("0.0.0.0".equals(address.getHostName()) ? "localhost" : address.getHostName()) + (address.getPort() != 80 ? ":" + address.getPort() : "") + "/"))
+				.collect(joining(" ")));
 		awaitShutdown();
 	}
 

@@ -38,9 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
@@ -165,7 +163,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.info("=== STARTING APPLICATION");
 			try {
 				instantOfStart = Instant.now();
-				startedServices.addAll(startServices(services));
+				startServices(services, startedServices);
 				onStart();
 				onStart.complete(null);
 			} catch (InterruptedException | RuntimeException e) {
@@ -222,6 +220,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			onRun.completeExceptionally(e);
 			onComplete.completeExceptionally(e);
 			throw e;
+		} catch (Exception e) {
+			throw e;
 		} catch (Error e) {
 			applicationError = e;
 			logger.error("JVM Fatal Error", e);
@@ -236,8 +236,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		}
 	}
 
-	private List<Service> startServices(Collection<Service> services) throws Throwable {
-		List<Service> startedServices = new ArrayList<>();
+	private void startServices(Collection<Service> services, List<Service> startedServices) throws Throwable {
 		List<Throwable> exceptions = new ArrayList<>();
 		CountDownLatch latch = new CountDownLatch(services.size());
 		synchronized (this) {
@@ -248,10 +247,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				}
 				service.start().whenComplete(($, e) -> {
 					synchronized (this) {
-						if (e == null) {
-							startedServices.add(service);
-						} else {
-							exceptions.add(e);
+						startedServices.add(service);
+						if (e != null) {
+							exceptions.add(
+									(e instanceof CompletionException || e instanceof ExecutionException) && e.getCause() != null ? e.getCause() : e);
 						}
 						latch.countDown();
 					}
@@ -264,7 +263,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			exceptions.stream().skip(1).forEach(e -> exceptions.get(0).addSuppressed(e));
 			throw exceptions.get(0);
 		}
-		return startedServices;
 	}
 
 	private void stopServices(List<Service> startedServices) throws InterruptedException {
@@ -272,7 +270,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		for (Service service : startedServices) {
 			service.stop().whenComplete(($, e) -> {
 				if (e != null) {
-					logger.error("Stop error in " + service, e);
+					logger.error("Stop error in " + service,
+							(e instanceof CompletionException || e instanceof ExecutionException) && e.getCause() != null ? e.getCause() : e);
 				}
 				latch.countDown();
 			});
