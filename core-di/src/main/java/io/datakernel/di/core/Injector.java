@@ -21,21 +21,23 @@ import static io.datakernel.di.core.BindingTransformer.IDENTITY;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
 import static io.datakernel.di.module.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.module.Multibinder.combinedMultibinder;
-import static io.datakernel.di.util.Utils.resolve;
+import static io.datakernel.di.util.Utils.*;
 import static java.util.stream.Collectors.joining;
 
 @SuppressWarnings("unused")
 public class Injector {
 	@Nullable
 	private final Injector parent;
+	@Nullable
+	private final Scope scope;
 
 	private final Trie<Scope, Map<Key<?>, Binding<?>>> bindings;
 	private final Map<Key<?>, Binding<?>> localBindings;
 	private final Map<Key<?>, Object> instances;
 
 	protected static final class SynchronizedInjector extends Injector {
-		protected SynchronizedInjector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
-			super(parent, bindings, instances);
+		protected SynchronizedInjector(@Nullable Injector parent, @Nullable Scope scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
+			super(parent, scope, bindings, instances);
 		}
 
 		@Override
@@ -72,13 +74,19 @@ public class Injector {
 		synchronized public boolean hasInstance(@NotNull Key<?> type) {
 			return super.hasInstance(type);
 		}
+
+		@Override
+		public boolean isThreadSafe() {
+			return true;
+		}
 	}
 
 	private static final Object[] NO_OBJECTS = new Object[0];
 	private static final Object NO_KEY = new Object();
 
-	private Injector(@Nullable Injector parent, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
+	private Injector(@Nullable Injector parent, @Nullable Scope scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings, Map<Key<?>, Object> instances) {
 		this.parent = parent;
+		this.scope = scope;
 		this.bindings = bindings;
 		this.localBindings = bindings.get();
 		this.instances = instances;
@@ -89,18 +97,19 @@ public class Injector {
 	}
 
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return compile(null, new HashMap<>(), true, bindings.map(Utils::toMultimap), ERROR_ON_DUPLICATE, IDENTITY, REFUSING);
+		return compile(null, new HashMap<>(), true, null, bindings.map(Utils::toMultimap), ERROR_ON_DUPLICATE, IDENTITY, REFUSING);
 	}
 
 	public static Injector compile(Module module) {
 		return compile(null, new HashMap<>(), true,
-				module.getBindings(),
+				null, module.getBindings(),
 				combinedMultibinder(module.getMultibinders()),
 				combinedTransformer(module.getBindingTransformers()),
 				combinedGenerator(module.getBindingGenerators()));
 	}
 
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
+			@Nullable Scope scope,
 			@NotNull Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindingsMultimap,
 			@NotNull Multibinder<?> multibinder,
 			@NotNull BindingTransformer<?> transformer,
@@ -109,8 +118,8 @@ public class Injector {
 		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = resolve(bindingsMultimap, multibinder);
 
 		Injector injector = threadsafe ?
-				new SynchronizedInjector(parent, bindings, instances) :
-				new Injector(parent, bindings, instances);
+				new SynchronizedInjector(parent, scope, bindings, instances) :
+				new Injector(parent, scope, bindings, instances);
 
 		// well, can't do anything better than that
 		bindings.get().put(Key.of(Injector.class), Binding.toInstance(injector));
@@ -284,6 +293,21 @@ public class Injector {
 		return parent;
 	}
 
+	@Nullable
+	public Scope getScope() {
+		return scope;
+	}
+
+	public Scope[] getScopes() {
+		if (scope == null) {
+			return Scope.UNSCOPED;
+		}
+		if (parent == null) {
+			return new Scope[]{scope};
+		}
+		return next(parent.getScopes(), scope);
+	}
+
 	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindings() {
 		return bindings;
 	}
@@ -315,15 +339,14 @@ public class Injector {
 	public Injector enterScope(@NotNull Scope scope, @NotNull Map<Key<?>, Object> instances, boolean threadsafe) {
 		Trie<Scope, Map<Key<?>, Binding<?>>> subBindings = bindings.get(scope);
 		if (subBindings == null) {
-			throw new DIException("Tried to enter a scope " + scope + " that was not represented by any binding");
+			throw new DIException("Tried to enter scope " + getScopeDisplayString(next(getScopes(), scope)) + " that was not represented by any binding");
 		}
 		return threadsafe ?
-				new SynchronizedInjector(this, subBindings, instances) :
-				new Injector(this, subBindings, instances);
+				new SynchronizedInjector(this, scope, subBindings, instances) :
+				new Injector(this, scope, subBindings, instances);
 	}
 
 	public boolean isThreadSafe() {
-		return this.getClass() == SynchronizedInjector.class;
+		return false;
 	}
-
 }

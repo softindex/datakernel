@@ -71,7 +71,7 @@ class StaticLoaderClassPath implements StaticLoader {
 					throw IS_A_DIRECTORY;
 				}
 			} else if ("file".equals(resource.getProtocol())) {
-				Path filePath = Paths.get(resource.getPath());
+				Path filePath = Paths.get(resource.toURI());
 				if (!Files.isRegularFile(filePath)) {
 					if (Files.isDirectory(filePath)) {
 						throw IS_A_DIRECTORY;

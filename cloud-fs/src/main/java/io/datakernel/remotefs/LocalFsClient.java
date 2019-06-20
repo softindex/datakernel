@@ -48,6 +48,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
@@ -117,6 +118,18 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	public static Duration DEFAULT_TOMBSTONE_TTL = Duration.ofHours(1);
+
+	public static final char FILE_SEPARATOR_CHAR = '/';
+
+	public static final String FILE_SEPARATOR = String.valueOf(FILE_SEPARATOR_CHAR);
+
+	private static final Function<String, String> toLocalName = File.separatorChar == FILE_SEPARATOR_CHAR ?
+			Function.identity() :
+			s -> s.replace(FILE_SEPARATOR_CHAR, File.separatorChar);
+
+	private static final Function<String, String> toRemoteName = File.separatorChar == FILE_SEPARATOR_CHAR ?
+			Function.identity() :
+			s -> s.replace(File.separatorChar, FILE_SEPARATOR_CHAR);
 
 	private final Eventloop eventloop;
 	private final Path storage;
@@ -469,7 +482,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private Path resolve(String name) throws StacklessException {
-		Path path = storage.resolve(File.separatorChar == '\\' ? name.replace('/', '\\') : name).normalize();
+		Path path = storage.resolve(toLocalName.apply(name)).normalize();
 		if (path.startsWith(storage)) {
 			return path;
 		}
@@ -547,7 +560,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return null;
 		}
 
-		int idx = name.lastIndexOf('/');
+		int idx = name.lastIndexOf(FILE_SEPARATOR_CHAR);
 		Path folder = idx != -1 ? resolve(name.substring(0, idx)) : storage;
 
 		Map<String, FilenameInfo> files = new HashMap<>();
@@ -615,13 +628,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 
 		StringBuilder folder = new StringBuilder();
-		String[] split = glob.split("/");
+		String[] split = glob.split(FILE_SEPARATOR);
 		for (int i = 0; i < split.length - 1; i++) {
 			String part = split[i];
 			if (isWildcard(part)) {
 				break;
 			}
-			folder.append(part).append('/');
+			folder.append(part).append(FILE_SEPARATOR_CHAR);
 		}
 
 		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob.substring(folder.length()));
@@ -642,7 +655,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	private FileMetadata toFileMetadata(FilenameInfo info) {
 		try {
-			String name = File.separatorChar == '\\' ? info.getName().replace('/', '\\') : info.getName();
+			String name = toRemoteName.apply(info.getName());
 			Path path = info.getFilePath();
 			long timestamp = Files.getLastModifiedTime(path).toMillis();
 			return info.isTombstone() ?
