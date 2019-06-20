@@ -2,7 +2,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
 import java.util.Arrays;
-
+//[START EXAMPLE]
 public final class ByteBufPoolExample {
 	/* Setting ByteBufPool minSize and maxSize properties here for illustrative purposes.
 	 Otherwise, ByteBufs with size less than 32 would not be placed into pool
@@ -79,3 +79,4 @@ public final class ByteBufPoolExample {
 		appendingBufs();
 	}
 }
+//[END EXAMPLE]
