@@ -34,6 +34,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.csp.ChannelConsumers.recycling;
@@ -114,23 +115,32 @@ public abstract class HttpMessage {
 		return map;
 	}
 
+	public final void consumeHeaders(BiConsumer<HttpHeader, String> consumer) {
+		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+			HttpHeader k = (HttpHeader) headers.kvPairs[i];
+			if (k != null) {
+				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
+				consumer.accept(k, v.toString());
+			}
+		}
+	}
+
 	@NotNull
 	public final <T> List<T> getHeader(@NotNull HttpHeader header, @NotNull ParserIntoList<T> parser) {
-		try {
-			List<T> list = new ArrayList<>();
-			for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
-				HttpHeader k = (HttpHeader) headers.kvPairs[i];
-				if (k == null) {
-					break;
-				}
-				if (k.equals(header)) {
+		List<T> list = new ArrayList<>();
+		for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
+			HttpHeader k = (HttpHeader) headers.kvPairs[i];
+			if (k == null) {
+				break;
+			}
+			if (k.equals(header)) {
+				try {
 					parser.parse(((HttpHeaderValue) headers.kvPairs[i + 1]).getBuf(), list);
+				} catch (ParseException ignored) {
 				}
 			}
-			return list;
-		} catch (ParseException e) {
-			return Collections.emptyList();
 		}
+		return list;
 	}
 
 	@Nullable
@@ -217,8 +227,12 @@ public abstract class HttpMessage {
 	}
 
 	public Promise<ByteBuf> loadBody(int maxBodySize) {
-		if (body != null) return Promise.of(body);
+		if (body != null) {
+			this.flags &= ~MUST_LOAD_BODY;
+			return Promise.of(body);
+		}
 		ChannelSupplier<ByteBuf> bodyStream = this.bodyStream;
+		if (bodyStream == null) throw new IllegalStateException("Body stream is missing or already consumed");
 		this.bodyStream = null;
 		return ChannelSuppliers.collect(bodyStream,
 				new ByteBufQueue(),

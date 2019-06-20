@@ -25,7 +25,6 @@ import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -244,7 +243,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		}
 		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
 		for (HttpCookie cookie : getHeader(SET_COOKIE, HttpHeaderValue::toFullCookies)) {
-			if (cookie == null) return Collections.emptyMap();
 			cookies.put(cookie.getName(), cookie);
 		}
 		return parsedCookies = cookies;

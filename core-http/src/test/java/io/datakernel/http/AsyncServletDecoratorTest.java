@@ -154,10 +154,12 @@ public class AsyncServletDecoratorTest {
 
 	@Test
 	public void testRuntimeExceptionExceptions() {
-		AsyncServlet servlet = combineDecorators(catchRuntimeExceptions(), loadBody())
-				.serve(request -> Promise.of(HttpResponse.ok200()));
+		AsyncServlet servlet = catchRuntimeExceptions()
+				.serve(request -> {
+					throw new RuntimeException();
+				});
 
-		NullPointerException exception = awaitException(servlet.serve(HttpRequest.get("http://example.com")));
+		RuntimeException exception = awaitException(servlet.serve(HttpRequest.get("http://example.com")));
 		assertNotNull(exception);
 	}
 
