@@ -68,6 +68,11 @@ public final class DefaultModule implements Module {
 								public Object create() {
 									return elementBinding.getFactory().create(args);
 								}
+
+								@Override
+								public String toString() {
+									return elementKey.toString();
+								}
 							},
 							elementBinding.getDependencies());
 				}
@@ -91,6 +96,11 @@ public final class DefaultModule implements Module {
 								@Override
 								public void inject(Object existingInstance) {
 									initializer.apply(existingInstance, args);
+								}
+
+								@Override
+								public String toString() {
+									return elementKey.toString();
 								}
 							},
 							injectingInitializer.getDependencies());

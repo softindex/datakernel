@@ -26,6 +26,7 @@ import io.datakernel.di.util.Trie;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.launcher.RootService;
 import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -259,15 +260,39 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@ProvidesIntoSet
-	Service service(ServiceGraph serviceGraph) {
-		return new Service() {
+	RootService service(ServiceGraph serviceGraph) {
+		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {
-				return serviceGraph.startFuture();
+				CompletableFuture<Void> future = new CompletableFuture<>();
+				serviceGraph.startFuture()
+						.whenComplete(($, e) -> {
+							if (e == null) {
+								if (logger.isInfoEnabled()) {
+									logger.info("Effective services:\n\n" + serviceGraph);
+								}
+								future.complete(null);
+							} else {
+								logger.error("Could not start ServiceGraph", e);
+								if (logger.isInfoEnabled()) {
+									logger.info("Effective services:\n\n" + serviceGraph);
+								}
+								logger.warn("Stopping services of partially started ServiceGraph...");
+								serviceGraph.stopFuture()
+										.whenComplete(($2, e2) -> {
+											if (e2 != null) {
+												e.addSuppressed(e2);
+											}
+											future.completeExceptionally(e);
+										});
+							}
+						});
+				return future;
 			}
 
 			@Override
 			public CompletableFuture<?> stop() {
+				logger.info("Stopping ServiceGraph...");
 				return serviceGraph.stopFuture();
 			}
 		};

@@ -25,7 +25,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
-import io.datakernel.service.Service;
+import io.datakernel.launcher.RootService;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
@@ -176,9 +176,9 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	@ProvidesIntoSet
-	Service start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
+	RootService start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
 		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return new Service() {
+		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {
 				doStart(injector, jmxRegistry, mbeanFactory);

@@ -24,7 +24,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.KeyWithWorkerData;
-import io.datakernel.service.Service;
+import io.datakernel.launcher.RootService;
 import io.datakernel.util.DIUtils;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -129,9 +129,9 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@ProvidesIntoSet
-	Service start(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
+	RootService start(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
 		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
-		return new Service() {
+		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {
 				initialize(injector);

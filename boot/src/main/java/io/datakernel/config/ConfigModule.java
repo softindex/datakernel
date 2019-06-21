@@ -47,6 +47,7 @@ import static io.datakernel.util.Preconditions.checkState;
 /**
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
  */
+@SuppressWarnings("unused")
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
 	public static final Key<Config> KEY_OF_CONFIG = Key.of(Config.class);
@@ -139,7 +140,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	public ConfigModule printEffectiveConfig() {
 		return withEffectiveConfigConsumer(effectiveConfig ->
-				logger.info("Effective config:\n" + effectiveConfig));
+				logger.info("Effective Config:\n\n" + effectiveConfig));
 	}
 
 	@SuppressWarnings("unchecked")

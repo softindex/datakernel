@@ -296,12 +296,12 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 				.thenComposeAsync($ -> {
 					Service service = services.get(node);
 					if (service == null) {
-						logger.debug("...skipping no-service node: " + keyToString(node));
+						logger.trace("...skipping no-service node: " + keyToString(node));
 						return CompletableFuture.completedFuture(null);
 					}
 
 					if (!start && !nodeStatuses.getOrDefault(node, NodeStatus.DEFAULT).isStartedSuccessfully()) {
-						logger.debug("...skipping not running node: " + keyToString(node));
+						logger.trace("...skipping not running node: " + keyToString(node));
 						return CompletableFuture.completedFuture(null);
 					}
 
@@ -385,7 +385,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			throw new IllegalStateException("No root nodes found, nobody requested a service");
 		}
 		logger.info("Starting services");
-		logger.debug("Root nodes: {}", rootNodes);
+		logger.trace("Root nodes: {}", rootNodes);
 		startBegin = currentTimeMillis();
 		return doStartStop(true, rootNodes)
 				.whenComplete(($, e) -> {
@@ -405,7 +405,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	synchronized public CompletableFuture<?> stopFuture() {
 		Set<Key<?>> leafNodes = difference(union(services.keySet(), backwards.keySet()), forwards.keySet());
 		logger.info("Stopping services");
-		logger.debug("Leaf nodes: {}", leafNodes);
+		logger.trace("Leaf nodes: {}", leafNodes);
 		stopBegin = currentTimeMillis();
 		return doStartStop(false, leafNodes)
 				.whenComplete(($, e) -> {
