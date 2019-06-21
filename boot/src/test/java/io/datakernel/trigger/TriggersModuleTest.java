@@ -23,7 +23,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.service.Service;
+import io.datakernel.launcher.RootService;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
@@ -95,7 +95,7 @@ public class TriggersModuleTest {
 		);
 		injector.getInstance(Key.of(WorkerPool.class, "first")).getInstances(String.class);
 		injector.getInstance(Key.of(WorkerPool.class, "second")).getInstances(String.class);
-		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+		for (RootService service : injector.getInstance(new Key<Set<RootService>>() {})) {
 			service.start().get();
 		}
 		RefBoolean wasExecuted = new RefBoolean(false);
@@ -139,7 +139,7 @@ public class TriggersModuleTest {
 				},
 				TriggersModule.create()
 		);
-		for (Service service : injector.getInstance(new Key<Set<Service>>() {})) {
+		for (RootService service : injector.getInstance(new Key<Set<RootService>>() {})) {
 			service.start().get();
 		}
 		RefBoolean wasExecuted = new RefBoolean(false);
