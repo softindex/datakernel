@@ -10,6 +10,7 @@ import static io.datakernel.loader.StaticLoader.ofClassPath;
 public final class HttpRequestParametersExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
 
+	//[START REGION_1]
 	@Provides
 	AsyncServlet servlet() {
 		return RoutingServlet.create()
@@ -29,6 +30,7 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 				.with("/*", StaticServlet.create(ofClassPath(RESOURCE_DIR))
 						.withIndexHtml());
 	}
+	//[END REGION_1]
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new HttpRequestParametersExample();

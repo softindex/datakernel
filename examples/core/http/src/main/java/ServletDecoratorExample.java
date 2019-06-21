@@ -12,6 +12,7 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 
 public final class ServletDecoratorExample extends HttpServerLauncher {
+	//[START REGION_1]
 	@Provides
 	AsyncServlet servlet() {
 		return loadBody().serve(
@@ -33,6 +34,7 @@ public final class ServletDecoratorExample extends HttpServerLauncher {
 						.then(catchRuntimeExceptions())
 						.then(mapException(e -> HttpResponse.ofCode(404).withPlainText("Error: " + e))));
 	}
+	//[END REGION_1]
 
 	public static void main(String[] args) throws Exception {
 		ServletDecoratorExample launcher = new ServletDecoratorExample();

@@ -6,6 +6,7 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import static io.datakernel.http.HttpResponse.ok200;
 
+//[START EXAMPLE]
 public final class HttpHelloWorldExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet() {
@@ -17,3 +18,4 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 		launcher.launch(args);
 	}
 }
+//[END EXAMPLE]

@@ -31,6 +31,7 @@ public final class AsyncFileServiceExample {
 		}
 	}
 
+	//[START REGION_1]
 	@NotNull
 	private static Promise<Void> writeToFile() {
 		try {
@@ -66,6 +67,7 @@ public final class AsyncFileServiceExample {
 					return buf;
 				});
 	}
+	//[END REGION_1]
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();

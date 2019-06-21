@@ -38,6 +38,7 @@ public final class ClientExample extends Launcher {
 		return Eventloop.create();
 	}
 
+	//[START REGION_1]
 	@Provides
 	AsyncHttpClient client(Eventloop eventloop, AsyncDnsClient dnsClient) {
 		return AsyncHttpClient.create(eventloop)
@@ -50,7 +51,9 @@ public final class ClientExample extends Launcher {
 				.withDnsServerAddress(config.get(ofInetAddress(), "http.client.googlePublicDns"))
 				.withTimeout(config.get(ofDuration(), "http.client.timeout"));
 	}
+	//[END REGION_1]
 
+	//[START REGION_2]
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -61,12 +64,14 @@ public final class ClientExample extends Launcher {
 						.with("http.client.host", "http://127.0.0.1:8080"))
 		);
 	}
+	//[END REGION_2]
 
 	@Override
 	protected void onStart() {
 		addr = config.get("http.client.host");
 	}
 
+	//[START REGION_3]
 	@Override
 	protected void run() {
 		eventloop.post(() -> {
@@ -86,6 +91,7 @@ public final class ClientExample extends Launcher {
 							}));
 		});
 	}
+	//[END REGION_3]
 
 	public static void main(String[] args) throws Exception {
 		ClientExample example = new ClientExample();

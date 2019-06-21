@@ -7,6 +7,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
 public final class BlockingServletExample extends HttpServerLauncher {
+	//[START EXAMPLE]
 	@Provides
 	AsyncServlet servlet() {
 		return RoutingServlet.create()
@@ -19,6 +20,7 @@ public final class BlockingServletExample extends HttpServerLauncher {
 							.withHtml("Hard work is done");
 				}));
 	}
+	//[END EXAMPLE]
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new BlockingServletExample();

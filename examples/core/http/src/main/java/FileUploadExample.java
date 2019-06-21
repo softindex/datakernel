@@ -31,6 +31,7 @@ public final class FileUploadExample extends HttpServerLauncher {
 		Files.delete(path);
 	}
 
+	//[START EXAMPLE]
 	@Provides
 	AsyncServlet servlet() {
 		return RoutingServlet.create()
@@ -40,6 +41,7 @@ public final class FileUploadExample extends HttpServerLauncher {
 						request.getFiles(name -> ChannelFileWriter.create(path.resolve(name)))
 								.map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
 	}
+	//[END EXAMPLE]
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new FileUploadExample();

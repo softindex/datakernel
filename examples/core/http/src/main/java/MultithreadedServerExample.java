@@ -10,6 +10,7 @@ import io.datakernel.worker.WorkerId;
  * HTTP multithreaded server example.
  * Sends back a greeting and the number of worker which served the connection.
  */
+//[START EXAMPLE]
 public final class MultithreadedServerExample extends MultithreadedHttpServerLauncher {
 	@Provides
 	@Worker
@@ -24,3 +25,4 @@ public final class MultithreadedServerExample extends MultithreadedHttpServerLau
 		example.launch(args);
 	}
 }
+//[END EXAMPLE]

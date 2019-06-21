@@ -26,7 +26,7 @@ public final class ByteBufExample {
 		while (byteBuf.canWrite()) {
 			byteBuf.writeByte(value++);
 		}
-		//[START REGION_2]
+		//[END REGION_2]
 		System.out.println(Arrays.toString(byteBuf.getArray()));
 		System.out.println();
 	}

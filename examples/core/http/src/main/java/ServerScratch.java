@@ -15,7 +15,7 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
-
+//[START EXAMPLE]
 public final class ServerScratch extends Launcher {
 	private static final int PORT = 8080;
 	@Inject
@@ -57,3 +57,4 @@ public final class ServerScratch extends Launcher {
 		launcher.launch(args);
 	}
 }
+//[END EXAMPLE]
