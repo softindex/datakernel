@@ -132,55 +132,62 @@ public final class BindingGraph {
 	}
 
 	public static Set<Key<?>[]> getCyclicDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getCyclicDependencies(new HashSet<>(), bindings).collect(toSet());
+		return getCyclicDependenciesStream(bindings).collect(toSet());
 	}
 
-	private static Stream<Key<?>[]> getCyclicDependencies(Set<Key<?>> visited, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	private static Stream<Key<?>[]> getCyclicDependenciesStream(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		// since no cycles are possible between scopes,
+		// we just run simple dfs that ignores unsatisfied
+		// dependencies for each scope independently
 		return Stream.concat(
-				dfs(visited, bindings.get()).stream(),
-				bindings.getChildren().values().stream().flatMap(scopeBindings -> getCyclicDependencies(new HashSet<>(visited), scopeBindings))
+				dfs(bindings.get()).stream(),
+				bindings.getChildren().values().stream().flatMap(BindingGraph::getCyclicDependenciesStream)
 		);
 	}
 
-	private static Set<Key<?>[]> dfs(Set<Key<?>> visited, Map<Key<?>, Binding<?>> bindings) {
+	private static Set<Key<?>[]> dfs(Map<Key<?>, Binding<?>> bindings) {
+		Set<Key<?>> visited = new HashSet<>();
 		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
 		Set<Key<?>[]> cycles = new HashSet<>();
 		for (Key<?> key : bindings.keySet()) {
+			if (visited.contains(key)) {
+				continue;
+			}
 			dfs(bindings, visited, visiting, cycles, key);
 		}
 		return cycles;
 	}
 
 	private static void dfs(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<Key<?>[]> cycles, Key<?> key) {
-		if (visited.contains(key)) {
-			return;
-		}
 		Binding<?> binding = bindings.get(key);
 		if (binding == null) {
 			// just ignore unsatisfied dependencies as if they never existed
+			// (they may be unsatisfied and be checked later by unsatisfied dependency check or they may just reference some upper scope)
 			visited.add(key); // add to visited as a tiny optimization
 			return;
 		}
-		if (!visiting.add(key)) {
-			// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
-			// and in the code below we just get d -> e -> g -> c out of it
-			Iterator<Key<?>> backtracked = visiting.iterator();
-			int skipped = 0;
-			while (backtracked.hasNext() && !backtracked.next().equals(key)) {
-				skipped++;
+		if (visiting.add(key)) {
+			for (Dependency dependency : binding.getDependencies()) {
+				if (!visited.contains(dependency.getKey())) {
+					dfs(bindings, visited, visiting, cycles, dependency.getKey());
+				}
 			}
-			Key<?>[] cycle = new Key[visiting.size() - skipped];
-			for (int i = 0; i < cycle.length - 1; i++) {
-				cycle[i] = backtracked.next(); // call to next() without hasNext() should be ok here
-			}
-			cycle[cycle.length - 1] = key;
-			cycles.add(cycle);
+			visiting.remove(key);
+			visited.add(key);
 			return;
 		}
-		for (Dependency dependency : binding.getDependencies()) {
-			dfs(bindings, visited, visiting, cycles, dependency.getKey());
+		// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
+		// and in the code below we just get d -> e -> g -> c out of it
+		Iterator<Key<?>> backtracked = visiting.iterator();
+		int skipped = 0;
+		while (backtracked.hasNext() && !backtracked.next().equals(key)) {
+			skipped++;
 		}
-		visiting.remove(key);
-		visited.add(key);
+		Key<?>[] cycle = new Key[visiting.size() - skipped];
+		for (int i = 0; i < cycle.length - 1; i++) {
+			cycle[i] = backtracked.next(); // call to next() without hasNext() should be ok here
+		}
+		cycle[cycle.length - 1] = key;
+		cycles.add(cycle);
 	}
 }
