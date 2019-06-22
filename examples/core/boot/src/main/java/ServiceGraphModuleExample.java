@@ -7,6 +7,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.ExecutionException;
 
+//[START EXAMPLE]
 public final class ServiceGraphModuleExample extends AbstractModule {
 	@Provides
 	Eventloop eventloop() {
@@ -27,3 +28,4 @@ public final class ServiceGraphModuleExample extends AbstractModule {
 		}
 	}
 }
+//[END EXAMPLE]

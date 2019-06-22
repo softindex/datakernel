@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
+//[START EXAMPLE]
 public final class ConfigModuleExample extends AbstractModule {
 	private static final String PROPERTIES_FILE = "example.properties";
 
@@ -43,3 +44,4 @@ public final class ConfigModuleExample extends AbstractModule {
 		System.out.println(address);
 	}
 }
+//[END EXAMPLE]

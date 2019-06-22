@@ -3,6 +3,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.worker.*;
 
+//[START EXAMPLE]
 public final class WorkerPoolModuleExample extends AbstractModule {
 	@Provides
 	WorkerPool workerPool(WorkerPools workerPools) {
@@ -22,3 +23,4 @@ public final class WorkerPoolModuleExample extends AbstractModule {
 		strings.forEach(System.out::println);
 	}
 }
+//[END EXAMPLE]

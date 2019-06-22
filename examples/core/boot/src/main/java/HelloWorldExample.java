@@ -2,6 +2,7 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.launcher.Launcher;
 
+//[START EXAMPLE]
 public final class HelloWorldExample extends Launcher {
 	@Inject
 	String message;
@@ -21,3 +22,4 @@ public final class HelloWorldExample extends Launcher {
 		launcher.launch(args);
 	}
 }
+//[END EXAMPLE]
