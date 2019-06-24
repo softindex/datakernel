@@ -19,6 +19,7 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
  * Demonstrates server ("Server #2" from the picture) which receives some data from clients,
  * computes it in a certain way and sends back the result.
  */
+//[START EXAMPLE]
 public final class TcpServerExample {
 
 	public static void main(String[] args) throws IOException {
@@ -45,4 +46,4 @@ public final class TcpServerExample {
 		eventloop.run();
 	}
 }
-
+//[END EXAMPLE]

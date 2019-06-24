@@ -23,6 +23,7 @@ import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
  * and receives some computed result.
  * Before running, you should launch {@link TcpServerExample} first!
  */
+//[START EXAMPLE]
 public final class TcpClientExample {
 	public static final int PORT = 9922;
 
@@ -56,5 +57,5 @@ public final class TcpClientExample {
 
 		eventloop.run();
 	}
-
 }
+//[END EXAMPLE]

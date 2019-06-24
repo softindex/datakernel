@@ -22,6 +22,7 @@ public final class TcpServerExample {
 	private static final byte[] CRLF = {CR, LF};
 
 	/* Run server in an event loop. */
+	//[START REGION_1]
 	public static void main(String[] args) throws Exception {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 
@@ -44,6 +45,7 @@ public final class TcpServerExample {
 
 		eventloop.run();
 	}
+	//[END REGION_1]
 }
 
 

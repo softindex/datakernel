@@ -41,6 +41,7 @@ public final class TcpClientExample {
 		});
 	}
 
+	//[START REGION_1]
 	private void run() {
 		System.out.println("Connecting to server at localhost (port 9922)...");
 		eventloop.connect(new InetSocketAddress("localhost", 9922), new ConnectCallback() {
@@ -68,4 +69,5 @@ public final class TcpClientExample {
 	public static void main(String[] args) {
 		new TcpClientExample().run();
 	}
+	//[END REGION_1]
 }

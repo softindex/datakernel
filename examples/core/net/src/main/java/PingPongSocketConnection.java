@@ -39,6 +39,7 @@ public final class PingPongSocketConnection {
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
 			.andThen(buf -> buf.asString(UTF_8));
 
+	//[START REGION_1]
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 
@@ -70,4 +71,5 @@ public final class PingPongSocketConnection {
 
 		eventloop.run();
 	}
+	//[END REGION_1]
 }
