@@ -76,7 +76,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	public static RemoteFsServer create(Eventloop eventloop, Executor executor, Path storage) {
-		return new RemoteFsServer(eventloop, LocalFsClient.create(eventloop, storage));
+		return new RemoteFsServer(eventloop, LocalFsClient.create(eventloop, executor, storage));
 	}
 
 	public static RemoteFsServer create(Eventloop eventloop, FsClient client) {

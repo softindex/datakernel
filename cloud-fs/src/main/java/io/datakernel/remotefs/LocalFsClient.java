@@ -172,12 +172,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		now = eventloop;
 	}
 
-	public static LocalFsClient create(Eventloop eventloop, Path storageDir, Executor executor) {
+	public static LocalFsClient create(Eventloop eventloop, Executor executor, Path storageDir) {
 		return new LocalFsClient(eventloop, storageDir, executor);
 	}
 
 	public static LocalFsClient create(Eventloop eventloop, Path storageDir) {
-		return create(eventloop, storageDir, Executors.newSingleThreadExecutor());
+		return create(eventloop, Executors.newSingleThreadExecutor(), storageDir);
 	}
 
 	public LocalFsClient withLazyOverrides(boolean lazyOverrides) {

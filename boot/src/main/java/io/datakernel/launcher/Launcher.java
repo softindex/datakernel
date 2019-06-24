@@ -78,9 +78,11 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
 	protected final Logger logger = getLogger(getClass());
-	private final Logger loggerEx = getLogger(getClass().getName() + "#Ex");
+	private final Logger logger0 = getLogger(getClass().getName() + ".0");
 
 	protected String[] args = {};
+
+	private Thread mainThread;
 
 	private volatile Throwable applicationError;
 
@@ -133,22 +135,23 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 */
 	@SuppressWarnings("unchecked")
 	public void launch(String[] args) throws Exception {
+		mainThread = Thread.currentThread();
 		instantOfLaunch = Instant.now();
 
 		try {
 			logger.info("=== INJECTING DEPENDENCIES");
 
 			Injector injector = createInjector(args);
-			if (loggerEx.isInfoEnabled()) {
-				loggerEx.info("Effective Injector:\n\n" + makeGraphVizGraph(injector.getBindings()));
+			if (logger0.isInfoEnabled()) {
+				logger0.info("Effective Injector:\n\n" + makeGraphVizGraph(injector.getBindings()));
 			}
 
 			Set<Key<?>> rootSingletons = injector.getInstanceOr(new Key<Set<Key<?>>>(RootSingleton.class) {}, emptySet());
-			loggerEx.info("Creating RootSingletons: " + rootSingletons);
+			logger0.info("Creating RootSingletons: " + rootSingletons);
 			rootSingletons.forEach(injector::getInstanceOrNull);
 
 			Set<InstanceInjector<?>> postInjectors = injector.getInstance(new Key<Set<InstanceInjector<?>>>() {});
-			loggerEx.info("Post-processing InstanceInjectors: " + postInjectors);
+			logger0.info("Post-processing InstanceInjectors: " + postInjectors);
 			for (InstanceInjector<?> instanceInjector : postInjectors) {
 				Object instance = injector.getInstanceOrNull(instanceInjector.key());
 				if (instance != null) {
@@ -162,12 +165,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.info("=== STARTING APPLICATION");
 			try {
 				instantOfStart = Instant.now();
-				loggerEx.info("Starting RootServices: " + services);
+				logger0.info("Starting RootServices: " + services);
 				startServices(services, startedServices);
 				onStart();
 				onStart.complete(null);
-			} catch (InterruptedException | RuntimeException e) {
-				throw e;
 			} catch (Exception e) {
 				applicationError = e;
 				logger.error("Error", e);
@@ -180,13 +181,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 					instantOfRun = Instant.now();
 					run();
 					onRun.complete(null);
-				} catch (InterruptedException | RuntimeException e) {
-					throw e;
 				} catch (Exception e) {
 					applicationError = e;
 					logger.error("Error", e);
 					onRun.completeExceptionally(e);
-					throw e;
 				}
 			} else {
 				onRun.completeExceptionally(applicationError);
@@ -197,8 +195,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			if (!onStart.isCompletedExceptionally()) {
 				try {
 					onStop();
-				} catch (InterruptedException | RuntimeException e) {
-					throw e;
 				} catch (Exception e) {
 					logger.error("Stop error", e);
 				}
@@ -213,23 +209,12 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				throw applicationError;
 			}
 
-		} catch (InterruptedException | RuntimeException e) {
-			applicationError = e;
-			logger.error("Runtime Error", e);
-			onStart.completeExceptionally(e);
-			onRun.completeExceptionally(e);
-			onComplete.completeExceptionally(e);
-			throw e;
 		} catch (Exception e) {
-			throw e;
-		} catch (Error e) {
-			applicationError = e;
-			logger.error("JVM Fatal Error", e);
 			throw e;
 		} catch (Throwable e) {
 			applicationError = e;
 			logger.error("JVM Fatal Error", e);
-			throw new Exception(e);
+			System.exit(-1);
 		} finally {
 			instantOfComplete = Instant.now();
 			completeLatch.countDown();
@@ -245,7 +230,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 					latch.countDown();
 					continue;
 				}
-				loggerEx.info("Starting RootService: " + service);
+				logger0.info("Starting RootService: " + service);
 				service.start().whenComplete(($, e) -> {
 					synchronized (this) {
 						if (e == null) {
@@ -270,7 +255,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	private void stopServices(List<RootService> startedServices) throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(startedServices.size());
 		for (RootService service : startedServices) {
-			loggerEx.info("Stopping RootService: " + service);
+			logger0.info("Stopping RootService: " + service);
 			service.stop().whenComplete(($, e) -> {
 				if (e != null) {
 					logger.error("Stop error in " + service,
@@ -354,6 +339,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 */
 	public final void shutdown() {
 		shutdownLatch.countDown();
+	}
+
+	public Thread getMainThread() {
+		return mainThread;
 	}
 
 	public final CompletionStage<Void> getStartFuture() {
