@@ -46,8 +46,10 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 				Tuple2::getValue1, otSystem1,
 				Tuple2::getValue2, otSystem2);
 
-		return mergeOtSystems((tuples, list) ->
-						constructor.create(tuples.get(0).getValue1(), tuples.get(0).getValue2(), list),
+		return mergeOtSystems((tuples, list) -> {
+					Tuple2<List<D1>, List<D2>> tuple = extractTuple(tuples);
+					return constructor.create(tuple.getValue1(), tuple.getValue2(), list);
+				},
 				d -> combineLists(getter1.apply(d), getter2.apply(d), Tuple2::new), premerged,
 				getter3, otSystem3);
 	}
@@ -67,8 +69,8 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 				Tuple2::getValue2, otSystem4);
 
 		return mergeOtSystems((tuples1, tuples2) -> {
-					Tuple2<List<D1>, List<D2>> tuple1 = tuples1.get(0);
-					Tuple2<List<D3>, List<D4>> tuple2 = tuples2.get(0);
+					Tuple2<List<D1>, List<D2>> tuple1 = extractTuple(tuples1);
+					Tuple2<List<D3>, List<D4>> tuple2 = extractTuple(tuples2);
 					return constructor.create(tuple1.getValue1(), tuple1.getValue2(), tuple2.getValue1(), tuple2.getValue2());
 				},
 				d -> combineLists(getter1.apply(d), getter2.apply(d), Tuple2::new), premerged1,
@@ -140,4 +142,10 @@ public final class MergedOTSystem<D, D1, D2> implements OTSystem<D> {
 				emptyList() :
 				singletonList(constructor.create(list1, list2));
 	}
+
+	private static <D1, D2> Tuple2<List<D1>, List<D2>> extractTuple(List<Tuple2<List<D1>, List<D2>>> tuples) {
+		assert tuples.size() < 2;
+		return tuples.size() == 0 ? new Tuple2<>(emptyList(), emptyList()) : tuples.get(0);
+	}
+
 }

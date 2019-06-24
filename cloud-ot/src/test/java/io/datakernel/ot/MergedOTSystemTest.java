@@ -110,6 +110,16 @@ public final class MergedOTSystemTest {
 	}
 
 	@Test
+	public void testSquashAddSetAreEmpty() {
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> ops = asList(
+				ops(null, null, setName("", "aa")),
+				ops(null, null, setName("aa", "aaa"))
+		);
+		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> squashed = MERGED.squash(ops);
+		assertEquals(singletonList(ops(null, null, setName("", "aaa"))), squashed);
+	}
+
+	@Test
 	public void testTransform() throws OTTransformException {
 		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> left = asList(
 				new Tuple3<>(asList(add(12), add(13), add(-2)), emptyList(), emptyList()),
