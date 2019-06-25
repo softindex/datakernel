@@ -34,11 +34,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.csp.ChannelConsumers.recycling;
-import static java.util.Arrays.copyOf;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
@@ -96,33 +94,8 @@ public abstract class HttpMessage {
 		headers.add(header, value);
 	}
 
-	@NotNull
-	public final Map<HttpHeader, String[]> getHeaders() {
-		Map<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
-		for (int i = 0; i != headers.kvPairs.length; i += 2) {
-			HttpHeader k = (HttpHeader) headers.kvPairs[i];
-			if (k != null) {
-				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
-				map.compute(k, ($, strings) -> {
-					String headerString = v.toString();
-					if (strings == null) return new String[]{headerString};
-					String[] newStrings = copyOf(strings, strings.length + 1);
-					newStrings[newStrings.length - 1] = headerString;
-					return newStrings;
-				});
-			}
-		}
-		return map;
-	}
-
-	public final void consumeHeaders(BiConsumer<HttpHeader, String> consumer) {
-		for (int i = 0; i != headers.kvPairs.length; i += 2) {
-			HttpHeader k = (HttpHeader) headers.kvPairs[i];
-			if (k != null) {
-				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
-				consumer.accept(k, v.toString());
-			}
-		}
+	public final Collection<Map.Entry<HttpHeader, HttpHeaderValue>> getHeaders() {
+		return headers.getEntries();
 	}
 
 	@NotNull
@@ -324,7 +297,7 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(@NotNull ByteBuf buf) {
 		assert !isRecycled();
-		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+		for (int i = 0; i < headers.kvPairs.length - 1; i += 2) {
 			HttpHeader k = (HttpHeader) headers.kvPairs[i];
 			if (k != null) {
 				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
@@ -346,7 +319,7 @@ public abstract class HttpMessage {
 		assert !isRecycled();
 		int size = firstLineSize;
 		// CR,LF,header,": ",value
-		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+		for (int i = 0; i < headers.kvPairs.length - 1; i += 2) {
 			HttpHeader k = (HttpHeader) headers.kvPairs[i];
 			if (k != null) {
 				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];

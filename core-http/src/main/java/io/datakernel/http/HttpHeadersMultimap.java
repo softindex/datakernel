@@ -4,6 +4,8 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.*;
+
 final class HttpHeadersMultimap<K, V> {
 	Object[] kvPairs = new Object[8];
 	int size;
@@ -56,4 +58,55 @@ final class HttpHeadersMultimap<K, V> {
 			}
 		}
 	}
+
+	public final Collection<Map.Entry<K, V>> getEntries() {
+		return new AbstractCollection<Map.Entry<K, V>>() {
+			@Override
+			public int size() {
+				return size;
+			}
+
+			@NotNull
+			@Override
+			public Iterator<Map.Entry<K, V>> iterator() {
+				return new Iterator<Map.Entry<K, V>>() {
+					int i = 0;
+					K k;
+					V v;
+
+					{ advance();}
+
+					@SuppressWarnings("unchecked")
+					private void advance() {
+						for (; i < kvPairs.length; i += 2) {
+							K k = (K) kvPairs[i];
+							if (k != null) {
+								this.k = k;
+								this.v = (V) kvPairs[i + 1];
+								i += 2;
+								return;
+							}
+						}
+						this.k = null;
+						this.v = null;
+					}
+
+					@Override
+					public boolean hasNext() {
+						return this.k != null;
+					}
+
+					@Override
+					public Map.Entry<K, V> next() {
+						if (k == null)
+							throw new NoSuchElementException();
+						Map.Entry<K, V> entry = new AbstractMap.SimpleImmutableEntry<>(this.k, this.v);
+						advance();
+						return entry;
+					}
+				};
+			}
+		};
+	}
+
 }
