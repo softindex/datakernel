@@ -1,16 +1,41 @@
 import React from "react";
+import path from "path";
 import {withStyles} from '@material-ui/core';
 import connectService from "../../../../../common/connectService";
 import RoomsContext from "../../../../../modules/rooms/RoomsContext";
-import RoomItem from "../../../../RoomItem/RoomItem";
+import RoomItem from "./RoomItem/RoomItem";
 import roomsListStyles from "./roomsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
+import ContactsContext from "../../../../../modules/contacts/ContactsContext";
 
 class RoomsList extends React.Component {
+  onChatCreate(participantId) {
+    return this.props.createDialog(participantId);
+  }
+
+  quitRoom(roomId){
+    this.props.quitRoom(roomId);
+  }
+
+  getRoomPath = (roomId) => {
+    return path.join('/room', roomId || '');
+  };
+
+
+  onClickLink = (roomId) => {
+    const {contactId} = this.getRoomPath(roomId);
+    if (this.props.rooms.get(contactId)) {
+      const room = this.props.rooms.get(contactId);
+      if (room.virtual) {
+        this.onChatCreate(contactId);
+      }
+    }
+  };
+
   render() {
-    const {classes, ready, rooms, roomsService, quitRoom} = this.props;
+    const {classes, ready, rooms, roomsService} = this.props;
     return (
       <>
         {!ready && (
@@ -23,13 +48,18 @@ class RoomsList extends React.Component {
         {ready && (
           <div className={classes.roomsList}>
             <List>
-              {rooms.map(value =>
-                <RoomItem
-                  room={value}
-                  quitRoom={quitRoom}
-                  roomsService={roomsService}
-                  showMenuIcon={true}
-                />
+              {[...rooms].map(([roomId, room]) =>
+                (
+                  <RoomItem
+                    roomId={roomId}
+                    room={room}
+                    onClickLink={this.onClickLink}
+                    getRoomPath={this.getRoomPath}
+                    quitRoom={this.quitRoom.bind(this, roomId)}
+                    roomsService={roomsService}
+                    showMenuIcon={true}
+                  />
+                )
               )}
             </List>
           </div>
@@ -40,12 +70,21 @@ class RoomsList extends React.Component {
 }
 
 export default connectService(
-  RoomsContext, ({ready, rooms}, roomsService) => ({
-    roomsService, ready, rooms,
-    quitRoom(id) {
-      return roomsService.quitRoom(id);
-    }
+  ContactsContext, ({ready, contacts}, contactsService) => ({
+  ready, contacts, contactsService
   })
 )(
-  withStyles(roomsListStyles)(RoomsList)
+  connectService(
+    RoomsContext, ({ready, rooms}, roomsService) => ({
+      roomsService, ready, rooms,
+      quitRoom(roomId) {
+        return roomsService.quitRoom(roomId);
+      },
+      createDialog(participantId) {
+        return roomsService.createDialog(participantId);
+      }
+    })
+  )(
+    withStyles(roomsListStyles)(RoomsList)
+  )
 );

@@ -5,7 +5,7 @@ const headerStyles = (theme) => ({
   },
   title: {
     flexGrow: 1,
-    marginLeft: 20
+    marginLeft: `${theme.spacing.unit * 3}px`
   }
 });
 

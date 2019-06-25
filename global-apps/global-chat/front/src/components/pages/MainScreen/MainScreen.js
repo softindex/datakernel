@@ -1,6 +1,6 @@
 import React from 'react';
 import Header from "../../Header/Header"
-import ChatRoom from "../../ChatRoom/ChatRoom"
+import ChatRoom from "./ChatRoom/ChatRoom"
 import SideBar from "./SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
@@ -10,21 +10,22 @@ import RoomsContext from "../../../modules/rooms/RoomsContext";
 import ContactsContext from "../../../modules/contacts/ContactsContext";
 import {withSnackbar} from "notistack";
 import * as PropTypes from "prop-types";
-import StartChat from "../../EmptyChatRoom/EmptyChatRoom";
+import StartChat from "./EmptyChatRoom/EmptyChatRoom";
 import ContactsService from "../../../modules/contacts/ContactsService";
 import RoomsService from "../../../modules/rooms/RoomsService";
+import AccountContext from "../../../modules/account/AccountContext";
 
 class MainScreen extends React.Component {
   constructor(props) {
     super(props);
     this.contactsService = ContactsService.create();
-    this.roomsService = RoomsService.createForm(this.contactsService);
+    this.roomsService = RoomsService.createForm(this.contactsService, props.publicKey);
   }
 
   componentDidMount() {
     Promise.all([
-      this.roomsService.init(),
-      this.contactsService.init()
+      this.contactsService.init(),
+      this.roomsService.init()
     ]).catch((err) => {
       this.props.enqueueSnackbar(err.message, {
         variant: 'error'
@@ -62,6 +63,11 @@ MainScreen.propTypes = {
   enqueueSnackbar: PropTypes.func.isRequired,
 };
 
-export default checkAuth(
-  withSnackbar(withStyles(mainScreenStyles)(MainScreen))
+export default connectService(
+  AccountContext, ({publicKey}, accountService) => ({
+    publicKey, accountService
+  })
+  )( checkAuth(
+    withSnackbar(withStyles(mainScreenStyles)(MainScreen))
+  )
 );

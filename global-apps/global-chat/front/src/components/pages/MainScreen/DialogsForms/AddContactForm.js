@@ -2,24 +2,28 @@ import React from "react";
 import {withStyles} from '@material-ui/core';
 import formStyles from "./formStyles";
 import Button from '@material-ui/core/Button';
-import Dialog from '../Dialog/Dialog';
+import Dialog from '../../../UIElements/Dialog/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import connectService from "../../common/connectService";
-import ContactsContext from "../../modules/contacts/ContactsContext";
+import connectService from "../../../../common/connectService";
+import ContactsContext from "../../../../modules/contacts/ContactsContext";
 import * as PropTypes from "prop-types";
 import { withSnackbar } from 'notistack';
-import ButtonWithProgress from "../UIElements/ButtonProgress";
+import ButtonWithProgress from "../../../UIElements/ButtonProgress/ButtonProgress";
+import AccountContext from "../../../../modules/account/AccountContext";
 
 class AddContactForm extends React.Component {
-  state = {
-    pubKey: '',
-    name: '',
-    loading: false,
-  };
+  constructor(props){
+    super(props);
+    this.state = {
+      pubKey: this.props.contactPublicKey || '',
+      name: '',
+      loading: false,
+    };
+  }
 
   handlePKChange = (event) => {
     this.setState({pubKey: event.target.value});
@@ -35,6 +39,17 @@ class AddContactForm extends React.Component {
     this.setState({
       loading: true
     });
+
+    if (this.state.pubKey === this.props.publicKey) {
+      this.setState({
+        loading: false
+      });
+      this.props.enqueueSnackbar('Can\'t add yourself', {
+        variant: 'error'
+      });
+      this.props.onClose();
+      return;
+    }
 
     return this.props.addContact(this.state.pubKey, this.state.name)
       .then(() => {
@@ -70,32 +85,36 @@ class AddContactForm extends React.Component {
               autoFocus
               disabled={this.state.loading}
               margin="normal"
-              label="Key"
-              type="text"
-              fullWidth
-              variant="outlined"
-              onChange={this.handlePKChange}
-            />
-            <TextField
-              required={true}
-              autoFocus
-              disabled={this.state.loading}
-              margin="normal"
               label="Name"
               type="text"
               fullWidth
               variant="outlined"
               onChange={this.handleNameChange}
             />
+            {!this.props.contactPublicKey && (
+              <TextField
+                required={true}
+                disabled={this.state.loading}
+                margin="normal"
+                label="Key"
+                value={this.state.pubKey}
+                type="text"
+                fullWidth
+                variant="outlined"
+                onChange={this.handlePKChange}
+              />
+            )}
           </DialogContent>
           <DialogActions>
             <Button
+              className={this.props.classes.progressButton}
               disabled={this.state.loading}
               onClick={this.props.onClose}
             >
               Cancel
             </Button>
             <ButtonWithProgress
+              className={this.props.classes.progressButton}
               loading={this.state.loading}
               type={"submit"}
               color={"primary"}
@@ -115,11 +134,15 @@ AddContactForm.propTypes = {
 };
 
 export default connectService(
-  ContactsContext, (state, contactsService) => ({
-    addContact(pubKey, name) {
-      return contactsService.addContact(pubKey, name);
-    }
-  })
+  AccountContext, ({publicKey}) => ({publicKey})
 )(
-  withSnackbar(withStyles(formStyles)(AddContactForm))
+  connectService(
+    ContactsContext, (state, contactsService) => ({
+      addContact(pubKey, name) {
+        return contactsService.addContact(pubKey, name);
+      }
+    })
+  )(
+    withSnackbar(withStyles(formStyles)(AddContactForm))
+  )
 );

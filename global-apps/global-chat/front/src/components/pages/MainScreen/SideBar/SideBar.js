@@ -6,10 +6,10 @@ import Tab from '@material-ui/core/Tab';
 import Typography from '@material-ui/core/Typography';
 import Paper from "@material-ui/core/Paper";
 import Button from "@material-ui/core/Button";
-import ContactForm from "../../../DialogsForms/AddContactForm";
+import ContactForm from "../DialogsForms/AddContactForm";
+import ChatForm from "../DialogsForms/CreateChatForm"
 import RoomsList from "./RoomsList/RoomsList";
 import ContactsList from "./ContactsList/ContactsList";
-import ChatForm from "../../../DialogsForms/CreateChatForm";
 import connectService from "../../../../common/connectService";
 import ContactsContext from "../../../../modules/contacts/ContactsContext";
 
@@ -60,23 +60,23 @@ class SideBar extends React.Component {
             component="div"
             style={{padding: 12}}
           >
-            {this.state.showAddDialog && (
-              <ChatForm
-                open={true}
-                onClose={this.closeAddDialog}
-              />
-            )}
-            <Button
-              className={classes.button}
-              disabled={[...contacts].length === 0}
-              fullWidth={true}
-              variant="contained"
-              size="medium"
-              color="primary"
-              onClick={this.showAddDialog}
-            >
-              New Chat
-            </Button>
+            {/*{this.state.showAddDialog && (*/}
+            {/*  <ChatForm*/}
+            {/*    open={true}*/}
+            {/*    onClose={this.closeAddDialog}*/}
+            {/*  />*/}
+            {/*)}*/}
+            {/*{<Button*/}
+            {/*  className={classes.button}*/}
+            {/*  disabled={[...contacts].length === 0}*/}
+            {/*  fullWidth={true}*/}
+            {/*  variant="contained"*/}
+            {/*  size="medium"*/}
+            {/*  color="primary"*/}
+            {/*  onClick={this.showAddDialog}*/}
+            {/*>*/}
+            {/*  New Chat*/}
+            {/*</Button>}*/}
             <div className={classes.chatsList}>
               <RoomsList/>
             </div>

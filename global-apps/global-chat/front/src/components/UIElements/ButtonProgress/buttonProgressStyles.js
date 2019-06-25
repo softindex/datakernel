@@ -1,4 +1,4 @@
-const uiElementsStyles = (theme) => ({
+const buttonProgressStyles = (theme) => ({
   buttonProgress: {
     position: 'absolute',
     top: '50%',
@@ -12,4 +12,4 @@ const uiElementsStyles = (theme) => ({
   }
 });
 
-export default uiElementsStyles;
+export default buttonProgressStyles;

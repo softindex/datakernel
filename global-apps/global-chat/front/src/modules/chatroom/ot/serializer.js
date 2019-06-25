@@ -2,14 +2,11 @@ import ChatRoomOTOperation from './ChatRoomOTOperation';
 
 const serializer = {
   serialize(value) {
-    return {
-      message: value.message,
-      remove: value.remove
-    };
+    return value;
   },
 
   deserialize(value) {
-    return new ChatRoomOTOperation(value.message, value.remove);
+    return ChatRoomOTOperation.createFromJson(value);
   }
 };
 

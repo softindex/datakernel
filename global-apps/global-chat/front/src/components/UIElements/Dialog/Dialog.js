@@ -1,6 +1,6 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import formStyles from "../DialogsForms/formStyles";
+import formStyles from "../../pages/MainScreen/DialogsForms/formStyles";
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
 import MUDialog from '@material-ui/core/Dialog';

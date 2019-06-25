@@ -1,6 +1,6 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import contactStyles from "./contactStyles"
+import contactItemStyles from "./contactItemStyles"
 import ListItemAvatar from "@material-ui/core/ListItemAvatar";
 import Avatar from "@material-ui/core/Avatar";
 import ListItemText from "@material-ui/core/ListItemText";
@@ -9,7 +9,7 @@ import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from '@material-ui/icons/Delete';
 
-class Contact extends React.Component {
+class ContactItem extends React.Component {
   static defaultProps = {
     selected: false,
     showDeleteButton: false
@@ -47,7 +47,13 @@ class Contact extends React.Component {
                 <Avatar/>
             </ListItemAvatar>
           </Badge>
-          <ListItemText primary={this.props.name}/>
+          <ListItemText
+            primary={this.props.name}
+            className={classes.itemText}
+            classes={{
+              primary: classes.itemTextPrimary
+            }}
+          />
           {this.state.hover && this.props.showDeleteButton && (
             <IconButton
               className={classes.deleteIcon}
@@ -64,4 +70,4 @@ class Contact extends React.Component {
   }
 }
 
-export default withStyles(contactStyles)(Contact);
+export default withStyles(contactItemStyles)(ContactItem);

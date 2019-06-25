@@ -8,25 +8,45 @@ function connectService(ServiceContext, mapStateToProps) {
       constructor(props, context) {
         super(props, context);
 
-        this.state = context.getAll();
+        this.state = {
+          value: context.getAll(),
+          context
+        };
+      }
+
+      static getDerivedStateFromProps(props, state) {
+        const nextContext = ServiceContext.Consumer._currentValue;
+        if (state.context !== nextContext) {
+          return {
+            context: nextContext,
+            value: nextContext.getAll()
+          };
+        }
       }
 
       componentDidMount() {
-        this.context.addChangeListener(this.update);
+        this.state.context.addChangeListener(this.update);
       }
 
       componentWillUnmount() {
-        this.context.removeChangeListener(this.update);
+        this.state.context.removeChangeListener(this.update);
       }
 
-      update = nextState => {
-        this.setState(nextState);
+      componentDidUpdate(prevProps, prevState) {
+        if (this.state.context !== prevState.context) {
+          prevState.context.removeChangeListener(this.update);
+          this.state.context.addChangeListener(this.update);
+        }
+      }
+
+      update = value => {
+        this.setState({value});
       };
 
       render() {
         const props = {
           ...this.props,
-          ...mapStateToProps(this.state, this.context)
+          ...mapStateToProps(this.state.value, this.state.context)
         };
 
         return (

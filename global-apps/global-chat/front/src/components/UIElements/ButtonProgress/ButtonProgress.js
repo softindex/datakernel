@@ -2,7 +2,7 @@ import React from "react";
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import CircularProgress from "@material-ui/core/CircularProgress";
-import uiElementsStyles from "./uiElementsStyles";
+import buttonProgressStyles from "./buttonProgressStyles";
 
 class ButtonWithProgress extends React.Component {
   state = {
@@ -46,4 +46,4 @@ class ButtonWithProgress extends React.Component {
   }
 }
 
-export default withStyles(uiElementsStyles)(ButtonWithProgress);
+export default withStyles(buttonProgressStyles)(ButtonWithProgress);

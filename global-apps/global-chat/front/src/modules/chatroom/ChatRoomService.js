@@ -1,6 +1,5 @@
 import Service from '../../common/Service';
 import ChatRoomOTOperation from './ot/ChatRoomOTOperation';
-import ChatMessage from "./ot/ChatMessage";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import chatRoomSerializer from "./ot/serializer";
 import chatRoomOTSystem from "./ot/ChatRoomOTSystem";
@@ -50,8 +49,7 @@ class ChatRoomService extends Service {
 
   async sendMessage(content) {
     const timestamp = Date.now();
-    const message = new ChatMessage(timestamp, this._publicKey, content);
-    const operation = new ChatRoomOTOperation(message, false);
+    const operation = new ChatRoomOTOperation(timestamp, this._publicKey, content, false);
     this._chatOTStateManager.add([operation]);
 
     await this._sync();
@@ -68,7 +66,6 @@ class ChatRoomService extends Service {
     const otState = this._chatOTStateManager.getState();
     return [...otState]
       .map(key => JSON.parse(key))
-      .map(op => op.message)
       .sort((left, right) => left.timestamp - right.timestamp);
   }
 

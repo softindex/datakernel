@@ -16,9 +16,9 @@ const emptyChatRoomStyles = theme => {
       display: 'flex',
       backgroundColor: '#808080',
       padding: 6,
-      paddingLeft: 12,
-      paddingRight: 12,
-      borderRadius: '30px',
+      paddingLeft: `${theme.spacing.unit * 2}px`,
+      paddingRight: `${theme.spacing.unit * 2}px`,
+      borderRadius: 30,
       boxShadow: 'none'
     },
     startMessage: {

@@ -7,7 +7,10 @@ const contactsListStyles = () => ({
   progressWrapper: {
     marginLeft: 150,
     marginTop: 10
-  }
+  },
+  link: {
+    textDecoration: 'none',
+  },
 });
 
 export default contactsListStyles;

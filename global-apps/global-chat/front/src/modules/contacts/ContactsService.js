@@ -3,8 +3,9 @@ import ContactsOTOperation from "./ot/ContactsOTOperation";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import contactsOTSystem from "./ot/ContactsOTSystem";
 import contactsSerializer from "./ot/serializer";
+import {wait} from '../../common/utils';
 
-const RETRY_CHECKOUT_TIMEOUT = 1000;
+const RETRY_TIMEOUT = 1000;
 
 class ContactsService extends Service {
   constructor(contactsOTStateManager) {
@@ -14,6 +15,7 @@ class ContactsService extends Service {
     });
     this._contactsOTStateManager = contactsOTStateManager;
     this._reconnectTimeout = null;
+    this.getContactName = this.getContactName.bind(this);
   }
 
   static create() {
@@ -61,6 +63,12 @@ class ContactsService extends Service {
     await this._sync();
   }
 
+  getContactName(publicKey) {
+    if (this.state.contacts.get(publicKey)){
+     return  this.state.contacts.get(publicKey).name
+    }
+  }
+
   _onStateChange = () => {
     this.setState({
       contacts: this._getContactsFromStateManager(),
@@ -77,7 +85,7 @@ class ContactsService extends Service {
 
   _reconnectDelay() {
     return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
+      this._reconnectTimeout = setTimeout(resolve, RETRY_TIMEOUT);
     });
   }
 
@@ -85,7 +93,8 @@ class ContactsService extends Service {
     try {
       await this._contactsOTStateManager.sync();
     } catch (err) {
-      console.log(err);
+      console.error(err);
+      await wait(RETRY_TIMEOUT);
       await this._sync();
     }
   }

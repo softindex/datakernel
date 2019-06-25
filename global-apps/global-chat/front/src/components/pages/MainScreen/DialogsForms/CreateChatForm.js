@@ -2,21 +2,21 @@ import React from "react";
 import {withStyles} from '@material-ui/core';
 import formStyles from "./formStyles";
 import Button from '@material-ui/core/Button';
-import Dialog from '../Dialog/Dialog'
+import Dialog from '../../../UIElements/Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import connectService from "../../common/connectService";
-import RoomsContext from "../../modules/rooms/RoomsContext";
-import ButtonWithProgress from "../UIElements/ButtonProgress";
+import connectService from "../../../../common/connectService";
+import RoomsContext from "../../../../modules/rooms/RoomsContext";
+import ButtonWithProgress from "../../../UIElements/ButtonProgress/ButtonProgress";
 import Chip from "@material-ui/core/Chip";
 import {withSnackbar} from "notistack";
 import * as PropTypes from "prop-types";
-import ContactsContext from "../../modules/contacts/ContactsContext";
+import ContactsContext from "../../../../modules/contacts/ContactsContext";
 import List from "@material-ui/core/List";
-import Contact from "../ContactItem/Contact";
+import Contact from "../SideBar/ContactsList/ContactItem/ContactItem";
 
 class CreateChatForm extends React.Component {
   state = {
@@ -67,7 +67,7 @@ class CreateChatForm extends React.Component {
       loading: true
     });
 
-    return this.props.createRoom(this.state.name, this.state.participants)
+    return this.props.createRoom(this.state.name, [...this.state.participants])
       .then(() => {
         this.props.onClose();
       })
@@ -117,14 +117,14 @@ class CreateChatForm extends React.Component {
             )}
             {this.state.activeStep > 0 &&  (
               <>
-                {[...this.state.participants].map((pubKey) =>
-                  < Chip
-                  color = "primary"
-                  label = {contacts.get(pubKey).name}
-                  onDelete = {!this.state.loading && this.handleCheckContact.bind(this, pubKey)}
-                  className = {classes.chip}
+                {[...this.state.participants].map((pubKey) => (
+                  <Chip
+                    color = "primary"
+                    label = {contacts.get(pubKey).name}
+                    onDelete = {!this.state.loading && this.handleCheckContact.bind(this, pubKey)}
+                    className = {classes.chip}
                   />
-                )}
+                ))}
                 <DialogContentText>
                   Choose members from contacts:
                 </DialogContentText>
@@ -143,6 +143,7 @@ class CreateChatForm extends React.Component {
           </DialogContent>
           <DialogActions>
             <Button
+              className={this.props.classes.progressButton}
               disabled={this.state.activeStep === 0}
               onClick={this.gotoStep.bind(this, this.state.activeStep - 1)}
             >
@@ -150,6 +151,7 @@ class CreateChatForm extends React.Component {
             </Button>
             {this.state.activeStep === 0 && (
               <Button
+                className={this.props.classes.progressButton}
                 type={"submit"}
                 disabled={this.state.loading}
                 color="primary"
@@ -160,6 +162,7 @@ class CreateChatForm extends React.Component {
             )}
             {this.state.activeStep !== 0 && (
               <ButtonWithProgress
+                className={this.props.classes.progressButton}
                 loading={this.state.loading}
                 type={"submit"}
                 color={"primary"}
@@ -185,14 +188,14 @@ export default connectService(
     contactsService, ready, contacts
   })
 )(
-  connectService(
-    RoomsContext,
-    (state, roomsService) => ({
-      createRoom(name, participants) {
-        return roomsService.createRoom(name, participants);
-      }
-    })
-  )(
-    withSnackbar(withStyles(formStyles)(CreateChatForm))
-  )
+    connectService(
+      RoomsContext,
+      (state, roomsService) => ({
+        createRoom(name, participants) {
+          return roomsService.createRoom(name, participants);
+        }
+      })
+    )(
+      withSnackbar(withStyles(formStyles)(CreateChatForm))
+    )
 );

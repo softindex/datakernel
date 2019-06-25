@@ -28,3 +28,30 @@ export function wait(delay) {
     setTimeout(resolve, delay);
   });
 }
+
+const emojiGroups = [
+  [0x1F601, 0x1F64F],
+  [0x1F680, 0x1F6C0]
+];
+export function toEmoji(str, length) {
+  const count = emojiGroups.reduce((count, [from, to]) => {
+    return count + to - from + 1;
+  }, 0);
+
+  let emoji = '';
+  for (let i = 0; i < length; i++) {
+    let emojiIndex = (str.charCodeAt(i * 3) + str.charCodeAt(i * 3 + 1) + str.charCodeAt(i * 3 + 2)) % count;
+
+    for (const [startCode, endCode] of emojiGroups) {
+      const countInGroup = endCode - startCode + 1;
+
+      if (emojiIndex < countInGroup) {
+        emoji += String.fromCodePoint(startCode + emojiIndex);
+        break;
+      }
+
+      emojiIndex -= countInGroup;
+    }
+  }
+  return emoji;
+}
