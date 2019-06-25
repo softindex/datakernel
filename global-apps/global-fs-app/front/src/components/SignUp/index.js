@@ -4,6 +4,7 @@ import connectService from '../../common/connectService';
 import Typography from '@material-ui/core/Typography';
 import {withStyles} from '@material-ui/core/styles';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
+import StoreIcon from '@material-ui/icons/Store';
 import Grid from '@material-ui/core/Grid';
 import SignUpAbstractionImage from './SignUpAbstractionImage';
 import Button from '../theme/Button';
@@ -11,10 +12,26 @@ import Snackbar from '../theme/Snackbar';
 import signUpStyles from './signUpStyles';
 
 class SignUp extends React.Component {
-  onCreateRepo = async () => {
-    await this.props.authService.authWithNewKey();
-    this.props.history.push('/');
+  constructor(props) {
+    super(props);
+    this.state = {online: window.navigator.onLine};
+    this._wentOnline = () => this.setState({online: true});
+    this._wentOffline = () => this.setState({online: false});
+  }
+
+  onAuthByAppStore = () => {
+    this.props.authService.authWithAppStore();
   };
+
+  componentDidMount() {
+    window.addEventListener('online', this._wentOnline);
+    window.addEventListener('offline', this._wentOffline);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('online', this._wentOnline);
+    window.removeEventListener('offline', this._wentOffline);
+  }
 
   onUploadFile = () => {
     this.props.authService.authByFile(this.input.files[0]).then(() => {
@@ -46,15 +63,16 @@ class SignUp extends React.Component {
             <Grid container spacing={32}>
               <Grid item xs={12} lg={6} md={6}>
                 <Button
-                  loading={this.props.auth.loading}
-                  variant="contained"
-                  color="primary"
-                  onClick={this.onCreateRepo}
-                  className={`${this.props.classes.button} ${this.props.classes.signupButton}`}
+                  variant="outlined"
+                  color="inherit"
+                  className={this.props.classes.button}
                   shape="round"
                   fullWidth
+                  disabled={!this.state.online}
+                  onClick={this.onAuthByAppStore}
                 >
-                  Create storage
+                  <StoreIcon className={this.props.classes.storeIcon}/>
+                  Auth by App Store
                 </Button>
               </Grid>
               <Grid item xs={12} lg={6} md={6}>
@@ -85,7 +103,7 @@ class SignUp extends React.Component {
         <Snackbar
           error={this.props.auth.error && this.props.auth.error.message}
           action={[
-            <Button key="undo" color="secondary" size="small" onClick={this.onCreateRepo}>
+            <Button key="undo" color="secondary" size="small" onClick={this.onAuthByAppStore}>
               RETRY
             </Button>,
           ]}

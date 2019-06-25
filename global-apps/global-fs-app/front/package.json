@@ -11,6 +11,7 @@
     "idb": "^3.0.2",
     "js-cookie": "^2.2.0",
     "localforage": "^1.7.3",
+    "query-string": "^6.7.0",
     "react": "^16.7.0",
     "react-app-rewire-workbox": "^2.0.1",
     "react-app-rewired": "^2.0.2",

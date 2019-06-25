@@ -25,7 +25,7 @@ RUN apk --update add --no-cache git
 ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/master last-commit.json
 RUN git clone --depth 1 https://github.com/softindex/datakernel \
  && cd datakernel \
- && mvn install -DskipTests \
+ && mvn install -P global -DskipTests \
  && cd ..
 
 # app-server layer

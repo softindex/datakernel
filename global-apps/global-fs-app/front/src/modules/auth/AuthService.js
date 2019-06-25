@@ -1,7 +1,7 @@
 import Store from '../../common/Store';
 
 class AuthService extends Store {
-  constructor(keyPairGenerator, cookies, localStorage) {
+  constructor(appStoreUrl, cookies, localStorage) {
     super({
       error: null,
       authorized: false,
@@ -9,9 +9,9 @@ class AuthService extends Store {
       publicKey: null,
       loading: false
     });
-    this._keyPairGenerator = keyPairGenerator;
     this._cookies = cookies;
     this._localStorage = localStorage;
+    this._appStoreUrl = appStoreUrl;
   }
 
   init() {
@@ -49,32 +49,8 @@ class AuthService extends Store {
     });
   }
 
-  async authWithNewKey() {
-    this.setStore({
-      error: null,
-      loading: true
-    });
-
-    let response;
-    try {
-      response = this._keyPairGenerator.generate();
-    } catch (e) {
-      this.setStore({
-        error: e,
-        loading: false
-      });
-      throw e;
-    }
-
-    this._cookies.set('Key', response.privateKey);
-    this._localStorage.setItem('publicKey', response.publicKey);
-
-    this.setStore({
-      authorized: true,
-      privateKey: response.privateKey,
-      publicKey: response.publicKey,
-      loading: false
-    });
+  authWithAppStore() {
+    window.location.href = this._appStoreUrl + '/extAuth?redirectUri=' + window.location.href + '/auth';
   }
 
   logout() {

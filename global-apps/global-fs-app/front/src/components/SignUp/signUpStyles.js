@@ -25,6 +25,9 @@ const signUpStyles = theme => {
       transform: 'rotate(45deg)',
       marginRight: theme.spacing.unit
     },
+    storeIcon: {
+      marginRight: theme.spacing.unit
+    },
     description: {
       marginBottom: '100px',
       [theme.breakpoints.down('sm')]: {
