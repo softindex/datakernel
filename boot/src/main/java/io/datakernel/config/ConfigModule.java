@@ -155,7 +155,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		transform(0, (provider, scope, key, binding) -> {
 			if (!key.equals(KEY_OF_CONFIG)) return binding;
 			return ((Binding<Config>) (Binding) binding)
-					.addDependency(new Key<CompletionStage<Void>>(OnStart.class) {})
+					.addDependencies(new Key<CompletionStage<Void>>(OnStart.class) {})
 					.mapInstance((args, config) -> {
 						CompletionStage<Void> onStart = (CompletionStage<Void>) args[args.length - 1];
 						AtomicBoolean started = new AtomicBoolean();

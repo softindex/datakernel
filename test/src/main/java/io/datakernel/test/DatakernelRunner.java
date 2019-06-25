@@ -133,7 +133,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 			bind(injectorKey);
 		}});
-		currentInjector.getInstance(injectorKey).inject(instance);
+		currentInjector.getInstance(injectorKey).injectInto(instance);
 		return currentInjector.getInstance(self); // eagerly trigger all the dependencies for fail-fast testing
 	}
 

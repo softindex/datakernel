@@ -155,7 +155,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			for (InstanceInjector<?> instanceInjector : postInjectors) {
 				Object instance = injector.getInstanceOrNull(instanceInjector.key());
 				if (instance != null) {
-					((InstanceInjector<Object>) instanceInjector).inject(instance);
+					((InstanceInjector<Object>) instanceInjector).injectInto(instance);
 				}
 			}
 
@@ -274,20 +274,20 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				combine(
 						getModule(),
 						new AbstractModule() {{
-							Class<Launcher> subclass = (Class<Launcher>) Launcher.this.getClass();
+							bind(String[].class).annotatedWith(Args.class).toInstance(args).withExtraDependencies(Launcher.class);
 
-							bind(String[].class).annotatedWith(Args.class).toInstance(args);
-							bind(Launcher.class).to(subclass);
-							bind(subclass).toInstance(Launcher.this);
+							Class<Launcher> launcherClass = (Class<Launcher>) Launcher.this.getClass();
+							bind(Launcher.class).to(launcherClass);
+							bind(launcherClass).toInstance(Launcher.this);
 
 							bindIntoSet(new Key<InstanceInjector<?>>() {}, new Key<InstanceInjector<Launcher>>() {});
-							bind(new Key<InstanceInjector<Launcher>>() {}).to(Key.ofType(Types.parameterized(InstanceInjector.class, subclass)));
+							bind(new Key<InstanceInjector<Launcher>>() {}).to(Key.ofType(Types.parameterized(InstanceInjector.class, launcherClass)));
 
 							Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 
-							bind(completionStageKey.named(OnStart.class)).toInstance(onStart);
-							bind(completionStageKey.named(OnRun.class)).toInstance(onRun);
-							bind(completionStageKey.named(OnComplete.class)).toInstance(onComplete);
+							bind(completionStageKey.named(OnStart.class)).toInstance(onStart).withExtraDependencies(Launcher.class);
+							bind(completionStageKey.named(OnRun.class)).toInstance(onRun).withExtraDependencies(Launcher.class);
+							bind(completionStageKey.named(OnComplete.class)).toInstance(onComplete).withExtraDependencies(Launcher.class);
 
 							multibind(new Key<Set<RootService>>() {}, Multibinder.toSet());
 

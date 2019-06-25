@@ -35,12 +35,12 @@ public final class Binding<T> {
 	}
 
 	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Class<?>[] dependencies) {
-		return new Binding<>(Stream.of(dependencies).map(type -> new Dependency(Key.of(type), true)).toArray(Dependency[]::new),
+		return new Binding<>(Stream.of(dependencies).map(Key::of).map(Dependency::new).toArray(Dependency[]::new),
 				factory, null);
 	}
 
 	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Key<?>[] dependencies) {
-		return new Binding<>(Stream.of(dependencies).map(key -> new Dependency(key, true)).toArray(Dependency[]::new),
+		return new Binding<>(Stream.of(dependencies).map(Dependency::new).toArray(Dependency[]::new),
 				factory, null);
 	}
 
@@ -61,67 +61,67 @@ public final class Binding<T> {
 		return Binding.to($ -> instance);
 	}
 
-	public static <R> Binding<R> to(Constructor0<R> constructor) {
+	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
 		return Binding.to(constructor, new Dependency[0]);
 	}
 
-	public static <T1, R> Binding<R> to(Constructor1<T1, R> constructor,
-			Class<T1> dependency1) {
+	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
+			@NotNull Class<T1> dependency1) {
 		return Binding.to(constructor, new Class[]{dependency1});
 	}
 
-	public static <T1, T2, R> Binding<R> to(Constructor2<T1, T2, R> constructor,
-			Class<T1> dependency1, Class<T2> dependency2) {
+	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
+			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2) {
 		return Binding.to(constructor, new Class[]{dependency1, dependency2});
 	}
 
-	public static <T1, T2, T3, R> Binding<R> to(Constructor3<T1, T2, T3, R> constructor,
-			Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
+	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
+			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3) {
 		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3});
 	}
 
-	public static <T1, T2, T3, T4, R> Binding<R> to(Constructor4<T1, T2, T3, T4, R> constructor,
-			Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
+	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
+			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4) {
 		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3, dependency4});
 	}
 
-	public static <T1, T2, T3, T4, T5, R> Binding<R> to(Constructor5<T1, T2, T3, T4, T5, R> constructor,
-			Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
+	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
+			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5) {
 		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3, dependency4, dependency5});
 	}
 
-	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
-			Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
+	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
+			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5, @NotNull Class<T6> dependency6) {
 		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3, dependency4, dependency5, dependency6});
 	}
 
-	public static <T1, R> Binding<R> to(Constructor1<T1, R> constructor,
-			Key<T1> dependency1) {
+	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
+			@NotNull Key<T1> dependency1) {
 		return Binding.to(constructor, new Key[]{dependency1});
 	}
 
-	public static <T1, T2, R> Binding<R> to(Constructor2<T1, T2, R> constructor,
-			Key<T1> dependency1, Key<T2> dependency2) {
+	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
+			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
 		return Binding.to(constructor, new Key[]{dependency1, dependency2});
 	}
 
-	public static <T1, T2, T3, R> Binding<R> to(Constructor3<T1, T2, T3, R> constructor,
-			Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
+	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
+			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
 		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3});
 	}
 
-	public static <T1, T2, T3, T4, R> Binding<R> to(Constructor4<T1, T2, T3, T4, R> constructor,
-			Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
+	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
+			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
 		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3, dependency4});
 	}
 
-	public static <T1, T2, T3, T4, T5, R> Binding<R> to(Constructor5<T1, T2, T3, T4, T5, R> constructor,
-			Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
+	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
+			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
 		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3, dependency4, dependency5});
 	}
 
-	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
-			Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
+	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
+			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {
 		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3, dependency4, dependency5, dependency6});
 	}
 
@@ -230,17 +230,19 @@ public final class Binding<T> {
 				location);
 	}
 
-	public Binding<T> addDependency(@NotNull Class<?> dependency) {
-		return addDependency(Key.of(dependency));
+	public Binding<T> addDependencies(@NotNull Class<?>... dependencies) {
+		return addDependencies(Stream.of(dependencies).map(Key::of).map(Dependency::new).toArray(Dependency[]::new));
 	}
 
-	public Binding<T> addDependency(@NotNull Key<?> dependency) {
-		return addDependency(new Dependency(dependency, true));
+	public Binding<T> addDependencies(@NotNull Key<?>... dependencies) {
+		return addDependencies(Stream.of(dependencies).map(Dependency::new).toArray(Dependency[]::new));
 	}
 
-	public Binding<T> addDependency(@NotNull Dependency dependency) {
-		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, dependencies.length + 1);
-		newDependencies[newDependencies.length - 1] = dependency;
+	public Binding<T> addDependencies(@NotNull Dependency... dependencies) {
+		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, this.dependencies.length + dependencies.length);
+		for (int i = 0; i < dependencies.length; i++) {
+			newDependencies[this.dependencies.length + i] = dependencies[i];
+		}
 		return new Binding<>(newDependencies, newArgs -> factory.create(Arrays.copyOf(newArgs, dependencies.length)), location);
 	}
 

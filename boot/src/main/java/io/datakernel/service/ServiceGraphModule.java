@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
@@ -299,8 +298,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@Provides
-	ServiceGraph serviceGraph(Injector injector, @Optional Set<Initializer<ServiceGraphModule>> initializers) {
-		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
+	ServiceGraph serviceGraph(Injector injector) {
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();

@@ -61,7 +61,7 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 			bind(key);
 			addDeclarativeBindingsFrom(instance);
 		}});
-		injector.getInstance(key).inject(instance);
+		injector.getInstance(key).injectInto(instance);
 
 		return instance;
 	}

@@ -277,7 +277,7 @@ public final class TestDI {
 		assertNull(instance.string);
 		assertNull(instance.raw);
 		InstanceInjector<ClassWithCustomDeps> instanceInjector = injector.getInstance(new Key<InstanceInjector<ClassWithCustomDeps>>() {});
-		instanceInjector.inject(instance);
+		instanceInjector.injectInto(instance);
 		assertEquals("str: 42", instance.string);
 		assertEquals(42, instance.raw.intValue());
 	}

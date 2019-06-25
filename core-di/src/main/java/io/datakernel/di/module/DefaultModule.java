@@ -45,7 +45,7 @@ public final class DefaultModule implements Module {
 									}
 								};
 							},
-							new Dependency[]{new Dependency(Key.of(Injector.class), true)});
+							new Dependency[]{new Dependency(Key.of(Injector.class))});
 				}
 		));
 
@@ -94,7 +94,7 @@ public final class DefaultModule implements Module {
 								}
 
 								@Override
-								public void inject(Object existingInstance) {
+								public void injectInto(Object existingInstance) {
 									initializer.apply(existingInstance, args);
 								}
 

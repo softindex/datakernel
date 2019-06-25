@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
@@ -176,8 +175,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	@ProvidesIntoSet
-	RootService start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
-		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
+	RootService start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
 		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {

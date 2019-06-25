@@ -100,18 +100,18 @@ public abstract class AbstractModule implements Module {
 		}
 	}
 
-	@SuppressWarnings({"unchecked", "UnusedReturnValue"})
+	@SuppressWarnings({"unchecked", "UnusedReturnValue", "WeakerAccess"})
 	public final class BindingBuilder<T> {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
 
 		private Binding<? extends T> binding = (Binding<? extends T>) Binding.to(BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
 
-		public BindingBuilder(Key<T> key) {
+		public BindingBuilder(@NotNull Key<T> key) {
 			this.key = key;
 		}
 
-		public BindingBuilder<T> annotatedWith(Name name) {
+		public BindingBuilder<T> annotatedWith(@NotNull Name name) {
 			if (key.getName() != null) {
 				throw new IllegalStateException("Already annotated with " + key.getName().getDisplayString());
 			}
@@ -119,15 +119,15 @@ public abstract class AbstractModule implements Module {
 			return this;
 		}
 
-		public BindingBuilder<T> annotatedWith(Annotation annotation) {
+		public BindingBuilder<T> annotatedWith(@NotNull Annotation annotation) {
 			return annotatedWith(Name.of(annotation));
 		}
 
-		public BindingBuilder<T> annotatedWith(Class<? extends Annotation> annotationType) {
+		public BindingBuilder<T> annotatedWith(@NotNull Class<? extends Annotation> annotationType) {
 			return annotatedWith(Name.of(annotationType));
 		}
 
-		public BindingBuilder<T> in(Scope scope, Scope... scopes) {
+		public BindingBuilder<T> in(@NotNull Scope scope, @NotNull Scope... scopes) {
 			if (this.scope.length != 0) {
 				throw new IllegalStateException("Already bound to scope " + Arrays.stream(this.scope).map(Scope::getDisplayString).collect(joining("->", "()", "")));
 			}
@@ -141,11 +141,11 @@ public abstract class AbstractModule implements Module {
 		}
 
 		@SafeVarargs
-		public final BindingBuilder<T> in(Class<? extends Annotation> annotationClass, Class<? extends Annotation>... annotationClasses) {
+		public final BindingBuilder<T> in(@NotNull Class<? extends Annotation> annotationClass, @NotNull Class<? extends Annotation>... annotationClasses) {
 			return in(Scope.of(annotationClass), Arrays.stream(annotationClasses).map(Scope::of).toArray(Scope[]::new));
 		}
 
-		public BindingBuilder<T> to(Binding<? extends T> binding) {
+		public BindingBuilder<T> to(@NotNull Binding<? extends T> binding) {
 			if (this.binding.getFactory() != BindingGraph.TO_BE_GENERATED) {
 				throw new IllegalStateException("Already mapped to a binding");
 			}
@@ -156,27 +156,27 @@ public abstract class AbstractModule implements Module {
 			return this;
 		}
 
-		public BindingBuilder<T> to(Factory<? extends T> factory) {
+		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory) {
 			return to(Binding.to(factory));
 		}
 
-		public BindingBuilder<T> to(Factory<? extends T> factory, Class<?>[] dependencies) {
+		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory, @NotNull Class<?>[] dependencies) {
 			return to(Binding.to(factory, dependencies));
 		}
 
-		public BindingBuilder<T> to(Factory<? extends T> factory, Key<?>[] dependencies) {
+		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory, @NotNull Key<?>[] dependencies) {
 			return to(Binding.to(factory, dependencies));
 		}
 
-		public BindingBuilder<T> to(Factory<? extends T> factory, Dependency[] dependencies) {
+		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory, @NotNull Dependency[] dependencies) {
 			return to(Binding.to(factory, dependencies));
 		}
 
-		public BindingBuilder<T> to(Class<? extends T> implementation) {
+		public BindingBuilder<T> to(@NotNull Class<? extends T> implementation) {
 			return to(Binding.to(implementation));
 		}
 
-		public BindingBuilder<T> to(Key<? extends T> implementation) {
+		public BindingBuilder<T> to(@NotNull Key<? extends T> implementation) {
 			return to(Binding.to(implementation));
 		}
 
@@ -184,67 +184,67 @@ public abstract class AbstractModule implements Module {
 			return to(Binding.toInstance(instance));
 		}
 
-		public BindingBuilder<T> to(Constructor0<? extends T> constructor) {
+		public BindingBuilder<T> to(@NotNull Constructor0<? extends T> constructor) {
 			return to(Binding.to(constructor));
 		}
 
-		public <T1> BindingBuilder<T> to(Constructor1<T1, ? extends T> constructor,
-				Class<T1> dependency1) {
+		public <T1> BindingBuilder<T> to(@NotNull Constructor1<T1, ? extends T> constructor,
+				@NotNull Class<T1> dependency1) {
 			return to(Binding.to(constructor, dependency1));
 		}
 
-		public <T1, T2> BindingBuilder<T> to(Constructor2<T1, T2, ? extends T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2) {
+		public <T1, T2> BindingBuilder<T> to(@NotNull Constructor2<T1, T2, ? extends T> constructor,
+				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2) {
 			return to(Binding.to(constructor, dependency1, dependency2));
 		}
 
-		public <T1, T2, T3> BindingBuilder<T> to(Constructor3<T1, T2, T3, ? extends T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3) {
+		public <T1, T2, T3> BindingBuilder<T> to(@NotNull Constructor3<T1, T2, T3, ? extends T> constructor,
+				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3));
 		}
 
-		public <T1, T2, T3, T4> BindingBuilder<T> to(Constructor4<T1, T2, T3, T4, ? extends T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4) {
+		public <T1, T2, T3, T4> BindingBuilder<T> to(@NotNull Constructor4<T1, T2, T3, T4, ? extends T> constructor,
+				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4));
 		}
 
-		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(Constructor5<T1, T2, T3, T4, T5, ? extends T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5) {
+		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(@NotNull Constructor5<T1, T2, T3, T4, T5, ? extends T> constructor,
+				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
-		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(Constructor6<T1, T2, T3, T4, T5, T6, ? extends T> constructor,
-				Class<T1> dependency1, Class<T2> dependency2, Class<T3> dependency3, Class<T4> dependency4, Class<T5> dependency5, Class<T6> dependency6) {
+		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, ? extends T> constructor,
+				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5, @NotNull Class<T6> dependency6) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
-		public <T1> BindingBuilder<T> to(Constructor1<T1, ? extends T> constructor,
-				Key<T1> dependency1) {
+		public <T1> BindingBuilder<T> to(@NotNull Constructor1<T1, ? extends T> constructor,
+				@NotNull Key<T1> dependency1) {
 			return to(Binding.to(constructor, dependency1));
 		}
 
-		public <T1, T2> BindingBuilder<T> to(Constructor2<T1, T2, ? extends T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2) {
+		public <T1, T2> BindingBuilder<T> to(@NotNull Constructor2<T1, T2, ? extends T> constructor,
+				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
 			return to(Binding.to(constructor, dependency1, dependency2));
 		}
 
-		public <T1, T2, T3> BindingBuilder<T> to(Constructor3<T1, T2, T3, ? extends T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3) {
+		public <T1, T2, T3> BindingBuilder<T> to(@NotNull Constructor3<T1, T2, T3, ? extends T> constructor,
+				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3));
 		}
 
-		public <T1, T2, T3, T4> BindingBuilder<T> to(Constructor4<T1, T2, T3, T4, ? extends T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4) {
+		public <T1, T2, T3, T4> BindingBuilder<T> to(@NotNull Constructor4<T1, T2, T3, T4, ? extends T> constructor,
+				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4));
 		}
 
-		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(Constructor5<T1, T2, T3, T4, T5, ? extends T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5) {
+		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(@NotNull Constructor5<T1, T2, T3, T4, T5, ? extends T> constructor,
+				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5));
 		}
 
-		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(Constructor6<T1, T2, T3, T4, T5, T6, ? extends T> constructor,
-				Key<T1> dependency1, Key<T2> dependency2, Key<T3> dependency3, Key<T4> dependency4, Key<T5> dependency5, Key<T6> dependency6) {
+		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, ? extends T> constructor,
+				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
@@ -268,6 +268,21 @@ public abstract class AbstractModule implements Module {
 			multibind(setKey, Multibinder.toSet());
 			return this;
 		}
+
+		public BindingBuilder<T> withExtraDependencies(Class<?>... dependencies) {
+			this.binding = this.binding.addDependencies(dependencies);
+			return this;
+		}
+
+		public BindingBuilder<T> withExtraDependencies(Key<?>... dependencies) {
+			this.binding = this.binding.addDependencies(dependencies);
+			return this;
+		}
+
+		public BindingBuilder<T> withExtraDependencies(Dependency... dependencies) {
+			this.binding = this.binding.addDependencies(dependencies);
+			return this;
+		}
 	}
 
 	protected void configure() {
@@ -281,7 +296,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected final <T> BindingBuilder<T> bind(Key<T> key) {
+	protected final <T> BindingBuilder<T> bind(@NotNull Key<T> key) {
 		// to support abstract modules with generics
 		Key<T> fullKey = Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName());
 		BindingBuilder<T> builder = new BindingBuilder<>(fullKey);
@@ -289,7 +304,7 @@ public abstract class AbstractModule implements Module {
 		return builder;
 	}
 
-	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, T element) {
+	protected final <S, T extends S> void bindIntoSet(@NotNull Key<S> setOf, @NotNull T element) {
 		bindIntoSet(setOf, Binding.toInstance(element));
 	}
 
