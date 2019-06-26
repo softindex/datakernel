@@ -1,6 +1,7 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.annotation.KeySetAnnotation;
+import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
@@ -91,12 +92,54 @@ public abstract class AbstractModule implements Module {
 			}
 		}
 		for (Method method : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods, false)) {
-			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
-			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
+			if (method.getTypeParameters().length != 0) {
+				throw new IllegalStateException("@ProvidesIntoSet does not support templated methods, method " + method);
+			}
 
-			addBinding(getScope(method), setKey, bindingFromMethod(instance, method).mapInstance(Collections::singleton));
+			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
+			Scope[] scope = getScope(method);
+
+			Binding<Object> binding = bindingFromMethod(instance, method);
+			Key<Object> key = Key.ofType(type, new InSetImpl());
+			addBinding(scope, key, binding);
+
+			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
+			addBinding(scope, setKey, Binding.to(Collections::singleton, key).at(LocationInfo.from(this)));
 			multibind(setKey, Multibinder.toSet());
-			keySetsOf(method).forEach(keySet -> addKeyToSet(keySet, setKey));
+
+			keySetsOf(method).forEach(keySet -> {
+				addKeyToSet(keySet, key);
+				addKeyToSet(keySet, setKey);
+			});
+		}
+	}
+
+	@NameAnnotation
+	private @interface InSet {
+
+		// so that this pseudo-annotation is not a 'marker'
+		int dummy() default 0;
+	}
+
+	@SuppressWarnings("ClassExplicitlyAnnotation")
+	private static class InSetImpl implements InSet {
+
+		@Override
+		public int dummy() {
+			return 0;
+		}
+
+		@Override
+		public Class<? extends Annotation> annotationType() {
+			return InSet.class;
+		}
+
+		@Override
+		public String toString() {
+			// this weirdness is for different GraphViz node ids
+			// `io.datakernel.di.x123456.` would be stripped by getShortName for labels,
+			// but would provide uniqueness so that the nodes are drawn separately
+			return "@io.datakernel.di.x" + hashCode() + ".InSet()";
 		}
 	}
 

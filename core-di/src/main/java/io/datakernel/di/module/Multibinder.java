@@ -32,9 +32,6 @@ public interface Multibinder<T> {
 
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
 		return (key, bindings) -> {
-			if (bindings.size() == 1) {
-				return bindings.iterator().next();
-			}
 			List<Constructors.Factory<T>> factories = new ArrayList<>();
 			List<Dependency> dependencies = new ArrayList<>();
 			for (Binding<T> binding : bindings) {
