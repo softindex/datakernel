@@ -7,10 +7,13 @@
     "@material-ui/icons": "^3.0.2",
     "@material-ui/styles": "^4.0.2",
     "classnames": "2.2.6",
+    "elliptic": "latest",
     "js-cookie": "^2.2.0",
+    "material-design-icons": "^3.0.1",
     "notistack": "^0.8.6",
     "ot-core": "https://github.com/softindex/ot-core.git#v0.2.1",
     "prop-types": "^15.7.2",
+    "query-string": "^6.7.0",
     "react": "^16.7.0",
     "react-app-rewire-workbox": "^2.0.1",
     "react-app-rewired": "^2.0.2",
@@ -21,8 +24,7 @@
     "react-swipeable-views": "^0.13.3",
     "redux": "^4.0.1",
     "redux-thunk": "^2.3.0",
-    "workbox-webpack-plugin": "^3.6.3",
-    "elliptic": "latest"
+    "workbox-webpack-plugin": "^3.6.3"
   },
   "scripts": {
     "start": "react-app-rewired start",

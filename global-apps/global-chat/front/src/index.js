@@ -10,7 +10,7 @@ import CssBaseline from '@material-ui/core/CssBaseline';
 import AccountContext from './modules/account/AccountContext';
 import {SnackbarProvider} from "notistack";
 
-const accountService = new AccountService(cookies);
+const accountService = new AccountService(process.env.REACT_APP_AUTH_LINK, cookies, window.localStorage);
 accountService.init();
 
 ReactDOM.render((

@@ -3,29 +3,35 @@ import Service from '../../common/Service';
 let EC = require('elliptic').ec;
 
 class AccountService extends Service {
-  constructor(cookies) {
+  constructor(appStoreUrl, cookies, localStorage) {
     super({
+      error: null,
       authorized: false,
       privateKey: null,
-      publicKey: null
+      publicKey: null,
+      loading: false
     });
+    this._appStoreUrl = appStoreUrl;
     this._cookies = cookies;
+    this._localStorage = localStorage;
   }
 
   init() {
     const privateKey = this._cookies.get('Key');
+    const publicKey = this._cookies.get('Key');
     if (privateKey) {
       this.setState({
         authorized: true,
         privateKey,
-        publicKey: this._getPublicKey(privateKey)
+        publicKey
       });
     }
   }
 
-  authByKey(privateKey) {
+  authByKey(publicKey, privateKey) {
+    privateKey = privateKey.charAt(0);
     this._cookies.set('Key', privateKey);
-    const publicKey = this._getPublicKey(privateKey);
+    this._cookies.set('PublicKey', publicKey);
     this.setState({
       authorized: true,
       privateKey,
@@ -33,11 +39,21 @@ class AccountService extends Service {
     });
   }
 
-  _getPublicKey = (privateKey) => {
-    const curve = new EC('secp256k1');
-    let keys = curve.keyFromPrivate(privateKey, 'hex');
-    return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
-  };
+  authByFile(file) {
+    return new Promise((resolve) => {
+      const fileReader = new FileReader();
+      fileReader.readAsText(file);
+      fileReader.onload = () => {
+        const [publicKey, privateKey] = fileReader.result.split('-');
+        this.authByKey(publicKey, privateKey);
+        resolve();
+      };
+    });
+  }
+
+  authWithAppStore() {
+    window.location.href = this._appStoreUrl + '/extAuth?redirectUri=' + window.location.href + '/auth';
+  }
 
   logout() {
     this._cookies.remove('Key');
