@@ -230,6 +230,18 @@ public final class Binding<T> {
 				location);
 	}
 
+	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
+		return rebindDependency(from, new Dependency(to));
+	}
+
+	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Dependency to) {
+		Dependency[] newDependencies = new Dependency[dependencies.length];
+		for (int i = 0; i < dependencies.length; i++) {
+			newDependencies[i] = dependencies[i].getKey().equals(from) ? to : dependencies[i];
+		}
+		return new Binding<>(newDependencies, factory, location);
+	}
+
 	public Binding<T> addDependencies(@NotNull Class<?>... dependencies) {
 		return addDependencies(Stream.of(dependencies).map(Key::of).map(Dependency::new).toArray(Dependency[]::new));
 	}
@@ -243,7 +255,7 @@ public final class Binding<T> {
 		for (int i = 0; i < dependencies.length; i++) {
 			newDependencies[this.dependencies.length + i] = dependencies[i];
 		}
-		return new Binding<>(newDependencies, newArgs -> factory.create(Arrays.copyOf(newArgs, dependencies.length)), location);
+		return new Binding<>(newDependencies, newArgs -> factory.create(Arrays.copyOf(newArgs, this.dependencies.length)), location);
 	}
 
 	@NotNull

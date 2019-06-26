@@ -217,7 +217,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		}
 		Map<String, String> cookies = new LinkedHashMap<>();
 		for (HttpCookie cookie : getHeader(COOKIE, HttpHeaderValue::toSimpleCookies)) {
-			if (cookie == null) return emptyMap();
 			cookies.put(cookie.getName(), cookie.getValue());
 		}
 		return parsedCookies = cookies;

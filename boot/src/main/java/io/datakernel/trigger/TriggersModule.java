@@ -16,7 +16,6 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
@@ -129,8 +128,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@ProvidesIntoSet
-	RootService start(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModule>> initializers) {
-		if (initializers != null) initializers.forEach(initializer -> initializer.accept(this));
+	RootService start(Injector injector, Triggers triggers) {
 		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {

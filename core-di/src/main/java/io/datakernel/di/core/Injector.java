@@ -1,5 +1,6 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
@@ -22,7 +23,9 @@ import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
 import static io.datakernel.di.module.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.module.Multibinder.combinedMultibinder;
 import static io.datakernel.di.util.Utils.*;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("unused")
 public class Injector {
@@ -286,6 +289,21 @@ public class Injector {
 			}
 		}
 		return result;
+	}
+
+	public Set<Key<?>> createEagerSingletons() {
+		Set<Key<?>> eagerSingletons = getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet());
+		eagerSingletons.forEach(this::getInstance);
+		return eagerSingletons;
+	}
+
+	public Set<Key<?>> postInjectInstances() {
+		Set<InstanceInjector<?>> postInjectors = getInstanceOr(new Key<Set<InstanceInjector<?>>>() {}, emptySet());
+		for (InstanceInjector<?> instanceInjector : postInjectors) {
+			Object instance = getInstance(instanceInjector.key());
+			((InstanceInjector<Object>) instanceInjector).injectInto(instance);
+		}
+		return postInjectors.stream().map(InstanceInjector::key).collect(toSet());
 	}
 
 	@Nullable

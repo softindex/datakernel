@@ -1,9 +1,6 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.annotation.KeySetAnnotation;
-import io.datakernel.di.annotation.NameAnnotation;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.LocationInfo;
@@ -116,14 +113,12 @@ public abstract class AbstractModule implements Module {
 
 	@NameAnnotation
 	private @interface InSet {
-
 		// so that this pseudo-annotation is not a 'marker'
 		int dummy() default 0;
 	}
 
 	@SuppressWarnings("ClassExplicitlyAnnotation")
 	private static class InSetImpl implements InSet {
-
 		@Override
 		public int dummy() {
 			return 0;
@@ -291,6 +286,10 @@ public abstract class AbstractModule implements Module {
 			return to(Binding.to(constructor, dependency1, dependency2, dependency3, dependency4, dependency5, dependency6));
 		}
 
+		public BindingBuilder<T> asEagerSingleton() {
+			return as(EagerSingleton.class);
+		}
+
 		public BindingBuilder<T> as(@NotNull Class<? extends Annotation> annotationType) {
 			return as(Name.of(annotationType));
 		}
@@ -366,6 +365,14 @@ public abstract class AbstractModule implements Module {
 		BindingBuilder<T> builder = new BindingBuilder<>(Key.of(type));
 		builders.add((BindingBuilder<Object>) builder);
 		return builder;
+	}
+
+	protected final <T> void postInjectInto(Class<T> type) {
+		postInjectInto(Key.of(type));
+	}
+
+	protected final <T> void postInjectInto(Key<T> key) {
+		bindIntoSet(new Key<InstanceInjector<?>>() {}, Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
 	}
 
 	protected final <T> void multibind(Key<T> key, Multibinder<T> multibinder) {

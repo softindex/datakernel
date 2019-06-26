@@ -17,12 +17,9 @@
 package io.datakernel.launcher;
 
 import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.InstanceInjector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Multibinder;
-import io.datakernel.di.util.Types;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
@@ -30,14 +27,9 @@ import org.slf4j.Logger;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 
-import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparingInt;
@@ -95,20 +87,13 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	private final CountDownLatch shutdownLatch = new CountDownLatch(1);
 	private final CountDownLatch completeLatch = new CountDownLatch(1);
 
-	private final CompletableFuture<Void> onStart = new CompletableFuture<>();
-	private final CompletableFuture<Void> onRun = new CompletableFuture<>();
-	private final CompletableFuture<Void> onComplete = new CompletableFuture<>();
+	private final CompletableFuture<Void> onStartFuture = new CompletableFuture<>();
+	private final CompletableFuture<Void> onRunFuture = new CompletableFuture<>();
+	private final CompletableFuture<Void> onCompleteFuture = new CompletableFuture<>();
 
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
 	 */
-	protected Module getModule() {
-		return Module.empty();
-	}
-
-	protected Module getOverrideModule() {
-		return Module.empty();
-	}
 
 	/**
 	 * Creates an injector with modules and overrides from this launcher.
@@ -133,7 +118,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 *
 	 * @param args program args that will be injected into @Args string array
 	 */
-	@SuppressWarnings("unchecked")
 	public void launch(String[] args) throws Exception {
 		mainThread = Thread.currentThread();
 		instantOfLaunch = Instant.now();
@@ -146,21 +130,12 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				logger0.info("Effective Injector:\n\n" + makeGraphVizGraph(injector.getBindings()));
 			}
 
-			Set<Key<?>> rootSingletons = injector.getInstanceOr(new Key<Set<Key<?>>>(RootSingleton.class) {}, emptySet());
-			logger0.info("Creating RootSingletons: " + rootSingletons);
-			rootSingletons.forEach(injector::getInstanceOrNull);
-
-			Set<InstanceInjector<?>> postInjectors = injector.getInstance(new Key<Set<InstanceInjector<?>>>() {});
-			logger0.info("Post-processing InstanceInjectors: " + postInjectors);
-			for (InstanceInjector<?> instanceInjector : postInjectors) {
-				Object instance = injector.getInstanceOrNull(instanceInjector.key());
-				if (instance != null) {
-					((InstanceInjector<Object>) instanceInjector).injectInto(instance);
-				}
-			}
+			logger0.info("EagerSingletons: " + injector.createEagerSingletons());
 
 			Set<RootService> services = injector.getInstanceOr(new Key<Set<RootService>>() {}, emptySet());
-			List<RootService> startedServices = new ArrayList<>();
+			Set<RootService> startedServices = new HashSet<>();
+
+			logger0.info("Post-inject instances: " + injector.postInjectInstances());
 
 			logger.info("=== STARTING APPLICATION");
 			try {
@@ -168,11 +143,11 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				logger0.info("Starting RootServices: " + services);
 				startServices(services, startedServices);
 				onStart();
-				onStart.complete(null);
+				onStartFuture.complete(null);
 			} catch (Exception e) {
 				applicationError = e;
 				logger.error("Error", e);
-				onStart.completeExceptionally(e);
+				onStartFuture.completeExceptionally(e);
 			}
 
 			if (applicationError == null) {
@@ -180,19 +155,19 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				try {
 					instantOfRun = Instant.now();
 					run();
-					onRun.complete(null);
+					onRunFuture.complete(null);
 				} catch (Exception e) {
 					applicationError = e;
 					logger.error("Error", e);
-					onRun.completeExceptionally(e);
+					onRunFuture.completeExceptionally(e);
 				}
 			} else {
-				onRun.completeExceptionally(applicationError);
+				onRunFuture.completeExceptionally(applicationError);
 			}
 
 			logger.info("=== STOPPING APPLICATION");
 			instantOfStop = Instant.now();
-			if (!onStart.isCompletedExceptionally()) {
+			if (!onStartFuture.isCompletedExceptionally()) {
 				try {
 					onStop();
 				} catch (Exception e) {
@@ -203,9 +178,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			stopServices(startedServices);
 
 			if (applicationError == null) {
-				onComplete.complete(null);
+				onCompleteFuture.complete(null);
 			} else {
-				onComplete.completeExceptionally(applicationError);
+				onCompleteFuture.completeExceptionally(applicationError);
 				throw applicationError;
 			}
 
@@ -221,7 +196,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		}
 	}
 
-	private void startServices(Collection<RootService> services, List<RootService> startedServices) throws Throwable {
+	private void startServices(Collection<RootService> services, Collection<RootService> startedServices) throws Throwable {
 		List<Throwable> exceptions = new ArrayList<>();
 		CountDownLatch latch = new CountDownLatch(services.size());
 		synchronized (this) {
@@ -252,7 +227,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		}
 	}
 
-	private void stopServices(List<RootService> startedServices) throws InterruptedException {
+	private void stopServices(Collection<RootService> startedServices) throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(startedServices.size());
 		for (RootService service : startedServices) {
 			logger0.info("Stopping RootService: " + service);
@@ -267,34 +242,44 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		latch.await();
 	}
 
-	@SuppressWarnings("unchecked")
-	synchronized public Injector createInjector(String[] args) {
+	public Injector createInjector(String[] args) {
 		this.args = args;
-		return Injector.of(override(
-				combine(
-						getModule(),
-						new AbstractModule() {{
-							bind(String[].class).annotatedWith(Args.class).toInstance(args).withExtraDependencies(Launcher.class);
+		return createInjector();
+	}
 
-							Class<Launcher> launcherClass = (Class<Launcher>) Launcher.this.getClass();
-							bind(Launcher.class).to(launcherClass);
-							bind(launcherClass).toInstance(Launcher.this);
+	private Injector createInjector() {
+		return Injector.of(getLauncherModule().combineWith(getModule()).overrideWith(getOverrideModule()));
+	}
 
-							bindIntoSet(new Key<InstanceInjector<?>>() {}, new Key<InstanceInjector<Launcher>>() {});
-							bind(new Key<InstanceInjector<Launcher>>() {}).to(Key.ofType(Types.parameterized(InstanceInjector.class, launcherClass)));
+	private Module getLauncherModule() {
+		return new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String[].class).annotatedWith(Args.class).toInstance(args);
 
-							Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
+				//noinspection unchecked
+				Class<Launcher> launcherClass = (Class<Launcher>) Launcher.this.getClass();
+				bind(Launcher.class).to(launcherClass);
+				bind(launcherClass).toInstance(Launcher.this);
 
-							bind(completionStageKey.named(OnStart.class)).toInstance(onStart).withExtraDependencies(Launcher.class);
-							bind(completionStageKey.named(OnRun.class)).toInstance(onRun).withExtraDependencies(Launcher.class);
-							bind(completionStageKey.named(OnComplete.class)).toInstance(onComplete).withExtraDependencies(Launcher.class);
+				postInjectInto(launcherClass);
 
-							multibind(new Key<Set<RootService>>() {}, Multibinder.toSet());
+				Key<CompletionStage<Void>> completionStage = new Key<CompletionStage<Void>>() {};
+				bind(completionStage.named(OnStart.class)).toInstance(onStartFuture);
+				bind(completionStage.named(OnRun.class)).toInstance(onRunFuture);
+				bind(completionStage.named(OnComplete.class)).toInstance(onCompleteFuture);
 
-							addDeclarativeBindingsFrom(Launcher.this);
-						}}),
-				getOverrideModule())
-		);
+				addDeclarativeBindingsFrom(Launcher.this);
+			}
+		};
+	}
+
+	protected Module getModule() {
+		return Module.empty();
+	}
+
+	protected Module getOverrideModule() {
+		return Module.empty();
 	}
 
 	/**
@@ -345,16 +330,20 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		return mainThread;
 	}
 
+	public String[] getArgs() {
+		return args;
+	}
+
 	public final CompletionStage<Void> getStartFuture() {
-		return onStart;
+		return onStartFuture;
 	}
 
 	public final CompletionStage<Void> getRunFuture() {
-		return onRun;
+		return onRunFuture;
 	}
 
 	public final CompletionStage<Void> getCompleteFuture() {
-		return onComplete;
+		return onCompleteFuture;
 	}
 
 	@JmxAttribute

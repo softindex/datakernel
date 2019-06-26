@@ -13,8 +13,7 @@ import java.util.stream.Collector;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.*;
 
 public final class Utils {
 	private Utils() {
@@ -23,7 +22,6 @@ public final class Utils {
 
 	private static final BiConsumer<Map<Object, Set<Object>>, Map<Object, Set<Object>>> MULTIMAP_MERGER =
 			(into, from) -> from.forEach((k, v) -> into.computeIfAbsent(k, $ -> new HashSet<>()).addAll(v));
-
 
 	@SuppressWarnings("unchecked")
 	public static <K, V> BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>> multimapMerger() {
@@ -74,6 +72,17 @@ public final class Utils {
 
 	public static <K, V> Map<K, Set<V>> toMultimap(Map<K, V> map) {
 		return map.entrySet().stream().collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())));
+	}
+
+	public static <K, V> Map<K, Set<V>> transformMultimapValues(Map<K, Set<V>> multimap, BiFunction<K, V, V> fn) {
+		return multimap.entrySet()
+				.stream()
+				.collect(toMap(
+						Entry::getKey,
+						entry -> entry.getValue()
+								.stream()
+								.map(binding -> fn.apply(entry.getKey(), binding))
+								.collect(toSet())));
 	}
 
 	public static <K, V> Map<K, V> squash(Map<K, Set<V>> multimap, BiFunction<K, Set<V>, V> squasher) {
@@ -209,4 +218,5 @@ public final class Utils {
 			scope = Arrays.copyOfRange(scope, 0, scope.length - 1);
 		}
 	}
+
 }

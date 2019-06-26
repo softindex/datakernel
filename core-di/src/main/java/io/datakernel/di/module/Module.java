@@ -5,6 +5,8 @@ import io.datakernel.di.util.Trie;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.datakernel.di.module.Multibinder.combinedMultibinder;
 import static io.datakernel.di.util.Utils.resolve;
@@ -19,33 +21,27 @@ public interface Module {
 
 	Map<Key<?>, Multibinder<?>> getMultibinders();
 
+	default Module combineWith(Module another) {
+		return Modules.combine(this, another);
+	}
+
+	default Module overrideWith(Module another) {
+		return Modules.override(this, another);
+	}
+
+	default Module transformWith(Function<Module, Module> fn) {
+		return fn.apply(this);
+	}
+
+	default Module rebindWith(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
+		return Modules.rebind(this, rebinder);
+	}
+
 	default Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
 		return resolve(getBindings(), combinedMultibinder(getMultibinders()));
 	}
 
 	static Module empty() {
-		return new Module() {
-			private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> emptyTrie = Trie.leaf(emptyMap());
-
-			@Override
-			public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
-				return emptyTrie;
-			}
-
-			@Override
-			public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
-				return emptyMap();
-			}
-
-			@Override
-			public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
-				return emptyMap();
-			}
-
-			@Override
-			public Map<Key<?>, Multibinder<?>> getMultibinders() {
-				return emptyMap();
-			}
-		};
+		return new Modules.ModuleImpl(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
 	}
 }

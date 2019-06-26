@@ -259,22 +259,24 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@ProvidesIntoSet
-	RootService service(ServiceGraph serviceGraph) {
+	RootService service(InstanceProvider<ServiceGraph> provider) {
 		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {
+				logger.info("Creating ServiceGraph...");
+				ServiceGraph serviceGraph = provider.get();
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				serviceGraph.startFuture()
 						.whenComplete(($, e) -> {
 							if (e == null) {
 								if (logger.isInfoEnabled()) {
-									logger.info("Effective services:\n\n" + serviceGraph);
+									logger.info("Effective ServiceGraph:\n\n" + serviceGraph);
 								}
 								future.complete(null);
 							} else {
 								logger.error("Could not start ServiceGraph", e);
 								if (logger.isInfoEnabled()) {
-									logger.info("Effective services:\n\n" + serviceGraph);
+									logger.info("Effective ServiceGraph:\n\n" + serviceGraph);
 								}
 								logger.warn("Stopping services of partially started ServiceGraph...");
 								serviceGraph.stopFuture()
@@ -292,6 +294,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			@Override
 			public CompletableFuture<?> stop() {
 				logger.info("Stopping ServiceGraph...");
+				ServiceGraph serviceGraph = provider.get();
 				return serviceGraph.stopFuture();
 			}
 		};
