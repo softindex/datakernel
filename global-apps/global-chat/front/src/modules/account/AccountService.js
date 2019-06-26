@@ -3,7 +3,7 @@ import Service from '../../common/Service';
 let EC = require('elliptic').ec;
 
 class AccountService extends Service {
-  constructor(appStoreUrl, cookies, localStorage) {
+  constructor(appStoreUrl, cookies) {
     super({
       error: null,
       authorized: false,
@@ -13,13 +13,12 @@ class AccountService extends Service {
     });
     this._appStoreUrl = appStoreUrl;
     this._cookies = cookies;
-    this._localStorage = localStorage;
   }
 
   init() {
     const privateKey = this._cookies.get('Key');
-    const publicKey = this._cookies.get('Key');
     if (privateKey) {
+      const publicKey = this.getPublicKey(privateKey);
       this.setState({
         authorized: true,
         privateKey,
@@ -28,41 +27,48 @@ class AccountService extends Service {
     }
   }
 
-  authByKey(publicKey, privateKey) {
-    privateKey = privateKey.charAt(0);
+  authByPrivateKey = privateKey => {
     this._cookies.set('Key', privateKey);
-    this._cookies.set('PublicKey', publicKey);
+    const publicKey = this.getPublicKey(privateKey);
     this.setState({
       authorized: true,
       privateKey,
       publicKey
     });
-  }
+  };
 
-  authByFile(file) {
+  authByFile = file => {
     return new Promise((resolve) => {
       const fileReader = new FileReader();
       fileReader.readAsText(file);
       fileReader.onload = () => {
-        const [publicKey, privateKey] = fileReader.result.split('-');
-        this.authByKey(publicKey, privateKey);
+        const privateKey = fileReader.result.charAt(0);
+        this.authByPrivateKey(privateKey);
         resolve();
       };
     });
-  }
+  };
 
-  authWithAppStore() {
+  authWithAppStore = () => {
     window.location.href = this._appStoreUrl + '/extAuth?redirectUri=' + window.location.href + '/auth';
-  }
+  };
 
   logout() {
     this._cookies.remove('Key');
     this.setState({
       authorized: false,
+      error: null,
+      loading: false,
       privateKey: null,
       publicKey: null
     });
   }
+
+  getPublicKey = (privateKey) => {
+    const curve = new EC('secp256k1');
+    let keys = curve.keyFromPrivate(privateKey, 'hex');
+    return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
+  };
 }
 
 export default AccountService;

@@ -63,7 +63,7 @@ class SignUp extends React.Component {
             <Grid container spacing={32}>
               <Grid item xs={12} lg={6} md={6}>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   color="primary"
                   className={this.props.classes.button}
                   shape="round"

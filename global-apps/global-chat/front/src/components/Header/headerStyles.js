@@ -6,6 +6,11 @@ const headerStyles = (theme) => ({
   title: {
     flexGrow: 1,
     marginLeft: `${theme.spacing.unit * 3}px`
+  },
+  buttonDiv: {
+    '&:hover': {
+      cursor: 'pointer'
+    }
   }
 });
 

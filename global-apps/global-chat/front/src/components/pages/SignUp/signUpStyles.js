@@ -12,9 +12,9 @@ const signUpStyles = theme => {
     },
     button: {
       minHeight: theme.spacing.unit * 7.5,
+      borderRadius: 70
     },
     signupButton: {
-      borderRadius: '30%',
       '&:hover': {
         backgroundColor: theme.palette.primary.light
       }

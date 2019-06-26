@@ -5,29 +5,55 @@ import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import headerStyles from './headerStyles';
 import Button from "@material-ui/core/Button";
-import connectService from "../../common/connectService";
-import AccountContext from "../../modules/account/AccountContext";
+import Profile from "../Profile/Profile";
 
-function Header ({classes, logout}) {
+class Header extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      openProfile: false
+    };
+  }
+
+  onOpenProfile = () => {
+    this.setState({
+      openProfile: true
+    })
+  };
+
+  onCloseProfile = () => {
+    this.setState({
+      openProfile: false
+    })
+  };
+
+  render() {
+    const {classes} = this.props;
     return (
-      <AppBar className={classes.appBar} position="fixed">
-        <Toolbar>
-          <Typography color="inherit" variant="h6" className={classes.title}>
-            ChatApp
-          </Typography>
-          <Button color="inherit" className={classes.button} onClick={logout}>Log Out</Button>
-        </Toolbar>
-      </AppBar>
+      <>
+        <AppBar className={classes.appBar} position="fixed">
+          <Toolbar>
+            <Typography color="inherit" variant="h6" className={classes.title}>
+              Global Chat
+            </Typography>
+            <div
+              color="inherit"
+              className={classes.buttonDiv}
+              onClick={this.onOpenProfile}
+            >
+              <i className="material-icons" style={{fontSize: 36}}>
+                account_circle
+              </i>
+            </div>
+          </Toolbar>
+        </AppBar>
+        <Profile
+          open={this.state.openProfile}
+          onClose={this.onCloseProfile}
+        />
+      </>
     );
+  }
 }
 
-export default connectService(
-  AccountContext,
-  (state, contactsService) => ({
-    logout() {
-      contactsService.logout();
-    }
-  })
-)(
-  withStyles(headerStyles)(Header)
-);
+export default withStyles(headerStyles)(Header);

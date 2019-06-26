@@ -60,23 +60,23 @@ class SideBar extends React.Component {
             component="div"
             style={{padding: 12}}
           >
-            {/*{this.state.showAddDialog && (*/}
-            {/*  <ChatForm*/}
-            {/*    open={true}*/}
-            {/*    onClose={this.closeAddDialog}*/}
-            {/*  />*/}
-            {/*)}*/}
-            {/*{<Button*/}
-            {/*  className={classes.button}*/}
-            {/*  disabled={[...contacts].length === 0}*/}
-            {/*  fullWidth={true}*/}
-            {/*  variant="contained"*/}
-            {/*  size="medium"*/}
-            {/*  color="primary"*/}
-            {/*  onClick={this.showAddDialog}*/}
-            {/*>*/}
-            {/*  New Chat*/}
-            {/*</Button>}*/}
+            {this.state.showAddDialog && (
+              <ChatForm
+                open={true}
+                onClose={this.closeAddDialog}
+              />
+            )}
+            {<Button
+              className={classes.button}
+              disabled={[...contacts].length === 0}
+              fullWidth={true}
+              variant="contained"
+              size="medium"
+              color="primary"
+              onClick={this.showAddDialog}
+            >
+              New Chat
+            </Button>}
             <div className={classes.chatsList}>
               <RoomsList/>
             </div>
