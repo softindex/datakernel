@@ -18,14 +18,11 @@ package io.datakernel.trigger;
 
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.RootService;
-import io.datakernel.trigger.Triggers.TriggerWithResult;
-import io.datakernel.util.Initializer;
 import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
@@ -35,7 +32,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.*;
@@ -110,47 +106,4 @@ public class TriggersModuleTest {
 		}
 	}
 
-	@Test
-	public void testMultiModule() throws Exception {
-		Injector injector = Injector.of(
-				new AbstractModule() {
-					@Provides
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer1(Eventloop eventloop) {
-						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "test", $ -> TriggerResult.create());
-					}
-
-					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer2() {
-						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "testModule1", $ -> TriggerResult.create());
-					}
-
-					@ProvidesIntoSet
-					Initializer<TriggersModule> triggersModuleInitializer3() {
-						return triggersModule -> triggersModule
-								.with(Eventloop.class, Severity.HIGH, "testModule2", $ -> TriggerResult.create());
-					}
-				},
-				TriggersModule.create()
-		);
-		for (RootService service : injector.getInstance(new Key<Set<RootService>>() {})) {
-			service.start().get();
-		}
-		RefBoolean wasExecuted = new RefBoolean(false);
-		try {
-			Triggers triggersWatcher = injector.getInstance(Triggers.class);
-			List<TriggerWithResult> triggerResults = triggersWatcher.getResults();
-			assertEquals(3, triggerResults.size());
-			triggerResults.forEach(result -> assertTrue(result.toString().startsWith("HIGH : Eventloop : test")));
-			wasExecuted.set(true);
-		} finally {
-			assertTrue(wasExecuted.get());
-		}
-	}
 }

@@ -75,12 +75,12 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + LIST + "/:space/:name", request -> {
+				.with(GET, "/" + LIST + "/:space", request -> {
 					String parameterSpace = request.getPathParameter("space");
-					String glob = request.getPathParameter("glob");
+					String glob = request.getQueryParameter("glob");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
-						return node.listEntities(space, glob)
+						return node.listEntities(space, glob != null ? glob : "**")
 								.map(list ->
 										HttpResponse.ok200()
 												.withBodyStream(ChannelSupplier.ofStream(list.stream()
