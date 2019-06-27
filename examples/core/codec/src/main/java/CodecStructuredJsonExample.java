@@ -6,6 +6,7 @@ import util.Registry;
 
 import java.time.LocalDate;
 
+//[START EXAMPLE]
 public final class CodecStructuredJsonExample {
 	private static final StructuredCodec<Person> PERSON_CODEC = Registry.REGISTRY.get(Person.class);
 	private static final Person sarah = new Person(124, "Sarah", LocalDate.of(1992, 6, 27));
@@ -26,3 +27,4 @@ public final class CodecStructuredJsonExample {
 		encodeDecodeJson();
 	}
 }
+//[END EXAMPLE]

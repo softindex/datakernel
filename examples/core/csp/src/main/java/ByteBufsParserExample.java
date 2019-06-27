@@ -9,6 +9,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
+//[START EXAMPLE]
 public final class ByteBufsParserExample {
 	public static void main(String[] args) {
 		List<ByteBuf> list = asList(wrapAscii("H"), wrapAscii("e"), wrapAscii("l"), wrapAscii("l"), wrapAscii("o"));
@@ -24,3 +25,4 @@ public final class ByteBufsParserExample {
 				.whenResult(System.out::println);
 	}
 }
+//[END EXAMPLE]

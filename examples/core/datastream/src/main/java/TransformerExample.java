@@ -12,6 +12,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 public final class TransformerExample implements StreamTransformer<String, Integer> {
 	private static final int MAX_LENGTH = 10;
 
+	//[START REGION_1]
 	private final AbstractStreamConsumer<String> inputConsumer = new AbstractStreamConsumer<String>() {
 
 		@Override
@@ -49,6 +50,7 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 			System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
 		}
 	};
+	//[END REGION_1]
 
 	@Override
 	public StreamConsumer<String> getInput() {
@@ -60,6 +62,7 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 		return outputSupplier;
 	}
 
+	//[START REGION_2]
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 
@@ -72,5 +75,6 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 
 		eventloop.run();
 	}
+	//[END REGION_2]
 }
 

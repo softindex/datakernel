@@ -7,6 +7,7 @@ import util.Registry;
 
 import java.time.LocalDate;
 
+//[START EXAMPLE]
 public final class CodecStructuredBinaryExample {
 	private static final StructuredCodec<Person> PERSON_CODEC = Registry.REGISTRY.get(Person.class);
 	private static final Person john = new Person(121, "John", LocalDate.of(1990, 3, 12));
@@ -25,3 +26,4 @@ public final class CodecStructuredBinaryExample {
 		encodeDecodeBinary();
 	}
 }
+//[END EXAMPLE]

@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 
 public final class ChannelExample {
+	//[START REGION_1]
 	private static void supplierOfValues() {
 		ChannelSupplier.of("1", "2", "3", "4", "5")
 				.streamTo(ChannelConsumer.ofConsumer(System.out::println));
@@ -35,6 +36,7 @@ public final class ChannelExample {
 				.filter(integer -> integer % 2 == 0)
 				.streamTo(ChannelConsumer.ofConsumer(System.out::println));
 	}
+	//[END REGION_1]
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();

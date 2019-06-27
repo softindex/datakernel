@@ -31,6 +31,7 @@ public final class ChannelFileExample {
 		}
 	}
 
+	//[START REGION_1]
 	@NotNull
 	private static Promise<Void> writeToFile() {
 		try {
@@ -49,6 +50,7 @@ public final class ChannelFileExample {
 				.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
 
 	}
+	//[END REGION_1]
 
 	private static void cleanUp() {
 		try {

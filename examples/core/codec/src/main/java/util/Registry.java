@@ -7,6 +7,7 @@ import java.time.LocalDate;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
+//[START EXAMPLE]
 public final class Registry {
 	public static final CodecRegistry REGISTRY = CodecRegistry.create()
 			.with(LocalDate.class, StructuredCodec.of(
@@ -17,3 +18,4 @@ public final class Registry {
 					"name", Person::getName, STRING_CODEC,
 					"date of birth", Person::getDateOfBirth, registry.get(LocalDate.class)));
 }
+//[END EXAMPLE]

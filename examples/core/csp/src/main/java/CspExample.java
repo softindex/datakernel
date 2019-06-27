@@ -4,6 +4,7 @@ import io.datakernel.csp.dsl.WithChannelTransformer;
 /**
  * AsyncProcess that takes a string, sets it to upper-case and adds string's length in parentheses
  */
+//[START EXAMPLE]
 public final class CspExample extends AbstractCommunicatingProcess implements WithChannelTransformer<CspExample, String, String> {
 	private ChannelSupplier<String> input;
 	private ChannelConsumer<String> output;
@@ -26,6 +27,7 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 	}
 
 	@Override
+	//[START REGION_1]
 	protected void doProcess() {
 		input.get()
 				.whenComplete((data, e) -> {
@@ -34,11 +36,13 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 								.whenResult($ -> completeProcess());
 					} else {
 						data = data.toUpperCase() + '(' + data.length() + ')';
+
 						output.accept(data)
 								.whenResult($ -> doProcess());
 					}
 				});
 	}
+	//[END REGION_1]
 
 	@Override
 	protected void doClose(Throwable e) {
@@ -54,3 +58,4 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 				.streamTo(ChannelConsumer.ofConsumer(System.out::println));
 	}
 }
+//[END EXAMPLE]

@@ -4,6 +4,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import static io.datakernel.codegen.Expressions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
+//[START EXAMPLE]
 public final class CodegenExpressionsExample {
 	public static void main(String[] args) throws InstantiationException, IllegalAccessException {
 		Class<Example> example = ClassBuilder
@@ -20,3 +21,4 @@ public final class CodegenExpressionsExample {
 		void sayHello();
 	}
 }
+//[END EXAMPLE]

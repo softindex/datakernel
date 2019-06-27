@@ -10,6 +10,7 @@ import static io.datakernel.codegen.Expressions.*;
  * Methods are constructed programmatically using our fluent API built on top of ASM.
  */
 public class DynamicClassCreationExample {
+	//[START REGION_1]
 	public static void main(String[] args) throws IllegalAccessException, InstantiationException {
 		// Construct a Class that implements Person interface
 		Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Person.class)
@@ -52,6 +53,7 @@ public class DynamicClassCreationExample {
 		System.out.println("jack.hash()             = " + jack.hash());
 		System.out.println("examplePojo.hashCode()  = " + examplePojo.hashCode());
 	}
+	//[END REGION_1]
 
 	public interface Person extends Comparable<Person> {
 		void setIdAndName(int id, String name);

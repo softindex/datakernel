@@ -14,6 +14,7 @@ import java.util.Map;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static java.util.Arrays.asList;
 
+//[START EXAMPLE]
 public final class CodecStructuredCollectionsExample {
 	private static final StructuredCodec<Person> PERSON_CODEC = Registry.REGISTRY.get(Person.class);
 	private static final Person john = new Person(121, "John", LocalDate.of(1990, 3, 12));
@@ -55,3 +56,4 @@ public final class CodecStructuredCollectionsExample {
 		encodeDecodeMap();
 	}
 }
+//[END EXAMPLE]

@@ -12,6 +12,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
  * Example of serialization and deserialization of an object with fixed size fields.
  */
 public final class FixedSizeFieldsExample {
+	//[START REGION_1]
 	public static class TestDataFixedSize {
 		@Serialize(order = 0)
 		@SerializeFixedSize(3)
@@ -22,6 +23,7 @@ public final class FixedSizeFieldsExample {
 		@SerializeFixedSize(4)
 		public byte[] bytes;
 	}
+	//[END REGION_1]
 
 	@SuppressWarnings("SameParameterValue")
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {

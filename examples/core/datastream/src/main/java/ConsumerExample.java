@@ -7,8 +7,9 @@ import io.datakernel.stream.StreamSupplier;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
- * Example of creating the custom StreamConsumer. This implementation just outputs received data to the console.
+ * Example of creating custom StreamConsumer. This implementation outputs received data to the console.
  */
+//[START EXAMPLE]
 public final class ConsumerExample<T> extends AbstractStreamConsumer<T> {
 	@Override
 	protected void onStarted() {
@@ -25,6 +26,7 @@ public final class ConsumerExample<T> extends AbstractStreamConsumer<T> {
 	protected void onError(Throwable t) {
 		System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
 	}
+//[END EXAMPLE]
 
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());

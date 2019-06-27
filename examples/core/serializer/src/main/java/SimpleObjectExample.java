@@ -29,9 +29,11 @@ public final class SimpleObjectExample {
 	}
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
+		//[START REGION_2]
 		BinarySerializer<T> serializer = SerializerBuilder
 				.create(getContextClassLoader())
 				.build(typeToken);
+		//[END REGION_2]
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 
@@ -42,6 +44,7 @@ public final class SimpleObjectExample {
 		return deserializer.decode(array, 0);
 	}
 
+	//[START REGION_1]
 	public static class TestDataSimple {
 		public TestDataSimple(@Deserialize("finalInt") int finalInt,
 				@Deserialize("finalString") String finalString) {
@@ -65,6 +68,8 @@ public final class SimpleObjectExample {
 		public int getI() {
 			return i;
 		}
+
+		//[END REGION_1]
 
 		public void setI(int i) {
 			this.i = i;
