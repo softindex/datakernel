@@ -106,28 +106,28 @@ public final class BindingGraph {
 	 * This method returns mapping from *unstatisfied keys* to *bindings that require them*
 	 * and not the common *key and the bindings that provide it*
 	 */
-	public static Map<Key<?>, Set<Binding<?>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	public static Map<Key<?>, Set<Entry<Key<?>, Binding<?>>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return getUnsatisfiedDependencies(new HashSet<>(bindings.get().keySet()), bindings)
-				.collect(toMultimap(dtb -> dtb.key, dtb -> dtb.binding));
+				.collect(toMultimap(dtb -> dtb.dependency, dtb -> dtb.keybinding));
 	}
 
 	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return Stream.concat(
-				bindings.get().values().stream()
-						.flatMap(binding -> Arrays.stream(binding.getDependencies())
+				bindings.get().entrySet().stream()
+						.flatMap(e -> Arrays.stream(e.getValue().getDependencies())
 								.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
-								.map(dependency -> new DependencyToBinding(dependency.getKey(), binding))),
+								.map(dependency -> new DependencyToBinding(dependency.getKey(), e))),
 				bindings.getChildren().values().stream().flatMap(scopeBindings -> getUnsatisfiedDependencies(union(known, scopeBindings.get().keySet()), scopeBindings))
 		);
 	}
 
 	private static class DependencyToBinding {
-		Key<?> key;
-		Binding<?> binding;
+		final Key<?> dependency;
+		final Entry<Key<?>, Binding<?>> keybinding;
 
-		public DependencyToBinding(Key<?> key, Binding<?> binding) {
-			this.key = key;
-			this.binding = binding;
+		public DependencyToBinding(Key<?> dependency, Entry<Key<?>, Binding<?>> keybinding) {
+			this.dependency = dependency;
+			this.keybinding = keybinding;
 		}
 	}
 

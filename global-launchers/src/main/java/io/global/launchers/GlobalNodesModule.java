@@ -17,10 +17,13 @@
 package io.global.launchers;
 
 import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
@@ -34,10 +37,13 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
+import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
+import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsNodeImpl;
+import io.global.kv.GlobalKvDriver;
 import io.global.kv.LocalGlobalKvNode;
 import io.global.kv.api.GlobalKvNode;
 import io.global.kv.http.GlobalKvNodeServlet;
@@ -98,6 +104,21 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
+	GlobalFsDriver globalFsDriver(GlobalFsNode node, Config config) {
+		return GlobalFsDriver.create(node, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
+	}
+
+	@Provides
+	<K, V> GlobalKvDriver<K, V> globalKvDriver(GlobalKvNode node, StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
+		return GlobalKvDriver.create(node, keyCodec, valueCodec);
+	}
+
+	@Provides
+	<T> StructuredCodec<T> codecProvider(Key<T> reifiedT, CodecFactory codecs) {
+		return codecs.get(reifiedT.getType());
+	}
+
+	@Provides
 	RawServerId rawServerId(Config config) {
 		return config.get(ofRawServerId(), "node.serverId");
 	}
@@ -122,7 +143,8 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	AsyncHttpServer asyncHttpServer(Eventloop eventloop, AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
+	@Named("Nodes")
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, @Named("Nodes") AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 
@@ -132,6 +154,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
+	@Named("Nodes")
 	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet, @Named("kv") AsyncServlet kvServlet) {
 		return RoutingServlet.create()
 				.with("/ot/*", otServlet)

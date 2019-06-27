@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
@@ -129,23 +128,28 @@ public class Injector {
 
 		BindingGraph.completeBindingGraph(bindings, transformer, generator);
 
-		Map<Key<?>, Set<Binding<?>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
+		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {
 			throw new DIException(unsatisfied.entrySet().stream()
 					.map(entry -> entry.getValue().stream()
-							.map(Utils::getLocation)
-							.collect(joining("\n\t\t     and ", "\tfor key " + entry.getKey() + ":\n\t\trequired ", "")))
+							.map(binding -> binding.getKey().getDisplayString() + " " + Utils.getLocation(binding.getValue()))
+							.collect(joining("\n\t\t     and ", "\tkey " + entry.getKey().getDisplayString() + ":\n\t\trequired to make ", "")))
 					.collect(joining("\n", "Unsatisfied dependencies detected:\n", "\n")));
 		}
 
 		Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(bindings);
 		if (!cycles.isEmpty()) {
 			throw new DIException(cycles.stream()
-					.map(cycle ->
-							Stream.concat(Arrays.stream(cycle), Stream.of(cycle[0]))
-									.map(Key::getDisplayString)
-									.collect(joining(" -> ", "\t", " -> ...")))
-					.collect(joining("\n", "Cyclic dependencies detected:\n", "\n")));
+					.map(cycle -> {
+						Name firstName = cycle[0].getName();
+						int nameOffset = firstName != null ? firstName.getDisplayString().length() + 1 : 0;
+						int offset = nameOffset + (cycle[0].getDisplayString().length() - nameOffset) / 2;
+						String cycleString = Arrays.stream(cycle).map(Key::getDisplayString).collect(joining(" -> ", "\t", ""));
+						String indent = new String(new char[offset]).replace('\0', ' ');
+						String line = new String(new char[cycleString.length() - offset]).replace('\0', '-');
+						return cycleString + " -,\n\t" + indent + "^" + line + "'";
+					})
+					.collect(joining("\n\n", "Cyclic dependencies detected:\n\n", "\n")));
 		}
 
 		return injector;
@@ -297,6 +301,7 @@ public class Injector {
 		return eagerSingletons;
 	}
 
+	@SuppressWarnings("unchecked")
 	public Set<Key<?>> postInjectInstances() {
 		Set<InstanceInjector<?>> postInjectors = getInstanceOr(new Key<Set<InstanceInjector<?>>>() {}, emptySet());
 		for (InstanceInjector<?> instanceInjector : postInjectors) {

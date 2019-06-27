@@ -378,7 +378,7 @@ public final class TestDI {
 			fail("should've failed, but didn't");
 		} catch (DIException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("Unsatisfied dependencies detected:\n\tfor key java.lang.Integer:\n\t\trequired at module io.datakernel.di.TestDI"));
+			assertTrue(e.getMessage().startsWith("Unsatisfied dependencies detected:\n\tkey Integer:\n\t\trequired to make TestDI"));
 		}
 	}
 

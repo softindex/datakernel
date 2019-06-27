@@ -17,9 +17,11 @@
 package io.global.launchers;
 
 import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
@@ -34,6 +36,7 @@ public class GlobalNodesLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
 
 	@Inject
+	@Named("Nodes")
 	AsyncHttpServer server;
 
 	@Inject
@@ -52,17 +55,19 @@ public class GlobalNodesLauncher extends Launcher {
 	@Named("DB catch up")
 	EventloopTaskScheduler kvCatchUpScheduler;
 
+	@Provides
+	Config config() {
+		return ofClassPathProperties(PROPERTIES_FILE)
+				.override(ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigModule.create(() ->
-						ofClassPathProperties(PROPERTIES_FILE)
-								.override(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				new GlobalNodesModule()
-		);
+				ConfigModule.create().printEffectiveConfig(),
+				new GlobalNodesModule());
 	}
 
 	@Override
