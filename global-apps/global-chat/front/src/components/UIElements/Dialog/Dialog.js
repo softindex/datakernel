@@ -9,7 +9,7 @@ class Dialog extends React.Component {
   render() {
     const {children, onClose, classes, ...otherProps} = this.props;
     return (
-      <MUDialog {...otherProps} onclose={onClose}>
+      <MUDialog className={classes.muiDialog} {...otherProps} onclose={onClose}>
         <IconButton
           aria-label="Close"
           className={classes.closeButton}

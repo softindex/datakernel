@@ -27,6 +27,7 @@ class Profile extends React.Component {
     return (
       <Dialog
         open={this.props.open}
+        className={classes.dialog}
         onClose={this.props.onClose}
         aria-labelledby="form-dialog-title"
       >
@@ -49,6 +50,7 @@ class Profile extends React.Component {
             type="text"
             variant="outlined"
             InputProps={{
+              classes: { input: classes.input },
               endAdornment: (
                 <IconButton
                   className={classes.iconButton}

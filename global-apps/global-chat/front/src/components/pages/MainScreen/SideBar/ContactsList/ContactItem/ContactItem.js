@@ -8,6 +8,7 @@ import ListItem from "@material-ui/core/ListItem";
 import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from '@material-ui/icons/Delete';
+import {withRouter} from "react-router-dom";
 
 class ContactItem extends React.Component {
   static defaultProps = {
@@ -36,6 +37,7 @@ class ContactItem extends React.Component {
           className={classes.contactItem}
           key={this.props.name}
           button
+          selected={this.props.roomId === this.props.match.params.roomId}
         >
           <Badge
             className={classes.badge}
@@ -70,4 +72,4 @@ class ContactItem extends React.Component {
   }
 }
 
-export default withStyles(contactItemStyles)(ContactItem);
+export default withRouter(withStyles(contactItemStyles)(ContactItem));

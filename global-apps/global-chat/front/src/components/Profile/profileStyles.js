@@ -5,6 +5,9 @@ const profileStyles = theme => ({
   },
   logoutButton: {
     right: `${theme.spacing.unit*2}px`
+  },
+  input: {
+    width: 700
   }
 });
 

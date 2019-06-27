@@ -7,10 +7,7 @@ import ListItem from "@material-ui/core/ListItem";
 import roomItemStyles from "./roomItemStyles";
 import SimpleMenu from "../../SimpleMenu/SimpleMenu";
 import AddContactForm from "../../../DialogsForms/AddContactForm";
-import {Link} from "react-router-dom";
-import connectService from "../../../../../../common/connectService";
-import ContactsContext from "../../../../../../modules/contacts/ContactsContext";
-import AccountContext from "../../../../../../modules/account/AccountContext";
+import {Link, withRouter} from "react-router-dom";
 
 class RoomItem extends React.Component {
   state = {
@@ -32,12 +29,16 @@ class RoomItem extends React.Component {
 
   checkContactExists(room) {
     if (room.participants.length === 2) {
-      room.participants.map(pubKey => {
-        if (this.props.contacts.get(pubKey)) {
-          this.setState({
-            contactExists: true
-          })
-        }
+      const participantPublicKey = room.participants
+        .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
+      if (this.props.contacts.get(participantPublicKey)) {
+        this.setState({
+          contactExists: true
+        });
+      }
+    } else {
+      this.setState({
+        contactExists: true
       })
     }
   }
@@ -45,8 +46,7 @@ class RoomItem extends React.Component {
   closeAddDialog = () => {
     this.setState({
       hover: false,
-      showAddContactDialog: false,
-      clickWrapperButton: false
+      showAddContactDialog: false
     });
   };
 
@@ -61,7 +61,6 @@ class RoomItem extends React.Component {
 
   render() {
     const {classes, room} = this.props;
-
     return (
       <>
         <ListItem
@@ -69,6 +68,7 @@ class RoomItem extends React.Component {
           onMouseLeave={this.toggleHover}
           className={classes.listItem}
           button
+          selected={this.props.roomId === this.props.match.params.roomId}
         >
           <Link
             to={this.props.getRoomPath(this.props.roomId)}
@@ -105,14 +105,5 @@ class RoomItem extends React.Component {
   }
 }
 
-export default connectService(
-  AccountContext, ({publicKey}) => ({publicKey})
-)(
-  connectService(
-    ContactsContext, ({ready, contacts}, contactsService) => ({
-      ready, contacts, contactsService
-    })
-  )(
-    withStyles(roomItemStyles)(RoomItem)
-  )
-);
+export default withRouter(withStyles(roomItemStyles)(RoomItem));
+

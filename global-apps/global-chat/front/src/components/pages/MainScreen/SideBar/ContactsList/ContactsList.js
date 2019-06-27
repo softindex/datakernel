@@ -62,6 +62,7 @@ class ContactsList extends React.Component {
                         showDeleteButton={true}
                         onRemoveContact={this.onRemoveContact.bind(this, pubKey, name)}
                         onChatCreate={this.onChatCreate.bind(this, pubKey)}
+                        roomId={roomId}
                       />
                     </Link>
                 )}

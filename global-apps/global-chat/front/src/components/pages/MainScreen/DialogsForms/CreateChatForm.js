@@ -22,7 +22,7 @@ class CreateChatForm extends React.Component {
   state = {
     participants: new Set(),
     name: '',
-    activeStep: 0,
+    activeStep: 1,
     loading: false,
   };
 
@@ -93,8 +93,12 @@ class CreateChatForm extends React.Component {
         aria-labelledby="form-dialog-title"
       >
         <form onSubmit={this.handleSubmit}>
-          <DialogTitle id="customized-dialog-title"
-                       onClose={this.props.onClose}>{this.state.activeStep === 0 ? 'Create Group Chat' : 'Add Members'} </DialogTitle>
+          <DialogTitle
+            id="customized-dialog-title"
+            onClose={this.props.onClose}
+          >
+            {this.state.activeStep === 0 ? 'Create Group Chat' : 'Add Members'}
+          </DialogTitle>
           <DialogContent>
             {this.state.activeStep === 0 && (
               <>
@@ -142,12 +146,21 @@ class CreateChatForm extends React.Component {
             )}
           </DialogContent>
           <DialogActions>
+            {/*<Button*/}
+            {/*  className={this.props.classes.progressButton}*/}
+            {/*  disabled={this.state.activeStep === 0}*/}
+            {/*  onClick={this.gotoStep.bind(this, this.state.activeStep - 1)}*/}
+            {/*>*/}
+            {/*  Back*/}
+            {/*</Button>*/}
+
+            {/*CHANGE HERE*/}
+
             <Button
               className={this.props.classes.progressButton}
-              disabled={this.state.activeStep === 0}
-              onClick={this.gotoStep.bind(this, this.state.activeStep - 1)}
+              onClick={this.props.onClose}
             >
-              Back
+              Close
             </Button>
             {this.state.activeStep === 0 && (
               <Button

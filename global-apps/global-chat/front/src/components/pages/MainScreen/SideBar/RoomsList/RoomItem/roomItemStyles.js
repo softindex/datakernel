@@ -13,9 +13,9 @@ const roomItemStyles = theme => ({
   },
   link: {
     textDecoration: 'none',
-    minWidth: `${theme.spacing.unit * 31}px`,
-    maxWidth: `${theme.spacing.unit * 31}px`,
-    height: `${theme.spacing.unit * 8}px`
+    minWidth: theme.spacing.unit * 31,
+    maxWidth: theme.spacing.unit * 31,
+    height: theme.spacing.unit * 8
   },
   itemText: {
     marginTop: 20,

@@ -97,7 +97,7 @@ class AddContactForm extends React.Component {
                 disabled={this.state.loading}
                 margin="normal"
                 label="Key"
-                value={this.state.pubKey}
+                defaultValue={this.props.contactPublicKey || ''}
                 type="text"
                 fullWidth
                 variant="outlined"

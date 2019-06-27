@@ -9,6 +9,7 @@ import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
 import ContactsContext from "../../../../../modules/contacts/ContactsContext";
+import AccountContext from "../../../../../modules/account/AccountContext";
 
 class RoomsList extends React.Component {
   onChatCreate(participantId) {
@@ -58,6 +59,8 @@ class RoomsList extends React.Component {
                     quitRoom={this.quitRoom.bind(this, roomId)}
                     roomsService={roomsService}
                     showMenuIcon={true}
+                    contacts={this.props.contacts}
+                    publicKey={this.props.publicKey}
                   />
                 )
               )}
@@ -75,16 +78,20 @@ export default connectService(
   })
 )(
   connectService(
-    RoomsContext, ({ready, rooms}, roomsService) => ({
-      roomsService, ready, rooms,
-      quitRoom(roomId) {
-        return roomsService.quitRoom(roomId);
-      },
-      createDialog(participantId) {
-        return roomsService.createDialog(participantId);
-      }
-    })
+    AccountContext, ({publicKey}) => ({publicKey})
   )(
-    withStyles(roomsListStyles)(RoomsList)
+    connectService(
+      RoomsContext, ({ready, rooms}, roomsService) => ({
+        roomsService, ready, rooms,
+        quitRoom(roomId) {
+          return roomsService.quitRoom(roomId);
+        },
+        createDialog(participantId) {
+          return roomsService.createDialog(participantId);
+        }
+      })
+    )(
+      withStyles(roomsListStyles)(RoomsList)
+    )
   )
 );
