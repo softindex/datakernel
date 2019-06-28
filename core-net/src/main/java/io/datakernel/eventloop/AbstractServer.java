@@ -319,8 +319,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 
 		if (acceptOnce) {
-			close();
+			doAcceptOnce();
 		}
+	}
+
+	protected void doAcceptOnce() {
+		closeServerSocketChannels();
 	}
 
 	@Override

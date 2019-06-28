@@ -46,6 +46,7 @@ public final class RpcMessage {
 			startIndex = -1, value = {RpcControlMessage.class, RpcRemoteException.class},
 			extraSubclassesId = MESSAGE_TYPES
 	)
+
 	@SerializeNullable
 	public Object getData() {
 		return data;

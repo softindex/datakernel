@@ -28,6 +28,7 @@ import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.rpc.protocol.RpcStream.Listener;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -48,6 +49,9 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
 	private static final Logger logger = getLogger(RpcClientConnection.class);
+
+	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
+	private boolean overloaded = false;
 
 	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
 	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);
@@ -81,12 +85,10 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	private final InetSocketAddress address;
 	private final Map<Integer, Callback<?>> activeRequests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
-	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
 
 	private ScheduledRunnable scheduleExpiredResponsesTask;
 	private int cookie = 0;
 	private Duration timeoutPrecision = DEFAULT_TIMEOUT_PRECISION;
-	private boolean connectionClosing;
 	private boolean serverClosing;
 
 	// JMX
@@ -117,137 +119,92 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+	public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 		assert eventloop.inEventloopThread();
 
 		// jmx
 		totalRequests.recordEvent();
 		connectionRequests.recordEvent();
 
-		if (stream.isOverloaded() && !(request instanceof RpcMandatoryData)) {
+		if (!overloaded || request instanceof RpcMandatoryData) {
+			cookie++;
+
+			Callback<?> requestCallback = cb;
+
+			// jmx
+			if (isMonitoring()) {
+				RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(((Object) request).getClass());
+				requestStatsPerClass.getTotalRequests().recordEvent();
+				requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, (Callback<?>) cb, timeout);
+			}
+
+			TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
+			if (timeoutCookies.isEmpty()) {
+				scheduleExpiredResponsesTask();
+			}
+			timeoutCookies.add(timeoutCookie);
+			activeRequests.put(cookie, requestCallback);
+
+			downstreamDataAcceptor.accept(RpcMessage.of(cookie, request));
+		} else {
 			// jmx
 			rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
 			connectionStats.getRejectedRequests().recordEvent();
-
 			if (logger.isTraceEnabled()) logger.trace("RPC client uplink is overloaded");
 
-			returnProtocolError(cb, RPC_OVERLOAD_EXCEPTION);
-			return;
+			cb.accept(null, RPC_OVERLOAD_EXCEPTION);
 		}
-
-		sendMessageData(request, timeout, cb);
-	}
-
-	private void sendMessageData(Object request, int timeout, Callback<?> cb) {
-		cookie++;
-
-		Callback<?> requestCallback = cb;
-
-		// jmx
-		if (isMonitoring()) {
-			RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
-			requestStatsPerClass.getTotalRequests().recordEvent();
-			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, cb, timeout);
-		}
-		TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
-		addTimeoutCookie(timeoutCookie);
-		activeRequests.put(cookie, requestCallback);
-
-		stream.sendMessage(RpcMessage.of(cookie, request));
-	}
-
-	private void addTimeoutCookie(TimeoutCookie timeoutCookie) {
-		if (timeoutCookies.isEmpty())
-			scheduleExpiredResponsesTask();
-		timeoutCookies.add(timeoutCookie);
 	}
 
 	private void scheduleExpiredResponsesTask() {
-		if (connectionClosing)
-			return;
-		scheduleExpiredResponsesTask = eventloop.delayBackground(timeoutPrecision, expiredResponsesTask);
-	}
-
-	private Runnable createExpiredResponsesTask() {
-		return () -> {
-			checkExpiredResponses();
-			if (!timeoutCookies.isEmpty())
-				scheduleExpiredResponsesTask();
-		};
+		scheduleExpiredResponsesTask = eventloop.delayBackground(timeoutPrecision, this::checkExpiredResponses);
 	}
 
 	private void checkExpiredResponses() {
+		scheduleExpiredResponsesTask = null;
 		while (!timeoutCookies.isEmpty()) {
 			TimeoutCookie timeoutCookie = timeoutCookies.peek();
 			if (timeoutCookie == null)
 				break;
-			if (!activeRequests.containsKey(timeoutCookie.getCookie())) {
-				timeoutCookies.remove();
-				continue;
-			}
 			if (!timeoutCookie.isExpired())
 				break;
 			timeoutCookies.remove();
-			doTimeout(timeoutCookie);
+			Callback<?> cb = activeRequests.remove(timeoutCookie.getCookie());
+			if (cb != null) {
+				// jmx
+				connectionStats.getExpiredRequests().recordEvent();
+				rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
+
+				cb.accept(null, RPC_TIMEOUT_EXCEPTION);
+			}
 		}
-	}
-
-	private void doTimeout(TimeoutCookie timeoutCookie) {
-		Callback<?> cb = activeRequests.remove(timeoutCookie.getCookie());
-		if (cb == null)
-			return;
-
-		if (serverClosing && activeRequests.size() == 0) close();
-
-		// jmx
-		connectionStats.getExpiredRequests().recordEvent();
-		rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
-
-		returnTimeout(cb, RPC_TIMEOUT_EXCEPTION);
-	}
-
-	private void returnTimeout(Callback<?> cb, Exception e) {
-		returnError(cb, e);
-	}
-
-	private void returnProtocolError(Callback<?> cb, Exception e) {
-		returnError(cb, e);
-	}
-
-	private void returnError(Callback<?> cb, Exception e) {
-		if (cb != null) {
-			cb.accept(null, e);
+		if (serverClosing && activeRequests.size() == 0) {
+			shutdown();
+		}
+		if (!timeoutCookies.isEmpty()) {
+			scheduleExpiredResponsesTask();
 		}
 	}
 
 	@Override
 	public void accept(RpcMessage message) {
 		if (message.getData().getClass() == RpcRemoteException.class) {
-			processError(message);
+			processErrorMessage(message);
 		} else if (message.getData().getClass() == RpcControlMessage.class) {
-			handleControlMessage((RpcControlMessage) message.getData());
+			processControlMessage((RpcControlMessage) message.getData());
 		} else {
-			processResponse(message);
+			@SuppressWarnings("unchecked")
+			Callback<Object> cb = (Callback<Object>) activeRequests.remove(message.getCookie());
+			if (cb == null) return;
+
+			cb.accept(message.getData(), null);
+			if (serverClosing && activeRequests.size() == 0) {
+				shutdown();
+			}
 		}
 	}
 
-	private void handleControlMessage(RpcControlMessage controlMessage) {
-		if (controlMessage == RpcControlMessage.CLOSE) {
-			handleServerCloseMessage();
-		} else {
-			throw new RuntimeException("Received unknown RpcControlMessage");
-		}
-	}
-
-	private void handleServerCloseMessage() {
-		rpcClient.removeConnection(address);
-		serverClosing = true;
-		if (activeRequests.size() == 0) {
-			close();
-		}
-	}
-
-	private void processError(RpcMessage message) {
+	private void processErrorMessage(RpcMessage message) {
 		RpcRemoteException remoteException = (RpcRemoteException) message.getData();
 		// jmx
 		connectionStats.getFailedRequests().recordEvent();
@@ -256,54 +213,73 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		rpcClient.getGeneralRequestsStats().getServerExceptions().recordException(remoteException, null);
 
 		Callback<?> cb = activeRequests.remove(message.getCookie());
-		if (cb == null) return;
-
-		returnError(cb, remoteException);
-	}
-
-	private void processResponse(RpcMessage message) {
-		@SuppressWarnings("unchecked")
-		Callback<Object> cb = (Callback<Object>) activeRequests.remove(message.getCookie());
-		if (cb == null) return;
-
-		cb.accept(message.getData(), null);
-		if (serverClosing && activeRequests.size() == 0) {
-			close();
+		if (cb != null) {
+			cb.accept(null, remoteException);
 		}
 	}
 
-	private void finishClosing() {
-		if (scheduleExpiredResponsesTask != null)
-			scheduleExpiredResponsesTask.cancel();
-		if (!activeRequests.isEmpty()) {
-			closeNotify();
+	private void processControlMessage(RpcControlMessage controlMessage) {
+		if (controlMessage == RpcControlMessage.CLOSE) {
+			rpcClient.removeConnection(address);
+			serverClosing = true;
+			if (activeRequests.size() == 0) {
+				shutdown();
+			}
+		} else {
+			throw new RuntimeException("Received unknown RpcControlMessage");
 		}
+	}
+
+	@Override
+	public void onReceiverEndOfStream() {
+		logger.info("Receiver EOS: " + address);
+		stream.close();
+		doClose();
+	}
+
+	@Override
+	public void onReceiverError(@NotNull Throwable e) {
+		logger.error("Receiver error: " + address, e);
+		rpcClient.getLastProtocolError().recordException(e, address);
+		stream.close();
+		doClose();
+	}
+
+	@Override
+	public void onSenderError(@NotNull Throwable e) {
+		logger.error("Sender error: " + address, e);
+		rpcClient.getLastProtocolError().recordException(e, address);
+		stream.close();
+		doClose();
+	}
+
+	@Override
+	public void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor) {
+		downstreamDataAcceptor = acceptor;
+		overloaded = false;
+	}
+
+	@Override
+	public void onSenderSuspended() {
+		overloaded = true;
+	}
+
+	private void doClose() {
 		rpcClient.removeConnection(address);
-	}
 
-	@Override
-	public void onClosedWithError(Throwable e) {
-		finishClosing();
+		if (scheduleExpiredResponsesTask != null) {
+			scheduleExpiredResponsesTask.cancel();
+		}
 
-		// jmx
-		String causedAddress = "Server address: " + address.getAddress().toString();
-		logger.error("Protocol error. " + causedAddress, e);
-		rpcClient.getLastProtocolError().recordException(e, causedAddress);
-	}
-
-	@Override
-	public void onReadEndOfStream() {
-		finishClosing();
-	}
-
-	private void closeNotify() {
-		for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
-			returnProtocolError(activeRequests.remove(cookie), CONNECTION_CLOSED);
+		while (!activeRequests.isEmpty()) {
+			for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
+				Callback<?> cb = activeRequests.remove(cookie);
+				cb.accept(null, CONNECTION_CLOSED);
+			}
 		}
 	}
 
-	public void close() {
-		connectionClosing = true;
+	public void shutdown() {
 		stream.sendEndOfStream();
 	}
 

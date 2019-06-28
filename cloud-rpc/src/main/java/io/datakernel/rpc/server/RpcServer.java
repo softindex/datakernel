@@ -210,7 +210,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		} else {
 			logger.info("RpcServer is closing. Active connections count: " + connections.size());
 			for (RpcServerConnection connection : new ArrayList<>(connections)) {
-				connection.close();
+				connection.shutdown();
 			}
 			closeCallback = cb;
 		}
@@ -227,10 +227,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		connections.add(connection);
 	}
 
-	void remove(RpcServerConnection connection) {
+	boolean remove(RpcServerConnection connection) {
+		if (!connections.remove(connection)) {
+			return false;
+		}
 		if (logger.isInfoEnabled())
 			logger.info("Client disconnected on {}", connection);
-		connections.remove(connection);
 
 		if (closeCallback != null) {
 			logger.info("RpcServer is closing. One more connection was closed. " +
@@ -240,6 +242,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				closeCallback.set(null);
 			}
 		}
+		return true;
 	}
 
 	// region JMX

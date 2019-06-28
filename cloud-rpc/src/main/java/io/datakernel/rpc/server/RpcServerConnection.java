@@ -19,10 +19,13 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
+import io.datakernel.rpc.protocol.RpcControlMessage;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.protocol.RpcStream.Listener;
+import io.datakernel.stream.StreamDataAcceptor;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,12 +35,13 @@ import java.util.Map;
 public final class RpcServerConnection implements Listener, JmxRefreshable {
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 
+	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
+
 	private final RpcServer rpcServer;
 	private final RpcStream stream;
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 
-	private int activeRequests;
-	private boolean readEndOfStream;
+	private int activeRequests = 1;
 
 	// jmx
 	private final InetAddress remoteAddress;
@@ -52,14 +56,13 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 		this.rpcServer = rpcServer;
 		this.stream = stream;
 		this.handlers = handlers;
-		this.readEndOfStream = false;
 
 		// jmx
 		this.remoteAddress = remoteAddress;
 	}
 
 	@SuppressWarnings("unchecked")
-	private Promise<Object> apply(Object request) {
+	private Promise<Object> serve(Object request) {
 		RpcRequestHandler<Object, Object> requestHandler = (RpcRequestHandler<Object, Object>) handlers.get(request.getClass());
 		if (requestHandler == null) {
 			return Promise.ofException(new ParseException(RpcServerConnection.class, "Failed to process request " + request));
@@ -69,74 +72,86 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 
 	@Override
 	public void accept(RpcMessage message) {
-		incrementActiveRequests();
+		activeRequests++;
 
 		int cookie = message.getCookie();
 		long startTime = monitoring ? System.currentTimeMillis() : 0;
 
 		Object messageData = message.getData();
-		apply(messageData).whenComplete((result, e) -> {
-			if (startTime != 0) {
-				int value = (int) (System.currentTimeMillis() - startTime);
-				requestHandlingTime.recordValue(value);
-				rpcServer.getRequestHandlingTime().recordValue(value);
-			}
-			if (e == null) {
-				successfulRequests.recordEvent();
-				rpcServer.getSuccessfulRequests().recordEvent();
+		serve(messageData)
+				.whenComplete((result, e) -> {
+					if (startTime != 0) {
+						int value = (int) (System.currentTimeMillis() - startTime);
+						requestHandlingTime.recordValue(value);
+						rpcServer.getRequestHandlingTime().recordValue(value);
+					}
+					if (e == null) {
+						downstreamDataAcceptor.accept(RpcMessage.of(cookie, result));
 
-				stream.sendMessage(RpcMessage.of(cookie, result));
-				decrementActiveRequest();
-			} else {
-				lastRequestHandlingException.recordException(e, messageData);
-				rpcServer.getLastRequestHandlingException().recordException(e, messageData);
-				failedRequests.recordEvent();
-				rpcServer.getFailedRequests().recordEvent();
+						successfulRequests.recordEvent();
+						rpcServer.getSuccessfulRequests().recordEvent();
 
-				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(e)));
-				decrementActiveRequest();
-				logger.warn("Exception while processing request ID {}", cookie, e);
-			}
-		});
+						if (--activeRequests == 0) {
+							doClose();
+							stream.sendEndOfStream();
+						}
+					} else {
+						downstreamDataAcceptor.accept(RpcMessage.of(cookie, new RpcRemoteException(e)));
+
+						lastRequestHandlingException.recordException(e, messageData);
+						rpcServer.getLastRequestHandlingException().recordException(e, messageData);
+						failedRequests.recordEvent();
+						rpcServer.getFailedRequests().recordEvent();
+
+						if (--activeRequests == 0) {
+							doClose();
+							stream.sendEndOfStream();
+						}
+						logger.warn("Exception while processing request ID {}", cookie, e);
+					}
+				});
 	}
 
-	private void incrementActiveRequests() {
-		activeRequests++;
-	}
-
-	private void decrementActiveRequest() {
+	@Override
+	public void onReceiverEndOfStream() {
 		activeRequests--;
-		if (readEndOfStream && activeRequests == 0) {
+		if (activeRequests == 0) {
+			doClose();
 			stream.sendEndOfStream();
-			onClosed();
 		}
 	}
 
-	public void onClosed() {
+	@Override
+	public void onReceiverError(@NotNull Throwable e) {
+		logger.error("Receiver error: " + remoteAddress, e);
+		rpcServer.getLastProtocolError().recordException(e, remoteAddress);
+		doClose();
+		stream.close();
+	}
+
+	@Override
+	public void onSenderError(@NotNull Throwable e) {
+		logger.error("Sender error: " + remoteAddress, e);
+		rpcServer.getLastProtocolError().recordException(e, remoteAddress);
+		doClose();
+		stream.close();
+	}
+
+	@Override
+	public void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor) {
+		this.downstreamDataAcceptor = acceptor;
+	}
+
+	@Override
+	public void onSenderSuspended() {
+	}
+
+	private void doClose() {
 		rpcServer.remove(this);
 	}
 
-	@Override
-	public void onClosedWithError(Throwable e) {
-		onClosed();
-
-		// jmx
-		String causedAddress = "Remote address: " + remoteAddress;
-		logger.error("Protocol error. " + causedAddress, e);
-		rpcServer.getLastProtocolError().recordException(e, causedAddress);
-	}
-
-	@Override
-	public void onReadEndOfStream() {
-		readEndOfStream = true;
-		if (activeRequests == 0) {
-			stream.sendEndOfStream();
-			onClosed();
-		}
-	}
-
-	public void close() {
-		stream.sendCloseMessage();
+	public void shutdown() {
+		downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.CLOSE));
 	}
 
 	// jmx
@@ -146,11 +161,6 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 
 	public void stopMonitoring() {
 		monitoring = false;
-	}
-
-	@JmxAttribute
-	public boolean isOverloaded() {
-		return stream.isOverloaded();
 	}
 
 	@JmxAttribute

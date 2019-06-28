@@ -105,5 +105,4 @@ public class TriggersModuleTest {
 			assertTrue(wasExecuted.get());
 		}
 	}
-
 }

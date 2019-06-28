@@ -53,7 +53,6 @@ import static io.datakernel.util.Preconditions.checkState;
 @SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
-	public static final Duration DEFAULT_KEEP_ALIVE_MILLIS = Duration.ofSeconds(30);
 
 	@NotNull
 	private final Eventloop eventloop;
@@ -73,7 +72,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	// timeouts
 	int connectTimeoutMillis = 0;
-	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS.getSeconds();
+	int keepAliveTimeoutMillis = 0;
 	int maxKeepAliveRequests = -1;
 	int readWriteTimeoutMillis = 0;
 	int maxBodySize = Integer.MAX_VALUE;

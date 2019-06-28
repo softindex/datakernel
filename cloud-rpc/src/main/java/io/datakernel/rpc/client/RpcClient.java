@@ -335,7 +335,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			} else {
 				stopCallback = cb;
 				for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
-					connection.close();
+					connection.shutdown();
 				}
 			}
 		});
@@ -402,14 +402,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		requestSender = sender != null ? sender : new NoSenderAvailable();
 	}
 
-	void removeConnection(InetSocketAddress address) {
-		if (!connections.containsKey(address)) {
-			return;
+	boolean removeConnection(InetSocketAddress address) {
+		if (connections.remove(address) == null) {
+			return false;
 		}
 
 		logger.info("Connection to {} closed", address);
-
-		connections.remove(address);
 
 		if (stopCallback != null && connections.size() == 0) {
 			eventloop.post(() -> {
@@ -430,6 +428,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 				connect(address);
 			}
 		});
+
+		return true;
 	}
 
 	/**

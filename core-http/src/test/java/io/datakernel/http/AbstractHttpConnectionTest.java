@@ -29,6 +29,7 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
@@ -103,6 +104,7 @@ public final class AbstractHttpConnectionTest {
 
 	@Test
 	public void testClientWithMaxKeepAliveRequests() throws Exception {
+		client.withKeepAliveTimeout(Duration.ofSeconds(1));
 		client.withMaxKeepAliveRequests(5);
 
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> Promise.of(HttpResponse.ok200()))
@@ -115,6 +117,8 @@ public final class AbstractHttpConnectionTest {
 
 	@Test
 	public void testServerWithMaxKeepAliveRequests() throws Exception {
+		client.withKeepAliveTimeout(Duration.ofSeconds(1));
+
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> Promise.of(HttpResponse.ok200()))
 				.withListenPort(PORT)
 				.withMaxKeepAliveRequests(5);

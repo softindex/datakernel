@@ -40,6 +40,7 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static io.datakernel.csp.process.ChannelLZ4Compressor.*;
+import static java.lang.Math.min;
 
 public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<ChannelLZ4Decompressor, ByteBuf, ByteBuf>, WithBinaryChannelInput<ChannelLZ4Decompressor> {
@@ -111,6 +112,12 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 
 	public void processHeader() {
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
+			for (int i = 0; i < min(bufs.remainingBytes(), MAGIC.length); i++) {
+				if (bufs.peekByte(i) != MAGIC[i]) {
+					close(STREAM_IS_CORRUPTED);
+					return;
+				}
+			}
 			input.needMoreData()
 					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
 					.thenEx(super::sanitize)

@@ -116,7 +116,7 @@ public interface Promise<T> {
 	 * {@code errorSupplier} exception.
 	 */
 	@NotNull
-	@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "OptionalIsPresent"})
+	@SuppressWarnings({"OptionalUsedAsFieldOrParameterType"})
 	static <T> Promise<T> ofOptional(@NotNull Optional<T> optional, @NotNull Supplier<? extends Throwable> errorSupplier) {
 		if (optional.isPresent()) return Promise.of(optional.get());
 		return Promise.ofException(errorSupplier.get());
