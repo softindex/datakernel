@@ -459,7 +459,7 @@ public interface Config {
 				}
 			};
 		}
-		return override(config);
+		return overrideWith(config);
 	}
 
 	/**
@@ -467,7 +467,7 @@ public interface Config {
 	 * @return new {@code Config} with values from this config overridden by values from other
 	 * this method returns new config instead of changing the old one.
 	 */
-	default Config override(Config other) {
+	default Config overrideWith(Config other) {
 		String otherValue = other.getValue(null);
 		Map<String, Config> otherChildren = other.getChildren();
 		if (otherValue == null && otherChildren.isEmpty()) {
@@ -475,7 +475,7 @@ public interface Config {
 		}
 		String value = otherValue != null ? otherValue : getValue(null);
 		Map<String, Config> children = new LinkedHashMap<>(getChildren());
-		otherChildren.forEach((key, otherChild) -> children.merge(key, otherChild, Config::override));
+		otherChildren.forEach((key, otherChild) -> children.merge(key, otherChild, Config::overrideWith));
 		Map<String, Config> finalChildren = unmodifiableMap(children);
 		return new Config() {
 			@Nullable
@@ -506,18 +506,18 @@ public interface Config {
 	 * @return new merged {@code Config}
 	 * this method returns new config instead of changing the old one.
 	 */
-	default Config combine(Config other) {
+	default Config combineWith(Config other) {
 		String thisValue = getValue(null);
 		String otherValue = other.getValue(null);
 		if (thisValue != null && otherValue != null) {
 			throw new IllegalArgumentException("Duplicate values\n" + this.toMap() + "\n" + other.toMap());
 		}
 		Map<String, Config> children = new LinkedHashMap<>(getChildren());
-		other.getChildren().forEach((key, otherChild) -> children.merge(key, otherChild, Config::combine));
+		other.getChildren().forEach((key, otherChild) -> children.merge(key, otherChild, Config::combineWith));
 		return Config.EMPTY
-				.override(thisValue != null ? Config.ofValue(thisValue) : Config.EMPTY)
-				.override(otherValue != null ? Config.ofValue(otherValue) : Config.EMPTY)
-				.override(Config.ofConfigs(children));
+				.overrideWith(thisValue != null ? Config.ofValue(thisValue) : Config.EMPTY)
+				.overrideWith(otherValue != null ? Config.ofValue(otherValue) : Config.EMPTY)
+				.overrideWith(Config.ofConfigs(children));
 	}
 
 	/**

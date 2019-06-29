@@ -20,8 +20,8 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
@@ -100,7 +100,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						ofClassPathProperties(PROPERTIES_FILE)
-								.override(Config.ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig()
 		);
 	}

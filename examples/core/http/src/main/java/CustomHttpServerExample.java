@@ -1,6 +1,4 @@
 import io.datakernel.async.Promise;
-import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
@@ -11,13 +9,10 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.net.InetSocketAddress;
-
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.di.module.Modules.combine;
 //[START EXAMPLE]
-public final class ServerScratch extends Launcher {
+public final class CustomHttpServerExample extends Launcher {
 	private static final int PORT = 8080;
+
 	@Inject
 	private AsyncHttpServer server;
 
@@ -34,17 +29,13 @@ public final class ServerScratch extends Launcher {
 	}
 
 	@Provides
-	AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, servlet)
-				.withListenAddress(config.get(ofInetSocketAddress(), Config.THIS));
+	AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet) {
+		return AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
 	}
 
 	@Override
 	protected Module getModule() {
-		return combine(
-				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))
-		);
+		return ServiceGraphModule.defaultInstance();
 	}
 
 	@Override
@@ -53,7 +44,7 @@ public final class ServerScratch extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new ServerScratch();
+		Launcher launcher = new CustomHttpServerExample();
 		launcher.launch(args);
 	}
 }

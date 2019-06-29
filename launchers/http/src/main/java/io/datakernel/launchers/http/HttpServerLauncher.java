@@ -63,8 +63,8 @@ public abstract class HttpServerLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(ofClassPathProperties(PROPERTIES_FILE, true))
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				getBusinessLogicModule());
 	}

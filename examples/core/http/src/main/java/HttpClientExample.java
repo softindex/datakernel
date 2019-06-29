@@ -7,11 +7,14 @@ import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.HttpMessage;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.di.module.Modules.combine;
@@ -21,17 +24,12 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * HTTP client example.
  * You can launch HttpServerExample to test this.
  */
-public final class ClientExample extends Launcher {
+public final class HttpClientExample extends Launcher {
 	@Inject
 	AsyncHttpClient httpClient;
 
 	@Inject
 	Eventloop eventloop;
-
-	@Inject
-	Config config;
-
-	private String addr;
 
 	@Provides
 	Eventloop eventloop() {
@@ -48,8 +46,8 @@ public final class ClientExample extends Launcher {
 	@Provides
 	AsyncDnsClient dnsClient(Eventloop eventloop, Config config) {
 		return RemoteAsyncDnsClient.create(eventloop)
-				.withDnsServerAddress(config.get(ofInetAddress(), "http.client.googlePublicDns"))
-				.withTimeout(config.get(ofDuration(), "http.client.timeout"));
+				.withDnsServerAddress(config.get(ofInetAddress(), "dns.address"))
+				.withTimeout(config.get(ofDuration(), "dns.timeout"));
 	}
 	//[END REGION_1]
 
@@ -58,43 +56,36 @@ public final class ClientExample extends Launcher {
 	protected Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.create()
-						.with("http.client.googlePublicDns", "8.8.8.8")
-						.with("http.client.timeout", "3 seconds")
-						.with("http.client.host", "http://127.0.0.1:8080"))
+				ConfigModule.create().printEffectiveConfig()
 		);
+	}
+
+	@Provides
+	Config config() {
+		return Config.create()
+				.with("dns.address", "8.8.8.8")
+				.with("dns.timeout", "5 seconds")
+				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 	//[END REGION_2]
 
-	@Override
-	protected void onStart() {
-		addr = config.get("http.client.host");
-	}
-
 	//[START REGION_3]
 	@Override
-	protected void run() {
-		eventloop.post(() -> {
-			String msg = "Hello from client!";
-
-			HttpRequest request = HttpRequest.post(addr).withBody(encodeAscii(msg));
-
-			httpClient.request(request)
-					.whenResult(response -> response.loadBody()
-							.whenComplete((body, e) -> {
-								if (e == null) {
-									body = response.getBody();
-									System.out.println("Server response: " + body.asString(UTF_8));
-								} else {
-									System.err.println("Server error: " + e);
-								}
-							}));
-		});
+	protected void run() throws ExecutionException, InterruptedException {
+		String url = args.length != 0 ? args[0] : "http://127.0.0.1:8080/";
+		System.out.println("HTTP request: " + url);
+		CompletableFuture<String> future = eventloop.submit(() ->
+				httpClient.request(HttpRequest.get(url))
+						.then(HttpMessage::loadBody)
+						.map(body -> body.getString(UTF_8))
+						.toCompletableFuture()
+		);
+		System.out.println("HTTP response: " + future.get());
 	}
 	//[END REGION_3]
 
 	public static void main(String[] args) throws Exception {
-		ClientExample example = new ClientExample();
+		HttpClientExample example = new HttpClientExample();
 		example.launch(args);
 	}
 }

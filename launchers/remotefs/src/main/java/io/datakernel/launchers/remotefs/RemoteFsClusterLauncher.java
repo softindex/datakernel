@@ -22,8 +22,8 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Optional;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
@@ -114,8 +114,8 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(Config.ofProperties(PROPERTIES_FILE, true))
-								.override(Config.ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
+								.overrideWith(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig()
 		);
 	}

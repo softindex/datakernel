@@ -11,7 +11,7 @@ import io.datakernel.worker.WorkerId;
  * Sends back a greeting and the number of worker which served the connection.
  */
 //[START EXAMPLE]
-public final class MultithreadedServerExample extends MultithreadedHttpServerLauncher {
+public final class MultithreadedHttpServerExample extends MultithreadedHttpServerLauncher {
 	@Provides
 	@Worker
 	AsyncServlet servlet(@WorkerId int workerId) {
@@ -21,7 +21,7 @@ public final class MultithreadedServerExample extends MultithreadedHttpServerLau
 	}
 
 	public static void main(String[] args) throws Exception {
-		MultithreadedServerExample example = new MultithreadedServerExample();
+		MultithreadedHttpServerExample example = new MultithreadedHttpServerExample();
 		example.launch(args);
 	}
 }

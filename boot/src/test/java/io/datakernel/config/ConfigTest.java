@@ -61,7 +61,7 @@ public class ConfigTest {
 		Config config2 = Config.EMPTY
 				.with("b", "b")
 				.with("a.b", "ab");
-		Config config = config1.combine(config2);
+		Config config = config1.combineWith(config2);
 		assertEquals(set("a", "b"), config.getChildren().keySet());
 		assertEquals(set("a", "b"), config.getChildren().get("a").getChildren().keySet());
 		assertEquals("a", config.get("a"));
@@ -70,17 +70,17 @@ public class ConfigTest {
 		assertEquals("ab", config.get("a.b"));
 
 		try {
-			config1.combine(Config.EMPTY.with("a", "x"));
+			config1.combineWith(Config.EMPTY.with("a", "x"));
 			Assert.fail();
 		} catch (IllegalArgumentException ignored) {
 		}
 
 		try {
-			config1.combine(Config.EMPTY.with("a.a", "x"));
+			config1.combineWith(Config.EMPTY.with("a.a", "x"));
 			Assert.fail();
 		} catch (IllegalArgumentException ignored) {
 		}
 
-		config1.combine(Config.EMPTY.with("a.a.a", "x"));
+		config1.combineWith(Config.EMPTY.with("a.a.a", "x"));
 	}
 }

@@ -20,8 +20,8 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
@@ -64,8 +64,8 @@ public final class CrdtNodeExample {
 								.with("crdt.local.path", "/tmp/TESTS/crdt")
 								.with("crdt.cluster.localPartitionId", "local")
 								.with("crdt.cluster.partitions.noop", "localhost:9091")
-								.override(ofClassPathProperties(PROPERTIES_FILE, true))
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig();
 			}
 

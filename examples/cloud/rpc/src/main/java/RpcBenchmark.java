@@ -86,7 +86,7 @@ public class RpcBenchmark extends Launcher {
 								.with("benchmark.requestsPerTime", "" + REQUESTS_PER_TIME)
 								.with("benchmark.maxRequests", "" + MAX_REQUESTS)
 								.with("benchmark.generateFile", "" + GENERATE_FILE)
-								.override(Config.ofProperties(System.getProperties()))
+								.overrideWith(Config.ofProperties(System.getProperties()))
 				)
 		);
 	}

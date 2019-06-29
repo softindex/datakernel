@@ -1,15 +1,14 @@
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.MemSize;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,19 +18,15 @@ import java.nio.file.Path;
  * To run this example you should first launch ServerSetupExample
  */
 public final class FileUploadExample extends Launcher {
-	private static final int SERVER_PORT;
-	private static final Path CLIENT_FILE;
-	private static final String FILE_NAME;
+	private static final int SERVER_PORT = 6732;
+	private static final String FILE_NAME = "example.txt";
 
-	static {
-		SERVER_PORT = 6732;
-		FILE_NAME = "example.txt";
-		try {
-			CLIENT_FILE = Files.createTempFile("example", ".txt");
-			Files.write(CLIENT_FILE, "example text".getBytes());
-		} catch (IOException e) {
-			throw new UncheckedException(e);
-		}
+	private Path clientFile;
+
+	@Override
+	protected void onInit(Injector injector) throws Exception {
+		clientFile = Files.createTempFile("example", ".txt");
+		Files.write(clientFile, "example text".getBytes());
 	}
 
 	@Inject
@@ -59,7 +54,7 @@ public final class FileUploadExample extends Launcher {
 	protected void run() throws Exception {
 		eventloop.post(() -> {
 			// consumer result here is a marker of it being successfully uploaded
-			ChannelFileReader.readFile(CLIENT_FILE)
+			ChannelFileReader.readFile(clientFile)
 					.then(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)).streamTo(client.upload(FILE_NAME)))
 					.whenComplete(($, e) -> {
 						if (e != null) logger.error("Upload failed", e);

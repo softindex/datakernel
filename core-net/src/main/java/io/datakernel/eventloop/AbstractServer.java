@@ -243,7 +243,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Promise.complete();
 		running = false;
-		closeServerSocketChannels();
+		closeServerSockets();
 		return Promise.ofCallback(this::onClose)
 				.whenComplete(($, e) -> {
 					if (e == null) {
@@ -263,7 +263,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return running;
 	}
 
-	private void closeServerSocketChannels() {
+	protected void closeServerSockets() {
 		if (serverSocketChannels == null || serverSocketChannels.isEmpty()) {
 			return;
 		}
@@ -319,12 +319,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 
 		if (acceptOnce) {
-			doAcceptOnce();
+			closeServerSockets();
 		}
-	}
-
-	protected void doAcceptOnce() {
-		closeServerSocketChannels();
 	}
 
 	@Override

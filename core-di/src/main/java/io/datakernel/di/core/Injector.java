@@ -305,8 +305,10 @@ public class Injector {
 	public Set<Key<?>> postInjectInstances() {
 		Set<InstanceInjector<?>> postInjectors = getInstanceOr(new Key<Set<InstanceInjector<?>>>() {}, emptySet());
 		for (InstanceInjector<?> instanceInjector : postInjectors) {
-			Object instance = getInstance(instanceInjector.key());
-			((InstanceInjector<Object>) instanceInjector).injectInto(instance);
+			Object instance = peekInstance(instanceInjector.key());
+			if (instance != null) {
+				((InstanceInjector<Object>) instanceInjector).injectInto(instance);
+			}
 		}
 		return postInjectors.stream().map(InstanceInjector::key).collect(toSet());
 	}

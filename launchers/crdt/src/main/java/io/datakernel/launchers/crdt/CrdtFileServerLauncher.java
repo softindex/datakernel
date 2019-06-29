@@ -21,9 +21,9 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -69,8 +69,8 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(ofClassPathProperties(PROPERTIES_FILE, true))
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				getBusinessLogicModule());
 	}

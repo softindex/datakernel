@@ -90,8 +90,8 @@ public final class GlobalFsApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("app.http.staticPath", DEFAULT_STATIC_PATH)
 				.with("app.http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
-				.override(ofClassPathProperties(PROPERTIES_FILE, true))
-				.override(ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Override

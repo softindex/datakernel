@@ -140,9 +140,9 @@ public class ConfigsModuleTest {
 					@Provides
 					Config config() {
 						return Config.create()
-								.override(Config.ofProperties(properties1))
-								.override(Config.ofProperties(properties2))
-								.override(Config.ofProperties("not-existing.properties", true));
+								.overrideWith(Config.ofProperties(properties1))
+								.overrideWith(Config.ofProperties(properties2))
+								.overrideWith(Config.ofProperties("not-existing.properties", true));
 					}
 				},
 				ConfigModule.create().printEffectiveConfig()

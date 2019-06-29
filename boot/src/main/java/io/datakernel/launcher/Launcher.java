@@ -22,6 +22,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -68,11 +69,14 @@ import static org.slf4j.LoggerFactory.getLogger;
  * }
  * </pre>
  */
+@SuppressWarnings({"WeakerAccess", "RedundantThrows", "unused"})
 public abstract class Launcher implements ConcurrentJmxMBean {
 	protected final Logger logger = getLogger(getClass());
-	private final Logger logger0 = getLogger(getClass().getName() + ".0");
+	protected final Logger logger0 = getLogger(getClass().getName() + ".0");
 
-	protected String[] args = {};
+	public static final String[] NO_ARGS = {};
+	@NotNull
+	protected String[] args = NO_ARGS;
 
 	private Thread mainThread;
 
@@ -92,10 +96,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	private final CompletableFuture<Void> onCompleteFuture = new CompletableFuture<>();
 
 	/**
-	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
-	 */
-
-	/**
 	 * Creates an injector with modules and overrides from this launcher.
 	 * On creation it does all the binding checks so calling this method
 	 * triggers a static check which causes an exception to be thrown on
@@ -103,7 +103,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 * which is highly useful for testing.
 	 */
 	public final void testInjector() {
-		createInjector(new String[0]);
+		createInjector();
 	}
 
 	/**
@@ -118,7 +118,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 *
 	 * @param args program args that will be injected into @Args string array
 	 */
-	public void launch(String[] args) throws Exception {
+	public void launch(@NotNull String[] args) throws Exception {
 		mainThread = Thread.currentThread();
 		instantOfLaunch = Instant.now();
 
@@ -126,9 +126,12 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			logger.info("=== INJECTING DEPENDENCIES");
 
 			Injector injector = createInjector(args);
+			injector.getInstance(this.getClass());
 			if (logger0.isInfoEnabled()) {
 				logger0.info("Effective Injector:\n\n" + makeGraphVizGraph(injector.getBindings()));
 			}
+
+			onInit(injector);
 
 			logger0.info("EagerSingletons: " + injector.createEagerSingletons());
 
@@ -242,16 +245,18 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		latch.await();
 	}
 
-	public Injector createInjector(String[] args) {
+	@NotNull
+	public final Injector createInjector(@NotNull String[] args) {
 		this.args = args;
 		return createInjector();
 	}
 
-	private Injector createInjector() {
-		return Injector.of(getLauncherModule().combineWith(getModule()).overrideWith(getOverrideModule()));
+	@NotNull
+	public final Injector createInjector() {
+		return Injector.of(getInternalModule().combineWith(getModule()).overrideWith(getOverrideModule()));
 	}
 
-	private Module getLauncherModule() {
+	private Module getInternalModule() {
 		return new AbstractModule() {
 			@Override
 			protected void configure() {
@@ -274,12 +279,24 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		};
 	}
 
+	/**
+	 * Supplies business logic module for application(ConfigModule, EventloopModule, etc...)
+	 */
 	protected Module getModule() {
 		return Module.empty();
 	}
 
+	/**
+	 * This module overrides definitions in internal module / business logic module
+	 */
 	protected Module getOverrideModule() {
 		return Module.empty();
+	}
+
+	/**
+	 * This method runs prior using injector and wiring the application
+	 */
+	protected void onInit(Injector injector) throws Exception {
 	}
 
 	/**
@@ -326,10 +343,12 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		shutdownLatch.countDown();
 	}
 
+	@NotNull
 	public Thread getMainThread() {
 		return mainThread;
 	}
 
+	@NotNull
 	public String[] getArgs() {
 		return args;
 	}

@@ -49,8 +49,8 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
-								.override(ofClassPathProperties(PROPERTIES_FILE, true))
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				getBusinessLogicModule());
 	}

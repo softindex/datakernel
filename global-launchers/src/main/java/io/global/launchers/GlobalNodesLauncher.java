@@ -58,7 +58,7 @@ public class GlobalNodesLauncher extends Launcher {
 	@Provides
 	Config config() {
 		return ofClassPathProperties(PROPERTIES_FILE)
-				.override(ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Override

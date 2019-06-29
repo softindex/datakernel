@@ -93,8 +93,8 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))
 								.with("workers", "" + WORKERS)
-								.override(ofClassPathProperties(PROPERTIES_FILE, true))
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				getBusinessLogicModule());
 	}

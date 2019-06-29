@@ -28,6 +28,6 @@ public class ConfigBuilderTest {
 				.with("a.a.b", Config.ofValue("2"))
 				.with("b", Config.ofValue("4"));
 
-		testBaseConfig(config.override(override));
+		testBaseConfig(config.overrideWith(override));
 	}
 }
