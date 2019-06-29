@@ -34,7 +34,6 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
@@ -42,6 +41,7 @@ import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
 import static io.datakernel.launchers.remotefs.Initializers.*;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public abstract class RemoteFsClusterLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "remotefs-cluster.properties";
@@ -104,7 +104,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 
 	@Provides
 	public ExecutorService executor() {
-		return Executors.newSingleThreadExecutor();
+		return newSingleThreadExecutor();
 	}
 
 	@Override

@@ -77,7 +77,7 @@ class StressClient {
 
 				Path file = clientStorage.resolve(fileName);
 
-				ChannelFileReader.readFile(file)
+				ChannelFileReader.readFile(executor, file)
 						.then(cfr -> cfr
 								.withBufferSize(MemSize.kilobytes(16))
 								.streamTo(ChannelConsumer.ofPromise(client.upload(fileName))))
@@ -103,7 +103,7 @@ class StressClient {
 			if (fileName == null) return;
 
 			client.download(fileName, 0)
-					.then(supplier -> supplier.streamTo(ChannelFileWriter.create(downloads.resolve(fileName))))
+					.then(supplier -> supplier.streamTo(ChannelFileWriter.create(executor, downloads.resolve(fileName))))
 					.whenComplete((supplier, e) -> {
 						if (e == null) {
 							logger.info("Downloaded: " + fileName);

@@ -10,7 +10,7 @@ import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyStorage;
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
@@ -39,26 +39,22 @@ public class RocksDbSharedKeyStorage implements SharedKeyStorage {
 	private final RocksDB db;
 	private final WriteOptions writeOptions;
 
-	@Nullable
-	private Executor executor;
+	@NotNull
+	private final Executor executor;
 
-	private RocksDbSharedKeyStorage(RocksDB db, WriteOptions writeOptions) {
+	private RocksDbSharedKeyStorage(@NotNull Executor executor, RocksDB db, WriteOptions writeOptions) {
 		this.db = db;
 		this.writeOptions = writeOptions;
-	}
-
-	public static RocksDbSharedKeyStorage create(RocksDB db) {
-		WriteOptions writeOptions = new WriteOptions().setSync(true);
-		return new RocksDbSharedKeyStorage(db, writeOptions);
-	}
-
-	public static RocksDbSharedKeyStorage create(RocksDB db, WriteOptions writeOptions) {
-		return new RocksDbSharedKeyStorage(db, writeOptions);
-	}
-
-	public RocksDbSharedKeyStorage withExecutor(Executor executor) {
 		this.executor = executor;
-		return this;
+	}
+
+	public static RocksDbSharedKeyStorage create(@NotNull Executor executor, RocksDB db) {
+		WriteOptions writeOptions = new WriteOptions().setSync(true);
+		return new RocksDbSharedKeyStorage(executor, db, writeOptions);
+	}
+
+	public static RocksDbSharedKeyStorage create(@NotNull Executor executor, RocksDB db, WriteOptions writeOptions) {
+		return new RocksDbSharedKeyStorage(executor, db, writeOptions);
 	}
 
 	@Override

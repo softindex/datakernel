@@ -3,7 +3,7 @@ package io.datakernel.loader;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -55,20 +55,20 @@ public interface StaticLoader {
 		return new StaticLoaderCache(loader, get, put);
 	}
 
-	static StaticLoader ofClassPath(String root) {
-		return StaticLoaderClassPath.create(root);
+	static StaticLoader ofClassPath(@NotNull Executor executor, String root) {
+		return StaticLoaderClassPath.create(executor, root);
 	}
 
-	static StaticLoader ofClassPath(@Nullable Executor executor, ClassLoader classLoader, String root) {
+	static StaticLoader ofClassPath(@NotNull Executor executor, ClassLoader classLoader, String root) {
 		return StaticLoaderClassPath.create(executor, classLoader, root);
 	}
 
-	static StaticLoader ofPath(Path dir) {
-		return StaticLoaderFileReader.create(dir);
+	static StaticLoader ofPath(@NotNull Executor executor, Path dir) {
+		return StaticLoaderFileReader.create(executor, dir);
 	}
 
-	static StaticLoader ofFile(File dir) {
-		return StaticLoaderFileReader.create(dir.toPath());
+	static StaticLoader ofFile(@NotNull Executor executor, File dir) {
+		return StaticLoaderFileReader.create(executor, dir.toPath());
 	}
 
 }

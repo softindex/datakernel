@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.exception.CloseException;
 import io.datakernel.file.AsyncFileService;
+import io.datakernel.file.AsyncFileServices;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -32,11 +33,12 @@ import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
-import static io.datakernel.file.AsyncFileService.DEFAULT_FILE_SERVICE;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.file.StandardOpenOption.READ;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 /**
  * This supplier allows you to asynchronously read binary data from a file.
@@ -48,29 +50,25 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
 
-	private AsyncFileService fileService = DEFAULT_FILE_SERVICE;
+	private final AsyncFileService fileService;
 	private final FileChannel channel;
 
 	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private long position = 0;
 	private long limit = Long.MAX_VALUE;
 
-	private ChannelFileReader(FileChannel channel) {
+	private ChannelFileReader(Executor executor, FileChannel channel) {
 		this.channel = channel;
+		this.fileService = AsyncFileServices.getDefaultInstance(executor);
 	}
 
-	public static Promise<ChannelFileReader> readFile(Path path) {
-		return Promise.ofBlockingCallable(() -> FileChannel.open(path, READ_OPTIONS))
-				.map(ChannelFileReader::new);
+	public static Promise<ChannelFileReader> readFile(Executor executor, Path path) {
+		return Promise.ofBlockingCallable(newCachedThreadPool(), () -> FileChannel.open(path, READ_OPTIONS))
+				.map(fileChannel ->  new ChannelFileReader(executor, fileChannel));
 	}
 
-	public static Promise<ChannelFileReader> readFile(FileChannel channel) {
-		return Promise.of(new ChannelFileReader(channel));
-	}
-
-	public ChannelFileReader withAsyncFileService(AsyncFileService fileService) {
-		this.fileService = fileService;
-		return this;
+	public static Promise<ChannelFileReader> readFile(Executor executor, FileChannel channel) {
+		return Promise.of(new ChannelFileReader(executor, channel));
 	}
 
 	public ChannelFileReader withBufferSize(MemSize bufferSize) {

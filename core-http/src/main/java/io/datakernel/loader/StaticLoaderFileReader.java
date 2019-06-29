@@ -7,16 +7,19 @@ import io.datakernel.csp.file.ChannelFileReader;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.Executor;
 
 class StaticLoaderFileReader implements StaticLoader {
 	private final Path root;
+	private final Executor executor;
 
-	public StaticLoaderFileReader(Path root) {
+	public StaticLoaderFileReader(Executor executor, Path root) {
 		this.root = root;
+		this.executor = executor;
 	}
 
-	public static StaticLoader create(Path dir) {
-		return new StaticLoaderFileReader(dir);
+	public static StaticLoader create(Executor executor, Path dir) {
+		return new StaticLoaderFileReader(executor, dir);
 	}
 
 	@Override
@@ -28,6 +31,7 @@ class StaticLoaderFileReader implements StaticLoader {
 		}
 
 		return Promise.ofBlockingCallable(
+				executor,
 				() -> {
 					if (Files.isRegularFile(file)) {
 						return null;
@@ -38,7 +42,7 @@ class StaticLoaderFileReader implements StaticLoader {
 						throw NOT_FOUND_EXCEPTION;
 					}
 				})
-				.then($ -> ChannelFileReader.readFile(file))
+				.then($ -> ChannelFileReader.readFile(executor, file))
 				.then(cfr -> cfr.toCollector(ByteBufQueue.collector()));
 	}
 }

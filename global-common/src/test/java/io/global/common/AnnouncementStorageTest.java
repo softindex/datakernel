@@ -32,6 +32,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -59,7 +60,7 @@ public class AnnouncementStorageTest {
 		return Arrays.asList(
 				new Object[]{(Function<Path, AnnouncementStorage>) path -> {
 					try {
-						return RocksDbAnnouncementStorage.create(RocksDB.open(path.toString()));
+						return RocksDbAnnouncementStorage.create(newCachedThreadPool(), RocksDB.open(path.toString()));
 					} catch (RocksDBException e) {
 						throw new AssertionError(e);
 					}
@@ -68,7 +69,7 @@ public class AnnouncementStorageTest {
 				new Object[]{(Function<Path, AnnouncementStorage>) path -> {
 					try {
 						DataSource dataSource = dataSource(MY_SQL_PROPERTIES);
-						return MySqlAnnouncementStorage.create(dataSource);
+						return MySqlAnnouncementStorage.create(newCachedThreadPool(), dataSource);
 					} catch (IOException | SQLException e) {
 						System.out.println("WARNING: Failed to get properties from " + MY_SQL_PROPERTIES + " (" +
 								e.getMessage() + "), using stub instead");

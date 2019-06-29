@@ -34,6 +34,7 @@ import picocli.CommandLine.Parameters;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.Promise.of;
@@ -64,6 +65,12 @@ public final class GlobalFsUpload implements Callable<Void> {
 	@Option(names = {"-r", "--revision"}, paramLabel = "<revision>", description = "Set custom revision to try to upload")
 	private long revision;
 
+	private final Executor executor;
+
+	public GlobalFsUpload(Executor executor) {
+		this.executor = executor;
+	}
+
 	@Override
 	public Void call() throws Exception {
 		Tuple3<ExecutorService, Eventloop, FsClient> tuple = common.init(CheckpointPosStrategy.of(checkpointInterval.toLong()));
@@ -84,7 +91,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			name = remoteName;
 
 			reader = of(ChannelSupplier.of(() ->
-					Promise.ofBlockingCallable(executor, () -> {
+					Promise.ofBlockingCallable(this.executor, () -> {
 						ByteBuf buffer = ByteBufPool.allocate(4096);
 						int bytes = System.in.read(buffer.array());
 						if (bytes == -1) {
@@ -97,7 +104,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			info("Uploading data from standard input as " + name + " ...");
 		} else {
 			Path path = Paths.get(file);
-			reader = ChannelFileReader.readFile(path);
+			reader = ChannelFileReader.readFile(this.executor, path);
 			if (remoteName == null) {
 				name = path.getFileName().toString();
 				info("Uploading " + name + " ...");

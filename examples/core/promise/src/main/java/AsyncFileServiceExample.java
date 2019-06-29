@@ -12,15 +12,15 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 @SuppressWarnings("Convert2MethodRef")
 public final class AsyncFileServiceExample {
-	private static final ExecutorService executorService = Executors.newCachedThreadPool();
+	private static final ExecutorService executorService = newCachedThreadPool();
 	private static final AsyncFileService fileService = new ExecutorAsyncFileService(executorService);
 	private static final Path PATH;
 	static {

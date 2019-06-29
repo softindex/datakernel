@@ -71,6 +71,7 @@ import static io.global.ot.util.TestUtils.getCommitIds;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static java.util.Comparator.naturalOrder;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 
@@ -118,6 +119,7 @@ public class GlobalOTNodeImplTest {
 				new Object[]{(Function<Path, CommitStorage>) path -> new CommitStorageStub()},
 				new Object[]{(Function<Path, CommitStorage>) path -> {
 					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
+							newCachedThreadPool(),
 							getCurrentEventloop(),
 							path.resolve("rocksDb").toString());
 					await(rocksDb.start());

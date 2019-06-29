@@ -30,6 +30,7 @@ import java.util.function.Function;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.global.common.BinaryDataFormats.REGISTRY;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
@@ -57,7 +58,7 @@ public class SharedKeyStorageTest {
 				new Object[]{
 						(Function<Path, SharedKeyStorage>) path -> {
 							try {
-								return RocksDbSharedKeyStorage.create(RocksDB.open(path.toString()));
+								return RocksDbSharedKeyStorage.create(newCachedThreadPool(),  RocksDB.open(path.toString()));
 							} catch (RocksDBException e) {
 								throw new AssertionError(e);
 							}

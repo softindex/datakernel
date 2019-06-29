@@ -46,7 +46,9 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -134,11 +136,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@Nullable
 	private SelectorProvider selectorProvider;
 
-	public static final ExecutorService DEFAULT_EXECUTOR = Executors.newCachedThreadPool();
-
-	@NotNull
-	private Executor defaultExecutor = DEFAULT_EXECUTOR;
-
 	/**
 	 * The thread in which eventloop is running.
 	 */
@@ -203,12 +200,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@NotNull
-	public Eventloop withExecutor(@NotNull Executor executor) {
-		this.defaultExecutor = executor;
-		return this;
-	}
-
-	@NotNull
 	public Eventloop withInspector(@Nullable EventloopInspector inspector) {
 		this.inspector = inspector;
 		return this;
@@ -257,11 +248,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		Eventloop eventloop = CURRENT_EVENTLOOP.get();
 		if (eventloop != null) return eventloop;
 		throw new IllegalStateException(NO_CURRENT_EVENTLOOP_ERROR);
-	}
-
-	@NotNull
-	public Executor getDefaultExecutor() {
-		return defaultExecutor;
 	}
 
 	private void openSelector() {

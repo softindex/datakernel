@@ -9,11 +9,13 @@ import io.datakernel.loader.StaticLoader;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 //[START EXAMPLE]
 public final class AuthLauncher extends HttpServerLauncher {
@@ -25,9 +27,14 @@ public final class AuthLauncher extends HttpServerLauncher {
 	}
 
 	@Provides
-	AsyncServlet servlet(AuthService authService) {
+	Executor executor() {
+		return newCachedThreadPool();
+	}
+
+	@Provides
+	AsyncServlet servlet(AuthService authService, Executor executor) {
 		SessionStore<String> store = new SessionStoreInMemory<>();
-		StaticLoader staticLoader = StaticLoader.ofClassPath("site/");
+		StaticLoader staticLoader = StaticLoader.ofClassPath(executor, "site/");
 		return SessionServlet.create(store, SESSION_ID,
 				RoutingServlet.create()
 						//[START REGION_1]

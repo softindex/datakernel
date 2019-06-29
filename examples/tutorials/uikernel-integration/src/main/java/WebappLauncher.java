@@ -14,7 +14,7 @@ import io.datakernel.loader.StaticLoader;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.uikernel.UiKernelServlets;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigConverters.ofString;
@@ -44,13 +44,13 @@ public class WebappLauncher extends Launcher {
 	}
 
 	@Provides
-	ExecutorService executorService() {
+	Executor executor() {
 		return newCachedThreadPool();
 	}
 
 	@Provides
-	StaticLoader staticLoader(Config config) {
-		return StaticLoader.ofClassPath(config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
+	StaticLoader staticLoader(Config config, Executor executor) {
+		return StaticLoader.ofClassPath(executor, config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
 	}
 
 	@Provides

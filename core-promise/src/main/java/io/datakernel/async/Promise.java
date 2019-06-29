@@ -224,13 +224,6 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * @see #ofBlockingCallable(Executor, Callable)
-	 */
-	static <T> Promise<T> ofBlockingCallable(@NotNull Callable<? extends T> callable) {
-		return ofBlockingCallable(null, callable);
-	}
-
-	/**
 	 * Runs some task in another thread (executed by a given {@code Executor})
 	 * and returns a {@code Promise} for it. Also manages external task count
 	 * for current eventloop, so it won't shut down until the task is complete.
@@ -239,9 +232,8 @@ public interface Promise<T> {
 	 * @param callable the task itself
 	 * @return {@code Promise} for the given task
 	 */
-	static <T> Promise<T> ofBlockingCallable(@Nullable Executor executor, @Async.Schedule @NotNull Callable<? extends T> callable) {
+	static <T> Promise<T> ofBlockingCallable(@NotNull Executor executor, @Async.Schedule @NotNull Callable<? extends T> callable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		if (executor == null) executor = eventloop.getDefaultExecutor();
 		eventloop.startExternalTask();
 		SettablePromise<T> promise = new SettablePromise<>();
 		try {
@@ -285,9 +277,8 @@ public interface Promise<T> {
 	 * (returned {@code Promise} is only a marker of completion).
 	 */
 	@NotNull
-	static Promise<Void> ofBlockingRunnable(@Nullable Executor executor, @Async.Schedule @NotNull Runnable runnable) {
+	static Promise<Void> ofBlockingRunnable(@NotNull Executor executor, @Async.Schedule @NotNull Runnable runnable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		if (executor == null) executor = eventloop.getDefaultExecutor();
 		eventloop.startExternalTask();
 		SettablePromise<Void> promise = new SettablePromise<>();
 		try {

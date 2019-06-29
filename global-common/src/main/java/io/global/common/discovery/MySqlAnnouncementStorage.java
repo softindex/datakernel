@@ -34,21 +34,17 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 
 	private final DataSource dataSource;
 
-	private Executor executor;
+	private final Executor executor;
 
 	private String tableAnnouncements = DEFAULT_ANNOUNCEMENTS_TABLE;
 
-	private MySqlAnnouncementStorage(DataSource dataSource) {
+	private MySqlAnnouncementStorage(Executor executor, DataSource dataSource) {
 		this.dataSource = dataSource;
-	}
-
-	public static MySqlAnnouncementStorage create(DataSource dataSource) {
-		return new MySqlAnnouncementStorage(dataSource);
-	}
-
-	public MySqlAnnouncementStorage withExecutor(Executor executor) {
 		this.executor = executor;
-		return this;
+	}
+
+	public static MySqlAnnouncementStorage create(Executor executor, DataSource dataSource) {
+		return new MySqlAnnouncementStorage(executor, dataSource);
 	}
 
 	public MySqlAnnouncementStorage withTableName(String tableAnnouncements) {

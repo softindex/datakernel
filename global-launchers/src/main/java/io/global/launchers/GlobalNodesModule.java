@@ -57,6 +57,7 @@ import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
 
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -180,8 +181,8 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	CommitStorage commitStorage(Eventloop eventloop, Config config) {
-		return CommitStorageRocksDb.create(eventloop, config.get("ot.storage"));
+	CommitStorage commitStorage(Eventloop eventloop, Config config, Executor executor) {
+		return CommitStorageRocksDb.create(executor, eventloop, config.get("ot.storage"));
 	}
 
 	@Provides

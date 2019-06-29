@@ -29,7 +29,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.file.AsyncFileService;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.time.CurrentTimeProvider;
@@ -135,8 +134,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private final Path storage;
 	private final Executor executor;
 
-	private AsyncFileService fileService = AsyncFileService.DEFAULT_FILE_SERVICE;
-
 	private MemSize readerBufferSize = MemSize.kilobytes(256);
 	private boolean lazyOverrides = true;
 	@Nullable
@@ -168,7 +165,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		this.executor = executor;
 		this.storage = storage;
 
-
 		now = eventloop;
 	}
 
@@ -182,11 +178,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	public LocalFsClient withLazyOverrides(boolean lazyOverrides) {
 		this.lazyOverrides = lazyOverrides;
-		return this;
-	}
-
-	public LocalFsClient withAsyncFileService(AsyncFileService fileService) {
-		this.fileService = fileService;
 		return this;
 	}
 
@@ -224,8 +215,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		long skip = lazyOverrides ? size - offset : 0;
 
 		FileChannel channel = FileChannel.open(path, set(CREATE, WRITE));
-		return Promise.of(ChannelFileWriter.create(channel)
-				.withAsyncFileService(fileService)
+		return Promise.of(ChannelFileWriter.create(executor, channel)
 				.withOffset(offset + skip)
 				.transformWith(ChannelByteRanger.drop(skip)));
 	}
@@ -287,7 +277,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return info;
 				})
-				.then(info -> ChannelFileReader.readFile(info.getFilePath()))
+				.then(info -> ChannelFileReader.readFile(executor, info.getFilePath()))
 				.map(consumer -> consumer
 						.withBufferSize(readerBufferSize)
 						.withOffset(offset)

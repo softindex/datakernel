@@ -12,6 +12,9 @@ import io.datakernel.util.MemSize;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.Executors;
+
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 /**
  * This example demonstrates uploading file to server using RemoteFS
@@ -54,7 +57,7 @@ public final class FileUploadExample extends Launcher {
 	protected void run() throws Exception {
 		eventloop.post(() -> {
 			// consumer result here is a marker of it being successfully uploaded
-			ChannelFileReader.readFile(clientFile)
+			ChannelFileReader.open(newSingleThreadExecutor(), clientFile)
 					.then(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)).streamTo(client.upload(FILE_NAME)))
 					.whenComplete(($, e) -> {
 						if (e != null) logger.error("Upload failed", e);

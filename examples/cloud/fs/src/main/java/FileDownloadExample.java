@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.Executor;
+
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 /**
  * This example demonstrates downloading file from RemoteFS server.
@@ -41,6 +44,14 @@ public final class FileDownloadExample extends Launcher {
 	@Inject
 	private Eventloop eventloop;
 
+	@Inject
+	private Executor executor;
+
+	@Provides
+	Executor executor() {
+		return newCachedThreadPool();
+	}
+
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
@@ -61,7 +72,7 @@ public final class FileDownloadExample extends Launcher {
 		eventloop.post(() -> {
 			// producer result here means that file was successfully downloaded from server
 			ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
-					.streamTo(ChannelFileWriter.create(CLIENT_STORAGE.resolve(DOWNLOADED_FILE)))
+					.streamTo(ChannelFileWriter.create(executor, CLIENT_STORAGE.resolve(DOWNLOADED_FILE)))
 					.whenComplete(($, e) -> {
 						if (e != null) logger.error("Download is failed", e);
 						shutdown();

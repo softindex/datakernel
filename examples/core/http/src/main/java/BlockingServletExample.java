@@ -6,15 +6,24 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
+import java.util.concurrent.Executor;
+
+import static java.util.concurrent.Executors.newCachedThreadPool;
+
 public final class BlockingServletExample extends HttpServerLauncher {
+	@Provides
+	Executor executor() {
+		return newCachedThreadPool();
+	}
+
 	//[START EXAMPLE]
 	@Provides
-	AsyncServlet servlet() {
+	AsyncServlet servlet(Executor executor) {
 		return RoutingServlet.create()
 				.with("/", request -> Promise.of(
 						HttpResponse.ok200()
 								.withHtml("<a href='hardWork'>Do hard work</a>")))
-				.with("/hardWork", AsyncServlet.ofBlocking(request -> {
+				.with("/hardWork", AsyncServlet.ofBlocking(executor, request -> {
 					Thread.sleep(2000); //Hard work
 					return HttpResponse.ok200()
 							.withHtml("Hard work is done");

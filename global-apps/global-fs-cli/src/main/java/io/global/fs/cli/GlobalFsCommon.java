@@ -31,9 +31,9 @@ import picocli.CommandLine.Parameters;
 
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 @Command
 public final class GlobalFsCommon {
@@ -51,7 +51,7 @@ public final class GlobalFsCommon {
 	private boolean helpRequested;
 
 	public Tuple3<ExecutorService, Eventloop, FsClient> init(CheckpointPosStrategy checkpointPosStrategy) {
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		ExecutorService executor = newSingleThreadExecutor();
 		Eventloop eventloop = Eventloop.create()
 				.withCurrentThread()
 				.withFatalErrorHandler(rethrowOnAnyError());

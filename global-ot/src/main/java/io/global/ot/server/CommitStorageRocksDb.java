@@ -57,7 +57,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 
 	private TransactionDB db;
 
-	@Nullable
+	@NotNull
 	private Executor executor;
 
 	// columns
@@ -69,8 +69,9 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	private Column<Tuple2<CommitId, CommitId>, Byte> parentToChildren;
 	private Column<CommitId, Byte> pendingCommits;
 
-	private CommitStorageRocksDb(Eventloop eventloop, String storagePath, DBOptions dbOptions, TransactionDBOptions transactionDBOptions,
+	private CommitStorageRocksDb(Executor executor, Eventloop eventloop, String storagePath, DBOptions dbOptions, TransactionDBOptions transactionDBOptions,
 								 ColumnFamilyOptions columnFamilyOptions, WriteOptions writeOptions, FlushOptions flushOptions) {
+		this.executor = executor;
 		this.eventloop = eventloop;
 		this.dbOptions = dbOptions;
 		this.transactionDBOptions = transactionDBOptions;
@@ -80,22 +81,17 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 		this.storagePath = storagePath;
 	}
 
-	public static CommitStorageRocksDb create(Eventloop eventloop, String storagePath, DBOptions dbOptions,
+	public static CommitStorageRocksDb create(Executor executor, Eventloop eventloop, String storagePath, DBOptions dbOptions,
 											  TransactionDBOptions transactionDBOptions, ColumnFamilyOptions columnFamilyOptions, WriteOptions writeOptions,
 											  FlushOptions flushOptions) {
-		return new CommitStorageRocksDb(eventloop, storagePath, dbOptions, transactionDBOptions, columnFamilyOptions, writeOptions, flushOptions);
+		return new CommitStorageRocksDb(executor, eventloop, storagePath, dbOptions, transactionDBOptions, columnFamilyOptions, writeOptions, flushOptions);
 	}
 
-	public static CommitStorageRocksDb create(Eventloop eventloop, String storagePath) {
+	public static CommitStorageRocksDb create(Executor executor, Eventloop eventloop, String storagePath) {
 		DBOptions dbOptions = new DBOptions().setCreateIfMissing(true).setCreateMissingColumnFamilies(true);
 		TransactionDBOptions transactionDBOptions = new TransactionDBOptions();
-		return new CommitStorageRocksDb(eventloop, storagePath, dbOptions, transactionDBOptions,
+		return new CommitStorageRocksDb(executor, eventloop, storagePath, dbOptions, transactionDBOptions,
 				new ColumnFamilyOptions(), new WriteOptions(), new FlushOptions());
-	}
-
-	public CommitStorageRocksDb withExecutor(Executor executor) {
-		this.executor = executor;
-		return this;
 	}
 
 	@NotNull

@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -44,12 +43,7 @@ public interface AsyncServlet {
 	}
 
 	@NotNull
-	static AsyncServlet ofBlocking(@NotNull BlockingServlet blockingServlet) {
-		return ofBlocking(null, blockingServlet);
-	}
-
-	@NotNull
-	static AsyncServlet ofBlocking(@Nullable Executor executor, @NotNull BlockingServlet blockingServlet) {
+	static AsyncServlet ofBlocking(@NotNull Executor executor, @NotNull BlockingServlet blockingServlet) {
 		return request -> request.loadBody()
 				.then($ -> Promise.ofBlockingCallable(executor,
 						() -> blockingServlet.serve(request)));

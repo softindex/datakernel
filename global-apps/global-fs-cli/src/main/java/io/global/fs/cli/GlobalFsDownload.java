@@ -22,7 +22,6 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.file.AsyncFileService;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Tuple3;
 import io.global.fs.api.CheckpointPosStrategy;
@@ -36,6 +35,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.util.CollectionUtils.set;
@@ -46,7 +46,7 @@ import static java.nio.file.StandardOpenOption.*;
 @Command(name = "download", description = "Download file from Global-FS")
 public final class GlobalFsDownload implements Callable<Void> {
 	private static final Set<OpenOption> OPEN_OPTIONS = set(WRITE, CREATE, TRUNCATE_EXISTING);
-	private final AsyncFileService fileService = AsyncFileService.DEFAULT_FILE_SERVICE;
+	private final Executor executor;
 	@Mixin
 	private GlobalFsCommon common;
 
@@ -62,6 +62,10 @@ public final class GlobalFsDownload implements Callable<Void> {
 	@Option(names = {"-o", "--output-file"}, paramLabel = "<output file>", description = "Where to put and how to name the file when downloading. Allows '-' for STDOUT")
 	private String localFile;
 
+	public GlobalFsDownload(Executor executor) {
+		this.executor = executor;
+	}
+
 	@Override
 	public Void call() {
 		Tuple3<ExecutorService, Eventloop, FsClient> tuple = common.init(CheckpointPosStrategy.of(8096)); // cps in not used for list
@@ -73,20 +77,20 @@ public final class GlobalFsDownload implements Callable<Void> {
 		Promise<ChannelConsumer<ByteBuf>> writer;
 		if (localFile == null) {
 			info("Downloading " + file + " ...");
-			writer = Promise.ofBlockingCallable(() -> {
+			writer = Promise.ofBlockingCallable(this.executor, () -> {
 				FileChannel fileChannel = FileChannel.open(Paths.get(localFile), OPEN_OPTIONS);
-				return ChannelFileWriter.create(fileChannel);
+				return ChannelFileWriter.create(this.executor, fileChannel);
 			});
 		} else if (localFile.equals("-")) {
 			info("Downloading " + file + " to standard output ...");
 			writer = Promise.of(ChannelConsumer.of(buffer ->
-					Promise.ofBlockingRunnable(executor, () ->
+					Promise.ofBlockingRunnable(this.executor, () ->
 							System.out.write(buffer.array(), buffer.head(), buffer.readRemaining()))));
 		} else {
 			info("Downloading " + file + " as " + localFile + " ...");
-			writer = Promise.ofBlockingCallable(() -> {
+			writer = Promise.ofBlockingCallable(this.executor, () -> {
 				FileChannel fileChannel = FileChannel.open(Paths.get(localFile), OPEN_OPTIONS);
-				return ChannelFileWriter.create(fileChannel);
+				return ChannelFileWriter.create(this.executor, fileChannel);
 			});
 		}
 

@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
@@ -53,8 +54,8 @@ public final class StaticServlet implements AsyncServlet {
 		return new StaticServlet(resourceLoader);
 	}
 
-	public static StaticServlet create(Path path) {
-		return new StaticServlet(StaticLoader.ofPath(path));
+	public static StaticServlet create(Executor executor, Path path) {
+		return new StaticServlet(StaticLoader.ofPath(executor, path));
 	}
 
 	public StaticServlet withContentType(ContentType contentType) {

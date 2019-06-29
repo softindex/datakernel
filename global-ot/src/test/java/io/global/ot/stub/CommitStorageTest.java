@@ -31,6 +31,7 @@ import static io.global.ot.util.TestUtils.getCommitId;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptyMap;
 import static java.util.Comparator.naturalOrder;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -61,6 +62,7 @@ public class CommitStorageTest {
 				},
 				new Object[]{(Function<Path, CommitStorage>) path -> {
 					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
+							newCachedThreadPool(),
 							getCurrentEventloop(),
 							path.resolve("rocksDb").toString());
 					await(rocksDb.start());

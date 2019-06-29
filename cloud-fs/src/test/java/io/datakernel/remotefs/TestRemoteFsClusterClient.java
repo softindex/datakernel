@@ -45,6 +45,7 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -131,7 +132,7 @@ public final class TestRemoteFsClusterClient {
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
 		await(ChannelSupplier.ofPromise(client.download(file, 0))
-				.streamTo(ChannelFileWriter.create(clientStorage.resolve(file)))
+				.streamTo(ChannelFileWriter.create(newCachedThreadPool(), clientStorage.resolve(file)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
 
 		assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content);

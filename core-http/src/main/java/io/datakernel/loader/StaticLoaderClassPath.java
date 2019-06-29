@@ -3,7 +3,6 @@ package io.datakernel.loader;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,22 +20,22 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 class StaticLoaderClassPath implements StaticLoader {
 	private static final String ROOT = "/";
 	private static final int ROOT_OFFSET = 1;
-	@Nullable
+	@NotNull
 	private final Executor executor;
 	private final ClassLoader classLoader;
 	private final String root;
 
-	private StaticLoaderClassPath(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
+	private StaticLoaderClassPath(@NotNull Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
 		this.root = root;
 		this.executor = executor;
 		this.classLoader = classLoader;
 	}
 
-	public static StaticLoaderClassPath create(String root) {
-		return create(null, getSystemClassLoader(), root);
+	public static StaticLoaderClassPath create(@NotNull Executor executor, String root) {
+		return create(executor, getSystemClassLoader(), root);
 	}
 
-	public static StaticLoaderClassPath create(@Nullable Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
+	public static StaticLoaderClassPath create(@NotNull Executor executor, @NotNull ClassLoader classLoader, @NotNull String root) {
 		if (root.startsWith(ROOT)) {
 			root = root.substring(ROOT_OFFSET);
 		}

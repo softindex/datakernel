@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.file.AsyncFileService;
+import io.datakernel.file.AsyncFileServices;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.*;
@@ -41,7 +43,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 
 	public static final Set<OpenOption> CREATE_OPTIONS = set(WRITE, CREATE_NEW, APPEND);
 
-	private AsyncFileService fileService = AsyncFileService.DEFAULT_FILE_SERVICE;
+	private final AsyncFileService fileService;
 	private final FileChannel channel;
 
 	private boolean forceOnClose = false;
@@ -52,26 +54,22 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	private long position = 0;
 
 	// region creators
-	private ChannelFileWriter(FileChannel channel) {
+	private ChannelFileWriter(Executor executor, FileChannel channel) {
+		fileService = AsyncFileServices.getDefaultInstance(executor);
 		this.channel = channel;
 	}
 
-	public static ChannelFileWriter create(FileChannel channel) {
-		return new ChannelFileWriter(channel);
+	public static ChannelFileWriter create(Executor executor, FileChannel channel) {
+		return new ChannelFileWriter(executor, channel);
 	}
 
-	public static Promise<ChannelFileWriter> create(Path path) {
+	public static Promise<ChannelFileWriter> create(Executor executor, Path path) {
 		try {
 			FileChannel channel = FileChannel.open(path, CREATE_OPTIONS);
-			return Promise.of(create(channel));
+			return Promise.of(create(executor, channel));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
-	}
-
-	public ChannelFileWriter withAsyncFileService(AsyncFileService fileService) {
-		this.fileService = fileService;
-		return this;
 	}
 
 	public ChannelFileWriter withForceOnClose(boolean forceMetadata) {

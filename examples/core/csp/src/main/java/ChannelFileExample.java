@@ -38,7 +38,7 @@ public final class ChannelFileExample {
 			return ChannelSupplier.of(
 					ByteBufStrings.wrapAscii("Hello, this is example file\n"),
 					ByteBufStrings.wrapAscii("This is the second line of file"))
-					.streamTo(ChannelFileWriter.create(FileChannel.open(PATH, StandardOpenOption.WRITE)));
+					.streamTo(ChannelFileWriter.create(executorService, FileChannel.open(PATH, StandardOpenOption.WRITE)));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -46,7 +46,7 @@ public final class ChannelFileExample {
 
 	@NotNull
 	private static Promise<Void> readFile() {
-		return ChannelSupplier.ofPromise(ChannelFileReader.readFile(PATH))
+		return ChannelSupplier.ofPromise(ChannelFileReader.readFile(executorService, PATH))
 				.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
 
 	}

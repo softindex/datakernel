@@ -24,14 +24,14 @@ import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.di.annotation.Optional;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -47,8 +47,8 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 	}
 
 	@Provides
-	StaticLoader loader(ExecutorService executor) {
-		return StaticLoader.ofClassPath("/");
+	StaticLoader loader(Executor executor) {
+		return StaticLoader.ofClassPath(executor, "/");
 	}
 
 	@Provides
