@@ -44,7 +44,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
@@ -211,10 +210,10 @@ public final class FsIntegrationTest {
 
 		List<Promise<Void>> tasks = new ArrayList<>();
 
-		ExecutorService executorService = newCachedThreadPool();
+		Executor executor = newCachedThreadPool();
 		for (int i = 0; i < 10; i++) {
 			tasks.add(ChannelSupplier.ofPromise(client.download(file))
-					.streamTo(ChannelFileWriter.create(executorService, storage.resolve("file" + i))));
+					.streamTo(ChannelFileWriter.open(executor, storage.resolve("file" + i))));
 		}
 
 		await(Promises.all(tasks)

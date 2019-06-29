@@ -20,16 +20,14 @@ public final class AsyncAwait {
 	@NotNull
 	private static <R> Promise<R> asyncImpl(@NotNull Executor executor, @NotNull Callable<R> callable) {
 		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
-		return Promise.ofBlockingCallable(
-				executor,
-				() -> {
-					EVENTLOOP.set(currentEventloop);
-					try {
-						return callable.call();
-					} finally {
-						EVENTLOOP.set(null);
-					}
-				});
+		return Promise.ofBlockingCallable(executor, () -> {
+			EVENTLOOP.set(currentEventloop);
+			try {
+				return callable.call();
+			} finally {
+				EVENTLOOP.set(null);
+			}
+		});
 	}
 
 	@NotNull
@@ -113,7 +111,7 @@ public final class AsyncAwait {
 
 	@NotNull
 	public static <R, T1, T2, T3, T4, T5, T6> Promise<R> async(@NotNull Executor executor, @NotNull BlockingMethod6<T1, T2, T3, T4, T5, T6> fn,
-															   T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) {
+			T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) {
 		return asyncImpl(
 				executor,
 				() -> {
@@ -154,7 +152,7 @@ public final class AsyncAwait {
 
 	@NotNull
 	public static <R, T1, T2, T3, T4, T5, T6> Promise<R> async(@NotNull Executor executor, @NotNull BlockingFunction6<T1, T2, T3, T4, T5, T6, R> fn,
-															   T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) {
+			T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) {
 		return asyncImpl(executor, () -> fn.call(arg1, arg2, arg3, arg4, arg5, arg6));
 	}
 
@@ -190,7 +188,7 @@ public final class AsyncAwait {
 
 	@NotNull
 	public static <R, T1, T2, T3, T4, T5, T6> R await(@NotNull AsyncFunction6<T1, T2, T3, T4, T5, T6, R> fn,
-													  T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) throws Exception {
+			T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) throws Exception {
 		return awaitImpl(() -> fn.call(arg1, arg2, arg3, arg4, arg5, arg6));
 	}
 

@@ -19,7 +19,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigConverters.ofString;
 import static io.datakernel.di.module.Modules.combine;
-import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class WebappLauncher extends Launcher {
 	private static final int DEFAULT_PORT = 8080;
@@ -45,17 +45,17 @@ public class WebappLauncher extends Launcher {
 
 	@Provides
 	Executor executor() {
-		return newCachedThreadPool();
+		return newSingleThreadExecutor();
 	}
 
 	@Provides
-	StaticLoader staticLoader(Config config, Executor executor) {
+	StaticLoader staticLoader(Executor executor, Config config) {
 		return StaticLoader.ofClassPath(executor, config.get(ofString(), "resources", DEFAULT_PATH_TO_RESOURCES));
 	}
 
 	@Provides
-	AsyncServlet servlet(StaticLoader resourceLoader, Gson gson, PersonGridModel model, Config config) {
-		StaticServlet staticServlet = StaticServlet.create(resourceLoader)
+	AsyncServlet servlet(StaticLoader staticLoader, Gson gson, PersonGridModel model, Config config) {
+		StaticServlet staticServlet = StaticServlet.create(staticLoader)
 				.withIndexHtml();
 		AsyncServlet usersApiServlet = UiKernelServlets.apiServlet(model, gson);
 

@@ -35,7 +35,8 @@ import java.nio.file.Path;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.loader.StaticLoader.*;
+import static io.datakernel.loader.StaticLoader.ofClassPath;
+import static io.datakernel.loader.StaticLoader.ofPath;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;
@@ -80,24 +81,6 @@ public final class StaticServletsTest {
 	public void testFileNotFoundPathLoader() {
 		StaticServlet staticServlet = StaticServlet.create(ofPath(newCachedThreadPool(), resourcesPath));
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
-
-		assertEquals(404, e.getCode());
-	}
-
-	@Test
-	public void testFileLoader() {
-		StaticServlet staticServlet = StaticServlet.create(ofFile(newCachedThreadPool(), resourcesFile));
-		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
-		await(response.loadBody());
-		ByteBuf body = response.getBody();
-
-		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
-	}
-
-	@Test
-	public void testFileNotFoundCachedFileLoader() {
-		StaticServlet staticServlet = StaticServlet.create(ofFile(newCachedThreadPool(), resourcesFile));
-		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
 
 		assertEquals(404, e.getCode());
 	}

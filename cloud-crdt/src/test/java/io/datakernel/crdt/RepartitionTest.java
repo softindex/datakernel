@@ -20,6 +20,7 @@ import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.util.ref.RefInt;
 import org.junit.ClassRule;
@@ -35,6 +36,9 @@ public final class RepartitionTest {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() {

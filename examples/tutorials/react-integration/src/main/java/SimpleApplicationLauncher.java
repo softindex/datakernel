@@ -3,13 +3,20 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
-import static io.datakernel.loader.StaticLoader.ofClassPath;
+import java.util.concurrent.Executor;
+
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 //[START EXAMPLE]
 public final class SimpleApplicationLauncher extends HttpServerLauncher {
 	@Provides
+	Executor executor() {
+		return newSingleThreadExecutor();
+	}
+
+	@Provides
 	AsyncServlet servlet() {
-		return StaticServlet.create(ofClassPath("build"))
+		return StaticServlet.ofClassPath(executor(), "build")
 				.withIndexHtml();
 	}
 

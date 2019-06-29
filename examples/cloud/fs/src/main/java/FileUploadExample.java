@@ -12,7 +12,7 @@ import io.datakernel.util.MemSize;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
@@ -55,16 +55,14 @@ public final class FileUploadExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		eventloop.post(() -> {
-			// consumer result here is a marker of it being successfully uploaded
-			ChannelFileReader.open(newSingleThreadExecutor(), clientFile)
-					.then(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)).streamTo(client.upload(FILE_NAME)))
-					.whenComplete(($, e) -> {
-						if (e != null) logger.error("Upload failed", e);
-						shutdown();
-					});
-		});
-		awaitShutdown();
+		CompletableFuture<Void> future = eventloop.submit(() ->
+				// consumer result here is a marker of it being successfully uploaded
+				ChannelFileReader.open(newSingleThreadExecutor(), clientFile)
+						.map(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)))
+						.then(cfr -> cfr.streamTo(client.upload(FILE_NAME)))
+						.toCompletableFuture()
+		);
+		future.get();
 	}
 
 	public static void main(String[] args) throws Exception {

@@ -25,8 +25,8 @@ import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.di.module.Module;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
@@ -47,7 +47,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
@@ -103,7 +103,7 @@ public final class CrdtClusterTest {
 				}
 
 				@Provides
-				ExecutorService executor(Config config) {
+				Executor executor(Config config) {
 					return config.get(ofExecutor(), "crdt.local.executor");
 				}
 

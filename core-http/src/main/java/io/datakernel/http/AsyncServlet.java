@@ -17,11 +17,13 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -47,5 +49,13 @@ public interface AsyncServlet {
 		return request -> request.loadBody()
 				.then($ -> Promise.ofBlockingCallable(executor,
 						() -> blockingServlet.serve(request)));
+	}
+
+	Promise<HttpResponse> NEXT = Promise.of(null);
+
+	static AsyncServlet firstSuccessful(AsyncServlet... servlets) {
+		return httpRequest -> Promises.first(
+				(httpResponse, e) -> e == null && httpResponse != null,
+				Stream.of(servlets).map(servlet -> () -> servlet.serve(httpRequest)));
 	}
 }

@@ -355,11 +355,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		long timeAfterSelectorSelect;
 		long timeAfterBusinessLogic = 0;
-		while (true) {
-			if (!isAlive()) {
-				logger.info("{} is complete, exiting...", this);
-				break;
-			}
+		while (isAlive()) {
 			try {
 				long selectTimeout = getSelectTimeout();
 				if (inspector != null) inspector.onUpdateSelectorSelectTimeout(selectTimeout);

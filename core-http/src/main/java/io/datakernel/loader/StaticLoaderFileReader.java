@@ -10,12 +10,12 @@ import java.nio.file.Path;
 import java.util.concurrent.Executor;
 
 class StaticLoaderFileReader implements StaticLoader {
-	private final Path root;
 	private final Executor executor;
+	private final Path root;
 
-	public StaticLoaderFileReader(Executor executor, Path root) {
-		this.root = root;
+	private StaticLoaderFileReader(Executor executor, Path root) {
 		this.executor = executor;
+		this.root = root;
 	}
 
 	public static StaticLoader create(Executor executor, Path dir) {
@@ -30,8 +30,7 @@ class StaticLoaderFileReader implements StaticLoader {
 			return Promise.ofException(NOT_FOUND_EXCEPTION);
 		}
 
-		return Promise.ofBlockingCallable(
-				executor,
+		return Promise.ofBlockingCallable(executor,
 				() -> {
 					if (Files.isRegularFile(file)) {
 						return null;
@@ -42,7 +41,7 @@ class StaticLoaderFileReader implements StaticLoader {
 						throw NOT_FOUND_EXCEPTION;
 					}
 				})
-				.then($ -> ChannelFileReader.readFile(executor, file))
+				.then($ -> ChannelFileReader.open(executor, file))
 				.then(cfr -> cfr.toCollector(ByteBufQueue.collector()));
 	}
 }

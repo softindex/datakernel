@@ -1,5 +1,3 @@
-package decoder;
-
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
 import io.datakernel.async.Promise;
@@ -16,11 +14,86 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.writer.ByteBufWriter;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.parser.HttpParamParsers.ofPost;
 import static io.datakernel.util.CollectionUtils.map;
+
+class Address {
+	private final String title;
+
+	public Address(String title) {
+		this.title = title;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	@Override
+	public String toString() {
+		return "Address{title='" + title + '\'' + '}';
+	}
+}
+
+class Contact {
+	private final String name;
+	private final Integer age;
+	private final Address address;
+
+	public Contact(String name, Integer age, Address address) {
+		this.name = name;
+		this.age = age;
+		this.address = address;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public int getAge() {
+		return age;
+	}
+
+	public Address getAddress() {
+		return address;
+	}
+
+	@Override
+	public String toString() {
+		return "Contact{name='" + name + '\'' + ", age=" + age + ", address=" + address + '}';
+	}
+}
+
+interface ContactDAO {
+	List<Contact> list();
+
+	Contact get(int id);
+
+	void add(Contact user);
+}
+
+class ContactDAOImpl implements ContactDAO {
+	private List<Contact> userList = new ArrayList<>();
+
+	@Override
+	public List<Contact> list() {
+		return userList;
+	}
+
+	@Override
+	public Contact get(int id) {
+		return userList.get(id);
+	}
+
+	@Override
+	public void add(Contact user) {
+		userList.add(user);
+	}
+}
 
 public final class HttpParamParserExample extends HttpServerLauncher {
 	private final static String SEPARATOR = "-";
@@ -52,14 +125,14 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 		Mustache contactListView = new DefaultMustacheFactory().compile("static/decoder/contactList.html");
 		return RoutingServlet.create()
 				.with("/", request -> Promise.of(HttpResponse.ok200()
-						.withBody(applyTemplate(contactListView, map("contacts", contactDAO.getAll())))))
+						.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
 				.with(POST, "/add", AsyncServletDecorator.loadBody()
 						.serve(request -> {
 							Either<Contact, HttpParamParseErrorsTree> decodedUser = contactDecoder.parse(request);
 							if (decodedUser.isLeft()) {
 								contactDAO.add(decodedUser.getLeft());
 							}
-							Map<String, Object> scopes = map("contacts", contactDAO.getAll());
+							Map<String, Object> scopes = map("contacts", contactDAO.list());
 							if (decodedUser.isRight()) {
 								scopes.put("errors", decodedUser.getRight().toMap(SEPARATOR));
 							}

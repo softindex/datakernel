@@ -136,7 +136,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>decoder.HttpParamParserExample</mainClass>
+              <mainClass>HttpParamParserExample</mainClass>
             </configuration>
           </execution>
         </executions>

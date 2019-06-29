@@ -20,7 +20,6 @@ import io.datakernel.exception.ParseException;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
@@ -235,10 +234,6 @@ public class Utils {
 
 	public static byte[] loadResource(Path path) throws IOException {
 		return loadResource(path.toString());
-	}
-
-	public static byte[] loadResource(File file) throws IOException {
-		return loadResource(file.getPath());
 	}
 
 	public static byte[] loadResource(String name) throws IOException {

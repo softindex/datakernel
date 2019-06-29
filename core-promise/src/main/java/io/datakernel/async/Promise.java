@@ -267,11 +267,6 @@ public interface Promise<T> {
 		return promise;
 	}
 
-	@NotNull
-	static Promise<Void> ofBlockingRunnable(@NotNull Runnable runnable) {
-		return ofBlockingRunnable(null, runnable);
-	}
-
 	/**
 	 * Same as {@link #ofBlockingCallable(Executor, Callable)}, but without a result
 	 * (returned {@code Promise} is only a marker of completion).

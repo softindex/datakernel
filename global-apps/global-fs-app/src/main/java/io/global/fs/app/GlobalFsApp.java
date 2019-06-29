@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
@@ -61,7 +61,7 @@ public final class GlobalFsApp extends Launcher {
 	AsyncHttpServer server;
 
 	@Provides
-	ExecutorService executor(Config config) {
+	Executor executor(Config config) {
 		return getExecutor(config);
 	}
 
@@ -73,8 +73,8 @@ public final class GlobalFsApp extends Launcher {
 	}
 
 	@Provides
-	StaticLoader staticLoader(Config config) {
-		return StaticLoader.ofClassPath(config.get("app.http.staticPath"));
+	StaticLoader staticLoader(Executor executor, Config config) {
+		return StaticLoader.ofClassPath(executor, config.get("app.http.staticPath"));
 	}
 
 	@Provides

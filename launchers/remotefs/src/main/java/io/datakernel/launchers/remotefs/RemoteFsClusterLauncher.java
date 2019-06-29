@@ -33,7 +33,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
@@ -97,13 +97,13 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	}
 
 	@Provides
-	RemoteFsServer remoteFsServer(Config config, Eventloop eventloop, ExecutorService executor) {
+	RemoteFsServer remoteFsServer(Config config, Eventloop eventloop, Executor executor) {
 		return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.path"))
 				.initialize(ofRemoteFsServer(config.getChild("remotefs.server")));
 	}
 
 	@Provides
-	public ExecutorService executor() {
+	public Executor executor() {
 		return newSingleThreadExecutor();
 	}
 

@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
@@ -41,6 +42,7 @@ public final class StaticServlet implements AsyncServlet {
 	private final StaticLoader resourceLoader;
 	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
 	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
+	private Supplier<HttpResponse> responseSupplier = HttpResponse::ok200;
 	private Set<String> indexResources = new LinkedHashSet<>();
 
 	@Nullable
@@ -54,7 +56,15 @@ public final class StaticServlet implements AsyncServlet {
 		return new StaticServlet(resourceLoader);
 	}
 
-	public static StaticServlet create(Executor executor, Path path) {
+	public static StaticServlet create(StaticLoader resourceLoader, String page) {
+		return create(resourceLoader).withMappingTo(page);
+	}
+
+	public static StaticServlet ofClassPath(Executor executor, String path) {
+		return new StaticServlet(StaticLoader.ofClassPath(executor, path));
+	}
+
+	public static StaticServlet ofPath(Executor executor, Path path) {
 		return new StaticServlet(StaticLoader.ofPath(executor, path));
 	}
 
@@ -94,6 +104,11 @@ public final class StaticServlet implements AsyncServlet {
 		return this;
 	}
 
+	public StaticServlet withResponse(Supplier<HttpResponse> responseSupplier) {
+		this.responseSupplier = responseSupplier;
+		return this;
+	}
+
 	public static ContentType getContentType(String path) {
 		int pos = path.lastIndexOf(".");
 		if (pos == -1) {
@@ -118,7 +133,7 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	private HttpResponse createHttpResponse(ByteBuf buf, ContentType contentType) {
-		return HttpResponse.ofCode(200)
+		return responseSupplier.get()
 				.withBody(buf)
 				.withHeader(CONTENT_TYPE, ofContentType(contentType));
 	}

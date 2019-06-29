@@ -17,7 +17,6 @@
 package io.datakernel.remotefs.stress;
 
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.csp.process.ChannelSerializer;
@@ -77,10 +76,9 @@ class StressClient {
 
 				Path file = clientStorage.resolve(fileName);
 
-				ChannelFileReader.readFile(executor, file)
-						.then(cfr -> cfr
-								.withBufferSize(MemSize.kilobytes(16))
-								.streamTo(ChannelConsumer.ofPromise(client.upload(fileName))))
+				ChannelFileReader.open(executor, file)
+						.map(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)))
+						.then(cfr -> cfr.streamTo(client.upload(fileName)))
 						.whenComplete(($, e) -> {
 							if (e == null) {
 								logger.info("Uploaded: " + fileName);
@@ -103,7 +101,7 @@ class StressClient {
 			if (fileName == null) return;
 
 			client.download(fileName, 0)
-					.then(supplier -> supplier.streamTo(ChannelFileWriter.create(executor, downloads.resolve(fileName))))
+					.then(supplier -> supplier.streamTo(ChannelFileWriter.open(executor, downloads.resolve(fileName))))
 					.whenComplete((supplier, e) -> {
 						if (e == null) {
 							logger.info("Downloaded: " + fileName);

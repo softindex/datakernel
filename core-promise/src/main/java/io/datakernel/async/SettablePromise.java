@@ -28,6 +28,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Represents a {@link Promise} which can be completed or completedExceptionally
@@ -279,7 +280,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
 		if (isComplete()) {
-			return Promise.of(result, exception).toCompletableFuture();
+			return isResult() ? completedFuture(result) : Promise.<T>ofException(exception).toCompletableFuture();
 		}
 		return super.toCompletableFuture();
 	}

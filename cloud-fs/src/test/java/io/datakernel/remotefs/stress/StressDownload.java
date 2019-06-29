@@ -63,7 +63,7 @@ public class StressDownload {
 			client.download(file, 0)
 					.whenComplete((supplier, e) -> {
 						if (e == null) {
-							supplier.streamTo(ChannelFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
+							supplier.streamTo(ChannelFileWriter.open(executor, CLIENT_STORAGE.resolve(file)));
 						} else {
 							failures.value++;
 						}

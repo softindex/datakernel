@@ -3,7 +3,6 @@ package io.datakernel.util;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -16,12 +15,6 @@ public class UtilsTest {
 	@BeforeClass
 	public static void init() throws IOException {
 		expected = Files.readAllBytes(Paths.get("src/test/resources/dir/testResource.txt"));
-	}
-
-	@Test
-	public void loadResourceFile() throws IOException {
-		byte[] actual = Utils.loadResource(new File("dir/testResource.txt"));
-		assertArrayEquals(expected, actual);
 	}
 
 	@Test

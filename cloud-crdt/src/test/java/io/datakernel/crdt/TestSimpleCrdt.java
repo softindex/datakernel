@@ -19,6 +19,7 @@ package io.datakernel.crdt;
 import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -41,6 +42,9 @@ public final class TestSimpleCrdt {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void setup() throws IOException {

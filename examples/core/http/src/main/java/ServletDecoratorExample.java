@@ -11,22 +11,20 @@ import java.util.concurrent.Executor;
 import static io.datakernel.http.AsyncServletDecorator.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.loader.StaticLoader.ofClassPath;
-import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class ServletDecoratorExample extends HttpServerLauncher {
-	//[START REGION_1]
-
 	@Provides
 	Executor executor() {
-		return newCachedThreadPool();
+		return newSingleThreadExecutor();
 	}
 
+	//[START REGION_1]
 	@Provides
 	AsyncServlet servlet(Executor executor) {
 		return loadBody().serve(
 				RoutingServlet.create()
-						.with(GET, "/", StaticServlet.create(ofClassPath(executor, "static/wrapper"))
+						.with(GET, "/", StaticServlet.ofClassPath(executor, "static/wrapper")
 								.withMappingTo("page.html"))
 						.with(POST, "/", request -> {
 							String text = request.getPostParameter("text");

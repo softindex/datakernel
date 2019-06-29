@@ -11,10 +11,15 @@ import java.util.List;
 import java.util.function.*;
 
 import static io.datakernel.csp.ChannelConsumers.recycling;
+import static io.datakernel.http.AsyncServlet.firstSuccessful;
 import static java.util.Arrays.asList;
 
 public interface AsyncServletDecorator {
 	@NotNull AsyncServlet serve(@NotNull AsyncServlet servlet);
+
+	default @NotNull AsyncServlet serveFirstSuccessful(@NotNull AsyncServlet... servlets) {
+		return serve(firstSuccessful(servlets));
+	}
 
 	static AsyncServletDecorator create() {
 		return servlet -> servlet;

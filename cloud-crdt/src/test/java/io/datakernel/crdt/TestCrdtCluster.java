@@ -23,6 +23,7 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinarySerializers;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -41,6 +42,9 @@ public final class TestCrdtCluster {
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testUpload() throws IOException {

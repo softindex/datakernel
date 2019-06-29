@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Represents a completed {@code Promise} with a result of unspecified type.
@@ -177,8 +178,6 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@NotNull
 	@Override
 	public final CompletableFuture<T> toCompletableFuture() {
-		CompletableFuture<T> future = new CompletableFuture<>();
-		future.complete(getResult());
-		return future;
+		return completedFuture(getResult());
 	}
 }

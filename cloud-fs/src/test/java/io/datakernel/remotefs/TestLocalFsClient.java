@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
@@ -45,7 +46,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.csp.file.ChannelFileReader.readFile;
 import static io.datakernel.remotefs.FsClient.FILE_EXISTS;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.set;
@@ -122,7 +122,7 @@ public final class TestLocalFsClient {
 		Path path = clientPath.resolve("c.txt");
 
 		await(client.upload("1/c.txt")
-				.then(consumer -> readFile(newCachedThreadPool(), path)
+				.then(consumer -> ChannelFileReader.open(newCachedThreadPool(), path)
 						.then(file -> file.withBufferSize(BUFFER_SIZE).streamTo(consumer))));
 
 		assertArrayEquals(Files.readAllBytes(path), Files.readAllBytes(storagePath.resolve("1/c.txt")));
@@ -249,7 +249,7 @@ public final class TestLocalFsClient {
 		Path outputFile = clientPath.resolve("d.txt");
 
 		ChannelSupplier<ByteBuf> supplier = await(client.download("2/b/d.txt"));
-		await(supplier.streamTo(ChannelFileWriter.create(newCachedThreadPool(), outputFile)));
+		await(supplier.streamTo(ChannelFileWriter.open(newCachedThreadPool(), outputFile)));
 
 		assertArrayEquals(Files.readAllBytes(storagePath.resolve("2/b/d.txt")), Files.readAllBytes(outputFile));
 	}

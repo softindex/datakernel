@@ -17,10 +17,9 @@ import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.loader.StaticLoader.ofClassPath;
 import static java.lang.Integer.parseInt;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 //[START EXAMPLE]
 public final class ApplicationLauncher extends HttpServerLauncher {
@@ -41,14 +40,14 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 
 	@Provides
 	Executor executor() {
-		return newCachedThreadPool();
+		return newSingleThreadExecutor();
 	}
 
 	@Provides
-	AsyncServlet servlet(RecordDAO recordDAO, Executor executor) {
+	AsyncServlet servlet(Executor executor, RecordDAO recordDAO) {
 		return RoutingServlet.create()
 				//[START REGION_2]
-				.with("/*", StaticServlet.create(ofClassPath(executor, "build/"))
+				.with("/*", StaticServlet.ofClassPath(executor, "build/")
 						.withIndexHtml())
 				//[END REGION_2]
 				.with(POST, "/add", loadBody()

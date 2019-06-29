@@ -277,7 +277,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 					return info;
 				})
-				.then(info -> ChannelFileReader.readFile(executor, info.getFilePath()))
+				.then(info -> ChannelFileReader.open(executor, info.getFilePath()))
 				.map(consumer -> consumer
 						.withBufferSize(readerBufferSize)
 						.withOffset(offset)

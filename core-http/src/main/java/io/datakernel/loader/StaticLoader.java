@@ -5,7 +5,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -65,10 +64,6 @@ public interface StaticLoader {
 
 	static StaticLoader ofPath(@NotNull Executor executor, Path dir) {
 		return StaticLoaderFileReader.create(executor, dir);
-	}
-
-	static StaticLoader ofFile(@NotNull Executor executor, File dir) {
-		return StaticLoaderFileReader.create(executor, dir.toPath());
 	}
 
 }

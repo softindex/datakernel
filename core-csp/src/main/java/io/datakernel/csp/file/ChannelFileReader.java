@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.exception.CloseException;
 import io.datakernel.file.AsyncFileService;
-import io.datakernel.file.AsyncFileServices;
+import io.datakernel.file.ExecutorAsyncFileService;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -32,13 +32,10 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.Set;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.file.StandardOpenOption.READ;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 
 /**
  * This supplier allows you to asynchronously read binary data from a file.
@@ -46,7 +43,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelFileReader.class);
 
-	public static final Set<OpenOption> READ_OPTIONS = set(READ);
+	public static final OpenOption[] DEFAULT_OPTIONS = new OpenOption[]{READ};
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
 
@@ -57,24 +54,44 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	private long position = 0;
 	private long limit = Long.MAX_VALUE;
 
-	private ChannelFileReader(Executor executor, FileChannel channel) {
+	private ChannelFileReader(AsyncFileService fileService, FileChannel channel) {
+		this.fileService = fileService;
 		this.channel = channel;
-		this.fileService = AsyncFileServices.getDefaultInstance(executor);
 	}
 
-	public static Promise<ChannelFileReader> readFile(Executor executor, Path path) {
-		return Promise.ofBlockingCallable(newCachedThreadPool(), () -> FileChannel.open(path, READ_OPTIONS))
-				.map(fileChannel ->  new ChannelFileReader(executor, fileChannel));
+	public static ChannelFileReader create(Executor executor, FileChannel channel) {
+		return create(new ExecutorAsyncFileService(executor), channel);
 	}
 
-	public static Promise<ChannelFileReader> readFile(Executor executor, FileChannel channel) {
-		return Promise.of(new ChannelFileReader(executor, channel));
+	public static ChannelFileReader create(AsyncFileService fileService, FileChannel channel) {
+		return new ChannelFileReader(fileService, channel);
+	}
+
+	public static Promise<ChannelFileReader> open(Executor executor, Path path) {
+		return Promise.ofBlockingCallable(executor, () -> openBlocking(executor, path, DEFAULT_OPTIONS));
+	}
+
+	public static Promise<ChannelFileReader> open(Executor executor, Path path, OpenOption... openOptions) {
+		return Promise.ofBlockingCallable(executor, () -> openBlocking(executor, path, openOptions));
+	}
+
+	public static ChannelFileReader openBlocking(Executor executor, Path path, OpenOption... openOptions) throws IOException {
+		FileChannel channel = FileChannel.open(path, openOptions);
+		return new ChannelFileReader(new ExecutorAsyncFileService(executor), channel);
+	}
+
+	public static ChannelFileReader openBlocking(Executor executor, Path path) throws IOException {
+		FileChannel channel = FileChannel.open(path, DEFAULT_OPTIONS);
+		return new ChannelFileReader(new ExecutorAsyncFileService(executor), channel);
 	}
 
 	public ChannelFileReader withBufferSize(MemSize bufferSize) {
-		checkArgument(bufferSize.toInt() > 0, "Buffer size cannot be less than or equal to zero");
+		return withBufferSize(bufferSize.toInt());
+	}
 
-		this.bufferSize = bufferSize.toInt();
+	public ChannelFileReader withBufferSize(int bufferSize) {
+		checkArgument(bufferSize > 0, "Buffer size cannot be less than or equal to zero");
+		this.bufferSize = bufferSize;
 		return this;
 	}
 
@@ -100,8 +117,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 			close();
 			return Promise.of(null);
 		}
-		int bufSize = (int) Math.min(bufferSize, limit);
-		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
+		ByteBuf buf = ByteBufPool.allocateExact((int) Math.min(bufferSize, limit));
 		return fileService.read(channel, position, buf.array(), buf.head(), buf.writeRemaining()) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
 				.thenEx((bytesRead, e) -> {
 					if (e != null) {

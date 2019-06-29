@@ -6,23 +6,24 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class ChannelFileExample {
-	private static final ExecutorService executorService = Executors.newCachedThreadPool();
+	private static final ExecutorService executor = newSingleThreadExecutor();
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 	private static final Path PATH;
+
 	static {
 		try {
 			PATH = Files.createTempFile("NewFile", ".txt");
@@ -34,45 +35,27 @@ public final class ChannelFileExample {
 	//[START REGION_1]
 	@NotNull
 	private static Promise<Void> writeToFile() {
-		try {
-			return ChannelSupplier.of(
-					ByteBufStrings.wrapAscii("Hello, this is example file\n"),
-					ByteBufStrings.wrapAscii("This is the second line of file"))
-					.streamTo(ChannelFileWriter.create(executorService, FileChannel.open(PATH, StandardOpenOption.WRITE)));
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return ChannelSupplier.of(
+				ByteBufStrings.wrapAscii("Hello, this is example file\n"),
+				ByteBufStrings.wrapAscii("This is the second line of file"))
+				.streamTo(ChannelFileWriter.open(executor, PATH, WRITE));
 	}
 
 	@NotNull
 	private static Promise<Void> readFile() {
-		return ChannelSupplier.ofPromise(ChannelFileReader.readFile(executorService, PATH))
-				.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
+		return ChannelFileReader.open(executor, PATH)
+				.map(cfr -> cfr.withBufferSize(MemSize.bytes(10)))
+				.then(cfr -> cfr.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8)))));
 
 	}
 	//[END REGION_1]
 
-	private static void cleanUp() {
-		try {
-			Files.delete(PATH);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			executorService.shutdown();
-		}
-	}
-
 	public static void main(String[] args) {
 		Promises.sequence(
 				ChannelFileExample::writeToFile,
-				ChannelFileExample::readFile)
-				.whenComplete(($, e) -> {
-					if (e != null) {
-						e.printStackTrace();
-					}
-					cleanUp();
-				});
+				ChannelFileExample::readFile);
 
 		eventloop.run();
+		executor.shutdown();
 	}
 }

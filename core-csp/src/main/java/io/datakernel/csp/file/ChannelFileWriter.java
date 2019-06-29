@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.file.AsyncFileService;
-import io.datakernel.file.AsyncFileServices;
+import io.datakernel.file.ExecutorAsyncFileService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,10 +29,8 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.Set;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -41,7 +39,7 @@ import static java.nio.file.StandardOpenOption.*;
 public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelFileWriter.class);
 
-	public static final Set<OpenOption> CREATE_OPTIONS = set(WRITE, CREATE_NEW, APPEND);
+	public static final OpenOption[] DEFAULT_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
 
 	private final AsyncFileService fileService;
 	private final FileChannel channel;
@@ -54,22 +52,36 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	private long position = 0;
 
 	// region creators
-	private ChannelFileWriter(Executor executor, FileChannel channel) {
-		fileService = AsyncFileServices.getDefaultInstance(executor);
+
+	public ChannelFileWriter(AsyncFileService fileService, FileChannel channel) {
+		this.fileService = fileService;
 		this.channel = channel;
 	}
 
 	public static ChannelFileWriter create(Executor executor, FileChannel channel) {
-		return new ChannelFileWriter(executor, channel);
+		return create(new ExecutorAsyncFileService(executor), channel);
 	}
 
-	public static Promise<ChannelFileWriter> create(Executor executor, Path path) {
-		try {
-			FileChannel channel = FileChannel.open(path, CREATE_OPTIONS);
-			return Promise.of(create(executor, channel));
-		} catch (IOException e) {
-			return Promise.ofException(e);
-		}
+	public static ChannelFileWriter create(ExecutorAsyncFileService asyncFileService, FileChannel channel) {
+		return new ChannelFileWriter(asyncFileService, channel);
+	}
+
+	public static Promise<ChannelFileWriter> open(Executor executor, Path path) {
+		return open(executor, path, DEFAULT_OPTIONS);
+	}
+
+	public static Promise<ChannelFileWriter> open(Executor executor, Path path, OpenOption... openOptions) {
+		return Promise.ofBlockingCallable(executor, () -> openBlocking(executor, path, openOptions));
+	}
+
+	public static ChannelFileWriter openBlocking(Executor executor, Path path) throws IOException {
+		FileChannel channel = FileChannel.open(path, DEFAULT_OPTIONS);
+		return create(executor, channel);
+	}
+
+	public static ChannelFileWriter openBlocking(Executor executor, Path path, OpenOption... openOptions) throws IOException {
+		FileChannel channel = FileChannel.open(path, openOptions);
+		return create(executor, channel);
 	}
 
 	public ChannelFileWriter withForceOnClose(boolean forceMetadata) {

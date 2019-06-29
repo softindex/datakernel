@@ -6,21 +6,22 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import java.util.concurrent.Executor;
 
-import static io.datakernel.loader.StaticLoader.ofClassPath;
-import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class StaticServletExample extends HttpServerLauncher {
-	//[START EXAMPLE]
 	@Provides
 	Executor executor() {
-		return newCachedThreadPool();
+		return newSingleThreadExecutor();
 	}
+
+	//[START EXAMPLE]
 	@Provides
 	AsyncServlet servlet(Executor executor) {
-		return StaticServlet.create(ofClassPath(executor, "static/site"))
+		return StaticServlet.ofClassPath(executor, "static/site")
 				.withIndexHtml();
 	}
 	//[END EXAMPLE]
+
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new StaticServletExample();
 		launcher.launch(args);

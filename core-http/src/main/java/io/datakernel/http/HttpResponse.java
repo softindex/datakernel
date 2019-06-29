@@ -103,6 +103,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		response.addHeader(WWW_AUTHENTICATE, challenge);
 		return response;
 	}
+
+	@NotNull
+	public static HttpResponse notFound404() {
+		return new HttpResponse(404);
+	}
 	// endregion
 
 	// region common builder methods

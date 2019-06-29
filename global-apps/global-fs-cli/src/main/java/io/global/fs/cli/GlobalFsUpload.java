@@ -79,7 +79,6 @@ public final class GlobalFsUpload implements Callable<Void> {
 		Eventloop eventloop = tuple.getValue2();
 		FsClient gateway = tuple.getValue3();
 
-
 		String name;
 		Promise<? extends ChannelSupplier<ByteBuf>> reader;
 
@@ -104,7 +103,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			info("Uploading data from standard input as " + name + " ...");
 		} else {
 			Path path = Paths.get(file);
-			reader = ChannelFileReader.readFile(this.executor, path);
+			reader = ChannelFileReader.open(this.executor, path);
 			if (remoteName == null) {
 				name = path.getFileName().toString();
 				info("Uploading " + name + " ...");
