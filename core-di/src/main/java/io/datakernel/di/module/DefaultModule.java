@@ -48,7 +48,7 @@ public final class DefaultModule implements Module {
 									}
 								};
 							},
-							new Dependency[]{new Dependency(Key.of(Injector.class))});
+							new Dependency[]{Dependency.toKey(Key.of(Injector.class))});
 				}
 		));
 

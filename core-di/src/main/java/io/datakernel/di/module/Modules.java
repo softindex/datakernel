@@ -5,7 +5,6 @@ import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 
 import java.util.*;
-import java.util.function.BiFunction;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
@@ -123,57 +122,6 @@ public final class Modules {
 		public Map<Key<?>, Multibinder<?>> getMultibinders() {
 			return multibinders;
 		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public static Module rebind(Module module, BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
-		return new ModuleImpl(
-				module.getBindings().map(bindingsMap -> transformMultimapValues(bindingsMap, rebinder)),
-				transformMultimapValues(module.getBindingTransformers(),
-						(priority, bindingTransformer) ->
-								(provider, scope, key, binding) -> {
-									Binding<Object> transformed = ((BindingTransformer<Object>) bindingTransformer).transform(provider, scope, key, binding);
-									if (transformed == binding) return binding;
-									return (Binding<Object>) rebinder.apply(key, transformed);
-								}),
-				transformMultimapValues(module.getBindingGenerators(),
-						(clazz, bindingGenerator) ->
-								(provider, scope, key) -> {
-									Binding<Object> generated = ((BindingGenerator<Object>) bindingGenerator).generate(provider, scope, key);
-									if (generated == null) return null;
-									return (Binding<Object>) rebinder.apply(key, generated);
-								}),
-				module.getMultibinders());
-	}
-
-	@SafeVarargs
-	public static BiFunction<Key<?>, Binding<?>, Binding<?>> rebinders(BiFunction<Key<?>, Binding<?>, Binding<?>>... rebinders) {
-		return rebinders(Arrays.asList(rebinders));
-	}
-
-	public static BiFunction<Key<?>, Binding<?>, Binding<?>> rebinders(List<BiFunction<Key<?>, Binding<?>, Binding<?>>> rebinders) {
-		return rebinders.stream().reduce(
-				(key, binding) -> binding,
-				(fn1, fn2) -> (key, binding) -> fn2.apply(key, fn1.apply(key, binding)));
-	}
-
-	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<T> key, Key<V> from, Key<? extends V> to) {
-		return rebinder(key, from, new Dependency(to));
-	}
-
-	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<T> key, Key<V> from, Dependency to) {
-		return (k, binding) -> {
-			if (!key.equals(k)) return binding;
-			return binding.rebindDependency(from, to);
-		};
-	}
-
-	public static <V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<V> from, Key<? extends V> to) {
-		return rebinder(from, new Dependency(to));
-	}
-
-	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<V> from, Dependency to) {
-		return (k, binding) -> binding.rebindDependency(from, to);
 	}
 
 }

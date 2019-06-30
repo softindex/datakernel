@@ -35,12 +35,12 @@ public final class Binding<T> {
 	}
 
 	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Class<?>[] dependencies) {
-		return new Binding<>(Stream.of(dependencies).map(Key::of).map(Dependency::new).toArray(Dependency[]::new),
+		return new Binding<>(Stream.of(dependencies).map(Key::of).map(Dependency::toKey).toArray(Dependency[]::new),
 				factory, null);
 	}
 
 	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Key<?>[] dependencies) {
-		return new Binding<>(Stream.of(dependencies).map(Dependency::new).toArray(Dependency[]::new),
+		return new Binding<>(Stream.of(dependencies).map(Dependency::toKey).toArray(Dependency[]::new),
 				factory, null);
 	}
 
@@ -231,23 +231,19 @@ public final class Binding<T> {
 	}
 
 	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
-		return rebindDependency(from, new Dependency(to));
-	}
-
-	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Dependency to) {
 		Dependency[] newDependencies = new Dependency[dependencies.length];
 		for (int i = 0; i < dependencies.length; i++) {
-			newDependencies[i] = dependencies[i].getKey().equals(from) ? to : dependencies[i];
+			newDependencies[i] = dependencies[i].getKey().equals(from) ? Dependency.toKey(to) : dependencies[i];
 		}
 		return new Binding<>(newDependencies, factory, location);
 	}
 
 	public Binding<T> addDependencies(@NotNull Class<?>... dependencies) {
-		return addDependencies(Stream.of(dependencies).map(Key::of).map(Dependency::new).toArray(Dependency[]::new));
+		return addDependencies(Stream.of(dependencies).map(Key::of).map(Dependency::toKey).toArray(Dependency[]::new));
 	}
 
 	public Binding<T> addDependencies(@NotNull Key<?>... dependencies) {
-		return addDependencies(Stream.of(dependencies).map(Dependency::new).toArray(Dependency[]::new));
+		return addDependencies(Stream.of(dependencies).map(Dependency::toKey).toArray(Dependency[]::new));
 	}
 
 	public Binding<T> addDependencies(@NotNull Dependency... dependencies) {

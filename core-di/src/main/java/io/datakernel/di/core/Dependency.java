@@ -6,14 +6,21 @@ public final class Dependency {
 	private final Key<?> key;
 	private final boolean required;
 
-	public Dependency(Key<?> key) {
-		this.key = key;
-		this.required = true;
-	}
-
-	public Dependency(Key<?> key, boolean required) {
+	private Dependency(Key<?> key, boolean required) {
 		this.key = key;
 		this.required = required;
+	}
+
+	public static Dependency toKey(Key<?> key) {
+		return new Dependency(key, true);
+	}
+
+	public static Dependency toKey(Key<?> key, boolean required) {
+		return new Dependency(key, required);
+	}
+
+	public static Dependency toOptionalKey(Key<?> key) {
+		return new Dependency(key, false);
 	}
 
 	public Key<?> getKey() {

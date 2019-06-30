@@ -5,7 +5,6 @@ import io.datakernel.di.util.Trie;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.di.module.Multibinder.combinedMultibinder;
@@ -31,10 +30,6 @@ public interface Module {
 
 	default Module transformWith(Function<Module, Module> fn) {
 		return fn.apply(this);
-	}
-
-	default Module rebindWith(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
-		return Modules.rebind(this, rebinder);
 	}
 
 	default Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {

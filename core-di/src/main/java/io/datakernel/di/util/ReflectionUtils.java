@@ -192,7 +192,7 @@ public final class ReflectionUtils {
 						throw new DIException("Failed to inject member injectable field " + field, e);
 					}
 				},
-				new Dependency(key, required)
+				Dependency.toKey(key, required)
 		);
 	}
 
@@ -221,7 +221,7 @@ public final class ReflectionUtils {
 		for (int i = 0; i < dependencies.length; i++) {
 			Type type = parameters[i].getParameterizedType();
 			Parameter parameter = parameters[workaround && i != 0 ? i - 1 : i];
-			dependencies[i] = new Dependency(keyOf(container, type, parameter), !parameter.isAnnotationPresent(Optional.class));
+			dependencies[i] = Dependency.toKey(keyOf(container, type, parameter), !parameter.isAnnotationPresent(Optional.class));
 		}
 		return dependencies;
 	}
@@ -253,7 +253,7 @@ public final class ReflectionUtils {
 				.map(parameter -> {
 					Type type = Types.resolveTypeVariables(parameter.getParameterizedType(), mapping);
 					Name name = nameOf(parameter);
-					return new Dependency(Key.ofType(type, name), !parameter.isAnnotationPresent(Optional.class));
+					return Dependency.toKey(Key.ofType(type, name), !parameter.isAnnotationPresent(Optional.class));
 				})
 				.toArray(Dependency[]::new);
 
