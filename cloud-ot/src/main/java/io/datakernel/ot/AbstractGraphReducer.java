@@ -8,7 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static io.datakernel.ot.GraphReducer.resume;
+import static io.datakernel.ot.GraphReducer.Result.completePromise;
+import static io.datakernel.ot.GraphReducer.Result.resumePromise;
 import static java.util.Collections.singletonMap;
 
 public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K, D, R> {
@@ -34,11 +35,11 @@ public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K
 
 	@NotNull
 	@Override
-	public final Promise<R> onCommit(@NotNull OTCommit<K, D> commit) {
+	public final Promise<Result<R>> onCommit(@NotNull OTCommit<K, D> commit) {
 		return tryGetResult(commit, accumulators, headCommits)
 				.then(maybeResult -> {
 					if (maybeResult.isPresent()) {
-						return Promise.of(maybeResult.get());
+						return completePromise(maybeResult.get());
 					}
 
 					Map<K, A> toHeads = accumulators.remove(commit.getId());
@@ -53,7 +54,7 @@ public abstract class AbstractGraphReducer<K, D, A, R> implements GraphReducer<K
 							parentToHeads.put(head, combinedAccumulatedDiffs);
 						}
 					}
-					return Promise.of(resume());
+					return resumePromise();
 				});
 	}
 }

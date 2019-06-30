@@ -16,8 +16,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.async.Promises.toList;
-import static io.datakernel.ot.GraphReducer.resume;
-import static io.datakernel.ot.GraphReducer.skip;
+import static io.datakernel.ot.GraphReducer.Result.*;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.CollectorsEx.throwingMerger;
 import static io.datakernel.util.LogUtils.thisMethod;
@@ -59,17 +58,17 @@ public final class OTAlgorithms {
 				.whenResult(maybeResult -> {
 					OTCommit<K, D> polledCommit = queue.poll();
 					assert polledCommit == commit;
-					if (maybeResult == resume()) {
+					if (maybeResult.isResume()) {
 						toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
 								.whenResult(parentCommits -> {
 									queue.addAll(parentCommits);
 									walkGraphImpl(repository, reducer, queue, visited, cb);
 								})
 								.whenException(cb::setException);
-					} else if (maybeResult == skip()) {
+					} else if (maybeResult.isSkip()) {
 						walkGraphImpl(repository, reducer, queue, visited, cb);
 					} else {
-						cb.set(maybeResult);
+						cb.set(maybeResult.get());
 					}
 				})
 				.whenException(cb::setException);
@@ -238,11 +237,11 @@ public final class OTAlgorithms {
 					}
 
 					@Override
-					public @NotNull Promise<Set<K>> onCommit(@NotNull OTCommit<K, D> commit) {
+					public @NotNull Promise<Result<Set<K>>> onCommit(@NotNull OTCommit<K, D> commit) {
 						if (matchPredicate.test(queue)) {
-							return Promise.of(queue.stream().map(OTCommit::getId).collect(toSet()));
+							return completePromise(queue.stream().map(OTCommit::getId).collect(toSet()));
 						}
-						return Promise.of(resume());
+						return resumePromise();
 					}
 				});
 	}
@@ -284,14 +283,13 @@ public final class OTAlgorithms {
 						minLevel = queue.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
 					}
 
-					@NotNull
 					@Override
-					public Promise<Set<K>> onCommit(@NotNull OTCommit<K, D> commit) {
+					public @NotNull Promise<Result<Set<K>>> onCommit(@NotNull OTCommit<K, D> commit) {
 						nodes.removeAll(commit.getParentIds());
 						if (commit.getLevel() <= minLevel) {
-							return Promise.of(nodes);
+							return completePromise(nodes);
 						}
-						return Promise.of(resume());
+						return resumePromise();
 					}
 				})
 				.whenComplete(toLogger(logger, thisMethod(), startNodes));
@@ -396,7 +394,7 @@ public final class OTAlgorithms {
 		}
 
 		@Override
-		public @NotNull Promise<OTLoadedGraph<K, D>> onCommit(@NotNull OTCommit<K, D> commit) {
+		public @NotNull Promise<Result<OTLoadedGraph<K, D>>> onCommit(@NotNull OTCommit<K, D> commit) {
 			K node = commit.getId();
 			Map<K, List<D>> parents = commit.getParents();
 
@@ -419,9 +417,9 @@ public final class OTAlgorithms {
 			if (head2roots.keySet()
 					.stream()
 					.anyMatch(head -> head2roots.get(head).equals(root2heads.keySet()))) {
-				return Promise.of(graph);
+				return completePromise(graph);
 			}
-			return Promise.of(resume());
+			return resumePromise();
 		}
 	}
 
@@ -434,10 +432,10 @@ public final class OTAlgorithms {
 		return reduce(repository, system, heads,
 				commit -> {
 					if (graph.hasVisited(commit.getId())) {
-						return Promise.of(skip());
+						return skipPromise();
 					}
 					graph.addNode(commit);
-					return Promise.of(resume());
+					return resumePromise();
 				})
 				.thenEx((v, e) -> {
 					if (e == GRAPH_EXHAUSTED) return Promise.of(null);
