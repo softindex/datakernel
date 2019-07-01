@@ -311,6 +311,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			doRead();
 		} catch (IOException e) {
 			close(e);
+			return;
 		}
 		if (read != null && (readBuf != null || readEndOfStream)) {
 			SettablePromise<ByteBuf> read = this.read;
@@ -416,13 +417,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		ops = (byte) (ops | 0x80);
 		try {
 			doWrite();
-			if (writeBuf == null) {
-				SettablePromise<Void> write = this.write;
-				this.write = null;
-				write.set(null);
-			}
 		} catch (IOException e) {
 			close(e);
+			return;
+		}
+		if (writeBuf == null) {
+			SettablePromise<Void> write = this.write;
+			this.write = null;
+			write.set(null);
 		}
 		ops = (byte) (ops & 0x7f);
 		updateInterests();
