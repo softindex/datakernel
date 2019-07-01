@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
@@ -25,6 +24,8 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggerConfig;
+import io.datakernel.test.rules.LoggingRule;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
@@ -32,7 +33,6 @@ import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -49,12 +49,17 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.slf4j.event.Level.WARN;
 
+@LoggerConfig(logger = SteppingCurrentTimeProvider.class, value = WARN)
 public class GlobalOTNodeHttpClientTest {
 	private static final LinkedList<Object> params = new LinkedList<>();
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
@@ -77,11 +82,6 @@ public class GlobalOTNodeHttpClientTest {
 	private final RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
 	private final SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
 	private final List<CommitEntry> commitEntries = getCommitEntries(10);
-
-	@BeforeClass
-	public static void disableLogs() {
-		io.datakernel.test.TestUtils.enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
-	}
 
 	@Test
 	public void list() {

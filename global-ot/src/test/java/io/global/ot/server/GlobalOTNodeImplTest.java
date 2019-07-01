@@ -16,7 +16,6 @@
 
 package io.global.ot.server;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.RetryPolicy;
@@ -25,8 +24,8 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.LoggerConfig;
 import io.datakernel.test.rules.LoggingRule;
-import io.datakernel.test.rules.LoggingRule.LoggerConfig;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.datakernel.util.Tuple2;
@@ -61,7 +60,6 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.test.TestUtils.enableLogging;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.CollectorsEx.toAll;
 import static io.datakernel.util.CollectorsEx.toAny;
@@ -74,8 +72,10 @@ import static java.util.Comparator.naturalOrder;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
+import static org.slf4j.event.Level.WARN;
 
 @RunWith(Parameterized.class)
+@LoggerConfig(packageOf = SteppingCurrentTimeProvider.class, value = WARN)
 public class GlobalOTNodeImplTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -166,11 +166,6 @@ public class GlobalOTNodeImplTest {
 				.collect(toSet()));
 		SignedData<AnnounceData> signedData = SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, PRIV_KEY);
 		await(discoveryService.announce(PUB_KEY, signedData));
-	}
-
-	@BeforeClass
-	public static void disableLogs() {
-		enableLogging(SteppingCurrentTimeProvider.class, Level.WARN);
 	}
 
 	@Before
@@ -426,7 +421,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = WARN) // too many logs
 	public void testSyncRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -486,7 +481,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = WARN) // too many logs
 	public void testCatchupRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1, () -> 10);
 
@@ -542,7 +537,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = WARN) // too many logs
 	public void testPushRandomNumberOfMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 
@@ -568,7 +563,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
-	@LoggerConfig(value = "WARN") // too many logs
+	@LoggerConfig(value = WARN) // too many logs
 	public void testPushIntermediateToMasters() {
 		initializeMasters(RANDOM.nextInt(5) + 1);
 

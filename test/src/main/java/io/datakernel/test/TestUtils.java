@@ -16,12 +16,9 @@
 
 package io.datakernel.test;
 
-import ch.qos.logback.classic.Level;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import io.datakernel.async.Callback;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -56,32 +53,6 @@ public final class TestUtils {
 		dataSource.setServerTimezone(properties.getProperty("dataSource.timeZone"));
 		dataSource.setAllowMultiQueries(true);
 		return dataSource;
-	}
-
-	public static void enableLogging(String name, Level level) {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(name);
-		logger.setLevel(level);
-	}
-
-	public static void enableLogging(Class<?> cls, Level level) {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(cls);
-		logger.setLevel(level);
-	}
-
-	public static void enableLogging(Level level) {
-		enableLogging(Logger.ROOT_LOGGER_NAME, level);
-	}
-
-	public static void enableLogging(String name) {
-		enableLogging(name, Level.TRACE);
-	}
-
-	public static void enableLogging(Class<?> cls) {
-		enableLogging(cls, Level.TRACE);
-	}
-
-	public static void enableLogging() {
-		enableLogging(Logger.ROOT_LOGGER_NAME, Level.TRACE);
 	}
 
 	public static <T> Callback<T> assertComplete(ThrowingConsumer<T> consumer) {

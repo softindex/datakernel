@@ -16,17 +16,13 @@
 
 package io.datakernel.remotefs;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.test.rules.ActivePromisesRule;
-import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.*;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -40,9 +36,12 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.enableLogging;
+import static org.slf4j.event.Level.TRACE;
+import static org.slf4j.event.Level.WARN;
 
 @Ignore("takes forever, only for manual testing")
+@LoggerConfig(WARN)
+@LoggerConfig(packageOf = RemoteFsServer.class, value = TRACE)
 public final class TestRepartitionController {
 	private static final int CLIENT_SERVER_PAIRS = 10;
 
@@ -54,6 +53,9 @@ public final class TestRepartitionController {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -138,10 +140,6 @@ public final class TestRepartitionController {
 	}
 
 	private void testN(int n, int minSize, int maxSize) throws IOException {
-		enableLogging(Logger.ROOT_LOGGER_NAME, Level.WARN);
-		enableLogging("io.datakernel.remotefs", Level.TRACE);
-		enableLogging("io.datakernel.remotefs", Level.TRACE);
-
 		long start = System.nanoTime();
 
 		int delta = maxSize - minSize;

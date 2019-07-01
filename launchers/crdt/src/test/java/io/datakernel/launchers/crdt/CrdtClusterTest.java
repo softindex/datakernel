@@ -39,7 +39,6 @@ import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.test.rules.LoggingRule;
-import io.datakernel.test.rules.LoggingRule.LoggerConfig;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -61,7 +60,6 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Ignore("manual demos")
-@LoggerConfig("TRACE")
 public final class CrdtClusterTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -69,8 +67,8 @@ public final class CrdtClusterTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	@Rule
-	public final LoggingRule loggingRule = new LoggingRule();
+	@ClassRule
+	public static final LoggingRule loggingRule = new LoggingRule();
 
 	@Rule
 	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();

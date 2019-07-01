@@ -18,7 +18,6 @@ package io.datakernel.test.rules;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
-import io.datakernel.test.TestUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -32,7 +31,7 @@ public final class EventloopRule implements TestRule {
 
 	static {
 		createEventloop();
-		TestUtils.enableLogging(Eventloop.class, WARN);
+		LoggingRule.enableOfLoggerLogging(Eventloop.class, WARN);
 	}
 
 	private static void createEventloop() {
