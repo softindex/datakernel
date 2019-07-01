@@ -30,7 +30,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
@@ -44,15 +44,14 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	RemoteFsServer remoteFsServer;
 
 	@Provides
-	public Eventloop eventloop(Config config,
-			@Optional ThrottlingController throttlingController) {
+	public Eventloop eventloop(Config config, @Optional ThrottlingController throttlingController) {
 		return Eventloop.create()
 				.initialize(ofEventloop(config.getChild("eventloop")))
 				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
 	@Provides
-	RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor,
+	RemoteFsServer remoteFsServer(Eventloop eventloop, Executor executor,
 			Config config) {
 		return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
 				.initialize(ofRemoteFsServer(config.getChild("remotefs")));
@@ -60,8 +59,15 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	}
 
 	@Provides
-	ExecutorService executor(Config config) {
+	Executor executor(Config config) {
 		return ConfigConverters.getExecutor(config.getChild("remotefs.executor"));
+	}
+
+	@Provides
+	Config config() {
+		return Config.create()
+				.overrideWith(Config.ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Override
@@ -69,11 +75,8 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigModule.create(() ->
-						Config.create()
-								.overrideWith(Config.ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(Config.ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig());
+				ConfigModule.create().printEffectiveConfig()
+		);
 	}
 
 	@Override

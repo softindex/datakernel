@@ -107,16 +107,19 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 		return newSingleThreadExecutor();
 	}
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
+				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigModule.create(() ->
-						Config.create()
-								.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
-								.overrideWith(Config.ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig()
+				ConfigModule.create().printEffectiveConfig()
 		);
 	}
 

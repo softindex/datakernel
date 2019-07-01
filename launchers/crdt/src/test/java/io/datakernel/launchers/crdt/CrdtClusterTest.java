@@ -20,12 +20,12 @@ import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.crdt.TimestampContainer;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
@@ -84,7 +84,12 @@ public final class CrdtClusterTest {
 
 		@Override
 		protected Module getOverrideModule() {
-			return ConfigModule.create(config);
+			return new AbstractModule() {
+				@Provides
+				Config config() {
+					return config;
+				}
+			};
 		}
 
 		@Override
@@ -153,10 +158,14 @@ public final class CrdtClusterTest {
 
 			@Override
 			protected Module getOverrideModule() {
-				return ConfigModule.create(() ->
-						Config.create()
+				return new AbstractModule() {
+					@Provides
+					Config config() {
+						return Config.create()
 								.with("crdt.localPath", "/tmp/TESTS/fileServer")
-								.with("crdt.server.listenAddresses", "localhost:8002"));
+								.with("crdt.server.listenAddresses", "localhost:8002");
+					}
+				};
 			}
 
 			@Provides

@@ -102,10 +102,12 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return new ConfigModule(null);
 	}
 
+	@Deprecated
 	public static ConfigModule create(Supplier<Config> configSupplier) {
 		return new ConfigModule(configSupplier);
 	}
 
+	@Deprecated
 	public static ConfigModule create(Config config) {
 		return new ConfigModule(() -> config);
 	}

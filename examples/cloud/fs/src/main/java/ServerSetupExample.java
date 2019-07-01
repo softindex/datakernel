@@ -1,30 +1,35 @@
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.remotefs.RemoteFsServerLauncher;
 
-import java.io.IOException;
 import java.nio.file.Files;
-
-import static io.datakernel.di.module.Modules.combine;
+import java.nio.file.Path;
 
 /**
  * This example demonstrates configuring and launching RemoteFsServer.
  */
 public class ServerSetupExample extends RemoteFsServerLauncher {
+	private Path storage;
+
+	@Override
+	protected void onInit(Injector injector) throws Exception {
+		storage = Files.createTempDirectory("server_storage");
+	}
+
 	@Override
 	protected Module getOverrideModule() {
-		try {
-			return combine(
-					ConfigModule.create(
-							Config.create()
-									.with("remotefs.path", Files.createTempDirectory("server_storage").toString())
-									.with("remotefs.listenAddresses", "6732")));
-		} catch (IOException e) {
-			throw new UncheckedException(e);
-		}
+		return new AbstractModule() {
+			@Provides
+			Config config() {
+				return Config.create()
+						.with("remotefs.path", storage.toString())
+						.with("remotefs.listenAddresses", "6732");
+			}
+		};
 	}
 
 	@Override

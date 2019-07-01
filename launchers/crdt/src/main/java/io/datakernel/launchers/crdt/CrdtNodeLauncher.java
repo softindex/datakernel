@@ -20,6 +20,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -41,17 +42,20 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 	@Inject
 	CrdtServer<K, S> crdtServer;
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				TriggersModule.create(),
-				ConfigModule.create(() ->
-						Config.create()
-								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
+				ConfigModule.create().printEffectiveConfig(),
 				getBusinessLogicModule());
 	}
 

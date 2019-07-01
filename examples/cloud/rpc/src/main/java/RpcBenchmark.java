@@ -74,20 +74,23 @@ public class RpcBenchmark extends Launcher {
 
 	}
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.with("rpc.server.port", "" + SERVICE_PORT)
+				.with("benchmark.warmupRounds", "" + WARMUP_ROUNDS)
+				.with("benchmark.benchmarkRounds", "" + BENCHMARK_ROUNDS)
+				.with("benchmark.requestsPerTime", "" + REQUESTS_PER_TIME)
+				.with("benchmark.maxRequests", "" + MAX_REQUESTS)
+				.with("benchmark.generateFile", "" + GENERATE_FILE)
+				.overrideWith(Config.ofProperties(System.getProperties()));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(() ->
-						Config.create()
-								.with("rpc.server.port", "" + SERVICE_PORT)
-								.with("benchmark.warmupRounds", "" + WARMUP_ROUNDS)
-								.with("benchmark.benchmarkRounds", "" + BENCHMARK_ROUNDS)
-								.with("benchmark.requestsPerTime", "" + REQUESTS_PER_TIME)
-								.with("benchmark.maxRequests", "" + MAX_REQUESTS)
-								.with("benchmark.generateFile", "" + GENERATE_FILE)
-								.overrideWith(Config.ofProperties(System.getProperties()))
-				)
+				ConfigModule.create().printEffectiveConfig()
 		);
 	}
 

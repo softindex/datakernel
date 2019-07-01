@@ -17,7 +17,8 @@
 package io.datakernel.launchers.remotefs;
 
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -56,10 +57,16 @@ public final class RemoteFsClusterLauncherTest {
 		new RemoteFsServerLauncher() {
 			@Override
 			protected Module getOverrideModule() {
-				return ConfigModule.create(Config.create()
-						.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
-						.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber))));
+				return new AbstractModule() {
+					@Provides
+					Config config() {
+						return Config.create()
+								.with("remotefs.path", Config.ofValue("storages/server_" + serverNumber))
+								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(serverNumber)));
+					}
+				};
 			}
+
 		}.launch(new String[0]);
 	}
 
@@ -73,15 +80,20 @@ public final class RemoteFsClusterLauncherTest {
 		new RemoteFsClusterLauncher() {
 			@Override
 			protected Module getOverrideModule() {
-				Config config = Config.create()
-						.with("local.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000)))
-						.with("local.path", Config.ofValue("storages/local"))
-						.with("cluster.replicationCount", Config.ofValue("3"))
-						.with("scheduler.repartition.disabled", "true");
-				for (int i = 0; i < 10; i++) {
-					config = config.with("cluster.partitions.server_" + i, "localhost:" + (5400 + i));
-				}
-				return ConfigModule.create(config);
+				return new AbstractModule() {
+					@Provides
+					Config config() {
+						Config config = Config.create()
+								.with("local.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000)))
+								.with("local.path", Config.ofValue("storages/local"))
+								.with("cluster.replicationCount", Config.ofValue("3"))
+								.with("scheduler.repartition.disabled", "true");
+						for (int i = 0; i < 10; i++) {
+							config = config.with("cluster.partitions.server_" + i, "localhost:" + (5400 + i));
+						}
+						return config;
+					}
+				};
 			}
 		}.launch(new String[0]);
 	}

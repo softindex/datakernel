@@ -118,7 +118,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 *
 	 * @param args program args that will be injected into @Args string array
 	 */
-	public void launch(@NotNull String[] args) throws Exception {
+	public final void launch(@NotNull String[] args) throws Exception {
 		mainThread = Thread.currentThread();
 		instantOfLaunch = Instant.now();
 
@@ -344,12 +344,12 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	}
 
 	@NotNull
-	public Thread getMainThread() {
+	public final Thread getMainThread() {
 		return mainThread;
 	}
 
 	@NotNull
-	public String[] getArgs() {
+	public final String[] getArgs() {
 		return args;
 	}
 

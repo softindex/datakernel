@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
@@ -398,26 +399,46 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
+	public final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
 		doConfigure();
 		return bindings;
 	}
 
 	@Override
-	public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
+	public final Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
 		doConfigure();
 		return bindingTransformers;
 	}
 
 	@Override
-	public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
+	public final Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
 		doConfigure();
 		return bindingGenerators;
 	}
 
 	@Override
-	public Map<Key<?>, Multibinder<?>> getMultibinders() {
+	public final Map<Key<?>, Multibinder<?>> getMultibinders() {
 		doConfigure();
 		return multibinders;
+	}
+
+	@Override
+	public final Module combineWith(Module another) {
+		return Module.super.combineWith(another);
+	}
+
+	@Override
+	public final Module overrideWith(Module another) {
+		return Module.super.overrideWith(another);
+	}
+
+	@Override
+	public final Module transformWith(Function<Module, Module> fn) {
+		return Module.super.transformWith(fn);
+	}
+
+	@Override
+	public final Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
+		return Module.super.resolveBindings();
 	}
 }

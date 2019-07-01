@@ -36,6 +36,7 @@ import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static io.datakernel.launchers.initializers.Initializers.*;
 import static java.util.stream.Collectors.joining;
 
+@SuppressWarnings("WeakerAccess")
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	public static final int PORT = 8080;
 	public static final int WORKERS = 4;
@@ -83,20 +84,24 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				.initialize(ofHttpWorker(config.getChild("http")));
 	}
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))
+				.with("workers", "" + WORKERS)
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create()
 						.initialize(ofGlobalEventloopStats()),
-				ConfigModule.create(() ->
-						Config.create()
-								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))
-								.with("workers", "" + WORKERS)
-								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				getBusinessLogicModule());
+				ConfigModule.create().printEffectiveConfig(),
+				getBusinessLogicModule()
+		);
 	}
 
 	protected Module getBusinessLogicModule() {

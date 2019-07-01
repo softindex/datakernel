@@ -17,10 +17,10 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.TimestampContainer;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
@@ -57,16 +57,19 @@ public final class CrdtNodeExample {
 
 			@Override
 			protected Module getOverrideModule() {
-				return ConfigModule.create(() ->
-						Config.create()
+				return new AbstractModule() {
+					@Provides
+					Config config() {
+						return Config.create()
 								.with("crdt.http.listenAddresses", "localhost:8080")
 								.with("crdt.server.listenAddresses", "localhost:9090")
 								.with("crdt.local.path", "/tmp/TESTS/crdt")
 								.with("crdt.cluster.localPartitionId", "local")
 								.with("crdt.cluster.partitions.noop", "localhost:9091")
 								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig();
+								.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+					}
+				};
 			}
 
 		};

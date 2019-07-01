@@ -55,18 +55,22 @@ public abstract class HttpServerLauncher extends Launcher {
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigModule.create(() ->
-						Config.create()
-								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
-				getBusinessLogicModule());
+				ConfigModule.create().printEffectiveConfig(),
+				getBusinessLogicModule()
+		);
 	}
 
 	/**

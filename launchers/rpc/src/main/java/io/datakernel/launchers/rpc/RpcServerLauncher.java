@@ -60,16 +60,19 @@ public abstract class RpcServerLauncher extends Launcher {
 				.initialize(rpcServerInitializer);
 	}
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigModule.create(() ->
-						Config.create()
-								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
+				ConfigModule.create().printEffectiveConfig(),
 				getBusinessLogicModule());
 	}
 

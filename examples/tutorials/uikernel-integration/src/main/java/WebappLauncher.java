@@ -72,7 +72,10 @@ public class WebappLauncher extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return combine(ServiceGraphModule.defaultInstance(), ConfigModule.create());
+		return combine(
+				ServiceGraphModule.defaultInstance(),
+				ConfigModule.create().printEffectiveConfig()
+		);
 	}
 
 	@Override

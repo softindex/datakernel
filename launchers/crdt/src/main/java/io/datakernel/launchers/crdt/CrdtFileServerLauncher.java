@@ -61,29 +61,26 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 		return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.localPath"));
 	}
 
+	@Provides
+	Config config() {
+		return Config.create()
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				TriggersModule.create(),
-				ConfigModule.create(() ->
-						Config.create()
-								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config")))
-						.printEffectiveConfig(),
+				ConfigModule.create().printEffectiveConfig(),
 				getBusinessLogicModule());
 	}
 
 	protected abstract CrdtFileServerLogicModule<K, S> getBusinessLogicModule();
 
-	@Override
-	protected void run() throws Exception {
-		awaitShutdown();
-	}
-
 	public abstract static class CrdtFileServerLogicModule<K extends Comparable<K>, S> extends AbstractModule {
-
 		@Provides
 		CrdtServer<K, S> crdtServer(Eventloop eventloop, CrdtStorageFs<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return CrdtServer.create(eventloop, crdtClient, descriptor.getSerializer())
@@ -95,5 +92,10 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 			return CrdtStorageFs.create(eventloop, localFsClient, descriptor.getSerializer(), descriptor.getCrdtFunction())
 					.initialize(Initializers.ofFsCrdtClient(config.getChild("crdt.files")));
 		}
+	}
+
+	@Override
+	protected void run() throws Exception {
+		awaitShutdown();
 	}
 }
