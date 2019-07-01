@@ -329,7 +329,7 @@ public interface Promise<T> extends Completable<T> {
 	@NotNull
 	default MaterializedPromise<T> post() {
 		SettablePromise<T> result = new SettablePromise<>();
-		whenComplete(result::post);
+		whenComplete((Callback<T>) result::post);
 		return result;
 	}
 
@@ -416,6 +416,18 @@ public interface Promise<T> extends Completable<T> {
 	@Contract(" _ -> this")
 	@NotNull
 	Promise<T> whenComplete(@NotNull Callback<? super T> action);
+
+	/**
+	 * Subscribes given action to be executed
+	 * after this {@code Promise} completes and
+	 * returns a new {@code Promise}.
+	 *
+	 * @param action to be executed
+	 * @return new {@code Promise}
+	 */
+	@Contract(" _ -> this")
+	@NotNull
+	Promise<T> whenComplete(@NotNull Runnable action);
 
 	/**
 	 * Subscribes given action to be executed after

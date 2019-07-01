@@ -14,6 +14,16 @@ public interface Completable<T> {
 	void onComplete(@NotNull Callback<? super T> action);
 
 	/**
+	 * Subscribes given action to be executed
+	 * after this {@code Completable} computation completes
+	 *
+	 * @param action to be executed
+	 */
+	default void onComplete(Runnable action) {
+		onComplete((result, e) -> action.run());
+	}
+
+	/**
 	 * Subscribes given action to be executed after
 	 * this {@code Completable} computation completes successfully
 	 *

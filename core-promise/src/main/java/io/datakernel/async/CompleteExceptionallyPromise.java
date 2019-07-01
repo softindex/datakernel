@@ -121,6 +121,13 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
+	public Promise<T> whenComplete(@NotNull Runnable action) {
+		action.run();
+		return this;
+	}
+
+	@NotNull
+	@Override
 	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		return this;
 	}

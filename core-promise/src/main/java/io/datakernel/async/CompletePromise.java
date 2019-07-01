@@ -118,6 +118,12 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		return this;
 	}
 
+	@Override
+	public @NotNull Promise<T> whenComplete(@NotNull Runnable action) {
+		action.run();
+		return this;
+	}
+
 	@NotNull
 	@Override
 	public final Promise<T> whenResult(@NotNull Consumer<? super T> action) {

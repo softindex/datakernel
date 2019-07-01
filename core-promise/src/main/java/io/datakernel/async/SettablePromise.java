@@ -198,6 +198,16 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 
 	@NotNull
 	@Override
+	public Promise<T> whenComplete(@NotNull Runnable action) {
+		if (isComplete()) {
+			action.run();
+			return this;
+		}
+		return super.whenComplete(action);
+	}
+
+	@NotNull
+	@Override
 	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
 		if (isComplete()) {
 			if (isResult()) action.accept(result);

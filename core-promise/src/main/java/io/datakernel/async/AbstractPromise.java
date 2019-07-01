@@ -236,6 +236,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
+	public Promise<T> whenComplete(@NotNull Runnable action) {
+		return whenComplete((result, e) -> action.run());
+	}
+
+	@NotNull
+	@Override
 	public Promise<T> whenResult(@Async.Schedule @NotNull Consumer<? super T> action) {
 		return whenComplete(new Callback<T>() {
 			private void accept(@Async.Execute Consumer<? super T> action, T result) {
