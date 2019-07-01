@@ -307,7 +307,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public void onReadReady() {
 		ops = (byte) (ops | 0x80);
-		doRead();
+		try {
+			doRead();
+		} catch (IOException e) {
+			close(e);
+		}
 		if (read != null && (readBuf != null || readEndOfStream)) {
 			SettablePromise<ByteBuf> read = this.read;
 			ByteBuf readBuf = this.readBuf;
@@ -319,7 +323,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		updateInterests();
 	}
 
-	private void doRead() {
+	private void doRead() throws IOException {
 		ByteBuf buf = ByteBufPool.allocate(readBufferSize);
 		ByteBuffer buffer = buf.toWriteByteBuffer();
 
@@ -330,8 +334,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} catch (IOException e) {
 			buf.recycle();
 			if (inspector != null) inspector.onReadError(e);
-			close(e);
-			return;
+			throw e;
 		}
 
 		if (numRead == 0) {
@@ -434,7 +437,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				channel.write(buffer);
 			} catch (IOException e) {
 				if (inspector != null) inspector.onWriteError(e);
-				buf.recycle();
 				throw e;
 			}
 
