@@ -34,7 +34,7 @@ public interface EventloopService {
 
 	@NotNull
 	default CompletableFuture<?> startFuture() {
-		return getEventloop().submit(cb -> start().whenComplete(cb));
+		return getEventloop().submit(this::start);
 	}
 
 	/**
@@ -46,6 +46,6 @@ public interface EventloopService {
 
 	@NotNull
 	default CompletableFuture<?> stopFuture() {
-		return getEventloop().submit(cb -> stop().whenComplete(cb));
+		return getEventloop().submit(this::stop);
 	}
 }

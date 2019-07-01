@@ -153,11 +153,11 @@ public final class RpcBlockingTest {
 
 	private static String blockingRequest(RpcClient rpcClient, String name) throws Exception {
 		try {
-			return rpcClient.getEventloop().<HelloResponse>submit(
-					cb -> rpcClient
-							.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-							.whenComplete(cb))
-					.get().message;
+			return rpcClient.getEventloop().submit(
+					() -> rpcClient
+							.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
+					.get()
+					.message;
 		} catch (ExecutionException e) {
 			//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
 			throw (Exception) e.getCause();

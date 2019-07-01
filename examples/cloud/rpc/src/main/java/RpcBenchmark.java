@@ -173,7 +173,7 @@ public class RpcBenchmark extends Launcher {
 	}
 
 	private long round() throws Exception {
-		return eventloop.submit(() -> benchmark().toCompletableFuture()).get();
+		return eventloop.submit(this::benchmark).get();
 	}
 
 	private static final class Counters {

@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.Completable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
@@ -46,11 +46,10 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Utils.tryToOptimizeSelector;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -539,7 +538,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		return keys;
 	}
-
 
 	private void executeTask(@Async.Execute Runnable task) {
 		task.run();
@@ -1058,38 +1056,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
-	/**
-	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code Callable}
-	 */
 	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(@NotNull Callable<T> computation) {
-		CompletableFuture<T> future = new CompletableFuture<>();
-		execute(() -> {
-			T result;
-			try {
-				result = computation.call();
-			} catch (UncheckedException u) {
-				future.completeExceptionally(u.getCause());
-				return;
-			} catch (RuntimeException e) {
-				throw e;
-			} catch (Exception e) {
-				future.completeExceptionally(e);
-				return;
-			}
-			future.complete(result);
-		});
-		return future;
-	}
-
-	@NotNull
-	@Override
-	public <T> CompletableFuture<T> submit(@NotNull Consumer<Callback<T>> callbackConsumer) {
+	public <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			try {
-				callbackConsumer.accept((result, e) -> {
+				computation.get().onComplete((result, e) -> {
 					if (e == null) {
 						future.complete(result);
 					} else {

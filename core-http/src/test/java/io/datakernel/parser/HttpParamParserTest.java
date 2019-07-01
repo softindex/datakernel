@@ -12,8 +12,9 @@ public class HttpParamParserTest {
 	@Test
 	public void test() throws HttpParamParseException {
 		HttpParamParser<String> parser = HttpParamParsers.ofCookie("tmp");
-		parser.parseOrThrow(HttpRequest.get("http://example.com")
-				.withCookie(HttpCookie.of("tmp", "1")));
+		assertEquals("1",
+				parser.parseOrThrow(HttpRequest.get("http://example.com")
+						.withCookie(HttpCookie.of("tmp", "1"))));
 	}
 
 	@Test

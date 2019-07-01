@@ -16,17 +16,16 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.Completable;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class BlockingEventloopExecutor implements EventloopExecutor {
 	private final Eventloop eventloop;
@@ -114,33 +113,11 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(@NotNull Callable<T> computation) {
-		CompletableFuture<T> future = new CompletableFuture<>();
-		execute(() -> {
-			T result;
-			try {
-				result = computation.call();
-			} catch (UncheckedException u) {
-				future.completeExceptionally(u.getCause());
-				return;
-			} catch (RuntimeException e) {
-				throw e;
-			} catch (Exception e) {
-				future.completeExceptionally(e);
-				return;
-			}
-			future.complete(result);
-		});
-		return future;
-	}
-
-	@NotNull
-	@Override
-	public <T> CompletableFuture<T> submit(@NotNull Consumer<Callback<T>> callbackConsumer) {
+	public <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
 			try {
-				callbackConsumer.accept((result, e) -> {
+				computation.get().onComplete((result, e) -> {
 					if (e == null) {
 						future.complete(result);
 					} else {
@@ -157,6 +134,5 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}, future);
 		return future;
 	}
-
 
 }

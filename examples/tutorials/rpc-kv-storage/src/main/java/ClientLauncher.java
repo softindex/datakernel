@@ -1,15 +1,23 @@
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.service.ServiceGraphModule;
+
+import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.di.module.Modules.combine;
 
 // [START EXAMPLE]
 public class ClientLauncher extends Launcher {
+	private static final int TIMEOUT = 1000;
+
 	@Inject
 	private RpcClient client;
+
+	@Inject
+	Eventloop eventloop;
 
 	@Override
 	protected Module getModule() {
@@ -20,41 +28,29 @@ public class ClientLauncher extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		int timeout = 1000;
-
 		if (args.length < 2) {
-			throw new RuntimeException("Command line args should be like following 1) --put key value   2) --get key");
+			System.err.println("Command line args:\n\t--put key value\n\t--get key");
+			return;
 		}
 
 		switch (args[0]) {
 			case "--put":
-				client.<PutRequest, PutResponse>sendRequest(new PutRequest(args[1], args[2]), timeout)
-						.whenComplete((response, e) -> {
-							if (e == null) {
-								System.out.println("put request was made successfully");
-								System.out.println("previous value: " + response.getPreviousValue());
-							} else {
-								e.printStackTrace();
-							}
-							shutdown();
-						});
+				CompletableFuture<PutResponse> future1 = eventloop.submit(() ->
+						client.sendRequest(new PutRequest(args[1], args[2]), TIMEOUT)
+				);
+				PutResponse putResponse = future1.get();
+				System.out.println("PutResponse: " + putResponse);
 				break;
 			case "--get":
-				client.<GetRequest, GetResponse>sendRequest(new GetRequest(args[1]), timeout)
-						.whenComplete((response, e) -> {
-							if (e == null) {
-								System.out.println("get request was made successfully");
-								System.out.println("value: " + response.getValue());
-							} else {
-								e.printStackTrace();
-							}
-							shutdown();
-						});
+				CompletableFuture<GetResponse> future2 = eventloop.submit(() ->
+						client.sendRequest(new GetRequest(args[1]), TIMEOUT)
+				);
+				GetResponse getResponse = future2.get();
+				System.out.println("GetResponse: " + getResponse);
 				break;
 			default:
-				throw new RuntimeException("Error. You should use --put or --get option");
+				throw new RuntimeException("Unsupported option: " + args[0]);
 		}
-		awaitShutdown();
 	}
 
 	public static void main(String[] args) throws Exception {

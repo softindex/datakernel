@@ -16,26 +16,15 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.Completable;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public interface EventloopExecutor extends Executor {
-	@NotNull
-	CompletableFuture<Void> submit(@NotNull Runnable computation);
+	@NotNull CompletableFuture<Void> submit(@NotNull Runnable computation);
 
-	@NotNull <T> CompletableFuture<T> submit(@NotNull Callable<T> computation);
-
-	@NotNull
-	default <T> CompletableFuture<T> submit(@NotNull Supplier<CompletionStage<T>> computation) {
-		return submit(cb -> computation.get().whenComplete(cb::accept));
-	}
-
-	@NotNull <T> CompletableFuture<T> submit(@NotNull Consumer<Callback<T>> callbackConsumer);
+	@NotNull <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation);
 }

@@ -43,7 +43,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 	}
 
 	@Provides
-	AsyncServlet servlet(Executor executor, SessionStore<String> sessionStore,
+	AsyncServlet servlet(SessionStore<String> sessionStore,
 			@Named("public") AsyncServlet publicServlet, @Named("private") AsyncServlet privateServlet) {
 		return SessionServlet.create(sessionStore, SESSION_ID, publicServlet, privateServlet);
 	}

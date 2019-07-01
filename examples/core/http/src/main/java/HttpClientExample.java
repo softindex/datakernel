@@ -78,7 +78,6 @@ public final class HttpClientExample extends Launcher {
 				httpClient.request(HttpRequest.get(url))
 						.then(HttpMessage::loadBody)
 						.map(body -> body.getString(UTF_8))
-						.toCompletableFuture()
 		);
 		System.out.println("HTTP response: " + future.get());
 	}

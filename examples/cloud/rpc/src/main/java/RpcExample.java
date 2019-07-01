@@ -9,6 +9,8 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
@@ -21,6 +23,9 @@ public class RpcExample extends Launcher {
 	@Inject
 	private RpcServer server;
 
+	@Inject
+	private Eventloop eventloop;
+
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
@@ -30,7 +35,8 @@ public class RpcExample extends Launcher {
 	RpcServer rpcServer(Eventloop eventloop) {
 		return RpcServer.create(eventloop)
 				.withMessageTypes(String.class)
-				.withHandler(String.class, String.class, request -> Promise.of("Hello " + request))
+				.withHandler(String.class, String.class,
+						request -> Promise.of("Hello " + request))
 				.withListenPort(SERVICE_PORT);
 	}
 
@@ -47,14 +53,11 @@ public class RpcExample extends Launcher {
 	}
 
 	@Override
-	protected void run() {
-		client.sendRequest("World", 1000).whenComplete((res, e) -> {
-			if (e != null) {
-				System.err.println("Got exception: " + e);
-			} else {
-				System.out.println("Got result: " + res);
-			}
-		});
+	protected void run() throws ExecutionException, InterruptedException {
+		CompletableFuture<Object> future = eventloop.submit(() ->
+				client.sendRequest("World", 1000)
+		);
+		System.out.println("RPC result: " + future.get());
 	}
 
 	public static void main(String[] args) throws Exception {

@@ -44,9 +44,10 @@ import java.util.function.*;
  * <p>
  * {@link SettablePromise} allows to create a root for chain of {@code Promise}s.
  * <p>
+ *
  * @see CompletionStage
  */
-public interface Promise<T> {
+public interface Promise<T> extends Completable<T> {
 	/**
 	 * Creates successfully completed {@code Promise}
 	 */
@@ -358,10 +359,9 @@ public interface Promise<T> {
 	 * function when this {@code Promise} completes successfully.
 	 *
 	 * @param fn function to be applied to this {@code Promise}
-	 *              when it completes successfully
+	 *           when it completes successfully
 	 * @return new {@code Promise} which is the result of function
 	 * applied to the result of this {@code Promise}
-	 *
 	 * @see CompletionStage#thenApply(Function)
 	 */
 	@Contract(pure = true)
@@ -375,8 +375,8 @@ public interface Promise<T> {
 	 * with an exception.
 	 *
 	 * @param fn function to be applied to this {@code Promise}
-	 *              when it completes either successfully or with
-	 *              an exception
+	 *           when it completes either successfully or with
+	 *           an exception
 	 * @return new {@code Promise} which is the result of function
 	 * applied to the result of this {@code Promise}
 	 */
@@ -440,14 +440,29 @@ public interface Promise<T> {
 	@Contract("_ -> this")
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
+	@Override
+	default void onComplete(@NotNull Callback<? super T> action) {
+		whenComplete(action);
+	}
+
+	@Override
+	default void onResult(@NotNull Consumer<? super T> action) {
+		whenResult(action);
+	}
+
+	@Override
+	default void onException(@NotNull Consumer<@NotNull Throwable> action) {
+		whenException(action);
+	}
+
 	/**
 	 * Returns a new {@code Promise} that, when this and the other
 	 * given {@code Promise} both complete, is executed with the two
 	 * results as arguments to the supplied function.
 	 *
 	 * @param other the other {@code Promise}
-	 * @param fn the function to use to compute the value of
-	 * the returned {@code Promise}
+	 * @param fn    the function to use to compute the value of
+	 *              the returned {@code Promise}
 	 * @return new {@code Promise}
 	 */
 	@Contract(pure = true)
@@ -460,9 +475,9 @@ public interface Promise<T> {
 	 * {@code Promises} complete.
 	 *
 	 * @param other the other {@code Promise}
-	 * @return 		{@code Promise} of {@code null}
-	 * 				when both this and other
-	 * 				{@code Promise} complete
+	 * @return {@code Promise} of {@code null}
+	 * when both this and other
+	 * {@code Promise} complete
 	 */
 	@Contract(pure = true)
 	@NotNull

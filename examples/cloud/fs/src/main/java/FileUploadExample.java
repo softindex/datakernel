@@ -60,7 +60,6 @@ public final class FileUploadExample extends Launcher {
 				ChannelFileReader.open(newSingleThreadExecutor(), clientFile)
 						.map(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)))
 						.then(cfr -> cfr.streamTo(client.upload(FILE_NAME)))
-						.toCompletableFuture()
 		);
 		future.get();
 	}

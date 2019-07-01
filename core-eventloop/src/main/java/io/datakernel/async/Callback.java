@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 @FunctionalInterface
 public interface Callback<T> {
 	/**
-	 * Performs this operation on the given arguments
+	 * Performs action upon of completion of Completable computation
 	 */
 	void accept(T result, @Nullable Throwable e);
 }
