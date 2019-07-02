@@ -61,7 +61,7 @@ public class OTStateManagerTest {
 			public Promise<FetchData<Integer, TestOp>> fetch(Integer currentCommitId) {
 				return super.fetch(currentCommitId).then(fetchData -> {
 					getCurrentEventloop();
-					return Promises.delay(Promise.of(fetchData), (long) 100);
+					return Promises.delay(100L, fetchData);
 				});
 			}
 		};

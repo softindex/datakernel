@@ -52,25 +52,25 @@ public final class Promises {
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
 
 	/**
-	 * @see #timeout(Promise, long)
+	 * @see #timeout(long, Promise)
 	 */
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, @NotNull Duration delay) {
-		return timeout(promise, delay.toMillis());
+	public static <T> Promise<T> timeout(@NotNull Duration delay, @NotNull Promise<T> promise) {
+		return timeout(delay.toMillis(), promise);
 	}
 
 	/**
 	 * Waits until the delay passes and if the {@code Promise} is still
 	 * not complete, tries to complete it with {@code TIMEOUT_EXCEPTION}.
 	 *
-	 * @param promise the Promise to be tracked
 	 * @param delay   time of delay
+	 * @param promise the Promise to be tracked
 	 * @return {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, long delay) {
+	public static <T> Promise<T> timeout(long delay, @NotNull Promise<T> promise) {
 		if (promise.isComplete()) return promise;
 		if (delay <= 0) return Promise.ofException(TIMEOUT_EXCEPTION);
 		return promise.next(new NextPromise<T, T>() {
@@ -98,25 +98,25 @@ public final class Promises {
 
 	@Contract(pure = true)
 	@NotNull
-	public static Promise<Void> delay(Duration delay) {
-		return delay((Void) null, delay.toMillis());
+	public static Promise<Void> delay(@NotNull Duration delay) {
+		return delay(delay.toMillis(), (Void) null);
 	}
 
 	@Contract(pure = true)
 	@NotNull
 	public static Promise<Void> delay(long delayMillis) {
-		return delay((Void) null, delayMillis);
+		return delay(delayMillis, (Void) null);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> delay(T value, Duration delay) {
-		return delay(value, delay.toMillis());
+	public static <T> Promise<T> delay(@NotNull Duration delay, T value) {
+		return delay(delay.toMillis(), value);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> delay(T value, long delayMillis) {
+	public static <T> Promise<T> delay(long delayMillis, T value) {
 		if (delayMillis <= 0) return Promise.of(value);
 		SettablePromise<T> cb = new SettablePromise<>();
 		getCurrentEventloop().delay(delayMillis, () -> cb.set(value));
@@ -124,25 +124,25 @@ public final class Promises {
 	}
 
 	/**
-	 * @see #delay(Promise, long)
+	 * @see #delay(long, Promise)
 	 */
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> delay(@NotNull Promise<T> promise, @NotNull Duration delay) {
-		return delay(promise, delay.toMillis());
+	public static <T> Promise<T> delay(@NotNull Duration delay, @NotNull Promise<T> promise) {
+		return delay(delay.toMillis(), promise);
 	}
 
 	/**
 	 * Delays completion of provided {@code promise} for
 	 * the defined period of time.
 	 *
-	 * @param promise     the {@code Promise} to be delayed
 	 * @param delayMillis delay in millis
+	 * @param promise     the {@code Promise} to be delayed
 	 * @return completed {@code Promise}
 	 */
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> delay(@NotNull Promise<T> promise, long delayMillis) {
+	public static <T> Promise<T> delay(long delayMillis, @NotNull Promise<T> promise) {
 		if (delayMillis <= 0) return promise;
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
@@ -151,13 +151,13 @@ public final class Promises {
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> interval(@NotNull Promise<T> promise, Duration interval) {
-		return interval(promise, interval.toMillis());
+	public static <T> Promise<T> interval(@NotNull Duration interval, @NotNull Promise<T> promise) {
+		return interval(interval.toMillis(), promise);
 	}
 
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> interval(@NotNull Promise<T> promise, long intervalMillis) {
+	public static <T> Promise<T> interval(long intervalMillis, @NotNull Promise<T> promise) {
 		return intervalMillis <= 0 ?
 				promise :
 				promise.then(value -> Promise.ofCallback(cb -> getCurrentEventloop().delay(intervalMillis, () -> cb.set(value))));

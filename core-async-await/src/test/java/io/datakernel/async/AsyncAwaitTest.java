@@ -50,7 +50,7 @@ public class AsyncAwaitTest {
 	}
 
 	private Promise<String> asyncMethod2() {
-		return Promises.delay(async(newCachedThreadPool(), this::blockingMethod3, "world"), 1);
+		return Promises.delay(1L, async(newCachedThreadPool(), this::blockingMethod3, "world"));
 	}
 
 	private String blockingMethod3(String result) throws Exception {

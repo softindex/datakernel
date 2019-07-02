@@ -17,6 +17,7 @@
 package io.datakernel.csp.file;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
@@ -38,7 +39,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
@@ -66,7 +66,7 @@ public final class ChannelFileReaderWriterTest {
 	public void streamFileReaderWithDelay() throws IOException {
 		ByteBuf byteBuf = await(ChannelFileReader.open(newCachedThreadPool(), Paths.get("test_data/in.dat"))
 				.then(cfr -> cfr.withBufferSize(MemSize.of(1))
-						.mapAsync(buf -> Promise.<ByteBuf>ofCallback(cb -> getCurrentEventloop().delay(10, () -> cb.set(buf))))
+						.mapAsync(buf -> Promises.delay(10L, buf))
 						.toCollector(ByteBufQueue.collector())));
 
 		assertArrayEquals(Files.readAllBytes(Paths.get("test_data/in.dat")), byteBuf.asArray());

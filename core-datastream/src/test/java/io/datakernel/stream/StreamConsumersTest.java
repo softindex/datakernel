@@ -155,7 +155,7 @@ public class StreamConsumersTest {
 		StreamConsumer<Integer> errorConsumer = consumer
 				.transformWith(suspendDecorator(
 						k -> true,
-						context -> Eventloop.getCurrentEventloop().delay(10, context::resume)
+						context -> Eventloop.getCurrentEventloop().delay(10L, context::resume)
 				));
 
 		await(
@@ -180,7 +180,7 @@ public class StreamConsumersTest {
 				.streamTo(consumer
 						.transformWith(suspendDecorator(
 								item -> true,
-								context -> Eventloop.getCurrentEventloop().delay(10, context::resume))));
+								context -> Eventloop.getCurrentEventloop().delay(10L, context::resume))));
 
 		List<Integer> list = await(consumer.getResult());
 

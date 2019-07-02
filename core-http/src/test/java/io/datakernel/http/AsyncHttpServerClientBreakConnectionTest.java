@@ -37,10 +37,10 @@ public class AsyncHttpServerClientBreakConnectionTest {
 					logger.info("Closing server...");
 					eventloop.post(() ->
 							server.close().whenComplete(() -> logger.info("Server Closed")));
-					return Promises.delay(
+					return Promises.delay(100L,
 							HttpResponse.ok200()
-									.withBody("Hello World".getBytes()),
-							100L);
+									.withBody("Hello World".getBytes())
+					);
 				})
 				.withListenPort(FREE_PORT)
 				.withAcceptOnce();

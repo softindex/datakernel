@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -66,10 +67,8 @@ public final class AsyncHttpServerTest {
 
 	public static AsyncHttpServer delayedHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				request -> Promise.ofCallback(
-						cb -> primaryEventloop.delay(RANDOM.nextInt(3),
-								() -> cb.set(
-										HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))
+				request -> Promises.delay(RANDOM.nextInt(3),
+						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
 				.withListenPort(port);
 	}
 

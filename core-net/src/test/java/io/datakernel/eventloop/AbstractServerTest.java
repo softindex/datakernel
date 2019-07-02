@@ -30,6 +30,7 @@ import java.time.Duration;
 
 import static io.datakernel.async.Promises.repeat;
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
@@ -54,7 +55,7 @@ public final class AbstractServerTest {
 										socket.close();
 										return;
 									}
-									Eventloop.getCurrentEventloop().delay(5, () ->
+									getCurrentEventloop().delay(5L, () ->
 											socket.write(buf)
 													.whenResult($ -> socket.close()));
 								})

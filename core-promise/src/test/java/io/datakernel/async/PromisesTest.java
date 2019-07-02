@@ -229,7 +229,7 @@ public final class PromisesTest {
 		Exception exception = new Exception();
 		Throwable e = awaitException(repeat(() -> {
 			if (counter.get() == 5) {
-				return Promise.ofException(exception);
+				return ofException(exception);
 			}
 			counter.incrementAndGet();
 			return Promise.of(null);
@@ -249,7 +249,7 @@ public final class PromisesTest {
 	@Test
 	public void testLoopAsync() {
 		await(Promises.loop(0, AsyncPredicate.of(i -> i < 5), i ->
-				Promises.delay(Promise.of(i + 1), 10)
+				Promises.delay(10L, i + 1)
 						.whenResult(counter::set)
 						.whenResult(System.out::println)));
 		assertEquals(5, counter.get());
@@ -345,7 +345,7 @@ public final class PromisesTest {
 	@SuppressWarnings("all")
 	@Test
 	public void testSomeWithManyParamsWithDelayAndGetAhalfOfThem() {
-		List<Promise<Integer>> params = Stream.generate(() -> delay(of(0), 100)).limit(10)
+		List<Promise<Integer>> params = Stream.generate(() -> delay(100L, 0)).limit(10)
 				.collect(Collectors.toList());
 
 		Promise<List<Integer>> promiseResult = some(params, params.size() / 2);
@@ -355,8 +355,7 @@ public final class PromisesTest {
 	@SuppressWarnings("all")
 	@Test
 	public void testSomeTheWholeAreFailed() {
-		List<CompleteExceptionallyPromise<Object>> params = Stream.
-				generate(() -> ofException(new RuntimeException()))
+		List<CompleteExceptionallyPromise<Object>> params = Stream.generate(() -> ofException(new RuntimeException()))
 				.limit(10)
 				.collect(Collectors.toList());
 
@@ -367,7 +366,7 @@ public final class PromisesTest {
 	@Test
 	public void testSomeNotEnoughCompleteResult() {
 		List<Promise<?>> params = asList(of(10),
-				delay(ofException(new RuntimeException()), 100),
+				delay(100L, ofException(new RuntimeException())),
 				of(100),
 				ofException(new RuntimeException()));
 

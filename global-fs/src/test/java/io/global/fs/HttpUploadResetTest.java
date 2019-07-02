@@ -1,6 +1,7 @@
 package io.global.fs;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.eventloop.Eventloop;
@@ -37,7 +38,7 @@ public final class HttpUploadResetTest {
 							// exactly at some point of actual data being received
 							return Promise.<ByteBuf>ofException(new StacklessException(HttpUploadResetTest.class, "File too large"));
 						}
-						return Promise.ofCallback(cb -> eventloop.delay(10, () -> cb.set(buf)));
+						return Promises.delay(10L, buf);
 					}));
 				}))
 				.withHttpErrorFormatter(e ->

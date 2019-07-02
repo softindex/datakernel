@@ -39,7 +39,7 @@ public final class PollSanitizer<T> implements AsyncSupplier<T> {
 						this.lastValue = value;
 						return Promise.of(true);
 					} else {
-						return Promises.delay(Promise.of(false), yieldInterval);
+						return Promises.delay(yieldInterval, false);
 					}
 				});
 	}
