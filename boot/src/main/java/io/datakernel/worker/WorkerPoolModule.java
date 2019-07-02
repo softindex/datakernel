@@ -18,6 +18,7 @@ package io.datakernel.worker;
 
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
 public final class WorkerPoolModule extends AbstractModule {
@@ -32,6 +33,10 @@ public final class WorkerPoolModule extends AbstractModule {
 			return Binding.to($ -> {
 				throw new IllegalStateException("Expected instance override for the worker id by Injector#enterScope call");
 			});
+		});
+		generate(WorkerPool.Instances.class, (provider, scope, key) -> {
+			Key<Object> requestedKey = key.getTypeParameter(0);
+			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getName()));
 		});
 	}
 }

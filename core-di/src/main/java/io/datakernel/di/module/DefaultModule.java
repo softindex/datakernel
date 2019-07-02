@@ -28,7 +28,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for provider requests
 		generators.put(InstanceProvider.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0);
+					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
 					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
@@ -55,7 +55,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for factory requests
 		generators.put(InstanceFactory.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0);
+					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
 					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
@@ -84,7 +84,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for injector requests
 		generators.put(InstanceInjector.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0);
+					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
 
 					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey.getType());
 					BindingInitializer.Initializer<Object> initializer = injectingInitializer.getInitializer();

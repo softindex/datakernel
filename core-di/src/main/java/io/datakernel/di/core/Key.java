@@ -139,7 +139,7 @@ public abstract class Key<T> {
 
 	public <U> Key<U> getTypeParameter(int index) {
 		if (type instanceof ParameterizedType) {
-			return new KeyImpl<>(((ParameterizedType) type).getActualTypeArguments()[index], name);
+			return new KeyImpl<>(((ParameterizedType) type).getActualTypeArguments()[index], null);
 		}
 		throw new IllegalStateException("Expected type from key " + getDisplayString() + " to be parameterized");
 	}

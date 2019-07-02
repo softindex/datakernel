@@ -3,12 +3,12 @@ package io.datakernel.launchers.http;
 import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ScopeAnnotation;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
@@ -91,26 +91,6 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Named("Third")
 	WorkerPool workerPool3(WorkerPools workerPools) {
 		return workerPools.createPool(Scope.of(MyWorker.class), 4);
-	}
-	// endregion
-
-	// region worker pool instances
-	@Provides
-	@Named("First")
-	WorkerPool.Instances<AsyncHttpServer> serverInstances1(@Named("First") WorkerPool workerPool) {
-		return workerPool.getInstances(AsyncHttpServer.class);
-	}
-
-	@Provides
-	@Named("Second")
-	WorkerPool.Instances<AsyncHttpServer> serverInstances2(@Named("Second") WorkerPool workerPool) {
-		return workerPool.getInstances(AsyncHttpServer.class);
-	}
-
-	@Provides
-	@Named("Third")
-	WorkerPool.Instances<AsyncHttpServer> serverInstances3(@Named("Third") WorkerPool workerPool) {
-		return workerPool.getInstances(AsyncHttpServer.class);
 	}
 	// endregion
 

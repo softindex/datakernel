@@ -73,11 +73,6 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	}
 
 	@Provides
-	WorkerPool.Instances<AsyncHttpServer> workerServers(WorkerPool workerPool) {
-		return workerPool.getInstances(AsyncHttpServer.class);
-	}
-
-	@Provides
 	@Worker
 	AsyncHttpServer workerServer(Eventloop eventloop, AsyncServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
