@@ -28,51 +28,52 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.config.Config.ofClassPathProperties;
-import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 
-public final class CrdtNodeExample {
+public final class CrdtNodeExample extends CrdtNodeLauncher<String, TimestampContainer<Integer>> {
+	@Override
+	protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
+		return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
+			@Provides
+			CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
+				return new CrdtDescriptor<>(
+						TimestampContainer.createCrdtFunction(Integer::max),
+						new CrdtDataSerializer<>(UTF8_SERIALIZER,
+								TimestampContainer.createSerializer(INT_SERIALIZER)),
+						STRING_CODEC,
+						tuple(TimestampContainer::new,
+								TimestampContainer::getTimestamp, LONG_CODEC,
+								TimestampContainer::getState, INT_CODEC));
+			}
+
+			@Provides
+			FsClient fsClient(Eventloop eventloop, Config config) {
+				return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
+			}
+		};
+	}
+
+	@Override
+	protected Module getOverrideModule() {
+		return new AbstractModule() {
+			@Provides
+			Config config() {
+				return Config.create()
+						.with("crdt.http.listenAddresses", "localhost:8080")
+						.with("crdt.server.listenAddresses", "localhost:9090")
+						.with("crdt.local.path", "/tmp/TESTS/crdt")
+						.with("crdt.cluster.localPartitionId", "local")
+						.with("crdt.cluster.partitions.noop", "localhost:9091")
+						.overrideWith(Config.ofClassPathProperties(PROPERTIES_FILE, true))
+						.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+			}
+		};
+	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
-			@Override
-			protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
-				return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
-					@Provides
-					CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
-						return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-								new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-								tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
-					}
-
-					@Provides
-					FsClient fsClient(Eventloop eventloop, Config config) {
-						return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
-					}
-				};
-			}
-
-			@Override
-			protected Module getOverrideModule() {
-				return new AbstractModule() {
-					@Provides
-					Config config() {
-						return Config.create()
-								.with("crdt.http.listenAddresses", "localhost:8080")
-								.with("crdt.server.listenAddresses", "localhost:9090")
-								.with("crdt.local.path", "/tmp/TESTS/crdt")
-								.with("crdt.cluster.localPartitionId", "local")
-								.with("crdt.cluster.partitions.noop", "localhost:9091")
-								.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-								.overrideWith(ofProperties(System.getProperties()).getChild("config"));
-					}
-				};
-			}
-
-		};
+		Launcher launcher = new CrdtNodeExample();
 		launcher.launch(args);
 	}
 }

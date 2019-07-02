@@ -49,7 +49,6 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toList;
 
 public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends AbstractModule {
-
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void configure() {
@@ -85,8 +84,8 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 		return CrdtStorageCluster.create(
 				localClient.getEventloop(),
 				singletonMap(config.get("crdt.cluster.localPartitionId"), localClient),
-				descriptor.getCrdtFunction()
-		).initialize(ofCrdtCluster(config.getChild("crdt.cluster"), localClient, descriptor));
+				descriptor.getCrdtFunction())
+				.initialize(ofCrdtCluster(config.getChild("crdt.cluster"), localClient, descriptor));
 	}
 
 	@Provides

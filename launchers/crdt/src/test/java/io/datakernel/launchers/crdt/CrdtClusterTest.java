@@ -102,9 +102,14 @@ public final class CrdtClusterTest {
 
 				@Provides
 				CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
-					return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-							new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-							tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
+					return new CrdtDescriptor<>(
+							TimestampContainer.createCrdtFunction(Integer::max),
+							new CrdtDataSerializer<>(UTF8_SERIALIZER,
+									TimestampContainer.createSerializer(INT_SERIALIZER)),
+							STRING_CODEC,
+							tuple(TimestampContainer::new,
+									TimestampContainer::getTimestamp, LONG_CODEC,
+									TimestampContainer::getState, INT_CODEC));
 				}
 
 				@Provides
@@ -170,9 +175,14 @@ public final class CrdtClusterTest {
 
 			@Provides
 			CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
-				return new CrdtDescriptor<>(TimestampContainer.createCrdtFunction(Integer::max),
-						new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)), STRING_CODEC,
-						tuple(TimestampContainer::new, TimestampContainer::getTimestamp, LONG_CODEC, TimestampContainer::getState, INT_CODEC));
+				return new CrdtDescriptor<>(
+						TimestampContainer.createCrdtFunction(Integer::max),
+						new CrdtDataSerializer<>(UTF8_SERIALIZER,
+								TimestampContainer.createSerializer(INT_SERIALIZER)),
+						STRING_CODEC,
+						tuple(TimestampContainer::new,
+								TimestampContainer::getTimestamp, LONG_CODEC,
+								TimestampContainer::getState, INT_CODEC));
 			}
 		}.launch(new String[0]);
 	}
