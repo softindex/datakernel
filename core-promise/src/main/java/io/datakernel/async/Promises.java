@@ -43,12 +43,22 @@ import static java.util.Collections.emptyList;
 /**
  * Allows to manage multiple {@link Promise}s.
  */
+@SuppressWarnings({"unused", "WeakerAccess"})
 public final class Promises {
 
 	private Promises() {
 	}
 
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
+
+	/**
+	 * @see #timeout(Promise, long)
+	 */
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, @NotNull Duration delay) {
+		return timeout(promise, delay.toMillis());
+	}
 
 	/**
 	 * Waits until the delay passes and if the {@code Promise} is still
@@ -64,12 +74,12 @@ public final class Promises {
 		if (promise.isComplete()) return promise;
 		if (delay <= 0) return Promise.ofException(TIMEOUT_EXCEPTION);
 		return promise.next(new NextPromise<T, T>() {
-			@Nullable ScheduledRunnable schedule = getCurrentEventloop()
-					.delay(delay,
-							() -> {
-								schedule = null;
-								tryCompleteExceptionally(TIMEOUT_EXCEPTION);
-							});
+			@Nullable
+			ScheduledRunnable schedule = getCurrentEventloop().delay(delay,
+					() -> {
+						schedule = null;
+						tryCompleteExceptionally(TIMEOUT_EXCEPTION);
+					});
 
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
@@ -86,13 +96,40 @@ public final class Promises {
 		});
 	}
 
+	@Contract(pure = true)
+	@NotNull
+	public static Promise<Void> delay(Duration delay) {
+		return delay((Void) null, delay.toMillis());
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static Promise<Void> delay(long delayMillis) {
+		return delay((Void) null, delayMillis);
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> delay(T value, Duration delay) {
+		return delay(value, delay.toMillis());
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> delay(T value, long delayMillis) {
+		if (delayMillis <= 0) return Promise.of(value);
+		SettablePromise<T> cb = new SettablePromise<>();
+		getCurrentEventloop().delay(delayMillis, () -> cb.set(value));
+		return cb;
+	}
+
 	/**
-	 * @see #timeout(Promise, long)
+	 * @see #delay(Promise, long)
 	 */
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> timeout(@NotNull Promise<T> promise, @NotNull Duration delay) {
-		return timeout(promise, delay.toMillis());
+	public static <T> Promise<T> delay(@NotNull Promise<T> promise, @NotNull Duration delay) {
+		return delay(promise, delay.toMillis());
 	}
 
 	/**
@@ -112,13 +149,65 @@ public final class Promises {
 				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb)));
 	}
 
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> interval(@NotNull Promise<T> promise, Duration interval) {
+		return interval(promise, interval.toMillis());
+	}
+
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> interval(@NotNull Promise<T> promise, long intervalMillis) {
+		return intervalMillis <= 0 ?
+				promise :
+				promise.then(value -> Promise.ofCallback(cb -> getCurrentEventloop().delay(intervalMillis, () -> cb.set(value))));
+	}
+
 	/**
-	 * @see #delay(Promise, long)
+	 * @see #schedule(Promise, long)
 	 */
 	@Contract(pure = true)
 	@NotNull
-	public static <T> Promise<T> delay(@NotNull Promise<T> promise, @NotNull Duration delay) {
-		return delay(promise, delay.toMillis());
+	public static Promise<Void> schedule(@NotNull Instant instant) {
+		return schedule((Void) null, instant.toEpochMilli());
+	}
+
+	/**
+	 * @see #schedule(Promise, long)
+	 */
+	@Contract(pure = true)
+	@NotNull
+	public static Promise<Void> schedule(long timestamp) {
+		return schedule((Void) null, timestamp);
+	}
+
+	/**
+	 * @see #schedule(Promise, long)
+	 */
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> schedule(T value, @NotNull Instant instant) {
+		return schedule(value, instant.toEpochMilli());
+	}
+
+	/**
+	 * @see #schedule(Promise, long)
+	 */
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> schedule(T value, long timestamp) {
+		SettablePromise<T> cb = new SettablePromise<>();
+		getCurrentEventloop().schedule(timestamp, () -> ((@NotNull SettableCallback<T>) cb).set(value));
+		return cb;
+	}
+
+	/**
+	 * @see #schedule(Promise, long)
+	 */
+	@Contract(pure = true)
+	@NotNull
+	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, @NotNull Instant instant) {
+		return schedule(promise, instant.toEpochMilli());
 	}
 
 	/**
@@ -132,15 +221,6 @@ public final class Promises {
 		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
 				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb)));
-	}
-
-	/**
-	 * @see #schedule(Promise, long)
-	 */
-	@Contract(pure = true)
-	@NotNull
-	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, @NotNull Instant instant) {
-		return schedule(promise, instant.toEpochMilli());
 	}
 
 	/**
