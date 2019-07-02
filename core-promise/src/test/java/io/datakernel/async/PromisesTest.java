@@ -345,13 +345,12 @@ public final class PromisesTest {
 	@SuppressWarnings("all")
 	@Test
 	public void testSomeWithManyParamsWithDelayAndGetAhalfOfThem() {
-		List<Promise<Integer>> params = Stream.generate(() -> delay(of(0), 1000)).limit(10)
+		List<Promise<Integer>> params = Stream.generate(() -> delay(of(0), 100)).limit(10)
 				.collect(Collectors.toList());
 
 		Promise<List<Integer>> promiseResult = some(params, params.size() / 2);
 		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
 	}
-
 
 	@SuppressWarnings("all")
 	@Test
@@ -368,7 +367,7 @@ public final class PromisesTest {
 	@Test
 	public void testSomeNotEnoughCompleteResult() {
 		List<Promise<?>> params = asList(of(10),
-				delay(ofException(new RuntimeException()), 10000),
+				delay(ofException(new RuntimeException()), 100),
 				of(100),
 				ofException(new RuntimeException()));
 
