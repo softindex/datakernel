@@ -10,7 +10,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/uikernel.html).
-
-You can explore UIKernel integration example [here](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration).
-
+### To find out more visit [our site](https://datakernel.io/docs/core/uikernel.html).

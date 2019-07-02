@@ -11,5 +11,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/bytebuf.html).
-### You can explore ByteBuf examples [here](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
+### To find out more visit [our site](https://datakernel.io/docs/core/bytebuf.html).

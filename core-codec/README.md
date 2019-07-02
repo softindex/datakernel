@@ -11,6 +11,5 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/codec.html).
-### You can explore Codec example [here](https://github.com/softindex/datakernel/tree/master/examples/codec)
+### To find out more visit [our site](https://datakernel.io/docs/core/codec.html).
  

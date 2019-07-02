@@ -12,6 +12,5 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/cloud/rpc.html).
-### You can explore RPC example [here](https://github.com/softindex/datakernel/tree/master/examples/rpc)
+### To find out more visit [our site](https://datakernel.io/docs/cloud/rpc.html).
 

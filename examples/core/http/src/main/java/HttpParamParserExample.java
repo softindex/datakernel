@@ -97,6 +97,8 @@ class ContactDAOImpl implements ContactDAO {
 
 public final class HttpParamParserExample extends HttpServerLauncher {
 	private final static String SEPARATOR = "-";
+
+	//[START REGION_1]
 	private final static HttpParamParser<Address> addressDecoder = HttpParamParser.create(Address::new,
 			ofPost("title", "")
 					.validate(param -> !param.isEmpty(), "Title cannot be empty"));
@@ -108,6 +110,7 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 					.map(Double::intValue)
 					.validate(age -> age > 18, "Age must be greater than 18"),
 			addressDecoder.withId("contact-address"));
+	//[END REGION_1]
 
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
 		ByteBufWriter writer = new ByteBufWriter();
@@ -120,6 +123,7 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 		return new ContactDAOImpl();
 	}
 
+	//[START REGION_2]
 	@Provides
 	AsyncServlet mainServlet(ContactDAO contactDAO) {
 		Mustache contactListView = new DefaultMustacheFactory().compile("static/decoder/contactList.html");
@@ -140,6 +144,7 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 									.withBody(applyTemplate(contactListView, scopes)));
 						}));
 	}
+	//[END REGION_2]
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new HttpParamParserExample();

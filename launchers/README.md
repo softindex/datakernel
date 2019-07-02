@@ -2,6 +2,7 @@
 
 This module provides you with handy launchers for commonly-used solutions.
 You can add this module to your project by inserting the following dependency to **pom.xml**:
+
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>
@@ -10,5 +11,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/launchers.html).
-### You can explore Launchers examples [here](https://github.com/softindex/datakernel/tree/master/examples/launchers).
+### To find out more visit [our site](https://datakernel.io/docs/core/launcher.html).

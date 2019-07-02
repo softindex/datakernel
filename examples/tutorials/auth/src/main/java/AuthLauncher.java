@@ -52,9 +52,12 @@ public final class AuthLauncher extends HttpServerLauncher {
 	@Named("public")
 	AsyncServlet publicServlet(AuthService authService, SessionStore<String> store, StaticLoader staticLoader) {
 		return RoutingServlet.create()
+				//[START REGION_1]
 				.with("/", request -> Promise.of(HttpResponse.redirect302("/login")))
+				//[END REGION_1]
 				.with(GET, "/signup", StaticServlet.create(staticLoader, "signup.html"))
 				.with(GET, "/login", StaticServlet.create(staticLoader, "login.html"))
+				//[START REGION_5]
 				.with(POST, "/login", loadBody()
 						.serveFirstSuccessful(
 								request -> {
@@ -71,6 +74,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 									return AsyncServlet.NEXT;
 								},
 								StaticServlet.create(staticLoader, "errorPage.html")))
+				//[END REGION_5]
 				.with(POST, "/signup", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
@@ -88,11 +92,16 @@ public final class AuthLauncher extends HttpServerLauncher {
 	@Named("private")
 	AsyncServlet privateServlet(StaticLoader staticLoader) {
 		return RoutingServlet.create()
+				//[START REGION_2]
 				.with("/", request -> Promise.of(HttpResponse.redirect302("/members")))
+				//[END REGION_2]
+				//[START REGION_3]
 				.with("/members/*", RoutingServlet.create()
 						.with(GET, "/", StaticServlet.create(staticLoader, "index.html"))
+						//[START REGION_4]
 						.with(GET, "/cookie", request -> Promise.of(HttpResponse.ok200()
 								.withBody(wrapUtf8(request.getAttachment(String.class)))))
+						//[END REGION_4]
 						.with(POST, "/logout", request -> {
 							String id = request.getCookie(SESSION_ID);
 							if (id != null) {
@@ -103,6 +112,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 							}
 							return Promise.of(HttpResponse.ofCode(404));
 						}));
+				//[END REGION_3]
 	}
 
 	public static void main(String[] args) throws Exception {

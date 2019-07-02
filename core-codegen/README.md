@@ -11,6 +11,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/codegen.html).
-### You can explore Codegen examples [here](https://github.com/softindex/datakernel/tree/master/examples/codegen)
-
+### To find out more visit [our site](https://datakernel.io/docs/core/codegen.html).

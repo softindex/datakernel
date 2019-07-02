@@ -11,4 +11,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/cloud/multilog.html).
+### To find out more visit [our site](https://datakernel.io/docs/cloud/multilog.html).

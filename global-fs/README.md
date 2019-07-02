@@ -11,8 +11,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/global/global-fs.html).
-
-You can run [demo FS application](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-app) or 
-[FS CLI](https://github.com/softindex/datakernel/tree/master/global-apps/global-fs-cli) to see how the technology works.
-
+### To find out more visit [our site](https://datakernel.io/docs/global/global-fs.html).

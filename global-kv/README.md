@@ -11,6 +11,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/global/global-kv.html).
-
-To see how the technology works, you can run [Global-KV demo application](https://github.com/softindex/datakernel/tree/master/examples/global-kv-demo).
+### To find out more visit [our site](https://datakernel.io/docs/global/global-kv.html).

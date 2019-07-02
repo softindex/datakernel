@@ -13,8 +13,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/global/global-ot.html).
-
-You can explore how Global-OT works by checking out our [demo Global-OT application](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo), 
-[collaborative text editor](https://github.com/softindex/datakernel/tree/master/examples/global-ot-editor) and 
-[message chat](https://github.com/softindex/datakernel/tree/master/examples/global-ot-chat).
+### To find out more visit [our site](https://datakernel.io/docs/global/global-ot.html).

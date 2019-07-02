@@ -13,5 +13,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/cloud/fs.html).
-### You can explore FS examples [here](https://github.com/softindex/datakernel/tree/master/examples/remotefs)
+### To find out more visit [our site](https://datakernel.io/docs/cloud/fs.html).

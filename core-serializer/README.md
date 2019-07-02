@@ -12,5 +12,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/serializer.html).
-### You can explore Serializer examples [here](https://github.com/softindex/datakernel/tree/master/examples/serializer)
+### To find out more visit [our site](https://datakernel.io/docs/core/serializer.html).

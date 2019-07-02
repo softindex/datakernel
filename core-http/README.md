@@ -1,6 +1,6 @@
 ## HTTP
 
-HTTP module enables developers to build HTTP servers and clients that take full advantage of asynchronous I/O.
+HTTP module provides tools for building HTTP servers and clients that take full advantage of asynchronous I/O.
 
 You can add this module to your project by inserting the following dependency to **pom.xml**:
 ```xml
@@ -12,4 +12,3 @@ You can add this module to your project by inserting the following dependency to
 ```
 
 ### To find out more visit [our site](https://datakernel.io/docs/components/core/http.html).
-### You can explore HTTP examples [here](https://github.com/softindex/datakernel/tree/master/examples/http).

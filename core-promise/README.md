@@ -13,9 +13,4 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/promise.html).
-### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise) 
-These examples represent how to utilize [`Promises`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/async/Promises.java) 
-and [`AsyncFile`](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/file/AsyncFile.java) 
-utility classes. `AsyncFile` allows you to work with files I/O asynchronously while `Promises` includes handy methods for 
-*Promises* managing.
+### To find out more visit [our site](https://datakernel.io/docs/core/promise.html).

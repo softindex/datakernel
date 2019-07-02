@@ -12,5 +12,8 @@ You can add this module to your project by inserting the following dependency to
 </dependency>
 ```
 
-### To find out more visit [our site](https://datakernel.io/docs/components/core/boot).
-### You can explore Boot examples [here](https://github.com/softindex/datakernel/blob/master/examples/boot)
+### To find out more about Boot components visit our site:
+* [Launcher](https://datakernel.io/docs/core/launcher.html)
+* [Worker Pool](https://datakernel.io/docs/core/worker-pool.html)
+* [Service Graph](https://datakernel.io/docs/core/service-graph.html)
+* [Configs](https://datakernel.io/docs/core/configs.html)
