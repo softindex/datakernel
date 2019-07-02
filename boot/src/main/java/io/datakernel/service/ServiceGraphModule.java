@@ -259,12 +259,10 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@ProvidesIntoSet
-	RootService service(InstanceProvider<ServiceGraph> provider) {
+	RootService service(ServiceGraph serviceGraph) {
 		return new RootService() {
 			@Override
 			public CompletableFuture<?> start() {
-				logger.info("Creating ServiceGraph...");
-				ServiceGraph serviceGraph = provider.get();
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				serviceGraph.startFuture()
 						.whenComplete(($, e) -> {
@@ -294,7 +292,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			@Override
 			public CompletableFuture<?> stop() {
 				logger.info("Stopping ServiceGraph...");
-				ServiceGraph serviceGraph = provider.get();
 				return serviceGraph.stopFuture();
 			}
 		};
@@ -302,21 +299,27 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 	@Provides
 	ServiceGraph serviceGraph(Injector injector) {
+		return ServiceGraph.create()
+				.initialize(initializer)
+				.initialize(serviceGraph -> serviceGraph.withStartCallback(() -> initializeServiceGraph(serviceGraph, injector)));
+	}
+
+	private void initializeServiceGraph(ServiceGraph serviceGraph, Injector injector) {
+		logger.info("Initializing ServiceGraph...");
+
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
 		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
 		IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
 
-		ServiceGraph serviceGraph = ServiceGraph.create()
-				.withNodeSuffixes(key -> {
-					ServiceKey serviceKey = (ServiceKey) key;
-					if (!serviceKey.isWorker()) {
-						return null;
-					}
-					return pools.get(serviceKey.getWorkerPoolId() - 1).getSize();
-				})
-				.initialize(initializer);
+		serviceGraph.withNodeSuffixes(key -> {
+			ServiceKey serviceKey = (ServiceKey) key;
+			if (!serviceKey.isWorker()) {
+				return null;
+			}
+			return pools.get(serviceKey.getWorkerPoolId() - 1).getSize();
+		});
 
 		IdentityHashMap<Object, ServiceKey> workerInstanceToKey = new IdentityHashMap<>();
 		if (workerPools != null) {
@@ -380,7 +383,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 							.collect(toSet()));
 		}
 
-		return populateServiceGraph(serviceGraph, instances, instanceDependencies, cache);
+		initializeServiceGraph(serviceGraph, instances, instanceDependencies, cache);
 	}
 
 	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
@@ -397,8 +400,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								.collect(toSet())));
 	}
 
-	@NotNull
-	private ServiceGraph populateServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies, IdentityHashMap<Object, CachedService> cache) {
+	private void initializeServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies, IdentityHashMap<Object, CachedService> cache) {
 		Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));
 		if (!unusedKeys.isEmpty()) {
 			logger.warn("Unused services : {}", unusedKeys);
@@ -444,8 +446,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 
 		serviceGraph.removeIntermediateNodes();
-
-		return serviceGraph;
 	}
 
 	@Nullable
