@@ -23,13 +23,13 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.exception.ParseException;
 import io.datakernel.inspector.AbstractInspector;
 import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,49 +38,31 @@ import java.net.InetAddress;
 import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
-import static io.datakernel.http.HttpHeaders.*;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
+@SuppressWarnings({"UnusedReturnValue", "WeakerAccess", "unused"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
-	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
-
-	static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
-		HttpResponse response;
-		if (e instanceof HttpException) {
-			response = HttpResponse.ofCode(((HttpException) e).getCode())
-					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
-			if (e.getLocalizedMessage() != null) {
-				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
-			}
-		} else if (e instanceof ParseException) {
-			response = HttpResponse.ofCode(400)
-					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
-			if (e.getLocalizedMessage() != null) {
-				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
-			}
-		} else {
-			response = HttpResponse.ofCode(500);
-		}
-		return response
-				.withHeader(CACHE_CONTROL, "no-store")
-				.withHeader(PRAGMA, "no-cache")
-				.withHeader(AGE, "0");
-	};
+	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ofSeconds(30));
+	public static final Duration READ_WRITE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout_Shutdown", Duration.ofSeconds(3));
+	public static final Duration KEEP_ALIVE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "keepAliveTimeout", Duration.ofSeconds(30));
+	public static final MemSize MAX_BODY_SIZE = ApplicationSettings.getMemSize(AsyncHttpServer.class, "maxBodySize", MemSize.ZERO);
+	public static final int MAX_KEEP_ALIVE_REQUESTS = ApplicationSettings.getInt(AsyncHttpServer.class, "maxKeepAliveRequests", 0);
 
 	@NotNull
 	private final AsyncServlet servlet;
 	private final char[] charBuffer = new char[1024];
 	@NotNull
-	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
-	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
-	int maxKeepAliveRequests = -1;
-	int readWriteTimeoutMillis = 0;
-	int maxBodySize = Integer.MAX_VALUE;
+	private HttpExceptionFormatter errorFormatter = HttpExceptionFormatter.DEFAULT_FORMATTER;
 
-	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
+	int readWriteTimeoutMillis = (int) READ_WRITE_TIMEOUT.toMillis();
+	int readWriteTimeoutMillisShutdown = (int) READ_WRITE_TIMEOUT_SHUTDOWN.toMillis();
+	int keepAliveTimeoutMillis = (int) KEEP_ALIVE_TIMEOUT.toMillis();
+	int maxBodySize = MAX_BODY_SIZE.toInt();
+	int maxKeepAliveRequests = MAX_KEEP_ALIVE_REQUESTS;
+
+	final ConnectionsLinkedList poolNew = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolServing = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
 	private int poolReadWriteExpired;
 
@@ -186,8 +168,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return withKeepAliveTimeout(Duration.ZERO);
 	}
 
-	public AsyncHttpServer withReadWriteTimeout(@NotNull Duration readTimeout) {
-		readWriteTimeoutMillis = (int) readTimeout.toMillis();
+	public AsyncHttpServer withReadWriteTimeout(@NotNull Duration readWriteTimeout) {
+		this.readWriteTimeoutMillis = (int) readWriteTimeout.toMillis();
+		return this;
+	}
+
+	public AsyncHttpServer withReadWriteTimeout(@NotNull Duration readWriteTimeout, @NotNull Duration readWriteTimeoutShutdown) {
+		this.readWriteTimeoutMillis = (int) readWriteTimeout.toMillis();
+		this.readWriteTimeoutMillisShutdown = (int) readWriteTimeoutShutdown.toMillis();
 		return this;
 	}
 
@@ -196,7 +184,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withMaxBodySize(int maxBodySize) {
-		this.maxBodySize = maxBodySize != 0 ? maxBodySize : Integer.MAX_VALUE;
+		this.maxBodySize = maxBodySize;
 		return this;
 	}
 
@@ -228,12 +216,19 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		assert expiredConnectionsCheck == null;
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
 			expiredConnectionsCheck = null;
-			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
-			if (readWriteTimeoutMillis != 0) {
-				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
+			boolean isClosing = closeCallback != null;
+			if (readWriteTimeoutMillis != 0 || isClosing) {
+				poolReadWriteExpired += poolNew.closeExpiredConnections(eventloop.currentTimeMillis() -
+						(!isClosing ? readWriteTimeoutMillis : readWriteTimeoutMillisShutdown));
+				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() -
+						(!isClosing ? readWriteTimeoutMillis : readWriteTimeoutMillisShutdown), READ_TIMEOUT_ERROR);
 			}
+			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 			if (getConnectionsCount() != 0) {
 				scheduleExpiredConnectionsCheck();
+				if (isClosing) {
+					logger.info("...Closing " + this);
+				}
 			}
 		});
 	}
@@ -251,7 +246,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final SettablePromise<@Nullable Void> closeNotification = new SettablePromise<>();
 
 	@Nullable
-	private SettableCallback<@Nullable Void> closeCallback;
+	private SettableCallback<Void> closeCallback;
 
 	void onConnectionClosed() {
 		if (getConnectionsCount() == 0 && closeCallback != null) {
@@ -262,6 +257,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@Override
 	protected void onClose(SettableCallback<@Nullable Void> cb) {
+		logger.info("Closing " + this);
 		closeNotification.set(null);
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
@@ -274,12 +270,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)
 	public int getConnectionsCount() {
-		return poolKeepAlive.size() + poolReadWrite.size() + poolServing.size();
+		return poolNew.size() + poolKeepAlive.size() + poolReadWrite.size() + poolServing.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
-	public int getConnectionsKeepAliveCount() {
-		return poolKeepAlive.size();
+	public int getConnectionsNewCount() {
+		return poolNew.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
@@ -290,6 +286,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsServingCount() {
 		return poolServing.size();
+	}
+
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public int getConnectionsKeepAliveCount() {
+		return poolKeepAlive.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
@@ -312,4 +313,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return BaseInspector.lookup(inspector, JmxInspector.class);
 	}
 
+	@Override
+	public String toString() {
+		return "{" + "new:" + poolNew.size() + " read/write:" + poolReadWrite.size() + " serving:" + poolServing.size() + " keep-alive:" + poolKeepAlive.size() + "}";
+	}
 }

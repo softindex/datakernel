@@ -28,7 +28,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,11 +40,12 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.util.MemSize.kilobytes;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
-	public static final int DEFAULT_READ_BUFFER_SIZE = ApplicationSettings.getInt(AsyncTcpSocketImpl.class, "readBufferSize", MemSize.kilobytes(16).toInt());
+	public static final int DEFAULT_READ_BUFFER_SIZE = ApplicationSettings.getMemSize(AsyncTcpSocketImpl.class, "readBufferSize", kilobytes(16)).toInt();
 
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketImpl.class, "timed out");
 	public static final int NO_TIMEOUT = 0;

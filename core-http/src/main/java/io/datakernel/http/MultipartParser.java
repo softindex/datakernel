@@ -39,11 +39,12 @@ import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
+import static io.datakernel.util.MemSize.kilobytes;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 
 public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
-	private static final long MAX_META_SIZE = ApplicationSettings.getLong(MultipartParser.class, "maxMetaBuffer", 4096);
+	private static final int MAX_META_SIZE = ApplicationSettings.getMemSize(MultipartParser.class, "maxMetaBuffer", kilobytes(4)).toInt();
 
 	@Nullable
 	private List<String> readingHeaders = null;

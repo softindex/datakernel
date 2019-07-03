@@ -96,7 +96,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	public void serve() {
-		(pool = server.poolReadWrite).addLastNode(this);
+		(pool = server.poolNew).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 		socket.read().whenComplete(startLineConsumer);
 	}
@@ -216,7 +216,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private void writeHttpResponse(HttpResponse httpResponse) {
 		HttpHeaderValue connectionHeader = (flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER;
-		if (server.maxKeepAliveRequests != -1) {
+		if (server.maxKeepAliveRequests != 0) {
 			if (++numberOfKeepAliveRequests >= server.maxKeepAliveRequests) {
 				connectionHeader = CONNECTION_CLOSE_HEADER;
 			}

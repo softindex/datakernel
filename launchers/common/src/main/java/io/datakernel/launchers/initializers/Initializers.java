@@ -71,7 +71,7 @@ public class Initializers {
 		return server -> server
 				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", server.getKeepAliveTimeout()))
 				.withReadWriteTimeout(config.get(ofDuration(), "readWriteTimeout", server.getReadWriteTimeout()))
-				.withMaxBodySize(config.get(ofMemSize(), "maxBodySize", MemSize.of(0)));
+				.withMaxBodySize(config.get(ofMemSize(), "maxBodySize", MemSize.ZERO));
 	}
 
 }

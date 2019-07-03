@@ -29,9 +29,11 @@ import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
@@ -49,10 +51,19 @@ import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
+import static org.slf4j.LoggerFactory.getLogger;
 
 @SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
+	protected Logger logger = getLogger(getClass());
+
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
+	public static final Duration CONNECT_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpClient.class, "connectTimeout", Duration.ZERO);
+	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpClient.class, "readWriteTimeout", Duration.ZERO);
+	public static final Duration READ_WRITE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpClient.class, "readWriteTimeout_Shutdown", Duration.ofSeconds(3));
+	public static final Duration KEEP_ALIVE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpClient.class, "keepAliveTimeout", Duration.ZERO);
+	public static final MemSize MAX_BODY_SIZE = ApplicationSettings.getMemSize(AsyncHttpClient.class, "maxBodySize", MemSize.ZERO);
+	public static final int MAX_KEEP_ALIVE_REQUESTS = ApplicationSettings.getInt(AsyncHttpClient.class, "maxKeepAliveRequests", 0);
 
 	@NotNull
 	private final Eventloop eventloop;
@@ -71,11 +82,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private ScheduledRunnable expiredConnectionsCheck;
 
 	// timeouts
-	int connectTimeoutMillis = 0;
-	int keepAliveTimeoutMillis = 0;
-	int maxKeepAliveRequests = -1;
-	int readWriteTimeoutMillis = 0;
-	int maxBodySize = Integer.MAX_VALUE;
+	int connectTimeoutMillis = (int) CONNECT_TIMEOUT.toMillis();
+	int readWriteTimeoutMillis = (int) READ_WRITE_TIMEOUT.toMillis();
+	int readWriteTimeoutMillisShutdown = (int) READ_WRITE_TIMEOUT_SHUTDOWN.toMillis();
+	int keepAliveTimeoutMillis = (int) KEEP_ALIVE_TIMEOUT.toMillis();
+	int maxBodySize = MAX_BODY_SIZE.toInt();
+	int maxKeepAliveRequests = MAX_KEEP_ALIVE_REQUESTS;
 
 	// SSL
 	private SSLContext sslContext;
@@ -296,10 +308,17 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
 			expiredConnectionsCheck = null;
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
-			if (readWriteTimeoutMillis != 0)
-				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
-			if (getConnectionsCount() != 0)
+			boolean isClosing = closePromise != null;
+			if (readWriteTimeoutMillis != 0 || isClosing) {
+				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() -
+						(!isClosing ? readWriteTimeoutMillis : readWriteTimeoutMillisShutdown), READ_TIMEOUT_ERROR);
+			}
+			if (getConnectionsCount() != 0) {
 				scheduleExpiredConnectionsCheck();
+				if (isClosing) {
+					logger.info("...Closing " + this);
+				}
+			}
 		});
 	}
 
@@ -425,7 +444,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@Nullable
-	private SettablePromise<@Nullable Void> closePromise;
+	private SettablePromise<Void> closePromise;
 
 	public void onConnectionClosed() {
 		if (getConnectionsCount() == 0 && closePromise != null) {
@@ -438,6 +457,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public MaterializedPromise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		logger.info("Closing " + this);
+
 		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();
@@ -510,4 +531,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return BaseInspector.lookup(inspector, JmxInspector.class);
 	}
 	// endregion
+
+	@Override
+	public String toString() {
+		return "{" + "read/write:" + poolReadWrite.size() + " keep-alive:" + poolKeepAlive.size() + "}";
+	}
 }

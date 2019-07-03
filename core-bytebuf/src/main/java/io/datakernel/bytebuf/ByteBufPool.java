@@ -51,13 +51,13 @@ public final class ByteBufPool {
 	  * Defines the minimal size of ByteBufs in this ByteBufPool.
 	  * A constant value, by default set at 0.
 	  */
-	private static final int MIN_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "minSize", 0);
+	private static final int MIN_SIZE = ApplicationSettings.getMemSize(ByteBufPool.class, "minSize", MemSize.ZERO).toInt();
 
 	 /**
 	  * Defines the maximum size of ByteBufs in this ByteBufPool.
 	  * A constant value, by default set at 0.
 	  */
-	private static final int MAX_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 0);
+	private static final int MAX_SIZE = ApplicationSettings.getMemSize(ByteBufPool.class, "maxSize", MemSize.ZERO).toInt();
 	private static final boolean MIN_MAX_CHECKS = MIN_SIZE != 0 || MAX_SIZE != 0;
 
 	 /**

@@ -16,10 +16,38 @@
 
 package io.datakernel.http;
 
+import io.datakernel.exception.ParseException;
 import org.jetbrains.annotations.NotNull;
+
+import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
+import static io.datakernel.http.HttpHeaders.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @FunctionalInterface
 public interface HttpExceptionFormatter {
 	@NotNull
 	HttpResponse formatException(@NotNull Throwable e);
+
+	HttpExceptionFormatter DEFAULT_FORMATTER = e -> {
+		HttpResponse response;
+		if (e instanceof HttpException) {
+			response = HttpResponse.ofCode(((HttpException) e).getCode())
+					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+			if (e.getLocalizedMessage() != null) {
+				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
+			}
+		} else if (e instanceof ParseException) {
+			response = HttpResponse.ofCode(400)
+					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+			if (e.getLocalizedMessage() != null) {
+				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
+			}
+		} else {
+			response = HttpResponse.ofCode(500);
+		}
+		return response
+				.withHeader(CACHE_CONTROL, "no-store")
+				.withHeader(PRAGMA, "no-cache")
+				.withHeader(AGE, "0");
+	};
 }

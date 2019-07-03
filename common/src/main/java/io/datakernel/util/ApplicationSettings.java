@@ -16,17 +16,15 @@
 
 package io.datakernel.util;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.time.Duration;
+import java.util.function.Function;
 
 public final class ApplicationSettings {
 	private ApplicationSettings() {
 		throw new AssertionError();
 	}
 
-	@Nullable
-	public static String getString(Class<?> type, String name, @Nullable String defValue) {
+	public static String getString(Class<?> type, String name, String defValue) {
 		String property;
 		property = System.getProperty(type.getName() + "." + name);
 		if (property != null) return property;
@@ -35,44 +33,35 @@ public final class ApplicationSettings {
 		return defValue;
 	}
 
-	public static int getInt(Class<?> type, String name, int defValue) {
+	public static <T> T get(Function<String, T> parser, Class<?> type, String name, T defValue) {
 		String property = getString(type, name, null);
 		if (property != null) {
-			return Integer.parseInt(property);
+			return parser.apply(property);
 		}
 		return defValue;
+	}
+
+	public static int getInt(Class<?> type, String name, int defValue) {
+		return get(Integer::parseInt, type, name, defValue);
 	}
 
 	public static long getLong(Class<?> type, String name, long defValue) {
-		String property = getString(type, name, null);
-		if (property != null) {
-			return Long.parseLong(property);
-		}
-		return defValue;
+		return get(Long::parseLong, type, name, defValue);
 	}
 
 	public static boolean getBoolean(Class<?> type, String name, boolean defValue) {
-		String property = getString(type, name, null);
-		if (property != null) {
-			return Boolean.parseBoolean(property);
-		}
-		return defValue;
+		return get(Boolean::parseBoolean, type, name, defValue);
 	}
 
 	public static double getDouble(Class<?> type, String name, double defValue) {
-		String property = getString(type, name, null);
-		if (property != null) {
-			return Double.parseDouble(property);
-		}
-		return defValue;
+		return get(Double::parseDouble, type, name, defValue);
 	}
 
-	@Nullable
 	public static Duration getDuration(Class<?> type, String name, Duration defValue) {
-		String property = getString(type, name, null);
-		if (property != null) {
-			return StringFormatUtils.parseDuration(property);
-		}
-		return defValue;
+		return get(StringFormatUtils::parseDuration, type, name, defValue);
+	}
+
+	public static MemSize getMemSize(Class<?> type, String name, MemSize defValue) {
+		return get(MemSize::valueOf, type, name, defValue);
 	}
 }

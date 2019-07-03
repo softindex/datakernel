@@ -210,7 +210,7 @@ public abstract class HttpMessage {
 		return ChannelSuppliers.collect(bodyStream,
 				new ByteBufQueue(),
 				(queue, buf) -> {
-					if (queue.hasRemainingBytes(maxBodySize)) {
+					if (maxBodySize != 0 && queue.hasRemainingBytes(maxBodySize)) {
 						queue.recycle();
 						buf.recycle();
 						throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
