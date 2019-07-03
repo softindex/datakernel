@@ -12,7 +12,6 @@ import static io.datakernel.async.AsyncAwait.async;
 import static io.datakernel.async.AsyncAwait.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 
 public class AsyncAwaitTest {
@@ -22,7 +21,7 @@ public class AsyncAwaitTest {
 
 	@Test
 	public void test1() throws ExecutionException, InterruptedException {
-		CompletableFuture<List<String>> future = async(newCachedThreadPool(), this::blockingMethod)
+		CompletableFuture<List<String>> future = async(this::blockingMethod)
 				.toCompletableFuture();
 
 		getCurrentEventloop().run();
@@ -39,7 +38,7 @@ public class AsyncAwaitTest {
 
 	private Promise<List<String>> asyncMethod() {
 		return Promises.toList(
-				async(newCachedThreadPool(), this::blockingMethod2),
+				async(this::blockingMethod2),
 				asyncMethod2()
 		);
 	}
@@ -50,7 +49,7 @@ public class AsyncAwaitTest {
 	}
 
 	private Promise<String> asyncMethod2() {
-		return Promises.delay(1L, async(newCachedThreadPool(), this::blockingMethod3, "world"));
+		return Promises.delay(1L, async(this::blockingMethod3, "world"));
 	}
 
 	private String blockingMethod3(String result) throws Exception {
