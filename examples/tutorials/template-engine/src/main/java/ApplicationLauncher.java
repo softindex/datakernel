@@ -42,19 +42,22 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 
 		return RoutingServlet.create()
 				//[START REGION_1]
-				.with(GET, "/", request -> Promise.of(HttpResponse.ok200()
-						.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
+				.map(GET, "/", request -> Promise.of(
+						HttpResponse.ok200()
+								.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
 				//[END REGION_1]
 				//[START REGION_2]
-				.with(GET, "/poll/:id", request -> {
+				.map(GET, "/poll/:id", request -> {
 					int id = Integer.parseInt(request.getPathParameter("id"));
-					return Promise.of(HttpResponse.ok200()
-							.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
+					return Promise.of(
+							HttpResponse.ok200()
+									.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
 				})
 				//[END REGION_2]
-				.with(GET, "/create", request -> Promise.of(HttpResponse.ok200()
-						.withBody(applyTemplate(singlePollCreate, emptyMap()))))
-				.with(POST, "/vote", loadBody()
+				.map(GET, "/create", request -> Promise.of(
+						HttpResponse.ok200()
+								.withBody(applyTemplate(singlePollCreate, emptyMap()))))
+				.map(POST, "/vote", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
 							String option = params.get("option");
@@ -71,7 +74,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							String referer = request.getHeader(REFERER);
 							return Promise.of(HttpResponse.redirect302(referer != null ? referer : "/"));
 						}))
-				.with(POST, "/add", loadBody()
+				.map(POST, "/add", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
 							String title = params.get("title");
@@ -83,7 +86,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							int id = pollDao.add(new PollDao.Poll(title, message, list(option1, option2)));
 							return Promise.of(HttpResponse.redirect302("poll/" + id));
 						}))
-				.with(POST, "/delete", loadBody()
+				.map(POST, "/delete", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
 							String id = params.get("id");

@@ -36,6 +36,7 @@ import java.util.List;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
+import static io.datakernel.http.HttpMethod.*;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryCommand.*;
 
@@ -57,7 +58,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 
 	private RoutingServlet servlet(DiscoveryService discoveryService) {
 		return RoutingServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", loadBody().serve(
+				.map(PUT, "/" + ANNOUNCE + "/:owner", loadBody().serve(
 						request -> {
 							ByteBuf body = request.getBody();
 
@@ -72,7 +73,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 							}
 						}
 				))
-				.with(HttpMethod.GET, "/" + FIND + "/:owner", request -> {
+				.map(GET, "/" + FIND + "/:owner", request -> {
 					String owner = request.getPathParameter("owner");
 					try {
 						return discoveryService.find(PubKey.fromString(owner))
@@ -87,7 +88,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", loadBody()
+				.map(POST, "/" + SHARE_KEY + "/:receiver", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterReceiver = request.getPathParameter("receiver");
@@ -100,7 +101,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
+				.map(GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					try {
 						String parameterReceiver = request.getPathParameter("receiver");
 						String parameterHash = request.getPathParameter("hash");
@@ -114,7 +115,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
+				.map(GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
 					String receiver = request.getPathParameter("receiver");
 					try {
 						return discoveryService.getSharedKeys(PubKey.fromString(receiver))

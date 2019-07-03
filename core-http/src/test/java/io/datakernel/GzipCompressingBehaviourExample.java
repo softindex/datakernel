@@ -25,6 +25,7 @@ import java.io.IOException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
+import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.test.TestUtils.getFreePort;
 
 public final class GzipCompressingBehaviourExample {
@@ -32,11 +33,11 @@ public final class GzipCompressingBehaviourExample {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RoutingServlet servlet = RoutingServlet.create()
 				// always responds in gzip
-				.with(HttpMethod.GET, "/gzip/",
+				.map(GET, "/gzip/",
 						request -> Promise.of(
 								HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))))
 				// never responds in gzip
-				.with(HttpMethod.GET, "/nogzip/",
+				.map(GET, "/nogzip/",
 						request -> Promise.of(
 								HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
 

@@ -60,21 +60,21 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		return wrapper;
 	}
 
-	public RoutingServlet with(String path, AsyncServlet servlet) {
-		return with(null, path, servlet, DEFAULT_MERGER);
+	public RoutingServlet map(String path, AsyncServlet servlet) {
+		return map(null, path, servlet, DEFAULT_MERGER);
 	}
 
-	public RoutingServlet with(String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
-		return with(null, path, servlet, merger);
+	public RoutingServlet map(String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
+		return map(null, path, servlet, merger);
 	}
 
 	@Contract("_, _, _ -> this")
-	public RoutingServlet with(@Nullable HttpMethod method, String path, AsyncServlet servlet) {
-		return with(method, path, servlet, DEFAULT_MERGER);
+	public RoutingServlet map(@Nullable HttpMethod method, String path, AsyncServlet servlet) {
+		return map(method, path, servlet, DEFAULT_MERGER);
 	}
 
 	@Contract("_, _, _, _ -> this")
-	public RoutingServlet with(@Nullable HttpMethod method, String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
+	public RoutingServlet map(@Nullable HttpMethod method, String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
 		checkNotNull(servlet);
 		checkArgument(path.isEmpty() || path.startsWith(ROOT) || path.endsWith(WILDCARD) || !path.contains(STAR), "Invalid path " + path);
 

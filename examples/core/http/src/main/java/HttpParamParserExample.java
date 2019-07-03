@@ -128,9 +128,10 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 	AsyncServlet mainServlet(ContactDAO contactDAO) {
 		Mustache contactListView = new DefaultMustacheFactory().compile("static/decoder/contactList.html");
 		return RoutingServlet.create()
-				.with("/", request -> Promise.of(HttpResponse.ok200()
-						.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
-				.with(POST, "/add", AsyncServletDecorator.loadBody()
+				.map("/", request -> Promise.of(
+						HttpResponse.ok200()
+								.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
+				.map(POST, "/add", AsyncServletDecorator.loadBody()
 						.serve(request -> {
 							Either<Contact, HttpParamParseErrorsTree> decodedUser = contactDecoder.parse(request);
 							if (decodedUser.isLeft()) {

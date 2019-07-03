@@ -68,7 +68,7 @@ public final class GlobalFsApp extends Launcher {
 	@Provides
 	AsyncServlet servlet(StaticLoader resourceLoader, GlobalFsDriver fsDriver) {
 		return GlobalFsDriverServlet.create(fsDriver)
-				.with(GET, "/*", StaticServlet.create(resourceLoader)
+				.map(GET, "/*", StaticServlet.create(resourceLoader)
 						.withMappingNotFoundTo("index.html"));
 	}
 

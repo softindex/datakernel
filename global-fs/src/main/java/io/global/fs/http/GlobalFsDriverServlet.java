@@ -54,7 +54,7 @@ public final class GlobalFsDriverServlet {
 
 	public static RoutingServlet create(GlobalFsDriver driver) {
 		return RoutingServlet.create()
-				.with(GET, "/download/:space/*", request -> {
+				.map(GET, "/download/:space/*", request -> {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						SimKey simKey = getSimKey(request);
@@ -79,7 +79,7 @@ public final class GlobalFsDriverServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/upload", request -> {
+				.map(POST, "/upload", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
 						return Promise.ofException(new ParseException("No 'Key' cookie"));
@@ -93,7 +93,7 @@ public final class GlobalFsDriverServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with("/list/:space", request -> {
+				.map("/list/:space", request -> {
 					String space = request.getPathParameter("space");
 					try {
 						String glob = request.getQueryParameter("glob");
@@ -105,7 +105,7 @@ public final class GlobalFsDriverServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with("/getMetadata/:space/*", request -> {
+				.map("/getMetadata/:space/*", request -> {
 					String space = request.getPathParameter("space");
 					try {
 						return driver.getMetadata(PubKey.fromString(space), request.getRelativePath())
@@ -116,7 +116,7 @@ public final class GlobalFsDriverServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/delete/*", request -> {
+				.map(POST, "/delete/*", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
 						return Promise.ofException(new ParseException("No 'Key' cookie"));

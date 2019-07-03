@@ -24,9 +24,9 @@ public final class ServletDecoratorExample extends HttpServerLauncher {
 	AsyncServlet servlet(Executor executor) {
 		return loadBody().serve(
 				RoutingServlet.create()
-						.with(GET, "/", StaticServlet.ofClassPath(executor, "static/wrapper")
+						.map(GET, "/", StaticServlet.ofClassPath(executor, "static/wrapper")
 								.withMappingTo("page.html"))
-						.with(POST, "/", request -> {
+						.map(POST, "/", request -> {
 							String text = request.getPostParameter("text");
 							if (text == null) {
 								return Promise.of(
@@ -35,7 +35,7 @@ public final class ServletDecoratorExample extends HttpServerLauncher {
 							return Promise.of(
 									HttpResponse.ok200().withPlainText("Message: " + text));
 						})
-						.with(GET, "/failPage", request -> {
+						.map(GET, "/failPage", request -> {
 							throw new RuntimeException("fail");
 						})
 						.then(catchRuntimeExceptions())

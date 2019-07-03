@@ -60,7 +60,7 @@ public final class RoutingServletTest {
 
 		AsyncServlet subservlet = request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8)));
 
-		servlet1.with(HttpMethod.GET, "/a/b/c", subservlet);
+		servlet1.map(GET, "/a/b/c", subservlet);
 
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
@@ -68,21 +68,21 @@ public final class RoutingServletTest {
 		check(servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 
 		RoutingServlet servlet2 = RoutingServlet.create();
-		servlet2.with(HttpMethod.HEAD, "/a/b/c", subservlet);
+		servlet2.map(HEAD, "/a/b/c", subservlet);
 
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 404);
-		check(servlet2.serve(HttpRequest.of(HttpMethod.HEAD, "http://some-test.com/a/b/c")), "", 200);
+		check(servlet2.serve(HttpRequest.of(HEAD, "http://some-test.com/a/b/c")), "", 200);
 	}
 
 	@Test
 	public void testProcessWildCardRequest() {
 		RoutingServlet servlet = RoutingServlet.create();
-		servlet.with("/a/b/c/d", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+		servlet.map("/a/b/c/d", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")), "", 200);
 		check(servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 200);
-		check(servlet.serve(HttpRequest.of(HttpMethod.OPTIONS, "http://some-test.com/a/b/c/d")), "", 200);
+		check(servlet.serve(HttpRequest.of(OPTIONS, "http://some-test.com/a/b/c/d")), "", 200);
 	}
 
 	@Test
@@ -102,18 +102,18 @@ public final class RoutingServletTest {
 		};
 
 		RoutingServlet a = RoutingServlet.create()
-				.with(GET, "/c", action)
-				.with(GET, "/d", action)
-				.with(GET, "/", action);
+				.map(GET, "/c", action)
+				.map(GET, "/d", action)
+				.map(GET, "/", action);
 
 		RoutingServlet b = RoutingServlet.create()
-				.with(GET, "/f", action)
-				.with(GET, "/g", action);
+				.map(GET, "/f", action)
+				.map(GET, "/g", action);
 
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/", action)
-				.with(GET, "/a/*", a)
-				.with(GET, "/b/*", b);
+				.map(GET, "/", action)
+				.map(GET, "/a/*", a)
+				.map(GET, "/b/*", b);
 
 		System.out.println("Micro mapping" + DELIM);
 		check(main.serve(request1), "Executed: /", 200);
@@ -147,12 +147,12 @@ public final class RoutingServletTest {
 		};
 
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/", action)
-				.with(GET, "/a", action)
-				.with(GET, "/a/c", action)
-				.with(GET, "/a/d", action)
-				.with(GET, "/b/f", action)
-				.with(GET, "/b/g", action);
+				.map(GET, "/", action)
+				.map(GET, "/a", action)
+				.map(GET, "/a/c", action)
+				.map(GET, "/a/d", action)
+				.map(GET, "/b/f", action)
+				.map(GET, "/b/g", action);
 
 		System.out.println("Long mapping " + DELIM);
 		check(main.serve(request1), "Executed: /", 200);
@@ -185,14 +185,14 @@ public final class RoutingServletTest {
 		};
 
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/a", action)
-				.with(GET, "/a/c", action)
-				.with(GET, "/a/d", action)
-				.with(GET, "/b", action)
+				.map(GET, "/a", action)
+				.map(GET, "/a/c", action)
+				.map(GET, "/a/d", action)
+				.map(GET, "/b", action)
 				.merge(RoutingServlet.create()
-						.with(GET, "/", action)
-						.with(GET, "/a/e", action)
-						.with(GET, "/a/c/f", action));
+						.map(GET, "/", action)
+						.map(GET, "/a/e", action)
+						.map(GET, "/a/c/f", action));
 
 		System.out.println("Merge   " + DELIM);
 		check(main.serve(request1), "Executed: /", 200);
@@ -222,11 +222,11 @@ public final class RoutingServletTest {
 		RoutingServlet main;
 		try {
 			main = RoutingServlet.create()
-					.with(GET, "/", action)
-					.with(GET, "/a/e", action)
-					.with(GET, "/a/c/f", action)
-					.with(GET, "/", RoutingServlet.create()
-							.with(GET, "/a/c/f", anotherAction));
+					.map(GET, "/", action)
+					.map(GET, "/a/e", action)
+					.map(GET, "/a/c/f", action)
+					.map(GET, "/", RoutingServlet.create()
+							.map(GET, "/a/c/f", anotherAction));
 		} catch (IllegalArgumentException e) {
 			assertEquals("Already mapped", e.getMessage());
 			return;
@@ -245,8 +245,8 @@ public final class RoutingServletTest {
 		};
 
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/:id/a/:uid/b/:eid", printParameters)
-				.with(GET, "/:id/a/:uid", printParameters);
+				.map(GET, "/:id/a/:uid/b/:eid", printParameters)
+				.map(GET, "/:id/a/:uid", printParameters);
 
 		System.out.println("Parameter test " + DELIM);
 		check(main.serve(HttpRequest.get("http://example.com/123/a/456/b/789")), "123 456", 200);
@@ -258,11 +258,11 @@ public final class RoutingServletTest {
 	@Test
 	public void testMultiParameters() {
 		RoutingServlet ms = RoutingServlet.create()
-				.with(GET, "/serve/:cid/wash", request -> {
+				.map(GET, "/serve/:cid/wash", request -> {
 					ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
 					return Promise.of(HttpResponse.ofCode(200).withBody(body));
 				})
-				.with(GET, "/serve/:mid/feed", request -> {
+				.map(GET, "/serve/:mid/feed", request -> {
 					ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
 					return Promise.of(HttpResponse.ofCode(200).withBody(body));
 				});
@@ -280,11 +280,11 @@ public final class RoutingServletTest {
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
 		RoutingServlet servlet = RoutingServlet.create()
-				.with("/a/b/c/action", request -> Promise.of(
+				.map("/a/b/c/action", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD"))))
-				.with(POST, "/a/b/c/action", request -> Promise.of(
+				.map(POST, "/a/b/c/action", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("POST"))))
-				.with(GET, "/a/b/c/action", request -> Promise.of(
+				.map(GET, "/a/b/c/action", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("GET"))));
 
 		System.out.println("Different methods " + DELIM);
@@ -300,9 +300,9 @@ public final class RoutingServletTest {
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
 
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/html/admin/action", request -> Promise.of(
+				.map(GET, "/html/admin/action", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed"))))
-				.with("/html/admin/*", request -> Promise.of(
+				.map("/html/admin/*", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath()))));
 
 		System.out.println("Default stop " + DELIM);
@@ -314,7 +314,7 @@ public final class RoutingServletTest {
 	@Test
 	public void test404() {
 		RoutingServlet main = RoutingServlet.create()
-				.with("/a/:id/b/d", request -> Promise.of(
+				.map("/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("All OK"))));
 
 		System.out.println("404 " + DELIM);
@@ -326,7 +326,7 @@ public final class RoutingServletTest {
 	@Test
 	public void test405() {
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/a/:id/b/d", request -> Promise.of(
+				.map(GET, "/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))));
 
 		HttpRequest request = HttpRequest.post(TEMPLATE + "/a/123/b/d");
@@ -336,9 +336,9 @@ public final class RoutingServletTest {
 	@Test
 	public void test405WithFallback() {
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/a/:id/b/d", request -> Promise.of(
+				.map(GET, "/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))))
-				.with("/a/:id/b/d", request -> Promise.of(
+				.map("/a/:id/b/d", request -> Promise.of(
 						HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed"))));
 		check(main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")), "Fallback executed", 200);
 	}
@@ -346,7 +346,7 @@ public final class RoutingServletTest {
 	@Test
 	public void testTail() {
 		RoutingServlet main = RoutingServlet.create()
-				.with(GET, "/method/:var/*", request -> {
+				.map(GET, "/method/:var/*", request -> {
 					ByteBuf body = wrapUtf8("Success: " + request.getRelativePath());
 					return Promise.of(HttpResponse.ofCode(200).withBody(body));
 				});

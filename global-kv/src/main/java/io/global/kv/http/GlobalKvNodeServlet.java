@@ -49,7 +49,7 @@ public final class GlobalKvNodeServlet {
 
 	public static RoutingServlet create(GlobalKvNode node) {
 		return RoutingServlet.create()
-				.with(POST, "/" + UPLOAD + "/:space/:table", request -> {
+				.map(POST, "/" + UPLOAD + "/:space/:table", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					String table = request.getPathParameter("table");
 					try {
@@ -65,7 +65,7 @@ public final class GlobalKvNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + DOWNLOAD + "/:space/:table", request -> {
+				.map(GET, "/" + DOWNLOAD + "/:space/:table", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					String table = request.getPathParameter("table");
 					try {
@@ -85,7 +85,7 @@ public final class GlobalKvNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + GET_ITEM + "/:space/:table", loadBody()
+				.map(GET, "/" + GET_ITEM + "/:space/:table", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
@@ -99,7 +99,7 @@ public final class GlobalKvNodeServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(PUT, "/" + PUT_ITEM + "/:space/:table", loadBody()
+				.map(PUT, "/" + PUT_ITEM + "/:space/:table", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");
@@ -112,7 +112,7 @@ public final class GlobalKvNodeServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/" + LIST + "/:space", request -> {
+				.map(GET, "/" + LIST + "/:space", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);

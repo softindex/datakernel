@@ -66,7 +66,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	private static final CurrentTimeProvider now = SteppingCurrentTimeProvider.create(10, 10);
 
-	private final StubHttpClient stubClient = StubHttpClient.of(RoutingServlet.create().with("/ot/*", getServlet()));
+	private final StubHttpClient stubClient = StubHttpClient.of(RoutingServlet.create().map("/ot/*", getServlet()));
 	private final HttpGlobalOTNode client = HttpGlobalOTNode.create("http://localhost", stubClient);
 	private final KeyPair keys = KeyPair.generate();
 	private final PrivKey privKey = keys.getPrivKey();

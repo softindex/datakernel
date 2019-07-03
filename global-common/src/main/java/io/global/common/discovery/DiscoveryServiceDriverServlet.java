@@ -32,7 +32,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 
 	private static RoutingServlet servlet(DiscoveryServiceDriver driver) {
 		return RoutingServlet.create()
-				.with(POST, "/announce", loadBody()
+				.map(POST, "/announce", loadBody()
 						.serve(request -> {
 							String key = request.getCookie("Key");
 							if (key == null) {
@@ -53,7 +53,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/find/:pubKey", request -> {
+				.map(GET, "/find/:pubKey", request -> {
 					try {
 						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
 						return driver.find(pubKey)
@@ -64,7 +64,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/shareKey/:receiver", loadBody()
+				.map(POST, "/shareKey/:receiver", loadBody()
 						.serve(request -> {
 							String parameterReceiver = request.getPathParameter("receiver");
 							String key = request.getCookie("Key");
@@ -85,7 +85,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/getSharedKey/:hash", request -> {
+				.map(GET, "/getSharedKey/:hash", request -> {
 					String key = request.getCookie("Key");
 					String parameterHash = request.getPathParameter("hash");
 					if (key == null) {
@@ -107,7 +107,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/getSharedKeys", request -> {
+				.map(GET, "/getSharedKeys", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
 						return Promise.ofException(new ParseException("No 'Key' cookie"));

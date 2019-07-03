@@ -158,9 +158,9 @@ public class GlobalNodesModule extends AbstractModule {
 	@Named("Nodes")
 	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet, @Named("kv") AsyncServlet kvServlet) {
 		return RoutingServlet.create()
-				.with("/ot/*", otServlet)
-				.with("/fs/*", fsServlet)
-				.with("/kv/*", kvServlet);
+				.map("/ot/*", otServlet)
+				.map("/fs/*", fsServlet)
+				.map("/kv/*", kvServlet);
 	}
 
 	@Provides

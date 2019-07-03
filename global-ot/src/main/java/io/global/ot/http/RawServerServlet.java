@@ -93,7 +93,7 @@ public final class RawServerServlet implements AsyncServlet {
 
 	private AsyncServlet servlet(GlobalOTNode node) {
 		return RoutingServlet.create()
-				.with(GET, "/" + LIST + "/:pubKey", req -> {
+				.map(GET, "/" + LIST + "/:pubKey", req -> {
 					PubKey pubKey;
 					try {
 						pubKey = urlDecodePubKey(req.getPathParameter("pubKey"));
@@ -105,7 +105,7 @@ public final class RawServerServlet implements AsyncServlet {
 							HttpResponse.ok200()
 									.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8)));
 				})
-				.with(POST, "/" + SAVE + "/:pubKey/:name", loadBody()
+				.map(POST, "/" + SAVE + "/:pubKey/:name", loadBody()
 						.serve(req -> {
 							try {
 								Map<CommitId, RawCommit> commits = fromJson(ofMap(COMMIT_ID_JSON, COMMIT_JSON), req.getBody().getString(UTF_8));
@@ -115,7 +115,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", loadBody()
+				.map(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", loadBody()
 						.serve(req -> {
 							ByteBuf body = req.getBody();
 							String pubKey = req.getPathParameter("pubKey");
@@ -129,7 +129,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req -> {
+				.map(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req -> {
 					String commitId = req.getQueryParameter("commitId");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
@@ -145,7 +145,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", loadBody()
+				.map(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -156,7 +156,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
+				.map(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
 					String id = req.getQueryParameter("id");
 					if (id == null) {
 						return Promise.ofException(new ParseException("No 'id' query parameter"));
@@ -175,7 +175,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + LIST_SNAPSHOTS + "/:pubKey/:name", req -> {
+				.map(GET, "/" + LIST_SNAPSHOTS + "/:pubKey/:name", req -> {
 					String snapshotsQuery = req.getQueryParameter("snapshots");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
@@ -191,7 +191,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
+				.map(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 
@@ -204,7 +204,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + POLL_HEADS + "/:pubKey/:name", req -> {
+				.map(GET, "/" + POLL_HEADS + "/:pubKey/:name", req -> {
 					String lastHeadsQuery = req.getQueryParameter("lastHeads");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
@@ -229,7 +229,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + SHARE_KEY + "/:owner", loadBody()
+				.map(POST, "/" + SHARE_KEY + "/:owner", loadBody()
 						.serve(req -> {
 							ByteBuf body = req.getBody();
 							String owner = req.getPathParameter("owner");
@@ -242,7 +242,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> {
+				.map(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> {
 					PubKey owner;
 					Hash hash;
 					try {
@@ -258,7 +258,7 @@ public final class RawServerServlet implements AsyncServlet {
 									.withBody(toJson(SIGNED_SHARED_KEY_JSON, sharedSimKey).getBytes(UTF_8))
 							);
 				})
-				.with(GET, "/" + GET_SHARED_KEYS + "/:owner", req -> {
+				.map(GET, "/" + GET_SHARED_KEYS + "/:owner", req -> {
 					PubKey owner;
 					try {
 						owner = urlDecodePubKey(req.getPathParameter("owner"));
@@ -271,7 +271,7 @@ public final class RawServerServlet implements AsyncServlet {
 									.withBody(toJson(ofList(SIGNED_SHARED_KEY_JSON), sharedSimKeys).getBytes(UTF_8))
 							);
 				})
-				.with(POST, "/" + SEND_PULL_REQUEST, loadBody()
+				.map(POST, "/" + SEND_PULL_REQUEST, loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -282,7 +282,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
+				.map(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 
@@ -294,7 +294,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
+				.map(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
 					String startNodes = req.getQueryParameter("startNodes");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
@@ -316,7 +316,7 @@ public final class RawServerServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
+				.map(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					String headsQueryString = req.getQueryParameter("heads");

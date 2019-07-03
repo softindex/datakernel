@@ -33,9 +33,9 @@ public final class FileUploadExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet(Executor executor) {
 		return RoutingServlet.create()
-				.with(GET, "/*", StaticServlet.ofClassPath(executor, "static/multipart/")
+				.map(GET, "/*", StaticServlet.ofClassPath(executor, "static/multipart/")
 						.withIndexHtml())
-				.with(POST, "/test", request ->
+				.map(POST, "/test", request ->
 						request.getFiles(name -> ChannelFileWriter.open(executor, path.resolve(name)))
 								.map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
 	}

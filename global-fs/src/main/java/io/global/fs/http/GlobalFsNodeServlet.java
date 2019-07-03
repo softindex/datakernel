@@ -46,7 +46,7 @@ public final class GlobalFsNodeServlet {
 
 	public static RoutingServlet create(GlobalFsNode node) {
 		return RoutingServlet.create()
-				.with(POST, "/" + UPLOAD + "/:space/*", request -> {
+				.map(POST, "/" + UPLOAD + "/:space/*", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
@@ -61,7 +61,7 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + DOWNLOAD + "/:space/*", request -> {
+				.map(GET, "/" + DOWNLOAD + "/:space/*", request -> {
 					String spaceParam = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(spaceParam);
@@ -75,7 +75,7 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + LIST + "/:space", request -> {
+				.map(GET, "/" + LIST + "/:space", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					String glob = request.getQueryParameter("glob");
 					try {
@@ -89,7 +89,7 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + GET_METADATA + "/:space/*", request -> {
+				.map(GET, "/" + GET_METADATA + "/:space/*", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
@@ -101,7 +101,7 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + DELETE + "/:space", loadBody()
+				.map(POST, "/" + DELETE + "/:space", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							String parameterSpace = request.getPathParameter("space");

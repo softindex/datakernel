@@ -60,8 +60,8 @@ public class WebappLauncher extends Launcher {
 		AsyncServlet usersApiServlet = UiKernelServlets.apiServlet(model, gson);
 
 		return RoutingServlet.create()
-				.with("/*", staticServlet)              // serves request if no other servlet matches
-				.with("/api/users/*", usersApiServlet); // our rest crud servlet that would serve the grid
+				.map("/*", staticServlet)              // serves request if no other servlet matches
+				.map("/api/users/*", usersApiServlet); // our rest crud servlet that would serve the grid
 	}
 
 	@Provides

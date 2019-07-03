@@ -65,9 +65,9 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 
 	private RoutingServlet getServlet(OTNode<K, D, C> node) {
 		return RoutingServlet.create()
-				.with(GET, "/" + CHECKOUT, request -> node.checkout()
+				.map(GET, "/" + CHECKOUT, request -> node.checkout()
 						.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData)))
-				.with(GET, "/" + FETCH, request -> {
+				.map(GET, "/" + FETCH, request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
 						return Promise.ofException(new ParseException("No 'id' query parameter"));
@@ -80,7 +80,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + POLL, request -> {
+				.map(GET, "/" + POLL, request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
 						return Promise.ofException(new ParseException("No 'id' query parameter"));
@@ -97,7 +97,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + CREATE_COMMIT, loadBody()
+				.map(POST, "/" + CREATE_COMMIT, loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -110,7 +110,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.with(POST, "/" + PUSH, loadBody()
+				.map(POST, "/" + PUSH, loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {

@@ -44,11 +44,11 @@ public class UiKernelServlets {
 
 	public static <K, R extends AbstractRecord<K>> RoutingServlet apiServlet(GridModel<K, R> model, Gson gson) {
 		return RoutingServlet.create()
-				.with(POST, "/", create(model, gson))
-				.with(GET, "/", read(model, gson))
-				.with(PUT, "/", update(model, gson))
-				.with(DELETE, "/:" + ID_PARAMETER_NAME, delete(model, gson))
-				.with(GET, "/:" + ID_PARAMETER_NAME, get(model, gson));
+				.map(POST, "/", create(model, gson))
+				.map(GET, "/", read(model, gson))
+				.map(PUT, "/", update(model, gson))
+				.map(DELETE, "/:" + ID_PARAMETER_NAME, delete(model, gson))
+				.map(GET, "/:" + ID_PARAMETER_NAME, get(model, gson));
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet read(GridModel<K, R> model, Gson gson) {

@@ -102,7 +102,7 @@ public final class GlobalKvTest {
 			public GlobalKvNode apply(RawServerId serverId) {
 				GlobalKvNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalKvNode.create(id, discoveryService, this, storageFactory));
 				RoutingServlet servlet = RoutingServlet.create()
-						.with("/kv/*", GlobalKvNodeServlet.create(node));
+						.map("/kv/*", GlobalKvNodeServlet.create(node));
 				StubHttpClient client = StubHttpClient.of(servlet);
 				return HttpGlobalKvNode.create(serverId.getServerIdString(), client);
 			}

@@ -53,12 +53,12 @@ public final class AuthLauncher extends HttpServerLauncher {
 	AsyncServlet publicServlet(AuthService authService, SessionStore<String> store, StaticLoader staticLoader) {
 		return RoutingServlet.create()
 				//[START REGION_1]
-				.with("/", request -> Promise.of(HttpResponse.redirect302("/login")))
+				.map("/", request -> Promise.of(HttpResponse.redirect302("/login")))
 				//[END REGION_1]
-				.with(GET, "/signup", StaticServlet.create(staticLoader, "signup.html"))
-				.with(GET, "/login", StaticServlet.create(staticLoader, "login.html"))
+				.map(GET, "/signup", StaticServlet.create(staticLoader, "signup.html"))
+				.map(GET, "/login", StaticServlet.create(staticLoader, "login.html"))
 				//[START REGION_5]
-				.with(POST, "/login", loadBody()
+				.map(POST, "/login", loadBody()
 						.serveFirstSuccessful(
 								request -> {
 									Map<String, String> params = request.getPostParameters();
@@ -75,7 +75,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 								},
 								StaticServlet.create(staticLoader, "errorPage.html")))
 				//[END REGION_5]
-				.with(POST, "/signup", loadBody()
+				.map(POST, "/signup", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
 							String username = params.get("username");
@@ -93,26 +93,26 @@ public final class AuthLauncher extends HttpServerLauncher {
 	AsyncServlet privateServlet(StaticLoader staticLoader) {
 		return RoutingServlet.create()
 				//[START REGION_2]
-				.with("/", request -> Promise.of(HttpResponse.redirect302("/members")))
+				.map("/", request -> Promise.of(HttpResponse.redirect302("/members")))
 				//[END REGION_2]
 				//[START REGION_3]
-				.with("/members/*", RoutingServlet.create()
-						.with(GET, "/", StaticServlet.create(staticLoader, "index.html"))
+				.map("/members/*", RoutingServlet.create()
+						.map(GET, "/", StaticServlet.create(staticLoader, "index.html"))
 						//[START REGION_4]
-						.with(GET, "/cookie", request -> Promise.of(HttpResponse.ok200()
-								.withBody(wrapUtf8(request.getAttachment(String.class)))))
+						.map(GET, "/cookie", request -> Promise.of(
+								HttpResponse.ok200()
+										.withBody(wrapUtf8(request.getAttachment(String.class)))))
 						//[END REGION_4]
-						.with(POST, "/logout", request -> {
+						.map(POST, "/logout", request -> {
 							String id = request.getCookie(SESSION_ID);
 							if (id != null) {
-								return Promise.of(HttpResponse.redirect302("/")
-										.withCookie(HttpCookie.of(SESSION_ID, id)
-												.withPath("/")
-												.withMaxAge(0)));
+								return Promise.of(
+										HttpResponse.redirect302("/")
+												.withCookie(HttpCookie.of(SESSION_ID, id).withPath("/").withMaxAge(0)));
 							}
 							return Promise.of(HttpResponse.ofCode(404));
 						}));
-				//[END REGION_3]
+		//[END REGION_3]
 	}
 
 	public static void main(String[] args) throws Exception {

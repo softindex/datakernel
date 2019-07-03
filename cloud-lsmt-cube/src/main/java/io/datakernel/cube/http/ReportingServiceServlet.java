@@ -72,7 +72,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 	public static RoutingServlet createRootServlet(ReportingServiceServlet reportingServiceServlet) {
 		return RoutingServlet.create()
-				.with(GET, "/", reportingServiceServlet);
+				.map(GET, "/", reportingServiceServlet);
 	}
 
 	private StructuredCodec<AggregationPredicate> getAggregationPredicateCodec() {

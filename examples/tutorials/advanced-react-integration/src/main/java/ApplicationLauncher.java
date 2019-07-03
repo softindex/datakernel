@@ -47,10 +47,10 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 	AsyncServlet servlet(Executor executor, RecordDAO recordDAO) {
 		return RoutingServlet.create()
 				//[START REGION_2]
-				.with("/*", StaticServlet.ofClassPath(executor, "build/")
+				.map("/*", StaticServlet.ofClassPath(executor, "build/")
 						.withIndexHtml())
 				//[END REGION_2]
-				.with(POST, "/add", loadBody()
+				.map(POST, "/add", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -62,19 +62,20 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 								return Promise.of(HttpResponse.ofCode(400));
 							}
 						}))
-				.with(GET, "/get/all", request -> {
+				.map(GET, "/get/all", request -> {
 					Map<Integer, Record> records = recordDAO.findAll();
-					return Promise.of(HttpResponse.ok200()
-							.withJson(ofMap(INT_CODEC, RECORD_CODEC), records));
+					return Promise.of(
+							HttpResponse.ok200()
+									.withJson(ofMap(INT_CODEC, RECORD_CODEC), records));
 				})
 				//[START REGION_3]
-				.with(GET, "/delete/:recordId", request -> {
+				.map(GET, "/delete/:recordId", request -> {
 					int id = parseInt(request.getPathParameter("recordId"));
 					recordDAO.delete(id);
 					return Promise.of(HttpResponse.ok200());
 				})
 				//[END REGION_3]
-				.with(GET, "/toggle/:recordId/:planId", request -> {
+				.map(GET, "/toggle/:recordId/:planId", request -> {
 					int id = parseInt(request.getPathParameter("recordId"));
 					int planId = parseInt(request.getPathParameter("planId"));
 

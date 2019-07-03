@@ -54,7 +54,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 
 	private RoutingServlet servlet(FsClient client) {
 		return RoutingServlet.create()
-				.with(GET, "/" + LIST, request -> {
+				.map(GET, "/" + LIST, request -> {
 					String glob = request.getQueryParameter("glob");
 					glob = glob != null ? glob : "**";
 					return (request.getQueryParameter("tombstones") != null ? client.listEntities(glob) : client.list(glob))
@@ -63,14 +63,14 @@ public final class RemoteFsServlet implements AsyncServlet {
 											.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
 											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
 				})
-				.with(GET, "/" + GET_METADATA + "/*", request ->
+				.map(GET, "/" + GET_METADATA + "/*", request ->
 						client.getMetadata(request.getRelativePath())
 								.mapEx(errorHandler(meta ->
 										HttpResponse.ok200()
 												.withBody(toJson(NULLABLE_FILE_META_CODEC, meta).getBytes(UTF_8))
 												.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8)))))
-				.with(POST, "/" + UPLOAD, request -> httpUpload(request, client::upload))
-				.with(GET, "/" + DOWNLOAD + "/*", request -> {
+				.map(POST, "/" + UPLOAD, request -> httpUpload(request, client::upload))
+				.map(GET, "/" + DOWNLOAD + "/*", request -> {
 					String name = request.getRelativePath();
 					return client.getMetadata(name)
 							.then(meta -> {
@@ -87,7 +87,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 								}
 							});
 				})
-				.with(POST, "/" + DELETE + "/*", request -> {
+				.map(POST, "/" + DELETE + "/*", request -> {
 					try {
 						return client.delete(request.getRelativePath(), parseRevision(request))
 								.mapEx(errorHandler());
@@ -95,7 +95,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + COPY, request -> {
+				.map(POST, "/" + COPY, request -> {
 					String name = request.getQueryParameter("name");
 					String target = request.getQueryParameter("target");
 					if (name == null) {
@@ -111,7 +111,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + MOVE, request -> {
+				.map(POST, "/" + MOVE, request -> {
 					String name = request.getQueryParameter("name");
 					String target = request.getQueryParameter("target");
 					if (name == null) {

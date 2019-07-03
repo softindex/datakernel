@@ -28,13 +28,17 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
 import io.datakernel.loader.StaticLoader;
 
 import java.util.concurrent.Executor;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
+import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -64,7 +68,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				CrdtData::getKey, descriptor.getKeyCodec(),
 				CrdtData::getState, descriptor.getStateCodec());
 		RoutingServlet servlet = RoutingServlet.create()
-				.with(HttpMethod.POST, "/", loadBody()
+				.map(POST, "/", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -80,7 +84,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.ofException(e);
 							}
 						}))
-				.with(HttpMethod.PUT, "/", loadBody()
+				.map(PUT, "/", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -90,7 +94,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.ofException(e);
 							}
 						}))
-				.with(HttpMethod.DELETE, "/", loadBody()
+				.map(DELETE, "/", loadBody()
 						.serve(request -> {
 							ByteBuf body = request.getBody();
 							try {
@@ -108,7 +112,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 			return servlet;
 		}
 		return servlet
-				.with(HttpMethod.POST, "/backup", request -> {
+				.map(POST, "/backup", request -> {
 					if (backupService.backupInProgress()) {
 						return Promise.of(HttpResponse.ofCode(403)
 								.withBody("Backup is already in progress".getBytes(UTF_8)));
@@ -116,7 +120,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 					backupService.backup();
 					return Promise.of(HttpResponse.ofCode(202));
 				})
-				.with(HttpMethod.POST, "/awaitBackup", request ->
+				.map(POST, "/awaitBackup", request ->
 						backupService.backupInProgress() ?
 								backupService.backup().map($ -> HttpResponse.ofCode(204)
 										.withBody("Finished already running backup".getBytes(UTF_8))) :
