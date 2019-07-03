@@ -16,8 +16,8 @@
 
 package io.datakernel.http.stream;
 
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
@@ -132,21 +132,21 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	}
 
 	private void processData(int chunkLength) {
-		ByteBuf tempBuf = ByteBufPool.allocate(16 * 1024); // 16Mb - AsyncTcpSocketimpl's default read size
-		chunkLength -= bufs.drainTo(tempBuf, chunkLength);
-		if (chunkLength != 0) {
-			int newChunkLength = chunkLength;
-			output.accept(tempBuf)
-					.then($ -> input.needMoreData())
+		ByteBuf buf = bufs.takeAtMost(chunkLength);
+		int newChunkLength = chunkLength - buf.readRemaining();
+		if (newChunkLength != 0) {
+			Promise.complete()
+					.then($ -> buf.canRead() ? output.accept(buf) : Promise.complete())
+					.then($ -> bufs.isEmpty() ? input.needMoreData() : Promise.complete())
 					.whenResult($ -> processData(newChunkLength));
 			return;
 		}
 		input.parse(assertBytes(CRLF))
 				.whenException(e -> {
-					tempBuf.recycle();
+					buf.recycle();
 					close(MALFORMED_CHUNK);
 				})
-				.then($ -> output.accept(tempBuf))
+				.then($ -> output.accept(buf))
 				.whenResult($ -> processLength());
 	}
 

@@ -190,7 +190,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@NotNull
 	public ByteBuf takeAtMost(int size) {
-		assert hasRemaining();
+		if (isEmpty() || size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (size >= buf.readRemaining()) {
 			first = next(first);
