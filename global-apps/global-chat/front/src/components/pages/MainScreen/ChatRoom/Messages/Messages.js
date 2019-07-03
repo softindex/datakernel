@@ -24,16 +24,6 @@ class Messages extends React.Component {
   }
 
   getMessageAuthor = (publicKey) => {
-    // if (this.props.rooms.get(this.props.roomId)) {
-    //   const room = this.props.rooms.get(this.props.roomId);
-    //   const participantsNames = room.name.split(", ");
-    //   const participantsWithoutMe = room.participants
-    //     .filter(publicKey => publicKey !== this.props.publicKey);
-    //   const participantPublicKey = participantsWithoutMe
-    //     .find(participantPublicKey => participantPublicKey === publicKey);
-    //   return participantsNames[participantsWithoutMe.indexOf(participantPublicKey)];
-    // }
-
     if (this.props.contacts.get(publicKey)){
       return this.props.contacts.get(publicKey).name;
     } else {

@@ -11,10 +11,12 @@ const roomItemStyles = theme => ({
     float: 'left',
     marginTop: `${theme.spacing.unit}px`
   },
+  avatarContent: {
+    fontSize: '1rem'
+  },
   link: {
     textDecoration: 'none',
     minWidth: theme.spacing.unit * 31,
-    maxWidth: theme.spacing.unit * 31,
     height: theme.spacing.unit * 8
   },
   itemText: {

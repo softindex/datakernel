@@ -61,6 +61,7 @@ class RoomsList extends React.Component {
                     showMenuIcon={true}
                     contacts={this.props.contacts}
                     publicKey={this.props.publicKey}
+                    addContact={this.props.addContact}
                   />
                 )
               )}
@@ -74,7 +75,10 @@ class RoomsList extends React.Component {
 
 export default connectService(
   ContactsContext, ({ready, contacts}, contactsService) => ({
-  ready, contacts, contactsService
+  ready, contacts, contactsService,
+    addContact(pubKey, name) {
+      return contactsService.addContact(pubKey, name);
+    }
   })
 )(
   connectService(

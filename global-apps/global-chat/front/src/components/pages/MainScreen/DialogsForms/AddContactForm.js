@@ -12,7 +12,6 @@ import connectService from "../../../../common/connectService";
 import ContactsContext from "../../../../modules/contacts/ContactsContext";
 import * as PropTypes from "prop-types";
 import { withSnackbar } from 'notistack';
-import ButtonWithProgress from "../../../UIElements/ButtonProgress/ButtonProgress";
 import AccountContext from "../../../../modules/account/AccountContext";
 
 class AddContactForm extends React.Component {
@@ -72,6 +71,7 @@ class AddContactForm extends React.Component {
       <Dialog
         open={this.props.open}
         onClose={this.props.onClose}
+        loading={this.state.loading}
         aria-labelledby="form-dialog-title"
       >
         <form onSubmit={this.onSubmit}>
@@ -107,21 +107,21 @@ class AddContactForm extends React.Component {
           </DialogContent>
           <DialogActions>
             <Button
-              className={this.props.classes.progressButton}
+              className={this.props.classes.actionButton}
               disabled={this.state.loading}
               onClick={this.props.onClose}
             >
               Cancel
             </Button>
-            <ButtonWithProgress
-              className={this.props.classes.progressButton}
+            <Button
+              className={this.props.classes.actionButton}
               loading={this.state.loading}
               type={"submit"}
               color={"primary"}
               variant={"contained"}
             >
               Add Contact
-            </ButtonWithProgress>
+            </Button>
           </DialogActions>
         </form>
       </Dialog>
@@ -133,16 +133,19 @@ AddContactForm.propTypes = {
   enqueueSnackbar: PropTypes.func.isRequired,
 };
 
-export default connectService(
-  AccountContext, ({publicKey}) => ({publicKey})
-)(
-  connectService(
-    ContactsContext, (state, contactsService) => ({
-      addContact(pubKey, name) {
-        return contactsService.addContact(pubKey, name);
-      }
-    })
-  )(
-    withSnackbar(withStyles(formStyles)(AddContactForm))
-  )
-);
+export default withSnackbar(withStyles(formStyles)(AddContactForm));
+
+//
+// export default connectService(
+//   AccountContext, ({publicKey}) => ({publicKey})
+// )(
+//   connectService(
+//     ContactsContext, (state, contactsService) => ({
+//       addContact(pubKey, name) {
+//         return contactsService.addContact(pubKey, name);
+//       }
+//     })
+//   )(
+//     withSnackbar(withStyles(formStyles)(AddContactForm))
+//   )
+// );

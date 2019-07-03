@@ -10,6 +10,7 @@
     "clsx": "latest",
     "elliptic": "latest",
     "js-cookie": "^2.2.0",
+    "lodash": "^4.17.11",
     "material-design-icons": "^3.0.1",
     "notistack": "^0.8.6",
     "ot-core": "https://github.com/softindex/ot-core.git#v0.2.1",

@@ -50,6 +50,27 @@ class RoomItem extends React.Component {
     });
   };
 
+  getAvatarLetters = () => {
+    const roomName = this.props.room.name;
+    const nameString = [...roomName];
+    if (this.props.room.name.includes(" ")) {
+      if (nameString[0].length === 2) {
+        if (nameString[roomName.indexOf(" ") + 1].length === 2) {
+          return nameString[0][0] + nameString[0][1] +
+            nameString[roomName.indexOf(" ") + 1][0] + nameString[roomName.indexOf(" ") + 1][1]
+        }
+        return nameString[0][0] + nameString[0][1] + nameString[roomName.indexOf(" ") - 2]
+      }
+      return nameString[0][0] + nameString[roomName.indexOf(" ") + 1]
+    } else {
+      return roomName.length > 1 ?
+        nameString[0].length === 2 ?
+        nameString[0][0] + nameString[0][1] :
+          nameString[0][0] + nameString[1] :
+        nameString[0][0];
+    }
+  };
+
   getContactId(room) {
     return  room.participants
       .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
@@ -60,7 +81,7 @@ class RoomItem extends React.Component {
   };
 
   render() {
-    const {classes, room} = this.props;
+    const {classes, room, roomId} = this.props;
     return (
       <>
         <ListItem
@@ -68,15 +89,17 @@ class RoomItem extends React.Component {
           onMouseLeave={this.toggleHover}
           className={classes.listItem}
           button
-          selected={this.props.roomId === this.props.match.params.roomId}
+          selected={roomId === this.props.match.params.roomId}
         >
           <Link
-            to={this.props.getRoomPath(this.props.roomId)}
-            onClick={this.props.onClickLink(this.props.roomId)}
+            to={this.props.getRoomPath(roomId)}
+            onClick={this.props.onClickLink(roomId)}
             className={classes.link}
           >
             <ListItemAvatar className={classes.avatar}>
-              <Avatar/>
+              <Avatar className={classes.avatarContent}>
+                {this.getAvatarLetters().toUpperCase()}
+              </Avatar>
             </ListItemAvatar>
             <ListItemText
               primary={room.name}
@@ -99,6 +122,8 @@ class RoomItem extends React.Component {
           open={this.state.showAddContactDialog}
           onClose={this.closeAddDialog}
           contactPublicKey={this.getContactId(room)}
+          publicKey={this.props.publicKey}
+          addContact={this.props.addContact}
         />
       </>
     )

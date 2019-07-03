@@ -1,13 +1,14 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import formStyles from "../../pages/MainScreen/DialogsForms/formStyles";
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
 import MUDialog from '@material-ui/core/Dialog';
+import CircularProgress from "@material-ui/core/CircularProgress";
+import dialogStyles from "./dialogStyles";
 
 class Dialog extends React.Component {
   render() {
-    const {children, onClose, classes, ...otherProps} = this.props;
+    const {children, onClose, loading, classes, ...otherProps} = this.props;
     return (
       <MUDialog className={classes.muiDialog} {...otherProps} onclose={onClose}>
         <IconButton
@@ -18,9 +19,15 @@ class Dialog extends React.Component {
           <CloseIcon/>
         </IconButton>
         {children}
+        {loading  && (
+          <CircularProgress
+            size={24}
+            className={classes.circularProgress}
+          />
+        )}
       </MUDialog>
     );
   }
 }
 
-export default withStyles(formStyles)(Dialog);
+export default withStyles(dialogStyles)(Dialog);

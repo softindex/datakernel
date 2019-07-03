@@ -14,18 +14,22 @@ import StartChat from "./EmptyChatRoom/EmptyChatRoom";
 import ContactsService from "../../../modules/contacts/ContactsService";
 import RoomsService from "../../../modules/rooms/RoomsService";
 import AccountContext from "../../../modules/account/AccountContext";
+import ProfileService from "../../../modules/profile/ProfileService";
+import ProfileContext from "../../../modules/profile/ProfileContext";
 
 class MainScreen extends React.Component {
   constructor(props) {
     super(props);
     this.contactsService = ContactsService.create();
     this.roomsService = RoomsService.createForm(this.contactsService, props.publicKey);
+    this.profileService = ProfileService.create();
   }
 
   componentDidMount() {
     Promise.all([
       this.contactsService.init(),
-      this.roomsService.init()
+      this.roomsService.init(),
+      this.profileService.init()
     ]).catch((err) => {
       this.props.enqueueSnackbar(err.message, {
         variant: 'error'
@@ -36,16 +40,18 @@ class MainScreen extends React.Component {
   componentWillUnmount() {
     this.roomsService.stop();
     this.contactsService.stop();
+    this.profileService.stop()
   }
 
   render() {
     const {roomId} = this.props.match.params;
     return (
+      <ProfileContext.Provider value={this.profileService}>
       <RoomsContext.Provider value={this.roomsService}>
         <ContactsContext.Provider value={this.contactsService}>
-          <Header/>
+          <Header roomId={roomId}/>
           <div className={this.props.classes.chat}>
-            <SideBar/>
+            <SideBar publicKey={this.props.publicKey}/>
             {!roomId && (
               <StartChat/>
             )}
@@ -55,6 +61,7 @@ class MainScreen extends React.Component {
           </div>
         </ContactsContext.Provider>
       </RoomsContext.Provider>
+      </ProfileContext.Provider>
     );
   }
 }

@@ -3,7 +3,7 @@ const profileStyles = theme => ({
     borderRadius: '100%',
     marginLeft: `${theme.spacing.unit*2}px`
   },
-  logoutButton: {
+  saveButton: {
     right: `${theme.spacing.unit*2}px`
   },
   input: {

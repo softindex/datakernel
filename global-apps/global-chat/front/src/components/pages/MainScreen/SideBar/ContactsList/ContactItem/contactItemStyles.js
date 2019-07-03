@@ -9,10 +9,12 @@ const contactItemStyles = theme => ({
     width: 48,
     height: 48
   },
+  avatarContent: {
+    fontSize: '1rem'
+  },
   itemText: {
     overflow: 'hidden',
-    minWidth: `${theme.spacing.unit * 25}px`,
-    maxWidth: `${theme.spacing.unit * 25}px`
+    minWidth: `${theme.spacing.unit * 25}px`
   },
   itemTextPrimary: {
     textOverflow: 'ellipsis',

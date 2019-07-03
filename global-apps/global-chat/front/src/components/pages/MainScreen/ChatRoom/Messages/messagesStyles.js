@@ -14,7 +14,7 @@ const messageFormStyles = theme => {
       flexDirection: 'row',
       width: '100%',
       margin: '0 auto',
-      maxWidth: '900px',
+      maxWidth: 900,
       padding: `0 ${theme.spacing.unit * 3}px`
     },
     messageRowRightAlign: {
@@ -65,7 +65,7 @@ const messageFormStyles = theme => {
     },
     headerPadding: theme.mixins.toolbar,
     paper: {
-      borderRadius: '7px',
+      borderRadius: 7,
       backgroundColor: '#F5F5DC',
       alignSelf: 'center'
     }

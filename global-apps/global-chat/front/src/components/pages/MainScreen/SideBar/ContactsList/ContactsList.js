@@ -9,7 +9,6 @@ import List from "@material-ui/core/List";
 import RoomsContext from "../../../../../modules/rooms/RoomsContext";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
-import AccountContext from "../../../../../modules/account/AccountContext";
 import {Link} from "react-router-dom";
 
 class ContactsList extends React.Component {
@@ -31,6 +30,10 @@ class ContactsList extends React.Component {
     return this.props.createDialog(participantId);
   }
 
+  sortContacts = (contactsList) => {
+    return [...contactsList].sort((a, b) => a[1].name.localeCompare(b[1].name));
+  };
+
   getRoomPath = (roomId) => {
     return path.join('/room', roomId || '');
   };
@@ -49,7 +52,7 @@ class ContactsList extends React.Component {
         {ready && (
           <div className={classes.contactList}>
             <List>
-              {[...contacts].map(([pubKey, {name}]) => {
+              {this.sortContacts([...contacts]).map(([pubKey, {name}]) => {
                   let roomId = '';
                   return ([...rooms].map(([roomPublicKey, {participants}]) => {
                     if (participants.includes(pubKey) && participants.length === 2) {
@@ -60,6 +63,7 @@ class ContactsList extends React.Component {
                       <Contact
                         name={name}
                         showDeleteButton={true}
+                        dialogFormContext={true}
                         onRemoveContact={this.onRemoveContact.bind(this, pubKey, name)}
                         onChatCreate={this.onChatCreate.bind(this, pubKey)}
                         roomId={roomId}

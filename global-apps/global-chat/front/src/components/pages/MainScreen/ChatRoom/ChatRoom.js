@@ -42,12 +42,12 @@ class ChatRoom extends React.Component {
   update = newState => this.setState(newState);
 
   render() {
-    let classes = this.props.classes;
+    const {classes, roomId } = this.props;
     return (
       <ChatRoomContext.Provider value={this.state.chatRoomService}>
         <div className={classes.root}>
           <div className={classes.headerPadding}/>
-          <Messages roomId={this.props.roomId}/>
+          <Messages roomId={roomId}/>
           <MessageForm/>
         </div>
       </ChatRoomContext.Provider>
@@ -56,5 +56,5 @@ class ChatRoom extends React.Component {
 }
 
 export default connectService(AccountContext, ({publicKey}) => ({publicKey}))(
-  withStyles(chatStyles)(ChatRoom)
+    withStyles(chatStyles)(ChatRoom)
 );

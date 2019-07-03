@@ -1,4 +1,5 @@
-import {isArraysEqual} from "../../../common/utils";
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
 
 class RoomsOTOperation {
   constructor(roomId, participants, remove) {
@@ -27,7 +28,7 @@ class RoomsOTOperation {
   }
 
   isEmpty() {
-    return this._participants.length === 0;
+    return isEmpty(this._participants);
   }
 
   invert() {
@@ -37,7 +38,7 @@ class RoomsOTOperation {
   isEqual(roomOTOperation) {
     return (
       roomOTOperation._roomId === this._roomId
-      && isArraysEqual(roomOTOperation._participants, this._participants)
+      && isEqual(roomOTOperation._participants, this._participants)
       && roomOTOperation._removed === this._removed
     );
   }

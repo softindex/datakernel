@@ -1,3 +1,5 @@
+import isEmpty from 'lodash/isEmpty';
+
 class ContactsOTOperation {
   constructor(pubKey, name, remove) {
     this.pubKey = pubKey;
@@ -18,7 +20,7 @@ class ContactsOTOperation {
   }
 
   isEmpty() {
-    return this.pubKey === null;
+    return isEmpty(this.pubKey);
   }
 
   invert() {

@@ -6,7 +6,7 @@ import Tab from '@material-ui/core/Tab';
 import Typography from '@material-ui/core/Typography';
 import Paper from "@material-ui/core/Paper";
 import Button from "@material-ui/core/Button";
-import ContactForm from "../DialogsForms/AddContactForm";
+import AddContactForm from "../DialogsForms/AddContactForm";
 import ChatForm from "../DialogsForms/CreateChatForm"
 import RoomsList from "./RoomsList/RoomsList";
 import ContactsList from "./ContactsList/ContactsList";
@@ -88,9 +88,11 @@ class SideBar extends React.Component {
             component="div"
             style={{padding: 12}}
           >
-            <ContactForm
+            <AddContactForm
               open={this.state.showAddDialog}
               onClose={this.closeAddDialog}
+              publicKey={this.props.publicKey}
+              addContact={this.props.addContact}
             />
             <Button
               className={classes.button}
@@ -113,6 +115,12 @@ class SideBar extends React.Component {
 }
 
 export default connectService(
-  ContactsContext, ({ready, contacts}, contactsService) => ({contactsService, ready, contacts})
+  ContactsContext, ({ready, contacts}, contactsService) => ({
+    contactsService, ready, contacts,
+      addContact(pubKey, name) {
+        return contactsService.addContact(pubKey, name);
+      }
+  })
 )(
-  withStyles(sideBarStyles)(SideBar));
+  withStyles(sideBarStyles)(SideBar)
+);

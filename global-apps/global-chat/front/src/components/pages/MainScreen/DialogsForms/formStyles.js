@@ -1,16 +1,40 @@
 const formStyles = theme => ({
-  closeButton: {
-    position: 'absolute',
-    right: `${theme.spacing.unit*2}px`,
-    top: `${theme.spacing.unit}px`,
-    color: theme.palette.grey[500]
-  },
   chip: {
-    margin: `${theme.spacing.unit*1}px`,
-    marginTop: 0
+    margin: theme.spacing.unit*1,
+    marginTop: 0,
+    width: 148,
+    overflow: 'hidden'
   },
-  progressButton: {
-    right: `${theme.spacing.unit*2}px`
+  actionButton: {
+    margin: theme.spacing,
+    position: 'relative',
+    right: theme.spacing.unit*2
+  },
+  chipsContainer: {
+    display: 'flex',
+    flexFlow: 'row wrap',
+    maxWidth: 350
+  },
+  chipText: {
+    width: 'inherit',
+    overflow: 'hidden',
+    display: 'inline-block',
+    textOverflow: 'ellipsis'
+  },
+  root: {
+    padding: '2px 4px',
+    display: 'flex',
+    alignItems: 'center',
+    width: 'auto',
+    marginTop: theme.spacing.unit,
+    marginBottom: theme.spacing.unit
+  },
+  input: {
+    marginLeft: 8,
+    flex: 1,
+  },
+  iconButton: {
+    padding: 10,
   }
 });
 

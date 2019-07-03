@@ -3,14 +3,41 @@ const headerStyles = (theme) => ({
     zIndex: theme.zIndex.drawer + 1,
     height: 65
   },
-  title: {
+  chatTitleContainer: {
+    display: 'flex',
+    marginLeft: theme.spacing.unit * 24.2,
     flexGrow: 1,
-    marginLeft: `${theme.spacing.unit * 3}px`
+    flexDirection: 'row-reverse'
   },
-  buttonDiv: {
+  title: {
+    marginLeft: theme.spacing.unit * 3,
+  },
+  chatTitle: {
+    fontSize: '1rem',
+    flexGrow: 1,
+    display: 'flex',
+    alignItems: 'center'
+  },
+  iconButton: {
     '&:hover': {
       cursor: 'pointer'
-    }
+    },
+    color: 'inherit'
+  },
+  listItemIcon: {
+    color: 'inherit'
+  },
+  arrowIcon: {
+    fontSize: '1.25rem'
+  },
+  drawer: {
+    width: 355
+  },
+  list: {
+    width: 355
+  },
+  accountIcon: {
+    fontSize: 30
   }
 });
 

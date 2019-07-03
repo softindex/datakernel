@@ -28,16 +28,16 @@ class ContactItem extends React.Component {
   };
 
   render() {
-    const {classes} = this.props;
+    const {classes, name} = this.props;
     return (
         <ListItem
           onClick={this.props.onClick || this.props.onChatCreate}
           onMouseEnter={this.toggleHover}
           onMouseLeave={this.toggleHover}
           className={classes.contactItem}
-          key={this.props.name}
+          key={name}
           button
-          selected={this.props.roomId === this.props.match.params.roomId}
+          selected={this.props.roomId === this.props.match.params.roomId && this.props.showDeleteButton}
         >
           <Badge
             className={classes.badge}
@@ -46,11 +46,16 @@ class ContactItem extends React.Component {
             variant="dot"
           >
             <ListItemAvatar className={classes.avatar}>
-                <Avatar/>
+              <Avatar className={classes.avatarContent}>
+                {name.includes(" ") ?
+                  (name.charAt(0) + name.charAt(name.indexOf(" ") + 1)).toUpperCase() :
+                  (name.charAt(0) + name.charAt(1)).toUpperCase()
+                }
+              </Avatar>
             </ListItemAvatar>
           </Badge>
           <ListItemText
-            primary={this.props.name}
+            primary={name}
             className={classes.itemText}
             classes={{
               primary: classes.itemTextPrimary

@@ -10,26 +10,54 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import connectService from "../../../../common/connectService";
 import RoomsContext from "../../../../modules/rooms/RoomsContext";
-import ButtonWithProgress from "../../../UIElements/ButtonProgress/ButtonProgress";
 import Chip from "@material-ui/core/Chip";
 import {withSnackbar} from "notistack";
 import * as PropTypes from "prop-types";
 import ContactsContext from "../../../../modules/contacts/ContactsContext";
 import List from "@material-ui/core/List";
 import Contact from "../SideBar/ContactsList/ContactItem/ContactItem";
+import Avatar from "@material-ui/core/Avatar";
+import InputBase from "@material-ui/core/InputBase";
+import SearchIcon from '@material-ui/icons/Search';
+import IconButton from "@material-ui/core/IconButton";
+import Paper from "@material-ui/core/Paper";
 
 class CreateChatForm extends React.Component {
-  state = {
-    participants: new Set(),
-    name: '',
-    activeStep: 1,
-    loading: false,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      participants: new Set(),
+      name: '',
+      activeStep: 1,
+      contactsList: [...props.contacts],
+      loading: false,
+    };
+  }
 
   handleNameChange = (event) => {
     this.setState({
       name: event.target.value
     });
+  };
+
+  sortContacts = (contactsList) => {
+    return [...contactsList]
+      .sort((array1, array2) => array1[1].name.localeCompare(array2[1].name));
+  };
+
+  handleSearchChange = (event) => {
+    if (event.target.value === '') {
+      this.setState({
+        contactsList: [...this.props.contacts]
+      })
+    } else {
+      this.setState({
+        contactsList: [...this.props.contacts]
+          .filter(([pubKey, {name}]) => name
+            .toLowerCase()
+            .includes(event.target.value.toLowerCase()))
+      })
+    }
   };
 
   gotoStep = (nextStep) => {
@@ -90,6 +118,7 @@ class CreateChatForm extends React.Component {
       <Dialog
         open={this.props.open}
         onClose={this.props.onClose}
+        loading={this.state.loading}
         aria-labelledby="form-dialog-title"
       >
         <form onSubmit={this.handleSubmit}>
@@ -121,19 +150,47 @@ class CreateChatForm extends React.Component {
             )}
             {this.state.activeStep > 0 &&  (
               <>
-                {[...this.state.participants].map((pubKey) => (
-                  <Chip
-                    color = "primary"
-                    label = {contacts.get(pubKey).name}
-                    onDelete = {!this.state.loading && this.handleCheckContact.bind(this, pubKey)}
-                    className = {classes.chip}
+                <div className={classes.chipsContainer}>
+                  {[...this.state.participants].map((pubKey) => (
+                    <Chip
+                      color = "primary"
+                      label = {contacts.get(pubKey).name}
+                      avatar={
+                        <Avatar>
+                          { contacts.get(pubKey).name.indexOf(" ") > -1 ?
+                            contacts.get(pubKey).name.charAt(0) +
+                            contacts.get(pubKey).name.charAt(contacts.get(pubKey).name.indexOf(" ") + 1) :
+                            contacts.get(pubKey).name.charAt(0) + contacts.get(pubKey).name.charAt(1)
+                          }
+                        </Avatar>
+                      }
+                      onDelete = {!this.state.loading && this.handleCheckContact.bind(this, pubKey)}
+                      className = {classes.chip}
+                      classes={{
+                        label: classes.chipText
+                      }}
+                    />
+                  ))}
+                </div>
+                <Paper className={classes.root}>
+                  <IconButton
+                    className={classes.iconButton}
+                    aria-label="Search"
+                    disabled={true}
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                  <InputBase
+                    className={classes.input}
+                    placeholder="Search..."
+                    autoFocus
+                    onChange={this.handleSearchChange}
+                    ref={this.input}
+                    inputProps={{ 'aria-label': 'Search...' }}
                   />
-                ))}
-                <DialogContentText>
-                  Choose members from contacts:
-                </DialogContentText>
+                </Paper>
                 <List>
-                  {[...contacts].map(([pubKey, {name}]) =>
+                  {this.sortContacts(this.state.contactsList).map(([pubKey, {name}]) =>
                     <Contact
                       pubKey={pubKey}
                       name={name}
@@ -147,7 +204,7 @@ class CreateChatForm extends React.Component {
           </DialogContent>
           <DialogActions>
             {/*<Button*/}
-            {/*  className={this.props.classes.progressButton}*/}
+            {/*  className={this.props.classes.actionButton}*/}
             {/*  disabled={this.state.activeStep === 0}*/}
             {/*  onClick={this.gotoStep.bind(this, this.state.activeStep - 1)}*/}
             {/*>*/}
@@ -157,15 +214,15 @@ class CreateChatForm extends React.Component {
             {/*CHANGE HERE*/}
 
             <Button
-              className={this.props.classes.progressButton}
+              className={this.props.classes.actionButton}
               onClick={this.props.onClose}
             >
               Close
             </Button>
             {this.state.activeStep === 0 && (
               <Button
-                className={this.props.classes.progressButton}
-                type={"submit"}
+                className={this.props.classes.actionButton}
+                type="submit"
                 disabled={this.state.loading}
                 color="primary"
                 variant="contained"
@@ -174,15 +231,15 @@ class CreateChatForm extends React.Component {
               </Button>
             )}
             {this.state.activeStep !== 0 && (
-              <ButtonWithProgress
-                className={this.props.classes.progressButton}
+              <Button
+                className={this.props.classes.actionButton}
                 loading={this.state.loading}
                 type={"submit"}
                 color={"primary"}
                 variant={"contained"}
               >
                 Create
-              </ButtonWithProgress>
+              </Button>
             )}
           </DialogActions>
         </form>
