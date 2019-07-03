@@ -6,6 +6,8 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.test.rules.ExecutorRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.nio.file.Paths;
@@ -13,8 +15,12 @@ import java.nio.file.Paths;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 
 public class CrdtNodeLauncherTest {
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Test
 	public void testInjector() {
 		new CrdtNodeLauncher<String, TimestampContainer<Integer>>() {
@@ -33,9 +39,10 @@ public class CrdtNodeLauncherTest {
 										TimestampContainer::getState, INT_CODEC));
 					}
 
+
 					@Provides
 					FsClient fsClient() {
-						return LocalFsClient.create(Eventloop.create(), Paths.get(""));
+						return LocalFsClient.create(Eventloop.create(), getExecutor(), Paths.get(""));
 					}
 				};
 			}

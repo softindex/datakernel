@@ -35,6 +35,7 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -51,7 +52,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
@@ -63,6 +63,7 @@ import static io.datakernel.cube.TestUtils.initializeRepository;
 import static io.datakernel.cube.TestUtils.runProcessLogs;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.*;
@@ -83,6 +84,9 @@ public class CubeMeasureRemovalTest {
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
+	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private Eventloop eventloop;
@@ -100,20 +104,22 @@ public class CubeMeasureRemovalTest {
 		logsDir = temporaryFolder.newFolder().toPath();
 
 		eventloop = Eventloop.getCurrentEventloop();
-		executor = Executors.newCachedThreadPool();
+		executor = getExecutor();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
-		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(),
+				LocalFsClient.create(eventloop, executor, aggregationsDir));
 		BinarySerializer<LogItem> serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
 		multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, logsDir),
+				LocalFsClient.create(eventloop, executor, logsDir),
 				serializer,
 				NAME_PARTITION_REMAINDER_SEQ);
 	}
 
 	@Test
 	public void test() throws Exception {
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(),
+				LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -141,7 +147,7 @@ public class CubeMeasureRemovalTest {
 		initializeRepository(repository);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, logsDir),
+				LocalFsClient.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

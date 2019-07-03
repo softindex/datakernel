@@ -20,6 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -33,10 +34,9 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
@@ -53,14 +53,16 @@ public final class CheckpointStorageTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	private RemoteFsCheckpointStorage storage;
 
 	@Before
 	public void setUp() throws IOException {
-		Executor executor = Executors.newSingleThreadExecutor();
 		Path path = temporaryFolder.newFolder().toPath();
 
-		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), path).withRevisions());
+		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), path).withRevisions());
 	}
 
 	@Test

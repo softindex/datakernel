@@ -6,6 +6,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -18,6 +19,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
@@ -29,6 +31,9 @@ public final class TestLocalFsClientRevisions {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
@@ -36,7 +41,7 @@ public final class TestLocalFsClientRevisions {
 
 	@Before
 	public void setUp() throws IOException {
-		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), tmpFolder.newFolder("storage").toPath()).withRevisions();
+		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(),  tmpFolder.newFolder("storage").toPath()).withRevisions();
 	}
 
 	@Test

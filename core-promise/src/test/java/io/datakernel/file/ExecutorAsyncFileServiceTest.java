@@ -18,23 +18,22 @@ package io.datakernel.file;
 
 import io.datakernel.async.Promises;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -48,7 +47,10 @@ public final class ExecutorAsyncFileServiceTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
-	private ExecutorAsyncFileService service = new ExecutorAsyncFileService(Executors.newCachedThreadPool());
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
+	private ExecutorAsyncFileService service = new ExecutorAsyncFileService(getExecutor());
 
 	static {
 		System.setProperty("AsyncFileService.aio", "false");

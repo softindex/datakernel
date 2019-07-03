@@ -24,10 +24,10 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.file.ChannelFileWriter;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.datakernel.util.Tuple2;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -50,11 +50,12 @@ import java.util.stream.IntStream;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.remotefs.FsClient.BAD_PATH;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
@@ -75,6 +76,9 @@ public final class FsIntegrationTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -84,12 +88,12 @@ public final class FsIntegrationTest {
 
 	@Before
 	public void setup() throws IOException {
-		Executor executor = newCachedThreadPool();
+		Executor executor = getExecutor();
 
 		storage = temporaryFolder.newFolder("server_storage").toPath();
-		server = RemoteFsServer.create(Eventloop.getCurrentEventloop(), executor, storage).withListenAddress(address);
+		server = RemoteFsServer.create(getCurrentEventloop(), executor, storage).withListenAddress(address);
 		server.listen();
-		client = RemoteFsClient.create(Eventloop.getCurrentEventloop(), address);
+		client = RemoteFsClient.create(getCurrentEventloop(), address);
 	}
 
 	@Test
@@ -210,7 +214,7 @@ public final class FsIntegrationTest {
 
 		List<Promise<Void>> tasks = new ArrayList<>();
 
-		Executor executor = newCachedThreadPool();
+		Executor executor = getExecutor();
 		for (int i = 0; i < 10; i++) {
 			tasks.add(ChannelSupplier.ofPromise(client.download(file))
 					.streamTo(ChannelFileWriter.open(executor, storage.resolve("file" + i))));

@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
@@ -38,6 +39,9 @@ public final class FileUploadExample extends Launcher {
 	@Inject
 	private Eventloop eventloop;
 
+	@Inject
+	private Executor executor;
+
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
@@ -48,6 +52,11 @@ public final class FileUploadExample extends Launcher {
 		return RemoteFsClient.create(eventloop, new InetSocketAddress(SERVER_PORT));
 	}
 
+	@Provides
+	Executor executor() {
+		return newSingleThreadExecutor();
+	}
+
 	@Override
 	protected Module getModule() {
 		return ServiceGraphModule.defaultInstance();
@@ -55,11 +64,13 @@ public final class FileUploadExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		System.out.println("To watch the example ServerSetupExample must be launched");
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				// consumer result here is a marker of it being successfully uploaded
-				ChannelFileReader.open(newSingleThreadExecutor(), clientFile)
+				ChannelFileReader.open(executor, clientFile)
 						.map(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)))
 						.then(cfr -> cfr.streamTo(client.upload(FILE_NAME)))
+						.whenComplete(() -> System.out.println("File is uploaded".toUpperCase()))
 		);
 		future.get();
 	}

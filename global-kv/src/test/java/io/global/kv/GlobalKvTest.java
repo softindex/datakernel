@@ -24,6 +24,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -35,7 +36,10 @@ import io.global.kv.api.KvStorage;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
@@ -49,6 +53,7 @@ import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptyList;
@@ -68,6 +73,9 @@ public final class GlobalKvTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	private DiscoveryService discoveryService;
 
@@ -90,7 +98,7 @@ public final class GlobalKvTest {
 		Path dir = temporaryFolder.newFolder().toPath();
 		System.out.println("DIR: " + dir);
 
-		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), dir).withRevisions();
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
 		storageFactory = ($1, $2) -> new RuntimeKvStorageStub();

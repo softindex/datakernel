@@ -34,6 +34,7 @@ public class ServerSetupExample extends RemoteFsServerLauncher {
 
 	@Override
 	protected void run() throws Exception {
+		System.out.println("Run FileUploadExample to upload a file, then FileDownloadExample to watch the example");
 		awaitShutdown();
 	}
 

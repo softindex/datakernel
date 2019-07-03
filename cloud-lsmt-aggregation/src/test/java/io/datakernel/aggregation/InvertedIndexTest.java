@@ -24,6 +24,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,12 +35,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofString;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.test.rules.ExecutorRule.*;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
@@ -54,6 +55,9 @@ public class InvertedIndexTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	public static class InvertedIndexQueryResult {
 		public String word;
@@ -98,7 +102,7 @@ public class InvertedIndexTest {
 
 	@Test
 	public void testInvertedIndex() throws Exception {
-		Executor executor = Executors.newCachedThreadPool();
+		Executor executor = getExecutor();
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Path path = temporaryFolder.newFolder().toPath();

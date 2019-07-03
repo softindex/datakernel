@@ -40,11 +40,9 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.ExecutorRule;
 import org.jetbrains.annotations.Nullable;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 import javax.sql.DataSource;
@@ -56,7 +54,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
@@ -73,6 +70,7 @@ import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.test.TestUtils.getFreePort;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -91,6 +89,9 @@ public final class ReportingTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	private static final int SERVER_PORT = getFreePort();
 
@@ -276,10 +277,11 @@ public final class ReportingTest {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 
 		eventloop = Eventloop.getCurrentEventloop();
-		Executor executor = Executors.newCachedThreadPool();
+		Executor executor = getExecutor();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(),
+				LocalFsClient.create(eventloop, executor, aggregationsDir));
 		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
 				.initialize(cube -> DIMENSIONS_CUBE.forEach(cube::addDimension))
@@ -316,7 +318,7 @@ public final class ReportingTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, temporaryFolder.getRoot().toPath()),
+				LocalFsClient.create(eventloop, executor, temporaryFolder.getRoot().toPath()),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

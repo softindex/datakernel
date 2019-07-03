@@ -3,15 +3,13 @@ package io.global.common;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 import io.global.common.discovery.MySqlAnnouncementStorage;
 import io.global.common.discovery.RocksDbAnnouncementStorage;
 import io.global.common.stub.InMemoryAnnouncementStorage;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -30,9 +28,9 @@ import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -50,6 +48,9 @@ public class AnnouncementStorageTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Parameter()
 	public Function<Path, AnnouncementStorage> storageFn;
 
@@ -60,7 +61,7 @@ public class AnnouncementStorageTest {
 		return Arrays.asList(
 				new Object[]{(Function<Path, AnnouncementStorage>) path -> {
 					try {
-						return RocksDbAnnouncementStorage.create(newCachedThreadPool(), RocksDB.open(path.toString()));
+						return RocksDbAnnouncementStorage.create(getExecutor(), RocksDB.open(path.toString()));
 					} catch (RocksDBException e) {
 						throw new AssertionError(e);
 					}
@@ -69,7 +70,7 @@ public class AnnouncementStorageTest {
 				new Object[]{(Function<Path, AnnouncementStorage>) path -> {
 					try {
 						DataSource dataSource = dataSource(MY_SQL_PROPERTIES);
-						return MySqlAnnouncementStorage.create(newCachedThreadPool(), dataSource);
+						return MySqlAnnouncementStorage.create(getExecutor(), dataSource);
 					} catch (IOException | SQLException e) {
 						System.out.println("WARNING: Failed to get properties from " + MY_SQL_PROPERTIES + " (" +
 								e.getMessage() + "), using stub instead");

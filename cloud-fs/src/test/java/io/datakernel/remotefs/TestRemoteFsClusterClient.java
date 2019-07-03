@@ -27,6 +27,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
@@ -36,16 +37,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -63,16 +62,17 @@ public final class TestRemoteFsClusterClient {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 
 	private List<RemoteFsServer> servers;
 	private Path clientStorage;
 	private RemoteFsClusterClient client;
-	private Executor executor;
 
 	@Before
 	public void setup() throws IOException {
-		executor = Executors.newSingleThreadExecutor();
 		servers = new ArrayList<>(CLIENT_SERVER_PAIRS);
 		clientStorage = Paths.get(tmpFolder.newFolder("client").toURI());
 
@@ -90,7 +90,7 @@ public final class TestRemoteFsClusterClient {
 			serverStorages[i] = Paths.get(tmpFolder.newFolder("storage_" + i).toURI());
 			Files.createDirectories(serverStorages[i]);
 
-			RemoteFsServer server = RemoteFsServer.create(eventloop, executor, serverStorages[i]).withListenAddress(address);
+			RemoteFsServer server = RemoteFsServer.create(eventloop, getExecutor(), serverStorages[i]).withListenAddress(address);
 			server.listen();
 			servers.add(server);
 		}
@@ -132,7 +132,7 @@ public final class TestRemoteFsClusterClient {
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
 		await(ChannelSupplier.ofPromise(client.download(file, 0))
-				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(file)))
+				.streamTo(ChannelFileWriter.open(getExecutor(), clientStorage.resolve(file)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
 
 		assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content);

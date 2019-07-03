@@ -27,10 +27,13 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
+import java.util.concurrent.Executor;
+
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public final class CrdtNodeExample extends CrdtNodeLauncher<String, TimestampContainer<Integer>> {
 	@Override
@@ -49,8 +52,13 @@ public final class CrdtNodeExample extends CrdtNodeLauncher<String, TimestampCon
 			}
 
 			@Provides
-			FsClient fsClient(Eventloop eventloop, Config config) {
-				return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
+			Executor executor() {
+				return newCachedThreadPool();
+			}
+
+			@Provides
+			FsClient fsClient(Eventloop eventloop, Executor executor, Config config) {
+				return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "crdt.local.path"));
 			}
 		};
 	}

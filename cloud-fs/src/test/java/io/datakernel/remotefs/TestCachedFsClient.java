@@ -25,6 +25,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -38,11 +39,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
@@ -60,6 +60,9 @@ public final class TestCachedFsClient {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();
@@ -89,10 +92,9 @@ public final class TestCachedFsClient {
 		Files.write(serverTestFile, testTxtContent.getBytes(UTF_8));
 
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		Executor executor = Executors.newSingleThreadExecutor();
 
-		main = LocalFsClient.create(eventloop, serverStorage);
-		cache = LocalFsClient.create(eventloop, cacheStorage);
+		main = LocalFsClient.create(eventloop, getExecutor(), serverStorage);
+		cache = LocalFsClient.create(eventloop, getExecutor(), cacheStorage);
 		cacheRemote = CachedFsClient.create(main, cache, CachedFsClient.lruCompare())
 				.with(MemSize.kilobytes(50));
 	}

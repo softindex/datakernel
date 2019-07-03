@@ -26,6 +26,7 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -33,13 +34,13 @@ import org.junit.Test;
 import javax.net.ssl.SSLContext;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaderValue.ofAcceptMediaTypes;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static org.junit.Assert.assertEquals;
 
 public final class TestHttpsClient {
@@ -48,6 +49,9 @@ public final class TestHttpsClient {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@Test
 	@Ignore
@@ -60,7 +64,7 @@ public final class TestHttpsClient {
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)
-				.withSslEnabled(SSLContext.getDefault(), Executors.newSingleThreadExecutor());
+				.withSslEnabled(SSLContext.getDefault(), getExecutor());
 		Integer code = await(client.request(HttpRequest.get("https://en.wikipedia.org/wiki/Wikipedia")
 				.withHeader(CACHE_CONTROL, "max-age=0")
 				.withHeader(ACCEPT_ENCODING, "gzip, deflate, sdch")

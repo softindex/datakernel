@@ -3,14 +3,12 @@ package io.global.common;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.global.common.api.SharedKeyStorage;
 import io.global.common.discovery.MySqlSharedKeyStorage;
 import io.global.common.discovery.RocksDbSharedKeyStorage;
 import io.global.common.stub.InMemorySharedKeyStorage;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -29,8 +27,8 @@ import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.global.common.BinaryDataFormats.REGISTRY;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
@@ -43,6 +41,9 @@ public class SharedKeyStorageTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufPool = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -58,7 +59,7 @@ public class SharedKeyStorageTest {
 				new Object[]{
 						(Function<Path, SharedKeyStorage>) path -> {
 							try {
-								return RocksDbSharedKeyStorage.create(newCachedThreadPool(),  RocksDB.open(path.toString()));
+								return RocksDbSharedKeyStorage.create(getExecutor(),  RocksDB.open(path.toString()));
 							} catch (RocksDBException e) {
 								throw new AssertionError(e);
 							}

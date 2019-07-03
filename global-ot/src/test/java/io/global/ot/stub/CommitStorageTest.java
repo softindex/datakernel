@@ -3,6 +3,7 @@ package io.global.ot.stub;
 import io.datakernel.async.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.global.common.Hash;
 import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
@@ -26,12 +27,12 @@ import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.ot.util.TestUtils.getCommitId;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptyMap;
 import static java.util.Comparator.naturalOrder;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -50,6 +51,9 @@ public class CommitStorageTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Parameter()
 	public Function<Path, CommitStorage> storageFn;
 
@@ -62,7 +66,7 @@ public class CommitStorageTest {
 				},
 				new Object[]{(Function<Path, CommitStorage>) path -> {
 					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
-							newCachedThreadPool(),
+							getExecutor(),
 							getCurrentEventloop(),
 							path.resolve("rocksDb").toString());
 					await(rocksDb.start());

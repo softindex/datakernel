@@ -46,7 +46,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
@@ -170,10 +169,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	public static LocalFsClient create(Eventloop eventloop, Executor executor, Path storageDir) {
 		return new LocalFsClient(eventloop, storageDir, executor);
-	}
-
-	public static LocalFsClient create(Eventloop eventloop, Path storageDir) {
-		return create(eventloop, Executors.newSingleThreadExecutor(), storageDir);
 	}
 
 	public LocalFsClient withLazyOverrides(boolean lazyOverrides) {

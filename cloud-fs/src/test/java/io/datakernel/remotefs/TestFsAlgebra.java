@@ -19,6 +19,7 @@ package io.datakernel.remotefs;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
@@ -44,11 +46,14 @@ public final class TestFsAlgebra {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	private FsClient local;
 
 	@Before
 	public void setup() throws IOException {
-		local = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder("test").toPath());
+		local = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), temporaryFolder.newFolder("test").toPath());
 	}
 
 	private void upload(FsClient client, String filename) {

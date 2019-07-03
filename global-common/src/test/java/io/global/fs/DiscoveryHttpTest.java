@@ -18,12 +18,12 @@ package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.HttpException;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -41,6 +41,7 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.common.BinaryDataFormats.REGISTRY;
@@ -58,9 +59,12 @@ public final class DiscoveryHttpTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Test
 	public void test() throws IOException, CryptoException {
-		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath()).withRevisions();
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), temporaryFolder.newFolder().toPath()).withRevisions();
 		StubHttpClient client = StubHttpClient.of(DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage)));
 		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), client);
 

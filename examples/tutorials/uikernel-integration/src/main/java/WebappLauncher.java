@@ -80,6 +80,7 @@ public class WebappLauncher extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		System.out.println("You can connect from browser by visiting 'http://localhost:8080/'");
 		awaitShutdown();
 	}
 

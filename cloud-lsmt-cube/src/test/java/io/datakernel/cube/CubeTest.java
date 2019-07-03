@@ -30,6 +30,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -51,10 +52,10 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codegen.DefiningClassLoader.create;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.test.TestUtils.getFreePort;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.keysToMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
@@ -72,16 +73,18 @@ public final class CubeTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	private final DefiningClassLoader classLoader = create();
-	private final Executor executor = newSingleThreadExecutor();
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
+	private final DefiningClassLoader classLoader = create();
+	private final Executor executor = getExecutor();
 
 	private AggregationChunkStorage<Long> chunkStorage;
 	private Cube cube;
 
 	@Before
 	public void setUp() throws Exception {
-		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
+		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), temporaryFolder.newFolder().toPath());
 		chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		cube = newCube(executor, classLoader, chunkStorage);
 	}
@@ -430,9 +433,8 @@ public final class CubeTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownDimensions() throws IOException {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Executor executor = newSingleThreadExecutor();
 
-		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
+		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
@@ -445,9 +447,8 @@ public final class CubeTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownMeasure() throws IOException {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Executor executor = newSingleThreadExecutor();
 
-		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
+		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 

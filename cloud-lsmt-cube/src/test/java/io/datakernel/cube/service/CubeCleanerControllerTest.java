@@ -20,6 +20,7 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -32,7 +33,6 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
@@ -40,6 +40,7 @@ import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.rules.ExecutorRule.*;
 import static java.util.Collections.emptyList;
 
 public class CubeCleanerControllerTest {
@@ -54,6 +55,9 @@ public class CubeCleanerControllerTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	private Eventloop eventloop;
 	private OTRepositoryMySql<LogDiff<CubeDiff>> repository;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
@@ -62,12 +66,13 @@ public class CubeCleanerControllerTest {
 	public void setUp() throws Exception {
 		DataSource dataSource = dataSource("test.properties");
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
-		Executor executor = Executors.newCachedThreadPool();
+		Executor executor = getExecutor();
 
 		eventloop = Eventloop.getCurrentEventloop();
 
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(),
+				LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("pub", ofInt())
 				.withDimension("adv", ofInt())

@@ -21,6 +21,7 @@ import io.datakernel.aggregation.util.SqlAtomicSequence;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -32,8 +33,8 @@ import java.sql.SQLException;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.SqlUtils.executeScript;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 
 public class IdGeneratorSqlTest {
@@ -45,6 +46,9 @@ public class IdGeneratorSqlTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@Before
 	public void before() throws IOException, SQLException {
@@ -69,7 +73,7 @@ public class IdGeneratorSqlTest {
 
 	@Test
 	public void testIdGeneratorSql() {
-		IdGeneratorSql idGeneratorSql = IdGeneratorSql.create(Eventloop.getCurrentEventloop(), newSingleThreadExecutor(), dataSource, sequence);
+		IdGeneratorSql idGeneratorSql = IdGeneratorSql.create(Eventloop.getCurrentEventloop(), getExecutor(), dataSource, sequence);
 
 		assertEquals(1, (long) await(idGeneratorSql.createId()));
 		assertEquals(2, (long) await(idGeneratorSql.createId()));
@@ -78,7 +82,7 @@ public class IdGeneratorSqlTest {
 
 	@Test
 	public void testIdGeneratorSql10() {
-		IdGeneratorSql idGeneratorSql = IdGeneratorSql.create(Eventloop.getCurrentEventloop(), newSingleThreadExecutor(), dataSource, sequence)
+		IdGeneratorSql idGeneratorSql = IdGeneratorSql.create(Eventloop.getCurrentEventloop(), getExecutor(), dataSource, sequence)
 				.withStride(10);
 		for (int i = 1; i <= 25; i++) {
 			assertEquals(i, (long) await(idGeneratorSql.createId()));

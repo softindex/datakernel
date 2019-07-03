@@ -26,6 +26,7 @@ import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -40,19 +41,17 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.FILE_EXISTS;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -65,10 +64,12 @@ public final class TestLocalFsClient {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	private Executor executor = Executors.newSingleThreadExecutor();
 	private Path storagePath;
 	private Path clientPath;
 
@@ -114,7 +115,7 @@ public final class TestLocalFsClient {
 		} catch (IOException ignored) {
 		}
 
-		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), storagePath);
+		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), storagePath);
 	}
 
 	@Test
@@ -122,7 +123,7 @@ public final class TestLocalFsClient {
 		Path path = clientPath.resolve("c.txt");
 
 		await(client.upload("1/c.txt")
-				.then(consumer -> ChannelFileReader.open(newCachedThreadPool(), path)
+				.then(consumer -> ChannelFileReader.open(executorRule.getExecutor(), path)
 						.then(file -> file.withBufferSize(BUFFER_SIZE).streamTo(consumer))));
 
 		assertArrayEquals(Files.readAllBytes(path), Files.readAllBytes(storagePath.resolve("1/c.txt")));
@@ -249,7 +250,7 @@ public final class TestLocalFsClient {
 		Path outputFile = clientPath.resolve("d.txt");
 
 		ChannelSupplier<ByteBuf> supplier = await(client.download("2/b/d.txt"));
-		await(supplier.streamTo(ChannelFileWriter.open(newCachedThreadPool(), outputFile)));
+		await(supplier.streamTo(ChannelFileWriter.open(executorRule.getExecutor(), outputFile)));
 
 		assertArrayEquals(Files.readAllBytes(storagePath.resolve("2/b/d.txt")), Files.readAllBytes(outputFile));
 	}

@@ -27,6 +27,7 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -45,7 +46,6 @@ import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import static io.datakernel.async.Cancellable.CLOSE_EXCEPTION;
@@ -53,6 +53,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
@@ -84,6 +85,9 @@ public final class AsyncSslSocketTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Rule
 	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
@@ -93,7 +97,7 @@ public final class AsyncSslSocketTest {
 
 	@Before
 	public void setUp() throws Exception {
-		executor = Executors.newSingleThreadExecutor();
+		executor = getExecutor();
 		sslContext = createSslContext();
 		sentData = new StringBuilder();
 	}
@@ -197,7 +201,7 @@ public final class AsyncSslSocketTest {
 
 	static void startServer(SSLContext sslContext, Consumer<AsyncTcpSocket> logic) throws IOException {
 		SimpleServer.create(logic)
-				.withSslListenAddress(sslContext, Executors.newSingleThreadExecutor(), ADDRESS)
+				.withSslListenAddress(sslContext, getExecutor(), ADDRESS)
 				.withAcceptOnce()
 				.listen();
 	}

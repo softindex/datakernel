@@ -24,6 +24,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
@@ -39,11 +40,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
@@ -59,6 +60,9 @@ public class CrdtStorageAPITest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Parameter()
 	public String testName;
 
@@ -71,7 +75,7 @@ public class CrdtStorageAPITest {
 	public void setup() throws Exception {
 		Path folder = temporaryFolder.newFolder().toPath();
 		Files.createDirectories(folder);
-		client = clientFactory.create(Executors.newSingleThreadExecutor(), folder, TimestampContainer.createCrdtFunction(Integer::max));
+		client = clientFactory.create(getExecutor(), folder, TimestampContainer.createCrdtFunction(Integer::max));
 	}
 
 	@After
@@ -94,7 +98,10 @@ public class CrdtStorageAPITest {
 						"FsCrdtClient",
 						(ICrdtClientFactory<String, TimestampContainer<Integer>>) (executor, testFolder, crdtFunction) -> {
 							Eventloop eventloop = Eventloop.getCurrentEventloop();
-							return CrdtStorageFs.create(eventloop, LocalFsClient.create(eventloop, testFolder), serializer, crdtFunction);
+							return CrdtStorageFs.create(eventloop,
+									LocalFsClient.create(eventloop, getExecutor(), testFolder),
+									serializer,
+									crdtFunction);
 						}
 				},
 				new Object[]{

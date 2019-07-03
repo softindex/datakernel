@@ -13,8 +13,8 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
-
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * This example demonstrates downloading file from RemoteFS server.
@@ -38,9 +38,17 @@ public final class FileDownloadExample extends Launcher {
 	@Inject
 	private Eventloop eventloop;
 
+	@Inject
+	private Executor executor;
+
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
+	}
+
+	@Provides
+	Executor executor() {
+		return Executors.newSingleThreadExecutor();
 	}
 
 	@Provides
@@ -55,9 +63,11 @@ public final class FileDownloadExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		System.out.println("To watch the example ServerSetupExample must be launched and FileUploadExample should be one time executed");
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
-						.streamTo(ChannelFileWriter.open(newSingleThreadExecutor(), clientStorage.resolve(DOWNLOADED_FILE)))
+						.streamTo(ChannelFileWriter.open(executor, clientStorage.resolve(DOWNLOADED_FILE)))
+						.whenComplete(() -> System.out.println("File is downloaded".toUpperCase()))
 		);
 		future.get();
 	}

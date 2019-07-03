@@ -9,6 +9,7 @@ import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -18,6 +19,7 @@ import java.util.List;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -31,11 +33,14 @@ public class MultilogImplTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Test
 	public void testConsumer() {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		Multilog<String> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, temporaryFolder.getRoot().toPath()),
+				LocalFsClient.create(eventloop, getExecutor(), temporaryFolder.getRoot().toPath()),
 				BinarySerializers.UTF8_SERIALIZER,
 				NAME_PARTITION_REMAINDER_SEQ);
 		String testPartition = "testPartition";

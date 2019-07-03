@@ -22,10 +22,7 @@ import io.datakernel.async.RetryPolicy;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.test.rules.LoggerConfig;
-import io.datakernel.test.rules.LoggingRule;
+import io.datakernel.test.rules.*;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.datakernel.util.Tuple2;
@@ -42,7 +39,10 @@ import io.global.ot.util.FailingDiscoveryService;
 import io.global.ot.util.FailingGlobalOTNode;
 import io.global.ot.util.TestUtils;
 import org.jetbrains.annotations.Nullable;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -60,6 +60,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.CollectorsEx.toAll;
 import static io.datakernel.util.CollectorsEx.toAny;
@@ -69,7 +70,6 @@ import static io.global.ot.util.TestUtils.getCommitIds;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static java.util.Comparator.naturalOrder;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 import static org.slf4j.event.Level.WARN;
@@ -85,6 +85,9 @@ public class GlobalOTNodeImplTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@Rule
 	public final LoggingRule loggingRule = new LoggingRule();
@@ -119,7 +122,7 @@ public class GlobalOTNodeImplTest {
 				new Object[]{(Function<Path, CommitStorage>) path -> new CommitStorageStub()},
 				new Object[]{(Function<Path, CommitStorage>) path -> {
 					CommitStorageRocksDb rocksDb = CommitStorageRocksDb.create(
-							newCachedThreadPool(),
+							getExecutor(),
 							getCurrentEventloop(),
 							path.resolve("rocksDb").toString());
 					await(rocksDb.start());

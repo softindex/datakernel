@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import io.datakernel.util.MemSize;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -39,8 +40,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 public final class ChannelFileReaderWriterTest {
@@ -51,12 +52,15 @@ public final class ChannelFileReaderWriterTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	@Test
 	public void streamFileReader() throws IOException {
-		ByteBuf byteBuf = await(ChannelFileReader.open(newCachedThreadPool(), Paths.get("test_data/in.dat"))
+		ByteBuf byteBuf = await(ChannelFileReader.open(getExecutor(), Paths.get("test_data/in.dat"))
 				.then(cfr -> cfr.toCollector(ByteBufQueue.collector())));
 
 		assertArrayEquals(Files.readAllBytes(Paths.get("test_data/in.dat")), byteBuf.asArray());
@@ -64,7 +68,7 @@ public final class ChannelFileReaderWriterTest {
 
 	@Test
 	public void streamFileReaderWithDelay() throws IOException {
-		ByteBuf byteBuf = await(ChannelFileReader.open(newCachedThreadPool(), Paths.get("test_data/in.dat"))
+		ByteBuf byteBuf = await(ChannelFileReader.open(getExecutor(), Paths.get("test_data/in.dat"))
 				.then(cfr -> cfr.withBufferSize(MemSize.of(1))
 						.mapAsync(buf -> Promises.delay(10L, buf))
 						.toCollector(ByteBufQueue.collector())));
@@ -78,7 +82,7 @@ public final class ChannelFileReaderWriterTest {
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		await(ChannelSupplier.of(ByteBuf.wrapForReading(bytes))
-				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), tempPath)));
+				.streamTo(ChannelFileWriter.open(getExecutor(), tempPath)));
 
 		assertArrayEquals(bytes, Files.readAllBytes(tempPath));
 	}
@@ -88,7 +92,7 @@ public final class ChannelFileReaderWriterTest {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		ChannelFileWriter writer = await(ChannelFileWriter.open(newCachedThreadPool(), tempPath));
+		ChannelFileWriter writer = await(ChannelFileWriter.open(getExecutor(), tempPath));
 
 		Exception exception = new Exception("Test Exception");
 
@@ -109,7 +113,7 @@ public final class ChannelFileReaderWriterTest {
 		Path file = folder.resolve("test.bin");
 		Files.write(file, data);
 
-		await(ChannelFileReader.open(newCachedThreadPool(), file)
+		await(ChannelFileReader.open(getExecutor(), file)
 				.then(cfr -> cfr.streamTo(ChannelConsumer.of(buf -> {
 					assertTrue("Received byte buffer is empty", buf.canRead());
 					buf.recycle();
@@ -127,7 +131,7 @@ public final class ChannelFileReaderWriterTest {
 		Files.write(srcPath, data);
 		Exception testException = new Exception("Test Exception");
 
-		ChannelFileReader serialFileReader = await(ChannelFileReader.open(newCachedThreadPool(), srcPath));
+		ChannelFileReader serialFileReader = await(ChannelFileReader.open(getExecutor(), srcPath));
 
 		serialFileReader.close(testException);
 		assertSame(testException, awaitException(serialFileReader.toList()));
@@ -135,7 +139,7 @@ public final class ChannelFileReaderWriterTest {
 
 	@Test
 	public void readOverFile() throws IOException {
-		ChannelFileReader cfr = await(ChannelFileReader.open(newCachedThreadPool(), Paths.get("test_data/in.dat")));
+		ChannelFileReader cfr = await(ChannelFileReader.open(getExecutor(), Paths.get("test_data/in.dat")));
 
 		ByteBuf byteBuf = await(cfr.withOffset(Files.size(Paths.get("test_data/in.dat")) + 100)
 				.withBufferSize(MemSize.of(1))

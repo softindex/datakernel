@@ -23,6 +23,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -36,6 +37,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.*;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 
 public final class TestCrdtLocalFileConsolidation {
@@ -50,9 +52,12 @@ public final class TestCrdtLocalFileConsolidation {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
+
 	@Before
 	public void setup() throws IOException {
-		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
+		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), temporaryFolder.newFolder().toPath());
 	}
 
 	private Set<Integer> union(Set<Integer> first, Set<Integer> second) {

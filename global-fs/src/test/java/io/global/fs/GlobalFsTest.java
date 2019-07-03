@@ -22,10 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.test.rules.LoggerConfig;
-import io.datakernel.test.rules.LoggingRule;
+import io.datakernel.test.rules.*;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -56,6 +53,7 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.test.rules.ByteBufRule.IgnoreLeaks;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -73,6 +71,9 @@ public final class GlobalFsTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@Rule
 	public final LoggingRule loggingRule = new LoggingRule();
@@ -107,7 +108,7 @@ public final class GlobalFsTest {
 		dir = temporaryFolder.newFolder().toPath();
 		System.out.println("DIR: " + dir);
 
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
+		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), getExecutor(), dir).withRevisions();
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
 		Map<RawServerId, GlobalFsNode> nodes = new HashMap<>();

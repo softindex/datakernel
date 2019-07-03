@@ -31,11 +31,11 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static org.slf4j.event.Level.TRACE;
 import static org.slf4j.event.Level.WARN;
 
@@ -53,6 +53,9 @@ public final class TestRepartitionController {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@ClassRule
 	public static final LoggingRule loggingRule = new LoggingRule();
@@ -74,7 +77,7 @@ public final class TestRepartitionController {
 	public void setup() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-		Executor executor = Executors.newSingleThreadExecutor();
+		Executor executor = getExecutor();
 		servers = new ArrayList<>(CLIENT_SERVER_PAIRS);
 
 		Map<Object, FsClient> clients = new HashMap<>(CLIENT_SERVER_PAIRS);
@@ -82,7 +85,7 @@ public final class TestRepartitionController {
 		Path storage = tmpFolder.newFolder().toPath();
 		localStorage = storage.resolve("local");
 		Files.createDirectories(localStorage);
-		LocalFsClient localFsClient = LocalFsClient.create(eventloop, localStorage);
+		LocalFsClient localFsClient = LocalFsClient.create(eventloop, executor, localStorage);
 
 		Object localPartitionId = "local";
 		clients.put(localPartitionId, localFsClient);

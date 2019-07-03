@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import io.datakernel.test.rules.ExecutorRule;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -37,8 +38,8 @@ import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.loader.StaticLoader.ofClassPath;
 import static io.datakernel.loader.StaticLoader.ofPath;
+import static io.datakernel.test.rules.ExecutorRule.getExecutor;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;
 
 public final class StaticServletsTest {
@@ -52,6 +53,9 @@ public final class StaticServletsTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final ExecutorRule executorRule = new ExecutorRule();
 
 	@ClassRule
 	public static final TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -69,7 +73,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testPathLoader() {
-		StaticServlet staticServlet = StaticServlet.create(ofPath(newCachedThreadPool(), resourcesPath));
+		StaticServlet staticServlet = StaticServlet.create(ofPath(getExecutor(), resourcesPath));
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
 		await(response.loadBody());
 		ByteBuf body = response.getBody();
@@ -79,7 +83,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testFileNotFoundPathLoader() {
-		StaticServlet staticServlet = StaticServlet.create(ofPath(newCachedThreadPool(), resourcesPath));
+		StaticServlet staticServlet = StaticServlet.create(ofPath(getExecutor(), resourcesPath));
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
 
 		assertEquals(404, e.getCode());
@@ -87,7 +91,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testClassPath() {
-		StaticServlet staticServlet = StaticServlet.create(ofClassPath(newCachedThreadPool(), "/"));
+		StaticServlet staticServlet = StaticServlet.create(ofClassPath(getExecutor(), "/"));
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
 		await(response.loadBody());
 		ByteBuf body = response.getBody();
@@ -97,7 +101,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testFileNotFoundClassPath() {
-		StaticServlet staticServlet = StaticServlet.create(ofClassPath(newCachedThreadPool(), "/"));
+		StaticServlet staticServlet = StaticServlet.create(ofClassPath(getExecutor(), "/"));
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
 
 		assertEquals(404, e.getCode());
@@ -105,7 +109,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testRelativeClassPath() {
-		StaticServlet staticServlet = StaticServlet.create(ofClassPath(newCachedThreadPool(), getClass().getClassLoader(), "/"));
+		StaticServlet staticServlet = StaticServlet.create(ofClassPath(getExecutor(), getClass().getClassLoader(), "/"));
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
 		await(response.loadBody());
 		ByteBuf body = response.getBody();
@@ -115,7 +119,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testRelativeClassPathWithInnerPath() {
-		StaticLoader resourceLoader = ofClassPath(newCachedThreadPool(), getClass().getClassLoader(), "/dir/");
+		StaticLoader resourceLoader = ofClassPath(getExecutor(), getClass().getClassLoader(), "/dir/");
 		StaticServlet staticServlet = StaticServlet.create(resourceLoader);
 		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/test.txt")));
 		await(response.loadBody());
@@ -126,7 +130,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testFileNotFoundRelativeClassPath() {
-		StaticLoader resourceLoader = ofClassPath(newCachedThreadPool(), getClass().getClassLoader(), "/");
+		StaticLoader resourceLoader = ofClassPath(getExecutor(), getClass().getClassLoader(), "/");
 		StaticServlet staticServlet = StaticServlet.create(resourceLoader);
 		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
 
