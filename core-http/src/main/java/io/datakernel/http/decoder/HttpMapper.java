@@ -1,8 +1,8 @@
-package io.datakernel.http.parser;
+package io.datakernel.http.decoder;
 
 
 import io.datakernel.functional.Either;
-import io.datakernel.http.parser.HttpParamParseErrorsTree.Error;
+import io.datakernel.http.decoder.HttpDecodeErrors.Error;
 
 import java.util.List;
 import java.util.function.Function;
@@ -10,14 +10,14 @@ import java.util.function.Function;
 import static java.util.Collections.singletonList;
 
 @FunctionalInterface
-public interface HttpParamMapper<T, V> {
+public interface HttpMapper<T, V> {
 	Either<V, List<Error>> map(T value);
 
-	static <T, V> HttpParamMapper<T, V> of(Function<T, V> fn) {
+	static <T, V> HttpMapper<T, V> of(Function<T, V> fn) {
 		return value -> Either.left(fn.apply(value));
 	}
 
-	static <T, V> HttpParamMapper<T, V> of(Function<T, V> fn, String message) {
+	static <T, V> HttpMapper<T, V> of(Function<T, V> fn, String message) {
 		return value -> {
 			try {
 				return Either.left(fn.apply(value));

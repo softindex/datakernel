@@ -8,8 +8,8 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
-import io.datakernel.http.parser.HttpParamParseErrorsTree;
-import io.datakernel.http.parser.HttpParamParser;
+import io.datakernel.http.decoder.HttpDecodeErrors;
+import io.datakernel.http.decoder.HttpDecoder;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.writer.ByteBufWriter;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.http.parser.HttpParamParsers.ofPost;
+import static io.datakernel.http.decoder.HttpDecoders.ofPost;
 import static io.datakernel.util.CollectionUtils.map;
 
 class Address {
@@ -95,21 +95,23 @@ class ContactDAOImpl implements ContactDAO {
 	}
 }
 
-public final class HttpParamParserExample extends HttpServerLauncher {
+public final class HttpDecoderExample extends HttpServerLauncher {
 	private final static String SEPARATOR = "-";
 
 	//[START REGION_1]
-	private final static HttpParamParser<Address> addressDecoder = HttpParamParser.create(Address::new,
+	private final static HttpDecoder<Address> ADDRESS_DECODER = HttpDecoder.of(Address::new,
 			ofPost("title", "")
-					.validate(param -> !param.isEmpty(), "Title cannot be empty"));
+					.validate(param -> !param.isEmpty(), "Title cannot be empty")
+	);
 
-	private final static HttpParamParser<Contact> contactDecoder = HttpParamParser.create(Contact::new,
-			ofPost("name").validate(name -> !name.isEmpty(), "Name cannot be empty"),
+	private final static HttpDecoder<Contact> CONTACT_DECODER = HttpDecoder.of(Contact::new,
+			ofPost("name")
+					.validate(name -> !name.isEmpty(), "Name cannot be empty"),
 			ofPost("age")
-					.map(Double::valueOf, "Cannot parse age")
-					.map(Double::intValue)
-					.validate(age -> age > 18, "Age must be greater than 18"),
-			addressDecoder.withId("contact-address"));
+					.map(Integer::valueOf, "Cannot parse age")
+					.validate(age -> age >= 18, "Age must be greater than 18"),
+			ADDRESS_DECODER.withId("contact-address")
+	);
 	//[END REGION_1]
 
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
@@ -133,7 +135,7 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 								.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
 				.map(POST, "/add", AsyncServletDecorator.loadBody()
 						.serve(request -> {
-							Either<Contact, HttpParamParseErrorsTree> decodedUser = contactDecoder.parse(request);
+							Either<Contact, HttpDecodeErrors> decodedUser = CONTACT_DECODER.decode(request);
 							if (decodedUser.isLeft()) {
 								contactDAO.add(decodedUser.getLeft());
 							}
@@ -148,7 +150,7 @@ public final class HttpParamParserExample extends HttpServerLauncher {
 	//[END REGION_2]
 
 	public static void main(String[] args) throws Exception {
-		Launcher launcher = new HttpParamParserExample();
+		Launcher launcher = new HttpDecoderExample();
 		launcher.launch(args);
 	}
 }

@@ -1,4 +1,4 @@
-package io.datakernel.http.parser;
+package io.datakernel.http.decoder;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -10,7 +10,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
-public class HttpParamParseErrorsTree {
+public class HttpDecodeErrors {
 	private static final String DEFAULT_SEPARATOR = ".";
 
 	public static final class Error {
@@ -43,45 +43,45 @@ public class HttpParamParseErrorsTree {
 	@Nullable
 	private List<Error> errors;
 	@Nullable
-	private Map<String, HttpParamParseErrorsTree> children;
+	private Map<String, HttpDecodeErrors> children;
 
-	private HttpParamParseErrorsTree() {}
+	private HttpDecodeErrors() {}
 
-	public static HttpParamParseErrorsTree create() {
-		return new HttpParamParseErrorsTree();
+	public static HttpDecodeErrors create() {
+		return new HttpDecodeErrors();
 	}
 
-	public static HttpParamParseErrorsTree of(String message, Object... args) {
+	public static HttpDecodeErrors of(String message, Object... args) {
 		return create().with(Error.of(message, args));
 	}
 
-	public static HttpParamParseErrorsTree of(@NotNull Error error) {
+	public static HttpDecodeErrors of(@NotNull Error error) {
 		return create().with(error);
 	}
 
-	public static HttpParamParseErrorsTree of(@NotNull List<Error> errors) {
+	public static HttpDecodeErrors of(@NotNull List<Error> errors) {
 		return create().with(errors);
 	}
 
-	public HttpParamParseErrorsTree with(@NotNull Error error) {
+	public HttpDecodeErrors with(@NotNull Error error) {
 		if (this.errors == null) this.errors = new ArrayList<>();
 		this.errors.add(error);
 		return this;
 	}
 
-	public HttpParamParseErrorsTree with(@NotNull List<Error> errors) {
+	public HttpDecodeErrors with(@NotNull List<Error> errors) {
 		if (this.errors == null) this.errors = new ArrayList<>();
 		this.errors.addAll(errors);
 		return this;
 	}
 
-	public HttpParamParseErrorsTree with(@NotNull String id, @NotNull HttpParamParseErrorsTree nestedError) {
+	public HttpDecodeErrors with(@NotNull String id, @NotNull HttpDecodeErrors nestedError) {
 		if (children == null) children = new HashMap<>();
-		children.merge(id, nestedError, HttpParamParseErrorsTree::merge);
+		children.merge(id, nestedError, HttpDecodeErrors::merge);
 		return this;
 	}
 
-	public HttpParamParseErrorsTree merge(HttpParamParseErrorsTree another) {
+	public HttpDecodeErrors merge(HttpDecodeErrors another) {
 		if (another.errors != null) {
 			if (this.errors == null) {
 				this.errors = new ArrayList<>(another.errors);
@@ -94,16 +94,16 @@ public class HttpParamParseErrorsTree {
 				this.children = new HashMap<>(another.children);
 			} else {
 				for (String key : another.children.keySet()) {
-					this.children.merge(key, another.children.get(key), HttpParamParseErrorsTree::merge);
+					this.children.merge(key, another.children.get(key), HttpDecodeErrors::merge);
 				}
 			}
 		}
 		return this;
 	}
 
-	public HttpParamParseErrorsTree with(@NotNull String id, @NotNull Error nestedError) {
+	public HttpDecodeErrors with(@NotNull String id, @NotNull Error nestedError) {
 		if (children == null) children = new HashMap<>();
-		children.computeIfAbsent(id, $ -> new HttpParamParseErrorsTree()).with(nestedError);
+		children.computeIfAbsent(id, $ -> new HttpDecodeErrors()).with(nestedError);
 		return this;
 	}
 
@@ -121,7 +121,7 @@ public class HttpParamParseErrorsTree {
 		return children != null ? children.keySet() : emptySet();
 	}
 
-	public HttpParamParseErrorsTree getChild(String id) {
+	public HttpDecodeErrors getChild(String id) {
 		return children != null ? children.get(id) : null;
 	}
 
@@ -161,7 +161,7 @@ public class HttpParamParseErrorsTree {
 		return toMultimap(formatter, DEFAULT_SEPARATOR);
 	}
 
-	private static void toMultimapImpl(HttpParamParseErrorsTree errors,
+	private static void toMultimapImpl(HttpDecodeErrors errors,
 									   Map<String, List<String>> multimap, String prefix,
 									   BiFunction<String, Object[], String> formatter,
 									   String separator) {
@@ -173,7 +173,7 @@ public class HttpParamParseErrorsTree {
 		}
 	}
 
-	private static void toMapImpl(HttpParamParseErrorsTree errors,
+	private static void toMapImpl(HttpDecodeErrors errors,
 								  Map<String, String> map, String prefix,
 								  BiFunction<String, Object[], String> formatter,
 								  String separator) {
