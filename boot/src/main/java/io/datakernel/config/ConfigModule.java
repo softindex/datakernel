@@ -23,7 +23,6 @@ import io.datakernel.di.module.Multibinder;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,6 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
@@ -52,8 +50,6 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
 	public static final Key<Config> KEY_OF_CONFIG = Key.of(Config.class);
 
-	@Nullable
-	private Supplier<Config> configSupplier;
 	private Path effectiveConfigPath;
 	private Consumer<String> effectiveConfigConsumer;
 
@@ -94,22 +90,8 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		}
 	}
 
-	private ConfigModule(@Nullable Supplier<Config> configSupplier) {
-		this.configSupplier = configSupplier;
-	}
-
 	public static ConfigModule create() {
-		return new ConfigModule(null);
-	}
-
-	@Deprecated
-	public static ConfigModule create(Supplier<Config> configSupplier) {
-		return new ConfigModule(configSupplier);
-	}
-
-	@Deprecated
-	public static ConfigModule create(Config config) {
-		return new ConfigModule(() -> config);
+		return new ConfigModule();
 	}
 
 	public ConfigModule saveEffectiveConfigTo(String file) {
@@ -149,10 +131,6 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@Override
 	protected void configure() {
 		multibind(new Key<Set<Initializer<ConfigModule>>>() {}, Multibinder.toSet());
-
-		if (configSupplier != null) {
-			bind(Config.class).toInstance(configSupplier.get());
-		}
 
 		transform(0, (provider, scope, key, binding) -> {
 			if (!key.equals(KEY_OF_CONFIG)) return binding;
