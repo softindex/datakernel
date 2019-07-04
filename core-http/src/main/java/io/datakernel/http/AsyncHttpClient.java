@@ -316,7 +316,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			if (getConnectionsCount() != 0) {
 				scheduleExpiredConnectionsCheck();
 				if (isClosing) {
-					logger.info("...Closing " + this);
+					logger.info("...Waiting for " + this);
 				}
 			}
 		});
@@ -457,7 +457,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public MaterializedPromise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
-		logger.info("Closing " + this);
 
 		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
 
@@ -469,6 +468,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			promise.set(null);
 		} else {
 			closePromise = promise;
+			logger.info("Waiting for " + this);
 		}
 		return promise;
 	}
@@ -534,6 +534,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@Override
 	public String toString() {
-		return "{" + "read/write:" + poolReadWrite.size() + " keep-alive:" + poolKeepAlive.size() + "}";
+		return "AsyncHttpClient" + "{" + "read/write:" + poolReadWrite.size() + " keep-alive:" + poolKeepAlive.size() + "}";
 	}
 }

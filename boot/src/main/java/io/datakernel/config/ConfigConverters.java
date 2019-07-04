@@ -37,7 +37,6 @@ import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -328,7 +327,7 @@ public final class ConfigConverters {
 
 			@Override
 			public String toString(InetAddress value) {
-				return Arrays.toString(value.getAddress());
+				return value.getHostAddress();
 			}
 		};
 	}

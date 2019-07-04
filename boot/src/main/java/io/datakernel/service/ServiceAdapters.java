@@ -175,7 +175,11 @@ public final class ServiceAdapters {
 				CompletableFuture<?> future = new CompletableFuture<>();
 				Thread eventloopThread = eventloop.getEventloopThread();
 				assert eventloopThread != null;
-				eventloop.execute(() -> eventloop.keepAlive(false));
+				eventloop.execute(() -> {
+					eventloop.keepAlive(false);
+					logStopping(eventloop);
+					Eventloop.logger.info("Waiting for " + eventloop);
+				});
 				executor.execute(() -> {
 					try {
 						eventloopThread.join();
@@ -185,6 +189,15 @@ public final class ServiceAdapters {
 					}
 				});
 				return future;
+			}
+
+			private void logStopping(Eventloop eventloop) {
+				eventloop.delayBackground(1000L, () -> {
+					if (eventloop.getEventloopThread() != null) {
+						Eventloop.logger.info("...Waiting for " + eventloop);
+						logStopping(eventloop);
+					}
+				});
 			}
 		};
 	}

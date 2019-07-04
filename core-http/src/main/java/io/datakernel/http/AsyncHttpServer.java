@@ -227,7 +227,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			if (getConnectionsCount() != 0) {
 				scheduleExpiredConnectionsCheck();
 				if (isClosing) {
-					logger.info("...Closing " + this);
+					logger.info("...Waiting for " + this);
 				}
 			}
 		});
@@ -257,7 +257,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@Override
 	protected void onClose(SettableCallback<@Nullable Void> cb) {
-		logger.info("Closing " + this);
 		closeNotification.set(null);
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
@@ -265,6 +264,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			cb.set(null);
 		} else {
 			closeCallback = cb;
+			logger.info("Waiting for " + this);
 		}
 	}
 
@@ -315,6 +315,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@Override
 	public String toString() {
-		return "{" + "new:" + poolNew.size() + " read/write:" + poolReadWrite.size() + " serving:" + poolServing.size() + " keep-alive:" + poolKeepAlive.size() + "}";
+		return "AsyncHttpServer" + "{" + "new:" + poolNew.size() + " read/write:" + poolReadWrite.size() + " serving:" + poolServing.size() + " keep-alive:" + poolKeepAlive.size() + "}";
 	}
 }
