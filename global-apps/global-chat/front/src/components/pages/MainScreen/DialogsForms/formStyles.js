@@ -21,11 +21,13 @@ const formStyles = theme => ({
     display: 'inline-block',
     textOverflow: 'ellipsis'
   },
-  root: {
+  search: {
     padding: '2px 4px',
     display: 'flex',
     alignItems: 'center',
     width: 'auto',
+    boxShadow: 'none',
+    border: '1px solid #ccc',
     marginTop: theme.spacing.unit,
     marginBottom: theme.spacing.unit
   },
@@ -34,7 +36,7 @@ const formStyles = theme => ({
     flex: 1,
   },
   iconButton: {
-    padding: 10,
+    padding: '5px 10px'
   }
 });
 

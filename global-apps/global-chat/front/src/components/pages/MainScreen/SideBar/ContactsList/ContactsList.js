@@ -1,12 +1,9 @@
 import React from "react";
 import path from "path";
-import connectService from "../../../../../common/connectService";
 import {withStyles} from '@material-ui/core';
 import Contact from "./ContactItem/ContactItem";
-import ContactsContext from "../../../../../modules/contacts/ContactsContext";
 import contactsListStyles from "./contactsListStyles";
 import List from "@material-ui/core/List";
-import RoomsContext from "../../../../../modules/rooms/RoomsContext";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
 import {Link} from "react-router-dom";
@@ -79,24 +76,4 @@ class ContactsList extends React.Component {
   }
 }
 
-export default connectService(
-  ContactsContext,
-  ({ready, contacts}, contactsService) => ({
-    contactsService, ready, contacts,
-    removeContact(pubKey, name) {
-      return contactsService.removeContact(pubKey, name);
-    }
-  })
-)(
-  connectService(
-    RoomsContext,
-    ({ready, rooms}, roomsService) => ({
-      rooms, roomsService,
-      createDialog(participantId) {
-        return roomsService.createDialog(participantId);
-      }
-    })
-  )(
-    withStyles(contactsListStyles)(ContactsList)
-  )
-);
+export default withStyles(contactsListStyles)(ContactsList);

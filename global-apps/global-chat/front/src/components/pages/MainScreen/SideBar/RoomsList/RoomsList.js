@@ -1,15 +1,11 @@
 import React from "react";
 import path from "path";
 import {withStyles} from '@material-ui/core';
-import connectService from "../../../../../common/connectService";
-import RoomsContext from "../../../../../modules/rooms/RoomsContext";
 import RoomItem from "./RoomItem/RoomItem";
 import roomsListStyles from "./roomsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
-import ContactsContext from "../../../../../modules/contacts/ContactsContext";
-import AccountContext from "../../../../../modules/account/AccountContext";
 
 class RoomsList extends React.Component {
   onChatCreate(participantId) {
@@ -73,29 +69,4 @@ class RoomsList extends React.Component {
   }
 }
 
-export default connectService(
-  ContactsContext, ({ready, contacts}, contactsService) => ({
-  ready, contacts, contactsService,
-    addContact(pubKey, name) {
-      return contactsService.addContact(pubKey, name);
-    }
-  })
-)(
-  connectService(
-    AccountContext, ({publicKey}) => ({publicKey})
-  )(
-    connectService(
-      RoomsContext, ({ready, rooms}, roomsService) => ({
-        roomsService, ready, rooms,
-        quitRoom(roomId) {
-          return roomsService.quitRoom(roomId);
-        },
-        createDialog(participantId) {
-          return roomsService.createDialog(participantId);
-        }
-      })
-    )(
-      withStyles(roomsListStyles)(RoomsList)
-    )
-  )
-);
+export default withStyles(roomsListStyles)(RoomsList);

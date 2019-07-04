@@ -8,11 +8,8 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import connectService from "../../../../common/connectService";
-import ContactsContext from "../../../../modules/contacts/ContactsContext";
 import * as PropTypes from "prop-types";
 import { withSnackbar } from 'notistack';
-import AccountContext from "../../../../modules/account/AccountContext";
 
 class AddContactForm extends React.Component {
   constructor(props){
@@ -134,18 +131,3 @@ AddContactForm.propTypes = {
 };
 
 export default withSnackbar(withStyles(formStyles)(AddContactForm));
-
-//
-// export default connectService(
-//   AccountContext, ({publicKey}) => ({publicKey})
-// )(
-//   connectService(
-//     ContactsContext, (state, contactsService) => ({
-//       addContact(pubKey, name) {
-//         return contactsService.addContact(pubKey, name);
-//       }
-//     })
-//   )(
-//     withSnackbar(withStyles(formStyles)(AddContactForm))
-//   )
-// );

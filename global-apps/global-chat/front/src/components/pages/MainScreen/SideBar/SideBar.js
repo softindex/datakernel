@@ -12,18 +12,63 @@ import RoomsList from "./RoomsList/RoomsList";
 import ContactsList from "./ContactsList/ContactsList";
 import connectService from "../../../../common/connectService";
 import ContactsContext from "../../../../modules/contacts/ContactsContext";
+import IconButton from "@material-ui/core/IconButton";
+import SearchIcon from "@material-ui/icons/Search";
+import InputBase from "@material-ui/core/InputBase";
+import RoomsContext from "../../../../modules/rooms/RoomsContext";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
 
 class SideBar extends React.Component {
-  state = {
-    tabId: ROOMS_TAB,
-    showAddDialog: false
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      tabId: ROOMS_TAB,
+      showAddDialog: false,
+      contactsList: props.contacts,
+      roomsList: props.rooms,
+      beforeInitState: false
+    }
+  }
+;
 
   handleChangeTab = (event, nextTabId) => {
     this.setState({tabId: nextTabId})
+  };
+
+  handleSearchChangeContacts = (event) => {
+    if (event.target.value === '') {
+      this.setState({
+        contactsList: this.props.contacts,
+        roomsList: this.props.rooms
+      });
+    } else {
+        this.setState({
+          contactsList: new Map([...this.props.contacts]
+            .filter(([pubKey, {name}]) => name
+              .toLowerCase()
+              .includes(event.target.value.toLowerCase()))),
+          beforeInitState: true
+        });
+    }
+  };
+
+  handleSearchChangeRooms = (event) => {
+    if (event.target.value === '') {
+      this.setState({
+        contactsList: this.props.contacts,
+        roomsList: this.props.rooms
+      })
+    } else {
+        this.setState({
+          roomsList: new Map([...this.props.rooms]
+            .filter(([roomId, {name}]) => name
+              .toLowerCase()
+              .includes(event.target.value.toLowerCase()))),
+          beforeInitState: true
+        });
+    }
   };
 
   showAddDialog = () => {
@@ -54,19 +99,18 @@ class SideBar extends React.Component {
             <Tab value={CONTACTS_TAB} label="Contacts"/>
           </Tabs>
         </Paper>
+
         {this.state.tabId === ROOMS_TAB && (
           <Typography
             className={classes.tabContent}
             component="div"
             style={{padding: 12}}
           >
-            {this.state.showAddDialog && (
-              <ChatForm
-                open={true}
-                onClose={this.closeAddDialog}
-              />
-            )}
-            {<Button
+            <ChatForm
+              open={this.state.showAddDialog}
+              onClose={this.closeAddDialog}
+            />
+            <Button
               className={classes.button}
               disabled={[...contacts].length === 0}
               fullWidth={true}
@@ -76,9 +120,35 @@ class SideBar extends React.Component {
               onClick={this.showAddDialog}
             >
               New Chat
-            </Button>}
+            </Button>
+            <Paper className={classes.search}>
+              <IconButton
+                className={classes.iconButton}
+                aria-label="Search"
+                disabled={true}
+              >
+                <SearchIcon />
+              </IconButton>
+              <InputBase
+                className={classes.input}
+                placeholder="Search..."
+                autoFocus
+                onChange={this.handleSearchChangeRooms}
+                inputProps={{ 'aria-label': 'Search...' }}
+              />
+            </Paper>
             <div className={classes.chatsList}>
-              <RoomsList/>
+              <RoomsList
+                rooms={this.state.roomsList.size === 0 && !this.state.beforeInitState ?
+                  this.props.rooms : this.state.roomsList}
+                contacts={this.props.contacts}
+                roomsService={this.props.roomsService}
+                ready={this.props.ready}
+                addContact={this.props.addContact}
+                createDialog={this.props.createDialog}
+                quitRoom={this.props.quitRoom}
+                publicKey={this.props.publicKey}
+              />
             </div>
           </Typography>
         )}
@@ -104,8 +174,33 @@ class SideBar extends React.Component {
             >
               Add Contact
             </Button>
+            <Paper className={classes.search}>
+              <IconButton
+                className={classes.iconButton}
+                aria-label="Search"
+                disabled={true}
+              >
+                <SearchIcon />
+              </IconButton>
+              <InputBase
+                className={classes.input}
+                placeholder="Search..."
+                autoFocus
+                onChange={this.handleSearchChangeContacts}
+                inputProps={{ 'aria-label': 'Search...' }}
+              />
+            </Paper>
             <div className={classes.chatsList}>
-              <ContactsList/>
+              <ContactsList
+                contacts={this.state.contactsList.size === 0 && !this.state.beforeInitState ?
+                  this.props.contacts : this.state.contactsList}
+                rooms={this.props.rooms}
+                addContact={this.props.addContact}
+                createDialog={this.props.createDialog}
+                removeContact={this.props.removeContact}
+                contactsService={this.props.contactsService}
+                ready={this.props.ready}
+              />
             </div>
           </Typography>
         )}
@@ -116,11 +211,26 @@ class SideBar extends React.Component {
 
 export default connectService(
   ContactsContext, ({ready, contacts}, contactsService) => ({
-    contactsService, ready, contacts,
-      addContact(pubKey, name) {
-        return contactsService.addContact(pubKey, name);
-      }
+    ready, contacts, contactsService,
+    addContact(pubKey, name) {
+      return contactsService.addContact(pubKey, name);
+    },
+    removeContact(pubKey, name) {
+      return contactsService.removeContact(pubKey, name);
+    }
   })
 )(
-  withStyles(sideBarStyles)(SideBar)
+  connectService(
+    RoomsContext, ({ready, rooms}, roomsService) => ({
+      roomsService, ready, rooms,
+      quitRoom(roomId) {
+        return roomsService.quitRoom(roomId);
+      },
+      createDialog(participantId) {
+        return roomsService.createDialog(participantId);
+      }
+    })
+  )(
+    withStyles(sideBarStyles)(SideBar)
+  )
 );

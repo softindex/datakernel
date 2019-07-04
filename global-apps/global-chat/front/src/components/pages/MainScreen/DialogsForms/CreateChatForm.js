@@ -31,6 +31,7 @@ class CreateChatForm extends React.Component {
       activeStep: 1,
       contactsList: [...props.contacts],
       loading: false,
+      beforeInitState: false
     };
   }
 
@@ -55,7 +56,8 @@ class CreateChatForm extends React.Component {
         contactsList: [...this.props.contacts]
           .filter(([pubKey, {name}]) => name
             .toLowerCase()
-            .includes(event.target.value.toLowerCase()))
+            .includes(event.target.value.toLowerCase())),
+        beforeInitState: true
       })
     }
   };
@@ -158,9 +160,11 @@ class CreateChatForm extends React.Component {
                       avatar={
                         <Avatar>
                           { contacts.get(pubKey).name.indexOf(" ") > -1 ?
-                            contacts.get(pubKey).name.charAt(0) +
-                            contacts.get(pubKey).name.charAt(contacts.get(pubKey).name.indexOf(" ") + 1) :
-                            contacts.get(pubKey).name.charAt(0) + contacts.get(pubKey).name.charAt(1)
+                            (contacts.get(pubKey).name.charAt(0) +
+                            contacts.get(pubKey).name.charAt(contacts.get(pubKey).name.indexOf(" ") + 1))
+                              .toUpperCase() :
+                            (contacts.get(pubKey).name.charAt(0) +
+                              contacts.get(pubKey).name.charAt(1)).toUpperCase()
                           }
                         </Avatar>
                       }
@@ -172,7 +176,7 @@ class CreateChatForm extends React.Component {
                     />
                   ))}
                 </div>
-                <Paper className={classes.root}>
+                <Paper className={classes.search}>
                   <IconButton
                     className={classes.iconButton}
                     aria-label="Search"
@@ -185,12 +189,19 @@ class CreateChatForm extends React.Component {
                     placeholder="Search..."
                     autoFocus
                     onChange={this.handleSearchChange}
-                    ref={this.input}
                     inputProps={{ 'aria-label': 'Search...' }}
                   />
                 </Paper>
                 <List>
-                  {this.sortContacts(this.state.contactsList).map(([pubKey, {name}]) =>
+                  {this.state.contactsList.length === 0 && !this.state.beforeInitState ?
+                    this.sortContacts([...this.props.contacts]).map(([pubKey, {name}]) =>
+                      <Contact
+                        pubKey={pubKey}
+                        name={name}
+                        selected={this.state.participants.has(pubKey)}
+                        onClick={!this.state.loading && this.handleCheckContact.bind(this, pubKey)}
+                      />
+                    ): this.sortContacts(this.state.contactsList).map(([pubKey, {name}]) =>
                     <Contact
                       pubKey={pubKey}
                       name={name}
