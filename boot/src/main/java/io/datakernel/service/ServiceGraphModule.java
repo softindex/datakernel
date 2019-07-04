@@ -311,7 +311,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
 		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
-		IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
 
 		serviceGraph.withNodeSuffixes(key -> {
 			ServiceKey serviceKey = (ServiceKey) key;
@@ -383,7 +382,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 							.collect(toSet()));
 		}
 
-		initializeServiceGraph(serviceGraph, instances, instanceDependencies, cache);
+		initializeServiceGraph(serviceGraph, instances, instanceDependencies);
 	}
 
 	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
@@ -400,7 +399,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								.collect(toSet())));
 	}
 
-	private void initializeServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies, IdentityHashMap<Object, CachedService> cache) {
+	private void initializeServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies) {
+		IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
+
 		Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));
 		if (!unusedKeys.isEmpty()) {
 			logger.warn("Unused services : {}", unusedKeys);
@@ -408,7 +409,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		for (Map.Entry<ServiceKey, List<?>> entry : instances.entrySet()) {
 			ServiceKey serviceKey = entry.getKey();
-			Service service = getWorkersServiceOrNull(cache, serviceKey, entry.getValue());
+			Service service = getCombinedServiceOrNull(cache, serviceKey, entry.getValue());
 			serviceGraph.add(serviceKey, service);
 		}
 
@@ -448,12 +449,13 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		serviceGraph.removeIntermediateNodes();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Nullable
-	private Service getWorkersServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, List<?> instances) {
+	private Service getCombinedServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, List<?> instances) {
 		List<Service> services = new ArrayList<>();
 		boolean found = false;
 		for (Object instance : instances) {
-			Service service = getServiceOrNull(cache, key, instance);
+			Service service = getServiceOrNull(cache, (Key<Object>) key.getKey(), instance);
 			services.add(service);
 			if (service != null) {
 				found = true;
@@ -483,12 +485,100 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		};
 	}
 
-	private static Throwable getRootCause(Throwable e) {
-		Throwable cause;
-		while ((cause = e.getCause()) != null) {
-			e = cause;
+	@Nullable
+	@SuppressWarnings("unchecked")
+	private <T> Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, Key<T> key, T instance) {
+		checkNotNull(instance);
+		CachedService service = cache.get(instance);
+		if (service != null) {
+			return service;
 		}
-		return e;
+		if (excludedKeys.contains(key)) {
+			return null;
+		}
+		ServiceAdapter<T> serviceAdapter = lookupAdapter(key, (Class<T>) instance.getClass());
+		if (serviceAdapter != null) {
+			service = new CachedService(new Service() {
+				@Override
+				public CompletableFuture<?> start() {
+					return serviceAdapter.start(instance, executor);
+				}
+
+				@Override
+				public CompletableFuture<?> stop() {
+					return serviceAdapter.stop(instance, executor);
+				}
+			});
+			cache.put(instance, service);
+			return service;
+		}
+		return null;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	private <T> ServiceAdapter<T> lookupAdapter(Key<T> key, Class<T> instanceClass) {
+		ServiceAdapter<T> serviceAdapter = (ServiceAdapter<T>) keys.get(key);
+		if (serviceAdapter == null) {
+			List<Class<?>> foundRegisteredClasses = new ArrayList<>();
+			l1:
+			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : registeredServiceAdapters.entrySet()) {
+				Class<?> registeredClass = entry.getKey();
+				if (registeredClass.isAssignableFrom(instanceClass)) {
+					Iterator<Class<?>> iterator = foundRegisteredClasses.iterator();
+					while (iterator.hasNext()) {
+						Class<?> foundRegisteredClass = iterator.next();
+						if (registeredClass.isAssignableFrom(foundRegisteredClass)) {
+							continue l1;
+						}
+						if (foundRegisteredClass.isAssignableFrom(registeredClass)) {
+							iterator.remove();
+						}
+					}
+					foundRegisteredClasses.add(registeredClass);
+				}
+			}
+
+			if (foundRegisteredClasses.size() == 1) {
+				serviceAdapter = (ServiceAdapter<T>) registeredServiceAdapters.get(foundRegisteredClasses.get(0));
+			}
+			if (foundRegisteredClasses.size() > 1) {
+				throw new IllegalArgumentException("Ambiguous services found for " + instanceClass +
+						" : " + foundRegisteredClasses + ". Use register() methods to specify service.");
+			}
+		}
+		return serviceAdapter;
+	}
+
+	private static class CachedService implements Service {
+		private final Service service;
+		private int started;
+		private CompletableFuture<?> startFuture;
+		private CompletableFuture<?> stopFuture;
+
+		private CachedService(Service service) {
+			this.service = service;
+		}
+
+		@Override
+		synchronized public CompletableFuture<?> start() {
+			checkState(stopFuture == null, "Already stopped");
+			started++;
+			if (startFuture == null) {
+				startFuture = service.start();
+			}
+			return startFuture;
+		}
+
+		@Override
+		synchronized public CompletableFuture<?> stop() {
+			checkState(startFuture != null, "Has not been started yet");
+			if (--started != 0) return CompletableFuture.completedFuture(null);
+			if (stopFuture == null) {
+				stopFuture = service.stop();
+			}
+			return stopFuture;
+		}
 	}
 
 	private static CompletableFuture<?> combineFutures(List<CompletableFuture<?>> futures, Executor executor) {
@@ -513,92 +603,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return resultFuture;
 	}
 
-	@Nullable
-	@SuppressWarnings("unchecked")
-	private Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, Object instance) {
-		checkNotNull(instance);
-		CachedService service = cache.get(instance);
-		if (service != null) {
-			return service;
+	private static Throwable getRootCause(Throwable e) {
+		Throwable cause;
+		while ((cause = e.getCause()) != null) {
+			e = cause;
 		}
-		if (excludedKeys.contains(key.getKey())) {
-			return null;
-		}
-		ServiceAdapter<?> serviceAdapter = keys.get(key.getKey());
-		if (serviceAdapter == null) {
-			List<Class<?>> foundRegisteredClasses = new ArrayList<>();
-			l1:
-			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : registeredServiceAdapters.entrySet()) {
-				Class<?> registeredClass = entry.getKey();
-				if (registeredClass.isAssignableFrom(instance.getClass())) {
-					Iterator<Class<?>> iterator = foundRegisteredClasses.iterator();
-					while (iterator.hasNext()) {
-						Class<?> foundRegisteredClass = iterator.next();
-						if (registeredClass.isAssignableFrom(foundRegisteredClass)) {
-							continue l1;
-						}
-						if (foundRegisteredClass.isAssignableFrom(registeredClass)) {
-							iterator.remove();
-						}
-					}
-					foundRegisteredClasses.add(registeredClass);
-				}
-			}
-
-			if (foundRegisteredClasses.size() == 1) {
-				serviceAdapter = registeredServiceAdapters.get(foundRegisteredClasses.get(0));
-			}
-			if (foundRegisteredClasses.size() > 1) {
-				throw new IllegalArgumentException("Ambiguous services found for " + instance.getClass() +
-						" : " + foundRegisteredClasses + ". Use register() methods to specify service.");
-			}
-		}
-		if (serviceAdapter != null) {
-			ServiceAdapter<Object> finalServiceAdapter = (ServiceAdapter<Object>) serviceAdapter;
-			Service asyncService = new Service() {
-				@Override
-				public CompletableFuture<?> start() {
-					return finalServiceAdapter.start(instance, executor);
-				}
-
-				@Override
-				public CompletableFuture<?> stop() {
-					return finalServiceAdapter.stop(instance, executor);
-				}
-			};
-			service = new CachedService(asyncService);
-			cache.put(instance, service);
-			return service;
-		}
-		return null;
-	}
-
-	private static class CachedService implements Service {
-		private final Service service;
-		private CompletableFuture<?> startFuture;
-		private CompletableFuture<?> stopFuture;
-
-		private CachedService(Service service) {
-			this.service = service;
-		}
-
-		@Override
-		synchronized public CompletableFuture<?> start() {
-			checkState(stopFuture == null, "Already stopped");
-			if (startFuture == null) {
-				startFuture = service.start();
-			}
-			return startFuture;
-		}
-
-		@Override
-		synchronized public CompletableFuture<?> stop() {
-			checkState(startFuture != null, "Has not been started yet");
-			if (stopFuture == null) {
-				stopFuture = service.stop();
-			}
-			return stopFuture;
-		}
+		return e;
 	}
 
 }
