@@ -30,10 +30,10 @@ import java.util.function.Function;
 abstract class AbstractPromise<T> implements Promise<T> {
 
 	private static final Callback<Object> COMPLETED_PROMISE =
-			(value, e) -> { throw new UnsupportedOperationException();};
+			(value, e) -> { throw new UnsupportedOperationException("Promise already completed successfully");};
 
 	private static final Callback<Object> COMPLETED_EXCEPTIONALLY_PROMISE =
-			(value, e) -> { throw new UnsupportedOperationException();};
+			(value, e) -> { throw new UnsupportedOperationException("Promise already completed with exception");};
 
 	@Nullable
 	protected Callback<? super T> next;
