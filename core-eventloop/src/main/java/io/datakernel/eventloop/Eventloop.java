@@ -78,7 +78,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException(Eventloop.class, "Connection timed out");
-	public static final StacklessException NOT_CONNECTED = new StacklessException(Eventloop.class, "Not connected");
+	public static final StacklessException NOT_CONNECTED = new StacklessException(Eventloop.class, "Connection key was received but the channel was not connected - this is not possible without some bug in Java NIO");
 	public static final Duration DEFAULT_IDLE_INTERVAL = Duration.ofSeconds(1);
 
 	@NotNull

@@ -10,7 +10,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
-public class HttpDecodeErrors {
+/**
+ * A tree of https errors. It structure matches the structure of the decoder is was received from
+ */
+public final class HttpDecodeErrors {
 	private static final String DEFAULT_SEPARATOR = ".";
 
 	public static final class Error {

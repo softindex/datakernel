@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Random;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
@@ -44,21 +43,6 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	public static final double THROTTLING_DECREASE = 0.1;
 	public static final double INITIAL_KEYS_PER_SECOND = 100;
 	public static final double INITIAL_THROTTLING = 0.0;
-
-	private static final Random random = new Random() {
-		private long prev = System.nanoTime();
-
-		@Override
-		protected int next(int nbits) {
-			long x = prev;
-			x ^= (x << 21);
-			x ^= (x >>> 35);
-			x ^= (x << 4);
-			prev = x;
-			x &= ((1L << nbits) - 1);
-			return (int) x;
-		}
-	};
 
 	private Eventloop eventloop;
 	private int lastSelectedKeys;
@@ -163,9 +147,21 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 
 	// endregion
 
+	private static long rngState = System.nanoTime();
+
+	private static float nextFloat() {
+		long x = rngState;
+		x ^= (x << 21);
+		x ^= (x >>> 35);
+		x ^= (x << 4);
+		rngState = x;
+		x &= ((1L << 24) - 1);
+		return (int) x / (float) (1 << 24);
+	}
+
 	public boolean isOverloaded() {
 		bufferedRequests++;
-		if (random.nextFloat() < throttling) {
+		if (nextFloat() < throttling) {
 			bufferedRequestsThrottled++;
 			return true;
 		}

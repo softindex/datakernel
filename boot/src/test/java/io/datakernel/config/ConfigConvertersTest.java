@@ -16,7 +16,6 @@
 
 package io.datakernel.config;
 
-import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -24,7 +23,6 @@ import io.datakernel.util.MemSize;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -173,18 +171,6 @@ public class ConfigConvertersTest {
 			Assert.fail();
 		} catch (NoSuchElementException ignored) {
 		}
-	}
-
-	@Test
-	public void testInetAddressRange() throws Exception {
-		ConfigConverter<InetAddressRange> rangeConverter = ConfigConverters.ofInetAddressRange();
-		Config root = Config.ofValue("192.168.0.0/16");
-
-		InetAddressRange expected = InetAddressRange.fromRange(
-				(Inet4Address) InetAddress.getByName("192.168.0.0"),
-				(Inet4Address) InetAddress.getByName("192.168.255.255")
-		);
-		assertEquals(expected, rangeConverter.get(root));
 	}
 
 	@Test

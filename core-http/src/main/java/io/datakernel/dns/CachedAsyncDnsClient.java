@@ -35,7 +35,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.dns.DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL;
 
-public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
+/**
+ * Implementation of {@link AsyncDnsClient} that asynchronously
+ * connects to some DNS server and gets the response from it.
+ */
+public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CachedAsyncDnsClient.class);
 
 	private final Eventloop eventloop;

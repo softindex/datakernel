@@ -23,7 +23,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
+/**
+ * An abstraction over the {@link Eventloop} that can receive, dispatch and run tasks in it.
+ * <p>
+ * As a plain case, {@link Eventloop} itself implements it and posts received tasks to its own queues.
+ * @see BlockingEventloopExecutor
+ */
 public interface EventloopExecutor extends Executor {
+	/**
+	 * Executes the given computation at some time in the future in some undelying eventloop.
+	 *
+	 * @param computation
+	 * @return
+	 */
 	@NotNull CompletableFuture<Void> submit(@NotNull Runnable computation);
 
 	@NotNull <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation);

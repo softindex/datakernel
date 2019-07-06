@@ -18,9 +18,20 @@ package io.datakernel.eventloop;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
+/**
+ * This is a simple callback which is used for accepting connections
+ * when using {@link Eventloop} at the lowest level - creating a
+ * {@link ServerSocketChannel} with {@link Eventloop#listen}.
+ */
 @FunctionalInterface
 public interface AcceptCallback {
+	/**
+	 * Called from the eventloop thread when {@link ServerSocketChannel} accepts a new connection.
+	 *
+	 * @param socketChannel accepted connection.
+	 */
 	void onAccept(@NotNull SocketChannel socketChannel);
 }

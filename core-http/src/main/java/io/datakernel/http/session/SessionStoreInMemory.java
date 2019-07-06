@@ -1,10 +1,14 @@
 package io.datakernel.http.session;
 
 import io.datakernel.async.Promise;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Extremely simple reference implementation of the session storage over a hash map.
+ */
 public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	private final Map<String, T> store = new HashMap<>();
 
@@ -15,11 +19,7 @@ public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	}
 
 	@Override
-	public Promise<T> get(String sessionId) {
-		T sessionObject = store.get(sessionId);
-		if (sessionObject == null) {
-			return Promise.ofException(new IllegalArgumentException("No session stored with id " + sessionId));
-		}
-		return Promise.of(sessionObject);
+	public Promise<@Nullable T> get(String sessionId) {
+		return Promise.of(store.get(sessionId));
 	}
 }

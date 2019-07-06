@@ -50,6 +50,10 @@ import static io.datakernel.async.Promises.TIMEOUT_EXCEPTION;
 import static io.datakernel.async.Promises.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
+/**
+ * Implementation of {@link AsyncDnsClient} that asynchronously
+ * connects to some DNS server and gets the response from it.
+ */
 public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
 

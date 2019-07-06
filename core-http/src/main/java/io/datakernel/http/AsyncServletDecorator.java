@@ -14,6 +14,9 @@ import static io.datakernel.csp.ChannelConsumers.recycling;
 import static io.datakernel.http.AsyncServlet.firstSuccessful;
 import static java.util.Arrays.asList;
 
+/**
+ * A higher order function that allows transformations of {@link AsyncServlet} functions.
+ */
 public interface AsyncServletDecorator {
 	@NotNull AsyncServlet serve(@NotNull AsyncServlet servlet);
 

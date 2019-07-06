@@ -27,6 +27,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+/**
+ * An implementation of the {@link EventloopExecutor} which posts
+ * only some tasks at a time to some underlying {@link Eventloop},
+ * blocking when the queue is filled until some task completes and
+ * frees place for a new ones.
+ */
 public final class BlockingEventloopExecutor implements EventloopExecutor {
 	private final Eventloop eventloop;
 	private final Lock lock = new ReentrantLock();

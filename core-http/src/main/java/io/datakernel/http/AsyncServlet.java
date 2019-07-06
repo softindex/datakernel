@@ -26,9 +26,8 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
- * Servlet receives and responds to {@link HttpRequest} from clients across
- * HTTP. Receives {@link HttpRequest}, creates {@link HttpResponse} and sends
- * it.
+ * An interface for a servlet that asyncronously receives {@link HttpRequest requests}, processes them
+ * and then returns a {@link HttpResponse HttpResponses} for them.
  */
 @FunctionalInterface
 public interface AsyncServlet {

@@ -23,7 +23,10 @@ import static io.datakernel.dns.DnsProtocol.RecordType.A;
 import static io.datakernel.dns.DnsProtocol.RecordType.AAAA;
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public class DnsQuery {
+/***
+ * A simple DNS query, which specifies a domain name and record type (one of A or AAAA).
+ */
+public final class DnsQuery {
 	private final String domainName;
 	private final RecordType recordType;
 
@@ -38,10 +41,16 @@ public class DnsQuery {
 		return new DnsQuery(domainName, recordType);
 	}
 
+	/**
+	 * Shortcut to create {@link DnsQuery} with A (IPv4) record type.
+	 */
 	public static DnsQuery ipv4(String domainName) {
 		return new DnsQuery(domainName, A);
 	}
 
+	/**
+	 * Shortcut to create {@link DnsQuery} with AAAA (IPv6) record type.
+	 */
 	public static DnsQuery ipv6(String domainName) {
 		return new DnsQuery(domainName, AAAA);
 	}

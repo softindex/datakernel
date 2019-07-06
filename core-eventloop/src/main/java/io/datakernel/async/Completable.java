@@ -4,6 +4,14 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 
+/**
+ * An abstraction over something, which successfull or exceptional
+ * completion at some point in the future can be listened to.
+ * <p>
+ * This is a more generic and flexible abstraction over
+ * things like completion stages, promises or futures
+ * @param <T>
+ */
 public interface Completable<T> {
 	/**
 	 * Subscribes given action to be executed

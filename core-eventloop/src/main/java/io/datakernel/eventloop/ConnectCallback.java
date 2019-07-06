@@ -20,8 +20,24 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.channels.SocketChannel;
 
+/**
+ * Client-side version of {@link AcceptCallback}.
+ * <p>
+ * It is used as a callback for completing connections to some server
+ * when using {@link Eventloop} at the lowest level - calling {@link Eventloop#connect}.
+ */
 public interface ConnectCallback {
+	/**
+	 * Called from the eventloop thread when the connection is established.
+	 *
+	 * @param socketChannel established connection.
+	 */
 	void onConnect(@NotNull SocketChannel socketChannel);
 
+	/**
+	 * Called from the eventloop thread when the connection was failed.
+	 *
+	 * @param e some raised exception, usually a low-level IOException from NIO.
+	 */
 	void onException(@NotNull Throwable e);
 }

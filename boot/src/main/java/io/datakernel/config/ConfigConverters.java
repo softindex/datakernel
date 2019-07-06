@@ -19,7 +19,6 @@ package io.datakernel.config;
 import io.datakernel.async.EventloopTaskScheduler.Schedule;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.FatalErrorHandler;
-import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.exception.ParseException;
 import io.datakernel.net.DatagramSocketSettings;
@@ -390,24 +389,6 @@ public final class ConfigConverters {
 	 */
 	public static ConfigConverter<Integer> ofMemSizeAsInt() {
 		return ofMemSize().transform(MemSize::toInt, (Function<Integer, MemSize>) MemSize::of);
-	}
-
-	public static ConfigConverter<InetAddressRange> ofInetAddressRange() {
-		return new SimpleConfigConverter<InetAddressRange>() {
-			@Override
-			public InetAddressRange fromString(String string) {
-				try {
-					return InetAddressRange.parse(string);
-				} catch (ParseException e) {
-					throw new IllegalArgumentException("Can't parse inetAddressRange config", e);
-				}
-			}
-
-			@Override
-			public String toString(InetAddressRange value) {
-				return value.toString();
-			}
-		};
 	}
 
 	public static <T> ConfigConverter<List<T>> ofList(ConfigConverter<T> elementConverter, CharSequence separators) {

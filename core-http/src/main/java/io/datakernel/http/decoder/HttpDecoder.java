@@ -11,7 +11,15 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+/**
+ * A high-level API that allows declarative definition of HTTP parsers
+ * that can convert incoming requests to concrete objects.
+ * This allows complex parsers to be algebraically built from simple ones.
+ */
 public interface HttpDecoder<T> {
+	/**
+	 * Either return the parsed type or format
+	 */
 	Either<T, HttpDecodeErrors> decode(@NotNull HttpRequest request);
 
 	@Nullable
@@ -25,6 +33,9 @@ public interface HttpDecoder<T> {
 		throw new HttpDecodeException(either.getRight());
 	}
 
+	/**
+	 * An id that is going to be used in the error-tree if at some point the whole parser fails
+	 */
 	String getId();
 
 	default HttpDecoder<T> withId(String id) {
@@ -49,6 +60,10 @@ public interface HttpDecoder<T> {
 		return mapEx(HttpMapper.of(fn, message));
 	}
 
+	/**
+	 * Enhanced functional 'map' operation.
+	 * If mapped returns an errors, then the returned decoder fails with that error.
+	 */
 	default <V> HttpDecoder<V> mapEx(HttpMapper<T, V> fn) {
 		return new AbstractHttpDecoder<V>(getId()) {
 			@Override
@@ -65,6 +80,11 @@ public interface HttpDecoder<T> {
 		return validate(HttpValidator.of(predicate, error));
 	}
 
+	/**
+	 * Enhanced functional 'filter' operation.
+	 * If validator returns non-empty list of errors,
+	 * then the returned decoder fails with these errors.
+	 */
 	default HttpDecoder<T> validate(HttpValidator<T> validator) {
 		return new AbstractHttpDecoder<T>(getId()) {
 			@Override
@@ -88,6 +108,10 @@ public interface HttpDecoder<T> {
 		return createEx(HttpMapper.of(constructor), decoders);
 	}
 
+	/**
+	 * Plainly combines given decoders (they are called on the same request) into one, mapping the result
+	 * with the supplied mapper.
+	 */
 	@NotNull
 	static <V> HttpDecoder<V> createEx(HttpMapper<Object[], V> constructor, HttpDecoder<?>... decoders) {
 		return new AbstractHttpDecoder<V>("") {

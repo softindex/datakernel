@@ -8,6 +8,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+/**
+ * This class contains some common primitive {@link HttpDecoder HttpDecoders}, that
+ * can be combined to form complex ones.
+ */
 @SuppressWarnings("RedundantCast")
 public final class HttpDecoders {
 	public static final String REQUIRED_GET_PARAM = "Required GET param: %1";

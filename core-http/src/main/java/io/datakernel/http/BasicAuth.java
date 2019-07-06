@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Base64;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
@@ -15,6 +16,14 @@ import static io.datakernel.http.HttpHeaders.AUTHORIZATION;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * This is a simple reference implementation of the HTTP Basic Auth protocol.
+ * <p>
+ * It operates over some servlet that it restricts access to and the async predicate for the credentials.
+ * <p>
+ * Also the credentials are {@link HttpRequest#attach attached} to the request so that the private servlet
+ * could then receive and use it.
+ */
 public final class BasicAuth implements AsyncServlet {
 
 	public static final BiPredicate<String, String> SILLY = (login, pass) -> true;
@@ -24,18 +33,18 @@ public final class BasicAuth implements AsyncServlet {
 
 	private final AsyncServlet next;
 	private final String challenge;
-	private final BiPredicate<String, String> credentialsLookup;
+	private final BiFunction<String, String, Promise<Boolean>> credentialsLookup;
 
 	private Function<HttpResponse, HttpResponse> failureResponse =
 			request -> request
 					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8))
 					.withBody("Authentification is required".getBytes(UTF_8));
 
-	public BasicAuth(AsyncServlet next, String realm, BiPredicate<String, String> credentialsLookup) {
+	public BasicAuth(AsyncServlet next, String realm, BiFunction<String, String, Promise<Boolean>> credentialsLookup) {
 		this.next = next;
 		this.credentialsLookup = credentialsLookup;
 
-		challenge = "Basic realm=\"" + realm + "\", charset=\"UTF-8\"";
+		challenge = PREFIX + "realm=\"" + realm + "\", charset=\"UTF-8\"";
 	}
 
 	public BasicAuth withFailureResponse(Function<HttpResponse, HttpResponse> failureResponse) {
@@ -43,13 +52,13 @@ public final class BasicAuth implements AsyncServlet {
 		return this;
 	}
 
-	public static Function<AsyncServlet, AsyncServlet> middleware(String realm, BiPredicate<String, String> credentialsLookup) {
+	public static AsyncServletDecorator decorator(String realm, BiFunction<String, String, Promise<Boolean>> credentialsLookup) {
 		return next -> new BasicAuth(next, realm, credentialsLookup);
 	}
 
-	public static Function<AsyncServlet, AsyncServlet> middleware(String realm,
-																  BiPredicate<String, String> credentialsLookup,
-																  Function<HttpResponse, HttpResponse> failureResponse) {
+	public static Function<AsyncServlet, AsyncServlet> decorator(String realm,
+			BiFunction<String, String, Promise<Boolean>> credentialsLookup,
+			Function<HttpResponse, HttpResponse> failureResponse) {
 		return next -> new BasicAuth(next, realm, credentialsLookup)
 				.withFailureResponse(failureResponse);
 	}
@@ -72,11 +81,14 @@ public final class BasicAuth implements AsyncServlet {
 		if (authData.length != 2) {
 			return Promise.ofException(new ParseException("No ':' separator"));
 		}
-		if (!credentialsLookup.test(authData[0], authData[1])) {
-			return Promise.of(failureResponse.apply(HttpResponse.unauthorized401(challenge)));
-		}
-		request.attach(new BasicAuthCredentials(authData[0], authData[1]));
-		return next.serve(request);
+		return credentialsLookup.apply(authData[0], authData[1])
+				.then(result -> {
+					if (result) {
+						request.attach(new BasicAuthCredentials(authData[0], authData[1]));
+						return next.serve(request);
+					}
+					return Promise.of(failureResponse.apply(HttpResponse.unauthorized401(challenge)));
+				});
 	}
 
 	public static final class BasicAuthCredentials {

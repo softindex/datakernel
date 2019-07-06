@@ -19,7 +19,7 @@ package io.datakernel.dns;
 /**
  * Represents a DNS transaction, instances are used to tie queries to responses
  */
-public class DnsTransaction {
+public final class DnsTransaction {
 	private final short id;
 	private final DnsQuery query;
 
