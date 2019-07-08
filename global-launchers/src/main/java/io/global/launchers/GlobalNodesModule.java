@@ -124,7 +124,7 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	<K, V> GlobalKvDriver<K, V> globalKvDriver(GlobalKvNode node, StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
-		return GlobalKvDriver.create(node, keyCodec, valueCodec);
+		return GlobalKvDriver.create(node, keyCodec, valueCodec.nullable());
 	}
 
 	@Provides

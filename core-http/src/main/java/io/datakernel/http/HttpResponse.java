@@ -210,8 +210,13 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	public HttpResponse withFile(HttpRequest request, HttpDownloader downloader, String name, long size) throws HttpException {
 		String localName = name.substring(name.lastIndexOf('/') + 1);
 		String headerRange = request.getHeader(RANGE);
+		MediaType mediaType = MediaTypes.getByExtension(localName.substring(localName.lastIndexOf('.') + 1));
+		if (mediaType == null) {
+			mediaType = OCTET_STREAM;
+		}
+		HttpHeaderValue contentType = HttpHeaderValue.ofContentType(ContentType.of(mediaType));
 		if (headerRange == null) {
-			return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+			return withHeader(CONTENT_TYPE, contentType)
 					.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
 					.withHeader(ACCEPT_RANGES, "bytes")
 					.withHeader(CONTENT_LENGTH, Long.toString(size))
@@ -225,17 +230,31 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 			throw HttpException.ofCode(416, "Only single part ranges are allowed");
 		}
 		String[] parts = headerRange.split("-", 2);
-		long offset = parts[0].isEmpty() ? 0 : Long.parseLong(parts[0]);
-		long endOffset = parts[1].isEmpty() ? -1 : Long.parseLong(parts[1]);
+		long offset, endOffset;
+		if (!parts[0].isEmpty()) {
+			if (parts[1].isEmpty()) {
+				offset = Long.parseLong(parts[0]);
+				endOffset = size;
+			} else {
+				offset = Long.parseLong(parts[0]);
+				endOffset = Long.parseLong(parts[1]);
+			}
+		} else {
+			if (parts[1].isEmpty()) {
+				throw HttpException.ofCode(416, "Invalid range");
+			}
+			offset = size - Long.parseLong(parts[1]);
+			endOffset = size;
+		}
 		if (endOffset != -1 && offset > endOffset) {
 			throw HttpException.ofCode(416, "Invalid range");
 		}
-		long length = (endOffset == -1 ? size : endOffset) - offset + 1;
+		long length = endOffset - offset + 1;
 
-		return withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+		return withHeader(CONTENT_TYPE, contentType)
 				.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + localName + "\""))
 				.withHeader(ACCEPT_RANGES, "bytes")
-				.withHeader(CONTENT_RANGE, offset + "-" + (offset + length) + "/" + size)
+				.withHeader(CONTENT_RANGE, offset + "-" + endOffset + "/" + size)
 				.withHeader(CONTENT_LENGTH, "" + length)
 				.withBodyStream(ChannelSupplier.ofPromise(downloader.download(offset, length)));
 	}

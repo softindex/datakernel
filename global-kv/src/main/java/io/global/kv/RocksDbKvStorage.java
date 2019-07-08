@@ -9,6 +9,7 @@ import io.global.common.SignedData;
 import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
 import io.global.kv.util.Utils;
+import org.jetbrains.annotations.Nullable;
 import org.rocksdb.*;
 
 import java.util.concurrent.Executor;
@@ -63,6 +64,7 @@ public class RocksDbKvStorage implements KvStorage {
 		}
 	}
 
+	@Nullable
 	private SignedData<RawKvItem> doGet(byte[] key) {
 		try {
 			return Utils.unpackValue(key, db.get(key));

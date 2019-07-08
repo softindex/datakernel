@@ -45,4 +45,10 @@ public final class KeyPair {
 	public PubKey getPubKey() {
 		return pubKey;
 	}
+
+	public static void main(String[] args) {
+		KeyPair keys = KeyPair.generate();
+		System.out.println(keys.getPubKey().asString());
+		System.out.println(keys.getPrivKey().asString());
+	}
 }

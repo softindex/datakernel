@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
@@ -34,7 +35,7 @@ public interface GlobalKvNode {
 	}
 
 	// have to have quick random access
-	Promise<SignedData<RawKvItem>> get(PubKey space, String table, byte[] key);
+	Promise<@Nullable SignedData<RawKvItem>> get(PubKey space, String table, byte[] key);
 
 	// could be some optimized single put
 	default Promise<Void> put(PubKey space, String table, SignedData<RawKvItem> item) {

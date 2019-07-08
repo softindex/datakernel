@@ -78,7 +78,7 @@ public final class GlobalKvAdapter<K, V> implements KvClient<K, V> {
 	}
 
 	@Override
-	public Promise<KvItem<K, V>> get(String table, byte[] key) {
+	public Promise<KvItem<K, V>> get(String table, K key) {
 		return driver.get(space, table, key, currentSimKey);
 	}
 

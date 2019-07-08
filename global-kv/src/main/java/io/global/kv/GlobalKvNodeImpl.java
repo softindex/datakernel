@@ -36,6 +36,7 @@ import io.global.kv.GlobalKvNamespace.Repo;
 import io.global.kv.api.GlobalKvNode;
 import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -150,7 +151,7 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	}
 
 	@Override
-	public Promise<SignedData<RawKvItem>> get(PubKey space, String table, byte[] key) {
+	public Promise<@Nullable SignedData<RawKvItem>> get(PubKey space, String table, byte[] key) {
 		GlobalKvNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {

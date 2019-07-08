@@ -23,6 +23,7 @@ import io.global.common.Hash;
 import io.global.common.Signature;
 import io.global.common.SignedData;
 import io.global.kv.api.RawKvItem;
+import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
 
@@ -58,6 +59,7 @@ public final class Utils {
 		return buf.asArray();
 	}
 
+	@Nullable
 	public static SignedData<RawKvItem> unpackValue(byte[] key, byte[] value) throws ParseException {
 		if (value == null) {
 			return null;
