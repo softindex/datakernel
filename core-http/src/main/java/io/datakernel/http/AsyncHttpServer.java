@@ -39,6 +39,10 @@ import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 
+/**
+ * This is an implementation of the asynchronous HTTP server on top of {@link Eventloop}.
+ * It has a root {@link AsyncServlet} that reveives and handles all the responses that come to this server.
+ */
 @SuppressWarnings({"UnusedReturnValue", "WeakerAccess", "unused"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ofSeconds(30));

@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
@@ -32,9 +31,9 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.Utils.arraysEquals;
 import static java.nio.charset.Charset.forName;
 
-// maximum of 40 characters, us-ascii, see rfc2978,
-// http://www.iana.org/assignments/character-sets/character-sets.txt
-// case insensitive
+/**
+ * This is a specialized token to be used in {@link CaseInsensitiveTokenMap} for charset header values.
+ */
 public final class HttpCharset extends Token {
 	private final static CaseInsensitiveTokenMap<HttpCharset> charsets = new CaseInsensitiveTokenMap<>(256, 2, HttpCharset.class, HttpCharset::new);
 	private final static Map<Charset, HttpCharset> java2http = new HashMap<>();
@@ -43,13 +42,15 @@ public final class HttpCharset extends Token {
 	public static final HttpCharset US_ASCII = charsets.register("us-ascii").addCharset(StandardCharsets.US_ASCII);
 	public static final HttpCharset LATIN_1 = charsets.register("iso-8859-1").addCharset(StandardCharsets.ISO_8859_1);
 
-	@NotNull
+
+	// maximum of 40 characters, us-ascii, see rfc2978,
+	// http://www.iana.org/assignments/character-sets/character-sets.txt
 	private final byte[] bytes;
 	private final int offset;
 	private final int length;
 	private Charset javaCharset;
 
-	private HttpCharset(@NotNull byte[] bytes, int offset, int length, @Nullable byte[] lowerCaseBytes, int lowerCaseHashCode) {
+	private HttpCharset(byte[] bytes, int offset, int length, @Nullable byte[] lowerCaseBytes, int lowerCaseHashCode) {
 		super(lowerCaseBytes, lowerCaseHashCode);
 		this.bytes = bytes;
 		this.offset = offset;

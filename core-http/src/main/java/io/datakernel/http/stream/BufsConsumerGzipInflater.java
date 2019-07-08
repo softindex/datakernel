@@ -44,6 +44,13 @@ import static java.lang.Integer.reverseBytes;
 import static java.lang.Math.max;
 import static java.lang.Short.reverseBytes;
 
+/**
+ * This is a channel transformer, that converts channels of {@link ByteBuf ByteBufs}
+ * decompressing the data using the DEFALTE algorithm with standard implementation from the java.util.zip package.
+ * <p>
+ * It is used in HTTP when {@link io.datakernel.http.HttpMessage#setBodyGzipCompression HttpMessage#setBodyGzipCompression}
+ * method is used.
+ */
 public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<BufsConsumerGzipInflater, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerGzipInflater> {
 	public static final int MAX_HEADER_FIELD_LENGTH = 4096; //4 Kb
@@ -93,7 +100,9 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
 			this.bufs = input.getBufs();
-			if (this.input != null && this.output != null) startProcess();
+			if (this.input != null && this.output != null) {
+				startProcess();
+			}
 			return getProcessCompletion();
 		};
 	}
@@ -104,7 +113,9 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.input != null && this.output != null) {
+				startProcess();
+			}
 		};
 	}
 	// endregion
@@ -123,30 +134,29 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 	private void processHeader() {
 		input.parse(ofFixedSize(10))
 				.whenResult(buf -> {
-							//header validation
-							if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
-								buf.recycle();
-								close(INCORRECT_ID_HEADER_BYTES);
-								return;
-							}
-							if (buf.get() != GZIP_HEADER[2]) {
-								buf.recycle();
-								close(UNSUPPORTED_COMPRESSION_METHOD);
-								return;
-							}
+					//header validation
+					if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
+						buf.recycle();
+						close(INCORRECT_ID_HEADER_BYTES);
+						return;
+					}
+					if (buf.get() != GZIP_HEADER[2]) {
+						buf.recycle();
+						close(UNSUPPORTED_COMPRESSION_METHOD);
+						return;
+					}
 
-							byte flag = buf.get();
-							if ((flag & 0b11100000) > 0) {
-								buf.recycle();
-								close(MALFORMED_FLAG);
-								return;
-							}
-							// unsetting FTEXT bit
-							flag &= ~1;
-							buf.recycle();
-							runNext(flag).run();
-						}
-				)
+					byte flag = buf.get();
+					if ((flag & 0b11100000) > 0) {
+						buf.recycle();
+						close(MALFORMED_FLAG);
+						return;
+					}
+					// unsetting FTEXT bit
+					flag &= ~1;
+					buf.recycle();
+					runNext(flag).run();
+				})
 				.whenException(this::close);
 	}
 
@@ -170,7 +180,6 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				return;
 			}
 		}
-
 		output.acceptAll(queue.asIterator())
 				.then($ -> input.needMoreData())
 				.whenResult($ -> processBody());
@@ -184,7 +193,6 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 						buf.recycle();
 						return;
 					}
-
 					if (inflater.getTotalOut() != reverseBytes(buf.readInt())) {
 						close(ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 						buf.recycle();

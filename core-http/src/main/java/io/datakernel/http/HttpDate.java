@@ -23,8 +23,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodePositiveInt;
 import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 
-/* <[RFC2616], Section 3.3.1> case-sensitive
- Can't parse dates earlier than 1970*/
 final class HttpDate {
 	public static final ParseException FAILED_TO_PARSE_DATE = new ParseException(HttpDate.class, "Failed to parse date");
 	private static final int HOUR_SECONDS = 60 * 60;

@@ -43,6 +43,9 @@ import static io.datakernel.util.MemSize.kilobytes;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 
+/**
+ * Util class that allows to parse some binary channel (mainly, the request body stream) into a channel of multipart frames.
+ */
 public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 	private static final int MAX_META_SIZE = ApplicationSettings.getMemSize(MultipartParser.class, "maxMetaBuffer", kilobytes(4)).toInt();
 
@@ -61,6 +64,9 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 		return new MultipartParser(boundary);
 	}
 
+	/**
+	 * Converts resulting channel of frames into a binary channel, ignoring any multipart headers.
+	 */
 	public ByteBufsParser<ByteBuf> ignoreHeaders() {
 		return bufs -> {
 			MultipartFrame frame = tryParse(bufs);
@@ -112,6 +118,10 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 				});
 	}
 
+	/**
+	 * Complex operation that streams this channel of multipart frames into multiple binary consumers, file-by-file
+	 * as specified by the Content-Disposition multipart header.
+	 */
 	public Promise<Void> splitByFiles(ChannelSupplier<ByteBuf> source, Function<String, ChannelConsumer<ByteBuf>> consumerFunction) {
 		ChannelSupplier<MultipartFrame> frames = BinaryChannelSupplier.of(source).parseStream(this);
 		return frames.get()

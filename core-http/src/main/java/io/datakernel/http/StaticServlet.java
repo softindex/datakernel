@@ -36,6 +36,9 @@ import java.util.function.Supplier;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 
+/**
+ * This servlet allows return HTTP responses by HTTP paths from some predefined storage, mainly the filesystem.
+ */
 public final class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 
@@ -83,6 +86,7 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	public StaticServlet withMappingTo(String path) {
+		//noinspection RedundantCast - it does not compile without the cast
 		if (this.contentTypeResolver == (Function<String, ContentType>) StaticServlet::getContentType) {
 			withContentType(getContentType(path));
 		}

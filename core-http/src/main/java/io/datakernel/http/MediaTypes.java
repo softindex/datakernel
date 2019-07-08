@@ -21,7 +21,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import java.util.HashMap;
 import java.util.Map;
 
-@SuppressWarnings("unused")
+/**
+ * This is a collection of most well-known {@link MediaType} token references as Java constants.
+ */
 public final class MediaTypes {
 	static final CaseInsensitiveTokenMap<MediaType> mimes = new CaseInsensitiveTokenMap<>(2048, 2, MediaType.class, MediaType::new);
 	private final static Map<String, MediaType> ext2mime = new HashMap<>();
@@ -69,6 +71,7 @@ public final class MediaTypes {
 	public static final MediaType RTF = register("text/rtf", "rtf");
 	public static final MediaType XML = register("text/xml", "xml");
 	public static final MediaType XHTML = register("text/xhtml+xml", "xhtml");
+
 	@Deprecated
 	public static final MediaType JAVASCRIPT_TXT = register("text/javascript");
 

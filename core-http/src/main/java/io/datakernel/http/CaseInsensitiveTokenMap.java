@@ -23,6 +23,10 @@ import java.lang.reflect.Array;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 
+/**
+ * This is a case-insensitive token registry used as permanent header value cache.
+ * Its purpose is to map header values to references to Java objects with maximum efficiency and speed.
+ */
 public final class CaseInsensitiveTokenMap<T extends Token> {
 	public static abstract class Token {
 		protected final byte[] lowerCaseBytes;
@@ -45,6 +49,9 @@ public final class CaseInsensitiveTokenMap<T extends Token> {
 		TOKENS = ts;
 	}
 
+	/**
+	 * Creates a token with given value and places it in the registry, also returning it.
+	 */
 	public final T register(String name) {
 		assert Integer.bitCount(TOKENS.length) == 1;
 
@@ -60,6 +67,9 @@ public final class CaseInsensitiveTokenMap<T extends Token> {
 		throw new IllegalArgumentException("CaseInsensitiveTokenMap hash collision, try to increase size");
 	}
 
+	/**
+	 * Creates a token with given value but does not place it into the registry.
+	 */
 	public final T create(String name) {
 		byte[] bytes = encodeAscii(name);
 
@@ -77,16 +87,26 @@ public final class CaseInsensitiveTokenMap<T extends Token> {
 		return factory.create(bytes, 0, bytes.length, lowerCaseBytes, lowerCaseHashCode);
 	}
 
+	/**
+	 * @see #getOrCreate(byte[], int, int, int)
+	 */
 	public final T getOrCreate(byte[] bytes, int offset, int length) {
 		int lowerCaseHashCode = hashCodeLowerCaseAscii(bytes, offset, length);
 		return getOrCreate(bytes, offset, length, lowerCaseHashCode);
 	}
 
+	/**
+	 * Gets the cached token value for given input, or creates a new one without putting it in the registry.
+	 */
 	public final T getOrCreate(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		T t = get(bytes, offset, length, lowerCaseHashCode);
 		return (t != null) ? t : factory.create(bytes, offset, length, null, lowerCaseHashCode);
 	}
 
+	/**
+	 * Returns registered token value for given input, or null if no such value was registered.
+	 * This methid is very fast.
+	 */
 	public final T get(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		for (int p = 0; p < maxProbings; p++) {
 			int slot = (lowerCaseHashCode + p) & (TOKENS.length - 1);

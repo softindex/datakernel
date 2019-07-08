@@ -25,9 +25,11 @@ import java.util.Arrays;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.util.Utils.arraysEquals;
 
-// All media type values, subtype values, and parameter names as defined are case-insensitive RFC2045 section 2
+/**
+ * This is a specialized token to be used in {@link CaseInsensitiveTokenMap} for media type header values.
+ */
 public final class MediaType extends Token {
-	@NotNull
+	// All media type values, subtype values, and parameter names as defined are case-insensitive RFC2045 section 2
 	final byte[] bytes;
 	final int offset;
 	final int length;

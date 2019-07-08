@@ -25,6 +25,10 @@ import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
 import static io.datakernel.util.Preconditions.checkState;
 
+/**
+ * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}
+ * converting some raw data into its <a href="https://tools.ietf.org/html/rfc2616#section-3.6.1">chunked transfer encoding<a> form.
+ */
 public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<BufsConsumerChunkedEncoder, ByteBuf, ByteBuf> {
 	private final ByteBuf LAST_CHUNK = ByteBuf.wrapForReading(new byte[]{48, 13, 10, 13, 10});

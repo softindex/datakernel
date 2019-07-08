@@ -31,6 +31,9 @@ import java.util.function.BinaryOperator;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
+/**
+ * This servlet allows to build complex servlet trees, routing requests between them by the HTTP paths.
+ */
 public final class RoutingServlet implements AsyncServlet, Initializable<RoutingServlet> {
 	private static final String ROOT = "/";
 	private static final String STAR = "*";
@@ -60,19 +63,31 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		return wrapper;
 	}
 
+	/**
+	 * Maps given servlet on some path. Fails when such path already has a servlet mapped to it.
+	 */
 	public RoutingServlet map(String path, AsyncServlet servlet) {
 		return map(null, path, servlet, DEFAULT_MERGER);
 	}
 
+	/**
+	 * Maps given servlet on some path and calls the merger if there is already a servlet there.
+	 */
 	public RoutingServlet map(String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
 		return map(null, path, servlet, merger);
 	}
 
+	/**
+	 * @see #map(HttpMethod, String, AsyncServlet)
+	 */
 	@Contract("_, _, _ -> this")
 	public RoutingServlet map(@Nullable HttpMethod method, String path, AsyncServlet servlet) {
 		return map(method, path, servlet, DEFAULT_MERGER);
 	}
 
+	/**
+	 * @see #map(HttpMethod, String, AsyncServlet, BinaryOperator)
+	 */
 	@Contract("_, _, _, _ -> this")
 	public RoutingServlet map(@Nullable HttpMethod method, String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
 		checkNotNull(servlet);

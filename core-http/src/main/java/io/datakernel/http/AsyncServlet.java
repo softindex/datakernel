@@ -26,8 +26,8 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
- * An interface for a servlet that asyncronously receives {@link HttpRequest requests}, processes them
- * and then returns a {@link HttpResponse HttpResponses} for them.
+ * An interface for a servlet function that asyncronously receives a {@link HttpRequest},
+ * processes it and then returns a {@link HttpResponse}.
  */
 @FunctionalInterface
 public interface AsyncServlet {
@@ -43,6 +43,9 @@ public interface AsyncServlet {
 		return request -> Promise.of(fn.apply(request));
 	}
 
+	/**
+	 * Wraps given {@link BlockingServlet} into async one using given {@link Executor}.
+	 */
 	@NotNull
 	static AsyncServlet ofBlocking(@NotNull Executor executor, @NotNull BlockingServlet blockingServlet) {
 		return request -> request.loadBody()

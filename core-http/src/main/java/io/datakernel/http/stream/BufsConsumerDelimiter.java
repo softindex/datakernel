@@ -28,6 +28,10 @@ import io.datakernel.csp.dsl.WithChannelTransformer;
 
 import static io.datakernel.util.Preconditions.checkState;
 
+/**
+ * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}
+ * limiting the number of bytes that is sent/received by its peer.
+ */
 public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<BufsConsumerDelimiter, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerDelimiter> {
 

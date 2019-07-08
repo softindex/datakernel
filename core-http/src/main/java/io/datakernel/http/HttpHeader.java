@@ -23,6 +23,9 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 
+/**
+ * This is a specialized token to be used in {@link CaseInsensitiveTokenMap} for header names.
+ */
 public final class HttpHeader extends Token {
 	@NotNull
 	protected final byte[] bytes;

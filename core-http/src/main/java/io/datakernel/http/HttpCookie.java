@@ -27,24 +27,9 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 
-// RFC 6265
-/*
- set-cookie-header  = "Set-Cookie:" SP set-cookie-string
- set-cookie-string  = cookie-pair *( ";" SP cookie-av )
- cookie-header      = "Cookie:" OWS cookie-string OWS
- cookie-string      = cookie-pair *( ";" SP cookie-pair )
-
- cookie-pair        = cookie-name "=" cookie-value
- cookie-name        = 1*<any CHAR except CTLs or separators>
- cookie-value       = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-
- cookie-octet       = any CHAR except [",;\SPACE] and CTLs
- separators         = "(" | ")" | "<" | ">" | "@"
-                    | "," | ";" | ":" | "\" | <">
-                    | "/" | "[" | "]" | "?" | "="
-                    | "{" | "}" | SP | HT
- CTLs               = [\u0000...\0032, DEL]
-*/
+/**
+ * This class represents an abstraction for HTTP Cookie with fast parsing algorithms.
+ */
 public final class HttpCookie {
 	private abstract static class AvHandler {
 		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException;
@@ -62,6 +47,24 @@ public final class HttpCookie {
 	private static final int SECURE_HC = -18770248;
 	private static final byte[] SECURE = encodeAscii("Secure");
 	private static final int HTTP_ONLY_HC = -1939729611;
+
+	// RFC 6265
+	//
+	// set-cookie-header  = "Set-Cookie:" SP set-cookie-string
+	// set-cookie-string  = cookie-pair *( ";" SP cookie-av )
+	// cookie-header      = "Cookie:" OWS cookie-string OWS
+	// cookie-string      = cookie-pair *( ";" SP cookie-pair )
+	//
+	// cookie-pair        = cookie-name "=" cookie-value
+	// cookie-name        = 1*<any CHAR except CTLs or separators>
+	// cookie-value       = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	//
+	// cookie-octet       = any CHAR except [",;\SPACE] and CTLs
+	// separators         = "(" | ")" | "<" | ">" | "@"
+	//                    | "," | ";" | ":" | "\" | <">
+	//                    | "/" | "[" | "]" | "?" | "="
+	//                    | "{" | "}" | SP  | HT
+	// CTLs               = [\u0000...\0032, DEL]
 
 	private final String name;
 	private String value;
@@ -422,8 +425,12 @@ public final class HttpCookie {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
 		HttpCookie that = (HttpCookie) o;
 		return maxAge == that.maxAge &&
 				secure == that.secure &&

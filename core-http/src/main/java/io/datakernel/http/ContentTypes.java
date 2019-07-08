@@ -20,6 +20,9 @@ import static io.datakernel.http.HttpCharset.US_ASCII;
 import static io.datakernel.http.HttpCharset.UTF_8;
 import static io.datakernel.http.MediaTypes.*;
 
+/**
+ * This is a collection of most well-known {@link ContentType} token references as Java constants.
+ */
 public final class ContentTypes {
 	public static final ContentType ANY_TEXT_UTF_8 = register(ANY_TEXT, UTF_8);
 	public static final ContentType PLAIN_TEXT_UTF_8 = register(PLAIN_TEXT, UTF_8);

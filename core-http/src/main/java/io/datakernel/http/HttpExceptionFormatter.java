@@ -16,13 +16,20 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaders.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * This is an interface for the formatter function for HTTP.
+ * It converts unhandled checked exceptions that could be returned
+ * from servers root servlet and transforms them into HTTP error responses.
+ */
 @FunctionalInterface
 public interface HttpExceptionFormatter {
 	@NotNull
@@ -36,14 +43,33 @@ public interface HttpExceptionFormatter {
 			if (e.getLocalizedMessage() != null) {
 				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
 			}
-		} else if (e instanceof ParseException) {
-			response = HttpResponse.ofCode(400)
+		} else {
+			// default formatter leaks no information about unknown exceptions
+			response = HttpResponse.ofCode(500)
+					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+		}
+		return response
+				.withHeader(CACHE_CONTROL, "no-store")
+				.withHeader(PRAGMA, "no-cache")
+				.withHeader(AGE, "0");
+	};
+
+	/**
+	 * This formatter prints the stacktrace of the exception into the HTTP response.
+	 */
+	HttpExceptionFormatter DEBUG_FORMATTER = e -> {
+		HttpResponse response;
+		if (e instanceof HttpException) {
+			response = HttpResponse.ofCode(((HttpException) e).getCode())
 					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
 			if (e.getLocalizedMessage() != null) {
-				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
+				response.withPlainText(e.getLocalizedMessage());
 			}
 		} else {
-			response = HttpResponse.ofCode(500);
+			StringWriter writer = new StringWriter();
+			e.printStackTrace(new PrintWriter(writer));
+			response = HttpResponse.ofCode(500)
+					.withPlainText(writer.toString());
 		}
 		return response
 				.withHeader(CACHE_CONTROL, "no-store")

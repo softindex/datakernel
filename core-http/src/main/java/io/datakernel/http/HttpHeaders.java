@@ -18,7 +18,9 @@ package io.datakernel.http;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
-@SuppressWarnings("unused")
+/**
+ * This is a collection of most well-known {@link HttpHeader} token references as Java constants.
+ */
 public final class HttpHeaders {
 	private static final CaseInsensitiveTokenMap<HttpHeader> headers = new CaseInsensitiveTokenMap<>(512, 2, HttpHeader.class, HttpHeader::new);
 

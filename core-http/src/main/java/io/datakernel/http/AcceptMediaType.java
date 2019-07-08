@@ -27,6 +27,9 @@ import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.util.Preconditions.checkArgument;
 
+/**
+ * This is a value class for the Accept header value.
+ */
 public final class AcceptMediaType {
 	public static final int DEFAULT_Q = 100;
 	private static final byte[] Q_KEY = {'q'};

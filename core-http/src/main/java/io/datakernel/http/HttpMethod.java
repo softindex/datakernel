@@ -21,7 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 /**
- * HttpMethod enum represents a request to be sent via a {@link HttpClientConnection} and a corresponding response.
+ * This enum represents an HTTP method.
  */
 public enum HttpMethod {
 	GET, PUT, POST, HEAD, DELETE, CONNECT, OPTIONS, TRACE, PATCH,
@@ -29,11 +29,6 @@ public enum HttpMethod {
 
 	final byte[] bytes;
 	final int size;
-
-	HttpMethod(String string) {
-		this.bytes = encodeAscii(string);
-		this.size = this.bytes.length;
-	}
 
 	HttpMethod() {
 		this.bytes = encodeAscii(this.name());

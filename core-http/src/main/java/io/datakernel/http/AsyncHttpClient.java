@@ -53,6 +53,13 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static org.slf4j.LoggerFactory.getLogger;
 
+/**
+ * Implementation of {@link IAsyncHttpClient} that asynchronously connects
+ * to real HTTP servers and gets responses from them.
+ * <p>
+ * It is also an {@link EventloopService} that needs its close method to be called
+ * to cleanup the keepalive connections etc.
+ */
 @SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(getClass());
@@ -354,11 +361,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 	}
 
-	/**
-	 * Sends the request to server, waits the result timeout and handles result with callback
-	 *
-	 * @param request request for server
-	 */
 	@Override
 	public Promise<HttpResponse> request(HttpRequest request) {
 		assert eventloop.inEventloopThread();

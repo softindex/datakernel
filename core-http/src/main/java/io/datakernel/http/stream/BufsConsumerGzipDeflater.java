@@ -28,6 +28,13 @@ import java.util.zip.Deflater;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
+/**
+ * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}
+ * compressing the data using the DEFALTE algorithm with standard implementation from the java.util.zip package.
+ * <p>
+ * It is used in HTTP when {@link io.datakernel.http.HttpMessage#setBodyGzipCompression HttpMessage#setBodyGzipCompression}
+ * method is used.
+ */
 public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<BufsConsumerGzipDeflater, ByteBuf, ByteBuf> {
 	public static final int DEFAULT_MAX_BUF_SIZE = 512;

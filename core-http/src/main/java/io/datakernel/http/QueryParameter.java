@@ -20,6 +20,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
+/**
+ * Plain POJO for the query parameter key-value pair.
+ */
 public final class QueryParameter {
 	private final String key;
 	private final String value;

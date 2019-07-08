@@ -56,11 +56,9 @@ import static org.slf4j.LoggerFactory.getLogger;
  * It is implementation of {@link EventloopServer}. It is non-blocking server which works in eventloop.
  * The server runs on the one thread, and all events are fired on that thread. This server can listen few
  * addresses in one time and you can register multiple connections for responding to incoming data.
- *
- * @param <S> type of AbstractNioServer which extends from it
  */
 @SuppressWarnings("WeakerAccess, unused")
-public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
+public abstract class AbstractServer<Self extends AbstractServer<Self>> implements EventloopServer, WorkerServer, Initializable<Self>, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(getClass());
 
 	@NotNull
@@ -107,87 +105,87 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withAcceptFilter(AcceptFilter acceptFilter) {
+	public final Self withAcceptFilter(AcceptFilter acceptFilter) {
 		this.acceptFilter = acceptFilter;
-		return (S) this;
+		return (Self) this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withServerSocketSettings(ServerSocketSettings serverSocketSettings) {
+	public final Self withServerSocketSettings(ServerSocketSettings serverSocketSettings) {
 		this.serverSocketSettings = serverSocketSettings;
-		return (S) this;
+		return (Self) this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withSocketSettings(SocketSettings socketSettings) {
+	public final Self withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
-		return (S) this;
+		return (Self) this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withListenAddresses(List<InetSocketAddress> addresses) {
+	public final Self withListenAddresses(List<InetSocketAddress> addresses) {
 		this.listenAddresses = addresses;
-		return (S) this;
+		return (Self) this;
 	}
 
-	public final S withListenAddresses(InetSocketAddress... addresses) {
+	public final Self withListenAddresses(InetSocketAddress... addresses) {
 		return withListenAddresses(asList(addresses));
 	}
 
-	public final S withListenAddress(InetSocketAddress address) {
+	public final Self withListenAddress(InetSocketAddress address) {
 		return withListenAddresses(singletonList(address));
 	}
 
-	public final S withListenPort(int port) {
+	public final Self withListenPort(int port) {
 		return withListenAddress(new InetSocketAddress(port));
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withSslListenAddresses(SSLContext sslContext, Executor sslExecutor, List<InetSocketAddress> addresses) {
+	public final Self withSslListenAddresses(SSLContext sslContext, Executor sslExecutor, List<InetSocketAddress> addresses) {
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 		this.sslListenAddresses = addresses;
-		return (S) this;
+		return (Self) this;
 	}
 
-	public final S withSslListenAddresses(SSLContext sslContext, Executor sslExecutor, InetSocketAddress... addresses) {
+	public final Self withSslListenAddresses(SSLContext sslContext, Executor sslExecutor, InetSocketAddress... addresses) {
 		return withSslListenAddresses(sslContext, sslExecutor, asList(addresses));
 	}
 
-	public final S withSslListenAddress(SSLContext sslContext, Executor sslExecutor, InetSocketAddress address) {
+	public final Self withSslListenAddress(SSLContext sslContext, Executor sslExecutor, InetSocketAddress address) {
 		return withSslListenAddresses(sslContext, sslExecutor, singletonList(address));
 	}
 
-	public final S withSslListenPort(SSLContext sslContext, Executor sslExecutor, int port) {
+	public final Self withSslListenPort(SSLContext sslContext, Executor sslExecutor, int port) {
 		return withSslListenAddress(sslContext, sslExecutor, new InetSocketAddress(port));
 	}
 
-	public final S withAcceptOnce() {
+	public final Self withAcceptOnce() {
 		return withAcceptOnce(true);
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withAcceptOnce(boolean acceptOnce) {
+	public final Self withAcceptOnce(boolean acceptOnce) {
 		this.acceptOnce = acceptOnce;
-		return (S) this;
+		return (Self) this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withSocketInspector(Inspector socketInspector) {
+	public final Self withSocketInspector(Inspector socketInspector) {
 		this.socketInspector = socketInspector;
-		return (S) this;
+		return (Self) this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withSocketSslInspector(Inspector socketSslInspector) {
+	public final Self withSocketSslInspector(Inspector socketSslInspector) {
 		this.socketSslInspector = socketSslInspector;
-		return (S) this;
+		return (Self) this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public final S withLogger(Logger logger) {
+	public final Self withLogger(Logger logger) {
 		this.logger = logger;
-		return (S) this;
+		return (Self) this;
 	}
 	// endregion
 

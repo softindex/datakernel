@@ -13,6 +13,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+/**
+ * Represents the 'predefined storage' for the {@link io.datakernel.http.StaticServlet StaticServlet}.
+ */
 public interface StaticLoader {
 	StacklessException NOT_FOUND_EXCEPTION = new StacklessException(StaticLoader.class, "File not found");
 	StacklessException IS_A_DIRECTORY = new StacklessException(StaticLoader.class, "Is a directory");

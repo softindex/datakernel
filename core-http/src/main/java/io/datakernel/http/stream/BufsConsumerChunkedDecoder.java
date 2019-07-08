@@ -36,6 +36,11 @@ import static io.datakernel.csp.binary.ByteBufsParser.ofCrlfTerminatedBytes;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
 
+/**
+ * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}
+ * converting <a href="https://tools.ietf.org/html/rfc2616#section-3.6.1">chunked transfer encoding<a>
+ * data into its raw form.
+ */
 public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<BufsConsumerChunkedDecoder, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerChunkedDecoder> {
 	public static final int MAX_CHUNK_LENGTH_DIGITS = 8;

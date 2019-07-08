@@ -17,9 +17,9 @@
 package io.datakernel.http;
 
 /**
- * This Http exception has no stacktrace which makes it a "light-weight" exception, suitable for transfering via http
+ * This is a special exception, that is formatted as HTTP responce with code and text from it by default.
+ * It is a stackless exception.
  */
-
 public class HttpException extends Exception {
 	private final int code;
 

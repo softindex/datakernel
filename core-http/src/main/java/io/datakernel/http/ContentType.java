@@ -27,6 +27,9 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.ContentTypes.lookup;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 
+/**
+ * This is a value class for the Content-Type header value.
+ */
 public final class ContentType {
 	private static final byte[] CHARSET_KEY = encodeAscii("charset");
 

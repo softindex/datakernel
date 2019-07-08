@@ -393,6 +393,7 @@ public abstract class HttpHeaderValue {
 			buf.put(array, offset, size);
 		}
 
+		@NotNull
 		@Override
 		public ByteBuf getBuf() {
 			return ByteBuf.wrap(array, offset, offset + size);
