@@ -24,10 +24,7 @@ import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpUtils;
-import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,12 +106,12 @@ public final class CubeHttpClient implements ICube {
 							try {
 								String httpResponse = body.getString(UTF_8);
 								if (response.getCode() != 200) {
-									return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Response code: " + response.getCode() + " Body: " + httpResponse));
+									return Promise.ofException(HttpException.ofCode(400, "Cube HTTP query failed. Response code: " + response.getCode() + " Body: " + httpResponse));
 								}
 								QueryResult result = fromJson(getQueryResultCodec(), httpResponse);
 								return Promise.of(result);
 							} catch (ParseException e) {
-								return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Invalid data received", e));
+								return Promise.ofException(HttpException.ofCode(400, "Cube HTTP query failed. Invalid data received", e));
 							}
 						})
 						.whenComplete(toLogger(logger, "query", query)));

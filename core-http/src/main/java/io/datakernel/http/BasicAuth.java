@@ -1,7 +1,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
@@ -75,11 +74,11 @@ public final class BasicAuth implements AsyncServlet {
 			raw = DECODER.decode(header.substring(PREFIX.length()));
 		} catch (IllegalArgumentException e) {
 			// all the messages in decode method's illegal argument exception are informative enough
-			return Promise.ofException(new ParseException("Base64: " + e.getMessage()));
+			return Promise.ofException(HttpException.ofCode(400,"Base64: " + e.getMessage()));
 		}
 		String[] authData = new String(raw, UTF_8).split(":", 2);
 		if (authData.length != 2) {
-			return Promise.ofException(new ParseException("No ':' separator"));
+			return Promise.ofException(HttpException.ofCode(400, "No ':' separator"));
 		}
 		return credentialsLookup.apply(authData[0], authData[1])
 				.then(result -> {

@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.util.TypeT;
@@ -58,7 +59,7 @@ public final class GlobalFsNodeServlet {
 								.then(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + DOWNLOAD + "/:space/*", request -> {
@@ -72,7 +73,7 @@ public final class GlobalFsNodeServlet {
 										HttpResponse.ok200()
 												.withBodyStream(supplier.transformWith(new FrameEncoder())));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + LIST + "/:space", request -> {
@@ -86,7 +87,7 @@ public final class GlobalFsNodeServlet {
 												.withBodyStream(ChannelSupplier.ofStream(list.stream()
 														.map(meta -> encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + GET_METADATA + "/:space/*", request -> {
@@ -98,7 +99,7 @@ public final class GlobalFsNodeServlet {
 										Promise.of(HttpResponse.ok200()
 												.withBody(encode(NULLABLE_SIGNED_CHECKPOINT_CODEC, meta))));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + DELETE + "/:space", loadBody()
@@ -111,7 +112,7 @@ public final class GlobalFsNodeServlet {
 								return node.delete(space, checkpoint)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}));
 	}

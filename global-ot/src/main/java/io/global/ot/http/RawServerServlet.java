@@ -26,10 +26,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.*;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 import io.global.common.Hash;
@@ -98,7 +95,7 @@ public final class RawServerServlet implements AsyncServlet {
 					try {
 						pubKey = urlDecodePubKey(req.getPathParameter("pubKey"));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 
 					return node.list(pubKey).map(names ->
@@ -112,7 +109,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return node.save(urlDecodeRepositoryId(req.getPathParameter("pubKey"), req.getPathParameter("name")), commits)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(POST, "/" + UPDATE_HEADS + "/:pubKey/:name", loadBody()
@@ -126,7 +123,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return node.saveHeads(urlDecodeRepositoryId(pubKey, name), heads)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req -> {
@@ -134,7 +131,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (commitId == null) {
-						return Promise.ofException(new ParseException("No 'commitId' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'commitId' query parameter"));
 					}
 
 					try {
@@ -142,7 +139,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.map(commit -> HttpResponse.ok200()
 										.withBody(toJson(COMMIT_JSON, commit).getBytes(UTF_8)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", loadBody()
@@ -153,13 +150,13 @@ public final class RawServerServlet implements AsyncServlet {
 								return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
 					String id = req.getQueryParameter("id");
 					if (id == null) {
-						return Promise.ofException(new ParseException("No 'id' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'id' query parameter"));
 					}
 
 					try {
@@ -172,7 +169,7 @@ public final class RawServerServlet implements AsyncServlet {
 										.orElseGet(() -> HttpResponse.ofCode(404))
 								);
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + LIST_SNAPSHOTS + "/:pubKey/:name", req -> {
@@ -180,7 +177,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (snapshotsQuery == null) {
-						return Promise.ofException(new ParseException("No 'snapshots' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'snapshots' query parameter"));
 					}
 
 					try {
@@ -188,7 +185,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.map(snapshots -> HttpResponse.ok200()
 										.withBody(toJson(ofSet(COMMIT_ID_JSON), snapshots).getBytes(UTF_8)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
@@ -201,7 +198,7 @@ public final class RawServerServlet implements AsyncServlet {
 										.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))
 								);
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + POLL_HEADS + "/:pubKey/:name", req -> {
@@ -209,7 +206,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (lastHeadsQuery == null) {
-						return Promise.ofException(new ParseException("No 'lastHeads' query parameter"));
+						 return Promise.ofException(HttpException.ofCode(400, "No 'lastHeads' query parameter"));
 					}
 
 					try {
@@ -226,7 +223,7 @@ public final class RawServerServlet implements AsyncServlet {
 												.withBody("Server closed".getBytes())
 										));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + SHARE_KEY + "/:owner", loadBody()
@@ -239,7 +236,7 @@ public final class RawServerServlet implements AsyncServlet {
 										fromJson(SIGNED_SHARED_KEY_JSON, body.getString(UTF_8)))
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> {
@@ -250,7 +247,7 @@ public final class RawServerServlet implements AsyncServlet {
 						String hashParam = req.getPathParameter("hash");
 						hash = Hash.fromString(hashParam);
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 
 					return node.getSharedKey(owner, hash)
@@ -263,7 +260,7 @@ public final class RawServerServlet implements AsyncServlet {
 					try {
 						owner = urlDecodePubKey(req.getPathParameter("owner"));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 
 					return node.getSharedKeys(owner)
@@ -279,7 +276,7 @@ public final class RawServerServlet implements AsyncServlet {
 								return node.sendPullRequest(pullRequest)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
@@ -291,7 +288,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.map(pullRequests -> HttpResponse.ok200()
 										.withBody(encode(ofSet(SIGNED_PULL_REQUEST_CODEC), pullRequests)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
@@ -299,7 +296,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (startNodes == null) {
-						return Promise.ofException(new ParseException("No 'startNodes' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'startNodes' query parameter"));
 					}
 
 					try {
@@ -313,7 +310,7 @@ public final class RawServerServlet implements AsyncServlet {
 										)
 								);
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
@@ -321,7 +318,7 @@ public final class RawServerServlet implements AsyncServlet {
 					String name = req.getPathParameter("name");
 					String headsQueryString = req.getQueryParameter("heads");
 					if (headsQueryString == null) {
-						return Promise.ofException(new ParseException("No 'heads' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'heads' query parameter"));
 					}
 
 					try {
@@ -342,7 +339,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.map($ -> HttpResponse.ok200())
 								.whenComplete(($, e) -> commitConsumer.cancel());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

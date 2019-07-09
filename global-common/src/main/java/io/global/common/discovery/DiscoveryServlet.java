@@ -69,7 +69,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 								return discoveryService.announce(owner, announceData)
 										.map($ -> HttpResponse.ok201());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}
 				))
@@ -85,7 +85,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 											.withBody(encode(SIGNED_ANNOUNCE, data)));
 								});
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + SHARE_KEY + "/:receiver", loadBody()
@@ -98,7 +98,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 								return discoveryService.shareKey(receiver, simKey)
 										.map($ -> HttpResponse.ok201());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
@@ -112,7 +112,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 										HttpResponse.ok200()
 												.withBody(encode(NULLABLE_SIGNED_SHARED_SIM_KEY, signedSharedKey)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + GET_SHARED_KEYS + "/:receiver", request -> {
@@ -123,7 +123,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 										HttpResponse.ok200()
 												.withBody(encode(LIST_OF_SIGNED_SHARED_SIM_KEYS, signedSharedKeys)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

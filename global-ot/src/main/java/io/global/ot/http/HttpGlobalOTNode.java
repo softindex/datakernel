@@ -170,7 +170,7 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 								return Promise.of(Optional.of(
 										decode(SIGNED_SNAPSHOT_CODEC, body.getArray())));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}));
 	}

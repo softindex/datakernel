@@ -36,21 +36,18 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 						.serve(request -> {
 							String key = request.getCookie("Key");
 							if (key == null) {
-								return Promise.ofException(new ParseException("No 'Key' cookie"));
+								return Promise.of(HttpResponse.ofCode(400)
+										.withPlainText("No 'Key' cookie"));
 							}
 
 							try {
 								KeyPair keys = PrivKey.fromString(key).computeKeys();
-								try {
-									ByteBuf body = request.getBody();
-									AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.asString(UTF_8));
-									return driver.announce(keys, data)
-											.map($ -> HttpResponse.ok200());
-								} catch (ParseException e) {
-									return Promise.ofException(e);
-								}
+								ByteBuf body = request.getBody();
+								AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.asString(UTF_8));
+								return driver.announce(keys, data)
+										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/find/:pubKey", request -> {
@@ -61,7 +58,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(JSON_UTF_8))
 										.withBody(JsonUtils.toJson(NULLABLE_ANNOUNCE_DATA_CODEC, data).getBytes(UTF_8)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/shareKey/:receiver", loadBody()
@@ -69,27 +66,23 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 							String parameterReceiver = request.getPathParameter("receiver");
 							String key = request.getCookie("Key");
 							if (key == null) {
-								return Promise.ofException(new ParseException("No 'Key' cookie"));
+								return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
 							}
 							try {
 								PubKey receiver = PubKey.fromString(parameterReceiver);
 								PrivKey sender = PrivKey.fromString(key);
 								ByteBuf body = request.getBody();
-								try {
-									return driver.shareKey(sender, receiver, SimKey.fromString(body.asString(UTF_8)))
-											.map($ -> HttpResponse.ok200());
-								} catch (ParseException e) {
-									return Promise.ofException(e);
-								}
+								return driver.shareKey(sender, receiver, SimKey.fromString(body.asString(UTF_8)))
+										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/getSharedKey/:hash", request -> {
 					String key = request.getCookie("Key");
 					String parameterHash = request.getPathParameter("hash");
 					if (key == null) {
-						return Promise.ofException(new ParseException("No 'Key' cookie"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
 					}
 					try {
 						KeyPair keys = PrivKey.fromString(key).computeKeys();
@@ -104,13 +97,13 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 											.withBody(('"' + simKey.asString() + '"').getBytes(UTF_8));
 								});
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/getSharedKeys", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
-						return Promise.ofException(new ParseException("No 'Key' cookie"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
 					}
 					try {
 						KeyPair keys = PrivKey.fromString(key).computeKeys();
@@ -122,7 +115,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 												.collect(joining(", ", "[", "]")))
 												.getBytes(UTF_8)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

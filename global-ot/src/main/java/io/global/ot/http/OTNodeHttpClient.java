@@ -83,7 +83,7 @@ public class OTNodeHttpClient<K, D> implements OTNode<K, D, byte[]> {
 			}
 			return Promise.of(fromJson(json, body.getString(UTF_8)));
 		} catch (ParseException e) {
-			return Promise.ofException(e);
+			return Promise.ofException(HttpException.ofCode(400, e));
 		}
 	}
 }

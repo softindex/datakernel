@@ -23,7 +23,6 @@ import java.io.StringWriter;
 
 import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaders.*;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * This is an interface for the formatter function for HTTP.
@@ -35,14 +34,14 @@ public interface HttpExceptionFormatter {
 	@NotNull
 	HttpResponse formatException(@NotNull Throwable e);
 
+	/**
+	 * Standard formatter maps all exceptions except HttpException to an empty response with 500 status code.
+	 * HttpExceptions are mapped to a response with their status code, message and stacktrace of the cause if it was specified.
+	 */
 	HttpExceptionFormatter DEFAULT_FORMATTER = e -> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
-			response = HttpResponse.ofCode(((HttpException) e).getCode())
-					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
-			if (e.getLocalizedMessage() != null) {
-				response.withBody(e.getLocalizedMessage().getBytes(UTF_8));
-			}
+			response = ((HttpException) e).createResponse();
 		} else {
 			// default formatter leaks no information about unknown exceptions
 			response = HttpResponse.ofCode(500)
@@ -60,11 +59,7 @@ public interface HttpExceptionFormatter {
 	HttpExceptionFormatter DEBUG_FORMATTER = e -> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
-			response = HttpResponse.ofCode(((HttpException) e).getCode())
-					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
-			if (e.getLocalizedMessage() != null) {
-				response.withPlainText(e.getLocalizedMessage());
-			}
+			response = ((HttpException) e).createResponse();
 		} else {
 			StringWriter writer = new StringWriter();
 			e.printStackTrace(new PrintWriter(writer));

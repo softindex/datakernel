@@ -24,10 +24,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.ContentTypes;
-import io.datakernel.http.HttpHeaderValue;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
+import io.datakernel.http.*;
 import io.datakernel.util.Tuple1;
 
 import java.util.function.BiFunction;
@@ -71,7 +68,7 @@ public final class HttpDataFormats {
 							}))
 					.mapEx(errorHandler());
 		} catch (ParseException e) {
-			return Promise.ofException(e);
+			return Promise.ofException(HttpException.ofCode(400, e));
 		}
 	}
 

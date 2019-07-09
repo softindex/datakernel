@@ -58,7 +58,7 @@ public class UiKernelServlets {
 				return model.read(settings).map(response ->
 						createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
 			} catch (ParseException e) {
-				return Promise.ofException((Throwable) e);
+				return Promise.ofException(HttpException.ofCode(400, e));
 
 			}
 		};
@@ -72,7 +72,7 @@ public class UiKernelServlets {
 				return model.read(id, settings).map(obj ->
 						createResponse(gson.toJson(obj, model.getRecordType())));
 			} catch (ParseException e) {
-				return Promise.ofException((Throwable) e);
+				return Promise.ofException(HttpException.ofCode(400, e));
 			}
 		};
 	}
@@ -87,7 +87,7 @@ public class UiKernelServlets {
 						return model.create(obj).map(response ->
 								createResponse(response.toJson(gson, model.getIdType())));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}
@@ -102,7 +102,7 @@ public class UiKernelServlets {
 						return model.update(list).map(result ->
 								createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}
@@ -121,7 +121,7 @@ public class UiKernelServlets {
 					return res;
 				});
 			} catch (ParseException e) {
-				return Promise.ofException(e);
+				return Promise.ofException(HttpException.ofCode(400, e));
 			}
 		};
 	}

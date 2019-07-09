@@ -166,7 +166,7 @@ public final class StaticServlet implements AsyncServlet {
 					} else if (e == StaticLoader.NOT_FOUND_EXCEPTION) {
 						return tryLoadDefaultResource();
 					} else {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

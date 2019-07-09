@@ -92,39 +92,39 @@ public final class RemoteFsServlet implements AsyncServlet {
 						return client.delete(request.getRelativePath(), parseRevision(request))
 								.mapEx(errorHandler());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + COPY, request -> {
 					String name = request.getQueryParameter("name");
 					String target = request.getQueryParameter("target");
 					if (name == null) {
-						return Promise.ofException(new ParseException("No 'name' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'name' query parameter"));
 					}
 					if (target == null) {
-						return Promise.ofException(new ParseException("No 'target' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'target' query parameter"));
 					}
 					try {
 						return client.copy(name, target, parseRevision(request))
 								.mapEx(errorHandler());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + MOVE, request -> {
 					String name = request.getQueryParameter("name");
 					String target = request.getQueryParameter("target");
 					if (name == null) {
-						return Promise.ofException(new ParseException("No 'name' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'name' query parameter"));
 					}
 					if (target == null) {
-						return Promise.ofException(new ParseException("No 'target' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'target' query parameter"));
 					}
 					try {
 						return client.move(name, target, parseRevision(request), parseRevision(request, "tombstone"))
 								.mapEx(errorHandler());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

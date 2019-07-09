@@ -28,10 +28,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 
 import java.util.concurrent.Executor;
@@ -81,7 +78,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.of(HttpResponse.ofCode(404)
 										.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(PUT, "/", loadBody()
@@ -91,7 +88,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								client.put(JsonUtils.fromJson(codec, body.getString(UTF_8)));
 								return Promise.of(HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(DELETE, "/", loadBody()
@@ -105,7 +102,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 								return Promise.of(HttpResponse.ofCode(404)
 										.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}));
 		if (backupService == null) {

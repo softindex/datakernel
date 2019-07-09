@@ -70,20 +70,20 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 				.map(GET, "/" + FETCH, request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
-						return Promise.ofException(new ParseException("No 'id' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'id' query parameter"));
 					}
 					try {
 						K currentCommitId = fromJson(revisionCodec, id);
 						return node.fetch(currentCommitId)
 								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + POLL, request -> {
 					String id = request.getQueryParameter("id");
 					if (id == null) {
-						return Promise.ofException(new ParseException("No 'id' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'id' query parameter"));
 					}
 					try {
 						K currentCommitId = fromJson(revisionCodec, id);
@@ -94,7 +94,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 										.map($2 -> HttpResponse.ofCode(503).withBody("Server closed".getBytes()))
 						);
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/" + CREATE_COMMIT, loadBody()
@@ -107,7 +107,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 												.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
 												.withBody(commitToBytes.apply(commit)));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(POST, "/" + PUSH, loadBody()
@@ -118,7 +118,7 @@ public class OTNodeServlet<K, D, C> implements AsyncServlet {
 								return node.push(commit)
 										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}));
 	}

@@ -135,7 +135,7 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 							try {
 								return Promise.of(decode(SET_STRING_CODEC, body.slice()));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}));
 	}

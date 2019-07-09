@@ -76,13 +76,13 @@ public final class GlobalFsDriverServlet {
 									return Promise.ofException(FILE_NOT_FOUND);
 								});
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/upload", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
-						return Promise.ofException(new ParseException("No 'Key' cookie"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
 					}
 
 					try {
@@ -90,7 +90,7 @@ public final class GlobalFsDriverServlet {
 						SimKey simKey = getSimKey(request);
 						return httpUpload(request, (name, offset, revision) -> driver.upload(keys, name, offset, revision, simKey));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map("/list/:space", request -> {
@@ -102,7 +102,7 @@ public final class GlobalFsDriverServlet {
 										.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map("/getMetadata/:space/*", request -> {
@@ -113,13 +113,13 @@ public final class GlobalFsDriverServlet {
 										.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
 										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(POST, "/delete/*", request -> {
 					String key = request.getCookie("Key");
 					if (key == null) {
-						return Promise.ofException(new ParseException("No 'Key' cookie"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
 					}
 					try {
 						KeyPair keys = PrivKey.fromString(key).computeKeys();
@@ -127,7 +127,7 @@ public final class GlobalFsDriverServlet {
 						return driver.delete(keys, name, parseRevision(request))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

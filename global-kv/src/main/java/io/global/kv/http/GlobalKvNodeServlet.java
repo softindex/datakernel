@@ -23,6 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.util.TypeT;
@@ -62,7 +63,7 @@ public final class GlobalKvNodeServlet {
 												.streamTo(consumer))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + DOWNLOAD + "/:space/:table", request -> {
@@ -82,7 +83,7 @@ public final class GlobalKvNodeServlet {
 										HttpResponse.ok200()
 												.withBodyStream(supplier.map(signedDbItem -> encodeWithSizePrefix(KV_ITEM_CODEC, signedDbItem))));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
 				.map(GET, "/" + GET_ITEM + "/:space/:table", loadBody()
@@ -96,7 +97,7 @@ public final class GlobalKvNodeServlet {
 										.map(item ->
 												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC, item)));
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(PUT, "/" + PUT_ITEM + "/:space/:table", loadBody()
@@ -109,7 +110,7 @@ public final class GlobalKvNodeServlet {
 								return node.put(space, table, decode(KV_ITEM_CODEC, body.slice()))
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
-								return Promise.ofException(e);
+								return Promise.ofException(HttpException.ofCode(400, e));
 							}
 						}))
 				.map(GET, "/" + LIST + "/:space", request -> {
@@ -121,7 +122,7 @@ public final class GlobalKvNodeServlet {
 										HttpResponse.ok200()
 												.withBody(encode(SET_STRING_CODEC, list)));
 					} catch (ParseException e) {
-						return Promise.ofException(e);
+						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				});
 	}

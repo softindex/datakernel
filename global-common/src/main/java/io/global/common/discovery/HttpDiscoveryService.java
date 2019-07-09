@@ -78,7 +78,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				try {
 					return Promise.of(from.parse(body));
 				} catch (ParseException e) {
-					return Promise.ofException(e);
+					return Promise.ofException(HttpException.ofCode(400, e));
 				}
 			case 404:
 				return Promise.of(null);
