@@ -21,6 +21,7 @@
     <module>template-engine</module>
     <module>uikernel-integration</module>
     <module>rpc-kv-storage</module>
+    <module>decoder</module>
   </modules>
 
 </project>

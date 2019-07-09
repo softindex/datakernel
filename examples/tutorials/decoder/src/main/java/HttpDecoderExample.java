@@ -29,10 +29,6 @@ class Address {
 		this.title = title;
 	}
 
-	public String getTitle() {
-		return title;
-	}
-
 	@Override
 	public String toString() {
 		return "Address{title='" + title + '\'' + '}';
@@ -50,18 +46,6 @@ class Contact {
 		this.address = address;
 	}
 
-	public String getName() {
-		return name;
-	}
-
-	public int getAge() {
-		return age;
-	}
-
-	public Address getAddress() {
-		return address;
-	}
-
 	@Override
 	public String toString() {
 		return "Contact{name='" + name + '\'' + ", age=" + age + ", address=" + address + '}';
@@ -70,8 +54,6 @@ class Contact {
 
 interface ContactDAO {
 	List<Contact> list();
-
-	Contact get(int id);
 
 	void add(Contact user);
 }
@@ -82,11 +64,6 @@ class ContactDAOImpl implements ContactDAO {
 	@Override
 	public List<Contact> list() {
 		return userList;
-	}
-
-	@Override
-	public Contact get(int id) {
-		return userList.get(id);
 	}
 
 	@Override
@@ -128,7 +105,7 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 	//[START REGION_2]
 	@Provides
 	AsyncServlet mainServlet(ContactDAO contactDAO) {
-		Mustache contactListView = new DefaultMustacheFactory().compile("static/decoder/contactList.html");
+		Mustache contactListView = new DefaultMustacheFactory().compile("static/contactList.html");
 		return RoutingServlet.create()
 				.map("/", request -> Promise.of(
 						HttpResponse.ok200()
