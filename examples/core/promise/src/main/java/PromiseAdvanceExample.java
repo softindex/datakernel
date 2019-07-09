@@ -21,11 +21,13 @@ public class PromiseAdvanceExample {
 	}
 
 	public static void firstExample() {
+		//[START REGION_1]
 		Promise<Integer> firstNumber = Promise.of(10);
 		Promise<Integer> secondNumber = Promises.delay(2000, 100);
 
 		Promise<Integer> result = firstNumber.combine(secondNumber, Integer::sum);
 		result.whenResult(res -> System.out.println("The first result is " + res));
+		//[END REGION_1]
 	}
 
 	private static void secondExample() {
