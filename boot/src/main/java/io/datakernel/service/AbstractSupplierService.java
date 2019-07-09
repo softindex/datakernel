@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
@@ -49,9 +50,7 @@ public abstract class AbstractSupplierService<V> implements SupplierService<V> {
 			onStop(value);
 			return completedFuture(null);
 		} catch (Exception e) {
-			CompletableFuture<Object> future = new CompletableFuture<>();
-			future.completeExceptionally(e);
-			return future;
+			return completedExceptionallyFuture(e);
 		} finally {
 			value = null;
 		}

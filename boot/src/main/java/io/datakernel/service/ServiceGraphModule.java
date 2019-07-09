@@ -29,7 +29,6 @@ import io.datakernel.launcher.RootService;
 import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.TypeT;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
@@ -40,12 +39,14 @@ import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static io.datakernel.service.ServiceAdapters.*;
+import static io.datakernel.service.util.Utils.combineAll;
+import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -83,6 +84,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <p>
  * An application terminates if a circular dependency found.
  */
+@SuppressWarnings("WeakerAccess")
 public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
 	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
@@ -194,19 +196,20 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return this;
 	}
 
-	private static final class ServiceKey implements ServiceGraph.Key<Object> {
+	private static final class ServiceKey implements ServiceGraph.Key {
 		@NotNull
 		private final Key<?> key;
-		private final int workerPoolId;
+		@Nullable
+		private final WorkerPool workerPool;
 
 		private ServiceKey(@NotNull Key<?> key) {
 			this.key = key;
-			this.workerPoolId = 0;
+			this.workerPool = null;
 		}
 
-		private ServiceKey(@NotNull Key<?> key, int id) {
+		private ServiceKey(@NotNull Key<?> key, @NotNull WorkerPool workerPool) {
 			this.key = key;
-			this.workerPoolId = id;
+			this.workerPool = workerPool;
 		}
 
 		@NotNull
@@ -214,18 +217,20 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			return key;
 		}
 
-		public boolean isWorker() {
-			return workerPoolId != 0;
-		}
-
-		public int getWorkerPoolId() {
-			return workerPoolId;
-		}
-
 		@NotNull
 		@Override
-		public TypeT<Object> getTypeT() {
-			return TypeT.ofType(key.getType());
+		public Type getType() {
+			return key.getType();
+		}
+
+		@Override
+		public @Nullable String getSuffix() {
+			return workerPool == null ? null : "" + workerPool.getSize();
+		}
+
+		@Override
+		public @Nullable String getIndex() {
+			return workerPool == null || workerPool.getId() == 0 ? null : "" + (workerPool.getId() + 1);
 		}
 
 		@Nullable
@@ -243,18 +248,18 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				return false;
 			}
 			ServiceKey other = (ServiceKey) o;
-			return workerPoolId == other.workerPoolId &&
+			return workerPool == other.workerPool &&
 					key.equals(other.key);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(key, workerPoolId);
+			return Objects.hash(key, workerPool);
 		}
 
 		@Override
 		public String toString() {
-			return key.toString() + (workerPoolId == 0 ? "" : ":" + workerPoolId);
+			return key.toString() + (workerPool == null ? "" : ":" + workerPool.getId());
 		}
 	}
 
@@ -272,7 +277,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								}
 								future.complete(null);
 							} else {
-								logger.error("Could not start ServiceGraph", e);
+								logger.error("Could not start ServiceGraph: " + e);
 								if (logger.isInfoEnabled()) {
 									logger.info("Effective ServiceGraph:\n\n" + serviceGraph);
 								}
@@ -305,32 +310,22 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	private void initializeServiceGraph(ServiceGraph serviceGraph, Injector injector) {
-		logger.info("Initializing ServiceGraph...");
+		logger.trace("Initializing ServiceGraph ...");
 
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
 		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
 
-		serviceGraph.withNodeSuffixes(key -> {
-			ServiceKey serviceKey = (ServiceKey) key;
-			if (!serviceKey.isWorker()) {
-				return null;
-			}
-			return pools.get(serviceKey.getWorkerPoolId() - 1).getSize();
-		});
-
 		IdentityHashMap<Object, ServiceKey> workerInstanceToKey = new IdentityHashMap<>();
 		if (workerPools != null) {
-			for (int i = 0; i < pools.size(); i++) {
-				WorkerPool pool = pools.get(i);
-				int idx = i + 1;
+			for (WorkerPool pool : pools) {
 				Map<Key<?>, Set<ScopedValue<Dependency>>> scopeDependencies = getScopeDependencies(injector, pool.getScope());
 				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : pool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
 					WorkerPool.Instances<?> workerInstances = entry.getValue();
 					if (!scopeDependencies.containsKey(key)) continue;
-					ServiceKey serviceKey = new ServiceKey(key, idx);
+					ServiceKey serviceKey = new ServiceKey(key, pool);
 					instances.put(serviceKey, workerInstances.getList());
 					workerInstanceToKey.put(workerInstances.get(0), serviceKey);
 					instanceDependencies.put(serviceKey,
@@ -341,7 +336,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
 													injector.hasInstance(scopedDependency.get().getKey())))
 									.map(scopedDependency -> scopedDependency.isScoped() ?
-											new ServiceKey(scopedDependency.get().getKey(), idx) :
+											new ServiceKey(scopedDependency.get().getKey(), pool) :
 											new ServiceKey(scopedDependency.get().getKey()))
 									.collect(toSet()));
 				}
@@ -409,8 +404,10 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		for (Map.Entry<ServiceKey, List<?>> entry : instances.entrySet()) {
 			ServiceKey serviceKey = entry.getKey();
-			Service service = getCombinedServiceOrNull(cache, serviceKey, entry.getValue());
-			serviceGraph.add(serviceKey, service);
+			@Nullable Service service = getCombinedServiceOrNull(cache, serviceKey, entry.getValue());
+			if (service != null) {
+				serviceGraph.add(serviceKey, service);
+			}
 		}
 
 		for (Map.Entry<ServiceKey, Set<ServiceKey>> entry : instanceDependencies.entrySet()) {
@@ -453,36 +450,50 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	@Nullable
 	private Service getCombinedServiceOrNull(IdentityHashMap<Object, CachedService> cache, ServiceKey key, List<?> instances) {
 		List<Service> services = new ArrayList<>();
-		boolean found = false;
 		for (Object instance : instances) {
 			Service service = getServiceOrNull(cache, (Key<Object>) key.getKey(), instance);
-			services.add(service);
 			if (service != null) {
-				found = true;
+				services.add(service);
 			}
 		}
-		if (!found) {
-			return null;
-		}
-		return new Service() {
-			@Override
-			public CompletableFuture<?> start() {
-				List<CompletableFuture<?>> futures = new ArrayList<>();
-				for (Service service : services) {
-					futures.add(service != null ? service.start() : null);
-				}
-				return combineFutures(futures, Runnable::run);
-			}
+		if (services.isEmpty()) return null;
+		return new CombinedService(services);
+	}
 
-			@Override
-			public CompletableFuture<?> stop() {
-				List<CompletableFuture<?>> futures = new ArrayList<>();
-				for (Service service : services) {
-					futures.add(service != null ? service.stop() : null);
-				}
-				return combineFutures(futures, Runnable::run);
-			}
-		};
+	private static class CombinedService implements Service {
+		private final List<Service> services;
+		private final List<Service> startedServices = new ArrayList<>();
+
+		private CombinedService(List<Service> services) {this.services = services;}
+
+		@Override
+		public CompletableFuture<?> start() {
+			return combineAll(
+					services.stream()
+							.map(service -> safeCall(service::start)
+									.thenRun(() -> {synchronized (this) {startedServices.add(service);}}))
+							.collect(toList()))
+					.thenApply(v -> (@Nullable Throwable) null)
+					.exceptionally(e -> e)
+					.thenCompose((@Nullable Throwable e) ->
+							e == null ?
+									completedFuture(null) :
+									combineAll(startedServices.stream().map(service -> safeCall(service::stop)).collect(toList()))
+											.thenCompose($ -> completedExceptionallyFuture(e)));
+		}
+
+		@Override
+		public CompletableFuture<?> stop() {
+			return combineAll(services.stream().map(service -> safeCall(service::stop)).collect(toList()));
+		}
+	}
+
+	private static <T> CompletionStage<T> safeCall(Supplier<? extends CompletionStage<T>> invoke) {
+		try {
+			return invoke.get();
+		} catch (Exception e) {
+			return completedExceptionallyFuture(e);
+		}
 	}
 
 	@Nullable
@@ -573,42 +584,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		@Override
 		synchronized public CompletableFuture<?> stop() {
 			checkState(startFuture != null, "Has not been started yet");
-			if (--started != 0) return CompletableFuture.completedFuture(null);
+			if (--started != 0) return completedFuture(null);
 			if (stopFuture == null) {
 				stopFuture = service.stop();
 			}
 			return stopFuture;
 		}
-	}
-
-	private static CompletableFuture<?> combineFutures(List<CompletableFuture<?>> futures, Executor executor) {
-		CompletableFuture<?> resultFuture = new CompletableFuture<>();
-		AtomicInteger count = new AtomicInteger(futures.size());
-		AtomicReference<Throwable> exception = new AtomicReference<>();
-		for (CompletableFuture<?> future : futures) {
-			CompletableFuture<?> finalFuture = future != null ? future : completedFuture(null);
-			finalFuture.whenCompleteAsync((o, e) -> {
-				if (e != null) {
-					exception.set(getRootCause(e));
-				}
-				if (count.decrementAndGet() == 0) {
-					if (exception.get() != null) {
-						resultFuture.completeExceptionally(exception.get());
-					} else {
-						resultFuture.complete(null);
-					}
-				}
-			}, executor);
-		}
-		return resultFuture;
-	}
-
-	private static Throwable getRootCause(Throwable e) {
-		Throwable cause;
-		while ((cause = e.getCause()) != null) {
-			e = cause;
-		}
-		return e;
 	}
 
 }

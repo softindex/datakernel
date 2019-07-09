@@ -71,8 +71,8 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings({"WeakerAccess", "RedundantThrows", "unused"})
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = getLogger(getClass());
-	protected final Logger logger0 = getLogger(getClass().getName() + ".0");
+	protected final Logger logger = getLogger(Launcher.class);
+	protected final Logger logger0 = getLogger(Launcher.class.getName() + ".0");
 
 	public static final String[] NO_ARGS = {};
 	@NotNull
@@ -149,7 +149,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				onStartFuture.complete(null);
 			} catch (Exception e) {
 				applicationError = e;
-				logger.error("Error", e);
+				logger.error("Start error", e);
 				onStartFuture.completeExceptionally(e);
 			}
 
@@ -225,7 +225,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		latch.await();
 		if (!exceptions.isEmpty()) {
 			exceptions.sort(comparingInt(e -> (e instanceof RuntimeException) ? 1 : (e instanceof Error ? 0 : 2)));
-			exceptions.stream().skip(1).forEach(e -> exceptions.get(0).addSuppressed(e));
 			throw exceptions.get(0);
 		}
 	}

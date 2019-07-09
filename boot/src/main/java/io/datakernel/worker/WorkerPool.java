@@ -30,6 +30,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
 public final class WorkerPool {
+	private final int id;
 	private final Scope scope;
 	private final Injector[] scopeInjectors;
 
@@ -65,13 +66,18 @@ public final class WorkerPool {
 		}
 	}
 
-	WorkerPool(Injector injector, Scope scope, int workers) {
+	WorkerPool(Injector injector, int id, Scope scope, int workers) {
+		this.id = id;
 		this.scope = scope;
 		this.scopeInjectors = new Injector[workers];
 		for (int i = 0; i < workers; i++) {
 			Map<Key<?>, Object> instances = new HashMap<>(singletonMap(Key.of(int.class, WorkerId.class), i));
 			scopeInjectors[i] = injector.enterScope(scope, instances, false);
 		}
+	}
+
+	public int getId() {
+		return id;
 	}
 
 	public Scope getScope() {
@@ -136,6 +142,6 @@ public final class WorkerPool {
 
 	@Override
 	public String toString() {
-		return "WorkerPool{scope=" + scope + "}";
+		return "WorkerPool{scope=" + scope + (id > 0 ? "id=" + id : "") + "}";
 	}
 }

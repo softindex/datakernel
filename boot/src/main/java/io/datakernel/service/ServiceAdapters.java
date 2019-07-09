@@ -43,16 +43,6 @@ public final class ServiceAdapters {
 	private ServiceAdapters() {
 	}
 
-	private static <T> Callback<T> completeFuture(CompletableFuture<?> future) {
-		return ($, e) -> {
-			if (e != null) {
-				future.completeExceptionally(e);
-			} else {
-				future.complete(null);
-			}
-		};
-	}
-
 	public static abstract class SimpleServiceAdapter<S> implements ServiceAdapter<S> {
 		private final boolean startConcurrently;
 		private final boolean stopConcurrently;
@@ -118,8 +108,7 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<?> start(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() ->
-						instance.start().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(() -> instance.start().whenComplete(completeFuture(future)));
 				return future;
 			}
 
@@ -382,4 +371,15 @@ public final class ServiceAdapters {
 			}
 		};
 	}
+
+	private static <T> Callback<T> completeFuture(CompletableFuture<?> future) {
+		return ($, e) -> {
+			if (e == null) {
+				future.complete(null);
+			} else {
+				future.completeExceptionally(e);
+			}
+		};
+	}
+
 }
