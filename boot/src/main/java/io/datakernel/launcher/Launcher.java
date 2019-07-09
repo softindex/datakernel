@@ -71,8 +71,8 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings({"WeakerAccess", "RedundantThrows", "unused"})
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = getLogger(Launcher.class);
-	protected final Logger logger0 = getLogger(Launcher.class.getName() + ".0");
+	protected final Logger logger = getLogger(getClass());
+	protected final Logger logger0 = getLogger(getClass().getName() + ".0");
 
 	public static final String[] NO_ARGS = {};
 	@NotNull

@@ -31,14 +31,10 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.*;
 
 import static io.datakernel.di.util.ReflectionUtils.getShortName;
 import static io.datakernel.service.util.Utils.combineAll;
-import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
@@ -339,8 +335,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 						.collect(toList()));
 	}
 
-	synchronized private CompletionStage<?> processNode(Key node, boolean start,
-			Map<Key, CompletionStage<?>> cache) {
+	synchronized private CompletionStage<?> processNode(Key node, boolean start, Map<Key, CompletionStage<?>> cache) {
 
 		if (cache.containsKey(node)) {
 			CompletionStage<?> future = cache.get(node);
@@ -356,21 +351,11 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			logger.trace(keyToString(node) + " : processing " + dependencies);
 		}
 
-		AtomicReference<Throwable> throwableRef = new AtomicReference<>();
 		CompletableFuture<?> future = combineAll(
 				dependencies.stream()
-						.map(dependency ->
-								processNode(dependency, start, cache)
-										.exceptionally(e -> {
-											throwableRef.compareAndSet(null, e);
-											return null;
-										}))
+						.map(dependency -> processNode(dependency, start, cache))
 						.collect(toList()))
 				.thenCompose($ -> {
-					if (throwableRef.get() != null) {
-						return completedExceptionallyFuture(throwableRef.get());
-					}
-
 					Service service = services.get(node);
 					if (service == null) {
 						logger.trace("...skipping no-service node: " + keyToString(node));
@@ -404,7 +389,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 								if (e == null) {
 									logger.info((start ? "Started " : "Stopped ") + keyToString(node) + (elapsed >= 1L ? (" in " + sw) : ""));
 								} else {
-									logger.error((start ? "Start error " : "Stop error ") + keyToString(node), e);
+									logger.error((start ? "Start error " : "Stop error ") + keyToString(node),
+											(e instanceof CompletionException || e instanceof ExecutionException) && e.getCause() != null ? e.getCause() : e);
 								}
 							});
 				});
