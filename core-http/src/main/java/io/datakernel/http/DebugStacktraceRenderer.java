@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
  * just like IDEA does in its log console.
  */
 public final class DebugStacktraceRenderer {
+	private static final String IDEA_REST_API_URL = "http://localhost:63342";
 	private static final String DEBUG_SERVER_ERROR_HTML = "<!doctype html>" +
 			"<html lang=\"en\">" +
 			"<head>" +
@@ -20,10 +21,16 @@ public final class DebugStacktraceRenderer {
 			"<style>" +
 			"html, body { height: 100%; margin: 0; padding: 0; }" +
 			"h1, p { font-family: sans-serif; }" +
-			"a { color: #00E; text-decoration: underline; cursor: pointer; }" +
+			".link { color: #00E; text-decoration: underline; cursor: pointer; user-select: none; }" +
 			"</style>" +
 			"</head>" +
 			"<body>" +
+			"<script>" +
+			"window.onload = () => fetch('" + IDEA_REST_API_URL + "').then(() => document.querySelectorAll('[data-link]').forEach(a => {" +
+			"a.onclick = () => fetch(a.dataset.link);" +
+			"a.classList.add('link');" +
+			"}));" +
+			"</script>" +
 			"<div style=\"position:relative;min-height:100%;\">" +
 			"<h1 style=\"text-align:center;margin-top:0;padding-top:0.5em;\">Internal Server Error</h1>" +
 			"<hr style=\"margin-left:10px;margin-right:10px;\">" +
@@ -35,8 +42,6 @@ public final class DebugStacktraceRenderer {
 			"</div>" +
 			"</body>" +
 			"</html>";
-
-	private static final String IDEA_REST_API_LINK = "http://localhost:63342/api/file/";
 
 	private static final Pattern STACK_TRACE_ELEMENT;
 
@@ -56,10 +61,8 @@ public final class DebugStacktraceRenderer {
 		StringBuffer stacktrace = new StringBuffer();
 		while (matcher.find()) {
 			String cls = matcher.group(2);
-			String file = cls.substring(0, cls.length() - 1).replace('.', '/').replaceAll("\\$.*(?:\\.|$)", "");
-			matcher.appendReplacement(stacktrace,
-					"$1<a style=\"color: #00E; text-decoration: underline\" " +
-							"onclick=\"fetch('" + IDEA_REST_API_LINK + Matcher.quoteReplacement(file) + "$4$5')\">$3</a>)");
+			String quotedFile = Matcher.quoteReplacement(cls.substring(0, cls.length() - 1).replace('.', '/').replaceAll("\\$.*(?:\\.|$)", ""));
+			matcher.appendReplacement(stacktrace, "$1<a data-link=\"" + IDEA_REST_API_URL + "/api/file/" + quotedFile + "$4$5\">$3</a>)");
 		}
 		matcher.appendTail(stacktrace);
 		return HttpResponse.ofCode(500)

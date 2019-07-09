@@ -29,7 +29,12 @@ import static io.datakernel.http.HttpHeaders.*;
 public interface HttpExceptionFormatter {
 	String INTERNAL_SERVER_ERROR_HTML =
 			"<!doctype html>" +
-					"<html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Internal Server Error</title></head>" +
+					"<html lang=\"en\">" +
+					"<head>" +
+					"<meta charset=\"UTF-8\">" +
+					"<title>Internal Server Error</title>" +
+					"<style>h1, p { font-family: sans-serif; }</style>" +
+					"</head>" +
 					"<body>" +
 					"<h1 style=\"text-align: center;\">Internal Server Error</h1>" +
 					"<hr><p style=\"text-align: center;\">DataKernel 3.0.0</p>" +
