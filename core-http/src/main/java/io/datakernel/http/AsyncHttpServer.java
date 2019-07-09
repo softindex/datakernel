@@ -55,7 +55,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final AsyncServlet servlet;
 	private final char[] charBuffer = new char[1024];
 	@NotNull
-	private HttpExceptionFormatter errorFormatter = HttpExceptionFormatter.DEFAULT_FORMATTER;
+	private HttpExceptionFormatter errorFormatter = HttpExceptionFormatter.COMMON_FORMATTER;
 
 	int readWriteTimeoutMillis = (int) READ_WRITE_TIMEOUT.toMillis();
 	int readWriteTimeoutMillisShutdown = (int) READ_WRITE_TIMEOUT_SHUTDOWN.toMillis();

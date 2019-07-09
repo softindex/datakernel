@@ -18,10 +18,6 @@ package io.datakernel.http;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
-import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
 import static io.datakernel.http.HttpHeaders.*;
 
 /**
@@ -31,6 +27,15 @@ import static io.datakernel.http.HttpHeaders.*;
  */
 @FunctionalInterface
 public interface HttpExceptionFormatter {
+	String INTERNAL_SERVER_ERROR_HTML =
+			"<!doctype html>" +
+					"<html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Internal Server Error</title></head>" +
+					"<body>" +
+					"<h1 style=\"text-align: center;\">Internal Server Error</h1>" +
+					"<hr><p style=\"text-align: center;\">DataKernel 3.0.0</p>" +
+					"</body>" +
+					"</html>";
+
 	@NotNull
 	HttpResponse formatException(@NotNull Throwable e);
 
@@ -45,7 +50,7 @@ public interface HttpExceptionFormatter {
 		} else {
 			// default formatter leaks no information about unknown exceptions
 			response = HttpResponse.ofCode(500)
-					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+					.withHtml(INTERNAL_SERVER_ERROR_HTML);
 		}
 		return response
 				.withHeader(CACHE_CONTROL, "no-store")
@@ -61,14 +66,20 @@ public interface HttpExceptionFormatter {
 		if (e instanceof HttpException) {
 			response = ((HttpException) e).createResponse();
 		} else {
-			StringWriter writer = new StringWriter();
-			e.printStackTrace(new PrintWriter(writer));
-			response = HttpResponse.ofCode(500)
-					.withPlainText(writer.toString());
+			response = DebugStacktraceRenderer.render(e);
 		}
 		return response
 				.withHeader(CACHE_CONTROL, "no-store")
 				.withHeader(PRAGMA, "no-cache")
 				.withHeader(AGE, "0");
 	};
+
+	/**
+	 * This formatter if either one of {@link #DEFAULT_FORMATTER} or {@link #DEBUG_FORMATTER}, depending on whether
+	 * the application was started from the IntelliJ IDE or not.
+	 */
+	HttpExceptionFormatter COMMON_FORMATTER =
+			System.getProperty("java.class.path", "").contains("idea_rt.jar") ?
+					DEBUG_FORMATTER :
+					DEFAULT_FORMATTER;
 }
