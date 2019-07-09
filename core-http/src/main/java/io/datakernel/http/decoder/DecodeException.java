@@ -7,14 +7,14 @@ import org.jetbrains.annotations.NotNull;
  * An exception that occurs when an invalid HTTP request is received and the decoder fails
  * to map it on needed type.
  */
-public class HttpDecodeException extends StacklessException {
+public class DecodeException extends StacklessException {
 	@NotNull
-	private final HttpDecodeErrors errors;
+	private final DecodeErrors errors;
 
-	public HttpDecodeException(@NotNull HttpDecodeErrors errors) {this.errors = errors;}
+	public DecodeException(@NotNull DecodeErrors errors) {this.errors = errors;}
 
 	@NotNull
-	public HttpDecodeErrors getErrors() {
+	public DecodeErrors getErrors() {
 		return errors;
 	}
 }

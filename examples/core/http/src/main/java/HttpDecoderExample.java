@@ -8,8 +8,8 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
-import io.datakernel.http.decoder.HttpDecodeErrors;
-import io.datakernel.http.decoder.HttpDecoder;
+import io.datakernel.http.decoder.DecodeErrors;
+import io.datakernel.http.decoder.Decoder;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.writer.ByteBufWriter;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.http.decoder.HttpDecoders.ofPost;
+import static io.datakernel.http.decoder.Decoders.ofPost;
 import static io.datakernel.util.CollectionUtils.map;
 
 class Address {
@@ -99,12 +99,12 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 	private final static String SEPARATOR = "-";
 
 	//[START REGION_1]
-	private final static HttpDecoder<Address> ADDRESS_DECODER = HttpDecoder.of(Address::new,
+	private final static Decoder<Address> ADDRESS_DECODER = Decoder.of(Address::new,
 			ofPost("title", "")
 					.validate(param -> !param.isEmpty(), "Title cannot be empty")
 	);
 
-	private final static HttpDecoder<Contact> CONTACT_DECODER = HttpDecoder.of(Contact::new,
+	private final static Decoder<Contact> CONTACT_DECODER = Decoder.of(Contact::new,
 			ofPost("name")
 					.validate(name -> !name.isEmpty(), "Name cannot be empty"),
 			ofPost("age")
@@ -135,7 +135,7 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 								.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
 				.map(POST, "/add", AsyncServletDecorator.loadBody()
 						.serve(request -> {
-							Either<Contact, HttpDecodeErrors> decodedUser = CONTACT_DECODER.decode(request);
+							Either<Contact, DecodeErrors> decodedUser = CONTACT_DECODER.decode(request);
 							if (decodedUser.isLeft()) {
 								contactDAO.add(decodedUser.getLeft());
 							}

@@ -13,78 +13,51 @@ import static java.util.stream.Collectors.toList;
 /**
  * A tree of https errors. It structure matches the structure of the decoder is was received from
  */
-public final class HttpDecodeErrors {
+public final class DecodeErrors {
 	private static final String DEFAULT_SEPARATOR = ".";
 
-	public static final class Error {
-		private final String message;
-		private final Object[] args;
-
-		private Error(String message, Object[] args) {
-			this.message = message;
-			this.args = args;
-		}
-
-		public static Error of(String message, Object... args) {
-			return new Error(message, args);
-		}
-
-		public String getMessage() {
-			return message;
-		}
-
-		public Object[] getArgs() {
-			return args;
-		}
-
-		@Override
-		public String toString() {
-			return String.format(message, args);
-		}
-	}
-
 	@Nullable
-	private List<Error> errors;
+	private List<DecodeError> errors;
 	@Nullable
-	private Map<String, HttpDecodeErrors> children;
+	private Map<String, DecodeErrors> children;
 
-	private HttpDecodeErrors() {}
+	private DecodeErrors() {}
 
-	public static HttpDecodeErrors create() {
-		return new HttpDecodeErrors();
+	public static DecodeErrors create() {
+		return new DecodeErrors();
 	}
 
-	public static HttpDecodeErrors of(String message, Object... args) {
-		return create().with(Error.of(message, args));
+	public static DecodeErrors of(String message, Object... args) {
+		return create().with(DecodeError.of(message, args));
 	}
 
-	public static HttpDecodeErrors of(@NotNull Error error) {
+	public static DecodeErrors of(@NotNull DecodeError error) {
 		return create().with(error);
 	}
 
-	public static HttpDecodeErrors of(@NotNull List<Error> errors) {
+	public static DecodeErrors of(@NotNull List<DecodeError> errors) {
 		return create().with(errors);
 	}
 
-	public HttpDecodeErrors with(@NotNull Error error) {
+	public DecodeErrors with(@NotNull DecodeError error) {
 		if (this.errors == null) this.errors = new ArrayList<>();
 		this.errors.add(error);
 		return this;
 	}
 
-	public HttpDecodeErrors with(@NotNull List<Error> errors) {
+	public DecodeErrors with(@NotNull List<DecodeError> errors) {
 		if (this.errors == null) this.errors = new ArrayList<>();
 		this.errors.addAll(errors);
 		return this;
 	}
 
-	public HttpDecodeErrors with(@NotNull String id, @NotNull HttpDecodeErrors nestedError) {
+	public DecodeErrors with(@NotNull String id, @NotNull DecodeErrors nestedError) {
 		if (children == null) children = new HashMap<>();
-		children.merge(id, nestedError, HttpDecodeErrors::merge);
+		children.merge(id, nestedError, DecodeErrors::merge);
 		return this;
 	}
 
-	public HttpDecodeErrors merge(HttpDecodeErrors another) {
+	public DecodeErrors merge(DecodeErrors another) {
 		if (another.errors != null) {
 			if (this.errors == null) {
 				this.errors = new ArrayList<>(another.errors);
@@ -97,16 +70,16 @@ public final class HttpDecodeErrors {
 				this.children = new HashMap<>(another.children);
 			} else {
 				for (String key : another.children.keySet()) {
-					this.children.merge(key, another.children.get(key), HttpDecodeErrors::merge);
+					this.children.merge(key, another.children.get(key), DecodeErrors::merge);
 				}
 			}
 		}
 		return this;
 	}
 
-	public HttpDecodeErrors with(@NotNull String id, @NotNull Error nestedError) {
+	public DecodeErrors with(@NotNull String id, @NotNull DecodeError nestedError) {
 		if (children == null) children = new HashMap<>();
-		children.computeIfAbsent(id, $ -> new HttpDecodeErrors()).with(nestedError);
+		children.computeIfAbsent(id, $ -> new DecodeErrors()).with(nestedError);
 		return this;
 	}
 
@@ -115,7 +88,7 @@ public final class HttpDecodeErrors {
 	}
 
 	@NotNull
-	public List<Error> getErrors() {
+	public List<DecodeError> getErrors() {
 		return errors != null ? errors : emptyList();
 	}
 
@@ -124,7 +97,7 @@ public final class HttpDecodeErrors {
 		return children != null ? children.keySet() : emptySet();
 	}
 
-	public HttpDecodeErrors getChild(String id) {
+	public DecodeErrors getChild(String id) {
 		return children != null ? children.get(id) : null;
 	}
 
@@ -164,10 +137,10 @@ public final class HttpDecodeErrors {
 		return toMultimap(formatter, DEFAULT_SEPARATOR);
 	}
 
-	private static void toMultimapImpl(HttpDecodeErrors errors,
-									   Map<String, List<String>> multimap, String prefix,
-									   BiFunction<String, Object[], String> formatter,
-									   String separator) {
+	private static void toMultimapImpl(DecodeErrors errors,
+			Map<String, List<String>> multimap, String prefix,
+			BiFunction<String, Object[], String> formatter,
+			String separator) {
 		if (errors.errors != null) {
 			multimap.put(prefix, errors.errors.stream().map(error -> formatter.apply(error.message, error.getArgs())).collect(toList()));
 		}
@@ -176,12 +149,12 @@ public final class HttpDecodeErrors {
 		}
 	}
 
-	private static void toMapImpl(HttpDecodeErrors errors,
-								  Map<String, String> map, String prefix,
-								  BiFunction<String, Object[], String> formatter,
-								  String separator) {
+	private static void toMapImpl(DecodeErrors errors,
+			Map<String, String> map, String prefix,
+			BiFunction<String, Object[], String> formatter,
+			String separator) {
 		if (errors.errors != null) {
-			Error error = errors.errors.get(0);
+			DecodeError error = errors.errors.get(0);
 			map.put(prefix, formatter.apply(error.message, error.getArgs()));
 		}
 		if (errors.children != null) {

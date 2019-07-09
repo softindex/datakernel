@@ -9,20 +9,20 @@ import java.util.Map;
 import static io.datakernel.util.CollectionUtils.list;
 import static org.junit.Assert.*;
 
-public class HttpDecodeErrorsTest {
+public class DecodeErrorsTest {
 	@Test
 	public void testMergeWithTheSame() {
-		HttpDecodeErrors tree = HttpDecodeErrors.create();
-		tree.with(list(HttpDecodeErrors.Error.of("test1"),
-				HttpDecodeErrors.Error.of("test2"),
-				HttpDecodeErrors.Error.of("test3"),
-				HttpDecodeErrors.Error.of("test4")));
+		DecodeErrors tree = DecodeErrors.create();
+		tree.with(list(DecodeError.of("test1"),
+				DecodeError.of("test2"),
+				DecodeError.of("test3"),
+				DecodeError.of("test4")));
 
-		HttpDecodeErrors tree2 = HttpDecodeErrors.create();
-		tree.with(list(HttpDecodeErrors.Error.of("test11"),
-				HttpDecodeErrors.Error.of("test22"),
-				HttpDecodeErrors.Error.of("test33"),
-				HttpDecodeErrors.Error.of("test44")));
+		DecodeErrors tree2 = DecodeErrors.create();
+		tree.with(list(DecodeError.of("test11"),
+				DecodeError.of("test22"),
+				DecodeError.of("test33"),
+				DecodeError.of("test44")));
 
 		tree.merge(tree2);
 		assertEquals(8, tree.toMultimap().get("").size());
@@ -30,7 +30,7 @@ public class HttpDecodeErrorsTest {
 
 	@Test
 	public void test() {
-		HttpDecodeErrors tree = HttpDecodeErrors.of("Test");
+		DecodeErrors tree = DecodeErrors.of("Test");
 		assertTrue(tree.hasErrors());
 
 		assertEquals(Collections.emptySet(), tree.getChildren());
@@ -41,10 +41,10 @@ public class HttpDecodeErrorsTest {
 
 	@Test
 	public void testMap() {
-		HttpDecodeErrors tree = HttpDecodeErrors.create();
-		tree.with("test", HttpDecodeErrors.of("tmp1")
-				.with("test2", HttpDecodeErrors.of("tmp2")));
-		tree.with("test3", HttpDecodeErrors.of("tmp3"));
+		DecodeErrors tree = DecodeErrors.create();
+		tree.with("test", DecodeErrors.of("tmp1")
+				.with("test2", DecodeErrors.of("tmp2")));
+		tree.with("test3", DecodeErrors.of("tmp3"));
 		Map<String, String> errors = tree.toMap();
 		assertEquals(3, errors.size());
 		assertNotNull(errors.get("test"));
@@ -57,10 +57,10 @@ public class HttpDecodeErrorsTest {
 
 	@Test
 	public void testMultiMap() {
-		HttpDecodeErrors tree = HttpDecodeErrors.create();
-		tree.with("test", HttpDecodeErrors.of("tmp1")
-				.with("test2", HttpDecodeErrors.of("tmp2")));
-		tree.with("test3", HttpDecodeErrors.of("tmp3"));
+		DecodeErrors tree = DecodeErrors.create();
+		tree.with("test", DecodeErrors.of("tmp1")
+				.with("test2", DecodeErrors.of("tmp2")));
+		tree.with("test3", DecodeErrors.of("tmp3"));
 
 		Map<String, List<String>> errors = tree.toMultimap();
 		assertEquals(3, errors.size());

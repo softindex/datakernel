@@ -14,20 +14,20 @@ import static java.util.Collections.singletonList;
  * For example to ensure, that age of the person is in range 0-100 or something
  * and return a specific error tree for that input.
  */
-public interface HttpValidator<T> {
-	List<HttpDecodeErrors.Error> validate(T value);
+public interface Validator<T> {
+	List<DecodeError> validate(T value);
 
 	/**
 	 * Combines this validator with some other one.
 	 * This calls both the validators on the same input
 	 * and then returns their errors combined.
 	 */
-	default HttpValidator<T> and(HttpValidator<T> next) {
+	default Validator<T> and(Validator<T> next) {
 		if (this == alwaysOk()) return next;
 		if (next == alwaysOk()) return this;
 		return value -> {
-			List<HttpDecodeErrors.Error> thisErrors = this.validate(value);
-			List<HttpDecodeErrors.Error> nextErrors = next.validate(value);
+			List<DecodeError> thisErrors = this.validate(value);
+			List<DecodeError> nextErrors = next.validate(value);
 			return concat(thisErrors, nextErrors);
 		};
 	}
@@ -37,16 +37,16 @@ public interface HttpValidator<T> {
 	 * This calls the validators in order and if the first fails
 	 * the the second is never called and errors of the first one are returned.
 	 */
-	default HttpValidator<T> then(HttpValidator<T> next) {
+	default Validator<T> then(Validator<T> next) {
 		if (this == alwaysOk()) return next;
 		if (next == alwaysOk()) return this;
 		return value -> {
-			List<HttpDecodeErrors.Error> thisErrors = this.validate(value);
+			List<DecodeError> thisErrors = this.validate(value);
 			return thisErrors.isEmpty() ? next.validate(value) : thisErrors;
 		};
 	}
 
-	static <T> HttpValidator<T> alwaysOk() {
+	static <T> Validator<T> alwaysOk() {
 		return value -> emptyList();
 	}
 
@@ -54,7 +54,7 @@ public interface HttpValidator<T> {
 	 * Combines multiple validators repeatedly with the {@link #then} call.
 	 */
 	@SafeVarargs
-	static <T> HttpValidator<T> sequence(HttpValidator<T>... validators) {
+	static <T> Validator<T> sequence(Validator<T>... validators) {
 		return sequence(Arrays.asList(validators));
 	}
 
@@ -62,32 +62,32 @@ public interface HttpValidator<T> {
 	 * Combines multiple validators repeatedly with the {@link #then} call.
 	 */
 
-	static <T> HttpValidator<T> sequence(List<HttpValidator<T>> validators) {
-		return validators.stream().reduce(alwaysOk(), HttpValidator::then);
+	static <T> Validator<T> sequence(List<Validator<T>> validators) {
+		return validators.stream().reduce(alwaysOk(), Validator::then);
 	}
 
 	/**
 	 * Combines multiple validators repeatedly with the {@link #and} call.
 	 */
 	@SafeVarargs
-	static <T> HttpValidator<T> of(HttpValidator<T>... validators) {
+	static <T> Validator<T> of(Validator<T>... validators) {
 		return of(Arrays.asList(validators));
 	}
 
 	/**
 	 * Combines multiple validators repeatedly with the {@link #and} call.
 	 */
-	static <T> HttpValidator<T> of(List<HttpValidator<T>> validators) {
-		return validators.stream().reduce(alwaysOk(), HttpValidator::and);
+	static <T> Validator<T> of(List<Validator<T>> validators) {
+		return validators.stream().reduce(alwaysOk(), Validator::and);
 	}
 
 	/**
 	 * Creates the validator from the given predicate, using <code>template</code>
 	 * as a message, formatted with the unsatisfactory value as a first argument.
 	 */
-	static <T> HttpValidator<T> of(Predicate<T> predicate, String template) {
+	static <T> Validator<T> of(Predicate<T> predicate, String template) {
 		return value -> predicate.test(value) ?
 				emptyList() :
-				singletonList(HttpDecodeErrors.Error.of(template, value));
+				singletonList(DecodeError.of(template, value));
 	}
 }

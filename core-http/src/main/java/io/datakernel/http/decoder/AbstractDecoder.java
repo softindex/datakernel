@@ -1,13 +1,13 @@
 package io.datakernel.http.decoder;
 
 /**
- * Abstract implementation of {@link HttpDecoder} that allows to give its id as
+ * Abstract implementation of {@link Decoder} that allows to give its id as
  * a constructor parameter instead of implementing a getter for it.
  */
-public abstract class AbstractHttpDecoder<R> implements HttpDecoder<R> {
+public abstract class AbstractDecoder<R> implements Decoder<R> {
 	private final String id;
 
-	public AbstractHttpDecoder(String id) {
+	public AbstractDecoder(String id) {
 		this.id = id;
 	}
 

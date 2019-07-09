@@ -1,0 +1,161 @@
+package io.datakernel.http.decoder;
+
+import io.datakernel.functional.Either;
+import io.datakernel.http.HttpRequest;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+/**
+ * This class contains some common primitive {@link Decoder HttpDecoders}, that
+ * can be combined to form complex ones.
+ */
+@SuppressWarnings("RedundantCast")
+public final class Decoders {
+	public static final String REQUIRED_GET_PARAM = "Required GET param: %1";
+	public static final String REQUIRED_POST_PARAM = "Required POST param: %1";
+	public static final String REQUIRED_PATH_PARAM = "Required path param";
+	public static final String REQUIRED_COOKIE = "Required cookie: %1";
+
+	private static <T> Decoder<T> ofParamEx(String paramName,
+													@NotNull Mapper<String, T> fn,
+													@NotNull BiFunction<HttpRequest, String, String> paramSupplier,
+			String message) {
+		return new AbstractDecoder<T>(paramName) {
+			@Override
+			public Either<T, DecodeErrors> decode(@NotNull HttpRequest request) {
+				String str = paramSupplier.apply(request, paramName);
+				return str != null ?
+						fn.map(str)
+								.mapRight(DecodeErrors::of) :
+						Either.right(DecodeErrors.of(message, paramName));
+			}
+		};
+	}
+
+	private static <T> Decoder<T> ofParamEx(String paramName,
+													@NotNull Mapper<String, T> fn,
+													@NotNull BiFunction<HttpRequest, String, String> paramSupplier,
+													@Nullable T defaultValue) {
+		return new AbstractDecoder<T>(paramName) {
+			@Override
+			public Either<T, DecodeErrors> decode(@NotNull HttpRequest request) {
+				String str = paramSupplier.apply(request, paramName);
+				return str != null ?
+						fn.map(str)
+								.mapRight(DecodeErrors::of) :
+						Either.left(defaultValue);
+			}
+		};
+	}
+
+	public static Decoder<String> ofGet(String paramName) {
+		return ofGetEx(paramName, (Mapper<String, String>)Either::left);
+	}
+
+	public static Decoder<String> ofGet(String paramName, String defaultValue) {
+		return ofGetEx(paramName, (Mapper<String, String>) Either::left, defaultValue);
+	}
+
+	public static <T> Decoder<T> ofGet(String paramName, Function<String, T> fn, String message) {
+		return ofGetEx(paramName, Mapper.of(fn, message));
+	}
+
+	public static <T> Decoder<T> ofGet(String paramName, Function<String, T> fn, T defaultValue) {
+		return ofGetEx(paramName, Mapper.of(fn), defaultValue);
+	}
+
+	public static <T> Decoder<T> ofGetEx(@NotNull String paramName,
+												 @NotNull Mapper<String, T> fn) {
+		return ofParamEx(paramName, fn, HttpRequest::getQueryParameter, REQUIRED_GET_PARAM);
+	}
+
+	public static <T> Decoder<T> ofGetEx(@NotNull String paramName,
+												 @NotNull Mapper<String, T> fn,
+												 @Nullable T defaultValue) {
+		return ofParamEx(paramName, fn, HttpRequest::getQueryParameter, defaultValue);
+	}
+
+	public static Decoder<String> ofPost(String paramName) {
+		return ofPostEx(paramName, (Mapper<String, String>) Either::left);
+	}
+
+	public static Decoder<String> ofPost(String paramName, String defaultValue) {
+		return ofPostEx(paramName, (Mapper<String, String>) Either::left, defaultValue);
+	}
+
+	public static <T> Decoder<T> ofPost(String paramName, Function<String, T> fn, String message) {
+		return ofPostEx(paramName, Mapper.of(fn, message));
+	}
+
+	public static <T> Decoder<T> ofPost(String paramName, Function<String, T> fn, T defaultValue) {
+		return ofPostEx(paramName, Mapper.of(fn), defaultValue);
+	}
+
+	public static <T> Decoder<T> ofPostEx(@NotNull String paramName,
+												  @NotNull Mapper<String, T> fn) {
+		return ofParamEx(paramName, fn, HttpRequest::getPostParameter, REQUIRED_POST_PARAM);
+	}
+
+	public static <T> Decoder<T> ofPostEx(@NotNull String paramName,
+												  @NotNull Mapper<String, T> fn,
+												  @Nullable T defaultValue) {
+		return ofParamEx(paramName, fn, HttpRequest::getPostParameter, defaultValue);
+	}
+
+	public static Decoder<String> ofPath(String paramName) {
+		return ofPathEx(paramName, (Mapper<String, String>) Either::left);
+	}
+
+	public static Decoder<String> ofPath(String paramName, String defaultValue) {
+		return ofPathEx(paramName, (Mapper<String, String>) Either::left, defaultValue);
+	}
+
+	public static <T> Decoder<T> ofPath(String paramName, Function<String, T> fn, String message) {
+		return ofPathEx(paramName, Mapper.of(fn, message));
+	}
+
+	public static <T> Decoder<T> ofPath(String paramName, Function<String, T> fn, T defaultValue) {
+		return ofPathEx(paramName, Mapper.of(fn), defaultValue);
+	}
+
+	public static <T> Decoder<T> ofPathEx(@NotNull String paramName,
+												  @NotNull Mapper<String, T> fn) {
+		return ofParamEx(paramName, fn, HttpRequest::getPathParameter, REQUIRED_PATH_PARAM);
+	}
+
+	public static <T> Decoder<T> ofPathEx(@NotNull String paramName,
+												  @NotNull Mapper<String, T> fn,
+												  @Nullable T defaultValue) {
+		return ofParamEx(paramName, fn, HttpRequest::getPathParameter, defaultValue);
+	}
+
+	public static Decoder<String> ofCookie(String paramName) {
+		return ofCookieEx(paramName, (Mapper<String, String>) Either::left);
+	}
+
+	public static Decoder<String> ofCookie(String paramName, String defaultValue) {
+		return ofCookieEx(paramName, (Mapper<String, String>) Either::left, defaultValue);
+	}
+
+	public static <T> Decoder<T> ofCookie(String paramName, Function<String, T> fn, String message) {
+		return ofCookieEx(paramName, Mapper.of(fn, message));
+	}
+
+	public static <T> Decoder<T> ofCookie(String paramName, Function<String, T> fn, T defaultValue) {
+		return ofCookieEx(paramName, Mapper.of(fn), defaultValue);
+	}
+
+	public static <T> Decoder<T> ofCookieEx(@NotNull String paramName,
+													@NotNull Mapper<String, T> fn) {
+		return ofParamEx(paramName, fn, HttpRequest::getCookie, REQUIRED_COOKIE);
+	}
+
+	public static <T> Decoder<T> ofCookieEx(@NotNull String paramName,
+													@NotNull Mapper<String, T> fn,
+													@Nullable T defaultValue) {
+		return ofParamEx(paramName, fn, HttpRequest::getCookie, defaultValue);
+	}
+}
