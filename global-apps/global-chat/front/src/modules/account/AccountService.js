@@ -50,7 +50,7 @@ class AccountService extends Service {
   };
 
   authWithAppStore = () => {
-    window.location.href = this._appStoreUrl + '/extAuth?redirectUri=' + window.location.href + '/auth';
+    window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.href + '/auth';
   };
 
   logout() {
