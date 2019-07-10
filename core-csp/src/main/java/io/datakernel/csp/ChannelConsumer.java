@@ -53,7 +53,6 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  */
 
 public interface ChannelConsumer<T> extends Cancellable {
-
 	/**
 	 * Consumes a provided value and returns a
 	 * {@link Promise} as a marker of success.
@@ -453,4 +452,5 @@ public interface ChannelConsumer<T> extends Cancellable {
 		return Promise.ofCallback(cb ->
 				fn.accept(ack -> ack.whenComplete(cb)));
 	}
+
 }

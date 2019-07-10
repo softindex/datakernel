@@ -17,17 +17,28 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.*;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 import io.datakernel.util.CollectionUtils;
+import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Iterator;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
@@ -301,6 +312,84 @@ public final class ChannelSuppliers {
 				} else {
 					cb.set(null);
 				}
+			}
+		};
+	}
+
+	public static ChannelSupplier<ByteBuf> ofInputStream(Executor executor, MemSize bufSize, InputStream is) {
+		return ofInputStream(executor, bufSize.toInt(), is);
+	}
+
+	public static ChannelSupplier<ByteBuf> ofInputStream(Executor executor, int bufSize, InputStream is) {
+		return new AbstractChannelSupplier<ByteBuf>() {
+			@Override
+			protected Promise<ByteBuf> doGet() {
+				return Promise.ofBlockingCallable(executor, () -> {
+					ByteBuf buf = ByteBufPool.allocate(bufSize);
+					int readBytes;
+					try {
+						readBytes = is.read(buf.array(), 0, bufSize);
+					} catch (IOException e) {
+						throw new UncheckedException(e);
+					}
+					if (readBytes != -1) {
+						buf.moveTail(readBytes);
+						return buf;
+					} else {
+						buf.recycle();
+						return null;
+					}
+				});
+			}
+		};
+	}
+
+	public static InputStream asInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier) {
+		return new InputStream() {
+			@Nullable ByteBuf current = null;
+
+			@Override
+			public int read() throws IOException {
+				return doRead(ByteBuf::readByte);
+			}
+
+			@Override
+			public int read(@NotNull byte[] b, int off, int len) throws IOException {
+				return doRead(buf -> buf.read(b, off, len));
+			}
+
+			private int doRead(ToIntFunction<ByteBuf> reader) throws IOException {
+				ByteBuf peeked = current;
+				if (peeked == null) {
+					ByteBuf buf;
+					do {
+						CompletableFuture<ByteBuf> future = eventloop.submit(channelSupplier::get);
+						try {
+							buf = future.get();
+						} catch (InterruptedException e) {
+							eventloop.execute(channelSupplier::cancel);
+							throw new IOException(e);
+						} catch (ExecutionException e) {
+							Throwable cause = e.getCause();
+							if (cause instanceof IOException) throw (IOException) cause;
+							if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+							if (cause instanceof Exception) throw new IOException(cause);
+							throw (Error) cause;
+						}
+						if (buf == null) {
+							return -1;
+						}
+					} while (!buf.canRead());
+					peeked = buf;
+				}
+				int result = reader.applyAsInt(peeked);
+				if (peeked.canRead()) {
+					current = peeked;
+				} else {
+					current = null;
+					peeked.recycle();
+				}
+				return result;
 			}
 		};
 	}

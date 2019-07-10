@@ -18,15 +18,26 @@ package io.datakernel.csp;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.Recyclable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Iterator;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 
 /**
  * Provides additional functionality for managing {@link ChannelConsumer}s.
  */
+@SuppressWarnings("WeakerAccess")
 public final class ChannelConsumers {
 	private ChannelConsumers() {
 	}
@@ -67,5 +78,60 @@ public final class ChannelConsumers {
 
 	public static <T extends Recyclable> ChannelConsumer<T> recycling() {
 		return new RecyclingChannelConsumer<>();
+	}
+
+	public static ChannelConsumer<ByteBuf> ofOutputStream(Executor executor, OutputStream os) {
+		return new AbstractChannelConsumer<ByteBuf>() {
+			@Override
+			protected Promise<Void> doAccept(@Nullable ByteBuf buf) {
+				return Promise.ofBlockingRunnable(executor, () -> {
+					try {
+						if (buf != null) {
+							os.write(buf.array(), buf.head(), buf.readRemaining());
+							buf.recycle();
+						} else {
+							os.close();
+						}
+					} catch (IOException e) {
+						throw new UncheckedException(e);
+					}
+				});
+			}
+		};
+	}
+
+	public static OutputStream asOutputStream(Eventloop eventloop, ChannelConsumer<ByteBuf> channelConsumer) {
+		return new OutputStream() {
+			@Override
+			public void write(int b) throws IOException {
+				write(new byte[]{(byte) b}, 0, 1);
+			}
+
+			@Override
+			public void write(@NotNull byte[] b, int off, int len) throws IOException {
+				submit(ByteBuf.wrap(b, off, off + len));
+			}
+
+			@Override
+			public void close() throws IOException {
+				submit(null);
+			}
+
+			private void submit(ByteBuf buf) throws IOException {
+				CompletableFuture<Void> future = eventloop.submit(() -> channelConsumer.accept(buf));
+				try {
+					future.get();
+				} catch (InterruptedException e) {
+					eventloop.execute(channelConsumer::cancel);
+					throw new IOException(e);
+				} catch (ExecutionException e) {
+					Throwable cause = e.getCause();
+					if (cause instanceof IOException) throw (IOException) cause;
+					if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+					if (cause instanceof Exception) throw new IOException(cause);
+					throw (Error) cause;
+				}
+			}
+		};
 	}
 }
