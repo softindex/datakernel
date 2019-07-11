@@ -19,7 +19,7 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-common-jmx</artifactId>
+      <artifactId>datakernel-jmxapi</artifactId>
       <version>${project.version}</version>
       <optional>true</optional>
     </dependency>

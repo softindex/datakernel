@@ -29,12 +29,7 @@
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-net</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-launcher</artifactId>
+      <artifactId>datakernel-jmx</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -42,9 +37,10 @@
       <artifactId>datakernel-triggers</artifactId>
       <version>${project.version}</version>
     </dependency>
+
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-common-jmx</artifactId>
+      <artifactId>datakernel-net</artifactId>
       <version>${project.version}</version>
     </dependency>
 

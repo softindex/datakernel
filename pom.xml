@@ -46,13 +46,14 @@
     <module>cloud-etl</module>
     <module>cloud-dataflow</module>
     <module>common</module>
-    <module>common-jmx</module>
     <module>launcher</module>
     <module>boot</module>
     <module>boot-servicegraph</module>
     <module>boot-workers</module>
     <module>boot-config</module>
     <module>boot-triggers</module>
+    <module>boot-jmx</module>
+    <module>boot-jmx-api</module>
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>

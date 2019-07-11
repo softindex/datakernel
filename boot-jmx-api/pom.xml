@@ -9,8 +9,8 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>datakernel-common-jmx</artifactId>
+  <artifactId>datakernel-jmxapi</artifactId>
 
-  <name>DataKernel: Common JMX</name>
+  <name>DataKernel: Boot: JMX API</name>
 
 </project>
