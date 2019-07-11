@@ -1,10 +1,9 @@
-import crypto from 'crypto';
 import Service from '../../common/Service';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import roomsOTSystem from "./ot/RoomsOTSystem";
 import roomsSerializer from "./ot/serializer";
 import RoomsOTOperation from "./ot/RoomsOTOperation";
-import {randomString, wait, toEmoji} from '../../common/utils';
+import {randomString, wait, toEmoji, createDialogRoomId} from '../../common/utils';
 
 const RETRY_TIMEOUT = 1000;
 const ROOM_ID_LENGTH = 32;
@@ -61,19 +60,17 @@ class RoomsService extends Service {
 
   async createDialog(participantId) {
     const participants = [this._myPublicKey, participantId];
-    const roomId = this._getDialogRoomId(participants);
+    const roomId = createDialogRoomId(...participants);
     const {name} = this._contactsService.state.contacts.get(participantId);
 
-    let roomExists = false;
-    [...this.state.rooms].map(([id, room]) => {
-      if (id === roomId && !room.virtual) {
-        roomExists = true;
-      }
-    });
-    if (roomExists) {
-      return;
+    const roomExists = [...this.state.rooms]
+      .find(([id, {virtual}]) => {
+        return id === roomId && !virtual;
+      });
+
+    if (!roomExists) {
+      await this._createRoom(roomId, name, participants);
     }
-    await this._createRoom(roomId, name, participants);
   }
 
   async quitRoom(roomId) {
@@ -100,13 +97,6 @@ class RoomsService extends Service {
     });
   };
 
-  _getDialogRoomId(participants) {
-    return crypto
-      .createHash('sha256')
-      .update(participants.sort().join(';'))
-      .digest('hex');
-  }
-
   _getRoomName(room) {
     return room.participants
       .filter(participantPublicKey => participantPublicKey !== this._myPublicKey)
@@ -129,7 +119,7 @@ class RoomsService extends Service {
     const contactState = [...this._contactsService.getAll().contacts].map(([contactPublicKey, contact]) => {
       const participants = [this._myPublicKey, contactPublicKey];
       return {
-        id: this._getDialogRoomId(participants),
+        id: createDialogRoomId(...participants),
         name: contact.name,
         participants,
         virtual: true

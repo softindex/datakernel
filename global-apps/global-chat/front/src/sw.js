@@ -27,16 +27,6 @@ workbox.routing.registerRoute(
   })
 );
 
-// Cache OTNode API
-workbox.routing.registerRoute(/\/graph.*$/, workbox.strategies.networkFirst({
-  cacheName: 'api',
-  plugins: [
-    new workbox.expiration.Plugin({
-      maxAgeSeconds: 24 * 60 * 60, // 1 Day
-    }),
-  ],
-}));
-
 // custom code
 // self.addEventListener('sync', event => {
 //     if (event.tag === 'firstTimeSync') {

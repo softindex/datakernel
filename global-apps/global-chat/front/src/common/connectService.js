@@ -16,12 +16,15 @@ function connectService(ServiceContext, mapStateToProps) {
 
       static getDerivedStateFromProps(props, state) {
         const nextContext = ServiceContext.Consumer._currentValue;
+
         if (state.context !== nextContext) {
           return {
             context: nextContext,
             value: nextContext.getAll()
           };
         }
+
+        return null;
       }
 
       componentDidMount() {

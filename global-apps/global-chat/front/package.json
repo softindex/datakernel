@@ -1,8 +1,9 @@
 {
-  "name": "global-ot-chat-example",
+  "name": "global-ot-chat",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@iconify/react": "^1.1.0",
     "@material-ui/core": "^3.9.2",
     "@material-ui/icons": "^3.0.2",
     "@material-ui/styles": "^4.0.2",
@@ -13,7 +14,7 @@
     "lodash": "^4.17.11",
     "material-design-icons": "^3.0.1",
     "notistack": "^0.8.6",
-    "ot-core": "https://github.com/softindex/ot-core.git#v0.2.1",
+    "ot-core": "https://github.com/softindex/ot-core.git#v0.2.2",
     "prop-types": "^15.7.2",
     "query-string": "^6.8.1",
     "react": "^16.7.0",
@@ -43,5 +44,6 @@
     "not ie <= 11",
     "not op_mini all"
   ],
-  "devDependencies": {}
+  "devDependencies": {},
+  "proxy": "http://localhost:8080"
 }

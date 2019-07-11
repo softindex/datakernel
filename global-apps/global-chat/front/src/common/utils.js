@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 const randomStringChars = '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
 export function randomString(length) {
   let result = '';
@@ -38,4 +40,11 @@ export function toEmoji(str, length) {
     }
   }
   return emoji;
+}
+
+export function createDialogRoomId(firstPublicKey, secondPublicKey) {
+  return crypto
+    .createHash('sha256')
+    .update([firstPublicKey, secondPublicKey].sort().join(';'))
+    .digest('hex');
 }

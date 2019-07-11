@@ -49,8 +49,8 @@ class AccountService extends Service {
     });
   };
 
-  authWithAppStore = () => {
-    window.location.href = this._appStoreUrl + '/extAuth?redirectUri=' + window.location.href + '/auth';
+  authWithAppStore() {
+    window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.origin + '/sign-up/oauth';
   };
 
   logout() {

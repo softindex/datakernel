@@ -1,6 +1,6 @@
 {
-  "short_name": "OT Chat",
-  "name": "GlobalOT Chat Example",
+  "short_name": "Global Chat",
+  "name": "Global Chat",
   "icons": [
     {
       "src": "favicon.ico",
