@@ -52,6 +52,7 @@
     <module>boot-servicegraph</module>
     <module>boot-workers</module>
     <module>boot-config</module>
+    <module>boot-triggers</module>
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>
