@@ -393,16 +393,17 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return jmxStats;
 	}
 
+	@SuppressWarnings("unchecked")
 	private static JmxReducer<?> fetchReducerFrom(@Nullable Method getter) throws IllegalAccessException, InstantiationException {
 		if (getter == null) {
 			return DEFAULT_REDUCER;
 		}
 		JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
-		Class<? extends JmxReducer<?>> reducerClass = attrAnnotation.reducer();
-		if (reducerClass == DEFAULT_REDUCER.getClass()) {
+		Class<?> reducerClass = attrAnnotation.reducer();
+		if (reducerClass == JmxAttribute.DEFAULT_REDUCER) {
 			return DEFAULT_REDUCER;
 		}
-		return reducerClass.newInstance();
+		return ((Class<? extends JmxReducer<?>>) reducerClass).newInstance();
 	}
 
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {

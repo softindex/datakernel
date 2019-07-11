@@ -18,24 +18,12 @@ package io.datakernel.util;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 public final class JmxUtils {
 
 	private JmxUtils() {
-	}
-
-	public static <T> List<T> filterNulls(List<T> src) {
-		List<T> out = new ArrayList<>();
-		for (T item : src) {
-			if (item != null) {
-				out.add(item);
-			}
-		}
-		return out;
 	}
 
 	public static Map<String, Map<String, String>> createDescriptionMap(String name, @Nullable String description) {

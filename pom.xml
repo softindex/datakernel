@@ -46,6 +46,8 @@
     <module>cloud-etl</module>
     <module>cloud-dataflow</module>
     <module>common</module>
+    <module>common-jmx</module>
+    <module>launcher</module>
     <module>boot</module>
     <module>uikernel</module>
     <module>launchers</module>

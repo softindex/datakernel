@@ -9,43 +9,26 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>datakernel-http</artifactId>
+  <artifactId>datakernel-launcher</artifactId>
 
-  <name>DataKernel: HTTP</name>
+  <name>DataKernel: Launcher</name>
   <description>
-    High-performance asynchronous HTTP client and server. Contains a built-in servlets for request dispatching,
-    loading of a static content.
+    An intelligent way of launching complex applications and services according to their dependencies
   </description>
 
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-net</artifactId>
+      <artifactId>datakernel-di</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-csp</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-codec</artifactId>
-      <version>${project.version}</version>
-      <optional>true</optional>
-    </dependency>
+
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-common-jmx</artifactId>
       <version>${project.version}</version>
-      <optional>true</optional>
     </dependency>
 
-    <dependency>
-      <groupId>org.openjdk.jmh</groupId>
-      <artifactId>jmh-core</artifactId>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-test</artifactId>
@@ -53,4 +36,5 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
 </project>

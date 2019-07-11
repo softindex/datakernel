@@ -9,20 +9,8 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>datakernel-common</artifactId>
+  <artifactId>datakernel-common-jmx</artifactId>
 
-  <name>DataKernel: Common</name>
-  <description>
-    Module containing various general utilities for DataKernel project.
-  </description>
-
-  <dependencies>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-common-jmx</artifactId>
-      <version>${project.version}</version>
-      <optional>true</optional>
-    </dependency>
-  </dependencies>
+  <name>DataKernel: Common JMX</name>
 
 </project>

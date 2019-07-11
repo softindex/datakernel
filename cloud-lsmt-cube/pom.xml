@@ -38,6 +38,12 @@
       <artifactId>datakernel-common</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-common-jmx</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
 
     <dependency>
       <groupId>io.datakernel</groupId>

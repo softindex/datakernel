@@ -25,8 +25,9 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
-import static io.datakernel.util.JmxUtils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
@@ -79,7 +80,7 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
 		checkArgument(attrName.equals(name), "Attribute names do not match");
 		checkNotNull(targets);
-		List<?> notNullTargets = filterNulls(targets);
+		List<?> notNullTargets = targets.stream().filter(Objects::nonNull).collect(Collectors.toList());
 		if (notNullTargets.size() == 0) {
 			return;
 		}

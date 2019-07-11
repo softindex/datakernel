@@ -20,8 +20,8 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
 import java.util.*;
+import java.util.stream.Collectors;
 
-import static io.datakernel.util.JmxUtils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
 
@@ -130,7 +130,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	public Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources) {
 		checkNotNull(sources);
 		checkNotNull(attrNames);
-		List<?> notNullSources = filterNulls(sources);
+		List<?> notNullSources = sources.stream().filter(Objects::nonNull).collect(Collectors.toList());
 		if (notNullSources.size() == 0 || attrNames.isEmpty()) {
 			Map<String, Object> nullMap = new HashMap<>();
 			for (String attrName : attrNames) {
@@ -252,7 +252,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	@Override
 	public final void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
 		checkNotNull(targets);
-		List<?> notNullTargets = filterNulls(targets);
+		List<?> notNullTargets = targets.stream().filter(Objects::nonNull).collect(Collectors.toList());
 		if (notNullTargets.size() == 0) {
 			return;
 		}

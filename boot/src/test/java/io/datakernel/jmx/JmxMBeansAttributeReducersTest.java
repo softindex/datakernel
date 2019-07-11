@@ -66,7 +66,7 @@ public class JmxMBeansAttributeReducersTest {
 		public static final int CONSTANT_VALUE = 10;
 
 		@Override
-		public Object reduce(List<?> input) {
+		public Object reduce(List<?> list) {
 			return CONSTANT_VALUE;
 		}
 	}
@@ -128,11 +128,11 @@ public class JmxMBeansAttributeReducersTest {
 
 	public static final class PojoStubReducer implements JmxReducer<PojoStub> {
 		@Override
-		public PojoStub reduce(List<? extends PojoStub> input) {
+		public PojoStub reduce(List<? extends PojoStub> list) {
 			int totalCount = 0;
 			String totalName = "";
 
-			for (PojoStub pojoStub : input) {
+			for (PojoStub pojoStub : list) {
 				totalCount += pojoStub.getCount();
 				totalName += pojoStub.getName();
 			}

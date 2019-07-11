@@ -27,5 +27,5 @@ import java.util.List;
  * @param <T>
  */
 public interface JmxReducer<T> {
-	T reduce(List<? extends T> input);
+	T reduce(List<? extends T> list);
 }
