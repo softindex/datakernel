@@ -21,6 +21,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * This interface is for services that can be started and then stopped
+ * in the context of eventloop, so it works with {@link io.datakernel.async.Promise}
+ */
 public interface EventloopService {
 	@NotNull
 	Eventloop getEventloop();

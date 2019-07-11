@@ -79,15 +79,7 @@ public interface Multibinder<T> {
 
 	@SuppressWarnings("unchecked")
 	static Multibinder<?> combinedMultibinder(Map<Key<?>, Multibinder<?>> multibinders) {
-		return (key, bindings) -> {
-			switch (bindings.size()) {
-				case 0:
-					throw new DIException("Provided key " + key + " with no associated bindings");
-				case 1:
-					return bindings.iterator().next();
-				default:
-					return ((Multibinder<Object>) multibinders.getOrDefault(key, ERROR_ON_DUPLICATE)).multibind(key, bindings);
-			}
-		};
+		return (key, bindings) ->
+				((Multibinder<Object>) multibinders.getOrDefault(key, ERROR_ON_DUPLICATE)).multibind(key, bindings);
 	}
 }

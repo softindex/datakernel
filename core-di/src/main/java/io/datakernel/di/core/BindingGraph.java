@@ -1,5 +1,6 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.module.Multibinder;
 import io.datakernel.di.util.Constructors.Factory;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
@@ -19,6 +20,20 @@ public final class BindingGraph {
 
 	private BindingGraph() {
 		throw new AssertionError("nope.");
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolveConflicts(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Multibinder<?> multibinder) {
+		return bindings.map(localBindings -> squash(localBindings, (k, v) -> {
+			switch (v.size()) {
+				case 0:
+					throw new DIException("Provided key " + k + " with no associated bindings");
+				case 1:
+					return v.iterator().next();
+				default:
+					return ((Multibinder) multibinder).multibind(k, v);
+			}
+		}));
 	}
 
 	public static void completeBindingGraph(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,

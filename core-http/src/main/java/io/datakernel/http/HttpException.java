@@ -19,13 +19,10 @@ package io.datakernel.http;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import static io.datakernel.http.ContentTypes.PLAIN_TEXT_UTF_8;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 /**
- * This is a special exception, that is formatted as HTTP responce with code and text from it by default.
+ * This is a special exception, that is formatted as HTTP response with code and text from it by default.
  * It is a stackless exception.
+ * Please be aware that when a cause is given, its stacktrace is printed too
  */
 public class HttpException extends Exception {
 	private final int code;
@@ -91,8 +88,7 @@ public class HttpException extends Exception {
 	}
 
 	public HttpResponse createResponse() {
-		HttpResponse response = HttpResponse.ofCode(code)
-				.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8));
+		HttpResponse response = HttpResponse.ofCode(code);
 		String message = "";
 		if (getLocalizedMessage() != null) {
 			message = getLocalizedMessage();
@@ -102,7 +98,7 @@ public class HttpException extends Exception {
 			getCause().printStackTrace(new PrintWriter(writer));
 			message += "\n" + writer;
 		}
-		return response.withBody(message.getBytes(UTF_8));
+		return response.withPlainText(message);
 	}
 
 	@Override

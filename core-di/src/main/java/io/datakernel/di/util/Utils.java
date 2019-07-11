@@ -90,12 +90,6 @@ public final class Utils {
 				.collect(toMap(Entry::getKey, e -> squasher.apply(e.getKey(), e.getValue())));
 	}
 
-	@SuppressWarnings("unchecked")
-	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolve(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Multibinder<?> multibinder) {
-		return bindings.map(localBindings -> squash(localBindings, (k, v) -> ((Multibinder) multibinder).multibind(k, v)));
-		//                                                                          ^ java generics are just broken
-	}
-
 	public static void checkArgument(boolean condition) {
 		if (!condition) {
 			throw new IllegalArgumentException();

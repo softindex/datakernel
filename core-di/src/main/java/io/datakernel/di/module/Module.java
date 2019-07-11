@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.di.module.Multibinder.combinedMultibinder;
-import static io.datakernel.di.util.Utils.resolve;
 import static java.util.Collections.emptyMap;
 
 public interface Module {
@@ -33,7 +32,7 @@ public interface Module {
 	}
 
 	default Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
-		return resolve(getBindings(), combinedMultibinder(getMultibinders()));
+		return BindingGraph.resolveConflicts(getBindings(), combinedMultibinder(getMultibinders()));
 	}
 
 	static Module empty() {

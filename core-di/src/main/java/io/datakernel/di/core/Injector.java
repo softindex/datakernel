@@ -21,7 +21,8 @@ import static io.datakernel.di.core.BindingTransformer.IDENTITY;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
 import static io.datakernel.di.module.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.module.Multibinder.combinedMultibinder;
-import static io.datakernel.di.util.Utils.*;
+import static io.datakernel.di.util.Utils.getScopeDisplayString;
+import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
@@ -117,7 +118,7 @@ public class Injector {
 			@NotNull BindingTransformer<?> transformer,
 			@NotNull BindingGenerator<?> generator) {
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = resolve(bindingsMultimap, multibinder);
+		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = BindingGraph.resolveConflicts(bindingsMultimap, multibinder);
 
 		Injector injector = threadsafe ?
 				new SynchronizedInjector(parent, scope, bindings, instances) :
