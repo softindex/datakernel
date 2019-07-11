@@ -135,8 +135,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 			logger0.info("EagerSingletons: " + injector.createEagerSingletons());
 
-			Set<RootService> services = injector.getInstanceOr(new Key<Set<RootService>>() {}, emptySet());
-			Set<RootService> startedServices = new HashSet<>();
+			Set<LauncherService> services = injector.getInstanceOr(new Key<Set<LauncherService>>() {}, emptySet());
+			Set<LauncherService> startedServices = new HashSet<>();
 
 			logger0.info("Post-inject instances: " + injector.postInjectInstances());
 
@@ -199,11 +199,11 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		}
 	}
 
-	private void startServices(Collection<RootService> services, Collection<RootService> startedServices) throws Throwable {
+	private void startServices(Collection<LauncherService> services, Collection<LauncherService> startedServices) throws Throwable {
 		List<Throwable> exceptions = new ArrayList<>();
 		CountDownLatch latch = new CountDownLatch(services.size());
 		synchronized (this) {
-			for (RootService service : services) {
+			for (LauncherService service : services) {
 				if (!exceptions.isEmpty()) {
 					latch.countDown();
 					continue;
@@ -229,9 +229,9 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		}
 	}
 
-	private void stopServices(Collection<RootService> startedServices) throws InterruptedException {
+	private void stopServices(Collection<LauncherService> startedServices) throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(startedServices.size());
-		for (RootService service : startedServices) {
+		for (LauncherService service : startedServices) {
 			logger0.info("Stopping RootService: " + service);
 			service.stop().whenComplete(($, e) -> {
 				if (e != null) {

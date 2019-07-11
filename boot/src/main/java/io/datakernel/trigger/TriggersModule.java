@@ -23,7 +23,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Multibinder;
 import io.datakernel.jmx.KeyWithWorkerData;
-import io.datakernel.launcher.RootService;
+import io.datakernel.launcher.LauncherService;
 import io.datakernel.util.DIUtils;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -128,8 +128,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@ProvidesIntoSet
-	RootService start(Injector injector, Triggers triggers) {
-		return new RootService() {
+	LauncherService start(Injector injector, Triggers triggers) {
+		return new LauncherService() {
 			@Override
 			public CompletableFuture<?> start() {
 				initialize(injector);

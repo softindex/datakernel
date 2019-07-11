@@ -25,7 +25,7 @@ import io.datakernel.di.util.Trie;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.launcher.RootService;
+import io.datakernel.launcher.LauncherService;
 import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
@@ -264,8 +264,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@ProvidesIntoSet
-	RootService service(ServiceGraph serviceGraph) {
-		return new RootService() {
+	LauncherService service(ServiceGraph serviceGraph) {
+		return new LauncherService() {
 			@Override
 			public CompletableFuture<?> start() {
 				CompletableFuture<Void> future = new CompletableFuture<>();

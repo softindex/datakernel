@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * A service which provides non-blocking start and stop operations.
  */
-public interface RootService {
+public interface LauncherService {
 	CompletableFuture<?> start();
 
 	CompletableFuture<?> stop();
