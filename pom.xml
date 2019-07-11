@@ -49,6 +49,8 @@
     <module>common-jmx</module>
     <module>launcher</module>
     <module>boot</module>
+    <module>boot-workers</module>
+    <module>boot-servicegraph</module>
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>
