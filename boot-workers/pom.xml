@@ -16,7 +16,7 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-launcher</artifactId>
+      <artifactId>datakernel-di</artifactId>
       <version>${project.version}</version>
     </dependency>
 
