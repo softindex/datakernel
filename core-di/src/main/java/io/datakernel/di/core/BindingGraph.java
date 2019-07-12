@@ -76,7 +76,7 @@ public final class BindingGraph {
 
 				generated.put(key, binding);
 
-				// ensure that its dependencies are generated if nesessary
+				// ensure that its dependencies are generated if necessary
 				for (Dependency dependency : binding.getDependencies()) {
 					getBinding(dependency.getKey());
 				}
@@ -110,7 +110,7 @@ public final class BindingGraph {
 					continue;
 				}
 				known.put(depKey, provider.getBinding(depKey)); // put even nulls in known just as a little optimization
-				// when generating dependencies we dont fail and just do nothing
+				// when generating dependencies we don't fail and just do nothing
 				// unsatisfied dependency check will collect all of them and make a nice error
 			}
 		}
@@ -118,7 +118,7 @@ public final class BindingGraph {
 	}
 
 	/**
-	 * This method returns mapping from *unstatisfied keys* to *bindings that require them*
+	 * This method returns mapping from *unsatisfied keys* to *bindings that require them*
 	 * and not the common *key and the bindings that provide it*
 	 */
 	public static Map<Key<?>, Set<Entry<Key<?>, Binding<?>>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
@@ -132,7 +132,10 @@ public final class BindingGraph {
 						.flatMap(e -> Arrays.stream(e.getValue().getDependencies())
 								.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
 								.map(dependency -> new DependencyToBinding(dependency.getKey(), e))),
-				bindings.getChildren().values().stream().flatMap(scopeBindings -> getUnsatisfiedDependencies(union(known, scopeBindings.get().keySet()), scopeBindings))
+				bindings.getChildren()
+						.values()
+						.stream()
+						.flatMap(scopeBindings -> getUnsatisfiedDependencies(union(known, scopeBindings.get().keySet()), scopeBindings))
 		);
 	}
 

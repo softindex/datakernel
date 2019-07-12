@@ -112,6 +112,16 @@ public class Injector {
 				combinedGenerator(module.getBindingGenerators()));
 	}
 
+	/**
+	 * TODO: make it cleaner.
+	 * @param multibinder is root multibinder for every lower-level multibinder.
+	 *                    It contains all system multibindings.
+	 * @param transformer is root transformer for every lower-level transformer.
+	 *                    It contains all system transformers.
+	 * @param generator   is root generator   for every lower-level generator.
+	 *                    It contains all system generators.
+	 * @return
+	 */
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
 			@Nullable Scope scope,
 			@NotNull Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindingsMultimap,
