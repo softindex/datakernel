@@ -2,10 +2,13 @@ package io.datakernel.bytebuf;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Simple lock-free concurrent stack implementation for the {@link ByteBuf ByteBufs} that is used in {@link ByteBufPool}
+ */
 final class ByteBufConcurrentStack {
 	private final AtomicReference<ByteBuf> head = new AtomicReference<>();
 
-	void push(ByteBuf newHead) {
+	public void push(ByteBuf newHead) {
 		ByteBuf oldHead;
 		do {
 			oldHead = head.get();
@@ -13,7 +16,7 @@ final class ByteBufConcurrentStack {
 		} while (!head.compareAndSet(oldHead, newHead));
 	}
 
-	ByteBuf pop() {
+	public ByteBuf pop() {
 		ByteBuf oldHead;
 		ByteBuf newHead;
 		do {
@@ -30,11 +33,11 @@ final class ByteBufConcurrentStack {
 		return head.get();
 	}
 
-	void clear() {
+	public void clear() {
 		head.set(null);
 	}
 
-	boolean isEmpty() {
+	public boolean isEmpty() {
 		return head.get() == null;
 	}
 

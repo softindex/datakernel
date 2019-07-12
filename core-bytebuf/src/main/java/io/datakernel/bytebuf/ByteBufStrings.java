@@ -20,9 +20,8 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.util.ThreadLocalCharArray;
 
 /**
- * Allows to wrap and unwrap Strings to {@link ByteBuf}.
+ * This class contains various fast string utilities for {@link ByteBuf ByteBufs} and byte arrays
  */
-@SuppressWarnings({"WeakerAccess", "unused"})
 public final class ByteBufStrings {
 	public static final ParseException READ_PAST_LIMIT = new ParseException(ByteBufStrings.class, "Malformed utf-8 input: Read past end");
 	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException(ByteBufStrings.class, "Malformed utf-8 input");
@@ -32,9 +31,9 @@ public final class ByteBufStrings {
 	public static final byte SP = (byte) ' ';
 	public static final byte HT = (byte) '\t';
 
-	// Same as String.valueOf(Long.MIN_VALUE).getBytes()
+	/** Same as String.valueOf(Long.MIN_VALUE).getBytes() */
 	private static final byte[] MIN_LONG_BYTES = new byte[]{45, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 56, 48, 56};
-	// Same as String.valueOf(Integer.MIN_VALUE).getBytes()
+	/** Same as String.valueOf(Integer.MIN_VALUE).getBytes() */
 	private static final byte[] MIN_INT_BYTES = new byte[]{45, 50, 49, 52, 55, 52, 56, 51, 54, 52, 56};
 
 	private ByteBufStrings() {}
@@ -60,16 +59,15 @@ public final class ByteBufStrings {
 	}
 
 	public static ByteBuf wrapAscii(String string) {
-		ByteBuf buf = ByteBufPool.allocate(string.length());
-		byte[] array = buf.array();
+		byte[] array = new byte[string.length()];
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
 		}
-		buf.moveTail(string.length());
-		return buf;
+		return ByteBuf.wrapForReading(array);
 	}
 
 	public static String decodeAscii(byte[] array, int pos, int len, char[] tmpBuffer) {
+		assert tmpBuffer.length >= len : "given char buffer was not big enough";
 		int charIndex = 0, end = pos + len;
 		while (pos < end) {
 			int c = array[pos++] & 0xff;

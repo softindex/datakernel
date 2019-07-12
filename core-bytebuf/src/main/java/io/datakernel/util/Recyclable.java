@@ -23,15 +23,33 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
+/**
+ * Since some objects (mainly {@link io.datakernel.bytebuf.ByteBuf ByteBufs}) have
+ * the notion of ownership and recyclability, a way to recognize them is needed.
+ * This interface marks objects that need to be recycled at the end of their lifetime,
+ * so that some generic abstraction (such as CSP) could try to recycle some object that it consumes.
+ */
 public interface Recyclable {
+
+	/**
+	 * Free some resource that this object posesses, e.g. return itself to the pool etc.
+	 */
 	void recycle();
 
+	/**
+	 * A method that should be called by generic consuming abstractions as described in class doc.
+	 */
 	static void tryRecycle(@Nullable Object object) {
 		if (object instanceof Recyclable) {
 			((Recyclable) object).recycle();
 		}
 	}
 
+	/**
+	 * "Recursive implementation of Recyclable for some standard collections".
+	 * <p>
+	 * This method is called to make sure that some kind of object structure is fully recycled.
+	 */
 	static void deepRecycle(@Nullable Object object) {
 		if (object == null) return;
 		if (object instanceof Recyclable) {

@@ -21,7 +21,6 @@ import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufConsumer;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
@@ -39,6 +38,8 @@ import io.datakernel.util.MemSize;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.function.Consumer;
 
 import static io.datakernel.async.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -86,7 +87,7 @@ public abstract class AbstractHttpConnection {
 	@MagicConstant(flags = {KEEP_ALIVE, GZIPPED, CHUNKED, BODY_RECEIVED, BODY_SENT, CLOSED})
 	protected byte flags = 0;
 
-	private final ByteBufConsumer onHeaderBuf = this::onHeaderBuf;
+	private final Consumer<ByteBuf> onHeaderBuf = this::onHeaderBuf;
 
 	protected ConnectionsLinkedList pool;
 	protected AbstractHttpConnection prev;

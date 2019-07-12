@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
+import java.util.function.Consumer;
 import java.util.stream.Collector;
 
 import static io.datakernel.util.CollectionUtils.emptyIterator;
@@ -229,7 +230,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	@NotNull
-	public ByteBuf takeAtLeast(int size, @NotNull ByteBufConsumer recycled) {
+	public ByteBuf takeAtLeast(int size, @NotNull Consumer<ByteBuf> recycled) {
 		assert hasRemainingBytes(size);
 		if (size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
@@ -275,7 +276,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	@NotNull
-	public ByteBuf takeExactSize(int exactSize, @NotNull ByteBufConsumer recycledBufs) {
+	public ByteBuf takeExactSize(int exactSize, @NotNull Consumer<ByteBuf> recycledBufs) {
 		assert hasRemainingBytes(exactSize);
 		if (exactSize == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
@@ -308,7 +309,7 @@ public final class ByteBufQueue implements Recyclable {
 	 * @param size the size of the ByteBuf to be consumed
 	 * @param consumer a consumer for the ByteBuf
 	 */
-	public void consume(int size, @NotNull ByteBufConsumer consumer) {
+	public void consume(int size, @NotNull Consumer<ByteBuf> consumer) {
 		assert hasRemainingBytes(size);
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
@@ -488,7 +489,7 @@ public final class ByteBufQueue implements Recyclable {
 		return maxSize - s;
 	}
 
-	public int skip(int maxSize, @NotNull ByteBufConsumer recycledBufs) {
+	public int skip(int maxSize, @NotNull Consumer<ByteBuf> recycledBufs) {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBuf buf = bufs[first];
@@ -537,7 +538,7 @@ public final class ByteBufQueue implements Recyclable {
 		return maxSize - s;
 	}
 
-	public int drainTo(@NotNull byte[] dest, int destOffset, int maxSize, @NotNull ByteBufConsumer recycledBufs) {
+	public int drainTo(@NotNull byte[] dest, int destOffset, int maxSize, @NotNull Consumer<ByteBuf> recycledBufs) {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBuf buf = bufs[first];
@@ -602,7 +603,7 @@ public final class ByteBufQueue implements Recyclable {
 		return size;
 	}
 
-	public int drainTo(@NotNull ByteBufConsumer dest) {
+	public int drainTo(@NotNull Consumer<ByteBuf> dest) {
 		int size = 0;
 		while (hasRemaining()) {
 			ByteBuf buf = take();
@@ -630,7 +631,7 @@ public final class ByteBufQueue implements Recyclable {
 		return maxSize - s;
 	}
 
-	public int drainTo(@NotNull ByteBufConsumer dest, int maxSize) {
+	public int drainTo(@NotNull Consumer<ByteBuf> dest, int maxSize) {
 		int s = maxSize;
 		while (s != 0 && hasRemaining()) {
 			ByteBuf buf = takeAtMost(s);
