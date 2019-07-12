@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Utils.nullify;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
@@ -267,9 +268,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	private void doClose() {
 		rpcClient.removeConnection(address);
 
-		if (scheduleExpiredResponsesTask != null) {
-			scheduleExpiredResponsesTask.cancel();
-		}
+		scheduleExpiredResponsesTask = nullify(scheduleExpiredResponsesTask, ScheduledRunnable::cancel);
 
 		while (!activeRequests.isEmpty()) {
 			for (Integer cookie : new HashSet<>(activeRequests.keySet())) {

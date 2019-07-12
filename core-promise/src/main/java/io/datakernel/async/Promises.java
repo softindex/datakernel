@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.CollectionUtils.transformIterator;
+import static io.datakernel.util.Utils.nullify;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -83,10 +84,7 @@ public final class Promises {
 
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
-				if (schedule != null) {
-					schedule.cancel();
-					schedule = null;
-				}
+				schedule = nullify(schedule, ScheduledRunnable::cancel);
 				if (e == null) {
 					tryComplete(result);
 				} else {

@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.MemSize.kilobytes;
 import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Utils.nullify;
 
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
@@ -344,10 +345,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return;
 		}
 
-		if (scheduledReadTimeout != null) {
-			scheduledReadTimeout.cancel();
-			scheduledReadTimeout = null;
-		}
+		scheduledReadTimeout = nullify(scheduledReadTimeout, ScheduledRunnable::cancel);
 
 		if (numRead == -1) {
 			buf.recycle();
@@ -454,10 +452,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			}
 		}
 
-		if (scheduledWriteTimeout != null) {
-			scheduledWriteTimeout.cancel();
-			scheduledWriteTimeout = null;
-		}
+		scheduledWriteTimeout = nullify(scheduledWriteTimeout, ScheduledRunnable::cancel);
 
 		if (writeEndOfStream) {
 			if (readEndOfStream) {
@@ -473,28 +468,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
 		doClose();
-		if (readBuf != null) {
-			readBuf.recycle();
-		}
-		if (writeBuf != null) {
-			writeBuf.recycle();
-		}
-		if (scheduledWriteTimeout != null) {
-			scheduledWriteTimeout.cancel();
-			scheduledWriteTimeout = null;
-		}
-		if (scheduledReadTimeout != null) {
-			scheduledReadTimeout.cancel();
-			scheduledReadTimeout = null;
-		}
-		if (write != null) {
-			write.setException(e);
-			write = null;
-		}
-		if (read != null) {
-			read.setException(e);
-			read = null;
-		}
+		readBuf = nullify(readBuf, ByteBuf::recycle);
+		writeBuf = nullify(writeBuf, ByteBuf::recycle);
+		scheduledReadTimeout = nullify(scheduledReadTimeout, ScheduledRunnable::cancel);
+		scheduledWriteTimeout = nullify(scheduledWriteTimeout, ScheduledRunnable::cancel);
+		read = nullify(read, SettablePromise::setException, e);
+		write = nullify(write, SettablePromise::setException, e);
 	}
 
 	private void doClose() {

@@ -21,6 +21,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.util.Utils.nullify;
+
 /**
  * This class represents a UDP packet. Each message is routed from one machine to another based solely on
  * information contained within that packet
@@ -75,9 +77,6 @@ public final class UdpPacket {
 	 * Recycles data buffer. You should do it after use.
 	 */
 	public void recycle() {
-		if (buf != null) {
-			buf.recycle();
-			buf = null;
-		}
+		buf = nullify(buf, ByteBuf::recycle);
 	}
 }

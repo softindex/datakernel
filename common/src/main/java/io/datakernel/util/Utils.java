@@ -17,6 +17,8 @@
 package io.datakernel.util;
 
 import io.datakernel.exception.ParseException;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
@@ -291,6 +293,24 @@ public class Utils {
 		}
 		StackTraceElement caller = Thread.currentThread().getStackTrace()[2];
 		System.out.printf("DEBUG.(%s:%d).%s| %s%n", caller.getFileName(), caller.getLineNumber(), caller.getMethodName(), message);
+	}
+
+	@Nullable
+	@Contract("_, _ -> null")
+	public static <V> V nullify(@Nullable V value, @NotNull Consumer<@NotNull V> action) {
+		if (value != null) {
+			action.accept(value);
+		}
+		return null;
+	}
+
+	@Nullable
+	@Contract("_, _, _ -> null")
+	public static <V, T1> V nullify(@Nullable V value, @NotNull BiConsumer<@NotNull V, T1> action, T1 actionArg1) {
+		if (value != null) {
+			action.accept(value, actionArg1);
+		}
+		return null;
 	}
 
 }

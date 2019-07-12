@@ -42,6 +42,7 @@ import java.util.function.ToIntFunction;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.util.Utils.nullify;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -404,10 +405,7 @@ public final class ChannelSuppliers {
 
 			@Override
 			public void close() {
-				if (current != null) {
-					current.recycle();
-					current = null;
-				}
+				current = nullify(current, ByteBuf::recycle);
 				eventloop.execute(channelSupplier::close);
 			}
 		};

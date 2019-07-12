@@ -40,6 +40,7 @@ import java.util.function.Function;
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
 import static io.datakernel.util.MemSize.kilobytes;
+import static io.datakernel.util.Utils.nullify;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 
@@ -215,7 +216,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 
 	public static final class MultipartFrame implements Recyclable {
 		@Nullable
-		private final ByteBuf data;
+		private ByteBuf data;
 		@Nullable
 		private final Map<String, String> headers;
 
@@ -252,9 +253,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 
 		@Override
 		public void recycle() {
-			if (data != null) {
-				data.recycle();
-			}
+			data = nullify(data, ByteBuf::recycle);
 		}
 
 		@Override

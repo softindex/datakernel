@@ -23,10 +23,11 @@ import io.global.common.SignedData;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Utils.nullify;
 
 public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 	@Nullable
-	private final ByteBuf buf;
+	private ByteBuf buf;
 
 	@Nullable
 	private final SignedData<GlobalFsCheckpoint> checkpoint;
@@ -62,9 +63,7 @@ public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 
 	@Override
 	public void recycle() {
-		if (buf != null) {
-			buf.recycle();
-		}
+		buf = nullify(buf, ByteBuf::recycle);
 	}
 
 	public ByteBuf getBuf() {

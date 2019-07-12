@@ -229,7 +229,7 @@ public final class ByteBufPool {
 	 *
 	 * @param buf the ByteBuf to be recycled
 	 */
-	public static void recycle(@NotNull ByteBuf buf) {
+	static void recycle(@NotNull ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
 		ByteBufConcurrentStack stack = slabs[slab];
 		stack.push(buf);

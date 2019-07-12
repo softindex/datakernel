@@ -32,12 +32,15 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.util.Utils.nullify;
+
 public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService, EventloopJmxMBean {
 	protected final Eventloop eventloop;
 
 	private long timestamp;
 	private long reloadPeriod;
 	private long retryPeriod = 1000L;
+	@Nullable
 	private ScheduledRunnable scheduledRunnable;
 	private final Map<K, A> cache = new HashMap<>();
 	private int reloads;
@@ -65,7 +68,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 
 	private void doReload() {
 		reloads++;
-		scheduledRunnable.cancel();
+		scheduledRunnable = nullify(scheduledRunnable, ScheduledRunnable::cancel);
 		long reloadTimestamp = eventloop.currentTimeMillis();
 		reload(timestamp).whenComplete((result, e) -> {
 			if (e == null) {
@@ -109,7 +112,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	@NotNull
 	@Override
 	public MaterializedPromise<Void> stop() {
-		if (scheduledRunnable != null) scheduledRunnable.cancel();
+		scheduledRunnable = nullify(scheduledRunnable, ScheduledRunnable::cancel);
 		return Promise.complete();
 	}
 

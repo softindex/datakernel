@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 
+import static io.datakernel.util.Utils.nullify;
+
 @SuppressWarnings("UnusedReturnValue")
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class);
@@ -103,7 +105,6 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		static Schedule ofPeriod(Duration period) {
 			return ofPeriod(period.toMillis());
 		}
-
 
 		/**
 		 * Schedules task in period of current and next task.
@@ -211,9 +212,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 						errorCount++;
 						logger.error("Retry attempt " + errorCount, e);
 						if (abortOnError) {
-							if (scheduledTask != null) {
-								scheduledTask.cancel();
-							}
+							scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
 							throw new RuntimeException(e);
 						} else {
 							scheduleTask();
@@ -233,17 +232,14 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	@NotNull
 	@Override
 	public MaterializedPromise<Void> stop() {
-		if (scheduledTask != null) {
-			scheduledTask.cancel();
-		}
+		scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
 		return Promise.complete();
 	}
 
 	public void setSchedule(Schedule schedule) {
 		this.schedule = schedule;
 		if (stats.getActivePromises() != 0 && scheduledTask != null && !scheduledTask.isCancelled()) {
-			scheduledTask.cancel();
-			scheduledTask = null;
+			scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
 			scheduleTask();
 		}
 	}
@@ -251,8 +247,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	public void setRetryPolicy(RetryPolicy retryPolicy) {
 		this.retryPolicy = retryPolicy;
 		if (stats.getActivePromises() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastException != null) {
-			scheduledTask.cancel();
-			scheduledTask = null;
+			scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
 			scheduleTask();
 		}
 	}
@@ -270,10 +265,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 			if (enabled) {
 				scheduleTask();
 			} else {
-				if (scheduledTask != null && !scheduledTask.isCancelled()) {
-					scheduledTask.cancel();
-					scheduledTask = null;
-				}
+				scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
 			}
 		}
 	}

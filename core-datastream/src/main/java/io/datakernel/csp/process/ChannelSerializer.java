@@ -33,6 +33,7 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Utils.nullify;
 import static java.lang.Math.max;
 
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
@@ -126,10 +127,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	@Override
 	protected void onError(Throwable e) {
 		bufs.clear();
-		if (input.buf != null) {
-			input.buf.recycle();
-			input.buf = ByteBuf.empty();
-		}
+		input.buf = nullify(input.buf, ByteBuf::recycle);
 		output.close(e);
 	}
 
