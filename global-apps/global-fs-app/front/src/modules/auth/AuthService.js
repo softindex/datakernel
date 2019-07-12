@@ -50,7 +50,7 @@ class AuthService extends Store {
   }
 
   authWithAppStore() {
-    window.location.href = this._appStoreUrl + '/extAuth?redirectUri=' + window.location.href + '/auth';
+    window.location.href = this._appStoreUrl + '/oAuth?redirectURI=' + window.location.href + '/auth';
   }
 
   logout() {
