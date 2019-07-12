@@ -10,6 +10,7 @@ import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -132,9 +133,22 @@ public class Injector {
 		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = BindingGraph.getUnsatisfiedDependencies(bindings);
 		if (!unsatisfied.isEmpty()) {
 			throw new DIException(unsatisfied.entrySet().stream()
-					.map(entry -> entry.getValue().stream()
-							.map(binding -> binding.getKey().getDisplayString() + " " + Utils.getLocation(binding.getValue()))
-							.collect(joining("\n\t\t     and ", "\tkey " + entry.getKey().getDisplayString() + ":\n\t\trequired to make ", "")))
+					.map(entry -> {
+						Key<?> required = entry.getKey();
+						String displayString = required.getDisplayString();
+						return entry.getValue().stream()
+								.map(binding -> {
+									Key<?> key = binding.getKey();
+									String displayAndLocation = key.getDisplayString() + " " + Utils.getLocation(binding.getValue());
+									Class<?> rawType = key.getRawType();
+									if (Modifier.isStatic(rawType.getModifiers()) || !required.getRawType().equals(rawType.getEnclosingClass())) {
+										return displayAndLocation;
+									}
+									String indent = new String(new char[Utils.getKeyDisplayCenter(key) + 2]).replace('\0', ' ');
+									return displayAndLocation + "\n\t\t" + indent + "^- this is a non-static inner class with implicit dependency on its enclosing class";
+								})
+								.collect(joining("\n\t\t- ", "\tkey " + displayString + " required to make:\n\t\t- ", ""));
+					})
 					.collect(joining("\n", "Unsatisfied dependencies detected:\n", "\n")));
 		}
 
@@ -142,9 +156,7 @@ public class Injector {
 		if (!cycles.isEmpty()) {
 			throw new DIException(cycles.stream()
 					.map(cycle -> {
-						Name firstName = cycle[0].getName();
-						int nameOffset = firstName != null ? firstName.getDisplayString().length() + 1 : 0;
-						int offset = nameOffset + (cycle[0].getDisplayString().length() - nameOffset) / 2;
+						int offset = Utils.getKeyDisplayCenter(cycle[0]);
 						String cycleString = Arrays.stream(cycle).map(Key::getDisplayString).collect(joining(" -> ", "\t", ""));
 						String indent = new String(new char[offset]).replace('\0', ' ');
 						String line = new String(new char[cycleString.length() - offset]).replace('\0', '-');

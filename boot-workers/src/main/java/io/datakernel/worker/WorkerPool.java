@@ -20,19 +20,20 @@ import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
+import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.emptyMap;
 
 public final class WorkerPool {
 	private final int id;
 	private final Scope scope;
 	private final Injector[] scopeInjectors;
+	private final Map<Key<?>, Binding<?>> scopeBindings;
 
 	@SuppressWarnings("unchecked")
 	public static final class Instances<T> implements Iterable<T> {
@@ -70,8 +71,13 @@ public final class WorkerPool {
 		this.id = id;
 		this.scope = scope;
 		this.scopeInjectors = new Injector[workers];
+
+		Trie<Scope, Map<Key<?>, Binding<?>>> subtrie = injector.getBindings().get(scope);
+		this.scopeBindings = subtrie != null ? subtrie.get() : emptyMap();
+
 		for (int i = 0; i < workers; i++) {
-			Map<Key<?>, Object> instances = new HashMap<>(singletonMap(Key.of(int.class, WorkerId.class), i));
+			Map<Key<?>, Object> instances = new HashMap<>();
+			instances.put(Key.of(int.class, WorkerId.class), i); // the worker id override
 			scopeInjectors[i] = injector.enterScope(scope, instances, false);
 		}
 	}
@@ -91,11 +97,11 @@ public final class WorkerPool {
 
 	@NotNull
 	public <T> Instances<T> getInstances(Key<T> key) {
-		Instances<T> instances = new Instances<>(new Object[scopeInjectors.length]);
+		Object[] instances = new Object[scopeInjectors.length];
 		for (int i = 0; i < scopeInjectors.length; i++) {
-			instances.instances[i] = scopeInjectors[i].getInstance(key);
+			instances[i] = scopeInjectors[i].getInstance(key);
 		}
-		return instances;
+		return new Instances<>(instances);
 	}
 
 	@Nullable
@@ -105,21 +111,24 @@ public final class WorkerPool {
 
 	@Nullable
 	public <T> Instances<T> peekInstances(Key<T> key) {
-		if (!scopeInjectors[0].getBindings().get().containsKey(key)) return null;
+		if (!scopeBindings.containsKey(key)) {
+			return null;
+		}
 		Object[] instances = doPeekInstances(key);
-		if (Stream.of(instances).anyMatch(Objects::isNull)) return null;
+		if (Arrays.stream(instances).anyMatch(Objects::isNull)) {
+			return null;
+		}
 		return new Instances<>(instances);
 	}
 
 	@NotNull
 	public Map<Key<?>, Instances<?>> peekInstances() {
 		Map<Key<?>, Instances<?>> map = new HashMap<>();
-		Map<Key<?>, Binding<?>> bindings = scopeInjectors[0].getBindings().get();
-		for (Key<?> key : scopeInjectors[0].peekInstances().keySet()) {
-			if (!bindings.containsKey(key)) continue;
+		for (Key<?> key : scopeBindings.keySet()) {
 			Object[] instances = doPeekInstances(key);
-			if (Stream.of(instances).anyMatch(Objects::isNull)) continue;
-			map.put(key, new Instances<>(instances));
+			if (Arrays.stream(instances).noneMatch(Objects::isNull)) {
+				map.put(key, new Instances<>(instances));
+			}
 		}
 		return map;
 	}

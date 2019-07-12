@@ -213,4 +213,9 @@ public final class Utils {
 		}
 	}
 
+	public static int getKeyDisplayCenter(Key<?> key) {
+		Name name = key.getName();
+		int nameOffset = name != null ? name.getDisplayString().length() + 1 : 0;
+		return nameOffset + (key.getDisplayString().length() - nameOffset) / 2;
+	}
 }

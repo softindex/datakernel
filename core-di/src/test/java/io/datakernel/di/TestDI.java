@@ -20,7 +20,6 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static io.datakernel.di.util.Utils.printGraphVizGraph;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -340,7 +339,7 @@ public final class TestDI {
 		class ClassWithCustomDeps {
 
 			@Inject
-			@io.datakernel.di.annotation.Optional
+			@Optional
 			@Nullable
 			String string;
 
@@ -378,7 +377,7 @@ public final class TestDI {
 			fail("should've failed, but didn't");
 		} catch (DIException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("Unsatisfied dependencies detected:\n\tkey Integer:\n\t\trequired to make TestDI"));
+			assertTrue(e.getMessage().startsWith("Unsatisfied dependencies detected:\n\tkey Integer required"));
 		}
 	}
 
@@ -410,8 +409,6 @@ public final class TestDI {
 			bind(String.class).to(() -> "hello");
 			bind(int.class).toInstance(43);
 		}});
-
-		System.out.println(makeGraphVizGraph(injector.getBindings()));
 
 		MyServiceImpl service = injector.getInstance(MyServiceImpl.class);
 
@@ -482,8 +479,6 @@ public final class TestDI {
 		};
 
 		Injector injector = Injector.of(module);
-
-		injector.getBindings().get().forEach((k, b) -> System.out.println(k.getDisplayString() + " -> " + b.getDisplayString()));
 
 		assertEquals("hello", injector.getInstance(new Key<Container<String>>() {}).object);
 		assertEquals(42, injector.getInstance(new Key<Container<Integer>>() {}).object.intValue());
