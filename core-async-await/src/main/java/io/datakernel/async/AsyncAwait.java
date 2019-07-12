@@ -8,6 +8,19 @@ import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
+/**
+ * This is a simple and inefficient implementation of a popular
+ * async-await technique found in other languages for DataKernel {@link Promise Promises}.
+ * <p>
+ * Async calls can be made only in context of some {@link Eventloop} and their
+ * blocking bodies (the lambdas) are submitted to a {@link Executor}.
+ * <p>
+ * Await calls block until the promise they are given is complete and return their result
+ * or throw their exception.
+ * <p>
+ * Due to their ineficiency, those constructs cannot really be used in production code,
+ * but they can be used in testing for higher code clarity.
+ */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public final class AsyncAwait {
 	private AsyncAwait() {}
@@ -24,8 +37,7 @@ public final class AsyncAwait {
 	public static void shutdownExecutor() {
 		Executor executor = EXECUTOR;
 		if (executor instanceof ExecutorService) {
-			ExecutorService executorService = (ExecutorService) executor;
-			executorService.shutdown();
+			((ExecutorService) executor).shutdown();
 		}
 	}
 
@@ -196,5 +208,4 @@ public final class AsyncAwait {
 			T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6) throws Exception {
 		return awaitImpl(() -> fn.call(arg1, arg2, arg3, arg4, arg5, arg6));
 	}
-
 }
