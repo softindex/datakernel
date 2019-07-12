@@ -2,6 +2,9 @@ package io.datakernel.codec;
 
 import java.util.List;
 
+/**
+ * Encorer can write an object of type T into a {@link StructuredOutput}.
+ */
 public interface StructuredEncoder<T> {
 	void encode(StructuredOutput out, T item);
 
@@ -20,5 +23,4 @@ public interface StructuredEncoder<T> {
 	static <T> StructuredEncoder<List<T>> ofList(StructuredEncoder<T> encoder) {
 		return (out, list) -> out.writeList(encoder, list);
 	}
-
 }

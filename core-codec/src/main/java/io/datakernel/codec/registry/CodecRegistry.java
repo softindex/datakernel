@@ -27,16 +27,28 @@ import java.util.function.Function;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
+/**
+ * A registry which stores codecs by their type and allows dynamic dispatch of them.
+ * <p>
+ * Also it allows dynamic construction of codecs for generic types.
+ */
 public final class CodecRegistry implements CodecFactory {
 	private final Map<Class<?>, BiFunction<CodecFactory, StructuredCodec<?>[], StructuredCodec<?>>> map = new HashMap<>();
 
 	private CodecRegistry() {
 	}
 
+	/**
+	 * Creates a new completely empty registry.
+	 * You are advised to use {@link #createDefault()} factory method instead.
+	 */
 	public static CodecRegistry create() {
 		return new CodecRegistry();
 	}
 
+	/**
+	 * Creates a registry with a set of default codcecs - primitives, some Java types, collections, DataKernel tuples.
+	 */
 	public static CodecRegistry createDefault() {
 		return create()
 				.with(void.class, VOID_CODEC)

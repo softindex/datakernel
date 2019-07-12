@@ -8,6 +8,10 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This is an abstraction that allows you to read data in uniform way
+ * from different sources with different implementations of this interface
+ */
 public interface StructuredInput {
 	void readNull() throws ParseException;
 

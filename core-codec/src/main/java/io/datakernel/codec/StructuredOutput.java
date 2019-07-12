@@ -6,6 +6,10 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This is an abstraction that allows you to write data in uniform way
+ * in different forms with different implementations of this interface
+ */
 public interface StructuredOutput {
 	void writeNull();
 

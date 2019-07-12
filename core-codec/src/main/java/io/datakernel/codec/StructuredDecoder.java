@@ -4,6 +4,9 @@ import io.datakernel.exception.ParseException;
 
 import java.util.function.Supplier;
 
+/**
+ * Encorer can read an object of type T from a {@link StructuredInput}.
+ */
 public interface StructuredDecoder<T> {
 	T decode(StructuredInput in) throws ParseException;
 
@@ -18,5 +21,4 @@ public interface StructuredDecoder<T> {
 	static <T> StructuredDecoder<T> ofTuple(StructuredDecoder<T> decoder) {
 		return in -> in.readTuple(decoder);
 	}
-
 }

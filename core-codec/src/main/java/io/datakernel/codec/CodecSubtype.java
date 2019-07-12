@@ -25,6 +25,10 @@ import java.util.Map;
 
 import static java.lang.Math.max;
 
+/**
+ * This is a {@link StructuredCodec codec} that stores subtypes of T with different codecs
+ * as a <a href="https://en.wikipedia.org/wiki/Tagged_union">tagged union</a> with string tags.
+ */
 public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, StructuredCodec<T> {
 	private final Map<String, StructuredCodec<? extends T>> namesToAdapters = new HashMap<>();
 	private final Map<Type, String> subtypesToNames = new HashMap<>();
@@ -36,12 +40,18 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 		return new CodecSubtype<>();
 	}
 
+	/**
+	 * Add a subtype along with its codec and custom string tag
+	 */
 	public CodecSubtype<T> with(Type type, String name, StructuredCodec<? extends T> adapter) {
 		namesToAdapters.put(name, adapter);
 		subtypesToNames.put(type, name);
 		return this;
 	}
 
+	/**
+	 * Add a subtype along with its codec and string tag which is extracted from the class name
+	 */
 	public CodecSubtype<T> with(Type type, StructuredCodec<? extends T> adapter) {
 		String name = type.getTypeName();
 		name = name.substring(max(name.lastIndexOf('.'), name.lastIndexOf('$')) + 1);

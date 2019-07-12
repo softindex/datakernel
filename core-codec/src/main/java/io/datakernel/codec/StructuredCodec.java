@@ -25,6 +25,12 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * A structured codec is an object that describes how some type T
+ * can be written into {@link StructuredOutput} or read from {@link StructuredInput}.
+ * The actual representation is abstracted away, so the same codec can be used to write or read
+ * an object into/from various formats and protocols.
+ */
 public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDecoder<T> {
 
 	static <T> StructuredCodec<T> of(StructuredDecoder<T> decoder, StructuredEncoder<T> encoder) {
