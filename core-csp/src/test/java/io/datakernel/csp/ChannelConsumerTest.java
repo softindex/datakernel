@@ -15,6 +15,8 @@ import java.nio.charset.Charset;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.csp.ChannelConsumers.channelConsumerAsOutputStream;
+import static io.datakernel.csp.ChannelConsumers.outputStreamAsChannelConsumer;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -29,14 +31,14 @@ public class ChannelConsumerTest {
 	@Test
 	public void testToOutputStream() {
 		ByteBuf buf = ByteBufPool.allocate(100);
-		OutputStream stream = new OutputStream() {
+		OutputStream outputStream = new OutputStream() {
 			@Override
 			public void write(int i) {
 				buf.writeByte((byte) i);
 			}
 		};
 
-		ChannelConsumer<ByteBuf> channelConsumer = ChannelConsumers.ofOutputStream(newSingleThreadExecutor(), stream);
+		ChannelConsumer<ByteBuf> channelConsumer = outputStreamAsChannelConsumer(newSingleThreadExecutor(), outputStream);
 		await(channelConsumer.accept(
 				ByteBuf.wrapForReading("Hello".getBytes()),
 				ByteBuf.wrapForReading("World".getBytes())));
@@ -47,14 +49,14 @@ public class ChannelConsumerTest {
 	@Test
 	public void testToOutputStreamEmpty() {
 		ByteBuf buf = ByteBufPool.allocate(100);
-		OutputStream stream = new OutputStream() {
+		OutputStream outputStream = new OutputStream() {
 			@Override
 			public void write(int i) {
 				buf.writeByte((byte) i);
 			}
 		};
 
-		ChannelConsumer<ByteBuf> channelConsumer = ChannelConsumers.ofOutputStream(newSingleThreadExecutor(), stream);
+		ChannelConsumer<ByteBuf> channelConsumer = outputStreamAsChannelConsumer(newSingleThreadExecutor(), outputStream);
 		await(channelConsumer.accept(ByteBuf.empty(), ByteBuf.empty()));
 
 		assertEquals(buf.asString(Charset.defaultCharset()), "");
@@ -62,14 +64,14 @@ public class ChannelConsumerTest {
 
 	@Test
 	public void testToOutputStreamException() {
-		OutputStream stream = new OutputStream() {
+		OutputStream outputStream = new OutputStream() {
 			@Override
 			public void write(int i) throws IOException {
 				throw new IOException("Some exception");
 			}
 		};
 
-		ChannelConsumer<ByteBuf> channelConsumer = ChannelConsumers.ofOutputStream(newSingleThreadExecutor(), stream);
+		ChannelConsumer<ByteBuf> channelConsumer = outputStreamAsChannelConsumer(newSingleThreadExecutor(), outputStream);
 		awaitException(channelConsumer.accept(ByteBuf.empty(), ByteBuf.wrapForReading("Hello".getBytes())));
 	}
 
@@ -79,7 +81,7 @@ public class ChannelConsumerTest {
 
 		ByteBuf result = ByteBuf.wrapForWriting(new byte[expectedSize]);
 
-		ChannelConsumer<ByteBuf> consumer = ChannelConsumer.of(
+		ChannelConsumer<ByteBuf> channelConsumer = ChannelConsumer.of(
 				buf -> {
 					result.put(buf);
 					buf.recycle();
@@ -89,7 +91,7 @@ public class ChannelConsumerTest {
 		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
 		await(Promise.ofBlockingCallable(newSingleThreadExecutor(),
 				() -> {
-					OutputStream outputStream = ChannelConsumers.asOutputStream(currentEventloop, consumer);
+					OutputStream outputStream = channelConsumerAsOutputStream(currentEventloop, channelConsumer);
 					for (int i = 0; i < expectedSize; i++) {
 						outputStream.write(i);
 					}
@@ -106,7 +108,7 @@ public class ChannelConsumerTest {
 	public void testAsOutputStreamEmpty() {
 		int expectedSize = 0;
 
-		ChannelConsumer<ByteBuf> consumer = ChannelConsumer.of(value -> {
+		ChannelConsumer<ByteBuf> channelConsumer = ChannelConsumer.of(value -> {
 			assertEquals(expectedSize, value.readRemaining());
 			value.recycle();
 			return Promise.complete();
@@ -115,7 +117,7 @@ public class ChannelConsumerTest {
 		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
 		await(Promise.ofBlockingCallable(newSingleThreadExecutor(), () -> {
 			try {
-				OutputStream outputStream = ChannelConsumers.asOutputStream(currentEventloop, consumer);
+				OutputStream outputStream = channelConsumerAsOutputStream(currentEventloop, channelConsumer);
 				outputStream.flush();
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -126,7 +128,7 @@ public class ChannelConsumerTest {
 
 	@Test
 	public void testAsOutputStreamException() {
-		ChannelConsumer<ByteBuf> consumer = ChannelConsumer.of(value -> {
+		ChannelConsumer<ByteBuf> channelConsumer = ChannelConsumer.of(value -> {
 			value.recycle();
 			return Promise.ofException(new RuntimeException());
 		});
@@ -134,7 +136,7 @@ public class ChannelConsumerTest {
 		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
 		await(Promise.ofBlockingCallable(newSingleThreadExecutor(), () -> {
 			try {
-				OutputStream outputStream = ChannelConsumers.asOutputStream(currentEventloop, consumer);
+				OutputStream outputStream = channelConsumerAsOutputStream(currentEventloop, channelConsumer);
 				outputStream.flush();
 			} catch (Exception e) {
 				assertTrue(e instanceof RuntimeException);

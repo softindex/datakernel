@@ -316,11 +316,11 @@ public final class ChannelSuppliers {
 		};
 	}
 
-	public static ChannelSupplier<ByteBuf> ofInputStream(Executor executor, MemSize bufSize, InputStream is) {
-		return ofInputStream(executor, bufSize.toInt(), is);
+	public static ChannelSupplier<ByteBuf> inputStreamAsChannelSupplier(Executor executor, MemSize bufSize, InputStream is) {
+		return inputStreamAsChannelSupplier(executor, bufSize.toInt(), is);
 	}
 
-	public static ChannelSupplier<ByteBuf> ofInputStream(Executor executor, int bufSize, InputStream is) {
+	public static ChannelSupplier<ByteBuf> inputStreamAsChannelSupplier(Executor executor, int bufSize, InputStream inputStream) {
 		return new AbstractChannelSupplier<ByteBuf>() {
 			@Override
 			protected Promise<ByteBuf> doGet() {
@@ -328,7 +328,7 @@ public final class ChannelSuppliers {
 					ByteBuf buf = ByteBufPool.allocate(bufSize);
 					int readBytes;
 					try {
-						readBytes = is.read(buf.array(), 0, bufSize);
+						readBytes = inputStream.read(buf.array(), 0, bufSize);
 					} catch (IOException e) {
 						throw new UncheckedException(e);
 					}
@@ -341,10 +341,20 @@ public final class ChannelSuppliers {
 					}
 				});
 			}
+
+			@Override
+			protected void onClosed(@NotNull Throwable e) {
+				executor.execute(() -> {
+					try {
+						inputStream.close();
+					} catch (IOException ignored) {
+					}
+				});
+			}
 		};
 	}
 
-	public static InputStream asInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier) {
+	public static InputStream channelSupplierAsInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier) {
 		return new InputStream() {
 			@Nullable ByteBuf current = null;
 
@@ -390,6 +400,15 @@ public final class ChannelSuppliers {
 					peeked.recycle();
 				}
 				return result;
+			}
+
+			@Override
+			public void close() {
+				if (current != null) {
+					current.recycle();
+					current = null;
+				}
+				eventloop.execute(channelSupplier::close);
 			}
 		};
 	}

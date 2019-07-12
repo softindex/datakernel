@@ -80,27 +80,37 @@ public final class ChannelConsumers {
 		return new RecyclingChannelConsumer<>();
 	}
 
-	public static ChannelConsumer<ByteBuf> ofOutputStream(Executor executor, OutputStream os) {
+	public static ChannelConsumer<ByteBuf> outputStreamAsChannelConsumer(Executor executor, OutputStream outputStream) {
 		return new AbstractChannelConsumer<ByteBuf>() {
 			@Override
 			protected Promise<Void> doAccept(@Nullable ByteBuf buf) {
 				return Promise.ofBlockingRunnable(executor, () -> {
 					try {
 						if (buf != null) {
-							os.write(buf.array(), buf.head(), buf.readRemaining());
+							outputStream.write(buf.array(), buf.head(), buf.readRemaining());
 							buf.recycle();
 						} else {
-							os.close();
+							outputStream.close();
 						}
 					} catch (IOException e) {
 						throw new UncheckedException(e);
 					}
 				});
 			}
+
+			@Override
+			protected void onClosed(@NotNull Throwable e) {
+				executor.execute(() -> {
+					try {
+						outputStream.close();
+					} catch (IOException ignored) {
+					}
+				});
+			}
 		};
 	}
 
-	public static OutputStream asOutputStream(Eventloop eventloop, ChannelConsumer<ByteBuf> channelConsumer) {
+	public static OutputStream channelConsumerAsOutputStream(Eventloop eventloop, ChannelConsumer<ByteBuf> channelConsumer) {
 		return new OutputStream() {
 			@Override
 			public void write(int b) throws IOException {

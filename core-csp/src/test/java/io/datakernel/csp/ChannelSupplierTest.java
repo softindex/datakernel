@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.csp.ChannelSuppliers.channelSupplierAsInputStream;
+import static io.datakernel.csp.ChannelSuppliers.inputStreamAsChannelSupplier;
 import static io.datakernel.util.MemSize.kilobytes;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -90,7 +92,7 @@ public class ChannelSupplierTest {
 			}
 		};
 
-		ChannelSupplier<ByteBuf> channel = ChannelSuppliers.ofInputStream(newSingleThreadExecutor(), kilobytes(16), inputStream);
+		ChannelSupplier<ByteBuf> channel = inputStreamAsChannelSupplier(newSingleThreadExecutor(), kilobytes(16), inputStream);
 		List<ByteBuf> byteBufList = await(channel.toCollector(Collectors.toList()));
 		int readSize = 0;
 		for (ByteBuf buf : byteBufList) {
@@ -109,7 +111,7 @@ public class ChannelSupplierTest {
 			}
 		};
 
-		ChannelSupplier<ByteBuf> channel = ChannelSuppliers.ofInputStream(newSingleThreadExecutor(), kilobytes(16), inputStream);
+		ChannelSupplier<ByteBuf> channel = inputStreamAsChannelSupplier(newSingleThreadExecutor(), kilobytes(16), inputStream);
 		List<ByteBuf> byteBufList = await(channel.toCollector(Collectors.toList()));
 		int readSize = 0;
 		for (ByteBuf buf : byteBufList) {
@@ -129,7 +131,7 @@ public class ChannelSupplierTest {
 		await(Promise.ofBlockingCallable(Executors.newSingleThreadExecutor(),
 				() -> {
 					try {
-						InputStream inputStream = ChannelSuppliers.asInputStream(currentEventloop, channelSupplier);
+						InputStream inputStream = channelSupplierAsInputStream(currentEventloop, channelSupplier);
 						int b;
 						ByteBuf buf = ByteBufPool.allocate(100);
 						while ((b = inputStream.read()) != -1) {
@@ -151,7 +153,7 @@ public class ChannelSupplierTest {
 		await(Promise.ofBlockingCallable(Executors.newSingleThreadExecutor(),
 				() -> {
 					try {
-						InputStream inputStream = ChannelSuppliers.asInputStream(currentEventloop, channelSupplier);
+						InputStream inputStream = channelSupplierAsInputStream(currentEventloop, channelSupplier);
 						int b;
 						ByteBuf buf = ByteBufPool.allocate(100);
 						while ((b = inputStream.read()) != -1) {
