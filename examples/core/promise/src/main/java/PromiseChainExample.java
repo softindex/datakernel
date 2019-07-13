@@ -2,6 +2,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 
+//[START EXAMPLE]
 public class PromiseChainExample {
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 	public static void main(String[] args) {
@@ -29,3 +30,4 @@ public class PromiseChainExample {
 				Promise.ofException(new RuntimeException("Something went wrong")));
 	}
 }
+//[END EXAMPLE]

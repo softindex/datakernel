@@ -19,6 +19,7 @@ import java.util.Map;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotSame;
+import static junit.framework.TestCase.assertSame;
 
 /**
  * @author is Alex Syrotenko (@pantokrator)
@@ -26,7 +27,9 @@ import static junit.framework.TestCase.assertNotSame;
  */
 public class DIFollowUpTest {
 
+	//[START REGION_9]
 	public static final Scope ORDER_SCOPE = Scope.of(Order.class);
+	//[END REGION_9]
 
 	static class Kitchen {
 		private final int places;
@@ -41,6 +44,7 @@ public class DIFollowUpTest {
 		}
 	}
 
+	//[START REGION_8]
 	static class Sugar {
 		private final String name;
 		private final float weight;
@@ -50,6 +54,7 @@ public class DIFollowUpTest {
 			this.name = "Sugarella";
 			this.weight = 10.f;
 		}
+		//[END REGION_8]
 
 		public Sugar(String name, float weight) {
 			this.name = name;
@@ -149,13 +154,6 @@ public class DIFollowUpTest {
 	}
 
 	/**
-	 *
-	 * There is a kitchen, where anyone (maybe you) can automaGically
-	 * create a tasty cookies with our wonderful DI baker (library).
-	 *
-	 **/
-
-	/**
 	 * Hardcore way to bake a {@link Cookie} using DI.
 	 * DI has so-called Binding structure within,
 	 * where all keys (@dependencies) and their assembly recipes (@factory) are collected.
@@ -179,10 +177,9 @@ public class DIFollowUpTest {
 	 * It's baking time right now!
 	 * Just call an injector for baking launch (line 8)
 	 * and wait for your @Cookie instance! (line 9)
-	 *
-	 * Hard-mode baking end, well done!
 	 */
 	@Test
+	//[START REGION_1]
 	public void manualBindSnippet() {
 		Map<Key<?>, Binding<?>> bindings = new LinkedHashMap<>();
 		bindings.put(Key.of(Sugar.class), Binding.to(() -> new Sugar("Sugarello", 10.0f)));
@@ -196,8 +193,10 @@ public class DIFollowUpTest {
 
 		assertEquals(10.f, instance.getPastry().getSugar().getWeight());
 	}
+	//[END REGION_1]
 
 	@Test
+	//[START REGION_2]
 	public void moduleBindSnippet() {
 		AbstractModule module = new AbstractModule() {{
 			bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.0f));
@@ -210,8 +209,10 @@ public class DIFollowUpTest {
 		Injector injector = Injector.of(module);
 		assertEquals("Kyivmlyn", injector.getInstance(Cookie.class).getPastry().getButter().getName());
 	}
+	//[END REGION_2]
 
 	@Test
+	//[START REGION_3]
 	public void provideAnnotationSnippet() {
 		AbstractModule cookbook = new AbstractModule() {
 			@Provides
@@ -237,8 +238,10 @@ public class DIFollowUpTest {
 		Injector injector = Injector.of(cookbook);
 		assertEquals("Kyivmlyn", injector.getInstance(Cookie.class).getPastry().getButter().getName());
 	}
+	//[END REGION_3]
 
 	@Test
+	//[START REGION_4]
 	public void injectAnnotationSnippet() {
 		AbstractModule cookbook = new AbstractModule() {{
 			bind(Cookie.class);
@@ -247,8 +250,10 @@ public class DIFollowUpTest {
 		Injector injector = Injector.of(cookbook);
 		assertEquals("Sugarella", injector.getInstance(Cookie.class).getPastry().getSugar().getName());
 	}
+	//[END REGION_4]
 
 	@Test
+	//[START REGION_5]
 	public void namedAnnotationSnippet() {
 		AbstractModule cookbook = new AbstractModule() {
 			@Provides
@@ -298,9 +303,11 @@ public class DIFollowUpTest {
 		assertEquals(10.f, normalWeight);
 		assertEquals(0.f, zerosugarWeight);
 	}
+	//[END REGION_5]
 
 	@Test
 	public void orderAnnotationSnippet() {
+		//[START REGION_10]
 		AbstractModule cookbook = new AbstractModule() {
 
 			@Provides
@@ -330,22 +337,26 @@ public class DIFollowUpTest {
 				return new Cookie(pastry);
 			}
 		};
+		//[END REGION_10]
 
+		//[START REGION_6]
 		Injector injector = Injector.of(cookbook);
 		Kitchen kitchen = injector.getInstance(Kitchen.class);
 		List<Cookie> cookies = new ArrayList<>();
 		for (int i = 0; i < 10; ++i) {
 			Injector subinjector = injector.enterScope(ORDER_SCOPE);
 
-			assertEquals(subinjector.getInstance(Kitchen.class), kitchen);
+			assertSame(subinjector.getInstance(Kitchen.class), kitchen);
 			if (i > 0) assertNotSame(cookies.get(i - 1), subinjector.getInstance(Cookie.class));
 
 			cookies.add(subinjector.getInstance(Cookie.class));
 		}
 		assertEquals(10, cookies.size());
+		//[END REGION_6]
 	}
 
 	@Test
+	//[START REGION_7]
 	public void transformBindingSnippet() {
 		AbstractModule cookbook = new AbstractModule() {
 
@@ -380,4 +391,5 @@ public class DIFollowUpTest {
 		Injector injector = Injector.of(cookbook);
 		assertEquals("Kyivska", injector.getInstance(Cookie.class).getPastry().getFlour().getName());
 	}
+	//[END REGION_7]
 }

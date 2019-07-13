@@ -31,6 +31,7 @@ public class PromiseAdvanceExample {
 	}
 
 	private static void secondExample() {
+		//[START REGION_2]
 		Promise<Integer> intervalPromise = Promises.interval(2000, Promise.of(1000));
 		Promise<Integer> schedulePromise = Promises.schedule(2000, Instant.now());
 		Promise<Integer> delayPromise = Promises.delay(1000, 1000);
@@ -40,5 +41,6 @@ public class PromiseAdvanceExample {
 				.combine(delayPromise, Integer::sum);
 
 		result.whenResult(res -> System.out.println("The second result is " + res));
+		//[END REGION_2]
 	}
 }
