@@ -10,6 +10,9 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 
+/**
+ * This is a function that is applied by the {@link Injector injector} to each binding once.
+ */
 @FunctionalInterface
 public interface BindingTransformer<T> {
 	BindingTransformer<?> IDENTITY = (provider, scope, key, binding) -> binding;
@@ -21,6 +24,16 @@ public interface BindingTransformer<T> {
 		return (BindingTransformer<T>) IDENTITY;
 	}
 
+	/**
+	 * Modules export a priority multimap of transformers.
+	 * <p>
+	 * This transformer aggregates such map into one big generator to be used by {@link Injector#compile} method.
+	 * The map is converted to a sorted list of sets.
+	 * Then for each of those sets, similar to {@link BindingGenerator#combinedGenerator generators},
+	 * only zero or one transformer from that set are allowed to return anything but the binding is was given (being an identity transformer).
+	 * <p>
+	 * So if two transformers differ in priority then they can be applied both in order of their priority.
+	 */
 	@SuppressWarnings("unchecked")
 	static BindingTransformer<?> combinedTransformer(Map<Integer, Set<BindingTransformer<?>>> transformers) {
 

@@ -14,6 +14,10 @@ import java.util.stream.Stream;
 import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.emptyMap;
 
+/**
+ * Completely generic and abstract simple Java implementation
+ * of the <a href="https://en.wikipedia.org/wiki/Trie">prefixed tree (or trie)</a> data structure.
+ */
 public final class Trie<K, V> {
 	private final V payload;
 	private final Map<K, Trie<K, V>> children;

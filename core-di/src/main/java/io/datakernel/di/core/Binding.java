@@ -17,6 +17,16 @@ import java.util.stream.Stream;
 import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.stream.Collectors.joining;
 
+/**
+ * A binding is one of the main components of DataKernel DI.
+ * It boils down to "introspectable function", since it only describes
+ * a {@link Factory function} to create an instance of T from an array of objects and
+ * an array of its {@link Dependency dependencies} in known terms.
+ * <p>
+ * Also it contains a set of {@link io.datakernel.di.module.AbstractModule#bind binding-DSL-like} static factory methods
+ * as well as some functional transformations for the ease of creating immutable binding modifications.
+ * @param <T>
+ */
 public final class Binding<T> {
 	private final Dependency[] dependencies;
 	private final Factory<T> factory;
@@ -248,9 +258,7 @@ public final class Binding<T> {
 
 	public Binding<T> addDependencies(@NotNull Dependency... dependencies) {
 		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, this.dependencies.length + dependencies.length);
-		for (int i = 0; i < dependencies.length; i++) {
-			newDependencies[this.dependencies.length + i] = dependencies[i];
-		}
+		System.arraycopy(dependencies, 0, newDependencies, this.dependencies.length, dependencies.length);
 		return new Binding<>(newDependencies, newArgs -> factory.create(Arrays.copyOf(newArgs, this.dependencies.length)), location);
 	}
 

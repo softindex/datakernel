@@ -13,7 +13,14 @@ import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.stream.Collectors.toSet;
 
+/**
+ * This class contains a set of utils for working with binding graph trie.
+ */
 public final class BindingGraph {
+	/**
+	 * This is a special marker {@link Factory} for phantom bindings that will to be replaced by a generated ones.
+	 * @see #completeBindingGraph
+	 */
 	public static final Factory<?> TO_BE_GENERATED = $ -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
 	};
@@ -22,6 +29,13 @@ public final class BindingGraph {
 		throw new AssertionError("nope.");
 	}
 
+	/**
+	 * This method converts a trie of binding multimaps, that is provided from the modules,
+	 * into a trie of binding maps on which the {@link Injector} would actually operate.
+	 * <p>
+	 * It uses a {@link Multibinder} for this purpose, which is usually a {@link Multibinder#combinedMultibinder combination}
+	 * of multibinders that were provided from the modules.
+	 */
 	@SuppressWarnings("unchecked")
 	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolveConflicts(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Multibinder<?> multibinder) {
 		return bindings.map(localBindings -> squash(localBindings, (k, v) -> {
@@ -36,6 +50,13 @@ public final class BindingGraph {
 		}));
 	}
 
+	/**
+	 * This method recursively tries to generate missing dependency bindings using given {@link BindingGenerator generator}
+	 * and apply given {@link BindingTransformer} to all bindings once.
+	 *
+	 * @see BindingGenerator#combinedGenerator
+	 * @see BindingTransformer#combinedTransformer
+	 */
 	public static void completeBindingGraph(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
 		completeBindingGraph(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformer, generator);
@@ -118,8 +139,11 @@ public final class BindingGraph {
 	}
 
 	/**
-	 * This method returns mapping from *unsatisfied keys* to *bindings that require them*
-	 * and not the common *key and the bindings that provide it*
+	 * A method that checks binding graph trie completeness, meaning that no binding references a key that is not present
+	 * at same or lower level of the trie.
+	 * <p>
+	 * It returns a mapping from unsatisfied keys to a set of key-binding pairs that require them.
+	 * If that mapping is empty then the graph trie is valid.
 	 */
 	public static Map<Key<?>, Set<Entry<Key<?>, Binding<?>>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return getUnsatisfiedDependencies(new HashSet<>(bindings.get().keySet()), bindings)
@@ -149,6 +173,14 @@ public final class BindingGraph {
 		}
 	}
 
+	/**
+	 * A method that checks binding graph trie for cycles, it ensures that each trie node is a <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">DAG</a>.
+	 * <p>
+	 * It does so by performing a simple DFS on each graph that ignores unsatisfied dependencies (dependency keys that have no associated binding).
+	 * <p>
+	 * It returns a set of key arrays that represent cycles.
+	 * If that set is empty then no graphs in given trie contain cycles.
+	 */
 	public static Set<Key<?>[]> getCyclicDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return getCyclicDependenciesStream(bindings).collect(toSet());
 	}

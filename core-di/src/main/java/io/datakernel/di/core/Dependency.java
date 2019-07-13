@@ -2,6 +2,10 @@ package io.datakernel.di.core;
 
 import java.util.Objects;
 
+/**
+ * A simple POJO that combines a {@link Key} with a boolean of is it required or not.
+ * @see Binding
+ */
 public final class Dependency {
 	private final Key<?> key;
 	private final boolean required;

@@ -8,6 +8,10 @@ import static java.util.Arrays.asList;
 import static java.util.Arrays.copyOfRange;
 import static java.util.Collections.addAll;
 
+/**
+ * This is a {@link Binding} binding modifying function, that can add extra dependencies to it
+ * and run initialization code for instance after it was created.
+ */
 public final class BindingInitializer<T> {
 	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(new Dependency[0], (instance, args) -> {});
 

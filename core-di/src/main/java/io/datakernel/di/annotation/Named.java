@@ -6,6 +6,13 @@ import java.lang.annotation.Target;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+/**
+ * This is a built-in {@link io.datakernel.di.util.AbstractAnnotation stateful} {@link io.datakernel.di.core.Name name} annotation.
+ * <p>
+ * It is used for quick prototyping or when you need too many different keys with the same type.
+ * <p>
+ * If you have only few distinct <i>groups</i> of objects with the same type, consider making your own {@link NameAnnotation name annotations}.
+ */
 @Retention(RUNTIME)
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
 @NameAnnotation

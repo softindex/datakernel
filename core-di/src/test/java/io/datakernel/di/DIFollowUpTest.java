@@ -17,9 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNotSame;
-import static junit.framework.TestCase.assertSame;
+import static junit.framework.TestCase.*;
 
 /**
  * @author is Alex Syrotenko (@pantokrator)
@@ -362,10 +360,8 @@ public class DIFollowUpTest {
 
 			@Override
 			protected void configure() {
-				transform(0, ((provider, scope, key, binding) -> binding.mapInstance(x -> {
-					System.out.println(Instant.now() + " -> " + key);
-					return x;
-				})));
+				transform(0, (provider, scope, key, binding) ->
+						binding.onInstance(x -> System.out.println(Instant.now() + " -> " + key)));
 			}
 
 			@Provides
