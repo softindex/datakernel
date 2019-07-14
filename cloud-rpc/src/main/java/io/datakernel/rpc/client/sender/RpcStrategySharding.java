@@ -55,7 +55,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 
 	@Nullable
 	@Override
-	public final RpcSender createSender(RpcClientConnectionPool pool) {
+	public RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> subSenders = list.listOfNullableSenders(pool);
 		int activeSenders = 0;
 		for (RpcSender subSender : subSenders) {
@@ -76,7 +76,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 		private final ShardingFunction<?> shardingFunction;
 		private final RpcSender[] subSenders;
 
-		public Sender(ShardingFunction<?> shardingFunction, List<RpcSender> senders) {
+		Sender(ShardingFunction<?> shardingFunction, List<RpcSender> senders) {
 			// null values are allowed in senders list
 			checkArgument(senders != null && senders.size() > 0,
 					"List of senders should not be null and should contain at least one sender");

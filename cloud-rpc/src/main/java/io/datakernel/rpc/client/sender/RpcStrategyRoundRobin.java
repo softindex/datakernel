@@ -65,7 +65,7 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		private int nextSender;
 		private RpcSender[] subSenders;
 
-		public Sender(List<RpcSender> senders) {
+		Sender(List<RpcSender> senders) {
 			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.nextSender = 0;

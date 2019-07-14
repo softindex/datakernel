@@ -27,7 +27,6 @@ import io.datakernel.jmx.JmxRefreshable;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
-import io.datakernel.rpc.protocol.RpcStream.Listener;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
@@ -48,7 +47,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Utils.nullify;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
+public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
 	private static final Logger logger = getLogger(RpcClientConnection.class);
 
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;

@@ -17,6 +17,7 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.rpc.client.sender.RpcSender;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 
@@ -28,5 +29,6 @@ public interface RpcClientConnectionPool {
 	 * @param address address
 	 * @return connection for specified address or null if there is no such connection
 	 */
-	RpcSender get(InetSocketAddress address);
+	@NotNull
+	RpcSender get(@NotNull InetSocketAddress address);
 }

@@ -73,14 +73,14 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 		return new RandomSamplingSender(senderToWeight, seed);
 	}
 
-	private static final class RandomSamplingSender implements RpcSender {
+	static final class RandomSamplingSender implements RpcSender {
 		private final List<RpcSender> senders;
 		private final int[] cumulativeWeights;
 		private final int totalWeight;
 
 		private long lastRandomLong;
 
-		public RandomSamplingSender(Map<RpcSender, Integer> senderToWeight, long seed) {
+		RandomSamplingSender(Map<RpcSender, Integer> senderToWeight, long seed) {
 			checkArgument(!senderToWeight.containsKey(null), "sender cannot be null");
 
 			senders = new ArrayList<>(senderToWeight.size());
@@ -99,33 +99,21 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			chooseSender().sendRequest(request, timeout, cb);
-		}
-
-		private RpcSender chooseSender() {
-			int currentRandomValue = (int) ((generateRandomLong() & Long.MAX_VALUE) % totalWeight);
-			int senderIndex = binarySearch(currentRandomValue, 0, cumulativeWeights.length);
-			return senders.get(senderIndex);
-		}
-
-		public long generateRandomLong() {
 			lastRandomLong ^= (lastRandomLong << 21);
 			lastRandomLong ^= (lastRandomLong >>> 35);
 			lastRandomLong ^= (lastRandomLong << 4);
-			return lastRandomLong;
-		}
-
-		private int binarySearch(int value, int lowerIndex, int upperIndex) {
-			if (lowerIndex == upperIndex) {
-				return lowerIndex;
+			int currentRandomValue = (int) ((lastRandomLong & Long.MAX_VALUE) % totalWeight);
+			int lowerIndex = 0;
+			int upperIndex = cumulativeWeights.length;
+			while (lowerIndex != upperIndex) {
+				int middle = (lowerIndex + upperIndex) / 2;
+				if (currentRandomValue >= cumulativeWeights[middle]) {
+					lowerIndex = middle + 1;
+				} else {
+					upperIndex = middle;
+				}
 			}
-
-			int middle = (lowerIndex + upperIndex) / 2;
-			if (value >= cumulativeWeights[middle]) {
-				return binarySearch(value, middle + 1, upperIndex);
-			} else {
-				return binarySearch(value, lowerIndex, middle);
-			}
+			senders.get(lowerIndex).sendRequest(request, timeout, cb);
 		}
 	}
 

@@ -17,14 +17,15 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcStrategyFirstValidResult implements RpcStrategy {
@@ -39,10 +40,10 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 	private final ResultValidator<?> resultValidator;
 	@Nullable
-	private final Exception noValidResultException;
+	private final StacklessException noValidResultException;
 
 	private RpcStrategyFirstValidResult(RpcStrategyList list, ResultValidator<?> resultValidator,
-			@Nullable Exception noValidResultException) {
+			@Nullable StacklessException noValidResultException) {
 		this.list = list;
 		this.resultValidator = resultValidator;
 		this.noValidResultException = noValidResultException;
@@ -52,11 +53,11 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		return new RpcStrategyFirstValidResult(list, DEFAULT_RESULT_VALIDATOR, null);
 	}
 
-	public RpcStrategyFirstValidResult withResultValidator(ResultValidator<?> resultValidator) {
+	public RpcStrategyFirstValidResult withResultValidator(@NotNull ResultValidator<?> resultValidator) {
 		return new RpcStrategyFirstValidResult(list, resultValidator, noValidResultException);
 	}
 
-	public RpcStrategyFirstValidResult withNoValidResultException(Exception e) {
+	public RpcStrategyFirstValidResult withNoValidResultException(@NotNull StacklessException e) {
 		return new RpcStrategyFirstValidResult(list, resultValidator, e);
 	}
 
@@ -77,11 +78,12 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	static final class Sender implements RpcSender {
 		private final RpcSender[] subSenders;
 		private final ResultValidator<?> resultValidator;
-		private final Exception noValidResultException;
+		@Nullable
+		private final StacklessException noValidResultException;
 
-		public Sender(List<RpcSender> senders, ResultValidator<?> resultValidator,
-				Exception noValidResultException) {
-			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
+		Sender(@NotNull List<RpcSender> senders, @NotNull ResultValidator<?> resultValidator,
+				@Nullable StacklessException noValidResultException) {
+			assert senders.size() > 0;
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
@@ -90,75 +92,48 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			FirstResultCallback<O> firstResultCallback = new FirstResultCallback<>(cb, (ResultValidator<O>) resultValidator,
-					subSenders.length, noValidResultException);
+			FirstResultCallback<O> firstResultCallback = new FirstResultCallback<>(subSenders.length, (ResultValidator<O>) resultValidator, cb, noValidResultException);
 			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, firstResultCallback);
 			}
 		}
 	}
 
-	private static final class FirstResultCallback<T> implements Callback<T> {
-		private final Callback<T> resultCallback;
-		private final ResultValidator<T> resultValidator;
-		private final Exception noValidResultException;
+	static final class FirstResultCallback<T> implements Callback<T> {
 		private int expectedCalls;
-		private T result;
-		private Throwable exception;
-		private boolean hasResult;
-		private boolean complete;
+		private final ResultValidator<T> resultValidator;
+		private final Callback<T> resultCallback;
+		private Throwable lastException;
+		@Nullable
+		private final StacklessException noValidResultException;
 
-		public FirstResultCallback(Callback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
-				Exception noValidResultException) {
-			checkArgument(expectedCalls > 0, "Number of expected calls should be greater than 0");
+		FirstResultCallback(int expectedCalls, @NotNull ResultValidator<T> resultValidator, @NotNull Callback<T> resultCallback,
+				@Nullable StacklessException noValidResultException) {
+			assert expectedCalls > 0;
 			this.expectedCalls = expectedCalls;
-			this.resultCallback = checkNotNull(resultCallback);
-			this.resultValidator = checkNotNull(resultValidator);
+			this.resultCallback = resultCallback;
+			this.resultValidator = resultValidator;
 			this.noValidResultException = noValidResultException;
 		}
 
 		@Override
 		public void accept(T result, @Nullable Throwable e) {
 			if (e == null) {
-				--expectedCalls;
-				if (!hasResult && resultValidator.isValidResult(result)) {
-					this.result = result;  // first valid result
-					this.hasResult = true;
+				if (--expectedCalls >= 0) {
+					if (resultValidator.isValidResult(result)) {
+						expectedCalls = 0;
+						resultCallback.accept(result, null);
+					} else {
+						if (expectedCalls == 0) {
+							resultCallback.accept(null, lastException != null ? lastException : noValidResultException);
+						}
+					}
 				}
-				processResult();
 			} else {
-				--expectedCalls;
-				if (!hasResult) {
-					this.exception = e; // last Exception
+				lastException = e; // last Exception
+				if (--expectedCalls == 0) {
+					resultCallback.accept(null, lastException);
 				}
-				processResult();
-			}
-		}
-
-		private boolean resultReady() {
-			return hasResult || expectedCalls == 0;
-		}
-
-		private void processResult() {
-			if (complete || !resultReady()) {
-				return;
-			}
-			complete = true;
-			if (hasResult) {
-				resultCallback.accept(result, null);
-			} else {
-				resolveException();
-				if (exception == null) {
-					resultCallback.accept(null, null);
-				} else {
-					resultCallback.accept(null, exception);
-				}
-			}
-		}
-
-		private void resolveException() {
-			if (exception == null && noValidResultException != null) {
-				exception = noValidResultException;
 			}
 		}
 	}

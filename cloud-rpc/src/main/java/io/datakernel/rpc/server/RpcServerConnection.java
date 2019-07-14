@@ -23,7 +23,6 @@ import io.datakernel.rpc.protocol.RpcControlMessage;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
-import io.datakernel.rpc.protocol.RpcStream.Listener;
 import io.datakernel.stream.StreamDataAcceptor;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -32,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.util.Map;
 
-public final class RpcServerConnection implements Listener, JmxRefreshable {
+public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;

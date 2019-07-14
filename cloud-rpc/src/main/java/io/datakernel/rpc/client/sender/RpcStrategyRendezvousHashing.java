@@ -139,22 +139,18 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 		private final HashFunction<?> hashFunction;
 		private final RpcSender[] hashBuckets;
 
-		public Sender(HashFunction<?> hashFunction, RpcSender[] hashBuckets) {
+		Sender(HashFunction<?> hashFunction, RpcSender[] hashBuckets) {
 			this.hashFunction = checkNotNull(hashFunction);
 			this.hashBuckets = checkNotNull(hashBuckets);
 		}
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			RpcSender sender = chooseBucket(request);
+			int hash = ((HashFunction<Object>) hashFunction).hashCode(request);
+			RpcSender sender = hashBuckets[hash & (hashBuckets.length - 1)];
 			sender.sendRequest(request, timeout, cb);
 		}
 
-		@SuppressWarnings("unchecked")
-		RpcSender chooseBucket(Object request) {
-			int hash = ((HashFunction<Object>) hashFunction).hashCode(request);
-			return hashBuckets[hash & (hashBuckets.length - 1)];
-		}
 	}
 
 	// visible for testing

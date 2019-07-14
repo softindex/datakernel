@@ -19,13 +19,12 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 public final class RpcStrategyList {
 	private final List<RpcStrategy> strategies;
@@ -37,11 +36,9 @@ public final class RpcStrategyList {
 	public static RpcStrategyList ofAddresses(List<InetSocketAddress> addresses) {
 		checkNotNull(addresses);
 		checkArgument(addresses.size() > 0, "At least one address must be present");
-		List<RpcStrategy> subSenders = new ArrayList<>();
-		for (InetSocketAddress address : addresses) {
-			subSenders.add(RpcStrategySingleServer.create(address));
-		}
-		return new RpcStrategyList(subSenders);
+		return new RpcStrategyList(addresses.stream()
+				.map(RpcStrategySingleServer::create)
+				.collect(toList()));
 	}
 
 	public static RpcStrategyList ofStrategies(List<RpcStrategy> strategies) {
@@ -49,31 +46,23 @@ public final class RpcStrategyList {
 	}
 
 	public List<RpcSender> listOfSenders(RpcClientConnectionPool pool) {
-		List<RpcSender> senders = new ArrayList<>();
-		for (RpcStrategy strategy : strategies) {
-			RpcSender sender = strategy.createSender(pool);
-			if (sender != null) {
-				senders.add(sender);
-			}
-		}
-		return senders;
+		return strategies.stream()
+				.map(strategy -> strategy.createSender(pool))
+				.filter(Objects::nonNull)
+				.collect(toList());
 	}
 
 	public List<RpcSender> listOfNullableSenders(RpcClientConnectionPool pool) {
-		List<RpcSender> senders = new ArrayList<>();
-		for (RpcStrategy strategy : strategies) {
-			RpcSender sender = strategy.createSender(pool);
-			senders.add(sender);
-		}
-		return senders;
+		return strategies.stream()
+				.map(strategy -> strategy.createSender(pool))
+				.collect(toList());
 	}
 
 	public Set<InetSocketAddress> getAddresses() {
-		HashSet<InetSocketAddress> result = new HashSet<>();
-		for (RpcStrategy sender : strategies) {
-			result.addAll(sender.getAddresses());
-		}
-		return result;
+		return strategies.stream()
+				.map(RpcStrategy::getAddresses)
+				.flatMap(Collection::stream)
+				.collect(toSet());
 	}
 
 	public int size() {
