@@ -104,7 +104,7 @@ public final class ReflectionUtils {
 		if (binding == null) {
 			return null;
 		}
-		return binding.initialize(generateInjectingInitializer(key.getType()));
+		return binding.withInitializer(generateInjectingInitializer(key.getType()));
 	}
 
 	@SuppressWarnings("unchecked")

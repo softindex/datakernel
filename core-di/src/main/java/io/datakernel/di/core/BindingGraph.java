@@ -1,6 +1,6 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.util.Constructors.Factory;
+import io.datakernel.di.core.Binding.Factory;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 

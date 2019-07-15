@@ -26,7 +26,6 @@ import static java.util.stream.Collectors.joining;
 /**
  * This class provides DSL's for making bindings, transformers, generators or multibinders
  * fluently and declaratively.
- *
  */
 public abstract class AbstractModule implements Module {
 	private boolean configured;
@@ -162,7 +161,7 @@ public abstract class AbstractModule implements Module {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
 
-		private Binding<? extends T> binding = (Binding<? extends T>) Binding.to(BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
+		private Binding<? extends T> binding = (Binding<? extends T>) new Binding<>(new Dependency[0], BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
 
 		public BindingBuilder(@NotNull Key<T> key) {
 			this.key = key;
@@ -232,59 +231,31 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
-		 */
-		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory) {
-			return to(Binding.to(factory));
-		}
-
-		/**
-		 * @see #to(Factory, Dependency[])
-		 */
-		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory, @NotNull Class<?>[] dependencies) {
-			return to(Binding.to(factory, dependencies));
-		}
-
-		/**
-		 * @see #to(Factory, Dependency[])
-		 */
-		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory, @NotNull Key<?>[] dependencies) {
-			return to(Binding.to(factory, dependencies));
-		}
-
-		/**
-		 * DSL shortcut that creates a binding from given factory function and array of dependencies
-		 * @see #to(Binding)
-		 */
-		public BindingBuilder<T> to(@NotNull Factory<? extends T> factory, @NotNull Dependency[] dependencies) {
-			return to(Binding.to(factory, dependencies));
-		}
-
-		/**
-		 * @see #to(Factory, Dependency[])
-		 */
-		public BindingBuilder<T> to(@NotNull Class<? extends T> implementation) {
-			return to(Binding.to(implementation));
-		}
-
-		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding that just calls a binding at given key
+		 * and {@link #to(Binding) binding it} to current key.
 		 */
 		public BindingBuilder<T> to(@NotNull Key<? extends T> implementation) {
 			return to(Binding.to(implementation));
 		}
 
 		/**
-		 * DSL shortcut that creates a binding from given instance
-		 * @see #to(Binding)
+		 * @see #to(Key)
+		 */
+		public BindingBuilder<T> to(@NotNull Class<? extends T> implementation) {
+			return to(Binding.to(implementation));
+		}
+
+		/**
+		 * DSL shortcut for creating a binding from a given instance
+		 * and {@link #to(Binding) binding it} to current key.
 		 */
 		public <U extends T> BindingBuilder<T> toInstance(@NotNull U instance) {
 			return to(Binding.toInstance(instance));
 		}
 
 		/**
-		 * DSL shortcut that binds given key to a key of supplier and makes a binding that calls that supplier
-		 * @see #to(Binding)
+		 * DSL shortcut for creating a binding that calls a supplier from binding at given key
+		 * and {@link #to(Binding) binding it} to current key.
 		 */
 		public BindingBuilder<T> toSupplier(@NotNull Key<? extends Supplier<? extends T>> supplierKey) {
 			return to(Binding.toSupplier(supplierKey));
@@ -298,14 +269,35 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
+		 */
+		public BindingBuilder<T> to(@NotNull ConstructorN<? extends T> factory, @NotNull Class<?>[] dependencies) {
+			return to(Binding.to(factory, dependencies));
+		}
+
+		/**
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
+		 */
+		public BindingBuilder<T> to(@NotNull ConstructorN<? extends T> factory, @NotNull Key<?>[] dependencies) {
+			return to(Binding.to(factory, dependencies));
+		}
+
+		/**
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
+		 */
+		public BindingBuilder<T> to(@NotNull ConstructorN<? extends T> factory, @NotNull Dependency[] dependencies) {
+			return to(Binding.to(factory, dependencies));
+		}
+
+		/**
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public BindingBuilder<T> to(@NotNull Constructor0<? extends T> constructor) {
 			return to(Binding.to(constructor));
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1> BindingBuilder<T> to(@NotNull Constructor1<T1, ? extends T> constructor,
 				@NotNull Class<T1> dependency1) {
@@ -313,7 +305,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2> BindingBuilder<T> to(@NotNull Constructor2<T1, T2, ? extends T> constructor,
 				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2) {
@@ -321,7 +313,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3> BindingBuilder<T> to(@NotNull Constructor3<T1, T2, T3, ? extends T> constructor,
 				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3) {
@@ -329,7 +321,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3, T4> BindingBuilder<T> to(@NotNull Constructor4<T1, T2, T3, T4, ? extends T> constructor,
 				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4) {
@@ -337,7 +329,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(@NotNull Constructor5<T1, T2, T3, T4, T5, ? extends T> constructor,
 				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5) {
@@ -345,7 +337,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, ? extends T> constructor,
 				@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5, @NotNull Class<T6> dependency6) {
@@ -353,7 +345,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1> BindingBuilder<T> to(@NotNull Constructor1<T1, ? extends T> constructor,
 				@NotNull Key<T1> dependency1) {
@@ -361,7 +353,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2> BindingBuilder<T> to(@NotNull Constructor2<T1, T2, ? extends T> constructor,
 				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
@@ -369,7 +361,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3> BindingBuilder<T> to(@NotNull Constructor3<T1, T2, T3, ? extends T> constructor,
 				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
@@ -377,7 +369,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3, T4> BindingBuilder<T> to(@NotNull Constructor4<T1, T2, T3, T4, ? extends T> constructor,
 				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
@@ -385,7 +377,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3, T4, T5> BindingBuilder<T> to(@NotNull Constructor5<T1, T2, T3, T4, T5, ? extends T> constructor,
 				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
@@ -393,7 +385,7 @@ public abstract class AbstractModule implements Module {
 		}
 
 		/**
-		 * @see #to(Factory, Dependency[])
+		 * DSL shortcut for creating a binding and {@link #to(Binding) binding it} to current key.
 		 */
 		public <T1, T2, T3, T4, T5, T6> BindingBuilder<T> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, ? extends T> constructor,
 				@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {

@@ -71,8 +71,9 @@ public final class DefaultModule implements Module {
 					if (elementBinding == null) {
 						return null;
 					}
-					return Binding.to(
-							args -> new InstanceFactory<Object>() {
+					return new Binding<>(
+							elementBinding.getDependencies(),
+							locator -> new InstanceFactory<Object>() {
 								@Override
 								public Key<Object> key() {
 									return elementKey;
@@ -80,15 +81,14 @@ public final class DefaultModule implements Module {
 
 								@Override
 								public Object create() {
-									return elementBinding.getFactory().create(args);
+									return elementBinding.getFactory().create(locator);
 								}
 
 								@Override
 								public String toString() {
 									return elementKey.toString();
 								}
-							},
-							elementBinding.getDependencies());
+							});
 				}
 		));
 

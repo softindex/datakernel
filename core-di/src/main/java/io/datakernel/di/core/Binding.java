@@ -1,21 +1,14 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.core.BindingInitializer.Initializer;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.LocationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.checkArgument;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -24,39 +17,30 @@ import static java.util.stream.Collectors.joining;
  * a {@link Factory function} to create an instance of T from an array of objects and
  * an array of its {@link Dependency dependencies} in known terms.
  * <p>
- * Also it contains a set of {@link io.datakernel.di.module.AbstractModule#bind binding-DSL-like} static factory methods
+ * Also it contains a set of {@link io.datakernel.di.module.AbstractModule binding-DSL-like} static factory methods
  * as well as some functional transformations for the ease of creating immutable binding modifications.
  */
+@SuppressWarnings({"unused", "WeakerAccess"})
 public final class Binding<T> {
+	@FunctionalInterface
+	public interface Factory<R> {
+		R create(InstanceLocator locator);
+	}
+
 	private final Dependency[] dependencies;
 	private final Factory<T> factory;
 
 	@Nullable
 	private LocationInfo location;
 
-	private Binding(@NotNull Dependency[] dependencies, @NotNull Factory<T> factory, @Nullable LocationInfo location) {
+	public Binding(@NotNull Dependency[] dependencies, @NotNull Factory<T> factory) {
+		this(dependencies, null, factory);
+	}
+
+	public Binding(@NotNull Dependency[] dependencies, @Nullable LocationInfo location, @NotNull Factory<T> factory) {
 		this.dependencies = dependencies;
 		this.factory = factory;
 		this.location = location;
-	}
-
-	public static <R> Binding<R> to(Factory<R> factory) {
-		return Binding.to(factory, new Dependency[0]);
-	}
-
-	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Class<?>[] dependencies) {
-		return new Binding<>(Stream.of(dependencies).map(Key::of).map(Dependency::toKey).toArray(Dependency[]::new),
-				factory, null);
-	}
-
-	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Key<?>[] dependencies) {
-		return new Binding<>(Stream.of(dependencies).map(Dependency::toKey).toArray(Dependency[]::new),
-				factory, null);
-	}
-
-	public static <R> Binding<R> to(@NotNull Factory<R> factory, @NotNull Dependency[] dependencies) {
-		return new Binding<>(dependencies,
-				factory, null);
 	}
 
 	public static <T> Binding<T> to(Class<? extends T> key) {
@@ -68,7 +52,7 @@ public final class Binding<T> {
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
-		return Binding.to($ -> instance);
+		return Binding.to(() -> instance);
 	}
 
 	public static <T> Binding<T> toSupplier(@NotNull Key<? extends Supplier<? extends T>> supplierKey) {
@@ -79,68 +63,126 @@ public final class Binding<T> {
 		return Binding.to(Supplier::get, supplierType);
 	}
 
-	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
-		return Binding.to(constructor, new Dependency[0]);
+	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Class<?>[] types) {
+		return Binding.to(constructor, Stream.of(types).map(Key::of).map(Dependency::toKey).toArray(Dependency[]::new));
+	}
+
+	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Key<?>[] keys) {
+		return Binding.to(constructor, Stream.of(keys).map(Dependency::toKey).toArray(Dependency[]::new));
+	}
+
+	@SuppressWarnings("Convert2MethodRef")
+	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Dependency[] dependencies) {
+		return new Binding<>(dependencies,
+				dependencies.length == 0 ?
+						locator -> constructor.create() :
+						locator -> {
+							Object[] dependencyInstances = new Object[dependencies.length];
+							for (int i = 0; i < dependencies.length; i++) {
+								dependencyInstances[i] = locator.getInstanceOrNull(dependencies[i].getKey());
+							}
+							return (R) constructor.create(dependencyInstances);
+						});
 	}
 
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
 			@NotNull Class<T1> dependency1) {
-		return Binding.to(constructor, new Class[]{dependency1});
+		return Binding.to(constructor, Key.of(dependency1));
 	}
 
 	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
 			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2) {
-		return Binding.to(constructor, new Class[]{dependency1, dependency2});
+		return Binding.to(constructor, Key.of(dependency1), Key.of(dependency2));
 	}
 
 	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
 			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3) {
-		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3});
+		return Binding.to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3));
 	}
 
 	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
 			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4) {
-		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3, dependency4});
+		return Binding.to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4));
 	}
 
 	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
 			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5) {
-		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3, dependency4, dependency5});
+		return Binding.to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5));
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
 			@NotNull Class<T1> dependency1, @NotNull Class<T2> dependency2, @NotNull Class<T3> dependency3, @NotNull Class<T4> dependency4, @NotNull Class<T5> dependency5, @NotNull Class<T6> dependency6) {
-		return Binding.to(constructor, new Class[]{dependency1, dependency2, dependency3, dependency4, dependency5, dependency6});
+		return Binding.to(constructor, Key.of(dependency1), Key.of(dependency2), Key.of(dependency3), Key.of(dependency4), Key.of(dependency5), Key.of(dependency6));
+	}
+
+	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
+		return new Binding<>(new Dependency[]{},
+				locator -> constructor.create()
+		);
 	}
 
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
 			@NotNull Key<T1> dependency1) {
-		return Binding.to(constructor, new Key[]{dependency1});
+		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1)},
+				locator -> constructor.create(
+						locator.getInstanceOrNull(dependency1))
+		);
 	}
 
 	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
-		return Binding.to(constructor, new Key[]{dependency1, dependency2});
+		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2)},
+				locator -> constructor.create(
+						locator.getInstanceOrNull(dependency1),
+						locator.getInstanceOrNull(dependency2))
+		);
 	}
 
 	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
-		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3});
+		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3)},
+				locator -> constructor.create(
+						locator.getInstanceOrNull(dependency1),
+						locator.getInstanceOrNull(dependency2),
+						locator.getInstanceOrNull(dependency3))
+		);
 	}
 
 	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
-		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3, dependency4});
+		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4)},
+				locator -> constructor.create(
+						locator.getInstanceOrNull(dependency1),
+						locator.getInstanceOrNull(dependency2),
+						locator.getInstanceOrNull(dependency3),
+						locator.getInstanceOrNull(dependency4))
+		);
 	}
 
 	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
-		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3, dependency4, dependency5});
+		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5)},
+				locator -> constructor.create(
+						locator.getInstanceOrNull(dependency1),
+						locator.getInstanceOrNull(dependency2),
+						locator.getInstanceOrNull(dependency3),
+						locator.getInstanceOrNull(dependency4),
+						locator.getInstanceOrNull(dependency5))
+		);
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {
-		return Binding.to(constructor, new Key[]{dependency1, dependency2, dependency3, dependency4, dependency5, dependency6});
+		return new Binding<>(
+				new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6)},
+				locator -> constructor.create(
+						locator.getInstanceOrNull(dependency1),
+						locator.getInstanceOrNull(dependency2),
+						locator.getInstanceOrNull(dependency3),
+						locator.getInstanceOrNull(dependency4),
+						locator.getInstanceOrNull(dependency5),
+						locator.getInstanceOrNull(dependency6))
+		);
 	}
 
 	public Binding<T> at(@Nullable LocationInfo location) {
@@ -148,68 +190,54 @@ public final class Binding<T> {
 		return this;
 	}
 
-	public Binding<T> initialize(BindingInitializer<T> bindingInitializer) {
+	public Binding<T> withInitializer(BindingInitializer<T> bindingInitializer) {
 		if (bindingInitializer == BindingInitializer.noop()) {
 			return this;
 		}
-		Dependency[] addedDependencies = bindingInitializer.getDependencies();
-		Dependency[] combinedDependencies = new Dependency[this.dependencies.length + addedDependencies.length];
+
+		Dependency[] extraDependencies = bindingInitializer.getDependencies();
+		Dependency[] combinedDependencies = new Dependency[this.dependencies.length + extraDependencies.length];
 		System.arraycopy(this.dependencies, 0, combinedDependencies, 0, this.dependencies.length);
-		System.arraycopy(addedDependencies, 0, combinedDependencies, this.dependencies.length, addedDependencies.length);
+		System.arraycopy(extraDependencies, 0, combinedDependencies, this.dependencies.length, extraDependencies.length);
 
-		Initializer<T> initializer = bindingInitializer.getInitializer();
-		int depsLen = this.dependencies.length;
-
-		return new Binding<>(combinedDependencies,
-				args -> {
-					T instance = factory.create(Arrays.copyOfRange(args, 0, depsLen));
-					initializer.apply(instance, Arrays.copyOfRange(args, depsLen, args.length));
+		return new Binding<>(combinedDependencies, location,
+				locator -> {
+					T instance = factory.create(locator);
+					Object[] instances = new Object[extraDependencies.length];
+					for (int i = 0; i < instances.length; i++) {
+						instances[i] = locator.getInstanceOrNull(extraDependencies[i].getKey());
+					}
+					bindingInitializer.getInitializer().apply(instance, instances);
 					return instance;
-				},
-				location);
+				}
+		);
 	}
 
 	public Binding<T> onInstance(@NotNull Consumer<? super T> consumer) {
-		return new Binding<>(dependencies,
-				args -> {
-					T instance = factory.create(args);
-					consumer.accept(instance);
+		return onInstance((locator, instance) -> consumer.accept(instance));
+	}
+
+	public Binding<T> onInstance(@NotNull BiConsumer<InstanceLocator, ? super T> consumer) {
+		return new Binding<>(dependencies, location,
+				locator -> {
+					T instance = factory.create(locator);
+					consumer.accept(locator, instance);
 					return instance;
-				},
-				location);
+				}
+		);
 	}
 
 	public <R> Binding<R> mapInstance(@NotNull Function<? super T, ? extends R> fn) {
-		return new Binding<>(dependencies,
-				args -> {
-					T instance = factory.create(args);
-					return instance != null ? fn.apply(instance) : null;
-				},
-				location);
+		return mapInstance((locator, instance) -> fn.apply(instance));
 	}
 
-	public <R> Binding<R> mapInstance(@NotNull BiFunction<Object[], ? super T, ? extends R> fn) {
-		return new Binding<>(dependencies,
-				args -> {
-					T instance = factory.create(args);
-					return instance != null ? fn.apply(args, instance) : null;
-				},
-				location);
-	}
-
-	public Binding<T> onDependencies(@NotNull Consumer<Object[]> consumer) {
-		return new Binding<>(dependencies,
-				args -> {
-					consumer.accept(args);
-					return factory.create(args);
-				},
-				location);
-	}
-
-	public Binding<T> mapDependencies(@NotNull Function<Object[], Object[]> fn) {
-		return new Binding<>(dependencies,
-				args -> factory.create(fn.apply(args)),
-				location);
+	public <R> Binding<R> mapInstance(@NotNull BiFunction<InstanceLocator, ? super T, ? extends R> fn) {
+		return new Binding<>(dependencies, location,
+				locator -> {
+					T instance = factory.create(locator);
+					return instance != null ? fn.apply(locator, instance) : null;
+				}
+		);
 	}
 
 	public <K> Binding<T> onDependency(@NotNull Class<K> dependency, @NotNull Consumer<? super K> consumer) {
@@ -229,45 +257,30 @@ public final class Binding<T> {
 
 	@SuppressWarnings("unchecked")
 	public <K> Binding<T> mapDependency(@NotNull Key<K> dependency, @NotNull Function<? super K, ? extends K> fn) {
-		List<Integer> positionsList = new ArrayList<>();
-		for (int i = 0; i < dependencies.length; i++) {
-			if (dependencies[i].getKey().equals(dependency)) {
-				positionsList.add(i);
-			}
-		}
-		int[] positions = positionsList.stream().mapToInt(Integer::intValue).toArray();
-		checkArgument(positions.length != 0);
-		return new Binding<>(dependencies,
-				args -> {
-					K mapped = fn.apply((K) args[positions[0]]);
-					for (int i = 1; i < positions.length; i++) {
-						args[i] = mapped;
+		return new Binding<>(dependencies, location,
+				locator -> factory.create(new InstanceLocator() {
+					@Override
+					@Nullable
+					public <Q> Q getInstanceOrNull(@NotNull Key<Q> key) {
+						Q instance = locator.getInstanceOrNull(key);
+						return !key.equals(dependency) ? instance : (Q) fn.apply((K) instance);
 					}
-					return factory.create(args);
-				},
-				location);
+				})
+		);
 	}
 
-	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
-		Dependency[] newDependencies = new Dependency[dependencies.length];
-		for (int i = 0; i < dependencies.length; i++) {
-			newDependencies[i] = dependencies[i].getKey().equals(from) ? Dependency.toKey(to) : dependencies[i];
-		}
-		return new Binding<>(newDependencies, factory, location);
+	public Binding<T> addDependencies(@NotNull Class<?>... extraDependencies) {
+		return addDependencies(Stream.of(extraDependencies).map(Key::of).map(Dependency::toKey).toArray(Dependency[]::new));
 	}
 
-	public Binding<T> addDependencies(@NotNull Class<?>... dependencies) {
-		return addDependencies(Stream.of(dependencies).map(Key::of).map(Dependency::toKey).toArray(Dependency[]::new));
+	public Binding<T> addDependencies(@NotNull Key<?>... extraDependencies) {
+		return addDependencies(Stream.of(extraDependencies).map(Dependency::toKey).toArray(Dependency[]::new));
 	}
 
-	public Binding<T> addDependencies(@NotNull Key<?>... dependencies) {
-		return addDependencies(Stream.of(dependencies).map(Dependency::toKey).toArray(Dependency[]::new));
-	}
-
-	public Binding<T> addDependencies(@NotNull Dependency... dependencies) {
-		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, this.dependencies.length + dependencies.length);
-		System.arraycopy(dependencies, 0, newDependencies, this.dependencies.length, dependencies.length);
-		return new Binding<>(newDependencies, newArgs -> factory.create(Arrays.copyOf(newArgs, this.dependencies.length)), location);
+	public Binding<T> addDependencies(@NotNull Dependency... extraDependencies) {
+		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, this.dependencies.length + extraDependencies.length);
+		System.arraycopy(extraDependencies, 0, newDependencies, this.dependencies.length, extraDependencies.length);
+		return new Binding<>(newDependencies, location, factory);
 	}
 
 	@NotNull

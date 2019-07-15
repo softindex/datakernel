@@ -1,6 +1,9 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.util.Constructors;
+import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.DIException;
+import io.datakernel.di.core.Dependency;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
@@ -9,6 +12,7 @@ import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -37,17 +41,14 @@ public interface Multibinder<T> {
 	 */
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
 		return (key, bindings) -> {
-			List<Constructors.Factory<T>> factories = new ArrayList<>();
+			List<Binding.Factory<T>> factories = new ArrayList<>();
 			List<Dependency> dependencies = new ArrayList<>();
 			for (Binding<T> binding : bindings) {
-				int from = dependencies.size();
-				int to = from + binding.getDependencies().length;
-				Collections.addAll(dependencies, binding.getDependencies());
-				factories.add(args -> binding.getFactory().create(Arrays.copyOfRange(args, from, to)));
+				dependencies.addAll(asList(binding.getDependencies()));
+				factories.add(binding.getFactory());
 			}
-			return Binding.to(
-					args -> reducerFunction.apply(key, factories.stream().map(factory -> factory.create(args))),
-					dependencies.toArray(new Dependency[0]));
+			return new Binding<>(dependencies.toArray(new Dependency[0]),
+					locator -> reducerFunction.apply(key, factories.stream().map(factory -> factory.create(locator))));
 		};
 	}
 

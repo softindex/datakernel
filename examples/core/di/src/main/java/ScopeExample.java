@@ -85,7 +85,7 @@ public final class ScopeExample {
 		protected void configure() {
 			// when your factory returns null it means that it refuses to construct an instance
 			// and so it throws a nice CannotConstructException if called
-			bind(HttpRequest.class).in(HttpScope.class).to($ -> null);
+			bind(HttpRequest.class).in(HttpScope.class).to(() -> null);
 		}
 	}
 

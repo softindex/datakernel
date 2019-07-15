@@ -40,7 +40,8 @@ import static java.util.stream.Collectors.toSet;
  * associated with some {@link Key keys}.
  * Branches of the trie are used to {@link #enterScope enter scopes}.
  */
-public class Injector {
+@SuppressWarnings({"unused", "WeakerAccess"})
+public class Injector implements InstanceLocator {
 	@Nullable
 	private final Injector parent;
 	private final Scope[] scope;
@@ -153,7 +154,6 @@ public class Injector {
 	 * @param multibinder      a multibindinder that is called on every binding conflict (see {@link Multibinder#combinedMultibinder})
 	 * @param transformer      a transformer that is called on every binding once (see {@link BindingTransformer#combinedTransformer})
 	 * @param generator        a generator that is called on every missing binding (see {@link BindingGenerator#combinedGenerator})
-	 *
 	 * @see #enterScope
 	 */
 	public static Injector compile(@Nullable Injector parent, Map<Key<?>, Object> instances, boolean threadsafe,
@@ -212,11 +212,7 @@ public class Injector {
 		return injector;
 	}
 
-	@NotNull
-	public <T> T getInstance(@NotNull Class<T> type) {
-		return getInstance(Key.of(type));
-	}
-
+	@Override
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
@@ -226,27 +222,13 @@ public class Injector {
 		}
 		instance = doCreateInstanceOrNull(key);
 		instances.put(key, instance);
-		if (instance == null) {
-			throw cannotConstruct(key, bindingGraph.get(key));
+		if (instance != null) {
+			return instance;
 		}
-		return instance;
+		throw DIException.cannotConstruct(key, bindingGraph.get(key));
 	}
 
-	public <T> T getInstanceOr(@NotNull Class<T> type, T defaultValue) {
-		T instanceOrNull = getInstanceOrNull(type);
-		return instanceOrNull != null ? instanceOrNull : defaultValue;
-	}
-
-	public <T> T getInstanceOr(@NotNull Key<T> key, T defaultValue) {
-		T instanceOrNull = getInstanceOrNull(key);
-		return instanceOrNull != null ? instanceOrNull : defaultValue;
-	}
-
-	@Nullable
-	public <T> T getInstanceOrNull(@NotNull Class<T> type) {
-		return getInstanceOrNull(Key.of(type));
-	}
-
+	@Override
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
@@ -267,10 +249,10 @@ public class Injector {
 	@NotNull
 	public <T> T createInstance(@NotNull Key<T> key) {
 		T instance = doCreateInstanceOrNull(key);
-		if (instance == null) {
-			throw cannotConstruct(key, bindingGraph.get(key));
+		if (instance != null) {
+			return instance;
 		}
-		return instance;
+		throw DIException.cannotConstruct(key, bindingGraph.get(key));
 	}
 
 	@Nullable
@@ -288,27 +270,7 @@ public class Injector {
 	private <T> T doCreateInstanceOrNull(@NotNull Key<T> key) {
 		Binding<?> binding = bindingGraph.get(key);
 		if (binding != null) {
-			Dependency[] dependencies = binding.getDependencies();
-			if (dependencies.length == 0) {
-				return (T) binding.getFactory().create(NO_OBJECTS);
-			}
-			Object[] dependencyInstances = new Object[dependencies.length];
-			for (int i = 0; i < dependencies.length; i++) {
-				Dependency dependency = dependencies[i];
-				Key<?> dependencyKey = dependency.getKey();
-				Object dependencyInstance = instances.get(dependencyKey);
-				if (dependencyInstance == null) {
-					dependencyInstance = doCreateInstanceOrNull(dependencyKey);
-					if (dependencyInstance != null) {
-						instances.put(dependencyKey, dependencyInstance);
-					}
-				}
-				if (dependencyInstance == null && dependency.isRequired()) {
-					throw cannotConstruct(dependencyKey, bindingGraph.get(dependencyKey));
-				}
-				dependencyInstances[i] = dependencyInstance;
-			}
-			return (T) binding.getFactory().create(dependencyInstances);
+			return (T) binding.getFactory().create(this);
 		}
 		if (parent != null) {
 			return parent.getInstanceOrNull(key);
@@ -316,15 +278,6 @@ public class Injector {
 		return null;
 	}
 
-	private static DIException cannotConstruct(Key<?> key, @Nullable Binding<?> binding) {
-		return new DIException((binding != null ? "Binding refused to" : "No binding to") + " construct an instance for key " +
-				key.getDisplayString() + (binding != null && binding.getLocation() != null ? ("\n\t at" + binding.getLocation()) : ""));
-	}
-
-	/**
-	 * This method returns an instance only if it already was created by a {@link #getInstance} call before,
-	 * it does not trigger instance creation.
-	 */
 	@Nullable
 	public <T> T peekInstance(@NotNull Class<T> type) {
 		return peekInstance(Key.of(type));
@@ -371,6 +324,7 @@ public class Injector {
 
 	/**
 	 * This method triggers creation of all keys that were marked as {@link EagerSingleton eager singletons}.
+	 *
 	 * @see EagerSingleton
 	 */
 	public Set<Key<?>> createEagerSingletons() {
@@ -383,6 +337,7 @@ public class Injector {
 	 * The key of type Set&lt;InstanceInjector&lt;?&gt;&gt; (note the wildcard type) is treated specially by this method,
 	 * it calls all of the instance injectors the set contains on instances of their respective keys, if such instances
 	 * were already made by this injector.
+	 *
 	 * @see AbstractModule#postInjectInto
 	 */
 	@SuppressWarnings("unchecked")
