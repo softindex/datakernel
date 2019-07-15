@@ -6,8 +6,8 @@ RUN apk --update add --no-cache git
 
 # TODO eduard: change this to master branch once OT app is in master branch
 # datakernel layer
-ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/editor-chat last-commit.json
-RUN git clone --depth 1 -b editor-chat https://github.com/softindex/datakernel \
+ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/chat-test last-commit.json
+RUN git clone --depth 1 -b chat-test https://github.com/softindex/datakernel \
  && cd datakernel \
  && mvn install -DskipTests \
  && cd ..

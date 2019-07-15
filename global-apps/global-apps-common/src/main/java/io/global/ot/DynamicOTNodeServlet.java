@@ -18,6 +18,8 @@ import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -34,6 +36,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 
 public final class DynamicOTNodeServlet<D> implements AsyncServlet {
+	private static final Logger logger = LoggerFactory.getLogger(DynamicOTNodeServlet.class);
+
 	public static final ParseException ID_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Query parameter ID is required");
 	public static final ParseException KEYS_REQUIRED = new ParseException(DynamicOTNodeServlet.class, "Cookie 'Key' is required");
 	public static final ParseException READ_ONLY = new ParseException(DynamicOTNodeServlet.class,
@@ -60,8 +64,9 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 		return new DynamicOTNodeServlet<>(driver, otSystem, diffCodec, prefix);
 	}
 
-	private RoutingServlet getServlet() {
-		return RoutingServlet.create()
+	private AsyncServlet getServlet() {
+		return AsyncServletDecorator.onException((request, e) -> logger.warn("Request {}", request, e))
+				.serve(RoutingServlet.create()
 				.with(GET, "/" + CHECKOUT, request -> {
 					try {
 						return getNode(request, true).checkout()
@@ -119,7 +124,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 							} catch (ParseException e) {
 								return Promise.ofException(e);
 							}
-						}));
+				})));
 	}
 
 	private static <T> HttpResponse jsonResponse(StructuredCodec<T> codec, T item) {
