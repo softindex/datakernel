@@ -14,6 +14,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
@@ -221,6 +222,14 @@ public abstract class AbstractModule implements Module {
 
 		public <U extends T> BindingBuilder<T> toInstance(@NotNull U instance) {
 			return to(Binding.toInstance(instance));
+		}
+
+		public <U extends T> BindingBuilder<T> toSupplier(@NotNull Key<? extends Supplier<? extends T>> supplierKey) {
+			return to(Binding.toSupplier(supplierKey));
+		}
+
+		public <U extends T> BindingBuilder<T> toSupplier(@NotNull Class<? extends Supplier<? extends T>> supplierType) {
+			return to(Binding.toSupplier(supplierType));
 		}
 
 		public BindingBuilder<T> to(@NotNull Constructor0<? extends T> constructor) {

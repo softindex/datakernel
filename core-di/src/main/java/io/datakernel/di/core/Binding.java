@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.checkArgument;
@@ -69,6 +70,14 @@ public final class Binding<T> {
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
 		return Binding.to($ -> instance);
+	}
+
+	public static <T> Binding<T> toSupplier(@NotNull Key<? extends Supplier<? extends T>> supplierKey) {
+		return Binding.to(Supplier::get, supplierKey);
+	}
+
+	public static <T> Binding<T> toSupplier(@NotNull Class<? extends Supplier<? extends T>> supplierType) {
+		return Binding.to(Supplier::get, supplierType);
 	}
 
 	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
