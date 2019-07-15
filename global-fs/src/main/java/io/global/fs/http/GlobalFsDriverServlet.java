@@ -58,7 +58,7 @@ public final class GlobalFsDriverServlet {
 					try {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						SimKey simKey = getSimKey(request);
-						String name = request.getRelativePath();
+						String name = UrlParser.urlDecode(request.getRelativePath());
 						return driver.getMetadata(space, name)
 								.then(meta -> {
 									if (meta != null) {
