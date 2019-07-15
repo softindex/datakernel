@@ -10,15 +10,24 @@ import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 
+/**
+ * This class contains a set of utilities for working with {@link Module modules}.
+ */
 @SuppressWarnings("WeakerAccess")
 public final class Modules {
 	private Modules() {
 	}
 
+	/**
+	 * Creates a {@link Module module} out of given binding graph trie
+	 */
 	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return new ModuleImpl(bindings.map(Utils::toMultimap), emptyMap(), emptyMap(), emptyMap());
 	}
 
+	/**
+	 * Creates a {@link Module module} out of given binding graph trie, transformers, generators and multibinders
+	 */
 	public static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
 			Map<Integer, Set<BindingTransformer<?>>> transformers,
 			Map<Class<?>, Set<BindingGenerator<?>>> generators,
@@ -26,10 +35,16 @@ public final class Modules {
 		return new ModuleImpl(bindings, transformers, generators, multibinders);
 	}
 
+	/**
+	 * @see #combine(Collection)
+	 */
 	public static Module combine(Module... modules) {
 		return modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
+	/**
+	 * Combines multiple modules into one.
+	 */
 	public static Module combine(Collection<Module> modules) {
 		if (modules.size() == 1) {
 			return modules.iterator().next();
@@ -57,6 +72,10 @@ public final class Modules {
 		return modules.stream().reduce(Module.empty(), Modules::override);
 	}
 
+	/**
+	 * This method creates a module that has bindings, transformers, generators and multibinders from first module
+	 * replaced with bindings, transformers, generators and multibinders from the second module.
+	 */
 	public static Module override(Module into, Module replacements) {
 		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindings(), replacements.getBindings());
 
@@ -72,6 +91,11 @@ public final class Modules {
 		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, multibinders);
 	}
 
+	/**
+	 * Creates a module with all trie nodes merged into one and placed at root.
+	 * Basically, any scopes are ignored.
+	 * This is useful for some tests.
+	 */
 	public static Module ignoreScopes(Module from) {
 		Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
 		Map<Key<?>, Scope[]> scopes = new HashMap<>();
@@ -93,7 +117,7 @@ public final class Modules {
 		private final Map<Class<?>, Set<BindingGenerator<?>>> generators;
 		private final Map<Key<?>, Multibinder<?>> multibinders;
 
-		public ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
 				Map<Integer, Set<BindingTransformer<?>>> transformers,
 				Map<Class<?>, Set<BindingGenerator<?>>> generators,
 				Map<Key<?>, Multibinder<?>> multibinders) {

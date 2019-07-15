@@ -1,9 +1,10 @@
 package io.datakernel.di.util;
 
+/**
+ * These are just set of functional interfaces to be used by the DSL
+ */
 public final class Constructors {
-	private Constructors() {
-		throw new AssertionError("nope.");
-	}
+	private Constructors() {}
 
 //	public static void main(String[] args) {
 //		for (int n = 0; n <= 6; n++) {

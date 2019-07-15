@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.module.Multibinder;
 import io.datakernel.di.util.Constructors.Factory;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
@@ -25,9 +24,7 @@ public final class BindingGraph {
 		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
 	};
 
-	private BindingGraph() {
-		throw new AssertionError("nope.");
-	}
+	private BindingGraph() {}
 
 	/**
 	 * This method converts a trie of binding multimaps, that is provided from the modules,

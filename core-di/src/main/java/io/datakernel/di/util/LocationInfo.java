@@ -7,6 +7,10 @@ import java.lang.reflect.Method;
 
 import static io.datakernel.di.util.ReflectionUtils.getShortName;
 
+/**
+ * LocationInfo is a transient field in {@link io.datakernel.di.core.Binding binding} that is set
+ * where possible by the DSL so that error messages can show where a binding was made.
+ */
 public final class LocationInfo {
 	private final Object module;
 	@Nullable

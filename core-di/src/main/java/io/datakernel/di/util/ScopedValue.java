@@ -9,6 +9,11 @@ import java.util.stream.Stream;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.stream.Collectors.joining;
 
+/**
+ * This is a simple generic POJO (or POGJO) for some object with associated scope path.
+ * <p>
+ * It is generic only because it is used as both ScopedValue&lt;Key&lt;?&gt;&gt;, and ScopedValue&lt;Dependency&gt;.
+ */
 public final class ScopedValue<T> {
 	@NotNull
 	private final Scope[] scope;

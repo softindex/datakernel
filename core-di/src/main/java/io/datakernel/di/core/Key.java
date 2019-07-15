@@ -12,6 +12,19 @@ import java.util.Objects;
 
 import static io.datakernel.di.util.Types.ensureEquality;
 
+/**
+ * The key defines an identity of a binding. In any DI, a key is usually a type of the object along
+ * with some optional tag to distinguish between bindings which make objects of the same type.
+ * <p>
+ * In DataKernel DI, a key is also a type token - special abstract class that can store type information
+ * with shortest syntax possible in Java.
+ * <p>
+ * For example, to create a key of type Map&lt;String, List&lt;Integer&gt;&gt;, you can just use
+ * this syntax: <code>new Key&lt;Map&lt;String, List&lt;Integer&gt;&gt;&gt;(){}</code>.
+ * <p>
+ * If your types are not known at compile time, you can use {@link Types#parameterized} to make a
+ * parameterized type and give it to a {@link #ofType Key.ofType} constructor.
+ */
 public abstract class Key<T> {
 	@NotNull
 	private final Type type;
@@ -48,6 +61,9 @@ public abstract class Key<T> {
 		this.name = name;
 	}
 
+	/**
+	 * A default sublass to be used by {@link #of Key.of*} and {@link #ofType Key.ofType*} constructors
+	 */
 	private static final class KeyImpl<T> extends Key<T> {
 		private KeyImpl(Type type, Name name) {
 			super(type, name);
@@ -104,18 +120,30 @@ public abstract class Key<T> {
 		return new KeyImpl<>(type, Name.of(annotation));
 	}
 
+	/**
+	 * Returns a new key with same type but the name replaced with a given one
+	 */
 	public Key<T> named(Name name) {
 		return new KeyImpl<>(type, name);
 	}
 
+	/**
+	 * @see #named(Name)
+	 */
 	public Key<T> named(String name) {
 		return new KeyImpl<>(type, Name.of(name));
 	}
 
+	/**
+	 * @see #named(Name)
+	 */
 	public Key<T> named(@NotNull Class<? extends Annotation> annotationType) {
 		return new KeyImpl<>(type, Name.of(annotationType));
 	}
 
+	/**
+	 * @see #named(Name)
+	 */
 	public Key<T> named(@NotNull Annotation annotation) {
 		return new KeyImpl<>(type, Name.of(annotation));
 	}
@@ -131,12 +159,20 @@ public abstract class Key<T> {
 		return type;
 	}
 
+	/**
+	 * A shortcut for <code>{@link Types#getRawType}(key.getType())</code>.
+	 * Also casts the result to a properly parameterized class.
+	 */
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public Class<T> getRawType() {
 		return (Class<T>) Types.getRawType(type);
 	}
 
+	/**
+	 * Returns a type parameter of the underlying type wrapped as a key with no name.
+	 * @throws IllegalStateException when undelying type is not a parameterized one.
+	 */
 	public <U> Key<U> getTypeParameter(int index) {
 		if (type instanceof ParameterizedType) {
 			return new KeyImpl<>(((ParameterizedType) type).getActualTypeArguments()[index], null);
@@ -144,11 +180,17 @@ public abstract class Key<T> {
 		throw new IllegalStateException("Expected type from key " + getDisplayString() + " to be parameterized");
 	}
 
+	/**
+	 * Null-checked shortcut for <code>key.getName()?.getAnnotationType()</code>.
+	 */
 	@Nullable
 	public Class<? extends Annotation> getAnnotationType() {
 		return name != null ? name.getAnnotationType() : null;
 	}
 
+	/**
+	 * Null-checked shortcut for <code>key.getName()?.getAnnotation()</code>.
+	 */
 	@Nullable
 	public Annotation getAnnotation() {
 		return name != null ? name.getAnnotation() : null;
@@ -159,6 +201,10 @@ public abstract class Key<T> {
 		return name;
 	}
 
+	/**
+	 * Returns an underlying type with display string formatting (package names stripped)
+	 * and prepended name display string if this key has a name.
+	 */
 	public String getDisplayString() {
 		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getShortName(type.getTypeName());
 	}

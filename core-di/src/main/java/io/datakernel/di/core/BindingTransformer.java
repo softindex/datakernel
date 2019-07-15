@@ -11,7 +11,7 @@ import java.util.Set;
 import static java.util.stream.Collectors.toList;
 
 /**
- * This is a function that is applied by the {@link Injector injector} to each binding once.
+ * This is a tranformation function that is applied by the {@link Injector injector} to each binding once.
  */
 @FunctionalInterface
 public interface BindingTransformer<T> {

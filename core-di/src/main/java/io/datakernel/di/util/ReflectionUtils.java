@@ -15,10 +15,12 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
+/**
+ * These are various reflection utilities that are used by the DSL.
+ * While you should not use them normally, they are pretty well organized and thus are left public.
+ */
 public final class ReflectionUtils {
-	private ReflectionUtils() {
-		throw new AssertionError("nope.");
-	}
+	private ReflectionUtils() {}
 
 	public static String getShortName(String className) {
 		return className.replaceAll("(?:\\p{javaJavaIdentifierPart}+\\.)*", "");

@@ -1,11 +1,21 @@
 package io.datakernel.di.util;
 
+import io.datakernel.di.core.Name;
+import io.datakernel.di.core.Scope;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 
+/**
+ * This is a helper class for making tag-like objects that are identified by stateless or stateful annotations.
+ * <p>
+ * You don't need to extend it yourself.
+ *
+ * @see Name
+ * @see Scope
+ */
 public abstract class AbstractAnnotation {
 	@NotNull
 	private final Class<? extends Annotation> annotationType;

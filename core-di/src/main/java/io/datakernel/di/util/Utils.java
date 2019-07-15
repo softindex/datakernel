@@ -1,7 +1,6 @@
 package io.datakernel.di.util;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.module.Multibinder;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -16,9 +15,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 
 public final class Utils {
-	private Utils() {
-		throw new AssertionError("nope.");
-	}
+	private Utils() {}
 
 	private static final BiConsumer<Map<Object, Set<Object>>, Map<Object, Set<Object>>> MULTIMAP_MERGER =
 			(into, from) -> from.forEach((k, v) -> into.computeIfAbsent(k, $ -> new HashSet<>()).addAll(v));

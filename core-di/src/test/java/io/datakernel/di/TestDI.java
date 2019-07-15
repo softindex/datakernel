@@ -6,7 +6,6 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
-import io.datakernel.di.module.Multibinder;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;

@@ -10,10 +10,14 @@ import java.util.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
+/**
+ * This class contains reflection utilities to work with Java types.
+ * Its main use is for method {@link #parameterized Types.parameterized}.
+ * However, just like with {@link ReflectionUtils}, other type utility
+ * methods are pretty clean too so they are left public.
+ */
 public final class Types {
-	private Types() {
-		throw new AssertionError("nope.");
-	}
+	private Types() {}
 
 	public static Class<?> getRawType(Type type) {
 		if (type instanceof Class) {

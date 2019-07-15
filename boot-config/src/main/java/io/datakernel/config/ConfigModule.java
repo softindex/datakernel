@@ -18,8 +18,8 @@ package io.datakernel.config;
 
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.Multibinder;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;

@@ -1,5 +1,6 @@
 package io.datakernel.di.module;
 
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
@@ -12,6 +13,16 @@ import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
 
+/**
+ * This module provides a set of default generators.
+ * <p>
+ * The first one tries to generate a binding for any missing key by searching for {@link Inject} constructors.
+ * <p>
+ * The second one generates any Key&lt;SomeType&gt; instance for SomeType.
+ * Its purpose is to get reified types from generics in templated providers.
+ * <p>
+ * The last three generate appropriate instances for {@link InstanceProvider}, {@link InstanceFactory} and {@link InstanceInjector} requests.
+ */
 public final class DefaultModule implements Module {
 
 	private static final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> emptyTrie = Trie.leaf(new HashMap<>());

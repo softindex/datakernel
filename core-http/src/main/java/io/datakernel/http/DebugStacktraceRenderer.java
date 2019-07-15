@@ -50,9 +50,7 @@ public final class DebugStacktraceRenderer {
 		STACK_TRACE_ELEMENT = Pattern.compile("(at ((?:" + ident + "\\.)+)" + ident + "\\()(" + ident + "(\\." + ident + ")(:\\d+)?)\\)");
 	}
 
-	private DebugStacktraceRenderer() {
-		throw new AssertionError("nope.");
-	}
+	private DebugStacktraceRenderer() {}
 
 	public static HttpResponse render(Throwable e) {
 		StringWriter writer = new StringWriter();

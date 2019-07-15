@@ -26,7 +26,6 @@ import static java.util.stream.Collectors.joining;
  * <p>
  * Also it contains a set of {@link io.datakernel.di.module.AbstractModule#bind binding-DSL-like} static factory methods
  * as well as some functional transformations for the ease of creating immutable binding modifications.
- * @param <T>
  */
 public final class Binding<T> {
 	private final Dependency[] dependencies;
