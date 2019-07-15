@@ -24,8 +24,8 @@ import java.net.InetSocketAddress;
 import static io.datakernel.util.Utils.nullify;
 
 /**
- * This class represents a UDP packet. Each message is routed from one machine to another based solely on
- * information contained within that packet
+ * This class represents a UDP packet.
+ * Each message is routed from one machine to another based solely on information contained within that packet
  */
 public final class UdpPacket {
 	/**
@@ -39,7 +39,6 @@ public final class UdpPacket {
 	 */
 	private final InetSocketAddress inetSocketAddress;
 
-	// region creators
 	private UdpPacket(@Nullable ByteBuf buf, InetSocketAddress inetSocketAddress) {
 		this.buf = buf;
 		this.inetSocketAddress = inetSocketAddress;
@@ -55,7 +54,6 @@ public final class UdpPacket {
 	public static UdpPacket of(ByteBuf buf, InetSocketAddress inetSocketAddress) {
 		return new UdpPacket(buf, inetSocketAddress);
 	}
-	// endregion
 
 	/**
 	 * Returns the data buffer to send or which was received

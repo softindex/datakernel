@@ -30,8 +30,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 /**
  * Common interface for connection-oriented transport protocols.
  * <p>
- * This interface describes asynchronous read and write operations for data transmission through network.
- * <p>
+ * This interface describes asynchronous read and write operations for data transmission through the network.
  * <p>
  * Implementations of this interface should follow rules described below:
  * <ul>
@@ -45,7 +44,7 @@ public interface AsyncTcpSocket extends Cancellable {
 	 * Operation to read some data from network. Returns a promise of a bytebuf that represents some data recieved
 	 * from network.
 	 * <p>
-	 * It is allowed to call {@link #read()} before previous {@link #read()} was completed.
+	 * It is allowed to call read before previous read was completed.
 	 * However, each consecutive call will cancel all of the previous calls (they will not be completed).
 	 *
 	 * @return promise of ByteBuf that represents data recieved from network
@@ -56,8 +55,7 @@ public interface AsyncTcpSocket extends Cancellable {
 	/**
 	 * Operation to write some data to network. Returns a promise of void that represents succesfull write.
 	 * <p>
-	 * Many {@link #write(ByteBuf)} operations may be called. However, when write is succesful,
-	 * all of the previous promises that wait on write will be completed.
+	 * Many write operations may be called. However, when some write is succesful, all of the promises received from write calls before it will be completed at once.
 	 *
 	 * @param buf data to be sent to network
 	 * @return promise that represents succesful write operation

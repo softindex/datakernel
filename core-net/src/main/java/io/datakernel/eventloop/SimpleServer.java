@@ -19,6 +19,10 @@ package io.datakernel.eventloop;
 import java.net.InetAddress;
 import java.util.function.Consumer;
 
+/**
+ * This is a basic implementation of the {@link AbstractServer} which just dispatches
+ * each {@link AsyncTcpSocket acync client connection} to a given consumer.
+ */
 public final class SimpleServer extends AbstractServer<SimpleServer> {
 	private final Consumer<AsyncTcpSocket> socketConsumer;
 

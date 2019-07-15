@@ -32,11 +32,12 @@ import java.util.function.Supplier;
 public interface EventloopExecutor extends Executor {
 	/**
 	 * Executes the given computation at some time in the future in some undelying eventloop.
-	 *
-	 * @param computation
-	 * @return
 	 */
 	@NotNull CompletableFuture<Void> submit(@NotNull Runnable computation);
 
+	/**
+	 * Executes the given computation at some time in the future in some undelying eventloop
+	 * and returns its result in a {@link CompletableFuture future}.
+	 */
 	@NotNull <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation);
 }

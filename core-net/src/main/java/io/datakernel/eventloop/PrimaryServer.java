@@ -22,9 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * It is the {@link AbstractServer} which only handles connections. It contains a collection of
- * {@link WorkerServer}s, and when an incoming connection takes place, it forwards the request
- * to some server from the collection with round-robin algorithm.
+ * It is a simple balancer server, which dispatches its connections to its {@link WorkerServer WorkerServers}.
+ * <p>
+ * When an incoming connection takes place, it forwards the request to one of them with a round-robin algorithm.
  */
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 

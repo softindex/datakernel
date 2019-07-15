@@ -53,9 +53,11 @@ import static java.util.Collections.singletonList;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
- * It is implementation of {@link EventloopServer}. It is non-blocking server which works in eventloop.
- * The server runs on the one thread, and all events are fired on that thread. This server can listen few
- * addresses in one time and you can register multiple connections for responding to incoming data.
+ * This is an implementation of {@link EventloopServer}.
+ * It is a non-blocking server which works on top of the eventloop.
+ * Thus it runs in the eventlop thread, and all events are fired on that thread.
+ * <p>
+ * This is simply a higher-level wrapper around eventloop {@link Eventloop#listen} call.
  */
 @SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<Self extends AbstractServer<Self>> implements EventloopServer, WorkerServer, Initializable<Self>, EventloopJmxMBeanEx {
@@ -72,6 +74,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 
 	protected boolean acceptOnce;
 
+	@FunctionalInterface
 	public interface AcceptFilter {
 		boolean filterAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl);
 	}
@@ -90,7 +93,9 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 
 	// jmx
 	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
+
 	AbstractServer<?> acceptServer = this;
+
 	@Nullable
 	private AsyncTcpSocketImpl.Inspector socketInspector;
 	@Nullable
@@ -204,11 +209,18 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	protected void onFilteredAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
 	}
 
+	/**
+	 * Begins listening asyncronously for incoming connections.
+	 * Creates an {@link ServerSocketChannel} for each listening address and registers them in
+	 * {@link Eventloop Eventloop} {@link java.nio.channels.Selector selector}.
+	 * Eventloop then asynchronously listens for network events and dispatches them to their listeners (us).
+	 */
 	@Override
 	public final void listen() throws IOException {
 		check(eventloop.inEventloopThread(), "Not in eventloop thread");
-		if (running)
+		if (running) {
 			return;
+		}
 		running = true;
 		onListen();
 		serverSocketChannels = new ArrayList<>();
@@ -225,9 +237,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	private void listenAddresses(List<InetSocketAddress> addresses, boolean ssl) throws IOException {
 		for (InetSocketAddress address : addresses) {
 			try {
-				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings,
-						channel -> doAccept(channel, address, ssl));
-				serverSocketChannels.add(serverSocketChannel);
+				serverSocketChannels.add(eventloop.listen(address, serverSocketSettings, channel -> doAccept(channel, address, ssl)));
 			} catch (IOException e) {
 				logger.error("Can't listen on [" + address + "]: " + this, e);
 				close();

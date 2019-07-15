@@ -37,6 +37,11 @@ import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
+/**
+ * This is an SSL proxy around {@link AsyncTcpSocket}.
+ * <p>
+ * It allows SSL connections using Java {@link SSLEngine}.
+ */
 public final class AsyncSslSocket implements AsyncTcpSocket {
 	private final SSLEngine engine;
 	private final Executor executor;
@@ -51,7 +56,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	@Nullable
 	private SettablePromise<Void> write;
 
-	// region builders
 	public static AsyncSslSocket wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
 			String host, int port,
 			SSLContext sslContext, Executor executor) {
@@ -84,12 +88,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	public static AsyncSslSocket create(AsyncTcpSocket asyncTcpSocket,
 			SSLEngine engine, Executor executor) {
 		return new AsyncSslSocket(asyncTcpSocket, engine, executor);
-	}
-	// endregion
-
-	private <T> Promise<T> sanitize(Promise<T> promise) {
-		return promise
-				.thenEx(this::sanitize);
 	}
 
 	@NotNull

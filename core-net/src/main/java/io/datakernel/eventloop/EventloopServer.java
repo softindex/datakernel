@@ -21,22 +21,22 @@ import io.datakernel.async.MaterializedPromise;
 import java.io.IOException;
 
 /**
- * Represents non-blocking server which listens new connection and accepts it asynchronous.
- * It is {@link AcceptCallback} for handling accepting to this server.
+ * Represents non-blocking server which listens to new connections and accepts them asynchronously.
+ * It operates on eventloop in eventloop thread and uses eventloop integration with Java NIO.
  */
 public interface EventloopServer {
 	Eventloop getEventloop();
 
 	/**
-	 * Tells the NioServer to start listen on its port and hostname.
+	 * Tells this server to start listening on its listen addresses.
 	 *
 	 * @throws IOException if the socket can not be created.
 	 */
 	void listen() throws IOException;
 
 	/**
-	 * Closes the server. Any open channels will be closed.
-	 *
+	 * Closes the server.
+	 * Any open channels will be closed.
 	 */
 	MaterializedPromise<?> close();
 }

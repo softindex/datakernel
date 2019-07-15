@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.inspector.AbstractInspector;
@@ -24,6 +26,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.Tuple2;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -35,6 +38,7 @@ import java.nio.channels.SelectionKey;
 import java.time.Duration;
 import java.util.ArrayDeque;
 
+import static io.datakernel.async.Cancellable.CLOSE_EXCEPTION;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
@@ -50,9 +54,11 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private int receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE.toInt();
 
 	private final DatagramChannel channel;
-	private final ArrayDeque<UdpPacket> writeQueue = new ArrayDeque<>();
 
-	private EventHandler eventHandler;
+	private final ArrayDeque<SettableCallback<UdpPacket>> readQueue = new ArrayDeque<>();
+	private final ArrayDeque<UdpPacket> readBuffer = new ArrayDeque<>();
+
+	private final ArrayDeque<Tuple2<UdpPacket, SettableCallback<Void>>> writeQueue = new ArrayDeque<>();
 
 	private int ops = 0;
 
@@ -125,41 +131,27 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	}
 	// endregion
 
-	// region creators
-	private AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) {
+	private AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) throws IOException {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(channel);
+		this.key = channel.register(eventloop.ensureSelector(), 0, this);
 	}
 
-	public static AsyncUdpSocketImpl create(Eventloop eventloop, DatagramChannel channel) {
-		return new AsyncUdpSocketImpl(eventloop, channel);
+	public static Promise<AsyncUdpSocketImpl> connect(Eventloop eventloop, DatagramChannel channel) {
+		try {
+			return Promise.of(new AsyncUdpSocketImpl(eventloop, channel));
+		} catch (IOException e) {
+			return Promise.ofException(e);
+		}
 	}
 
 	public AsyncUdpSocketImpl withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
-	// endregion
-
-	@Override
-	public void setEventHandler(EventHandler eventHandler) {
-		this.eventHandler = eventHandler;
-	}
 
 	public void setReceiveBufferSize(int receiveBufferSize) {
 		this.receiveBufferSize = receiveBufferSize;
-	}
-
-	public void register() {
-		try {
-			key = channel.register(eventloop.ensureSelector(), ops, this);
-		} catch (IOException e) {
-			eventloop.post(() -> {
-				eventloop.closeChannel(channel, key);
-				eventHandler.onClosedWithError(e);
-			});
-		}
-		eventHandler.onRegistered();
 	}
 
 	public boolean isOpen() {
@@ -167,8 +159,18 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	}
 
 	@Override
-	public void receive() {
-		readInterest(true);
+	public Promise<UdpPacket> receive() {
+		if (!isOpen()) {
+			return Promise.ofException(CLOSE_EXCEPTION);
+		}
+		UdpPacket polled = readBuffer.poll();
+		if (polled != null) {
+			return Promise.of(polled);
+		}
+		return Promise.ofCallback(cb -> {
+			readQueue.add(cb);
+			readInterest(true);
+		});
 	}
 
 	@Override
@@ -180,7 +182,9 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			try {
 				sourceAddress = (InetSocketAddress) channel.receive(buffer);
 			} catch (IOException e) {
-				if (inspector != null) inspector.onReceiveError(e);
+				if (inspector != null) {
+					inspector.onReceiveError(e);
+				}
 			}
 
 			if (sourceAddress == null) {
@@ -190,45 +194,64 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 			buf.ofWriteByteBuffer(buffer);
 			UdpPacket packet = UdpPacket.of(buf, sourceAddress);
-			if (inspector != null) inspector.onReceive(packet);
-			eventHandler.onReceive(packet);
+			if (inspector != null) {
+				inspector.onReceive(packet);
+			}
+
+			// at this point the packet is *received* so we either
+			// complete one of the listening callbacks or store it in the buffer
+
+			SettableCallback<UdpPacket> cb = readQueue.poll();
+			if (cb != null) {
+				cb.set(packet);
+				return;
+			}
+			readBuffer.add(packet);
 		}
 	}
 
 	@Override
-	public void send(UdpPacket packet) {
-		writeQueue.add(packet);
-		onWriteReady();
+	public Promise<Void> send(UdpPacket packet) {
+		if (!isOpen()) {
+			return Promise.ofException(CLOSE_EXCEPTION);
+		}
+		return Promise.ofCallback(cb -> {
+			writeQueue.add(new Tuple2<>(packet, cb));
+			onWriteReady();
+		});
 	}
 
 	@Override
 	public void onWriteReady() {
-		while (!writeQueue.isEmpty()) {
-			UdpPacket packet = writeQueue.peek();
-			assert packet != null; // isEmpty check
-			ByteBuffer buffer = packet.getBuf().toReadByteBuffer();
-
-			int needToSend = buffer.remaining();
-			int sent = -1;
-
-			try {
-				sent = channel.send(buffer, packet.getSocketAddress());
-			} catch (IOException e) {
-				if (inspector != null) inspector.onSendError(e);
-			}
-
-			if (sent != needToSend) {
+		while (true) {
+			Tuple2<UdpPacket, SettableCallback<Void>> entry = writeQueue.peek();
+			if (entry == null) {
 				break;
 			}
+			UdpPacket packet = entry.getValue1();
+			ByteBuffer buffer = packet.getBuf().toReadByteBuffer();
 
-			if (inspector != null) inspector.onSend(packet);
+			try {
+				if (channel.send(buffer, packet.getSocketAddress()) == 0) {
+					break;
+				}
+			} catch (IOException e) {
+				if (inspector != null) {
+					inspector.onSendError(e);
+				}
+				break;
+			}
+			// at this point the packet is *sent* so we poll the queue and recycle the packet
+			entry.getValue2().set(null);
+
+			if (inspector != null) {
+				inspector.onSend(packet);
+			}
 
 			writeQueue.poll();
 			packet.recycle();
 		}
-
 		if (writeQueue.isEmpty()) {
-			eventHandler.onSend();
 			writeInterest(false);
 		} else {
 			writeInterest(true);
@@ -257,20 +280,21 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	@Override
 	public void close() {
 		assert eventloop.inEventloopThread();
+		SelectionKey key = this.key;
 		if (key == null) {
 			return;
 		}
+		this.key = null;
 		eventloop.closeChannel(channel, key);
-		key = null;
 		deepRecycle(writeQueue);
 	}
 
 	@Override
 	public String toString() {
 		if (isOpen()) {
-			return getRemoteSocketAddress() + " " + eventHandler.toString();
+			return "UDP socket: " + getRemoteSocketAddress();
 		}
-		return "<closed> " + eventHandler.toString();
+		return "closed UDP socket";
 	}
 
 	private InetSocketAddress getRemoteSocketAddress() {

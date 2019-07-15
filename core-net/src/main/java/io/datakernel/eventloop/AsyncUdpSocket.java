@@ -16,22 +16,24 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.Promise;
+
+/**
+ * Common interface for datagram-oriented transport protocols.
+ * <p>
+ * This interface describes asynchronous receive and send operations for data transmission through the network.
+ * <p>
+ * Implementations of this interface should follow rules described below:
+ * <ul>
+ * <li>Each request to the socket after it was closed should complete exceptionally. <i>This is due to an ability of
+ * the socket to be closed before any read/write operation is called. User should be informed about it after he makes first
+ * call to {@link #read()} or {@link #write(ByteBuf)}<i/></li>
+ * </ul>
+ */
 public interface AsyncUdpSocket {
-	interface EventHandler {
-		void onRegistered();
+	Promise<UdpPacket> receive();
 
-		void onSend();
-
-		void onReceive(UdpPacket packet);
-
-		void onClosedWithError(Exception e);
-	}
-
-	void setEventHandler(EventHandler eventHandler);
-
-	void receive();
-
-	void send(UdpPacket packet);
+	Promise<Void> send(UdpPacket packet);
 
 	void close();
 }

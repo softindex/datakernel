@@ -16,9 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncUdpSocket.EventHandler;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -28,9 +27,11 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
+import java.util.Arrays;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertArrayEquals;
 
 public final class UdpSocketHandlerTest {
@@ -46,66 +47,34 @@ public final class UdpSocketHandlerTest {
 
 	@Test
 	public void testEchoUdpServer() throws IOException {
-		SettablePromise<byte[]> receivePromise = new SettablePromise<>();
-
 		DatagramChannel serverDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
-		AsyncUdpSocketImpl serverSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), serverDatagramChannel);
-		serverSocket.setEventHandler(new EventHandler() {
-			@Override
-			public void onRegistered() {
-				serverSocket.receive();
-			}
 
-			@Override
-			public void onReceive(UdpPacket packet) {
-				serverSocket.send(packet);
-			}
-
-			@Override
-			public void onSend() {
-				serverSocket.close();
-			}
-
-			@Override
-			public void onClosedWithError(Exception e) {
-				throw new AssertionError(e);
-			}
-		});
-		serverSocket.register();
+		AsyncUdpSocketImpl.connect(Eventloop.getCurrentEventloop(), serverDatagramChannel)
+				.then(serverSocket -> serverSocket.receive()
+						.then(serverSocket::send)
+						.whenComplete(($, e) -> serverSocket.close()))
+				.whenComplete(assertComplete());
 
 		DatagramChannel clientDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
-		AsyncUdpSocketImpl clientSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), clientDatagramChannel);
-		clientSocket.setEventHandler(new EventHandler() {
-			@Override
-			public void onRegistered() {
-				clientSocket.send(UdpPacket.of(ByteBuf.wrapForReading(bytesToSend), SERVER_ADDRESS));
-			}
 
-			@Override
-			public void onReceive(UdpPacket packet) {
-				byte[] bytesReceived = packet.getBuf().array();
-				byte[] message = new byte[packet.getBuf().readRemaining()];
+		Promise<AsyncUdpSocketImpl> promise = AsyncUdpSocketImpl.connect(Eventloop.getCurrentEventloop(), clientDatagramChannel)
+				.whenComplete(assertComplete(clientSocket -> {
 
-				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().readRemaining());
-				receivePromise.set(message);
+					clientSocket.send(UdpPacket.of(ByteBuf.wrapForReading(bytesToSend), SERVER_ADDRESS))
+							.whenComplete(assertComplete());
 
-				packet.recycle();
-				clientSocket.close();
-			}
+					clientSocket.receive()
+							.whenComplete(($, e) -> clientSocket.close())
+							.whenComplete(assertComplete(packet -> {
+								byte[] message = packet.getBuf().asArray();
 
-			@Override
-			public void onSend() {
-				clientSocket.receive();
-			}
+								assertArrayEquals(bytesToSend, message);
 
-			@Override
-			public void onClosedWithError(Exception e) {
-				throw new AssertionError(e);
-			}
-		});
-		clientSocket.register();
+								System.out.println("message = " + Arrays.toString(message));
+							}));
+				}));
 
-		assertArrayEquals(bytesToSend, await(receivePromise));
+		await(promise);
 	}
 
 }

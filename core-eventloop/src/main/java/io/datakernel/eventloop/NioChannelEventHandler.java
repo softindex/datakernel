@@ -16,8 +16,18 @@
 
 package io.datakernel.eventloop;
 
+/**
+ * An interface for channel attachments used in {@link Eventloop eventloop}.
+ * It is a callback which executes code asynchronously (in eventloop context) when a read or a write is ready.
+ */
 public interface NioChannelEventHandler {
+	/**
+	 * Callback which is called when NIO channel is ready for reading.
+	 */
 	void onReadReady();
 
+	/**
+	 * Callback which is called when NIO channel is ready for writing.
+	 */
 	void onWriteReady();
 }
