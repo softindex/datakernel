@@ -16,7 +16,6 @@
 
 package io.datakernel.async;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.StacklessException;
@@ -532,49 +531,30 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> some(@NotNull Iterator<? extends Promise<? extends T>> promises, int number) {
-		if (number == 0) return (Promise<List<T>>) some(number);
-		if (!promises.hasNext()) return (Promise<List<T>>) some(number);
+		if (number == 0 || !promises.hasNext()) return (Promise<List<T>>) some(number);
 
-		PromiseSome<T> resultPromise = new PromiseSome<>(number);
-		someImpl(resultPromise, promises, number);
-		return resultPromise.isEnoughForTheResult() ? resultPromise : (Promise<List<T>>) some(number);
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <T> void someImpl(PromiseSome<T> resultPromise, @NotNull Iterator<? extends Promise<? extends T>> promises, int number) {
-		while (promises.hasNext() && resultPromise.activePromises < number - resultPromise.resultArray.size()) {
+		PromiseSome<T> some = new PromiseSome<>(number);
+		while (promises.hasNext()) {
 			Promise<? extends T> promise = promises.next();
-			if (promise.isException()) continue;
 			if (promise.isResult()) {
-				resultPromise.resultArray.add(promise.materialize().getResult());
-
-				if (resultPromise.isFull()) {
-					Eventloop.getCurrentEventloop().post(() -> resultPromise.complete(resultPromise.resultArray));
-					return;
+				some.resultArray.add(promise.materialize().getResult());
+				if (some.isFull()) {
+					return Promise.of(some.resultArray);
 				}
 				continue;
 			}
-
-			resultPromise.activePromises++;
-			promise.whenComplete((result, e) -> {
-				if (e == null) {
-					resultPromise.resultArray.add(result);
-					if (resultPromise.isFull()) {
-						Eventloop.getCurrentEventloop().post(() -> resultPromise.complete(resultPromise.resultArray));
-						return;
-					}
-				}
-
-				resultPromise.activePromises--;
-				someImpl(resultPromise, promises, number);
-			});
+			if (promise.isException()) {
+				continue;
+			}
+			some.activePromises++;
+			promise.whenComplete(some);
 		}
 
-		if (!resultPromise.isEnoughForTheResult()) {
-			StacklessException exception = new StacklessException(Promises.class,
-					"There are not enough promises to be complete");
-			resultPromise.completeExceptionally(exception);
+		if (some.notEnoughForTheResult()) {
+			return Promise.ofException(new StacklessException(Promises.class, "There are not enough promises to be complete"));
 		}
+
+		return some;
 	}
 
 	/**
@@ -1611,19 +1591,27 @@ public final class Promises {
 	}
 
 	private static final class PromiseSome<T> extends NextPromise<T, List<T>> {
-		List<T> resultArray;
+		final List<T> resultArray;
 		int expectedSize;
 		int activePromises;
 
 		PromiseSome(int expectedSize) {
 			this.expectedSize = expectedSize;
-			resultArray = new ArrayList<>(expectedSize);
+			this.resultArray = new ArrayList<>(expectedSize);
 		}
 
 		@Override
 		public void accept(@Nullable T result, @Nullable Throwable e) {
+			activePromises--;
 			if (e == null) {
 				resultArray.add(result);
+				if (isFull()) {
+					complete(resultArray);
+				}
+			} else {
+				if (notEnoughForTheResult()) {
+					completeExceptionally(new StacklessException(Promises.class, "There are not enough promises to be complete"));
+				}
 			}
 		}
 
@@ -1631,8 +1619,8 @@ public final class Promises {
 			return resultArray.size() == expectedSize;
 		}
 
-		boolean isEnoughForTheResult() {
-			return activePromises + resultArray.size() >= expectedSize;
+		boolean notEnoughForTheResult() {
+			return activePromises + resultArray.size() < expectedSize;
 		}
 	}
 

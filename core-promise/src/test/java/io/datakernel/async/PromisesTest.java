@@ -383,16 +383,12 @@ public final class PromisesTest {
 		Promise<Integer> p4 = Promises.delay(1000, 20);
 
 		Promise<Void> settled = Promises.allCompleted(Stream.of(p1, p2, p3, p4).iterator());
-		settled.whenException(ex -> assertEquals(expectedException, ex));
 
-		Eventloop.getCurrentEventloop().run();
-
-		assertTrue(settled.isException());
+		assertEquals(expectedException, awaitException(settled));
 	}
 
 	@Test
 	public void allSettledHasSeveralExceptionsAndSaveOrderTest() {
-
 		Exception expectedException1 = new Exception("test1");
 		Exception expectedException2 = new Exception("test2");
 		Promise<Integer> p1 = Promise.of(10);
@@ -401,14 +397,8 @@ public final class PromisesTest {
 		Promise<Integer> p4 = Promises.delay(1000, 20);
 
 		Promise<Void> settled = Promises.allCompleted(Stream.of(p1, p2, p3, p4).iterator());
-		settled.whenException(ex ->  {
-			assertEquals(expectedException2, ex);
-			assertNotEquals(expectedException1, ex);
-		});
 
-		Eventloop.getCurrentEventloop().run();
-
-		assertTrue(settled.isException());
+		assertEquals(expectedException2, awaitException(settled));
 	}
 
 	@Test
@@ -422,14 +412,7 @@ public final class PromisesTest {
 		Promise<Integer> p4 = Promises.delay(1000, 20);
 
 		Promise<Void> settled = Promises.allCompleted(Stream.of(p1, p2, p3, p4).iterator());
-		settled.whenException(ex ->  {
-			assertEquals(expectedException2, ex);
-			assertNotEquals(expectedException1, ex);
-		});
-
-		Eventloop.getCurrentEventloop().run();
-
-		assertTrue(settled.isException());
+		assertEquals(expectedException2, awaitException(settled));
 	}
 
 	private Promise<Integer> getStage(Integer number) {

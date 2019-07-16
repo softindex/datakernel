@@ -66,9 +66,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	@Async.Execute
 	protected void complete(@Nullable T value) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
-		Callback<? super T> next = this.next;
-		this.next = COMPLETED_PROMISE;
 		if (next != null) {
+			Callback<? super T> next = this.next;
+			this.next = COMPLETED_PROMISE;
 			next.accept(value, null);
 		}
 	}
@@ -76,9 +76,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	@Async.Execute
 	protected void completeExceptionally(@Nullable Throwable e) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
-		Callback<? super T> next = this.next;
-		this.next = COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
+			Callback<? super T> next = this.next;
+			this.next = COMPLETED_EXCEPTIONALLY_PROMISE;
 			next.accept(null, e);
 		}
 	}
