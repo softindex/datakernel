@@ -26,11 +26,13 @@ import java.util.List;
 public class MyRepositoryId<D> {
 	private final RepoID repositoryId;
 	private final PrivKey privKey;
+	private final StructuredCodec<D> diffCodec;
 	private final StructuredCodec<List<D>> diffsCodec;
 
 	public MyRepositoryId(RepoID repositoryId, PrivKey privKey, StructuredCodec<D> diffCodec) {
 		this.repositoryId = repositoryId;
 		this.privKey = privKey;
+		this.diffCodec = diffCodec;
 		this.diffsCodec = StructuredCodecs.ofList(diffCodec);
 	}
 
@@ -40,6 +42,10 @@ public class MyRepositoryId<D> {
 
 	public PrivKey getPrivKey() {
 		return privKey;
+	}
+
+	public StructuredCodec<D> getDiffCodec() {
+		return diffCodec;
 	}
 
 	public StructuredCodec<List<D>> getDiffsCodec() {

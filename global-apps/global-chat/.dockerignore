@@ -1,0 +1,9 @@
+
+.git
+.idea
+
+front/node_modules
+front/build
+front/npm-debug.log
+
+target

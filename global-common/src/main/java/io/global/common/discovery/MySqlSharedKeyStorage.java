@@ -38,22 +38,18 @@ public class MySqlSharedKeyStorage implements SharedKeyStorage {
 
 	private final DataSource dataSource;
 
-	private Executor executor;
+	private final Executor executor;
 
 	private String tableReceivers = DEFAULT_RECEIVERS_TABLE;
 	private String tableSharedKeys = DEFAULT_SHARED_KEYS_TABLE;
 
-	private MySqlSharedKeyStorage(DataSource dataSource) {
+	private MySqlSharedKeyStorage(Executor executor, DataSource dataSource) {
+		this.executor = executor;
 		this.dataSource = dataSource;
 	}
 
-	public static MySqlSharedKeyStorage create(DataSource dataSource) {
-		return new MySqlSharedKeyStorage(dataSource);
-	}
-
-	public MySqlSharedKeyStorage withExecutor(Executor executor) {
-		this.executor = executor;
-		return this;
+	public static MySqlSharedKeyStorage create(Executor executor, DataSource dataSource) {
+		return new MySqlSharedKeyStorage(executor, dataSource);
 	}
 
 	public MySqlSharedKeyStorage withReceiversTableName(String tableReceivers) {

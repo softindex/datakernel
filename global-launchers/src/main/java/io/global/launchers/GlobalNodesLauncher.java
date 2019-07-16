@@ -51,11 +51,11 @@ public class GlobalNodesLauncher extends Launcher {
 	EventloopTaskScheduler fsCatchUpScheduler;
 
 	@Inject
-	@Named("DB push")
+	@Named("KV push")
 	EventloopTaskScheduler kvPushScheduler;
 
 	@Inject
-	@Named("DB catch up")
+	@Named("KV catch up")
 	EventloopTaskScheduler kvCatchUpScheduler;
 
 	@Provides

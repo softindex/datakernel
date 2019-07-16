@@ -18,6 +18,7 @@ package io.global.ot.api;
 
 import io.datakernel.exception.ParseException;
 import io.global.common.KeyPair;
+import io.global.common.PrivKey;
 import io.global.common.PubKey;
 
 public final class RepoID {
@@ -31,6 +32,10 @@ public final class RepoID {
 
 	public static RepoID of(PubKey owner, String name) {
 		return new RepoID(owner, name);
+	}
+
+	public static RepoID of(PrivKey privKey, String name) {
+		return new RepoID(privKey.computePubKey(), name);
 	}
 
 	public static RepoID of(KeyPair keys, String name) {

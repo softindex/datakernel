@@ -68,7 +68,7 @@ public class SharedKeyStorageTest {
 						(Function<Path, SharedKeyStorage>) path -> {
 							try {
 								DataSource dataSource = dataSource(MY_SQL_PROPERTIES);
-								return MySqlSharedKeyStorage.create(dataSource);
+								return MySqlSharedKeyStorage.create(newCachedThreadPool(), dataSource);
 							} catch (IOException | SQLException e) {
 								System.out.println("WARNING: Failed to get properties from " + MY_SQL_PROPERTIES + " (" +
 										e.getMessage() + "), using stub instead");

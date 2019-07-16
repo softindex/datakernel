@@ -44,7 +44,7 @@ import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.kv.GlobalKvDriver;
-import io.global.kv.LocalGlobalKvNode;
+import io.global.kv.GlobalKvNodeImpl;
 import io.global.kv.api.GlobalKvNode;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
@@ -56,6 +56,12 @@ import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
+import io.global.pm.FsMessageStorage;
+import io.global.pm.GlobalPmNodeImpl;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.MessageStorage;
+import io.global.pm.http.GlobalPmNodeServlet;
+import io.global.pm.http.HttpGlobalPmNode;
 
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -74,7 +80,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
-		bind(GlobalKvNode.class).to(LocalGlobalKvNode.class);
+		bind(GlobalKvNode.class).to(GlobalKvNodeImpl.class);
 	}
 
 	@Provides
@@ -92,16 +98,23 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalFsNodeImpl globalFsNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory, FsClient fsClient) {
+	GlobalFsNodeImpl globalFsNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory,
+			@Named("FS") FsClient fsClient) {
 		return GlobalFsNodeImpl.create(serverId, discoveryService, factory, fsClient)
 				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
 				.initialize(ofLocalGlobalFsNode(config.getChild("fs")));
 	}
 
 	@Provides
-	LocalGlobalKvNode localGlobalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
-		return LocalGlobalKvNode.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
+	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
+		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
 				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
+	}
+
+	@Provides
+	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
+		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
+				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
 
 	@Provides
@@ -156,11 +169,13 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Named("Nodes")
-	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet, @Named("kv") AsyncServlet kvServlet) {
+	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet,
+			@Named("kv") AsyncServlet kvServlet, @Named("pm") AsyncServlet pmServlet) {
 		return RoutingServlet.create()
 				.map("/ot/*", otServlet)
 				.map("/fs/*", fsServlet)
-				.map("/kv/*", kvServlet);
+				.map("/kv/*", kvServlet)
+				.map("/pm/*", pmServlet);
 	}
 
 	@Provides
@@ -181,14 +196,33 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
+	@Named("pm")
+	AsyncServlet pmServlet(GlobalPmNode node) {
+		return GlobalPmNodeServlet.create(node);
+	}
+
+	@Provides
 	CommitStorage commitStorage(Eventloop eventloop, Config config, Executor executor) {
 		return CommitStorageRocksDb.create(executor, eventloop, config.get("ot.storage"));
 	}
 
 	@Provides
+	@Named("FS")
 	FsClient fsClient(Eventloop eventloop, Config config) {
 		return LocalFsClient.create(eventloop, config.get(ofPath(), "fs.storage"))
 				.withRevisions();
+	}
+
+	@Provides
+	@Named("PM")
+	FsClient pmStorage(Eventloop eventloop, Config config) {
+		return LocalFsClient.create(eventloop, config.get(ofPath(), "pm.storage"))
+				.withRevisions();
+	}
+
+	@Provides
+	MessageStorage messageStorage(@Named("PM") FsClient fsClient) {
+		return FsMessageStorage.create(fsClient);
 	}
 
 	@Provides
@@ -204,6 +238,11 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
+	}
+
+	@Provides
+	Function<RawServerId, GlobalPmNode> pmNodeFactory(IAsyncHttpClient client) {
+		return id -> HttpGlobalPmNode.create(id.getServerIdString(), client);
 	}
 
 	// region schedulers
@@ -222,15 +261,15 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Named("DB push")
-	EventloopTaskScheduler dbPushScheduler(Eventloop eventloop, LocalGlobalKvNode node, Config config) {
+	@Named("KV push")
+	EventloopTaskScheduler kvPushScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::push)
 				.initialize(ofEventloopTaskScheduler(config.getChild("kv.push")));
 	}
 
 	@Provides
-	@Named("DB catch up")
-	EventloopTaskScheduler dbCatchUpScheduler(Eventloop eventloop, LocalGlobalKvNode node, Config config) {
+	@Named("KV catch up")
+	EventloopTaskScheduler kvCatchUpScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
 	}

@@ -14,9 +14,9 @@ cd $(dirname "$(readlink $(test $(uname -s) = 'Linux' && echo "-f") "$0" || echo
 docker ps --filter "name=$CONTAINER_NAME" -q | xargs -r docker container stop
 
 # Run npm build only because of -v mount bind override for dev
-cd front
+cd src/main/resources/front
 npm run-script build
-cd ..
+cd ../../../..
 
 # Run a new container
-docker run --rm -d --net=host --name $CONTAINER_NAME -v $PWD/front/build:/app/front/build $IMAGE_NAME
+docker run --rm --net=host --name $CONTAINER_NAME -v $PWD/src/main/resources/front:/app/src/main/resources/build $IMAGE_NAME

@@ -184,6 +184,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> doPoll() {
+		if (!isValid()) return Promise.complete();
 		K pollCommitId = this.commitId;
 		return repository.poll(pollCommitId)
 				.whenResult(fetchData -> {
