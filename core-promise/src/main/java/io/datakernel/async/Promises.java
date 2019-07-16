@@ -16,6 +16,7 @@
 
 package io.datakernel.async;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.StacklessException;
@@ -317,11 +318,11 @@ public final class Promises {
 	 * If one or more exceptions happens,
 	 * the last exception will be returned during {@code whenException} call.
 	 */
-	public static Promise<Void> allSettled(@NotNull Iterator<? extends Promise<?>> promises) {
+	public static Promise<Void> allCompleted(@NotNull Iterator<? extends Promise<?>> promises) {
 		if (!promises.hasNext()) return all();
 		@NotNull PromiseAllSettled<Object> resultPromise = new PromiseAllSettled<>();
+		resultPromise.loopAlive = true;
 		while (promises.hasNext()) {
-			resultPromise.loopAlive = true;
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;
 			resultPromise.countdown++;
@@ -545,10 +546,10 @@ public final class Promises {
 			Promise<? extends T> promise = promises.next();
 			if (promise.isException()) continue;
 			if (promise.isResult()) {
-				resultPromise.accept((T) promise.materialize(), null);
+				resultPromise.resultArray.add(promise.materialize().getResult());
 
 				if (resultPromise.isFull()) {
-					resultPromise.complete(resultPromise.resultArray);
+					Eventloop.getCurrentEventloop().post(() -> resultPromise.complete(resultPromise.resultArray));
 					return;
 				}
 				continue;
@@ -559,7 +560,7 @@ public final class Promises {
 				if (e == null) {
 					resultPromise.resultArray.add(result);
 					if (resultPromise.isFull()) {
-						resultPromise.complete(resultPromise.resultArray);
+						Eventloop.getCurrentEventloop().post(() -> resultPromise.complete(resultPromise.resultArray));
 						return;
 					}
 				}

@@ -382,7 +382,7 @@ public final class PromisesTest {
 		Promise<Integer> p3 = Promises.delay(500, 10);
 		Promise<Integer> p4 = Promises.delay(1000, 20);
 
-		Promise<Void> settled = Promises.allSettled(Stream.of(p1, p2, p3, p4).iterator());
+		Promise<Void> settled = Promises.allCompleted(Stream.of(p1, p2, p3, p4).iterator());
 		settled.whenException(ex -> assertEquals(expectedException, ex));
 
 		Eventloop.getCurrentEventloop().run();
@@ -400,7 +400,7 @@ public final class PromisesTest {
 		Promise<Integer> p3 = Promises.delay(500, Promise.ofException(expectedException2));
 		Promise<Integer> p4 = Promises.delay(1000, 20);
 
-		Promise<Void> settled = Promises.allSettled(Stream.of(p1, p2, p3, p4).iterator());
+		Promise<Void> settled = Promises.allCompleted(Stream.of(p1, p2, p3, p4).iterator());
 		settled.whenException(ex ->  {
 			assertEquals(expectedException2, ex);
 			assertNotEquals(expectedException1, ex);
@@ -421,7 +421,7 @@ public final class PromisesTest {
 		Promise<Integer> p3 = Promises.delay(500, Promise.ofException(expectedException2));
 		Promise<Integer> p4 = Promises.delay(1000, 20);
 
-		Promise<Void> settled = Promises.allSettled(Stream.of(p1, p2, p3, p4).iterator());
+		Promise<Void> settled = Promises.allCompleted(Stream.of(p1, p2, p3, p4).iterator());
 		settled.whenException(ex ->  {
 			assertEquals(expectedException2, ex);
 			assertNotEquals(expectedException1, ex);
