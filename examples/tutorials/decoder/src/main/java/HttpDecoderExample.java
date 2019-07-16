@@ -14,79 +14,11 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.writer.ByteBufWriter;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.decoder.Decoders.ofPost;
 import static io.datakernel.util.CollectionUtils.map;
-
-class Address {
-	private final String title;
-
-	public Address(String title) {
-		this.title = title;
-	}
-
-	public String getTitle() {
-		return title;
-	}
-
-	@Override
-	public String toString() {
-		return "Address{title='" + title + '\'' + '}';
-	}
-}
-
-class Contact {
-	private final String name;
-	private final Integer age;
-	private final Address address;
-
-	public Contact(String name, Integer age, Address address) {
-		this.name = name;
-		this.age = age;
-		this.address = address;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public int getAge() {
-		return age;
-	}
-
-	public Address getAddress() {
-		return address;
-	}
-
-	@Override
-	public String toString() {
-		return "Contact{name='" + name + '\'' + ", age=" + age + ", address=" + address + '}';
-	}
-}
-
-interface ContactDAO {
-	List<Contact> list();
-
-	void add(Contact user);
-}
-
-class ContactDAOImpl implements ContactDAO {
-	private List<Contact> userList = new ArrayList<>();
-
-	@Override
-	public List<Contact> list() {
-		return userList;
-	}
-
-	@Override
-	public void add(Contact user) {
-		userList.add(user);
-	}
-}
 
 public final class HttpDecoderExample extends HttpServerLauncher {
 	private final static String SEPARATOR = "-";
