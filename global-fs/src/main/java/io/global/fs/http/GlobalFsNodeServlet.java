@@ -24,6 +24,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.UrlParser;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -51,7 +52,10 @@ public final class GlobalFsNodeServlet {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
-						String path = request.getRelativePath();
+						String path = UrlParser.urlDecode(request.getRelativePath());
+						if (path == null) {
+							return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+						}
 						long offset = parseOffset(request);
 						long revision = parseRevision(request);
 						ChannelSupplier<ByteBuf> body = request.getBodyStream();
@@ -67,7 +71,10 @@ public final class GlobalFsNodeServlet {
 					try {
 						PubKey space = PubKey.fromString(spaceParam);
 						long[] range = parseRange(request);
-						String path = request.getRelativePath();
+						String path = UrlParser.urlDecode(request.getRelativePath());
+						if (path == null) {
+							return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+						}
 						return node.download(space, path, range[0], range[1])
 								.map(supplier ->
 										HttpResponse.ok200()
@@ -94,7 +101,11 @@ public final class GlobalFsNodeServlet {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
-						return node.getMetadata(space, request.getRelativePath())
+						String path = UrlParser.urlDecode(request.getRelativePath());
+						if (path == null) {
+							return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+						}
+						return node.getMetadata(space, path)
 								.then(meta ->
 										Promise.of(HttpResponse.ok200()
 												.withBody(encode(NULLABLE_SIGNED_CHECKPOINT_CODEC, meta))));
