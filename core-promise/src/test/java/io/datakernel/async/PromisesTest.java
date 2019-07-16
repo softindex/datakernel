@@ -374,6 +374,64 @@ public final class PromisesTest {
 		result.whenException(e -> assertTrue(true));
 	}
 
+	@Test
+	public void allSettledHasExceptionTest() {
+		Exception expectedException = new Exception("test");
+		Promise<Integer> p1 = Promise.of(10);
+		Promise<Integer> p2 = Promises.delay(200, Promise.ofException(expectedException));
+		Promise<Integer> p3 = Promises.delay(500, 10);
+		Promise<Integer> p4 = Promises.delay(1000, 20);
+
+		Promise<Void> settled = Promises.allSettled(Stream.of(p1, p2, p3, p4).iterator());
+		settled.whenException(ex -> assertEquals(expectedException, ex));
+
+		Eventloop.getCurrentEventloop().run();
+
+		assertTrue(settled.isException());
+	}
+
+	@Test
+	public void allSettledHasSeveralExceptionsAndSaveOrderTest() {
+
+		Exception expectedException1 = new Exception("test1");
+		Exception expectedException2 = new Exception("test2");
+		Promise<Integer> p1 = Promise.of(10);
+		Promise<Integer> p2 = Promises.delay(200, Promise.ofException(expectedException1));
+		Promise<Integer> p3 = Promises.delay(500, Promise.ofException(expectedException2));
+		Promise<Integer> p4 = Promises.delay(1000, 20);
+
+		Promise<Void> settled = Promises.allSettled(Stream.of(p1, p2, p3, p4).iterator());
+		settled.whenException(ex ->  {
+			assertEquals(expectedException2, ex);
+			assertNotEquals(expectedException1, ex);
+		});
+
+		Eventloop.getCurrentEventloop().run();
+
+		assertTrue(settled.isException());
+	}
+
+	@Test
+	public void allSettledHasSeveralExceptionsInSameTimeTest() {
+
+		Exception expectedException1 = new Exception("test1");
+		Exception expectedException2 = new Exception("test2");
+		Promise<Integer> p1 = Promise.of(10);
+		Promise<Integer> p2 = Promises.delay(500, Promise.ofException(expectedException1));
+		Promise<Integer> p3 = Promises.delay(500, Promise.ofException(expectedException2));
+		Promise<Integer> p4 = Promises.delay(1000, 20);
+
+		Promise<Void> settled = Promises.allSettled(Stream.of(p1, p2, p3, p4).iterator());
+		settled.whenException(ex ->  {
+			assertEquals(expectedException2, ex);
+			assertNotEquals(expectedException1, ex);
+		});
+
+		Eventloop.getCurrentEventloop().run();
+
+		assertTrue(settled.isException());
+	}
+
 	private Promise<Integer> getStage(Integer number) {
 		assertEquals(0, counter.get());
 		counter.incrementAndGet();

@@ -305,9 +305,33 @@ public final class Promises {
 			if (promise.isResult()) continue;
 			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
 			resultPromise.countdown++;
-			promise.next(resultPromise);
+			promise.whenComplete(resultPromise);
 		}
 		return resultPromise.countdown != 0 ? resultPromise : Promise.complete();
+	}
+
+	/**
+	 * Returns {@link Promise} that completes when all of the {@code promises} are completed.
+	 * If some {@code promises} completes exceptionally,
+	 * it will execute the next {@link Promise}
+	 * If one or more exceptions happens,
+	 * the last exception will be returned during {@code whenException} call.
+	 */
+	public static Promise<Void> allSettled(@NotNull Iterator<? extends Promise<?>> promises) {
+		if (!promises.hasNext()) return all();
+		@NotNull PromiseAllSettled<Object> resultPromise = new PromiseAllSettled<>();
+		while (promises.hasNext()) {
+			resultPromise.loopAlive = true;
+			Promise<?> promise = promises.next();
+			if (promise.isResult()) continue;
+			resultPromise.countdown++;
+			promise.whenComplete(resultPromise);
+		}
+		resultPromise.loopAlive = false;
+		if (resultPromise.countdown != 0) {
+			return resultPromise;
+		}
+		return Promise.complete();
 	}
 
 	/**
@@ -1540,6 +1564,34 @@ public final class Promises {
 			}
 		}
 
+	}
+
+	private static final class PromiseAllSettled<T> extends NextPromise<T, Void> {
+		int countdown;
+		boolean loopAlive = true;
+		@Nullable Throwable lastException;
+
+		@Override
+		public String toString() {
+			return "PromiseAllSettled{" +
+					"countdown=" + countdown +
+					", lastException=" + lastException +
+					'}';
+		}
+
+		@Override
+		public void accept(T result, @Nullable Throwable e) {
+			if (e != null) {
+				lastException = e;
+			}
+			if (--countdown == 0 && !loopAlive) {
+				if (lastException == null) {
+					complete(null);
+				} else {
+					completeExceptionally(lastException);
+				}
+			}
+		}
 	}
 
 	private static final class PromiseAny<T> extends NextPromise<T, T> {
