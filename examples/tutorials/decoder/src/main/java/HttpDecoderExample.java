@@ -29,6 +29,10 @@ class Address {
 		this.title = title;
 	}
 
+	public String getTitle() {
+		return title;
+	}
+
 	@Override
 	public String toString() {
 		return "Address{title='" + title + '\'' + '}';
@@ -44,6 +48,18 @@ class Contact {
 		this.name = name;
 		this.age = age;
 		this.address = address;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public int getAge() {
+		return age;
+	}
+
+	public Address getAddress() {
+		return address;
 	}
 
 	@Override
