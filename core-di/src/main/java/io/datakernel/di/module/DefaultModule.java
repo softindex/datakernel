@@ -8,6 +8,7 @@ import io.datakernel.di.util.Trie;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer;
 import static java.util.Collections.emptyMap;
@@ -57,6 +58,11 @@ public final class DefaultModule implements Module {
 									public Object get() {
 										return injector.getInstance(elementKey);
 									}
+
+									@Override
+									public String toString() {
+										return "provider of " + elementKey.toString();
+									}
 								};
 							},
 							new Dependency[]{Dependency.toKey(Key.of(Injector.class))});
@@ -86,7 +92,7 @@ public final class DefaultModule implements Module {
 
 								@Override
 								public String toString() {
-									return elementKey.toString();
+									return "factory of " + elementKey.toString();
 								}
 							});
 				}
@@ -97,11 +103,12 @@ public final class DefaultModule implements Module {
 				(provider, scope, key) -> {
 					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
 
-					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey.getType());
-					BindingInitializer.Initializer<Object> initializer = injectingInitializer.getInitializer();
+					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
+					BiConsumer<InstanceLocator, Object> initializer = injectingInitializer.getInitializer();
 
-					return Binding.to(
-							args -> new InstanceInjector<Object>() {
+					return new Binding<>(
+							injectingInitializer.getDependencies(),
+							locator -> new InstanceInjector<Object>() {
 								@Override
 								public Key<Object> key() {
 									return elementKey;
@@ -109,15 +116,14 @@ public final class DefaultModule implements Module {
 
 								@Override
 								public void injectInto(Object existingInstance) {
-									initializer.apply(existingInstance, args);
+									initializer.accept(locator, existingInstance);
 								}
 
 								@Override
 								public String toString() {
-									return elementKey.toString();
+									return "injector for " + elementKey.toString();
 								}
-							},
-							injectingInitializer.getDependencies());
+							});
 				}
 		));
 	}

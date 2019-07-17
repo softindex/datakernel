@@ -190,29 +190,6 @@ public final class Binding<T> {
 		return this;
 	}
 
-	public Binding<T> withInitializer(BindingInitializer<T> bindingInitializer) {
-		if (bindingInitializer == BindingInitializer.noop()) {
-			return this;
-		}
-
-		Dependency[] extraDependencies = bindingInitializer.getDependencies();
-		Dependency[] combinedDependencies = new Dependency[this.dependencies.length + extraDependencies.length];
-		System.arraycopy(this.dependencies, 0, combinedDependencies, 0, this.dependencies.length);
-		System.arraycopy(extraDependencies, 0, combinedDependencies, this.dependencies.length, extraDependencies.length);
-
-		return new Binding<>(combinedDependencies, location,
-				locator -> {
-					T instance = factory.create(locator);
-					Object[] instances = new Object[extraDependencies.length];
-					for (int i = 0; i < instances.length; i++) {
-						instances[i] = locator.getInstanceOrNull(extraDependencies[i].getKey());
-					}
-					bindingInitializer.getInitializer().apply(instance, instances);
-					return instance;
-				}
-		);
-	}
-
 	public Binding<T> onInstance(@NotNull Consumer<? super T> consumer) {
 		return onInstance((locator, instance) -> consumer.accept(instance));
 	}
@@ -278,6 +255,9 @@ public final class Binding<T> {
 	}
 
 	public Binding<T> addDependencies(@NotNull Dependency... extraDependencies) {
+		if (extraDependencies.length == 0) {
+			return this;
+		}
 		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, this.dependencies.length + extraDependencies.length);
 		System.arraycopy(extraDependencies, 0, newDependencies, this.dependencies.length, extraDependencies.length);
 		return new Binding<>(newDependencies, location, factory);

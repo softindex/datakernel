@@ -2,28 +2,23 @@ package io.datakernel.di.core;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import static java.util.Arrays.asList;
-import static java.util.Arrays.copyOfRange;
-import static java.util.Collections.addAll;
 
 /**
  * This is a {@link Binding} binding modifying function, that can add extra dependencies to it
  * and run initialization code for instance after it was created.
  */
 public final class BindingInitializer<T> {
-	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(new Dependency[0], (instance, args) -> {});
-
-	@FunctionalInterface
-	public interface Initializer<T> {
-		void apply(T instance, Object[] args);
-	}
+	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(new Dependency[0], (locator, instance) -> {});
 
 	private final Dependency[] dependencies;
-	private final Initializer<T> initializer;
+	private final BiConsumer<InstanceLocator, T> initializer;
 
-	private BindingInitializer(Dependency[] dependencies, Initializer<T> initializer) {
+	private BindingInitializer(Dependency[] dependencies, BiConsumer<InstanceLocator, T> initializer) {
 		this.dependencies = dependencies;
 		this.initializer = initializer;
 	}
@@ -32,11 +27,20 @@ public final class BindingInitializer<T> {
 		return dependencies;
 	}
 
-	public Initializer<T> getInitializer() {
+	public BiConsumer<InstanceLocator, T> getInitializer() {
 		return initializer;
 	}
 
-	public static <T> BindingInitializer<T> of(Initializer<T> initializer, Dependency... dependencies) {
+	public Binding<T> apply(Binding<T> binding) {
+		if (this == NOOP) {
+			return binding;
+		}
+		return binding
+				.addDependencies(dependencies)
+				.onInstance(initializer);
+	}
+
+	public static <T> BindingInitializer<T> of(BiConsumer<InstanceLocator, T> initializer, Dependency... dependencies) {
 		return new BindingInitializer<>(dependencies, initializer);
 	}
 
@@ -46,23 +50,20 @@ public final class BindingInitializer<T> {
 	}
 
 	public static <T> BindingInitializer<T> combine(Collection<BindingInitializer<T>> bindingInitializers) {
-		List<Initializer<T>> initializers = new ArrayList<>();
+		List<BiConsumer<InstanceLocator, T>> initializers = new ArrayList<>();
 		List<Dependency> keys = new ArrayList<>();
 		for (BindingInitializer<T> bi : bindingInitializers) {
 			if (bi == NOOP) {
 				continue;
 			}
-			Initializer<T> initializer = bi.getInitializer();
-			int from = keys.size();
-			int to = from + bi.getDependencies().length;
-			addAll(keys, bi.getDependencies());
-			initializers.add((instance, args) -> initializer.apply(instance, copyOfRange(args, from, to)));
+			Collections.addAll(keys, bi.getDependencies());
+			initializers.add(bi.getInitializer());
 		}
 		if (initializers.isEmpty()) {
 			return noop();
 		}
 		return BindingInitializer.of(
-				(instance, args) -> initializers.forEach(initializer -> initializer.apply(instance, args)),
+				(locator, instance) -> initializers.forEach(initializer -> initializer.accept(locator, instance)),
 				keys.toArray(new Dependency[0]));
 	}
 

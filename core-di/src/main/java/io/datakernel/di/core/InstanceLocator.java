@@ -57,4 +57,22 @@ public interface InstanceLocator {
 	default <T> T getInstanceOr(@NotNull Class<T> type, T defaultValue) {
 		return getInstanceOr(Key.of(type), defaultValue);
 	}
+
+	/**
+	 * This is a shortcut for filling an array untyped instances.
+	 * <p>
+	 * It works on {@link Dependency dependencies} and if a
+	 * dependency is missing and not required, its spot is filled with null,
+	 * else a {@link #getInstance(Key) standard} DI exception is thrown.
+	 */
+	default Object[] getDependencies(Dependency... dependencies) {
+		Object[] instances = new Object[dependencies.length];
+		for (int i = 0; i < instances.length; i++) {
+			Dependency dependency = dependencies[i];
+			instances[i] = dependency.isRequired() ?
+					getInstance(dependency.getKey()) :
+					getInstanceOrNull(dependency.getKey());
+		}
+		return instances;
+	}
 }

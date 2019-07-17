@@ -101,10 +101,9 @@ public final class ReflectionUtils {
 
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Binding<T> binding = generateConstructorBinding(key);
-		if (binding == null) {
-			return null;
-		}
-		return binding.withInitializer(generateInjectingInitializer(key.getType()));
+		return binding != null ?
+				generateInjectingInitializer(key).apply(binding) :
+				null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -165,50 +164,53 @@ public final class ReflectionUtils {
 		return new DIException("Failed to generate implicit binding for " + requestedKey.getDisplayString() + ", " + message);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> BindingInitializer<T> generateInjectingInitializer(Type containingType) {
+	public static <T> BindingInitializer<T> generateInjectingInitializer(Key<T> container) {
+		Class<T> rawType = container.getRawType();
 		List<BindingInitializer<T>> initializers = Stream.concat(
-				getAnnotatedElements(Types.getRawType(containingType), Inject.class, Class::getDeclaredFields, false).stream()
-						.map(field -> (BindingInitializer<T>) fieldInjector(containingType, field, !field.isAnnotationPresent(Optional.class))),
-				getAnnotatedElements(Types.getRawType(containingType), Inject.class, Class::getDeclaredMethods, true).stream()
+				getAnnotatedElements(rawType, Inject.class, Class::getDeclaredFields, false).stream()
+						.map(field -> fieldInjector(container, field, !field.isAnnotationPresent(Optional.class))),
+				getAnnotatedElements(rawType, Inject.class, Class::getDeclaredMethods, true).stream()
 						.filter(method -> !Modifier.isStatic(method.getModifiers())) // we allow them and just filter out to allow static factory methods
-						.map(method -> (BindingInitializer<T>) methodInjector(containingType, method)))
+						.map(method -> methodInjector(container, method)))
 				.collect(toList());
 		return BindingInitializer.combine(initializers);
 	}
 
-	public static <T> BindingInitializer<T> fieldInjector(Type container, Field field, boolean required) {
+	public static <T> BindingInitializer<T> fieldInjector(Key<T> container, Field field, boolean required) {
 		field.setAccessible(true);
 
-		Key<Object> key = keyOf(container, field.getGenericType(), field);
+		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field);
 
 		return BindingInitializer.of(
-				(instance, args) -> {
-					Object arg = args[0];
+				(locator, instance) -> {
+					Object arg = locator.getInstanceOrNull(key);
 					if (arg == null) {
 						return;
 					}
 					try {
 						field.set(instance, arg);
 					} catch (IllegalAccessException e) {
-						throw new DIException("Failed to inject member injectable field " + field, e);
+						throw new DIException("Not allowed to set injectable field " + field, e);
 					}
 				},
 				Dependency.toKey(key, required)
 		);
 	}
 
-	public static <T> BindingInitializer<T> methodInjector(Type container, Method method) {
+	public static <T> BindingInitializer<T> methodInjector(Key<T> container, Method method) {
 		method.setAccessible(true);
+		Dependency[] deps = toDependencies(container.getType(), method.getParameters());
 		return BindingInitializer.of(
-				(instance, args) -> {
+				(locator, instance) -> {
 					try {
-						method.invoke(instance, args);
-					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new DIException("Failed to inject member injectable method " + method, e);
+						method.invoke(instance, locator.getDependencies(deps));
+					} catch (IllegalAccessException e) {
+						throw new DIException("Not allowed to call injectable method " + method, e);
+					} catch (InvocationTargetException e) {
+						throw new DIException("Failed to call injectable method " + method, e.getCause());
 					}
 				},
-				toDependencies(container, method.getParameters())
+				deps
 		);
 	}
 
@@ -236,8 +238,10 @@ public final class ReflectionUtils {
 				args -> {
 					try {
 						return (T) method.invoke(module, args);
-					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new DIException("Failed to call method " + method, e);
+					} catch (IllegalAccessException e) {
+						throw new DIException("Not allowed to call method " + method, e);
+					} catch (InvocationTargetException e) {
+						throw new DIException("Failed to call method " + method, e.getCause());
 					}
 				},
 				toDependencies(module != null ? module.getClass() : method.getDeclaringClass(), method.getParameters()));
@@ -263,8 +267,10 @@ public final class ReflectionUtils {
 				args -> {
 					try {
 						return method.invoke(module, args);
-					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new DIException("Failed to call generic method " + method + " to provide requested key " + requestedKey);
+					} catch (IllegalAccessException e) {
+						throw new DIException("Not allowed to call generic method " + method + " to provide requested key " + requestedKey, e);
+					} catch (InvocationTargetException e) {
+						throw new DIException("Failed to call generic method " + method + " to provide requested key " + requestedKey, e.getCause());
 					}
 				},
 				dependencies)
@@ -280,8 +286,12 @@ public final class ReflectionUtils {
 				args -> {
 					try {
 						return constructor.newInstance(args);
-					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-						throw new DIException("Failed to call constructor " + constructor + " to provide requested key " + key);
+					} catch (InstantiationException e) {
+						throw new DIException("Cannot instantiate object from the constructor " + constructor + " to provide requested key " + key, e);
+					} catch (IllegalAccessException e) {
+						throw new DIException("Not allowed to call constructor " + constructor + " to provide requested key " + key, e);
+					} catch (InvocationTargetException e) {
+						throw new DIException("Failed to call constructor " + constructor + " to provide requested key " + key, e.getCause());
 					}
 				},
 				dependencies);
