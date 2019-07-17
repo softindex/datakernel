@@ -60,7 +60,9 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 								.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
 				.map(POST, "/add", AsyncServletDecorator.loadBody()
 						.serve(request -> {
+							//[START REGION_3]
 							Either<Contact, DecodeErrors> decodedUser = CONTACT_DECODER.decode(request);
+							//[END REGION_3]
 							if (decodedUser.isLeft()) {
 								contactDAO.add(decodedUser.getLeft());
 							}

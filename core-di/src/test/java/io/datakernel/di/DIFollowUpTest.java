@@ -20,11 +20,18 @@ import java.util.Map;
 import static junit.framework.TestCase.*;
 
 /**
+ * To represent the main concepts and features of DataKernel DI,
+ * we've created an example which starts with low-level DI
+ * concepts and gradually covers more specific advanced features.
+ *
+ * In this example we have a kitchen, where you can
+ * automatically create tasty cookies in different ways
+ * with our wonderful DI.
+ *
  * @author is Alex Syrotenko (@pantokrator)
  * Created on 11.07.19.
  */
 public class DIFollowUpTest {
-
 	//[START REGION_9]
 	public static final Scope ORDER_SCOPE = Scope.of(Order.class);
 	//[END REGION_9]
@@ -151,31 +158,6 @@ public class DIFollowUpTest {
 		}
 	}
 
-	/**
-	 * Hardcore way to bake a {@link Cookie} using DI.
-	 * DI has so-called Binding structure within,
-	 * where all keys (@dependencies) and their assembly recipes (@factory) are collected.
-	 * You can use an ordered map of @Key? to @Bindings? for to describe the cooking actions sequence.
-	 *
-	 * You have {@link Sugar}, {@link Butter} and {@link Flour} and you know how to bake a cookie.
-	 *
-	 * First of all, we should order an instances of this ingredients .
-	 * So, we store this actions in our action map @bindings. (line 2-4)
-	 *
-	 * Afterwards, there is a recipe with description of cooking {@link Pastry}
-	 * using {@link Sugar}, {@link Butter} and {@link Flour},
-	 * and you want to use this recipe with existing components.
-	 * So, just store recipe and indicate necessary components ({@link Sugar}, {@link Butter} and {@link Flour}) (line 5)
-	 *
-	 * After this operation you will have a {@link Pastry} and you want to bake a {@link Cookie}!
-	 * Recipe says us that {@link Pastry} is an only component for {@link Cookie} baking.
-	 * Same operation : store recipe and with indicated {@link Pastry} component. (line 6)
-	 *
-	 * Before, you described a sequence of actions for our DI baker.
-	 * It's baking time right now!
-	 * Just call an injector for baking launch (line 8)
-	 * and wait for your @Cookie instance! (line 9)
-	 */
 	@Test
 	//[START REGION_1]
 	public void manualBindSnippet() {
