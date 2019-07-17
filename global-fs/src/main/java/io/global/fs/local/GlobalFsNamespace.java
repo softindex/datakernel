@@ -46,7 +46,7 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 	public Promise<Void> streamDataFrames(GlobalFsNode from, GlobalFsNode to, String filename, long position, long revision) {
 		// shortcut for when we need to stream the whole file
 		if (position == 0) {
-			return from.download(space, filename, position, -1)
+			return from.download(space, filename, 0, -1)
 					.then(supplier ->
 							to.upload(space, filename, position, revision)
 									.then(supplier::streamTo));
@@ -150,28 +150,33 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 					return into.getMetadata(space, filename)
 							.then(signedRemoteMeta -> {
 								GlobalFsCheckpoint remoteMeta = signedRemoteMeta != null ? signedRemoteMeta.getValue() : null;
-								if (remoteMeta != null && GlobalFsCheckpoint.COMPARATOR.compare(localMeta, remoteMeta) < 0) {
+								if (remoteMeta != null && GlobalFsCheckpoint.COMPARATOR.compare(localMeta, remoteMeta) <= 0) {
+									logger.trace("push, remote file {} is better or same as local", localMeta.getFilename());
 									return Promise.of(false);
 								}
 								if (localMeta.isTombstone()) {
 									if (remoteMeta != null && remoteMeta.isTombstone()) {
-										logger.trace("both local and remote files {} are tombstones", remoteMeta.getFilename());
+										logger.trace("push, both local and remote files {} are tombstones", remoteMeta.getFilename());
 										return Promise.of(false);
-									} else {
-										logger.info("local file {} is a tombstone, removing remote", localMeta.getFilename());
-										return into.delete(space, signedLocalMeta)
-												.map($ -> true);
 									}
-								} else {
-									if (remoteMeta != null && remoteMeta.isTombstone()) {
-										logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+									logger.info("push, removing remote file since local file {} is a tombstone", localMeta.getFilename());
+									return into.delete(space, signedLocalMeta)
+											.map($ -> true);
+								}
+								long position = 0;
+								if (remoteMeta != null) {
+									if (remoteMeta.isTombstone()) {
+										logger.info("push, removing local file since remote file {} is a tombstone", remoteMeta.getFilename());
 										return delete(signedLocalMeta)
 												.map($ -> true);
 									}
-									logger.info("pushing local file {} to node {}", localMeta.getFilename(), into);
-									return streamDataFrames(node, into, filename, remoteMeta != null ? remoteMeta.getPosition() : 0, localMeta.getRevision())
-											.map($ -> true);
+									if (localMeta.getRevision() == remoteMeta.getRevision()) {
+										position = remoteMeta.getPosition();
+									}
 								}
+								logger.info("pushing local file {} to node {}", localMeta.getFilename(), into);
+								return streamDataFrames(node, into, filename, position, localMeta.getRevision())
+										.map($ -> true);
 							});
 				}))
 				.whenComplete(toLogger(logger, TRACE, "push", space, into, node));
@@ -190,26 +195,26 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 										if (localMeta != null) {
 											// our file is better
 											if (GlobalFsCheckpoint.COMPARATOR.compare(localMeta, remoteMeta) >= 0) {
-												logger.trace("local file {} is better than remote", localMeta.getFilename());
+												logger.trace("fetch, local file {} is better or same as remote", localMeta.getFilename());
 												return Promise.of(false);
 											}
 											// other file is encrypted with different key
 											if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
-												logger.trace("remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
+												logger.trace("fetch, remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
 												return Promise.of(false);
 											}
 										}
 										if (remoteMeta.isTombstone()) {
-											logger.trace("remote file {} is a tombstone with higher revision, removing local", remoteMeta.getFilename());
+											logger.info("fetch, removing local file since remote file {} is a tombstone", remoteMeta.getFilename());
 											return delete(signedRemoteMeta)
 													.map($ -> true);
 										}
-										logger.info("remote file {} is better than local", remoteMeta.getFilename());
 
-										long ourSize = localMeta != null ? localMeta.getPosition() : 0;
+										long ourSize = localMeta != null ?
+												remoteMeta.getRevision() == localMeta.getRevision() ?
+														localMeta.getPosition() : 0 : 0;
 
-										assert remoteMeta.getPosition() >= ourSize : "Remote meta position is cannot be less than our size at this point";
-
+										logger.info("fetching remote file {} from node {}", remoteMeta.getFilename(), from);
 										return streamDataFrames(from, node, filename, ourSize, remoteMeta.getRevision())
 												.map($ -> true);
 									});
