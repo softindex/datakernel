@@ -1,4 +1,4 @@
-package io.global.editor;
+package io.global.notes;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -11,25 +11,20 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.editor.document.DocumentMultiOperation;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.SharedRepoModule;
-import io.global.ot.contactlist.ContactsModule;
-import io.global.ot.service.UserContainerModule;
-import io.global.ot.shared.IndexRepoModule;
+import io.global.ot.DictionaryModule;
 
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.override;
 
-public final class EditorLauncher extends Launcher {
-	private static final String PROPERTIES_FILE = "editor.properties";
+public final class NotesLauncher extends Launcher {
+	private static final String PROPERTIES_FILE = "notes.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
-	private static final String DEFAULT_SERVER_ID = "Global Editor";
-	private static final String DOCUMENT_REPO_PREFIX = "editor/document";
-	private static final String EDITOR_INDEX_REPO = "editor/index";
+	private static final String DEFAULT_SERVER_ID = "Global Notes";
+	private static final String NOTES_INDEX_REPO = "notes/index";
 
 	@Inject
-	@Named("Editor")
+	@Named("Notes")
 	AsyncHttpServer server;
 
 	@Provides
@@ -46,11 +41,8 @@ public final class EditorLauncher extends Launcher {
 		return Modules.combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create().printEffectiveConfig(),
-				new EditorModule(),
-				new ContactsModule(),
-				new IndexRepoModule(EDITOR_INDEX_REPO),
-				new SharedRepoModule<DocumentMultiOperation>(DOCUMENT_REPO_PREFIX) {},
-				new UserContainerModule<DocumentMultiOperation>(EDITOR_INDEX_REPO, DOCUMENT_REPO_PREFIX) {},
+				new NotesModule(NOTES_INDEX_REPO),
+				new DictionaryModule(NOTES_INDEX_REPO),
 				// override for debug purposes
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))
@@ -63,6 +55,6 @@ public final class EditorLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new EditorLauncher().launch(args);
+		new NotesLauncher().launch(args);
 	}
 }

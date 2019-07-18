@@ -40,11 +40,11 @@ FROM openjdk:8-jre-alpine
 WORKDIR /app
 
 # properties layer
-COPY editor.properties* ./
+COPY notes.properties* ./
 
-COPY --from=build-java /build/target/editor.jar ./
+COPY --from=build-java /build/target/notes.jar ./
 COPY --from=build-js /build/build ./front/build
 
 EXPOSE 8080
 
-ENTRYPOINT java $SYS_PROPS -jar editor.jar
+ENTRYPOINT java $SYS_PROPS -jar notes.jar

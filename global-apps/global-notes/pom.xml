@@ -11,10 +11,10 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>global-editor</artifactId>
+  <artifactId>global-notes</artifactId>
   <version>0.0.1</version>
 
-  <name>Editor</name>
+  <name>Notes</name>
 
   <dependencies>
     <dependency>
@@ -55,7 +55,7 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <configuration>
-          <mainClass>io.global.editor.EditorLauncher</mainClass>
+          <mainClass>io.global.notes.NotesLauncher</mainClass>
         </configuration>
       </plugin>
       <plugin>
@@ -71,10 +71,10 @@
               <transformers>
                 <transformer
                   implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>io.global.editor.EditorLauncher</mainClass>
+                  <mainClass>io.global.notes.NotesLauncher</mainClass>
                 </transformer>
               </transformers>
-              <finalName>editor</finalName>
+              <finalName>notes</finalName>
             </configuration>
           </execution>
         </executions>

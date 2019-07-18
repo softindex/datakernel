@@ -8,11 +8,15 @@ import io.global.ot.dictionary.DictionaryOperation;
 import static io.global.ot.OTUtils.DICTIONARY_OPERATION_CODEC;
 import static io.global.ot.dictionary.DictionaryOTSystem.createOTSystem;
 
-public class ProfileModule extends AbstractModule {
-	public static final String PROFILE_REPO_NAME = "profile";
+public class DictionaryModule extends AbstractModule {
+	public final String dictionaryRepoName;
+
+	public DictionaryModule(String dictionaryRepoName) {
+		this.dictionaryRepoName = dictionaryRepoName;
+	}
 
 	@Provides
 	DynamicOTNodeServlet<DictionaryOperation> provideServlet(OTDriver driver) {
-		return DynamicOTNodeServlet.create(driver, createOTSystem(), DICTIONARY_OPERATION_CODEC, PROFILE_REPO_NAME);
+		return DynamicOTNodeServlet.create(driver, createOTSystem(), DICTIONARY_OPERATION_CODEC, dictionaryRepoName);
 	}
 }

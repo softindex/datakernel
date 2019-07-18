@@ -1,11 +1,11 @@
-package io.global.editor.document.edit;
+package io.global.notes.note.operation;
 
 import io.datakernel.codec.StructuredCodec;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.util.StringFormatUtils.limit;
-import static io.global.editor.document.edit.InsertOperation.insert;
+import static io.global.notes.note.operation.InsertOperation.insert;
 
 public class DeleteOperation implements EditOperation {
 	public static final StructuredCodec<DeleteOperation> DELETE_CODEC = object(DeleteOperation::new,

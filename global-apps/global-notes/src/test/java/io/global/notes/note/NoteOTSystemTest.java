@@ -1,25 +1,24 @@
-package io.global.editor.document;
+package io.global.notes.note;
 
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.exceptions.OTTransformException;
-import io.global.editor.document.edit.DeleteOperation;
-import io.global.editor.document.edit.EditOTSystem;
-import io.global.editor.document.edit.EditOperation;
+import io.global.notes.note.operation.DeleteOperation;
+import io.global.notes.note.operation.EditOperation;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
 import java.util.List;
 
-import static io.global.editor.document.edit.DeleteOperation.delete;
-import static io.global.editor.document.edit.InsertOperation.insert;
+import static io.global.notes.note.operation.DeleteOperation.delete;
+import static io.global.notes.note.operation.InsertOperation.insert;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
-public class EditOTSystemTest {
-	private static final OTSystem<EditOperation> SYSTEM = EditOTSystem.createOTSystem();
+public class NoteOTSystemTest {
+	private static final OTSystem<EditOperation> SYSTEM = NoteOTSystem.createOTSystem();
 	private static final String INITIAL_STATE = "abcdefghij";
 
 	// region inserts

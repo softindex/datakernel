@@ -13,7 +13,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.ProfileModule;
+import io.global.ot.DictionaryModule;
 import io.global.ot.SharedRepoModule;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
@@ -28,6 +28,7 @@ public final class ChatLauncher extends Launcher {
 	private static final String DEFAULT_SERVER_ID = "Global Chat";
 	private static final String CHAT_REPO_PREFIX = "chat/room";
 	private static final String CHAT_INDEX_REPO = "chat/index";
+	private static final String PROFILE_REPO = "profile";
 
 	@Inject
 	@Named("Chat")
@@ -48,8 +49,8 @@ public final class ChatLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create().printEffectiveConfig(),
 				new ChatModule(),
-				new ProfileModule(),
 				new ContactsModule(),
+				new DictionaryModule(PROFILE_REPO),
 				new IndexRepoModule(CHAT_INDEX_REPO),
 				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
 				new SharedRepoModule<MessageOperation>(CHAT_REPO_PREFIX) {},

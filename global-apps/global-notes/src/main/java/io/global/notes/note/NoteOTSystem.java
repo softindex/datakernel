@@ -1,18 +1,21 @@
-package io.global.editor.document.edit;
+package io.global.notes.note;
 
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.OTSystemImpl.TransformFunction;
 import io.datakernel.ot.TransformResult;
+import io.global.notes.note.operation.DeleteOperation;
+import io.global.notes.note.operation.EditOperation;
+import io.global.notes.note.operation.InsertOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.global.editor.document.edit.DeleteOperation.delete;
-import static io.global.editor.document.edit.InsertOperation.insert;
+import static io.global.notes.note.operation.DeleteOperation.delete;
+import static io.global.notes.note.operation.InsertOperation.insert;
 import static java.util.Collections.singletonList;
 
-public class EditOTSystem {
-	private EditOTSystem() {
+public class NoteOTSystem {
+	private NoteOTSystem() {
 		throw new AssertionError();
 	}
 
@@ -28,10 +31,10 @@ public class EditOTSystem {
 				.withInvertFunction(InsertOperation.class, op -> singletonList(op.invert()))
 				.withInvertFunction(DeleteOperation.class, op -> singletonList(op.invert()))
 
-				.withSquashFunction(InsertOperation.class, InsertOperation.class, EditOTSystem::squashInsertAndInsert)
-				.withSquashFunction(DeleteOperation.class, DeleteOperation.class, EditOTSystem::squashDeleteAndDelete)
-				.withSquashFunction(DeleteOperation.class, InsertOperation.class, EditOTSystem::squashDeleteAndInsert)
-				.withSquashFunction(InsertOperation.class, DeleteOperation.class, EditOTSystem::squashInsertAndDelete);
+				.withSquashFunction(InsertOperation.class, InsertOperation.class, NoteOTSystem::squashInsertAndInsert)
+				.withSquashFunction(DeleteOperation.class, DeleteOperation.class, NoteOTSystem::squashDeleteAndDelete)
+				.withSquashFunction(DeleteOperation.class, InsertOperation.class, NoteOTSystem::squashDeleteAndInsert)
+				.withSquashFunction(InsertOperation.class, DeleteOperation.class, NoteOTSystem::squashInsertAndDelete);
 	}
 
 	@NotNull

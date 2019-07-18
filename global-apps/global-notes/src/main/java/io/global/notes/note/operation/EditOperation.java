@@ -1,4 +1,4 @@
-package io.global.editor.document.edit;
+package io.global.notes.note.operation;
 
 public interface EditOperation {
 	void apply(StringBuilder builder);
