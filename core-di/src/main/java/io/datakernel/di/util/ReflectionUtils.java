@@ -49,9 +49,9 @@ public final class ReflectionUtils {
 				.collect(toSet());
 	}
 
-	public static <T> Key<T> keyOf(@Nullable Type container, Type type, AnnotatedElement annotatedElement) {
-		Type resolved = container != null ? Types.resolveTypeVariables(type, container) : type;
-		return Key.ofType(resolved, nameOf(annotatedElement));
+	public static <T> Key<T> keyOf(@Nullable Type container, AnnotatedType type) {
+		Type resolved = container != null ? Types.resolveTypeVariables(type.getType(), container) : type.getType();
+		return Key.ofType(resolved, nameOf(type));
 	}
 
 	public static Scope[] getScope(AnnotatedElement annotatedElement) {
@@ -180,7 +180,7 @@ public final class ReflectionUtils {
 	public static <T> BindingInitializer<T> fieldInjector(Key<T> container, Field field, boolean required) {
 		field.setAccessible(true);
 
-		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field);
+		Key<Object> key = keyOf(container.getType(), field.getAnnotatedType());
 
 		return BindingInitializer.of(
 				singleton(Dependency.toKey(key, required)),
@@ -200,7 +200,7 @@ public final class ReflectionUtils {
 
 	public static <T> BindingInitializer<T> methodInjector(Key<T> container, Method method) {
 		method.setAccessible(true);
-		Dependency[] deps = toDependencies(container.getType(), method.getParameters());
+		Dependency[] deps = getDependenciesOf(container.getType(), method);
 		return BindingInitializer.of(
 				Arrays.stream(deps).collect(toSet()),
 				(locator, instance) -> {
@@ -216,17 +216,19 @@ public final class ReflectionUtils {
 	}
 
 	@NotNull
-	public static Dependency[] toDependencies(@Nullable Type container, Parameter[] parameters) {
-		Dependency[] dependencies = new Dependency[parameters.length];
-		if (parameters.length == 0) {
+	public static Dependency[] getDependenciesOf(@Nullable Type container, Executable executable) {
+		AnnotatedType[] parameterTypes = executable.getAnnotatedParameterTypes();
+		Dependency[] dependencies = new Dependency[parameterTypes.length];
+		if (parameterTypes.length == 0) {
 			return dependencies;
 		}
+		Parameter[] parameters = executable.getParameters();
 		// an actual JDK bug (fixed in Java 9)
-		boolean workaround = parameters[0].getDeclaringExecutable().getParameterAnnotations().length != parameters.length;
+		boolean workaround = executable.getParameterAnnotations().length != parameterTypes.length;
 		for (int i = 0; i < dependencies.length; i++) {
-			Type type = parameters[i].getParameterizedType();
-			Parameter parameter = parameters[workaround && i != 0 ? i - 1 : i];
-			dependencies[i] = Dependency.toKey(keyOf(container, type, parameter), !parameter.isAnnotationPresent(Optional.class));
+			AnnotatedType type = parameterTypes[i];
+			Parameter fixed = parameters[workaround && i != 0 ? i - 1 : i];
+			dependencies[i] = Dependency.toKey(keyOf(container, type), !fixed.isAnnotationPresent(Optional.class));
 		}
 		return dependencies;
 	}
@@ -245,7 +247,7 @@ public final class ReflectionUtils {
 						throw new DIException("Failed to call method " + method, e.getCause());
 					}
 				},
-				toDependencies(module != null ? module.getClass() : method.getDeclaringClass(), method.getParameters()));
+				getDependenciesOf(module != null ? module.getClass() : method.getDeclaringClass(), method));
 		return module != null ? binding.at(LocationInfo.from(module, method)) : binding;
 	}
 
@@ -280,9 +282,6 @@ public final class ReflectionUtils {
 
 	public static <T> Binding<T> bindingFromConstructor(Key<T> key, Constructor<T> constructor) {
 		constructor.setAccessible(true);
-
-		Dependency[] dependencies = toDependencies(key.getType(), constructor.getParameters());
-
 		return Binding.to(
 				args -> {
 					try {
@@ -295,6 +294,6 @@ public final class ReflectionUtils {
 						throw new DIException("Failed to call constructor " + constructor + " to provide requested key " + key, e.getCause());
 					}
 				},
-				dependencies);
+				getDependenciesOf(key.getType(), constructor));
 	}
 }

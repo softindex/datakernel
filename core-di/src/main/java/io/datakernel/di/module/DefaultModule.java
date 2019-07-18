@@ -35,12 +35,12 @@ public final class DefaultModule implements Module {
 		generators.put(Object.class, singleton((provider, scope, key) -> ReflectionUtils.generateImplicitBinding(key)));
 
 		// generating dummy bindings for reified type requests (can be used in templated providers to get a Key<T> instance)
-		generators.put(Key.class, singleton((provider, scope, key) -> Binding.toInstance(key.getTypeParameter(0))));
+		generators.put(Key.class, singleton((provider, scope, key) -> Binding.toInstance(key.getTypeArgument(0))));
 
 		// generating bindings for provider requests
 		generators.put(InstanceProvider.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
+					Key<Object> elementKey = key.getTypeArgument(0).named(key.getName());
 					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
@@ -72,7 +72,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for factory requests
 		generators.put(InstanceFactory.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
+					Key<Object> elementKey = key.getTypeArgument(0);
 					Binding<Object> elementBinding = provider.getBinding(elementKey);
 					if (elementBinding == null) {
 						return null;
@@ -101,7 +101,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for injector requests
 		generators.put(InstanceInjector.class, singleton(
 				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
+					Key<Object> elementKey = key.getTypeArgument(0).named(key.getName());
 
 					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
 					BiConsumer<InstanceLocator, Object> initializer = injectingInitializer.getInitializer();

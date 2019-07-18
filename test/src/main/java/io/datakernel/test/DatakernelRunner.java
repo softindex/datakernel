@@ -51,7 +51,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 		beforesAndAfters.addAll(getTestClass().getAnnotatedMethods(After.class));
 
 		staticDependencies = beforesAndAfters.stream()
-				.flatMap(m -> Arrays.stream(ReflectionUtils.toDependencies(clazz, m.getMethod().getParameters())))
+				.flatMap(m -> Arrays.stream(ReflectionUtils.getDependenciesOf(clazz, m.getMethod())))
 				.collect(toSet());
 	}
 
@@ -67,7 +67,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 	protected Statement methodInvoker(FrameworkMethod method, Object test) {
 		return new LambdaStatement(() -> {
 			Object[] args = Arrays.stream(method.getMethod().getParameters())
-					.map(parameter -> currentInjector.getInstance(keyOf(getTestClass().getJavaClass(), parameter.getParameterizedType(), parameter)))
+					.map(parameter -> currentInjector.getInstance(keyOf(getTestClass().getJavaClass(), parameter.getAnnotatedType())))
 					.toArray(Object[]::new);
 
 			method.invokeExplosively(test, args);
@@ -154,7 +154,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 				addMethodModules(modules, m);
 			}
 			currentModule = Modules.combine(modules);
-			currentDependencies = new HashSet<>(asList(ReflectionUtils.toDependencies(getTestClass().getJavaClass(), method.getMethod().getParameters())));
+			currentDependencies = new HashSet<>(asList(ReflectionUtils.getDependenciesOf(getTestClass().getJavaClass(), method.getMethod())));
 		} catch (Exception e) {
 			notifier.fireTestFailure(new Failure(description, e));
 			return;

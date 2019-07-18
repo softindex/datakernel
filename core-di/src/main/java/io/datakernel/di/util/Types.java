@@ -4,6 +4,7 @@ import io.datakernel.di.core.DIException;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -234,6 +235,23 @@ public final class Types {
 		});
 	}
 
+	public static AnnotatedType resolveTypeVariables(AnnotatedType annotatedType, Type container) {
+		Type resolvedType = resolveTypeVariables(annotatedType.getType(), container);
+		if (annotatedType instanceof AnnotatedParameterizedType) {
+			AnnotatedType[] aata = ((AnnotatedParameterizedType) annotatedType).getAnnotatedActualTypeArguments();
+			AnnotatedType[] fixed = new AnnotatedType[aata.length];
+			for (int i = 0; i < aata.length; i++) {
+				fixed[i] = resolveTypeVariables(aata[i], container);
+			}
+			return new AnnotatedParameterizedTypeImpl(resolvedType, fixed, annotatedType.getDeclaredAnnotations());
+		}
+		if (annotatedType instanceof AnnotatedArrayType) {
+			AnnotatedType agct = ((AnnotatedArrayType) annotatedType).getAnnotatedGenericComponentType();
+			return new AnnotatedArrayTypeImpl(resolvedType, resolveTypeVariables(agct, container), annotatedType.getDeclaredAnnotations());
+		}
+		return annotate(resolvedType, annotatedType.getDeclaredAnnotations());
+	}
+
 	public static Type resolveTypeVariables(Type type, Type container) {
 		return resolveTypeVariables(type, getGenericTypeMapping(container));
 	}
@@ -246,71 +264,90 @@ public final class Types {
 		if (type instanceof TypeVariable) {
 			Type resolved = mapping.get(type);
 			if (resolved != null) {
-				return ensureEquality(resolved);
+				return resolved;
 			}
 		}
 		if (type instanceof ParameterizedType) {
 			ParameterizedType parameterized = (ParameterizedType) type;
-			Type owner = ensureEquality(parameterized.getOwnerType());
-			Type raw = ensureEquality(parameterized.getRawType());
-			Type[] parameters = Arrays.stream(parameterized.getActualTypeArguments()).map(parameter -> resolveTypeVariables(parameter, mapping)).toArray(Type[]::new);
-			return new ParameterizedTypeImpl(owner, raw, parameters);
+			return parameterizedWithOwner(
+					parameterized.getOwnerType(), parameterized.getRawType(),
+					Arrays.stream(parameterized.getActualTypeArguments())
+							.map(parameter -> resolveTypeVariables(parameter, mapping))
+							.toArray(Type[]::new));
 		}
 		if (type instanceof GenericArrayType) {
-			Type componentType = ensureEquality(((GenericArrayType) type).getGenericComponentType());
-			return new GenericArrayTypeImpl(resolveTypeVariables(componentType, mapping));
+			Type componentType = ((GenericArrayType) type).getGenericComponentType();
+			return arrayOf(resolveTypeVariables(componentType, mapping));
 		}
 		return type;
 	}
 
-	@Contract("null -> null")
-	public static Type ensureEquality(Type type) {
-		if (type == null) {
-			return null;
-		}
-		if (type instanceof ParameterizedTypeImpl) {
-			return type;
-		}
-		if (type instanceof ParameterizedType) {
-			ParameterizedType parameterized = (ParameterizedType) type;
-			Type owner = ensureEquality(parameterized.getOwnerType());
-			Type raw = ensureEquality(parameterized.getRawType());
-			Type[] actualTypeArguments = parameterized.getActualTypeArguments();
-			Type[] parameters = new Type[actualTypeArguments.length];
-			for (int i = 0; i < actualTypeArguments.length; i++) {
-				parameters[i] = ensureEquality(actualTypeArguments[i]);
-			}
-			return new ParameterizedTypeImpl(owner, raw, parameters);
-		}
-		if (type instanceof GenericArrayType) {
-			return new GenericArrayTypeImpl(((GenericArrayType) type).getGenericComponentType());
-		}
-		return type;
+	public static Type parameterized(Type rawType, Type... parameters) {
+		return parameterizedWithOwner(null, rawType, parameters);
 	}
 
-	public static Type parameterized(Class<?> rawType, Type... parameters) {
-		return new ParameterizedTypeImpl(null, rawType, Arrays.stream(parameters).map(Types::ensureEquality).toArray(Type[]::new));
+	public static Type parameterizedWithOwner(Type ownerType, Type rawType, Type... parameters) {
+		return new ParameterizedTypeImpl(ownerType, rawType, parameters);
 	}
 
 	public static Type arrayOf(Type componentType) {
 		return new GenericArrayTypeImpl(componentType);
 	}
 
+	public static Annotation[] concat(Annotation[] first, Annotation[] second) {
+		Annotation[] result = new Annotation[first.length + second.length];
+		System.arraycopy(first, 0, result, 0, first.length);
+		System.arraycopy(second, 0, result, first.length, second.length);
+		return result;
+	}
+
+	public static AnnotatedType annotate(AnnotatedType type, Annotation... annotations) {
+		Annotation[] concatenated = concat(type.getDeclaredAnnotations(), annotations);
+		if (type instanceof AnnotatedParameterizedType) {
+			AnnotatedType[] aata = ((AnnotatedParameterizedType) type).getAnnotatedActualTypeArguments();
+			AnnotatedType[] fixed = new AnnotatedType[aata.length];
+			for (int i = 0; i < aata.length; i++) {
+				fixed[i] = annotate(aata[i]);
+			}
+			return new AnnotatedParameterizedTypeImpl(type.getType(), fixed, concatenated);
+		}
+		if (type instanceof AnnotatedArrayType) {
+			AnnotatedType agct = ((AnnotatedArrayType) type).getAnnotatedGenericComponentType();
+			return new AnnotatedArrayTypeImpl(type.getType(), agct, concatenated);
+		}
+		return new AnnotatedTypeImpl(type.getType(), concatenated);
+	}
+
+	public static AnnotatedType annotate(Type type, Annotation... annotations) {
+		if (type instanceof ParameterizedType) {
+			Type[] actualTypeArguments = ((ParameterizedType) type).getActualTypeArguments();
+			AnnotatedType[] annotatedTypes = new AnnotatedType[actualTypeArguments.length];
+			for (int i = 0; i < actualTypeArguments.length; i++) {
+				annotatedTypes[i] = annotate(actualTypeArguments[i]);
+			}
+			return new AnnotatedParameterizedTypeImpl(type, annotatedTypes, annotations);
+		}
+		if (type instanceof GenericArrayType) {
+			return new AnnotatedArrayTypeImpl(type, annotate(((GenericArrayType) type).getGenericComponentType()), annotations);
+		}
+		return new AnnotatedTypeImpl(type, annotations);
+	}
+
 	private static class ParameterizedTypeImpl implements ParameterizedType {
 		@Nullable
 		private final Type ownerType;
 		private final Type rawType;
-		private final Type[] parameters;
+		private final Type[] actualTypeArguments;
 
-		public ParameterizedTypeImpl(@Nullable Type ownerType, Type rawType, Type[] parameters) {
+		public ParameterizedTypeImpl(@Nullable Type ownerType, Type rawType, Type[] actualTypeArguments) {
 			this.ownerType = ownerType;
 			this.rawType = rawType;
-			this.parameters = parameters;
+			this.actualTypeArguments = actualTypeArguments;
 		}
 
 		@Override
 		public Type[] getActualTypeArguments() {
-			return parameters;
+			return actualTypeArguments;
 		}
 
 		@Override
@@ -326,37 +363,37 @@ public final class Types {
 
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-			if (o == null || getClass() != o.getClass()) {
+			if (!(o instanceof ParameterizedType)) {
 				return false;
 			}
+			ParameterizedType that = (ParameterizedType) o;
 
-			ParameterizedTypeImpl that = (ParameterizedTypeImpl) o;
+			if (this == that) {
+				return true;
+			}
 
-			return Objects.equals(ownerType, that.ownerType) && rawType.equals(that.rawType) && Arrays.equals(parameters, that.parameters);
+			return Objects.equals(ownerType, that.getOwnerType()) &&
+					Objects.equals(rawType, that.getRawType()) &&
+					Arrays.equals(actualTypeArguments, that.getActualTypeArguments());
 		}
 
 		@Override
 		public int hashCode() {
-			return (ownerType != null ? 961 * ownerType.hashCode() : 0) + 31 * rawType.hashCode() + Arrays.hashCode(parameters);
+			return Arrays.hashCode(actualTypeArguments) ^ Objects.hashCode(ownerType) ^ Objects.hashCode(rawType);
 		}
 
-		private String toString(Type type) {
+		private static String toString(Type type) {
 			return type instanceof Class ? ((Class) type).getName() : type.toString();
 		}
 
 		@Override
 		public String toString() {
-			if (parameters.length == 0) {
+			if (actualTypeArguments.length == 0) {
 				return toString(rawType);
 			}
-			StringBuilder sb = new StringBuilder(toString(rawType))
-					.append('<')
-					.append(toString(parameters[0]));
-			for (int i = 1; i < parameters.length; i++) {
-				sb.append(", ").append(toString(parameters[i]));
+			StringBuilder sb = new StringBuilder(toString(rawType)).append('<').append(toString(actualTypeArguments[0]));
+			for (int i = 1; i < actualTypeArguments.length; i++) {
+				sb.append(", ").append(toString(actualTypeArguments[i]));
 			}
 			return sb.append('>').toString();
 		}
@@ -375,27 +412,101 @@ public final class Types {
 		}
 
 		@Override
+		public String toString() {
+			Type componentType = getGenericComponentType();
+			StringBuilder sb = new StringBuilder();
+
+			if (componentType instanceof Class) {
+				sb.append(((Class) componentType).getName());
+			} else {
+				sb.append(componentType.toString());
+			}
+			sb.append("[]");
+			return sb.toString();
+		}
+
+		@Override
 		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-
-			GenericArrayTypeImpl that = (GenericArrayTypeImpl) o;
-
-			return componentType.equals(that.componentType);
+			return o instanceof GenericArrayType && componentType.equals(((GenericArrayType) o).getGenericComponentType());
 		}
 
 		@Override
 		public int hashCode() {
 			return componentType.hashCode();
 		}
+	}
+
+	public static class AnnotatedTypeImpl implements AnnotatedType {
+		private final Type type;
+		private final Map<Class<? extends Annotation>, Annotation> annotationMap = new HashMap<>();
+		private final Annotation[] annotations;
+
+		private AnnotatedTypeImpl(Type type, Annotation... annotations) {
+			this.type = type;
+			this.annotations = annotations;
+			for (Annotation annotation : annotations) {
+				annotationMap.put(annotation.annotationType(), annotation);
+			}
+		}
 
 		@Override
-		public String toString() {
-			return (componentType instanceof Class ? ((Class) componentType).getName() : componentType.toString()) + "[]";
+		public Type getType() {
+			return type;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+			return (T) annotationMap.get(annotationClass);
+		}
+
+		@Override
+		public Annotation[] getAnnotations() {
+			return annotations;
+		}
+
+		@Override
+		public Annotation[] getDeclaredAnnotations() {
+			return annotations;
+		}
+	}
+
+	public static class AnnotatedParameterizedTypeImpl extends AnnotatedTypeImpl implements AnnotatedParameterizedType {
+		private final AnnotatedType[] typeArguments;
+
+		public AnnotatedParameterizedTypeImpl(Type type, AnnotatedType[] typeArguments, Annotation... annotations) {
+			super(type, annotations);
+			this.typeArguments = typeArguments;
+		}
+
+		// support Java 9+
+		public AnnotatedType getAnnotatedOwnerType() {
+			throw new UnsupportedOperationException("Annotated owner types are not (yet) supported");
+		}
+
+		@Override
+		public AnnotatedType[] getAnnotatedActualTypeArguments() {
+			return typeArguments;
+		}
+	}
+
+	public static class AnnotatedArrayTypeImpl extends AnnotatedTypeImpl implements AnnotatedArrayType {
+		private final AnnotatedType componentType;
+
+		public AnnotatedArrayTypeImpl(Type type, AnnotatedType componentType, Annotation... annotations) {
+			super(type, annotations);
+			this.componentType = componentType;
+		}
+
+		// uhm, javadoc states that array type always returns null,
+		// yet they override the default method that does that
+		public AnnotatedType getAnnotatedOwnerType() {
+			return null;
+		}
+
+		@Override
+		public AnnotatedType getAnnotatedGenericComponentType() {
+			return componentType;
 		}
 	}
 }

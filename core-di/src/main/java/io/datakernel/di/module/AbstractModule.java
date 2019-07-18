@@ -494,8 +494,18 @@ public abstract class AbstractModule implements Module {
 	@SuppressWarnings("unchecked")
 	protected final <T> BindingBuilder<T> bind(@NotNull Key<T> key) {
 		// to support abstract modules with generics
-		Key<T> fullKey = Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName());
+		Key<T> fullKey = Key.ofType(Types.resolveTypeVariables(key.getAnnotatedType(), getClass()), key.getName());
 		BindingBuilder<T> builder = new BindingBuilder<>(fullKey);
+		builders.add((BindingBuilder<Object>) builder);
+		return builder;
+	}
+
+	/**
+	 * @see #bind(Key)
+	 */
+	@SuppressWarnings("unchecked")
+	protected final <T> BindingBuilder<T> bind(Class<T> type) {
+		BindingBuilder<T> builder = new BindingBuilder<>(Key.of(type));
 		builders.add((BindingBuilder<Object>) builder);
 		return builder;
 	}
@@ -525,16 +535,6 @@ public abstract class AbstractModule implements Module {
 	 */
 	protected final <S, T extends S> void bindIntoSet(@NotNull Key<S> setOf, @NotNull T element) {
 		bindIntoSet(setOf, Binding.toInstance(element));
-	}
-
-	/**
-	 * @see #bind(Key)
-	 */
-	@SuppressWarnings("unchecked")
-	protected final <T> BindingBuilder<T> bind(Class<T> type) {
-		BindingBuilder<T> builder = new BindingBuilder<>(Key.of(type));
-		builders.add((BindingBuilder<Object>) builder);
-		return builder;
 	}
 
 	/**

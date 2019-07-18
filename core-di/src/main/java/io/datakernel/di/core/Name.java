@@ -58,6 +58,10 @@ public final class Name extends AbstractAnnotation {
 		return new Name(Named.class, new NamedImpl(name));
 	}
 
+	public static Annotation createNamedInstance(String name) {
+		return new NamedImpl(name);
+	}
+
 	@SuppressWarnings("ClassExplicitlyAnnotation")
 	private static class NamedImpl implements Named {
 		@NotNull

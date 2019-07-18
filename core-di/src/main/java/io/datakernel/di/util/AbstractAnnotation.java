@@ -8,6 +8,8 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 
+import static io.datakernel.di.util.Utils.checkArgument;
+
 /**
  * This is a helper class for making tag-like objects that are identified by stateless or stateful annotations.
  * <p>
@@ -19,13 +21,12 @@ import java.util.Objects;
 public abstract class AbstractAnnotation {
 	@NotNull
 	private final Class<? extends Annotation> annotationType;
-
-	@Nullable
+	@NotNull
 	private final Annotation annotation;
 
 	protected AbstractAnnotation(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {
 		this.annotationType = annotationType;
-		this.annotation = annotation == null || isMarker(annotationType) ? null : annotation;
+		this.annotation = annotation == null || isMarker(annotationType) ? new MarkerAnnotationImpl(annotationType) : annotation;
 	}
 
 	public static boolean isMarker(Class<? extends Annotation> annotationType) {
@@ -37,7 +38,7 @@ public abstract class AbstractAnnotation {
 		return annotationType;
 	}
 
-	@Nullable
+	@NotNull
 	public Annotation getAnnotation() {
 		return annotation;
 	}
@@ -47,9 +48,6 @@ public abstract class AbstractAnnotation {
 	}
 
 	public String getDisplayString() {
-		if (annotation == null) {
-			return "@" + ReflectionUtils.getShortName(annotationType.getName()) + "()";
-		}
 		return ReflectionUtils.getShortName(annotation.toString());
 	}
 
@@ -69,6 +67,43 @@ public abstract class AbstractAnnotation {
 
 	@Override
 	public String toString() {
-		return annotation != null ? annotation.toString() : "@" + annotationType.getName() + "()";
+		return annotation.toString();
+	}
+
+	public static Annotation createMarkerAnnotationInstance(Class<? extends Annotation> annotationType) {
+		checkArgument(isMarker(annotationType), "Given annotation type does not correspond to a marker annotation");
+		return new MarkerAnnotationImpl(annotationType);
+	}
+
+	private static class MarkerAnnotationImpl implements Annotation {
+		private final Class<? extends Annotation> annotationType;
+
+		private MarkerAnnotationImpl(Class<? extends Annotation> annotationType) {
+			this.annotationType = annotationType;
+		}
+
+		@Override
+		public int hashCode() {
+			return 1;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof Annotation)) return false;
+
+			return ((Annotation) o).annotationType().equals(annotationType);
+		}
+
+		@NotNull
+		@Override
+		public String toString() {
+			return "@" + annotationType.getName() + "()";
+		}
+
+		@NotNull
+		@Override
+		public Class<? extends Annotation> annotationType() {
+			return annotationType;
+		}
 	}
 }

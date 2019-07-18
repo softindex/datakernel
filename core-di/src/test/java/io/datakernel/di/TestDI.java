@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.di.util.Types.parameterized;
 import static io.datakernel.di.util.Utils.printGraphVizGraph;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -487,7 +488,7 @@ public final class TestDI {
 	public void optionalProvidesParam() {
 		Module module = new AbstractModule() {
 			@Provides
-			String string(Integer integer, @io.datakernel.di.annotation.Optional Float f) {
+			String string(Integer integer, @Optional Float f) {
 				return "str: " + integer + ", " + f;
 			}
 
@@ -846,7 +847,7 @@ public final class TestDI {
 			final T peer;
 
 			public Container(T object) {
-				this.peer = object;
+				peer = object;
 			}
 		}
 
@@ -891,7 +892,7 @@ public final class TestDI {
 			final T peer;
 
 			public Container(T object) {
-				this.peer = object;
+				peer = object;
 			}
 		}
 
@@ -904,12 +905,41 @@ public final class TestDI {
 			}
 
 			@Provides
-			@Named("hello")
-			<T> Container<T> provide(T number) {
+			@Named("hello") <T> Container<T> provide(T number) {
 				return new Container<>(number);
 			}
 		});
 
 		System.out.println(injector.getInstance(new Key<Container<String>>(Name.of("hello")) {}).peer);
+	}
+
+	@Test
+	@SuppressWarnings("AssertEqualsBetweenInconvertibleTypes")
+	public void keyEquality() {
+		assertEquals(new Key<String>() {}, Key.of(String.class));
+		assertNotEquals(new Key<String>() {}, Key.of(Integer.class));
+
+		assertEquals(new Key<List<String>>() {}, Key.ofType(parameterized(List.class, String.class)));
+		assertNotEquals(new Key<List<String>>() {}, Key.ofType(parameterized(List.class, Integer.class)));
+
+		assertEquals(new Key<List<String>>("hello") {}, Key.ofType(parameterized(List.class, String.class), "hello"));
+		assertNotEquals(new Key<List<String>>("hello") {}, Key.ofType(parameterized(List.class, String.class), "goodbye"));
+
+		java8reflectionBugWorkaround();
+	}
+
+	// test the annotated type args for java 9
+	// needs to be in static method because of java 8 reflection bugs
+	@SuppressWarnings("AssertEqualsBetweenInconvertibleTypes")
+	public static void java8reflectionBugWorkaround() {
+		assertEquals(new Key<@Named("hello") String>() {}, Key.of(String.class, "hello"));
+		assertNotEquals(new Key<@Named("greetings") String>() {}, Key.of(String.class, "hello"));
+
+		assertEquals(new Key<@Named("hello") String>() {}, new Key<String>("hello") {});
+		assertNotEquals(new Key<@Named("greetings") String>() {}, new Key<String>("hello") {});
+
+		// nested annotations are ignored
+		assertEquals(new Key<List<@Named("hello") String>>() {}, new Key<List<String>>() {});
+		assertEquals(new Key<List<@Named("greetings") String>>() {}, new Key<List<String>>() {});
 	}
 }

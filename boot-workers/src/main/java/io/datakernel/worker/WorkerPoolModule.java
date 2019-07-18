@@ -35,7 +35,7 @@ public final class WorkerPoolModule extends AbstractModule {
 			});
 		});
 		generate(WorkerPool.Instances.class, (provider, scope, key) -> {
-			Key<Object> requestedKey = key.getTypeParameter(0);
+			Key<Object> requestedKey = key.getTypeArgument(0);
 			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getName()));
 		});
 	}
