@@ -5,11 +5,14 @@ import io.datakernel.di.util.LocationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
+import java.util.Set;
 import java.util.function.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.util.Utils.union;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * A binding is one of the main components of DataKernel DI.
@@ -27,17 +30,17 @@ public final class Binding<T> {
 		R create(InstanceLocator locator);
 	}
 
-	private final Dependency[] dependencies;
+	private final Set<Dependency> dependencies;
 	private final Factory<T> factory;
 
 	@Nullable
 	private LocationInfo location;
 
-	public Binding(@NotNull Dependency[] dependencies, @NotNull Factory<T> factory) {
+	public Binding(@NotNull Set<Dependency> dependencies, @NotNull Factory<T> factory) {
 		this(dependencies, null, factory);
 	}
 
-	public Binding(@NotNull Dependency[] dependencies, @Nullable LocationInfo location, @NotNull Factory<T> factory) {
+	public Binding(@NotNull Set<Dependency> dependencies, @Nullable LocationInfo location, @NotNull Factory<T> factory) {
 		this.dependencies = dependencies;
 		this.factory = factory;
 		this.location = location;
@@ -72,17 +75,11 @@ public final class Binding<T> {
 	}
 
 	@SuppressWarnings("Convert2MethodRef")
-	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Dependency[] dependencies) {
-		return new Binding<>(dependencies,
+	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Dependency... dependencies) {
+		return new Binding<>(Stream.of(dependencies).collect(toSet()),
 				dependencies.length == 0 ?
 						locator -> constructor.create() :
-						locator -> {
-							Object[] dependencyInstances = new Object[dependencies.length];
-							for (int i = 0; i < dependencies.length; i++) {
-								dependencyInstances[i] = locator.getInstanceOrNull(dependencies[i].getKey());
-							}
-							return (R) constructor.create(dependencyInstances);
-						});
+						locator -> (R) constructor.create(locator.getDependencies(dependencies)));
 	}
 
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
@@ -116,14 +113,14 @@ public final class Binding<T> {
 	}
 
 	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
-		return new Binding<>(new Dependency[]{},
+		return new Binding<>(emptySet(),
 				locator -> constructor.create()
 		);
 	}
 
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
 			@NotNull Key<T1> dependency1) {
-		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1)},
+		return new Binding<>(Stream.of(Dependency.toKey(dependency1)).collect(toSet()),
 				locator -> constructor.create(
 						locator.getInstanceOrNull(dependency1))
 		);
@@ -131,7 +128,7 @@ public final class Binding<T> {
 
 	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
-		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2)},
+		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2)).collect(toSet()),
 				locator -> constructor.create(
 						locator.getInstanceOrNull(dependency1),
 						locator.getInstanceOrNull(dependency2))
@@ -140,7 +137,7 @@ public final class Binding<T> {
 
 	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
-		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3)},
+		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3)).collect(toSet()),
 				locator -> constructor.create(
 						locator.getInstanceOrNull(dependency1),
 						locator.getInstanceOrNull(dependency2),
@@ -150,7 +147,7 @@ public final class Binding<T> {
 
 	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
-		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4)},
+		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4)).collect(toSet()),
 				locator -> constructor.create(
 						locator.getInstanceOrNull(dependency1),
 						locator.getInstanceOrNull(dependency2),
@@ -161,7 +158,7 @@ public final class Binding<T> {
 
 	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
-		return new Binding<>(new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5)},
+		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5)).collect(toSet()),
 				locator -> constructor.create(
 						locator.getInstanceOrNull(dependency1),
 						locator.getInstanceOrNull(dependency2),
@@ -174,7 +171,7 @@ public final class Binding<T> {
 	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {
 		return new Binding<>(
-				new Dependency[]{Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6)},
+				Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6)).collect(toSet()),
 				locator -> constructor.create(
 						locator.getInstanceOrNull(dependency1),
 						locator.getInstanceOrNull(dependency2),
@@ -255,16 +252,18 @@ public final class Binding<T> {
 	}
 
 	public Binding<T> addDependencies(@NotNull Dependency... extraDependencies) {
-		if (extraDependencies.length == 0) {
+		return addDependencies(Stream.of(extraDependencies).collect(toSet()));
+	}
+
+	public Binding<T> addDependencies(@NotNull Set<Dependency> extraDependencies) {
+		if (extraDependencies.size() == 0) {
 			return this;
 		}
-		Dependency[] newDependencies = Arrays.copyOf(this.dependencies, this.dependencies.length + extraDependencies.length);
-		System.arraycopy(extraDependencies, 0, newDependencies, this.dependencies.length, extraDependencies.length);
-		return new Binding<>(newDependencies, location, factory);
+		return new Binding<>(union(dependencies, extraDependencies), location, factory);
 	}
 
 	@NotNull
-	public Dependency[] getDependencies() {
+	public Set<Dependency> getDependencies() {
 		return dependencies;
 	}
 
@@ -279,11 +278,11 @@ public final class Binding<T> {
 	}
 
 	public String getDisplayString() {
-		return Arrays.stream(dependencies).map(Dependency::getDisplayString).collect(joining(", ", "[", "]"));
+		return dependencies.stream().map(Dependency::getDisplayString).collect(joining(", ", "[", "]"));
 	}
 
 	@Override
 	public String toString() {
-		return Arrays.toString(dependencies);
+		return dependencies.toString();
 	}
 }

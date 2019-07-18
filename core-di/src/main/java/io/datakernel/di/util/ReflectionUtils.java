@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -182,6 +183,7 @@ public final class ReflectionUtils {
 		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field);
 
 		return BindingInitializer.of(
+				singleton(Dependency.toKey(key, required)),
 				(locator, instance) -> {
 					Object arg = locator.getInstanceOrNull(key);
 					if (arg == null) {
@@ -192,8 +194,7 @@ public final class ReflectionUtils {
 					} catch (IllegalAccessException e) {
 						throw new DIException("Not allowed to set injectable field " + field, e);
 					}
-				},
-				Dependency.toKey(key, required)
+				}
 		);
 	}
 
@@ -201,6 +202,7 @@ public final class ReflectionUtils {
 		method.setAccessible(true);
 		Dependency[] deps = toDependencies(container.getType(), method.getParameters());
 		return BindingInitializer.of(
+				Arrays.stream(deps).collect(toSet()),
 				(locator, instance) -> {
 					try {
 						method.invoke(instance, locator.getDependencies(deps));
@@ -209,8 +211,7 @@ public final class ReflectionUtils {
 					} catch (InvocationTargetException e) {
 						throw new DIException("Failed to call injectable method " + method, e.getCause());
 					}
-				},
-				deps
+				}
 		);
 	}
 

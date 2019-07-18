@@ -352,7 +352,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			ServiceKey serviceKey = new ServiceKey(key);
 			instances.put(serviceKey, singletonList(instance));
 			instanceDependencies.put(serviceKey,
-					Arrays.stream(binding.getDependencies())
+					binding.getDependencies().stream()
 							.filter(dependency -> dependency.isRequired() ||
 									injector.hasInstance(dependency.getKey()))
 							.map(dependency -> {
@@ -386,7 +386,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				.entrySet()
 				.stream()
 				.collect(toMap(Map.Entry::getKey,
-						entry -> Arrays.stream(entry.getValue().getDependencies())
+						entry -> entry.getValue().getDependencies().stream()
 								.map(dependencyKey ->
 										scopeBindings.get().containsKey(dependencyKey.getKey()) ?
 												ScopedValue.of(scope, dependencyKey) :

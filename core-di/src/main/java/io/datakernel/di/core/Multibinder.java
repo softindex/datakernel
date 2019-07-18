@@ -1,9 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.DIException;
-import io.datakernel.di.core.Dependency;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,7 +8,6 @@ import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.stream.Stream;
 
-import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -42,13 +37,12 @@ public interface Multibinder<T> {
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
 		return (key, bindings) -> {
 			List<Binding.Factory<T>> factories = new ArrayList<>();
-			List<Dependency> dependencies = new ArrayList<>();
+			Set<Dependency> dependencies = new HashSet<>();
 			for (Binding<T> binding : bindings) {
-				dependencies.addAll(asList(binding.getDependencies()));
+				dependencies.addAll(binding.getDependencies());
 				factories.add(binding.getFactory());
 			}
-			return new Binding<>(dependencies.toArray(new Dependency[0]),
-					locator -> reducerFunction.apply(key, factories.stream().map(factory -> factory.create(locator))));
+			return new Binding<>(dependencies, locator -> reducerFunction.apply(key, factories.stream().map(factory -> factory.create(locator))));
 		};
 	}
 

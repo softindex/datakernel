@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.Utils.*;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.joining;
 
@@ -161,7 +162,7 @@ public abstract class AbstractModule implements Module {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
 
-		private Binding<? extends T> binding = (Binding<? extends T>) new Binding<>(new Dependency[0], BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
+		private Binding<? extends T> binding = (Binding<? extends T>) new Binding<>(emptySet(), BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
 
 		public BindingBuilder(@NotNull Key<T> key) {
 			this.key = key;
@@ -463,7 +464,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * This method is meant to be overriden to call all the <code>bind(...)</code> methods.
+	 * This method is meant to be overridden to call all the <code>bind(...)</code> methods.
 	 * Those methods can be called at any time before the module is given to the injector,
 	 * so this method is simply called from the constructor.
 	 * It exists for consistency and code purity.
@@ -501,7 +502,7 @@ public abstract class AbstractModule implements Module {
 
 	/**
 	 * This is a helper method that provides a functionality similar to {@link ProvidesIntoSet}.
-	 * It binds given binding as a signleton set to a set key made from given key
+	 * It binds given binding as a singleton set to a set key made from given key
 	 * and also {@link Multibinder#toSet multibinds} each of such sets together.
 	 */
 	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, Binding<T> binding) {

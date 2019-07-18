@@ -1,29 +1,27 @@
 package io.datakernel.di.core;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
 
 /**
  * This is a {@link Binding} binding modifying function, that can add extra dependencies to it
  * and run initialization code for instance after it was created.
  */
 public final class BindingInitializer<T> {
-	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(new Dependency[0], (locator, instance) -> {});
+	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(emptySet(), (locator, instance) -> {});
 
-	private final Dependency[] dependencies;
+	private final Set<Dependency> dependencies;
 	private final BiConsumer<InstanceLocator, T> initializer;
 
-	private BindingInitializer(Dependency[] dependencies, BiConsumer<InstanceLocator, T> initializer) {
+	private BindingInitializer(Set<Dependency> dependencies, BiConsumer<InstanceLocator, T> initializer) {
 		this.dependencies = dependencies;
 		this.initializer = initializer;
 	}
 
-	public Dependency[] getDependencies() {
+	public Set<Dependency> getDependencies() {
 		return dependencies;
 	}
 
@@ -40,7 +38,7 @@ public final class BindingInitializer<T> {
 				.onInstance(initializer);
 	}
 
-	public static <T> BindingInitializer<T> of(BiConsumer<InstanceLocator, T> initializer, Dependency... dependencies) {
+	public static <T> BindingInitializer<T> of(Set<Dependency> dependencies, BiConsumer<InstanceLocator, T> initializer) {
 		return new BindingInitializer<>(dependencies, initializer);
 	}
 
@@ -51,20 +49,18 @@ public final class BindingInitializer<T> {
 
 	public static <T> BindingInitializer<T> combine(Collection<BindingInitializer<T>> bindingInitializers) {
 		List<BiConsumer<InstanceLocator, T>> initializers = new ArrayList<>();
-		List<Dependency> keys = new ArrayList<>();
+		Set<Dependency> dependencies = new HashSet<>();
 		for (BindingInitializer<T> bi : bindingInitializers) {
 			if (bi == NOOP) {
 				continue;
 			}
-			Collections.addAll(keys, bi.getDependencies());
+			dependencies.addAll(bi.getDependencies());
 			initializers.add(bi.getInitializer());
 		}
 		if (initializers.isEmpty()) {
 			return noop();
 		}
-		return BindingInitializer.of(
-				(locator, instance) -> initializers.forEach(initializer -> initializer.accept(locator, instance)),
-				keys.toArray(new Dependency[0]));
+		return BindingInitializer.of(dependencies, (locator, instance) -> initializers.forEach(initializer -> initializer.accept(locator, instance)));
 	}
 
 	@SuppressWarnings("unchecked")

@@ -150,7 +150,7 @@ public final class BindingGraph {
 	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return Stream.concat(
 				bindings.get().entrySet().stream()
-						.flatMap(e -> Arrays.stream(e.getValue().getDependencies())
+						.flatMap(e -> e.getValue().getDependencies().stream()
 								.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
 								.map(dependency -> new DependencyToBinding(dependency.getKey(), e))),
 				bindings.getChildren()

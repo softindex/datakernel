@@ -134,7 +134,7 @@ public final class Utils {
 
 		for (Entry<Key<?>, Binding<?>> entry : trie.get().entrySet()) {
 			Key<?> key = entry.getKey();
-			if (entry.getValue().getDependencies().length == 0) {
+			if (entry.getValue().getDependencies().size() == 0) {
 				leafs.add(key);
 			}
 			known.add(ScopedValue.of(scope, key));
