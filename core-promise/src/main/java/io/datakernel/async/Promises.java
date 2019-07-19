@@ -311,11 +311,15 @@ public final class Promises {
 	}
 
 	/**
+	 * {@code allCompleted} should be used if you want to work only with succeeded Promise results.
+	 *
 	 * Returns {@link Promise} that completes when all of the {@code promises} are completed.
 	 * If some {@code promises} completes exceptionally,
 	 * it will execute the next {@link Promise}
 	 * If one or more exceptions happens,
 	 * the last exception will be returned during {@code whenException} call.
+	 *
+	 * @since 3.0.0
 	 */
 	public static Promise<Void> allCompleted(@NotNull Iterator<? extends Promise<?>> promises) {
 		if (!promises.hasNext()) return all();

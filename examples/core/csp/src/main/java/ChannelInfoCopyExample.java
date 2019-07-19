@@ -11,6 +11,7 @@ import java.util.stream.Stream;
  */
 public final class ChannelInfoCopyExample {
 	public static void main(String[] args) {
+		//TODO: redo (@pantokrator)
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		Random random = new Random(System.currentTimeMillis());
 
