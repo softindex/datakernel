@@ -19,6 +19,8 @@ import java.util.function.Function;
  * could then receive and use it.
  */
 public final class SessionServlet<T> implements AsyncServlet {
+	public static final String ATTACHMENT_KEY = "session";
+
 	private final SessionStore<T> store;
 	private final Function<HttpRequest, String> sessionIdExtractor;
 	private final AsyncServlet publicServlet;
@@ -54,7 +56,7 @@ public final class SessionServlet<T> implements AsyncServlet {
 		return store.get(id)
 				.then(sessionObject -> {
 					if (sessionObject != null) {
-						request.attach(sessionObject);
+						request.attach(ATTACHMENT_KEY, sessionObject);
 						return privateServlet.serve(request);
 					} else {
 						return publicServlet.serve(request);

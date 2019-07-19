@@ -32,7 +32,6 @@ import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -69,7 +68,7 @@ public abstract class HttpMessage {
 	Recyclable bufs;
 
 	protected int maxBodySize;
-	protected Map<Type, Object> attachments;
+	protected Map<String, Object> attachments;
 
 	protected HttpMessage() {
 	}
@@ -276,54 +275,26 @@ public abstract class HttpMessage {
 	 * For example some {@link io.datakernel.http.session.SessionServlet wrapper auth servlet} could
 	 * add some kind of session data here.
 	 */
-	public <T> void attach(Type type, T extra) {
+	public void attach(String key, Object extra) {
 		if (attachments == null) {
 			attachments = new HashMap<>();
 		}
-		attachments.put(type, extra);
+		attachments.put(key, extra);
 	}
 
-	/**
-	 * @see #attach(Type, Object)
-	 */
-	public <T> void attach(Class<T> type, T extra) {
-		if (attachments == null) {
-			attachments = new HashMap<>();
-		}
-		attachments.put(type, extra);
-	}
 
 	/**
-	 * @see #attach(Type, Object)
-	 */
-	public void attach(Object extra) {
-		if (attachments == null) {
-			attachments = new HashMap<>();
-		}
-		attachments.put(extra.getClass(), extra);
-	}
-
-	/**
-	 * @see #attach(Type, Object)
+	 * Retrieves an attachment from this message by key.
+	 * This is used for context management.
+	 * For example some {@link io.datakernel.http.session.SessionServlet wrapper auth servlet} could
+	 * add some kind of session data here.
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> T getAttachment(Class<T> type) {
+	public <T> T getAttachment(String key) {
 		if (attachments == null) {
 			return null;
 		}
-		Object res = attachments.get(type);
-		return (T) res;
-	}
-
-	/**
-	 * @see #attach(Type, Object)
-	 */
-	@SuppressWarnings("unchecked")
-	public <T> T getAttachment(Type type) {
-		if (attachments == null) {
-			return null;
-		}
-		Object res = attachments.get(type);
+		Object res = attachments.get(key);
 		return (T) res;
 	}
 
