@@ -5,6 +5,6 @@ import org.junit.Test;
 public class NotesLauncherTest {
 	@Test
 	public void testInjector() {
-		new NotesLauncher().testInjector();
+		new GlobalNotesLauncher().testInjector();
 	}
 }

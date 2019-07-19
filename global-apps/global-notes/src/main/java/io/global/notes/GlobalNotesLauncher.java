@@ -17,7 +17,7 @@ import io.global.ot.DictionaryModule;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.override;
 
-public final class NotesLauncher extends Launcher {
+public final class GlobalNotesLauncher extends Launcher {
 	private static final String PROPERTIES_FILE = "notes.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	private static final String DEFAULT_SERVER_ID = "Global Notes";
@@ -55,6 +55,6 @@ public final class NotesLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new NotesLauncher().launch(args);
+		new GlobalNotesLauncher().launch(args);
 	}
 }
