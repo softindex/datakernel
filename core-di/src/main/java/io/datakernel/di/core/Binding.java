@@ -78,7 +78,7 @@ public final class Binding<T> {
 	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Dependency... dependencies) {
 		return new Binding<>(Stream.of(dependencies).collect(toSet()),
 				dependencies.length == 0 ?
-						locator -> constructor.create() :
+						$ -> constructor.create() :
 						locator -> (R) constructor.create(locator.getDependencies(dependencies)));
 	}
 

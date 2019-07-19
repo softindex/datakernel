@@ -52,17 +52,13 @@ public final class DIUtils {
 
 	public static String prettyPrintSimpleKeyName(Key<?> key) {
 		Type type = key.getType();
-		return (key.getAnnotation() != null ?
-				prettyPrintAnnotation(key.getAnnotation()) + " " :
-				key.getAnnotationType() != null ?
-						"@" + RecursiveType.of(key.getAnnotationType()).getSimpleName() + " " :
-						"") + RecursiveType.of(type).getSimpleName();
+		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "")
+				+ RecursiveType.of(type).getSimpleName();
 	}
 
 	public static String prettyPrintKeyName(Key<?> key) {
 		Type type = key.getType();
-		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
-				RecursiveType.of(type).getName();
+		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "")
+				+ RecursiveType.of(type).getName();
 	}
-
 }

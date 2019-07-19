@@ -13,8 +13,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singleton;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 /**
  * These are various reflection utilities that are used by the DSL.
@@ -295,5 +294,240 @@ public final class ReflectionUtils {
 					}
 				},
 				getDependenciesOf(key.getType(), constructor));
+	}
+
+
+	public static boolean isMarkerAnnotation(Class<? extends Annotation> annotationType) {
+		return annotationType.getDeclaredMethods().length == 0;
+	}
+
+	/**
+	 * This method creates a proxy instance for the annotation interface that you give it.
+	 * <p>
+	 * It seems that Java reflection (where you extract 'real' annotations) works the same way
+	 * since returned instances are proxies too.
+	 * <p>
+	 * We use annotation equality heavily, so since reflected annotation instances are proxies by default,
+	 * this either has the same efficiency or even better than making custom dummy impl for each stateful annotation,
+	 * because our proxy handles proxies with no reflection and Java proxy will call reflection on equals method anyway.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T extends Annotation> T createAnnotationInstance(Class<T> annotationType, Map<String, Object> args) {
+		AnnotationInvocationHandler h = new AnnotationInvocationHandler(annotationType, args);
+		return (T) Proxy.newProxyInstance(annotationType.getClassLoader(), new Class[]{annotationType}, h);
+	}
+
+	private static class AnnotationInvocationHandler implements InvocationHandler {
+		private static final Object[] NO_ARGS = new Object[0];
+
+		private final Class<? extends Annotation> type;
+		private final Map<String, Object> args;
+		private final Method[] methods;
+
+		private AnnotationInvocationHandler(Class<? extends Annotation> type, Map<String, @NotNull Object> args) {
+			Class<?>[] ifaces = type.getInterfaces();
+			if (!type.isAnnotation() || ifaces.length != 1 || ifaces[0] != Annotation.class) {
+				throw new IllegalArgumentException("Cannot create annotation instance for non-annotation type");
+			}
+
+			List<String> misses = Arrays.stream(methods = type.getDeclaredMethods())
+					.filter(method -> !args.containsKey(method.getName()))
+					.map(Method::getName)
+					.collect(toList());
+			if (!misses.isEmpty()) {
+				throw new IllegalArgumentException(misses.stream()
+						.collect(joining(", ", "Annotation arguments do not contain a value for [", "] parameters")));
+			}
+
+			this.type = type;
+			this.args = args;
+		}
+
+		@Override
+		public Object invoke(Object proxy, Method method, Object[] args) {
+			String name = method.getName();
+
+			switch (name) {
+				case "equals":
+					return proxiedEquals(args[0]);
+				case "hashCode":
+					return proxiedHashCode();
+				case "toString":
+					return proxiedToString();
+				case "annotationType":
+					return type;
+			}
+
+			Object result = this.args.get(name);
+			if (result == null) {
+				throw new IllegalStateException("Annotation parameter is null, this should not happen");
+			}
+
+			if (result.getClass().isArray() && Array.getLength(result) != 0) {
+				result = arrayClone(result);
+			}
+
+			return result;
+		}
+
+		private Boolean proxiedEquals(Object that) {
+			if (that == this) {
+				return true;
+			}
+			if (!type.isInstance(that)) {
+				return false;
+			}
+			if (Proxy.isProxyClass(that.getClass())) {
+				InvocationHandler handler = Proxy.getInvocationHandler(that);
+
+				// super-fast route (our own proxy)
+				if (handler instanceof AnnotationInvocationHandler) {
+					AnnotationInvocationHandler exactHandler = (AnnotationInvocationHandler) handler;
+					for (Method method : methods) {
+						String name = method.getName();
+						if (!argEquals(args.get(name), exactHandler.args.get(name))) {
+							return false;
+						}
+					}
+					return true;
+				}
+				// ok route (annotations that we get with java reflection are proxies)
+				for (Method method : methods) {
+					Object value = args.get(method.getName());
+					Object other;
+					try {
+						other = handler.invoke(that, method, NO_ARGS);
+					} catch (Throwable throwable) {
+						return false;
+					}
+					if (!argEquals(value, other)) {
+						return false;
+					}
+				}
+				return true;
+			}
+
+			// slowest but universal route (eg somebody implemented annotation interface themselves)
+			for (Method method : methods) {
+				String name = method.getName();
+				Object value = args.get(name);
+				Object other;
+				try {
+					other = method.invoke(that);
+				} catch (IllegalAccessException e) {
+					throw new AssertionError("Annotation methods should be public", e);
+				} catch (InvocationTargetException e) {
+					return false;
+				}
+				if (!argEquals(value, other)) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private static boolean argEquals(Object value, Object other) {
+			Class<?> type = value.getClass();
+			if (!type.isArray()) {
+				return value.equals(other);
+			}
+			if (value instanceof Object[] && other instanceof Object[]) {
+				return Arrays.equals((Object[]) value, (Object[]) other);
+			}
+			if (other.getClass() != type) {
+				return false;
+			}
+			return primitiveArrayEquals(value, other);
+		}
+
+		private int proxiedHashCode() {
+			int hash = 0;
+			for (Map.Entry<String, Object> e : args.entrySet()) {
+				Object value = e.getValue();
+				hash += (127 * e.getKey().hashCode()) ^ (value.getClass().isArray() ? arrayHashCode(value) : value.hashCode());
+			}
+			return hash;
+		}
+
+		private String proxiedToString() {
+			return args.entrySet().stream()
+					.map(e -> {
+						Object value = e.getValue();
+						return e.getKey() + '=' + (value.getClass().isArray() ? arrayToString(value) : value.toString());
+					})
+					.collect(joining(", ", '@' + type.getName() + '(', ")"));
+		}
+
+		// region primitive array methods
+
+		private static String arrayToString(Object array) {
+			Class<?> type = array.getClass();
+
+			// @formatter:off
+			if (type == byte[].class)    return Arrays.toString((byte[]) array);
+			if (type == char[].class)    return Arrays.toString((char[]) array);
+			if (type == double[].class)  return Arrays.toString((double[]) array);
+			if (type == float[].class)   return Arrays.toString((float[]) array);
+			if (type == int[].class)     return Arrays.toString((int[]) array);
+			if (type == long[].class)    return Arrays.toString((long[]) array);
+			if (type == short[].class)   return Arrays.toString((short[]) array);
+			if (type == boolean[].class) return Arrays.toString((boolean[]) array);
+			// @formatter:on
+
+			return Arrays.toString((Object[]) array);
+		}
+
+		private static int arrayHashCode(Object array) {
+			Class<?> type = array.getClass();
+
+			// @formatter:off
+			if (type == byte[].class)    return Arrays.hashCode((byte[]) array);
+			if (type == char[].class)    return Arrays.hashCode((char[]) array);
+			if (type == double[].class)  return Arrays.hashCode((double[]) array);
+			if (type == float[].class)   return Arrays.hashCode((float[]) array);
+			if (type == int[].class)     return Arrays.hashCode((int[]) array);
+			if (type == long[].class)    return Arrays.hashCode((long[]) array);
+			if (type == short[].class)   return Arrays.hashCode((short[]) array);
+			if (type == boolean[].class) return Arrays.hashCode((boolean[]) array);
+			// @formatter:on
+
+			return Arrays.hashCode((Object[]) array);
+		}
+
+		private static Object arrayClone(Object array) {
+			Class<?> type = array.getClass();
+
+			// @formatter:off
+			if (type == byte[].class)    return ((byte[])array).clone();
+			if (type == char[].class)    return ((char[])array).clone();
+			if (type == double[].class)  return ((double[])array).clone();
+			if (type == float[].class)   return ((float[])array).clone();
+			if (type == int[].class)     return ((int[])array).clone();
+			if (type == long[].class)    return ((long[])array).clone();
+			if (type == short[].class)   return ((short[])array).clone();
+			if (type == boolean[].class) return ((boolean[])array).clone();
+			// @formatter:on
+
+			return ((Object[]) array).clone();
+		}
+
+		private static boolean primitiveArrayEquals(Object first, Object second) {
+			Class<?> type = first.getClass();
+
+			// @formatter:off
+			if (type == byte[].class)    return Arrays.equals((byte[]) first, (byte[]) second);
+			if (type == char[].class)    return Arrays.equals((char[]) first, (char[]) second);
+			if (type == double[].class)  return Arrays.equals((double[]) first, (double[]) second);
+			if (type == float[].class)   return Arrays.equals((float[]) first, (float[]) second);
+			if (type == int[].class)     return Arrays.equals((int[]) first, (int[]) second);
+			if (type == long[].class)    return Arrays.equals((long[]) first, (long[]) second);
+			if (type == short[].class)   return Arrays.equals((short[]) first, (short[]) second);
+			if (type == boolean[].class) return Arrays.equals((boolean[]) first, (boolean[]) second);
+			// @formatter:on
+
+			throw new AssertionError("unreachable");
+		}
+
+		// endregion
 	}
 }

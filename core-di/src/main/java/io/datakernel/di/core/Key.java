@@ -223,9 +223,15 @@ public abstract class Key<T> {
 	 * type argument, then it is used as a name for that key.
 	 * <p>
 	 * <b>Note:</b>
-	 * In Java 8 type argument name annotations work only if key tag subclass was created not in another inner class
-	 * (its enclosing class itself has no enclosing class) because of a reflection bug.
-	 * It was fixed only in Java 9.
+	 * In Java 8 type argument name annotations work only occasionally and are highly not recommended to use.
+	 * This is because Java 8 has some reflection bugs related to that.
+	 * Starting from Java 9 all related bugs were fixed, so you can use that functionality if you're not on Java 8.
+	 * <p>
+	 * This method is very usable in generators, for example you can request an instance for
+	 * <code>{@literal new Key<InstanceFactory<@Named("counting") String>>(){}}</code>
+	 * and that factory would depend on binding with key <code>@Named("counting") String</code>.
+	 * <p>
+	 * And remember that in Java 8 this behavior is not really accessible.
 	 *
 	 * @throws IllegalStateException when underlying type is not a parameterized one.
 	 */
@@ -234,14 +240,6 @@ public abstract class Key<T> {
 			return new KeyImpl<>(((AnnotatedParameterizedType) annotatedType).getAnnotatedActualTypeArguments()[index]);
 		}
 		throw new IllegalStateException("Expected type from key " + getDisplayString() + " to be parameterized");
-	}
-
-	/**
-	 * Null-checked shortcut for <code>key.getName()?.getAnnotationType()</code>.
-	 */
-	@Nullable
-	public Class<? extends Annotation> getAnnotationType() {
-		return name != null ? name.getAnnotationType() : null;
 	}
 
 	/**

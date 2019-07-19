@@ -129,12 +129,15 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 			addDeclarativeBindingsFrom(instance);
 
 			// have all the dependencies from methods in binding for the test class instance
-			bind(self).to($ -> instance, union(currentDependencies, staticDependencies).toArray(new Dependency[0]));
+			bind(self).toInstance(instance).withExtraDependencies(union(currentDependencies, staticDependencies));
 
+			// request to generate a binding for an instance injector which would scan
+			// and add all the inject field/method dependencies
 			bind(injectorKey);
 		}});
-		currentInjector.getInstance(injectorKey).injectInto(instance);
-		return currentInjector.getInstance(self); // eagerly trigger all the dependencies for fail-fast testing
+		currentInjector.getInstance(self); // eagerly trigger all the dependencies for fail-fast testing
+		currentInjector.getInstance(injectorKey).injectInto(instance); // and inject into injectable fields/methods
+		return instance;
 	}
 
 	@Override

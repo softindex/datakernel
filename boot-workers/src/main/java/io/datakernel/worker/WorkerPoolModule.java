@@ -27,7 +27,7 @@ public final class WorkerPoolModule extends AbstractModule {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
 
 		generate(int.class, (provider, scope, key) -> {
-			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
+			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotation().annotationType() != WorkerId.class) {
 				return null;
 			}
 			return Binding.to(() -> {

@@ -6,14 +6,12 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -22,8 +20,7 @@ import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Types.parameterized;
 import static io.datakernel.di.util.Utils.printGraphVizGraph;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -941,5 +938,56 @@ public final class TestDI {
 		// nested annotations are ignored
 		assertEquals(new Key<List<@Named("hello") String>>() {}, new Key<List<String>>() {});
 		assertEquals(new Key<List<@Named("greetings") String>>() {}, new Key<List<String>>() {});
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	@interface TestAnnotation {
+		String value() default "default";
+
+		int secondParam();
+	}
+
+	@Test
+	public void annotationProxy() {
+		Map<String, Object> args = new HashMap<>();
+		args.put("value", "hello");
+		args.put("secondParam", 42);
+
+		TestAnnotation proxied = ReflectionUtils.createAnnotationInstance(TestAnnotation.class, args);
+
+		assertEquals("hello", proxied.value());
+		assertEquals(42, proxied.secondParam());
+
+		try {
+			ReflectionUtils.createAnnotationInstance(TestAnnotation.class, singletonMap("secondParam", 42));
+			fail("Should've failed");
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Test
+	@EagerSingleton
+	public void statelessAnnotationEquality() throws NoSuchMethodException {
+		EagerSingleton dummyMarker = ReflectionUtils.createAnnotationInstance(EagerSingleton.class, emptyMap());
+		EagerSingleton realMarker = getClass().getMethod("statelessAnnotationEquality").getAnnotation(EagerSingleton.class);
+
+		assertEquals(dummyMarker, realMarker);
+		assertEquals(realMarker, dummyMarker);
+	}
+
+	@Test
+	@Named("hello world")
+	public void statefulAnnotationEquality() throws NoSuchMethodException {
+		Named proxied = ReflectionUtils.createAnnotationInstance(Named.class, singletonMap("value", "hello world"));
+		Named real = getClass().getMethod("statefulAnnotationEquality").getAnnotation(Named.class);
+
+		assertEquals(proxied, real);
+		assertEquals(real, proxied);
+
+		Annotation proxied2 = ReflectionUtils.createAnnotationInstance(Named.class, singletonMap("value", "goodbye world"));
+		assertNotEquals(proxied2, real);
+		assertNotEquals(real, proxied2);
 	}
 }

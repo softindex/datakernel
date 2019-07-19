@@ -19,7 +19,6 @@ package io.datakernel.util;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.*;
 import io.datakernel.util.ref.RefBoolean;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.MXBean;
@@ -323,13 +322,6 @@ public final class ReflectionUtils {
 		return null;
 	}
 
-	public static String getAnnotationString(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) throws ReflectiveOperationException {
-		if (annotation != null) {
-			return getAnnotationString(annotation);
-		}
-		return annotationType.getSimpleName();
-	}
-
 	/**
 	 * Builds string representation of annotation with its elements.
 	 * The string looks differently depending on the number of elements, that an annotation has.
@@ -337,9 +329,7 @@ public final class ReflectionUtils {
 	 * If annotation has a single element with the name "value", string looks like this : "AnnotationName(someValue)"
 	 * If annotation has one or more custom elements, string looks like this : "(key1=value1,key2=value2)"
 	 *
-	 * @param annotation
 	 * @return String representation of annotation with its elements
-	 * @throws ReflectiveOperationException
 	 */
 	public static String getAnnotationString(Annotation annotation) throws ReflectiveOperationException {
 		Class<? extends Annotation> annotationType = annotation.annotationType();

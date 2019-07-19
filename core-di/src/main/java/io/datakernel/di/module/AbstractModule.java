@@ -402,7 +402,8 @@ public abstract class AbstractModule implements Module {
 		 * @see KeySetAnnotation
 		 */
 		public BindingBuilder<T> as(@NotNull Name name) {
-			checkArgument(name.isMarkedBy(KeySetAnnotation.class));
+			checkArgument(name.getAnnotation().annotationType().isAnnotationPresent(KeySetAnnotation.class),
+					"Only annotations annotated with @KeySetAnnotation are allowed to be used as a key set names");
 
 			Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
 			bind(setKey).toInstance(singleton(key));
@@ -441,8 +442,16 @@ public abstract class AbstractModule implements Module {
 		/**
 		 * Adds given dependencies to the underlying binding
 		 */
+		public BindingBuilder<T> withExtraDependencies(Set<Dependency> dependencies) {
+			binding = binding.addDependencies(dependencies);
+			return this;
+		}
+
+		/**
+		 * @see #withExtraDependencies(Set)
+		 */
 		public BindingBuilder<T> withExtraDependencies(Dependency... dependencies) {
-			this.binding = this.binding.addDependencies(dependencies);
+			binding = binding.addDependencies(dependencies);
 			return this;
 		}
 
@@ -450,7 +459,7 @@ public abstract class AbstractModule implements Module {
 		 * @see #withExtraDependencies(Dependency...)
 		 */
 		public BindingBuilder<T> withExtraDependencies(Key<?>... dependencies) {
-			this.binding = this.binding.addDependencies(dependencies);
+			binding = binding.addDependencies(dependencies);
 			return this;
 		}
 
@@ -458,7 +467,7 @@ public abstract class AbstractModule implements Module {
 		 * @see #withExtraDependencies(Dependency...)
 		 */
 		public BindingBuilder<T> withExtraDependencies(Class<?>... dependencies) {
-			this.binding = this.binding.addDependencies(dependencies);
+			binding = binding.addDependencies(dependencies);
 			return this;
 		}
 	}

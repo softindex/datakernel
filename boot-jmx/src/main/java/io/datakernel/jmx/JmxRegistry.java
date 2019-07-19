@@ -342,7 +342,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		if (keyName != null) { // with annotation
 			name += ',';
-			String annotationString = getAnnotationString(keyName.getAnnotationType(), keyName.getAnnotation());
+			String annotationString = getAnnotationString(keyName.getAnnotation());
 			if (!annotationString.contains("(")) {
 				name += "annotation=" + annotationString;
 			} else if (!annotationString.startsWith("(")) {
@@ -355,11 +355,11 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		if (pool != null) {
 			if (withScopes) {
 				Scope scope = pool.getScope();
-				name += format(",scope=%s", getAnnotationString(scope.getAnnotationType(), scope.getAnnotation()));
+				name += format(",scope=%s", getAnnotationString(scope.getAnnotation()));
 			}
 			Key<?> poolKey = workerPoolKeys.get(pool);
 			if (poolKey != null && poolKey.getName() != null) {
-				String annotationString = getAnnotationString(poolKey.getName().getAnnotationType(), poolKey.getName().getAnnotation());
+				String annotationString = getAnnotationString(poolKey.getName().getAnnotation());
 				name += format(",workerPool=WorkerPool@%s", annotationString);
 			}
 		}

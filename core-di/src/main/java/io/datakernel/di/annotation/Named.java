@@ -1,5 +1,7 @@
 package io.datakernel.di.annotation;
 
+import io.datakernel.di.util.AnnotationTag;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -7,7 +9,7 @@ import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * This is a built-in {@link io.datakernel.di.util.AbstractAnnotation stateful} {@link io.datakernel.di.core.Name name} annotation.
+ * This is a built-in {@link AnnotationTag stateful} {@link io.datakernel.di.core.Name name} annotation.
  * <p>
  * It is used for quick prototyping or when you need too many different keys with the same type.
  * <p>
