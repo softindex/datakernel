@@ -2,9 +2,9 @@ package io.global.editor;
 
 import org.junit.Test;
 
-public class EditorLauncherTest {
+public class GlobalEditorAppTest {
 	@Test
 	public void testInjector() {
-		new EditorLauncher().testInjector();
+		new GlobalEditorApp().testInjector();
 	}
 }

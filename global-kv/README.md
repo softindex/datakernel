@@ -6,7 +6,7 @@ You can add this module to your project by inserting the following dependency to
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>
-    <artifactId>global-fs</artifactId>
+    <artifactId>global-kv</artifactId>
     <version>3.0.0-SNAPSHOT</version>
 </dependency>
 ```

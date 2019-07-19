@@ -1,4 +1,4 @@
-package io.global.chat;
+package io.global.editor;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -11,9 +11,8 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.chat.chatroom.messages.MessageOperation;
+import io.global.editor.document.DocumentMultiOperation;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.ProfileModule;
 import io.global.ot.SharedRepoModule;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
@@ -22,15 +21,15 @@ import io.global.ot.shared.IndexRepoModule;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.override;
 
-public final class ChatLauncher extends Launcher {
-	private static final String PROPERTIES_FILE = "chat.properties";
+public final class GlobalEditorApp extends Launcher {
+	private static final String PROPERTIES_FILE = "editor.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
-	private static final String DEFAULT_SERVER_ID = "Global Chat";
-	private static final String CHAT_REPO_PREFIX = "chat/room";
-	private static final String CHAT_INDEX_REPO = "chat/index";
+	private static final String DEFAULT_SERVER_ID = "Global Editor";
+	private static final String DOCUMENT_REPO_PREFIX = "editor/document";
+	private static final String EDITOR_INDEX_REPO = "editor/index";
 
 	@Inject
-	@Named("Chat")
+	@Named("Editor")
 	AsyncHttpServer server;
 
 	@Provides
@@ -47,12 +46,11 @@ public final class ChatLauncher extends Launcher {
 		return Modules.combine(
 				ServiceGraphModule.defaultInstance(),
 				ConfigModule.create().printEffectiveConfig(),
-				new ChatModule(),
-				new ProfileModule(),
+				new EditorModule(),
 				new ContactsModule(),
-				new IndexRepoModule(CHAT_INDEX_REPO),
-				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
-				new SharedRepoModule<MessageOperation>(CHAT_REPO_PREFIX) {},
+				new IndexRepoModule(EDITOR_INDEX_REPO),
+				new SharedRepoModule<DocumentMultiOperation>(DOCUMENT_REPO_PREFIX) {},
+				new UserContainerModule<DocumentMultiOperation>(EDITOR_INDEX_REPO, DOCUMENT_REPO_PREFIX) {},
 				// override for debug purposes
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))
@@ -65,6 +63,6 @@ public final class ChatLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new ChatLauncher().launch(args);
+		new GlobalEditorApp().launch(args);
 	}
 }

@@ -2,9 +2,9 @@ package io.global.chat;
 
 import org.junit.Test;
 
-public class ChatLauncherTest {
+public class GlobalChatAppTest {
 	@Test
 	public void testInjector() {
-		new ChatLauncher().testInjector();
+		new GlobalChatApp().testInjector();
 	}
 }

@@ -8,4 +8,4 @@
 cd $(dirname "$(readlink $(test $(uname -s) = 'Linux' && echo "-f") "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")/..
 
 # Build docker image
-docker build . -t docker-registry.adkernel.com/global-cloud
+docker build . -t docker-registry.adkernel.com/global-files

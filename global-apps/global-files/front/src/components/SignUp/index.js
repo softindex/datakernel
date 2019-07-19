@@ -50,7 +50,7 @@ class SignUp extends React.Component {
               color="textPrimary"
               className={this.props.classes.title}
             >
-              Global Cloud
+              Global Files
             </Typography>
             <Typography
               className={this.props.classes.description}

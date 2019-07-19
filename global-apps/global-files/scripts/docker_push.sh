@@ -11,4 +11,4 @@ cd $(dirname "$(readlink $(test $(uname -s) = 'Linux' && echo "-f") "$0" || echo
 bash scripts/docker_build.sh || exit $?
 
 # Push image to registry
-docker push docker-registry.adkernel.com/global-cloud
+docker push docker-registry.adkernel.com/global-files

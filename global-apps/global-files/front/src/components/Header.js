@@ -84,7 +84,7 @@ class Header extends React.Component {
             <MenuIcon/>
           </IconButton>
           <Typography variant="h5" color="inherit" className={this.props.classes.logo}>
-            Global Cloud
+            Global Files
           </Typography>
           <div className={this.props.classes.grow}/>
           <IconButton onClick={this.openMenu} color="inherit" aria-label="Menu">

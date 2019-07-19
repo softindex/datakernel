@@ -4,8 +4,8 @@
 # Builds the docker image and then runs it, stopping any already running instances beforehand
 #
 
-IMAGE_NAME=docker-registry.adkernel.com/global-cloud
-CONTAINER_NAME=global-cloud
+IMAGE_NAME=docker-registry.adkernel.com/global-files
+CONTAINER_NAME=global-files
 
 # Go to main project folder from anywhere
 cd $(dirname "$(readlink $(test $(uname -s) = 'Linux' && echo "-f") "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")/..

@@ -9,7 +9,7 @@ COPY front/package.json ./
 RUN npm i
 
 # front-end layer
-COPY front/*.* globalfs-app*.properties ./
+COPY front/*.* global-files*.properties ./
 COPY front/public ./public
 COPY front/src ./src
 RUN npm run build
@@ -31,7 +31,7 @@ RUN git clone --depth 1 https://github.com/softindex/datakernel \
 # app-server layer
 COPY pom.xml ./
 COPY src src
-COPY --from=build-js /src/main/resources /build/globalfs-app*.properties ./src/main/resources/
+COPY --from=build-js /src/main/resources /build/global-files*.properties ./src/main/resources/
 RUN mvn package
 
 FROM openjdk:8-jre-alpine

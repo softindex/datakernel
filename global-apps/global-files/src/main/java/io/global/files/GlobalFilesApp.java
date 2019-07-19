@@ -1,4 +1,4 @@
-package io.global.fs.app;
+package io.global.files;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -28,9 +28,9 @@ import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 
-public final class GlobalFsApp extends Launcher {
+public final class GlobalFilesApp extends Launcher {
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
-	public static final String DEFAULT_SERVER_ID = "Global FS";
+	public static final String DEFAULT_SERVER_ID = "Global Files";
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";
 	public static final String DEFAULT_STATIC_PATH = "/build";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
@@ -90,7 +90,7 @@ public final class GlobalFsApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalFsApp().launch(args);
+		new GlobalFilesApp().launch(args);
 	}
 }
 
