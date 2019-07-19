@@ -14,7 +14,7 @@ import java.util.stream.Stream;
  * @Author is Alex Syrotenko (@pantokrator)
  * Created on 18.07.19.
  */
-public class SanitizeExample {
+public class SplitterExample {
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		List<Integer> integers = Stream.iterate(1, (i) -> i + 1)
@@ -29,8 +29,6 @@ public class SanitizeExample {
 					.set(ChannelConsumer.of(AsyncConsumer.of(result::offer)).async());
 		}
 
-		// If lower row is active, exception will be called...
-		splitter.sanitize("End", new Exception("The End")).whenException(System.out::println);
 		eventloop.run();
 		while (!result.isEmpty()) {
 			System.out.println(result.poll());

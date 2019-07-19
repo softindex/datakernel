@@ -142,7 +142,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		AsyncProcess.super.close();
 	}
 
-	public final <T> ChannelSupplier<T> sanitize(ChannelSupplier<T> supplier) {
+	protected final <T> ChannelSupplier<T> sanitize(ChannelSupplier<T> supplier) {
 		return new AbstractChannelSupplier<T>() {
 			@Override
 			protected Promise<T> doGet() {
@@ -157,7 +157,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		};
 	}
 
-	public final <T> ChannelConsumer<T> sanitize(ChannelConsumer<T> consumer) {
+	protected final <T> ChannelConsumer<T> sanitize(ChannelConsumer<T> consumer) {
 		return new AbstractChannelConsumer<T>() {
 			@Override
 			protected Promise<Void> doAccept(@Nullable T item) {
@@ -172,7 +172,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		};
 	}
 
-	public final BinaryChannelSupplier sanitize(BinaryChannelSupplier supplier) {
+	protected final BinaryChannelSupplier sanitize(BinaryChannelSupplier supplier) {
 		return new BinaryChannelSupplier(supplier.getBufs()) {
 			@Override
 			public Promise<Void> needMoreData() {
@@ -192,7 +192,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		};
 	}
 
-	public final <T> Promise<T> sanitize(Promise<T> promise) {
+	protected final <T> Promise<T> sanitize(Promise<T> promise) {
 		assert !isProcessComplete();
 		return promise
 				.thenEx(this::sanitize);
@@ -211,7 +211,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 * otherwise. If the process was already completed,
 	 * returns {@link #ASYNC_PROCESS_IS_COMPLETE}.
 	 */
-	public final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
+	protected final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
 		if (isProcessComplete()) {
 			tryRecycle(value);
 			if (value instanceof Cancellable) {

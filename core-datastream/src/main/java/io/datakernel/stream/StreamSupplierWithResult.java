@@ -34,7 +34,7 @@ public final class StreamSupplierWithResult<T, X> {
 		return new StreamSupplierWithResult<>(supplier, result.materialize());
 	}
 
-	public StreamSupplierWithResult<T, X> sanitize() {
+	protected StreamSupplierWithResult<T, X> sanitize() {
 		return new StreamSupplierWithResult<>(supplier,
 				supplier.getEndOfStream().combine(result.whenException(supplier::close), ($, v) -> v).post());
 	}
