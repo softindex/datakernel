@@ -15,9 +15,9 @@ import static java.util.stream.Collectors.toList;
  */
 @FunctionalInterface
 public interface BindingTransformer<T> {
-	BindingTransformer<?> IDENTITY = (provider, scope, key, binding) -> binding;
+	BindingTransformer<?> IDENTITY = (bindings, scope, key, binding) -> binding;
 
-	@NotNull Binding<T> transform(BindingProvider provider, Scope[] scope, Key<T> key, Binding<T> binding);
+	@NotNull Binding<T> transform(BindingLocator bindings, Scope[] scope, Key<T> key, Binding<T> binding);
 
 	@SuppressWarnings("unchecked")
 	static <T> BindingTransformer<T> identity() {
@@ -42,7 +42,7 @@ public interface BindingTransformer<T> {
 				.map(Entry::getValue)
 				.collect(toList());
 
-		return (provider, scope, key, binding) -> {
+		return (bindings, scope, key, binding) -> {
 			Binding<Object> result = binding;
 
 			for (Set<BindingTransformer<?>> localTransformers : transformerList) {
@@ -50,7 +50,7 @@ public interface BindingTransformer<T> {
 				Binding<Object> transformed = null;
 
 				for (BindingTransformer<?> transformer : localTransformers) {
-					Binding<Object> b = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, result);
+					Binding<Object> b = ((BindingTransformer<Object>) transformer).transform(bindings, scope, key, result);
 					if (b == binding) {
 						continue;
 					}

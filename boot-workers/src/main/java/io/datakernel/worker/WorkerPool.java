@@ -27,13 +27,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
 
 public final class WorkerPool {
 	private final int id;
 	private final Scope scope;
 	private final Injector[] scopeInjectors;
-	private final Map<Key<?>, Binding<?>> scopeBindings;
+	private final Set<Key<?>> scopeBindings;
 
 	@SuppressWarnings("unchecked")
 	public static final class Instances<T> implements Iterable<T> {
@@ -72,13 +72,12 @@ public final class WorkerPool {
 		this.scope = scope;
 		this.scopeInjectors = new Injector[workers];
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> subtrie = injector.getBindings().get(scope);
-		this.scopeBindings = subtrie != null ? subtrie.get() : emptyMap();
+		Trie<Scope, Map<Key<?>, Binding<?>>> subtrie = injector.getBindingsTrie().get(scope);
+		this.scopeBindings = subtrie != null ? subtrie.get().keySet() : emptySet();
 
 		for (int i = 0; i < workers; i++) {
-			Map<Key<?>, Object> instances = new HashMap<>();
-			instances.put(Key.of(int.class, WorkerId.class), i); // the worker id override
-			scopeInjectors[i] = injector.enterScope(scope, instances, false);
+			scopeInjectors[i] = injector.enterScope(scope);
+			scopeInjectors[i].putInstance(Key.of(int.class, WorkerId.class), i);
 		}
 	}
 
@@ -111,7 +110,7 @@ public final class WorkerPool {
 
 	@Nullable
 	public <T> Instances<T> peekInstances(Key<T> key) {
-		if (!scopeBindings.containsKey(key)) {
+		if (!scopeBindings.contains(key)) {
 			return null;
 		}
 		Object[] instances = doPeekInstances(key);
@@ -124,7 +123,7 @@ public final class WorkerPool {
 	@NotNull
 	public Map<Key<?>, Instances<?>> peekInstances() {
 		Map<Key<?>, Instances<?>> map = new HashMap<>();
-		for (Key<?> key : scopeBindings.keySet()) {
+		for (Key<?> key : scopeBindings) {
 			Object[] instances = doPeekInstances(key);
 			if (Arrays.stream(instances).noneMatch(Objects::isNull)) {
 				map.put(key, new Instances<>(instances));

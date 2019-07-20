@@ -8,6 +8,7 @@ import io.datakernel.di.util.Trie;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BiConsumer;
 
 import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer;
@@ -32,98 +33,117 @@ public final class DefaultModule implements Module {
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
-		generators.put(Object.class, singleton((provider, scope, key) -> ReflectionUtils.generateImplicitBinding(key)));
+		generators.put(Object.class, singleton((bindings, scope, key) -> ReflectionUtils.generateImplicitBinding(key)));
 
 		// generating dummy bindings for reified type requests (can be used in templated providers to get a Key<T> instance)
-		generators.put(Key.class, singleton((provider, scope, key) -> Binding.toInstance(key.getTypeParameter(0))));
+		generators.put(Key.class, singleton((bindings, scope, key) -> Binding.toInstance(key.getTypeParameter(0))));
 
 		// generating bindings for provider requests
 		generators.put(InstanceProvider.class, singleton(
-				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
-					Binding<Object> elementBinding = provider.getBinding(elementKey);
-					if (elementBinding == null) {
+				(bindings, scope, key) -> {
+					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
+					Binding<Object> instanceBinding = bindings.locate(instanceKey);
+					if (instanceBinding == null) {
 						return null;
 					}
-					return Binding.to(
-							args -> {
-								Injector injector = (Injector) args[0];
-								return new InstanceProvider<Object>() {
-									@Override
-									public Key<Object> key() {
-										return elementKey;
-									}
+					return new Binding<>(
+							instanceBinding.getDependencies(),
+							(compiledBindings, level, index) ->
+									new AbstractCompiledBinding<Object>(level, index) {
+										final CompiledBinding<Object> instanceCompiledBinding = compiledBindings.locate(instanceKey);
 
-									@Override
-									public Object get() {
-										return injector.getInstance(elementKey);
-									}
+										@Override
+										public InstanceProvider<Object> createInstance(AtomicReferenceArray[] instances) {
+											return new InstanceProvider<Object>() {
+												@Override
+												public Key<Object> key() {
+													return instanceKey;
+												}
 
-									@Override
-									public String toString() {
-										return "provider of " + elementKey.toString();
-									}
-								};
-							},
-							new Dependency[]{Dependency.toKey(Key.of(Injector.class))});
+												@Override
+												public Object get() {
+													return instanceCompiledBinding.getInstance(instances);
+												}
+
+												@Override
+												public String toString() {
+													return "factory of " + instanceKey.toString();
+												}
+											};
+										}
+									});
 				}
 		));
 
 		// generating bindings for factory requests
 		generators.put(InstanceFactory.class, singleton(
-				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
-					Binding<Object> elementBinding = provider.getBinding(elementKey);
-					if (elementBinding == null) {
-						return null;
+				(bindings, scope, key) -> {
+					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
+					Binding<Object> instanceBinding = bindings.locate(instanceKey);
+					if (instanceBinding == null) {
+						return (Binding<Object>) null;
 					}
 					return new Binding<>(
-							elementBinding.getDependencies(),
-							locator -> new InstanceFactory<Object>() {
-								@Override
-								public Key<Object> key() {
-									return elementKey;
-								}
+							instanceBinding.getDependencies(),
+							(compiledBindings, level, index) ->
+									new AbstractCompiledBinding<Object>(level, index) {
+										final CompiledBinding<Object> instanceCompiledBinding = compiledBindings.locate(instanceKey);
 
-								@Override
-								public Object create() {
-									return elementBinding.getFactory().create(locator);
-								}
+										@Override
+										public InstanceFactory<Object> createInstance(AtomicReferenceArray[] instances) {
+											return new InstanceFactory<Object>() {
+												@Override
+												public Key<Object> key() {
+													return instanceKey;
+												}
 
-								@Override
-								public String toString() {
-									return "factory of " + elementKey.toString();
-								}
-							});
+												@Override
+												public Object create() {
+													return instanceCompiledBinding.createInstance(instances);
+												}
+
+												@Override
+												public String toString() {
+													return "factory of " + instanceKey.toString();
+												}
+											};
+										}
+									});
 				}
 		));
 
 		// generating bindings for injector requests
 		generators.put(InstanceInjector.class, singleton(
-				(provider, scope, key) -> {
-					Key<Object> elementKey = key.getTypeParameter(0).named(key.getName());
-
-					BindingInitializer<Object> injectingInitializer = generateInjectingInitializer(elementKey);
-					BiConsumer<InstanceLocator, Object> initializer = injectingInitializer.getInitializer();
-
+				(bindings, scope, key) -> {
+					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
+					BindingInitializer<Object> bindingInitializer = generateInjectingInitializer(instanceKey);
 					return new Binding<>(
-							injectingInitializer.getDependencies(),
-							locator -> new InstanceInjector<Object>() {
-								@Override
-								public Key<Object> key() {
-									return elementKey;
-								}
+							bindingInitializer.getDependencies(),
+							(compiledBindings, level, index) ->
+									new AbstractCompiledBinding<Object>(level, index) {
+										final BiConsumer<AtomicReferenceArray[], Object> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
 
-								@Override
-								public void injectInto(Object existingInstance) {
-									initializer.accept(locator, existingInstance);
-								}
+										@Override
+										public Object createInstance(AtomicReferenceArray[] instances) {
+											return new InstanceInjector<Object>() {
+												@Override
+												public Key<Object> key() {
+													return instanceKey;
+												}
 
-								@Override
-								public String toString() {
-									return "injector for " + elementKey.toString();
-								}
-							});
+												@Override
+												public void injectInto(Object existingInstance) {
+													consumer.accept(instances, existingInstance);
+												}
+
+												@Override
+												public String toString() {
+													return "injector for " + instanceKey.toString();
+												}
+											};
+										}
+									}
+					);
 				}
 		));
 	}

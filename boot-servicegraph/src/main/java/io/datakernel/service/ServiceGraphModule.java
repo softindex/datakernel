@@ -381,7 +381,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
-		Trie<Scope, Map<Key<?>, Binding<?>>> scopeBindings = injector.getBindings().getOrDefault(scope, emptyMap());
+		Trie<Scope, Map<Key<?>, Binding<?>>> scopeBindings = injector.getBindingsTrie().getOrDefault(scope, emptyMap());
 		return scopeBindings.get()
 				.entrySet()
 				.stream()

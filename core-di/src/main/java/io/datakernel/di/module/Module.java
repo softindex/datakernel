@@ -40,7 +40,7 @@ public interface Module {
 	 * A shortcut that resolves conflicting bindings in this module using multibinders from this module
 	 */
 	default Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
-		return BindingGraph.resolveConflicts(getBindings(), combinedMultibinder(getMultibinders()));
+		return Preprocessor.resolveConflicts(getBindings(), combinedMultibinder(getMultibinders()));
 	}
 
 	static Module empty() {

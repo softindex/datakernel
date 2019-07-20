@@ -41,6 +41,7 @@ import java.util.function.Consumer;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Arrays.asList;
 
 /**
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
@@ -132,13 +133,13 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	protected void configure() {
 		multibind(new Key<Set<Initializer<ConfigModule>>>() {}, Multibinder.toSet());
 
-		transform(0, (provider, scope, key, binding) -> {
+		transform(0, (bindings, scope, key, binding) -> {
 			if (!key.equals(KEY_OF_CONFIG)) return binding;
 			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>(OnStart.class) {};
 			return ((Binding<Config>) (Binding) binding)
 					.addDependencies(completionStageKey)
-					.mapInstance((locator, config) -> {
-						CompletionStage<Void> onStart = locator.getInstance(completionStageKey);
+					.mapInstance(asList(completionStageKey), (args, config) -> {
+						CompletionStage<Void> onStart = (CompletionStage<Void>) args[0];
 						AtomicBoolean started = new AtomicBoolean();
 						ProtectedConfig protectedConfig = new ProtectedConfig(ConfigWithFullPath.wrap(config), started);
 						EffectiveConfig effectiveConfig = EffectiveConfig.wrap(protectedConfig);

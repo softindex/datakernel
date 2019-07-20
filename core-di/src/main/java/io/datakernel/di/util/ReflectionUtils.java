@@ -103,7 +103,7 @@ public final class ReflectionUtils {
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Binding<T> binding = generateConstructorBinding(key);
 		return binding != null ?
-				generateInjectingInitializer(key).apply(binding) :
+				binding.initializeWith(generateInjectingInitializer(key)) :
 				null;
 	}
 
@@ -179,40 +179,48 @@ public final class ReflectionUtils {
 
 	public static <T> BindingInitializer<T> fieldInjector(Key<T> container, Field field, boolean required) {
 		field.setAccessible(true);
-
 		Key<Object> key = keyOf(container.getType(), field.getGenericType(), field);
-
 		return BindingInitializer.of(
 				singleton(Dependency.toKey(key, required)),
-				(locator, instance) -> {
-					Object arg = locator.getInstanceOrNull(key);
-					if (arg == null) {
-						return;
-					}
-					try {
-						field.set(instance, arg);
-					} catch (IllegalAccessException e) {
-						throw new DIException("Not allowed to set injectable field " + field, e);
-					}
-				}
-		);
+				compiledBindings -> {
+					CompiledBinding<Object> binding = compiledBindings.locate(key);
+					return (instances, instance) -> {
+						Object arg = binding.getInstance(instances);
+						if (arg == null) {
+							return;
+						}
+						try {
+							field.set(instance, arg);
+						} catch (IllegalAccessException e) {
+							throw new DIException("Not allowed to set injectable field " + field, e);
+						}
+					};
+				});
 	}
 
 	public static <T> BindingInitializer<T> methodInjector(Key<T> container, Method method) {
 		method.setAccessible(true);
-		Dependency[] deps = toDependencies(container.getType(), method.getParameters());
+		Dependency[] dependencies = toDependencies(container.getType(), method.getParameters());
 		return BindingInitializer.of(
-				Arrays.stream(deps).collect(toSet()),
-				(locator, instance) -> {
-					try {
-						method.invoke(instance, locator.getDependencies(deps));
-					} catch (IllegalAccessException e) {
-						throw new DIException("Not allowed to call injectable method " + method, e);
-					} catch (InvocationTargetException e) {
-						throw new DIException("Failed to call injectable method " + method, e.getCause());
-					}
-				}
-		);
+				Stream.of(dependencies).collect(toSet()),
+				compiledBindings -> {
+					CompiledBinding[] argBindings = Stream.of(dependencies)
+							.map(dependency -> compiledBindings.locate(dependency.getKey()))
+							.toArray(CompiledBinding[]::new);
+					return (instances, instance) -> {
+						Object[] args = new Object[argBindings.length];
+						for (int i = 0; i < argBindings.length; i++) {
+							args[i] = argBindings[i].getInstance(instances);
+						}
+						try {
+							method.invoke(instance, args);
+						} catch (IllegalAccessException e) {
+							throw new DIException("Not allowed to call injectable method " + method, e);
+						} catch (InvocationTargetException e) {
+							throw new DIException("Failed to call injectable method " + method, e.getCause());
+						}
+					};
+				});
 	}
 
 	@NotNull

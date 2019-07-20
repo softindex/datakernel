@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.core.Binding.Factory;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,16 +14,16 @@ import static java.util.stream.Collectors.toSet;
 /**
  * This class contains a set of utils for working with binding graph trie.
  */
-public final class BindingGraph {
+public final class Preprocessor {
 	/**
-	 * This is a special marker {@link Factory} for phantom bindings that will to be replaced by a generated ones.
+	 * This is a special marker {@link BindingCompiler} for phantom bindings that will to be replaced by a generated ones.
 	 * @see #completeBindingGraph
 	 */
-	public static final Factory<?> TO_BE_GENERATED = $ -> {
+	public static final BindingCompiler<?> TO_BE_GENERATED = (compiledBindings, level, index) -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
 	};
 
-	private BindingGraph() {}
+	private Preprocessor() {}
 
 	/**
 	 * This method converts a trie of binding multimaps, that is provided from the modules,
@@ -73,15 +72,15 @@ public final class BindingGraph {
 
 		Map<Key<?>, Binding<?>> generated = new HashMap<>();
 
-		BindingProvider provider = new BindingProvider() {
+		BindingLocator bindings = new BindingLocator() {
 			@Override
 			@Nullable
-			public <T> Binding<T> getBinding(Key<T> key) {
+			public <T> Binding<T> locate(Key<T> key) {
 				Binding<T> binding = (Binding<T>) generated.get(key);
 				if (binding == null) {
 					binding = (Binding<T>) known.get(key);
 				}
-				if (binding != null && binding.getFactory() != TO_BE_GENERATED) {
+				if (binding != null && binding.getCompiler() != TO_BE_GENERATED) {
 					return binding;
 				}
 
@@ -96,7 +95,7 @@ public final class BindingGraph {
 
 				// ensure that its dependencies are generated if necessary
 				for (Dependency dependency : binding.getDependencies()) {
-					getBinding(dependency.getKey());
+					locate(dependency.getKey());
 				}
 				return binding;
 			}
@@ -106,8 +105,8 @@ public final class BindingGraph {
 			Key<Object> key = (Key<Object>) entry.getKey();
 			Binding<Object> binding = (Binding<Object>) entry.getValue();
 
-			if (binding.getFactory() == TO_BE_GENERATED) {
-				Binding<Object> generatedBinding = provider.getBinding(key);
+			if (binding.getCompiler() == TO_BE_GENERATED) {
+				Binding<Object> generatedBinding = bindings.locate(key);
 				if (generatedBinding == null) {
 					// these bindings are the ones requested with plain `bind(...);` call, here we fail fast
 					// see comment below where dependencies are generated
@@ -116,7 +115,7 @@ public final class BindingGraph {
 				generatedBinding.at(binding.getLocation()); // set its location to one from the generation request
 				known.put(key, generatedBinding);
 			} else {
-				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(provider, scope, key, binding);
+				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(bindings, scope, key, binding);
 				if (transformed != binding) {
 					localBindings.put(key, transformed);
 				}
@@ -127,7 +126,7 @@ public final class BindingGraph {
 				if (known.containsKey(depKey)) {
 					continue;
 				}
-				known.put(depKey, provider.getBinding(depKey)); // put even nulls in known just as a little optimization
+				known.put(depKey, bindings.locate(depKey)); // put even nulls in known just as a little optimization
 				// when generating dependencies we don't fail and just do nothing
 				// unsatisfied dependency check will collect all of them and make a nice error
 			}
@@ -188,7 +187,7 @@ public final class BindingGraph {
 		// dependencies for each scope independently
 		return Stream.concat(
 				dfs(bindings.get()).stream(),
-				bindings.getChildren().values().stream().flatMap(BindingGraph::getCyclicDependenciesStream)
+				bindings.getChildren().values().stream().flatMap(Preprocessor::getCyclicDependenciesStream)
 		);
 	}
 

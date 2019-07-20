@@ -43,7 +43,6 @@ public final class Trie<K, V> {
 		return children;
 	}
 
-	@Nullable
 	public Trie<K, V> get(K key) {
 		return children.get(key);
 	}

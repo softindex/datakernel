@@ -25,8 +25,9 @@ public final class WorkerPoolModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
+		bind(Key.of(int.class, WorkerId.class)).in(Worker.class);
 
-		generate(int.class, (provider, scope, key) -> {
+		generate(int.class, (bindings, scope, key) -> {
 			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
 				return null;
 			}
@@ -34,7 +35,7 @@ public final class WorkerPoolModule extends AbstractModule {
 				throw new IllegalStateException("Expected instance override for the worker id by Injector#enterScope call");
 			});
 		});
-		generate(WorkerPool.Instances.class, (provider, scope, key) -> {
+		generate(WorkerPool.Instances.class, (bindings, scope, key) -> {
 			Key<Object> requestedKey = key.getTypeParameter(0);
 			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getName()));
 		});

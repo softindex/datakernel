@@ -162,7 +162,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1).resolveBindings());
+			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1).resolveBindings());
 			assertEquals(1, cycles.size());
 			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
@@ -181,7 +181,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = BindingGraph.getCyclicDependencies(combine(branch, cyclic1, cyclic2).resolveBindings());
+			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1, cyclic2).resolveBindings());
 			assertEquals(2, cycles.size());
 
 			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());

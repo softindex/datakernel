@@ -128,7 +128,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			Injector injector = createInjector(args);
 			injector.getInstance(this.getClass());
 			if (logger0.isInfoEnabled()) {
-				logger0.info("Effective Injector:\n\n" + makeGraphVizGraph(injector.getBindings()));
+				logger0.info("Effective Injector:\n\n" + makeGraphVizGraph(injector.getBindingsTrie()));
 			}
 
 			onInit(injector);

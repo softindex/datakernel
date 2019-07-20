@@ -10,11 +10,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.IntStream;
-
-import static java.util.Collections.singletonMap;
 
 /**
  * Scopes in datakernel DI are a bit different from other DI frameworks.
@@ -124,8 +120,8 @@ public final class ScopeExample {
 		IntStream.range(0, 10)
 				.mapToObj(i -> "ping: " + i)
 				.forEach(s -> {
-					Map<Key<?>, Object> instancesOverride = new HashMap<>(singletonMap(Key.of(HttpRequest.class), new HttpRequest(s)));
-					Injector subInjector = injector.enterScope(HTTP_SCOPE, instancesOverride, true);
+					Injector subInjector = injector.enterScope(HTTP_SCOPE);
+					subInjector.putInstance(Key.of(HttpRequest.class), new HttpRequest(s));
 					System.out.println(subInjector.getInstance(HttpResponse.class).pong);
 				});
 

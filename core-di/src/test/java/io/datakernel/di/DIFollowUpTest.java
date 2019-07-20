@@ -342,7 +342,7 @@ public class DIFollowUpTest {
 
 			@Override
 			protected void configure() {
-				transform(0, (provider, scope, key, binding) ->
+				transform(0, (bindings, scope, key, binding) ->
 						binding.onInstance(x -> System.out.println(Instant.now() + " -> " + key)));
 			}
 

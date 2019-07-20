@@ -5,11 +5,16 @@ import io.datakernel.di.util.LocationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.util.Utils.checkArgument;
 import static io.datakernel.di.util.Utils.union;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
@@ -17,45 +22,56 @@ import static java.util.stream.Collectors.toSet;
 /**
  * A binding is one of the main components of DataKernel DI.
  * It boils down to "introspectable function", since it only describes
- * a {@link Factory function} to create an instance of T from an array of objects and
+ * a {@link BindingCompiler function} to create an instance of T from an array of objects and
  * an array of its {@link Dependency dependencies} in known terms.
  * <p>
  * Also it contains a set of {@link io.datakernel.di.module.AbstractModule binding-DSL-like} static factory methods
  * as well as some functional transformations for the ease of creating immutable binding modifications.
  */
-@SuppressWarnings({"unused", "WeakerAccess"})
+@SuppressWarnings({"unused", "WeakerAccess", "ArraysAsListWithZeroOrOneArgument"})
 public final class Binding<T> {
-	@FunctionalInterface
-	public interface Factory<R> {
-		R create(InstanceLocator locator);
-	}
-
 	private final Set<Dependency> dependencies;
-	private final Factory<T> factory;
+	private final BindingCompiler<T> compiler;
 
 	@Nullable
 	private LocationInfo location;
 
-	public Binding(@NotNull Set<Dependency> dependencies, @NotNull Factory<T> factory) {
-		this(dependencies, null, factory);
+	public Binding(@NotNull Set<Dependency> dependencies, @NotNull BindingCompiler<T> compiler) {
+		this(dependencies, null, compiler);
 	}
 
-	public Binding(@NotNull Set<Dependency> dependencies, @Nullable LocationInfo location, @NotNull Factory<T> factory) {
+	public Binding(@NotNull Set<Dependency> dependencies, @Nullable LocationInfo location, @NotNull BindingCompiler<T> compiler) {
 		this.dependencies = dependencies;
-		this.factory = factory;
+		this.compiler = compiler;
 		this.location = location;
 	}
 
 	public static <T> Binding<T> to(Class<? extends T> key) {
-		return Binding.to(impl -> impl, key);
+		return Binding.to(Key.of(key));
 	}
 
+	@SuppressWarnings("unchecked")
 	public static <T> Binding<T> to(Key<? extends T> key) {
-		return Binding.to(impl -> impl, key);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(key))),
+				(compiledBindings, level, index) -> (CompiledBinding<T>) compiledBindings.locate(key));
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
-		return Binding.to(() -> instance);
+		return new Binding<>(emptySet(),
+				(compiledBindings, level, index) ->
+						new CompiledBinding<T>() {
+							@Override
+							public T getInstance(AtomicReferenceArray[] instances) {
+								//noinspection unchecked
+								instances[level].set(index, instance);
+								return instance;
+							}
+
+							@Override
+							public T createInstance(AtomicReferenceArray[] instances) {
+								return instance;
+							}
+						});
 	}
 
 	public static <T> Binding<T> toSupplier(@NotNull Key<? extends Supplier<? extends T>> supplierKey) {
@@ -74,12 +90,36 @@ public final class Binding<T> {
 		return Binding.to(constructor, Stream.of(keys).map(Dependency::toKey).toArray(Dependency[]::new));
 	}
 
-	@SuppressWarnings("Convert2MethodRef")
 	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Dependency... dependencies) {
-		return new Binding<>(Stream.of(dependencies).collect(toSet()),
-				dependencies.length == 0 ?
-						locator -> constructor.create() :
-						locator -> (R) constructor.create(locator.getDependencies(dependencies)));
+		if (dependencies.length == 0) {
+			return new Binding<>(emptySet(),
+					(compiledBindings, level, index) ->
+							new AbstractCompiledBinding<R>(level, index) {
+								@Nullable
+								@Override
+								public R createInstance(AtomicReferenceArray[] instances) {
+									return constructor.create();
+								}
+							});
+		}
+		return new Binding<>(new HashSet<>(asList(dependencies)),
+				(compiledBindings, level, index) -> {
+					CompiledBinding<?>[] bindings = new CompiledBinding[dependencies.length];
+					for (int i = 0; i < dependencies.length; i++) {
+						bindings[i] = compiledBindings.locate(dependencies[i].getKey());
+					}
+					return new AbstractCompiledBinding<R>(level, index) {
+						@Nullable
+						@Override
+						public R createInstance(AtomicReferenceArray[] instances) {
+							Object[] args = new Object[bindings.length];
+							for (int i = 0; i < bindings.length; i++) {
+								args[i] = bindings[i].getInstance(instances);
+							}
+							return constructor.create(args);
+						}
+					};
+				});
 	}
 
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
@@ -114,72 +154,140 @@ public final class Binding<T> {
 
 	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
 		return new Binding<>(emptySet(),
-				locator -> constructor.create()
-		);
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create();
+							}
+						});
 	}
 
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
 			@NotNull Key<T1> dependency1) {
-		return new Binding<>(Stream.of(Dependency.toKey(dependency1)).collect(toSet()),
-				locator -> constructor.create(
-						locator.getInstanceOrNull(dependency1))
-		);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1))),
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create(
+										binding1.getInstance(instances));
+							}
+						});
 	}
 
 	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
-		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2)).collect(toSet()),
-				locator -> constructor.create(
-						locator.getInstanceOrNull(dependency1),
-						locator.getInstanceOrNull(dependency2))
-		);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2))),
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+							final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create(
+										binding1.getInstance(instances),
+										binding2.getInstance(instances));
+							}
+						});
 	}
 
 	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
-		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3)).collect(toSet()),
-				locator -> constructor.create(
-						locator.getInstanceOrNull(dependency1),
-						locator.getInstanceOrNull(dependency2),
-						locator.getInstanceOrNull(dependency3))
-		);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3))),
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+							final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+							final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create(
+										binding1.getInstance(instances),
+										binding2.getInstance(instances),
+										binding3.getInstance(instances));
+							}
+						});
 	}
 
 	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
-		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4)).collect(toSet()),
-				locator -> constructor.create(
-						locator.getInstanceOrNull(dependency1),
-						locator.getInstanceOrNull(dependency2),
-						locator.getInstanceOrNull(dependency3),
-						locator.getInstanceOrNull(dependency4))
-		);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4))),
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+							final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+							final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
+							final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create(
+										binding1.getInstance(instances),
+										binding2.getInstance(instances),
+										binding3.getInstance(instances),
+										binding4.getInstance(instances));
+							}
+						});
 	}
 
 	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
-		return new Binding<>(Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5)).collect(toSet()),
-				locator -> constructor.create(
-						locator.getInstanceOrNull(dependency1),
-						locator.getInstanceOrNull(dependency2),
-						locator.getInstanceOrNull(dependency3),
-						locator.getInstanceOrNull(dependency4),
-						locator.getInstanceOrNull(dependency5))
-		);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5))),
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+							final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+							final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
+							final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
+							final CompiledBinding<T5> binding5 = compiledBindings.locate(dependency5);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create(
+										binding1.getInstance(instances),
+										binding2.getInstance(instances),
+										binding3.getInstance(instances),
+										binding4.getInstance(instances),
+										binding5.getInstance(instances));
+							}
+						});
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {
-		return new Binding<>(
-				Stream.of(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6)).collect(toSet()),
-				locator -> constructor.create(
-						locator.getInstanceOrNull(dependency1),
-						locator.getInstanceOrNull(dependency2),
-						locator.getInstanceOrNull(dependency3),
-						locator.getInstanceOrNull(dependency4),
-						locator.getInstanceOrNull(dependency5),
-						locator.getInstanceOrNull(dependency6))
-		);
+		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6))),
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+							final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+							final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
+							final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
+							final CompiledBinding<T5> binding5 = compiledBindings.locate(dependency5);
+							final CompiledBinding<T6> binding6 = compiledBindings.locate(dependency6);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								return constructor.create(
+										binding1.getInstance(instances),
+										binding2.getInstance(instances),
+										binding3.getInstance(instances),
+										binding4.getInstance(instances),
+										binding5.getInstance(instances),
+										binding6.getInstance(instances));
+							}
+						});
 	}
 
 	public Binding<T> at(@Nullable LocationInfo location) {
@@ -188,30 +296,43 @@ public final class Binding<T> {
 	}
 
 	public Binding<T> onInstance(@NotNull Consumer<? super T> consumer) {
-		return onInstance((locator, instance) -> consumer.accept(instance));
-	}
-
-	public Binding<T> onInstance(@NotNull BiConsumer<InstanceLocator, ? super T> consumer) {
-		return new Binding<>(dependencies, location,
-				locator -> {
-					T instance = factory.create(locator);
-					consumer.accept(locator, instance);
-					return instance;
-				}
-		);
+		return mapInstance(null, (args, instance) -> {
+			consumer.accept(instance);
+			return instance;
+		});
 	}
 
 	public <R> Binding<R> mapInstance(@NotNull Function<? super T, ? extends R> fn) {
-		return mapInstance((locator, instance) -> fn.apply(instance));
+		return mapInstance(null, (args, instance) -> fn.apply(instance));
 	}
 
-	public <R> Binding<R> mapInstance(@NotNull BiFunction<InstanceLocator, ? super T, ? extends R> fn) {
+	public <R> Binding<R> mapInstance(@Nullable List<Key<?>> keys, @NotNull BiFunction<Object[], ? super T, ? extends R> fn) {
+		if (keys != null) {
+			checkArgument(dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(new HashSet<>(keys)));
+		}
 		return new Binding<>(dependencies, location,
-				locator -> {
-					T instance = factory.create(locator);
-					return instance != null ? fn.apply(locator, instance) : null;
-				}
-		);
+				(compiledBindings, level, index) ->
+						new AbstractCompiledBinding<R>(level, index) {
+							final CompiledBinding<T> originalBinding = compiler.compileForCreateOnly(compiledBindings);
+							final CompiledBinding[] bindings =
+									keys == null ?
+											null :
+											keys.stream().map(compiledBindings::locate).toArray(CompiledBinding[]::new);
+
+							@Nullable
+							@Override
+							public R createInstance(AtomicReferenceArray[] instances) {
+								Object[] args = null;
+								if (bindings != null) {
+									args = new Object[bindings.length];
+									for (int i = 0; i < bindings.length; i++) {
+										args[i] = bindings[i].getInstance(instances);
+									}
+								}
+								T instance = originalBinding.createInstance(instances);
+								return instance != null ? fn.apply(args, instance) : null;
+							}
+						});
 	}
 
 	public <K> Binding<T> onDependency(@NotNull Class<K> dependency, @NotNull Consumer<? super K> consumer) {
@@ -230,17 +351,31 @@ public final class Binding<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <K> Binding<T> mapDependency(@NotNull Key<K> dependency, @NotNull Function<? super K, ? extends K> fn) {
+	public <K> Binding<T> mapDependency(@NotNull Key<K> key, @NotNull Function<? super K, ? extends K> fn) {
 		return new Binding<>(dependencies, location,
-				locator -> factory.create(new InstanceLocator() {
-					@Override
-					@Nullable
-					public <Q> Q getInstanceOrNull(@NotNull Key<Q> key) {
-						Q instance = locator.getInstanceOrNull(key);
-						return !key.equals(dependency) ? instance : (Q) fn.apply((K) instance);
-					}
-				})
-		);
+				(compiledBindings, level, index) ->
+						compiler.compile(new CompiledBindingLocator() {
+							@Override
+							public @NotNull <Q> CompiledBinding<Q> locate(Key<Q> k) {
+								CompiledBinding<Q> originalBinding = compiledBindings.locate(k);
+								if (!k.equals(key)) return originalBinding;
+								return new CompiledBinding<Q>() {
+									@Nullable
+									@Override
+									public Q getInstance(AtomicReferenceArray[] instances) {
+										Q instance = originalBinding.getInstance(instances);
+										return (Q) fn.apply((K) instance);
+									}
+
+									@Nullable
+									@Override
+									public Q createInstance(AtomicReferenceArray[] instances) {
+										Q instance = originalBinding.createInstance(instances);
+										return (Q) fn.apply((K) instance);
+									}
+								};
+							}
+						}, level, index));
 	}
 
 	public Binding<T> addDependencies(@NotNull Class<?>... extraDependencies) {
@@ -256,10 +391,27 @@ public final class Binding<T> {
 	}
 
 	public Binding<T> addDependencies(@NotNull Set<Dependency> extraDependencies) {
-		if (extraDependencies.size() == 0) {
-			return this;
-		}
-		return new Binding<>(union(dependencies, extraDependencies), location, factory);
+		return extraDependencies.isEmpty() ?
+				this :
+				new Binding<>(union(dependencies, extraDependencies), location, compiler);
+	}
+
+	public Binding<T> initializeWith(BindingInitializer<T> bindingInitializer) {
+		return bindingInitializer == BindingInitializer.noop() ?
+				this :
+				new Binding<>(union(dependencies, bindingInitializer.getDependencies()),
+						(compiledBindings, level, index) ->
+								new AbstractCompiledBinding<T>(level, index) {
+									final CompiledBinding<T> compiledBinding = compiler.compileForCreateOnly(compiledBindings);
+									final BiConsumer<AtomicReferenceArray[], T> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
+
+									@Override
+									public T createInstance(AtomicReferenceArray[] instances) {
+										T instance = compiledBinding.createInstance(instances);
+										consumer.accept(instances, instance);
+										return instance;
+									}
+								});
 	}
 
 	@NotNull
@@ -268,8 +420,8 @@ public final class Binding<T> {
 	}
 
 	@NotNull
-	public Factory<T> getFactory() {
-		return factory;
+	public BindingCompiler<T> getCompiler() {
+		return compiler;
 	}
 
 	@Nullable

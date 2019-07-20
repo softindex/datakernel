@@ -94,7 +94,7 @@ public abstract class AbstractModule implements Module {
 				if (!keySets.isEmpty()) {
 					throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
 				}
-				generate(method.getReturnType(), (provider, scope, key) -> {
+				generate(method.getReturnType(), (bindings, scope, key) -> {
 					if (scope.length < methodScope.length || !Objects.equals(key.getName(), name) || !Types.matches(key.getType(), type)) {
 						return null;
 					}
@@ -162,7 +162,7 @@ public abstract class AbstractModule implements Module {
 		private Scope[] scope = UNSCOPED;
 		private Key<T> key;
 
-		private Binding<? extends T> binding = (Binding<? extends T>) new Binding<>(emptySet(), BindingGraph.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
+		private Binding<? extends T> binding = (Binding<? extends T>) new Binding<>(emptySet(), Preprocessor.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
 
 		public BindingBuilder(@NotNull Key<T> key) {
 			this.key = key;
@@ -221,7 +221,7 @@ public abstract class AbstractModule implements Module {
 		 * Sets a binding which would be bound to a given key and added to the binding graph trie
 		 */
 		public BindingBuilder<T> to(@NotNull Binding<? extends T> binding) {
-			if (this.binding.getFactory() != BindingGraph.TO_BE_GENERATED) {
+			if (this.binding.getCompiler() != Preprocessor.TO_BE_GENERATED) {
 				throw new IllegalStateException("Already mapped to a binding");
 			}
 			if (binding.getLocation() == null) {
