@@ -2,6 +2,9 @@ package io.datakernel.di.module;
 
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.*;
+import io.datakernel.di.impl.AbstractCompiledBinding;
+import io.datakernel.di.impl.BindingInitializer;
+import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 

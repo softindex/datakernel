@@ -1,5 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di.impl;
 
+import io.datakernel.di.core.*;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 

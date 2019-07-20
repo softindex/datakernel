@@ -3,6 +3,8 @@ package io.datakernel.di.util;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
+import io.datakernel.di.impl.BindingInitializer;
+import io.datakernel.di.impl.CompiledBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,6 +1,7 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.Trie;
 
 import java.util.Map;

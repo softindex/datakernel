@@ -1,5 +1,6 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.impl.BindingLocator;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;

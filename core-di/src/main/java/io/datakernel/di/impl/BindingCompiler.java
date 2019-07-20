@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di.impl;
 
 @FunctionalInterface
 public interface BindingCompiler<R> {

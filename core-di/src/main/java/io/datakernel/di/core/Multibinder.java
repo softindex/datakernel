@@ -1,5 +1,7 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.impl.AbstractCompiledBinding;
+import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 

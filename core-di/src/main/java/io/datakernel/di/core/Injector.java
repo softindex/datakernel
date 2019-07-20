@@ -1,6 +1,9 @@
 package io.datakernel.di.core;
 
 import io.datakernel.di.annotation.EagerSingleton;
+import io.datakernel.di.impl.CompiledBinding;
+import io.datakernel.di.impl.CompiledBindingLocator;
+import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
@@ -21,10 +24,10 @@ import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
 import static io.datakernel.di.core.BindingTransformer.IDENTITY;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
-import static io.datakernel.di.core.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
@@ -43,7 +46,7 @@ import static java.util.stream.Collectors.toSet;
  * Branches of the trie are used to {@link #enterScope enter scopes}.
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class Injector {
+public final class Injector {
 	public static final Key<Set<InstanceInjector<?>>> INSTANCE_INJECTORS_KEY = new Key<Set<InstanceInjector<?>>>() {};
 
 	@Nullable

@@ -1,5 +1,6 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.Nullable;
 
