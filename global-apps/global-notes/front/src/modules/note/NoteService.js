@@ -5,7 +5,7 @@ import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import serializer from "../note/ot/serializer";
 import noteOTSystem from "./ot/NoteOTSystem";
 
-const RETRY_CHECKOUT_TIMEOUT = 1000;
+const RETRY_TIMEOUT = 1000;
 
 class NoteService extends Service {
   constructor(noteOTStateManager) {
@@ -16,9 +16,10 @@ class NoteService extends Service {
 
     this._noteOTStateManager = noteOTStateManager;
     this._reconnectTimeout = null;
+    this._resyncTimeout = null;
   }
 
-  static from(noteId){
+  static from(noteId) {
     const noteOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/note/' + noteId,
       serializer: serializer
@@ -33,7 +34,11 @@ class NoteService extends Service {
       await this._noteOTStateManager.checkout();
     } catch (err) {
       console.error(err);
-      await this._reconnectDelay();
+
+      const delay = this._retryDelay();
+      this._reconnectTimeout = delay.timeoutId;
+      await delay.promise;
+
       await this.init();
       return;
     }
@@ -45,6 +50,7 @@ class NoteService extends Service {
 
   stop() {
     clearTimeout(this._reconnectTimeout);
+    clearTimeout(this._resyncTimeout);
     this._noteOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -80,10 +86,12 @@ class NoteService extends Service {
     this._sync();
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
+  _retryDelay() {
+    let timeoutId;
+    const promise = new Promise(resolve => {
+      timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
     });
+    return {timeoutId, promise};
   }
 
   async _sync() {
@@ -91,6 +99,11 @@ class NoteService extends Service {
       await this._noteOTStateManager.sync();
     } catch (err) {
       console.error(err);
+
+      const delay = this._retryDelay();
+      this._resyncTimeout = delay.timeoutId;
+      await delay.promise;
+
       await this._sync();
     }
   }
