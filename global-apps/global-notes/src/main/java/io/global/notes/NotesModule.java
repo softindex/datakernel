@@ -11,6 +11,7 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.global.common.SimKey;
 import io.global.notes.note.operation.EditOperation;
+import io.global.ot.DynamicOTGraphServlet;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
@@ -18,6 +19,7 @@ import io.global.ot.dictionary.DictionaryOperation;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
@@ -47,17 +49,24 @@ public final class NotesModule extends AbstractModule {
 	RoutingServlet mainServlet(
 			DynamicOTNodeServlet<DictionaryOperation> notesServlet,
 			DynamicOTNodeServlet<EditOperation> noteServlet,
+			DynamicOTGraphServlet<EditOperation> graphServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()
 				.map("/ot/notes/*", notesServlet)
 				.map("/ot/note/:suffix/*", noteServlet)
+				.map("/ot/graph/:suffix", graphServlet)
 				.map("/*", staticServlet);
 	}
 
 	@Provides
 	DynamicOTNodeServlet<EditOperation> noteServlet(OTDriver driver) {
 		return DynamicOTNodeServlet.create(driver, createOTSystem(), EDIT_OPERATION_CODEC, notesPrefixRepo);
+	}
+
+	@Provides
+	DynamicOTGraphServlet<EditOperation> noteGraphServlet(DynamicOTNodeServlet<EditOperation> noteServlet) {
+		return noteServlet.createGraphServlet(Objects::toString);
 	}
 
 	@Provides
