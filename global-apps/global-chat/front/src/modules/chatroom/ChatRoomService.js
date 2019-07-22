@@ -4,7 +4,7 @@ import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import chatRoomSerializer from "./ot/serializer";
 import chatRoomOTSystem from "./ot/ChatRoomOTSystem";
 
-const RETRY_CHECKOUT_TIMEOUT = 1000;
+const RETRY_TIMEOUT = 1000;
 
 class ChatRoomService extends Service {
   constructor(chatOTStateManager, publicKey) {
@@ -14,6 +14,7 @@ class ChatRoomService extends Service {
     });
     this._chatOTStateManager = chatOTStateManager;
     this._reconnectTimeout = null;
+    this._resyncTimeout = null;
     this._publicKey = publicKey;
   }
 
@@ -32,7 +33,11 @@ class ChatRoomService extends Service {
       await this._chatOTStateManager.checkout();
     } catch (err) {
       console.log(err);
-      await this._reconnectDelay();
+
+      const delay = this._retryDelay();
+      this._reconnectTimeout = delay.timeoutId;
+      await delay.promise;
+
       await this.init();
       return;
     }
@@ -44,6 +49,7 @@ class ChatRoomService extends Service {
 
   stop() {
     clearTimeout(this._reconnectTimeout);
+    clearTimeout(this._resyncTimeout);
     this._chatOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -69,10 +75,12 @@ class ChatRoomService extends Service {
       .sort((left, right) => left.timestamp - right.timestamp);
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
+  _retryDelay() {
+    let timeoutId;
+    const promise = new Promise(resolve => {
+      timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
     });
+    return {timeoutId, promise};
   }
 
   async _sync() {
@@ -80,6 +88,11 @@ class ChatRoomService extends Service {
       await this._chatOTStateManager.sync();
     } catch (err) {
       console.log(err);
+
+      const delay = this._retryDelay();
+      this._resyncTimeout = delay.timeoutId;
+      await delay.promise;
+
       await this._sync();
     }
   }
