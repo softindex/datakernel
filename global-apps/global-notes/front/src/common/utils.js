@@ -1,3 +1,5 @@
+export const ROOT_COMMIT_ID = 'AQAAAAAAAAA=';
+
 const randomStringChars = '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
 export function randomString(length) {
   let result = '';

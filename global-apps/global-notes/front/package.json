@@ -8,7 +8,7 @@
     "js-cookie": "^2.2.0",
     "lodash": "^4.17.11",
     "notistack": "^0.8.6",
-    "ot-core": "https://github.com/softindex/ot-core.git#v0.2.2",
+    "ot-core": "https://github.com/softindex/ot-core.git#v0.2.3",
     "prop-types": "^15.7.2",
     "query-string": "^6.8.1",
     "react": "^16.7.0",

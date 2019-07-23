@@ -4,11 +4,9 @@ import SideBar from "./SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
 import checkAuth from '../../common/checkAuth';
-import connectService from "../../common/connectService";
 import NotesContext from "../../modules/notes/NotesContext";
 import {withSnackbar} from "notistack";
 import NotesService from "../../modules/notes/NotesService";
-import AccountContext from "../../modules/account/AccountContext";
 import EmptyNote from "./EmptyNote/EmptyNote";
 import Note from "./Note/Note";
 
@@ -19,13 +17,12 @@ class MainScreen extends React.Component {
   }
 
   componentDidMount() {
-    Promise.all([
-      this.notesService.init(),
-    ]).catch((err) => {
-      this.props.enqueueSnackbar(err.message, {
-        variant: 'error'
+    this.notesService.init()
+      .catch((err) => {
+        this.props.enqueueSnackbar(err.message, {
+          variant: 'error'
+        });
       });
-    });
   }
 
   componentWillUnmount() {
@@ -46,7 +43,9 @@ class MainScreen extends React.Component {
             <EmptyNote/>
           )}
           {noteId && (
-            <Note noteId={noteId}/>
+            <Note
+              noteId={noteId}
+              isNew={this.notesService.state.newNotes.has(noteId)}/>
           )}
         </div>
       </NotesContext.Provider>
@@ -54,9 +53,8 @@ class MainScreen extends React.Component {
   }
 }
 
-export default connectService(
-  AccountContext, (state, accountService) => ({accountService})
-)(checkAuth(
-  withSnackbar(withStyles(mainScreenStyles)(MainScreen))
+export default checkAuth(
+  withSnackbar(
+    withStyles(mainScreenStyles)(MainScreen)
   )
 );

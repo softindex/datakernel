@@ -34,7 +34,7 @@ class Note extends React.Component {
         state.noteService.stop();
       }
 
-      const noteService = NoteService.from(props.noteId);
+      const noteService = NoteService.from(props.noteId, props.isNew);
       noteService.init();
 
       return {

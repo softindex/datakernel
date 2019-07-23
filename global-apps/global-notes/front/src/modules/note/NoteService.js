@@ -4,11 +4,12 @@ import InsertOperation from './ot/operations/InsertOperation';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import serializer from "../note/ot/serializer";
 import noteOTSystem from "./ot/NoteOTSystem";
+import {ROOT_COMMIT_ID} from "../../common/utils";
 
 const RETRY_TIMEOUT = 1000;
 
 class NoteService extends Service {
-  constructor(noteOTStateManager) {
+  constructor(noteOTStateManager, isNew) {
     super({
       content: '',
       ready: false
@@ -17,21 +18,27 @@ class NoteService extends Service {
     this._noteOTStateManager = noteOTStateManager;
     this._reconnectTimeout = null;
     this._resyncTimeout = null;
+    this._isNew = isNew;
   }
 
-  static from(noteId) {
+  static from(noteId, isNew) {
     const noteOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/note/' + noteId,
       serializer: serializer
     });
     const noteOTStateManager = new OTStateManager(() => '', noteOTNode, noteOTSystem);
-    return new NoteService(noteOTStateManager);
+    return new NoteService(noteOTStateManager, isNew);
   }
 
   async init() {
     // Get initial state
+
     try {
-      await this._noteOTStateManager.checkout();
+      if (this._isNew) {
+        this._noteOTStateManager.checkoutRoot(ROOT_COMMIT_ID);
+      } else {
+        await this._noteOTStateManager.checkout();
+      }
     } catch (err) {
       console.error(err);
 
@@ -97,6 +104,9 @@ class NoteService extends Service {
   async _sync() {
     try {
       await this._noteOTStateManager.sync();
+      if (this._isNew && this._noteOTStateManager.getRevision() !== ROOT_COMMIT_ID) {
+        this._isNew = false;
+      }
     } catch (err) {
       console.error(err);
 
