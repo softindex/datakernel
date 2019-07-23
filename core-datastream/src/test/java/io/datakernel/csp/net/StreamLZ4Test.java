@@ -46,6 +46,7 @@ public final class StreamLZ4Test {
 
 	@Test
 	public void test() {
+		//[START EXAMPLE]
 		int buffersCount = 100;
 
 		List<ByteBuf> buffers = IntStream.range(0, buffersCount).mapToObj($ -> createRandomByteBuf()).collect(toList());
@@ -59,6 +60,7 @@ public final class StreamLZ4Test {
 
 		ByteBuf collected = await(supplier.toCollector(ByteBufQueue.collector()));
 		assertArrayEquals(expected, collected.asArray());
+		//[END EXAMPLE]
 	}
 
 	@Test

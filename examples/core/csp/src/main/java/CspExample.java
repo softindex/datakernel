@@ -27,7 +27,6 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 	}
 
 	@Override
-	//[START REGION_1]
 	protected void doProcess() {
 		input.get()
 				.whenComplete((data, e) -> {
@@ -42,7 +41,6 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 					}
 				});
 	}
-	//[END REGION_1]
 
 	@Override
 	protected void doClose(Throwable e) {

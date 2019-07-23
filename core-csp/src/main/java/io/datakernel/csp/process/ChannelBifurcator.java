@@ -12,17 +12,13 @@ import static io.datakernel.util.Recyclable.tryRecycle;
 import static io.datakernel.util.Sliceable.trySlice;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 18.07.19.
- */
-
-/**
- * Communicating process which distribute
+ * Communicating process which distributes
  * an input item to two output channels.
  *
- * @param <T>
+ * @author Alex Syrotenko (@pantokrator)
  * @since 3.0.0
  */
+//[START REGION_1]
 public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 		implements WithChannelInput<ChannelBifurcator<T>, T> {
 
@@ -43,36 +39,43 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 		return new ChannelBifurcator<T>().withInput(supplier).withOutputs(first, second);
 	}
 
+	//[END REGION_1]
+
 	/**
-	 * The aim of this method is a creation of Bifurcator in such way :
+	 * Provides ability to create a Bifurcator in the following way:
 	 * {@code  bifurcator = ChannelBifurcator.create().withInput(i).withOutputs(o1, o2); }
 	 */
+	//[START REGION_2]
 	public ChannelBifurcator<T> withOutputs(ChannelConsumer<T> firstOutput, ChannelConsumer<T> secondOutput) {
 		this.first = sanitize(firstOutput);
 		this.second = sanitize(secondOutput);
 		tryStart();
 		return this;
 	}
+	//[END REGION_2]
 
 	/**
 	 * Bifurcator startup.
 	 */
+	//[START REGION_6]
 	private void tryStart() {
 		if (input != null && first != null && second != null) {
 			getCurrentEventloop().post(this::startProcess);
 		}
 	}
+	//[END REGION_6]
 
 	/**
 	 * Main process for our bifurcator.
-	 * Every tick bifurcator (BF) checks if input item exists.
-	 * If item exists, BF tries to send it to output channels
-	 * and continues to listen input channel.
+	 * On every tick bifurcator (BF) checks if input item exists.
+	 * If item exists, BF tries to send it to the output channels
+	 * and continues listening to the input channel.
 	 * <p>
-	 * Note : if item can be sliced to a chunks,
-	 * bifurcator would try to slice input item
-	 * before item will be accepted by output consumer.
+	 * Note : if an item can be sliced into chunks,
+	 * bifurcator will try to slice the input item
+	 * before it is accepted by the output consumer.
 	 */
+	//[START REGION_4]
 	@Override
 	protected void doProcess() {
 		if (isProcessComplete()) {
@@ -97,19 +100,23 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 					}
 				});
 	}
+	//[END REGION_4]
 
 	/**
 	 * Closes all channels.
 	 *
 	 * @param e an exception thrown on closing
 	 */
+	//[START REGION_5]
 	@Override
 	protected void doClose(Throwable e) {
 		input.close(e);
 		first.close(e);
 		second.close(e);
 	}
+	//[END REGION_5]
 
+	//[START REGION_3]
 	@Override
 	public ChannelInput<T> getInput() {
 		return input -> {
@@ -119,5 +126,6 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 			return getProcessCompletion();
 		};
 	}
+	//[END REGION_3]
 }
 

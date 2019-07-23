@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 
 
 @SuppressWarnings("unused")
+//[START EXAMPLE]
 public class AdvancedServiceExample extends Launcher {
 	@Inject DBService dbService;
 	@Inject AuthService authService;
@@ -153,3 +154,4 @@ public class AdvancedServiceExample extends Launcher {
 		example.launch(args);
 	}
 }
+//[END EXAMPLE]

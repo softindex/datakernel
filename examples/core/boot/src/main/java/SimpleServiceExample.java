@@ -7,6 +7,7 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("unused")
+//[START EXAMPLE]
 public class SimpleServiceExample extends Launcher {
 	public static void main(String[] args) throws Exception {
 		SimpleServiceExample example = new SimpleServiceExample();
@@ -44,3 +45,4 @@ public class SimpleServiceExample extends Launcher {
 		System.out.println("RUN");
 	}
 }
+//[END EXAMPLE]

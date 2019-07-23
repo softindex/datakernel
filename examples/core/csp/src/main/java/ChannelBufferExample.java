@@ -8,10 +8,11 @@ import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
+ * @author Alex Syrotenko (@pantokrator)
  * Created on 18.07.19.
  */
 public final class ChannelBufferExample {
+	//[START REGION_1]
 	static final class ChannelBufferStream {
 		public static void main(String[] args) {
 			Eventloop eventloop = Eventloop.create().withCurrentThread();
@@ -27,6 +28,9 @@ public final class ChannelBufferExample {
 			eventloop.run();
 		}
 	}
+	//[END REGION_1]
+
+	//[START REGION_2]
 	static final class ChannelBufferZeroExample {
 		public static void main(String[] args) {
 			Eventloop eventloop = Eventloop.create().withCurrentThread();
@@ -46,4 +50,5 @@ public final class ChannelBufferExample {
 			eventloop.run();
 		}
 	}
+	//[END REGION_2]
 }

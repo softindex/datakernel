@@ -13,6 +13,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 @SuppressWarnings("unused")
+//[START EXAMPLE]
 public class EventloopServiceExample extends Launcher {
 	@Inject CustomEventloopService testService;
 
@@ -77,3 +78,4 @@ public class EventloopServiceExample extends Launcher {
 		example.launch(args);
 	}
 }
+//[END EXAMPLE]

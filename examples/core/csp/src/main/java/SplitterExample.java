@@ -11,9 +11,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * @Author is Alex Syrotenko (@pantokrator)
+ * @author Alex Syrotenko (@pantokrator)
  * Created on 18.07.19.
  */
+//[START EXAMPLE]
 public class SplitterExample {
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
@@ -35,3 +36,4 @@ public class SplitterExample {
 		}
 	}
 }
+//[END EXAMPLE]

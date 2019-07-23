@@ -19,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 /**
- * @Author is Alex Syrotenko (@pantokrator)
+ * @author Alex Syrotenko (@pantokrator)
  * Created on 18.07.19.
  */
 public class ChannelBifurcatorTest {
@@ -31,6 +31,7 @@ public class ChannelBifurcatorTest {
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Test
+	//[START REGION_1]
 	public void simpleCase() {
 		List<String> expected = new ArrayList<>();
 		expected.add("1st");
@@ -57,6 +58,7 @@ public class ChannelBifurcatorTest {
 		assertEquals(firstResults, secondResults);
 		assertEquals(expected, secondResults);
 	}
+	//[END REGION_1]
 
 	@Test
 	public void outputFailure() {
