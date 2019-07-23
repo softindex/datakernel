@@ -25,7 +25,7 @@ class ChatRoom extends React.Component {
         state.chatRoomService.stop();
       }
 
-      const chatRoomService = ChatRoomService.createFrom(props.roomId, props.publicKey);
+      const chatRoomService = ChatRoomService.createFrom(props.roomId, props.publicKey, props.isNew);
       chatRoomService.init();
 
       return {
@@ -42,7 +42,7 @@ class ChatRoom extends React.Component {
   update = newState => this.setState(newState);
 
   render() {
-    const {classes, roomId } = this.props;
+    const {classes, roomId} = this.props;
     return (
       <ChatRoomContext.Provider value={this.state.chatRoomService}>
         <div className={classes.root}>

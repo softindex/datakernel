@@ -9,10 +9,10 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import * as PropTypes from "prop-types";
-import { withSnackbar } from 'notistack';
+import {withSnackbar} from 'notistack';
 
 class AddContactForm extends React.Component {
-  constructor(props){
+  constructor(props) {
     super(props);
     this.state = {
       pubKey: this.props.contactPublicKey || '',
@@ -47,20 +47,11 @@ class AddContactForm extends React.Component {
       return;
     }
 
-    return this.props.addContact(this.state.pubKey, this.state.name)
-      .then(() => {
-        this.props.onClose();
-      })
-      .catch((err) => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
-      .finally(() => {
-        this.setState({
-          loading: false
-        });
-      });
+    this.props.addContact(this.state.pubKey, this.state.name);
+    this.props.onClose();
+    this.setState({
+      loading: false
+    })
   };
 
   render() {

@@ -55,7 +55,10 @@ class MainScreen extends React.Component {
               <StartChat/>
             )}
             {roomId && (
-              <ChatRoom roomId={roomId}/>
+              <ChatRoom
+                roomId={roomId}
+                isNew={this.roomsService.state.newRooms.has(roomId)}
+              />
             )}
           </div>
         </ContactsContext.Provider>

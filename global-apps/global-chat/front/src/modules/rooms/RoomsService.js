@@ -13,6 +13,7 @@ class RoomsService extends Service {
     super({
       rooms: new Map(),
       ready: false,
+      newRooms: new Set()
     });
     this._roomsOTStateManager = roomsOTStateManager;
     this._reconnectTimeout = null;
@@ -55,7 +56,7 @@ class RoomsService extends Service {
 
   async createRoom(name, participants) {
     const roomId = randomString(ROOM_ID_LENGTH);
-    await this._createRoom(roomId, name, [...participants, this._myPublicKey]);
+    this._createRoom(roomId, name, [...participants, this._myPublicKey]);
   }
 
   async createDialog(participantId) {
@@ -69,14 +70,14 @@ class RoomsService extends Service {
       });
 
     if (!roomExists) {
-      await this._createRoom(roomId, name, participants);
+      this._createRoom(roomId, name, participants);
     }
   }
 
   async quitRoom(roomId) {
     const room = this.state.rooms.get(roomId);
     if (!room) {
-      return ;
+      return;
     }
 
     const deleteRoomOperation = new RoomsOTOperation(roomId, room.participants, true);
@@ -87,6 +88,10 @@ class RoomsService extends Service {
   async _createRoom(roomId, name, participants) {
     const addRoomOperation = new RoomsOTOperation(roomId, participants, false);
     this._roomsOTStateManager.add([addRoomOperation]);
+    this.setState({
+      ...this.state,
+      newRooms: new Set([...this.state.newRooms, roomId])
+    });
     await this._sync();
   }
 

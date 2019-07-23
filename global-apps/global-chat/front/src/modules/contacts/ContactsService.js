@@ -49,11 +49,11 @@ class ContactsService extends Service {
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async addContact(pubKey, name) {
+  addContact(pubKey, name) {
     let operation = new ContactsOTOperation(pubKey, name, false);
     this._contactsOTStateManager.add([operation]);
 
-    await this._sync();
+    this._sync();
   }
 
   async removeContact(pubKey, name) {
