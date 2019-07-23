@@ -32,7 +32,6 @@ class RoomsService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       await this._roomsOTStateManager.checkout();
     } catch (err) {
@@ -79,7 +78,7 @@ class RoomsService extends Service {
   async quitRoom(roomId) {
     const room = this.state.rooms.get(roomId);
     if (!room) {
-      return ;
+      return;
     }
 
     const deleteRoomOperation = new RoomsOTOperation(roomId, room.participants, true);
@@ -117,29 +116,35 @@ class RoomsService extends Service {
   }
 
   _getRooms() {
+    let contacts = [...this._contactsService.getAll().contacts];
     const otState = [...this._roomsOTStateManager.getState()]
       .map(([roomId, room]) => {
         return {
           id: roomId,
           name: this._getRoomName(room),
           participants: room.participants,
-          virtual: false
+          virtual: false,
+          dialog: room.participants.length === 2 && roomId === this._getDialogRoomId(room.participants) &&
+            this._roomsOTStateManager.getState().contacts
+              .get(room.participants
+                .filter(pubKey => pubKey !== this._myPublicKey))
         }
       });
-    const contactState = [...this._contactsService.getAll().contacts].map(([contactPublicKey, contact]) => {
+    contacts = contacts.map(([contactPublicKey, contact]) => {
       const participants = [this._myPublicKey, contactPublicKey];
       return {
         id: this._getDialogRoomId(participants),
         name: contact.name,
         participants,
-        virtual: true
+        virtual: true,
+        dialog: true
       };
     });
 
     return new Map([
-      ...contactState,
+      ...contacts,
       ...otState
-    ].map(({id, name, participants, virtual}) => ([id, {name, participants, virtual}])));
+    ].map(({id, name, participants, virtual, dialog}) => ([id, {name, participants, virtual, dialog}])));
   }
 
   _reconnectDelay() {

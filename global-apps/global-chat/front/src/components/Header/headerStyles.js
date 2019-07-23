@@ -5,7 +5,7 @@ const headerStyles = (theme) => ({
   },
   chatTitleContainer: {
     display: 'flex',
-    marginLeft: theme.spacing.unit * 24.2,
+    marginLeft: theme.spacing.unit * 24,
     flexGrow: 1,
     flexDirection: 'row-reverse'
   },
@@ -29,15 +29,6 @@ const headerStyles = (theme) => ({
   },
   arrowIcon: {
     fontSize: '1.25rem'
-  },
-  drawer: {
-    width: 355
-  },
-  list: {
-    width: 355
-  },
-  accountIcon: {
-    fontSize: 30
   }
 });
 

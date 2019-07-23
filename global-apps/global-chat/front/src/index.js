@@ -5,7 +5,7 @@ import * as serviceWorker from './serviceWorker';
 import cookies from 'js-cookie';
 import AccountService from './modules/account/AccountService';
 import {MuiThemeProvider} from '@material-ui/core/styles';
-import theme from "./components/themeConfig";
+import theme from "./components/themeConfig/themeConfig";
 import CssBaseline from '@material-ui/core/CssBaseline';
 import AccountContext from './modules/account/AccountContext';
 import {SnackbarProvider} from "notistack";

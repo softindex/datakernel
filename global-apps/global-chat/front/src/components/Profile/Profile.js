@@ -2,7 +2,7 @@ import * as React from "react";
 import {withStyles} from '@material-ui/core';
 import profileStyles from './profileStyles'
 import connectService from "../../common/connectService";
-import Dialog from "../UIElements/Dialog/Dialog";
+import Dialog from "../Dialog/Dialog";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogContent from "@material-ui/core/DialogContent";
 import TextField from "@material-ui/core/TextField";
@@ -11,22 +11,25 @@ import Button from "@material-ui/core/Button";
 import Tooltip from "@material-ui/core/Tooltip";
 import IconButton from "@material-ui/core/IconButton";
 import ProfileContext from "../../modules/profile/ProfileContext";
-import * as PropTypes from "prop-types";
 import {withSnackbar} from "notistack";
 
 class Profile extends React.Component {
   textField = React.createRef();
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      name: null,
-      loading: false
-    }
-  }
+  state = {
+    name: null,
+    loading: false
+  };
 
   copyToClipboard = () => {
     navigator.clipboard.writeText(this.textField.current.props.value);
+  };
+
+  onDoubleClick = (event) => {
+    event.preventDefault();
+    const input = document.getElementById('inputId');
+    input.focus();
+    input.setSelectionRange(0, this.textField.current.props.value.length);
   };
 
   onChangeName = (event) => {
@@ -86,16 +89,18 @@ class Profile extends React.Component {
             <TextField
               className={classes.textField}
               value={this.props.publicKey}
+              id="publicKeyField"
               label="Public Key"
               autoFocus
-              disabled={true}
               margin="normal"
               fullWidth
               ref={this.textField}
+              inputProps={{onDoubleClick: this.onDoubleClick, id: 'inputId'}}
               type="text"
               variant="outlined"
               InputProps={{
-                classes: { input: classes.input },
+                readOnly: true,
+                classes: {input: classes.input},
                 endAdornment: (
                   <IconButton
                     className={classes.iconButton}
@@ -129,10 +134,6 @@ class Profile extends React.Component {
     )
   }
 }
-
-Profile.propTypes = {
-  enqueueSnackbar: PropTypes.func.isRequired,
-};
 
 export default connectService(
   ProfileContext,

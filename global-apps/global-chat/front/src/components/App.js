@@ -1,9 +1,9 @@
 import React from 'react';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
-import MainScreen from "./pages/MainScreen/MainScreen";
-import SignUp from "./pages/SignUp/SignUp";
+import MainScreen from "./MainScreen/MainScreen";
+import SignUp from "./SignUp/SignUp";
 import {withSnackbar} from 'notistack';
-import AccountCallback from "./pages/SignUp/AccountCallback";
+import AccountCallback from "./AccountCallback/AccountCallback";
 
 function App() {
   return (

@@ -28,7 +28,6 @@ class ContactsService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       await this._contactsOTStateManager.checkout();
     } catch (err) {

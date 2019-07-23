@@ -1,13 +1,13 @@
 const profileStyles = theme => ({
   iconButton: {
     borderRadius: '100%',
-    marginLeft: `${theme.spacing.unit*2}px`
+    marginLeft: theme.spacing.unit * 2
   },
   saveButton: {
-    right: `${theme.spacing.unit*2}px`
+    right: theme.spacing.unit * 2
   },
   input: {
-    width: 700
+    width: theme.spacing.unit * 85
   }
 });
 

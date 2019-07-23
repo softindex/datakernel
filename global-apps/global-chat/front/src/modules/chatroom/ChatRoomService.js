@@ -27,7 +27,6 @@ class ChatRoomService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       await this._chatOTStateManager.checkout();
     } catch (err) {
