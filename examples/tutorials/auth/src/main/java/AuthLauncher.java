@@ -16,7 +16,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.http.session.SessionServlet.ATTACHMENT_KEY;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 //[START EXAMPLE]
@@ -102,7 +101,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 						//[START REGION_4]
 						.map(GET, "/cookie", request -> Promise.of(
 								HttpResponse.ok200()
-										.withBody(wrapUtf8(request.getAttachment(ATTACHMENT_KEY)))))
+										.withBody(wrapUtf8(request.getAttachment(String.class)))))
 						//[END REGION_4]
 						.map(POST, "/logout", request -> {
 							String id = request.getCookie(SESSION_ID);

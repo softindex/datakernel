@@ -26,7 +26,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class BasicAuth implements AsyncServlet {
 
 	public static final BiPredicate<String, String> SILLY = (login, pass) -> true;
-	public static final String ATTACHMENT_KEY = "basic-auth";
 
 	private static final String PREFIX = "Basic ";
 	private static final Base64.Decoder DECODER = Base64.getDecoder();
@@ -84,7 +83,7 @@ public final class BasicAuth implements AsyncServlet {
 		return credentialsLookup.apply(authData[0], authData[1])
 				.then(result -> {
 					if (result) {
-						request.attach(ATTACHMENT_KEY, new BasicAuthCredentials(authData[0], authData[1]));
+						request.attach(new BasicAuthCredentials(authData[0], authData[1]));
 						return next.serve(request);
 					}
 					return Promise.of(failureResponse.apply(HttpResponse.unauthorized401(challenge)));

@@ -32,6 +32,7 @@ import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -68,7 +69,7 @@ public abstract class HttpMessage {
 	Recyclable bufs;
 
 	protected int maxBodySize;
-	protected Map<String, Object> attachments;
+	protected Map<Object, Object> attachments;
 
 	protected HttpMessage() {
 	}
@@ -270,24 +271,75 @@ public abstract class HttpMessage {
 	}
 
 	/**
-	 * Attaches an arbitrary object to this message.
+	 * Attaches an arbitrary object to this message by its type.
 	 * This is used for context management.
 	 * For example some {@link io.datakernel.http.session.SessionServlet wrapper auth servlet} could
 	 * add some kind of session data here.
 	 */
-	public void attach(String key, Object extra) {
+	public <T> void attach(Type type, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(type, extra);
+	}
+
+	/**
+	 * @see #attach(Type, Object)
+	 */
+	public <T> void attach(Class<T> type, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(type, extra);
+	}
+
+	/**
+	 * @see #attach(Type, Object)
+	 */
+	public void attach(Object extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(extra.getClass(), extra);
+	}
+
+	/**
+	 * Attaches an arbitrary object to this message by string key.
+	 * This is used for context management.
+	 */
+	public <T> void attach(String key, T extra) {
 		if (attachments == null) {
 			attachments = new HashMap<>();
 		}
 		attachments.put(key, extra);
 	}
 
+	/**
+	 * @see #attach(Type, Object)
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(Class<T> type) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(type);
+		return (T) res;
+	}
 
 	/**
-	 * Retrieves an attachment from this message by key.
-	 * This is used for context management.
-	 * For example some {@link io.datakernel.http.session.SessionServlet wrapper auth servlet} could
-	 * add some kind of session data here.
+	 * @see #attach(Type, Object)
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(Type type) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(type);
+		return (T) res;
+	}
+
+	/**
+	 * @see #attach(String, Object)
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> T getAttachment(String key) {
