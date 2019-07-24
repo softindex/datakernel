@@ -45,11 +45,11 @@ public interface Multibinder<T> {
 								new AbstractCompiledBinding<T>(level, index) {
 									final CompiledBinding[] conflictedBindings = bindings.stream()
 											.map(Binding::getCompiler)
-											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings))
+											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings, level, index))
 											.toArray(CompiledBinding[]::new);
 
 									@Override
-									public T createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public T doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 										//noinspection unchecked
 										return reducerFunction.apply(key,
 												Stream.of(conflictedBindings).map(binding -> (T) binding.createInstance(instances, lockedLevel)));

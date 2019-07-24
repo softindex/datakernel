@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Objects;
 
 import static io.datakernel.di.util.Types.ensureEquality;
 
@@ -218,12 +217,13 @@ public abstract class Key<T> {
 			return false;
 		}
 		Key<?> that = (Key<?>) o;
-		return type.equals(that.type) && Objects.equals(name, that.name);
+		return type.equals(that.type) &&
+				((name == that.name) || (name != null && name.equals(that.name)));
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * type.hashCode() + (name != null ? name.hashCode() : 0);
+		return 31 * type.hashCode() + (name == null ? 0 : name.hashCode());
 	}
 
 	@Override

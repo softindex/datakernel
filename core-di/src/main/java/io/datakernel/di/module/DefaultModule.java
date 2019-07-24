@@ -53,11 +53,11 @@ public final class DefaultModule implements Module {
 							instanceBinding.getDependencies(),
 							(compiledBindings, level, index) ->
 									new AbstractCompiledBinding<Object>(level, index) {
-										final CompiledBinding<Object> instanceCompiledBinding = compiledBindings.locate(instanceKey);
-
 										@Override
-										public InstanceProvider<Object> createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										public InstanceProvider<Object> doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 											return new InstanceProvider<Object>() {
+												final CompiledBinding<Object> compiledBinding = compiledBindings.locate(instanceKey);
+
 												@Override
 												public Key<Object> key() {
 													return instanceKey;
@@ -65,7 +65,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public Object get() {
-													return instanceCompiledBinding.getInstance(instances, lockedLevel);
+													return compiledBinding.getInstance(instances, lockedLevel);
 												}
 
 												@Override
@@ -90,11 +90,11 @@ public final class DefaultModule implements Module {
 							instanceBinding.getDependencies(),
 							(compiledBindings, level, index) ->
 									new AbstractCompiledBinding<Object>(level, index) {
-										final CompiledBinding<Object> instanceCompiledBinding = compiledBindings.locate(instanceKey);
-
 										@Override
-										public InstanceFactory<Object> createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										protected InstanceFactory<Object> doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 											return new InstanceFactory<Object>() {
+												final CompiledBinding<Object> compiledBinding = compiledBindings.locate(instanceKey);
+
 												@Override
 												public Key<Object> key() {
 													return instanceKey;
@@ -102,7 +102,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public Object create() {
-													return instanceCompiledBinding.createInstance(instances, lockedLevel);
+													return compiledBinding.createInstance(instances, lockedLevel);
 												}
 
 												@Override
@@ -124,11 +124,11 @@ public final class DefaultModule implements Module {
 							bindingInitializer.getDependencies(),
 							(compiledBindings, level, index) ->
 									new AbstractCompiledBinding<Object>(level, index) {
-										final CompiledBindingInitializer<Object> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
-
 										@Override
-										public Object createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										public Object doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 											return new InstanceInjector<Object>() {
+												final CompiledBindingInitializer<Object> compiledBindingInitializer = bindingInitializer.getCompiler().compile(compiledBindings);
+
 												@Override
 												public Key<Object> key() {
 													return instanceKey;
@@ -136,7 +136,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public void injectInto(Object existingInstance) {
-													consumer.initInstance(existingInstance, instances, lockedLevel);
+													compiledBindingInitializer.initInstance(existingInstance, instances, lockedLevel);
 												}
 
 												@Override
