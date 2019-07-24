@@ -6,7 +6,7 @@ import noteItemStyles from "./noteItemStyles";
 import {Link, withRouter} from "react-router-dom";
 import SimpleMenu from "../../SimpleMenu/SimpleMenu";
 
-class NoteItem extends React.Component {
+class DebugItem extends React.Component {
   state = {hover: false};
 
   toggleHover = () => {
@@ -47,5 +47,5 @@ class NoteItem extends React.Component {
   }
 }
 
-export default withRouter(withStyles(noteItemStyles)(NoteItem));
+export default withRouter(withStyles(noteItemStyles)(DebugItem));
 
