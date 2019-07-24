@@ -57,22 +57,22 @@ public final class Binding<T> {
 	@SuppressWarnings("unchecked")
 	public static <T> Binding<T> to(Key<? extends T> key) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(key))),
-				(compiledBindings, level, index) -> (CompiledBinding<T>) compiledBindings.locate(key));
+				(compiledBindings, scope, index) -> (CompiledBinding<T>) compiledBindings.locate(key));
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
 		return new Binding<>(emptySet(),
-				(compiledBindings, level, index) ->
+				(compiledBindings, scope, index) ->
 						new CompiledBinding<T>() {
 							@Override
-							public T getInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+							public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 								//noinspection unchecked
-								instances[level].lazySet(index, instance);
+								scopedInstances[scope].lazySet(index, instance);
 								return instance;
 							}
 
 							@Override
-							public T createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+							public T createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 								return instance;
 							}
 						});
@@ -99,30 +99,30 @@ public final class Binding<T> {
 			return to(constructor::create);
 		}
 		return new Binding<>(new HashSet<>(asList(dependencies)),
-				(compiledBindings, level, index) -> {
+				(compiledBindings, scope, index) -> {
 					CompiledBinding<?>[] bindings = new CompiledBinding[dependencies.length];
 					for (int i = 0; i < dependencies.length; i++) {
 						bindings[i] = compiledBindings.locate(dependencies[i].getKey());
 					}
-					return level == 0 ?
-							new AbstractRootCompiledBinding<R>(level, index) {
+					return scope == 0 ?
+							new AbstractRootCompiledBinding<R>(scope, index) {
 								@Nullable
 								@Override
-								public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+								public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 									Object[] args = new Object[bindings.length];
 									for (int i = 0; i < bindings.length; i++) {
-										args[i] = bindings[i].getInstance(instances, lockedLevel);
+										args[i] = bindings[i].getInstance(scopedInstances, synchronizedScope);
 									}
 									return constructor.create(args);
 								}
 							} :
-							new AbstractCompiledBinding<R>(level, index) {
+							new AbstractCompiledBinding<R>(scope, index) {
 								@Nullable
 								@Override
-								public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+								public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 									Object[] args = new Object[bindings.length];
 									for (int i = 0; i < bindings.length; i++) {
-										args[i] = bindings[i].getInstance(instances, lockedLevel);
+										args[i] = bindings[i].getInstance(scopedInstances, synchronizedScope);
 									}
 									return constructor.create(args);
 								}
@@ -162,23 +162,23 @@ public final class Binding<T> {
 
 	public static <R> Binding<R> to(@NotNull Constructor0<R> constructor) {
 		return new Binding<>(emptySet(),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create();
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									@Override
-									public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
-										return doCreateInstance(instances, lockedLevel);
+									public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										return doCreateInstance(scopedInstances, synchronizedScope);
 									}
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create();
 									}
 								});
@@ -187,31 +187,31 @@ public final class Binding<T> {
 	public static <T1, R> Binding<R> to(@NotNull Constructor1<T1, R> constructor,
 			@NotNull Key<T1> dependency1) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1))),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope));
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 
 									@Override
-									public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
-										return doCreateInstance(instances, lockedLevel);
+									public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										return doCreateInstance(scopedInstances, synchronizedScope);
 									}
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope));
 									}
 								});
 	}
@@ -219,30 +219,30 @@ public final class Binding<T> {
 	public static <T1, T2, R> Binding<R> to(@NotNull Constructor2<T1, T2, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2))),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope));
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope));
 									}
 								});
 	}
@@ -250,34 +250,34 @@ public final class Binding<T> {
 	public static <T1, T2, T3, R> Binding<R> to(@NotNull Constructor3<T1, T2, T3, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3))),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope));
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope));
 									}
 								});
 	}
@@ -285,9 +285,9 @@ public final class Binding<T> {
 	public static <T1, T2, T3, T4, R> Binding<R> to(@NotNull Constructor4<T1, T2, T3, T4, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4))),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
@@ -295,15 +295,15 @@ public final class Binding<T> {
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel),
-												binding4.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope),
+												binding4.getInstance(scopedInstances, synchronizedScope));
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
@@ -311,12 +311,12 @@ public final class Binding<T> {
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel),
-												binding4.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope),
+												binding4.getInstance(scopedInstances, synchronizedScope));
 									}
 								});
 	}
@@ -324,9 +324,9 @@ public final class Binding<T> {
 	public static <T1, T2, T3, T4, T5, R> Binding<R> to(@NotNull Constructor5<T1, T2, T3, T4, T5, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5))),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
@@ -335,16 +335,16 @@ public final class Binding<T> {
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel),
-												binding4.getInstance(instances, lockedLevel),
-												binding5.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope),
+												binding4.getInstance(scopedInstances, synchronizedScope),
+												binding5.getInstance(scopedInstances, synchronizedScope));
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
@@ -353,13 +353,13 @@ public final class Binding<T> {
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel),
-												binding4.getInstance(instances, lockedLevel),
-												binding5.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope),
+												binding4.getInstance(scopedInstances, synchronizedScope),
+												binding5.getInstance(scopedInstances, synchronizedScope));
 									}
 								});
 	}
@@ -367,9 +367,9 @@ public final class Binding<T> {
 	public static <T1, T2, T3, T4, T5, T6, R> Binding<R> to(@NotNull Constructor6<T1, T2, T3, T4, T5, T6, R> constructor,
 			@NotNull Key<T1> dependency1, @NotNull Key<T2> dependency2, @NotNull Key<T3> dependency3, @NotNull Key<T4> dependency4, @NotNull Key<T5> dependency5, @NotNull Key<T6> dependency6) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6))),
-				(compiledBindings, level, index) ->
-						level == 0 ?
-								new AbstractRootCompiledBinding<R>(level, index) {
+				(compiledBindings, scope, index) ->
+						scope == 0 ?
+								new AbstractRootCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
@@ -379,17 +379,17 @@ public final class Binding<T> {
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel),
-												binding4.getInstance(instances, lockedLevel),
-												binding5.getInstance(instances, lockedLevel),
-												binding6.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope),
+												binding4.getInstance(scopedInstances, synchronizedScope),
+												binding5.getInstance(scopedInstances, synchronizedScope),
+												binding6.getInstance(scopedInstances, synchronizedScope));
 									}
 								} :
-								new AbstractCompiledBinding<R>(level, index) {
+								new AbstractCompiledBinding<R>(scope, index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
@@ -399,14 +399,14 @@ public final class Binding<T> {
 
 									@Nullable
 									@Override
-									public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+									public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create(
-												binding1.getInstance(instances, lockedLevel),
-												binding2.getInstance(instances, lockedLevel),
-												binding3.getInstance(instances, lockedLevel),
-												binding4.getInstance(instances, lockedLevel),
-												binding5.getInstance(instances, lockedLevel),
-												binding6.getInstance(instances, lockedLevel));
+												binding1.getInstance(scopedInstances, synchronizedScope),
+												binding2.getInstance(scopedInstances, synchronizedScope),
+												binding3.getInstance(scopedInstances, synchronizedScope),
+												binding4.getInstance(scopedInstances, synchronizedScope),
+												binding5.getInstance(scopedInstances, synchronizedScope),
+												binding6.getInstance(scopedInstances, synchronizedScope));
 									}
 								});
 	}
@@ -432,9 +432,9 @@ public final class Binding<T> {
 			checkArgument(dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(new HashSet<>(keys)));
 		}
 		return new Binding<>(dependencies, location,
-				(compiledBindings, level, index) ->
-						new AbstractCompiledBinding<R>(level, index) {
-							final CompiledBinding<T> originalBinding = compiler.compileForCreateOnly(compiledBindings, level, index);
+				(compiledBindings, scope, index) ->
+						new AbstractCompiledBinding<R>(scope, index) {
+							final CompiledBinding<T> originalBinding = compiler.compileForCreateOnly(compiledBindings, scope, index);
 							final CompiledBinding[] bindings =
 									keys == null ?
 											null :
@@ -442,15 +442,15 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+							public R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 								Object[] args = null;
 								if (bindings != null) {
 									args = new Object[bindings.length];
 									for (int i = 0; i < bindings.length; i++) {
-										args[i] = bindings[i].getInstance(instances, lockedLevel);
+										args[i] = bindings[i].getInstance(scopedInstances, synchronizedScope);
 									}
 								}
-								T instance = originalBinding.createInstance(instances, lockedLevel);
+								T instance = originalBinding.createInstance(scopedInstances, synchronizedScope);
 								return instance != null ? fn.apply(args, instance) : null;
 							}
 						});
@@ -474,7 +474,7 @@ public final class Binding<T> {
 	@SuppressWarnings("unchecked")
 	public <K> Binding<T> mapDependency(@NotNull Key<K> key, @NotNull Function<? super K, ? extends K> fn) {
 		return new Binding<>(dependencies, location,
-				(compiledBindings, level, index) ->
+				(compiledBindings, scope, index) ->
 						compiler.compile(new CompiledBindingLocator() {
 							@Override
 							public @NotNull <Q> CompiledBinding<Q> locate(Key<Q> k) {
@@ -483,20 +483,20 @@ public final class Binding<T> {
 								return new CompiledBinding<Q>() {
 									@Nullable
 									@Override
-									public Q getInstance(AtomicReferenceArray[] instances, int lockedLevel) {
-										Q instance = originalBinding.getInstance(instances, lockedLevel);
+									public Q getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										Q instance = originalBinding.getInstance(scopedInstances, synchronizedScope);
 										return (Q) fn.apply((K) instance);
 									}
 
 									@Nullable
 									@Override
-									public Q createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
-										Q instance = originalBinding.createInstance(instances, lockedLevel);
+									public Q createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										Q instance = originalBinding.createInstance(scopedInstances, synchronizedScope);
 										return (Q) fn.apply((K) instance);
 									}
 								};
 							}
-						}, level, index));
+						}, scope, index));
 	}
 
 	public Binding<T> addDependencies(@NotNull Class<?>... extraDependencies) {
@@ -521,15 +521,15 @@ public final class Binding<T> {
 		return bindingInitializer == BindingInitializer.noop() ?
 				this :
 				new Binding<>(union(dependencies, bindingInitializer.getDependencies()),
-						(compiledBindings, level, index) ->
-								new AbstractCompiledBinding<T>(level, index) {
-									final CompiledBinding<T> compiledBinding = compiler.compileForCreateOnly(compiledBindings, level, index);
+						(compiledBindings, scope, index) ->
+								new AbstractCompiledBinding<T>(scope, index) {
+									final CompiledBinding<T> compiledBinding = compiler.compileForCreateOnly(compiledBindings, scope, index);
 									final CompiledBindingInitializer<T> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
 
 									@Override
-									public T doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
-										T instance = compiledBinding.createInstance(instances, lockedLevel);
-										consumer.initInstance(instance, instances, lockedLevel);
+									public T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										T instance = compiledBinding.createInstance(scopedInstances, synchronizedScope);
+										consumer.initInstance(instance, scopedInstances, synchronizedScope);
 										return instance;
 									}
 								});

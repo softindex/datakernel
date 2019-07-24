@@ -51,10 +51,10 @@ public final class DefaultModule implements Module {
 					}
 					return new Binding<>(
 							instanceBinding.getDependencies(),
-							(compiledBindings, level, index) ->
-									new AbstractCompiledBinding<Object>(level, index) {
+							(compiledBindings, synchronizedScope, index) ->
+									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
-										public InstanceProvider<Object> doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										public InstanceProvider<Object> doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 											return new InstanceProvider<Object>() {
 												final CompiledBinding<Object> compiledBinding = compiledBindings.locate(instanceKey);
 
@@ -65,7 +65,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public Object get() {
-													return compiledBinding.getInstance(instances, lockedLevel);
+													return compiledBinding.getInstance(scopedInstances, synchronizedScope);
 												}
 
 												@Override
@@ -88,10 +88,10 @@ public final class DefaultModule implements Module {
 					}
 					return new Binding<>(
 							instanceBinding.getDependencies(),
-							(compiledBindings, level, index) ->
-									new AbstractCompiledBinding<Object>(level, index) {
+							(compiledBindings, synchronizedScope, index) ->
+									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
-										protected InstanceFactory<Object> doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										protected InstanceFactory<Object> doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 											return new InstanceFactory<Object>() {
 												final CompiledBinding<Object> compiledBinding = compiledBindings.locate(instanceKey);
 
@@ -102,7 +102,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public Object create() {
-													return compiledBinding.createInstance(instances, lockedLevel);
+													return compiledBinding.createInstance(scopedInstances, synchronizedScope);
 												}
 
 												@Override
@@ -122,10 +122,10 @@ public final class DefaultModule implements Module {
 					BindingInitializer<Object> bindingInitializer = generateInjectingInitializer(instanceKey);
 					return new Binding<>(
 							bindingInitializer.getDependencies(),
-							(compiledBindings, level, index) ->
-									new AbstractCompiledBinding<Object>(level, index) {
+							(compiledBindings, synchronizedScope, index) ->
+									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
-										public Object doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										public Object doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 											return new InstanceInjector<Object>() {
 												final CompiledBindingInitializer<Object> compiledBindingInitializer = bindingInitializer.getCompiler().compile(compiledBindings);
 
@@ -136,7 +136,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public void injectInto(Object existingInstance) {
-													compiledBindingInitializer.initInstance(existingInstance, instances, lockedLevel);
+													compiledBindingInitializer.initInstance(existingInstance, scopedInstances, synchronizedScope);
 												}
 
 												@Override

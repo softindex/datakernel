@@ -20,7 +20,7 @@ public final class Preprocessor {
 	 * This is a special marker {@link BindingCompiler} for phantom bindings that will to be replaced by a generated ones.
 	 * @see #completeBindingGraph
 	 */
-	public static final BindingCompiler<?> TO_BE_GENERATED = (compiledBindings, level, index) -> {
+	public static final BindingCompiler<?> TO_BE_GENERATED = (compiledBindings, synchronizedScope, index) -> {
 		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
 	};
 

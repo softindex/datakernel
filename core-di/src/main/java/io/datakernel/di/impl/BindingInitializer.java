@@ -16,7 +16,7 @@ import static java.util.Collections.emptySet;
  */
 public final class BindingInitializer<T> {
 	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(emptySet(),
-			compiledBindings -> (instance, instances, lockedLevel) -> {});
+			compiledBindings -> (instance, instances, synchronizedScope) -> {});
 
 	private final Set<Dependency> dependencies;
 	private final BindingInitializerCompiler<T> compiler;
@@ -51,19 +51,19 @@ public final class BindingInitializer<T> {
 							.filter(bindingInitializer -> bindingInitializer != NOOP)
 							.map(bindingInitializer -> bindingInitializer.compiler.compile(compiledBindings))
 							.toArray(CompiledBindingInitializer[]::new);
-					if (initializers.length == 0) return (instance, instances, lockedLevel) -> {};
+					if (initializers.length == 0) return (instance, instances, synchronizedScope) -> {};
 					if (initializers.length == 1) return initializers[0];
 					if (initializers.length == 2) {
 						CompiledBindingInitializer<T> initializer0 = initializers[0];
 						CompiledBindingInitializer<T> initializer1 = initializers[1];
-						return (instance, instances, lockedLevel) -> {
-							initializer0.initInstance(instance, instances, lockedLevel);
-							initializer1.initInstance(instance, instances, lockedLevel);
+						return (instance, instances, synchronizedScope) -> {
+							initializer0.initInstance(instance, instances, synchronizedScope);
+							initializer1.initInstance(instance, instances, synchronizedScope);
 						};
 					}
-					return (instance, instances, lockedLevel) -> {
+					return (instance, instances, synchronizedScope) -> {
 						for (CompiledBindingInitializer<T> initializer : initializers) {
-							initializer.initInstance(instance, instances, lockedLevel);
+							initializer.initInstance(instance, instances, synchronizedScope);
 						}
 					};
 				});

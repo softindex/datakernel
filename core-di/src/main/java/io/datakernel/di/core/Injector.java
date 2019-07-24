@@ -208,7 +208,7 @@ public final class Injector {
 		return new DependencyGraph(path, bindingsTrie, compiledBindings, instanceIndexes);
 	}
 
-	private static CompiledBinding<?> compileBinding(int level, Key<?> key,
+	private static CompiledBinding<?> compileBinding(int scope, Key<?> key,
 			Map<Key<?>, Binding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent,
 			Map<Key<?>, CompiledBinding<?>> compiledBindings,
@@ -224,11 +224,11 @@ public final class Injector {
 					@Override
 					public @NotNull <Q> CompiledBinding<Q> locate(Key<Q> key) {
 						//noinspection unchecked
-						return (CompiledBinding<Q>) compileBinding(level, key, bindings, compiledBindingsParent,
+						return (CompiledBinding<Q>) compileBinding(scope, key, bindings, compiledBindingsParent,
 								compiledBindings, instanceIndexes);
 					}
 				},
-				level, index);
+				scope, index);
 		compiledBindings.put(key, compiledBinding);
 		return compiledBinding;
 	}

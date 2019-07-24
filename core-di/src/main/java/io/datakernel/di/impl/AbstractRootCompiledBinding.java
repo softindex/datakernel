@@ -4,31 +4,31 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<R> {
 	private volatile R instance;
-	protected final int level;
+	protected final int scope;
 	protected final int index;
 
-	protected AbstractRootCompiledBinding(int level, int index) {
-		this.level = level;
+	protected AbstractRootCompiledBinding(int scope, int index) {
+		this.scope = scope;
 		this.index = index;
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final R getInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+	public final R getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 		if (instance != null) return instance;
 		synchronized (this) {
 			if (instance != null) return instance;
-			instance = doCreateInstance(instances, lockedLevel);
+			instance = doCreateInstance(scopedInstances, synchronizedScope);
 		}
-		instances[level].lazySet(index, instance);
+		scopedInstances[scope].lazySet(index, instance);
 		return this.instance;
 	}
 
 	@Override
-	public final R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
-		return doCreateInstance(instances, lockedLevel);
+	public final R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+		return doCreateInstance(scopedInstances, synchronizedScope);
 	}
 
-	protected abstract R doCreateInstance(AtomicReferenceArray[] instances, int lockedLevel);
+	protected abstract R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
 
 }
