@@ -10,7 +10,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.checkArgument;
@@ -62,14 +65,14 @@ public final class Binding<T> {
 				(compiledBindings, level, index) ->
 						new CompiledBinding<T>() {
 							@Override
-							public T getInstance(AtomicReferenceArray[] instances) {
+							public T getInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								//noinspection unchecked
-								instances[level].set(index, instance);
+								instances[level].lazySet(index, instance);
 								return instance;
 							}
 
 							@Override
-							public T createInstance(AtomicReferenceArray[] instances) {
+							public T createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return instance;
 							}
 						});
@@ -98,7 +101,7 @@ public final class Binding<T> {
 							new AbstractCompiledBinding<R>(level, index) {
 								@Nullable
 								@Override
-								public R createInstance(AtomicReferenceArray[] instances) {
+								public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 									return constructor.create();
 								}
 							});
@@ -112,10 +115,10 @@ public final class Binding<T> {
 					return new AbstractCompiledBinding<R>(level, index) {
 						@Nullable
 						@Override
-						public R createInstance(AtomicReferenceArray[] instances) {
+						public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 							Object[] args = new Object[bindings.length];
 							for (int i = 0; i < bindings.length; i++) {
-								args[i] = bindings[i].getInstance(instances);
+								args[i] = bindings[i].getInstance(instances, lockedLevel);
 							}
 							return constructor.create(args);
 						}
@@ -159,7 +162,7 @@ public final class Binding<T> {
 						new AbstractCompiledBinding<R>(level, index) {
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create();
 							}
 						});
@@ -174,9 +177,9 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create(
-										binding1.getInstance(instances));
+										binding1.getInstance(instances, lockedLevel));
 							}
 						});
 	}
@@ -191,10 +194,10 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create(
-										binding1.getInstance(instances),
-										binding2.getInstance(instances));
+										binding1.getInstance(instances, lockedLevel),
+										binding2.getInstance(instances, lockedLevel));
 							}
 						});
 	}
@@ -210,11 +213,11 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create(
-										binding1.getInstance(instances),
-										binding2.getInstance(instances),
-										binding3.getInstance(instances));
+										binding1.getInstance(instances, lockedLevel),
+										binding2.getInstance(instances, lockedLevel),
+										binding3.getInstance(instances, lockedLevel));
 							}
 						});
 	}
@@ -231,12 +234,12 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create(
-										binding1.getInstance(instances),
-										binding2.getInstance(instances),
-										binding3.getInstance(instances),
-										binding4.getInstance(instances));
+										binding1.getInstance(instances, lockedLevel),
+										binding2.getInstance(instances, lockedLevel),
+										binding3.getInstance(instances, lockedLevel),
+										binding4.getInstance(instances, lockedLevel));
 							}
 						});
 	}
@@ -254,13 +257,13 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create(
-										binding1.getInstance(instances),
-										binding2.getInstance(instances),
-										binding3.getInstance(instances),
-										binding4.getInstance(instances),
-										binding5.getInstance(instances));
+										binding1.getInstance(instances, lockedLevel),
+										binding2.getInstance(instances, lockedLevel),
+										binding3.getInstance(instances, lockedLevel),
+										binding4.getInstance(instances, lockedLevel),
+										binding5.getInstance(instances, lockedLevel));
 							}
 						});
 	}
@@ -279,14 +282,14 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								return constructor.create(
-										binding1.getInstance(instances),
-										binding2.getInstance(instances),
-										binding3.getInstance(instances),
-										binding4.getInstance(instances),
-										binding5.getInstance(instances),
-										binding6.getInstance(instances));
+										binding1.getInstance(instances, lockedLevel),
+										binding2.getInstance(instances, lockedLevel),
+										binding3.getInstance(instances, lockedLevel),
+										binding4.getInstance(instances, lockedLevel),
+										binding5.getInstance(instances, lockedLevel),
+										binding6.getInstance(instances, lockedLevel));
 							}
 						});
 	}
@@ -322,15 +325,15 @@ public final class Binding<T> {
 
 							@Nullable
 							@Override
-							public R createInstance(AtomicReferenceArray[] instances) {
+							public R createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 								Object[] args = null;
 								if (bindings != null) {
 									args = new Object[bindings.length];
 									for (int i = 0; i < bindings.length; i++) {
-										args[i] = bindings[i].getInstance(instances);
+										args[i] = bindings[i].getInstance(instances, lockedLevel);
 									}
 								}
-								T instance = originalBinding.createInstance(instances);
+								T instance = originalBinding.createInstance(instances, lockedLevel);
 								return instance != null ? fn.apply(args, instance) : null;
 							}
 						});
@@ -363,15 +366,15 @@ public final class Binding<T> {
 								return new CompiledBinding<Q>() {
 									@Nullable
 									@Override
-									public Q getInstance(AtomicReferenceArray[] instances) {
-										Q instance = originalBinding.getInstance(instances);
+									public Q getInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										Q instance = originalBinding.getInstance(instances, lockedLevel);
 										return (Q) fn.apply((K) instance);
 									}
 
 									@Nullable
 									@Override
-									public Q createInstance(AtomicReferenceArray[] instances) {
-										Q instance = originalBinding.createInstance(instances);
+									public Q createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										Q instance = originalBinding.createInstance(instances, lockedLevel);
 										return (Q) fn.apply((K) instance);
 									}
 								};
@@ -404,12 +407,12 @@ public final class Binding<T> {
 						(compiledBindings, level, index) ->
 								new AbstractCompiledBinding<T>(level, index) {
 									final CompiledBinding<T> compiledBinding = compiler.compileForCreateOnly(compiledBindings);
-									final BiConsumer<AtomicReferenceArray[], T> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
+									final CompiledBindingInitializer<T> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
 
 									@Override
-									public T createInstance(AtomicReferenceArray[] instances) {
-										T instance = compiledBinding.createInstance(instances);
-										consumer.accept(instances, instance);
+									public T createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
+										T instance = compiledBinding.createInstance(instances, lockedLevel);
+										consumer.initInstance(instance, instances, lockedLevel);
 										return instance;
 									}
 								});

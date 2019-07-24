@@ -186,8 +186,8 @@ public final class ReflectionUtils {
 				singleton(Dependency.toKey(key, required)),
 				compiledBindings -> {
 					CompiledBinding<Object> binding = compiledBindings.locate(key);
-					return (instances, instance) -> {
-						Object arg = binding.getInstance(instances);
+					return (instance, instances, lockedLevel) -> {
+						Object arg = binding.getInstance(instances, lockedLevel);
 						if (arg == null) {
 							return;
 						}
@@ -209,10 +209,10 @@ public final class ReflectionUtils {
 					CompiledBinding[] argBindings = Stream.of(dependencies)
 							.map(dependency -> compiledBindings.locate(dependency.getKey()))
 							.toArray(CompiledBinding[]::new);
-					return (instances, instance) -> {
+					return (instance, instances, lockedLevel) -> {
 						Object[] args = new Object[argBindings.length];
 						for (int i = 0; i < argBindings.length; i++) {
-							args[i] = argBindings[i].getInstance(instances);
+							args[i] = argBindings[i].getInstance(instances, lockedLevel);
 						}
 						try {
 							method.invoke(instance, args);

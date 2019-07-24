@@ -3,9 +3,9 @@ package io.datakernel.di.impl;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public interface CompiledBinding<R> {
-	R getInstance(AtomicReferenceArray[] instances);
+	R getInstance(AtomicReferenceArray[] instances, int lockedLevel);
 
-	R createInstance(AtomicReferenceArray[] instances);
+	R createInstance(AtomicReferenceArray[] instances, int lockedLevel);
 
 	static <R> CompiledBinding<R> missingOptionalBinding() {
 		//noinspection unchecked
@@ -14,12 +14,12 @@ public interface CompiledBinding<R> {
 
 	CompiledBinding<?> MISSING_OPTIONAL_BINDING = new CompiledBinding<Object>() {
 		@Override
-		public Object getInstance(AtomicReferenceArray[] instances) {
+		public Object getInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 			return null;
 		}
 
 		@Override
-		public Object createInstance(AtomicReferenceArray[] instances) {
+		public Object createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 			return null;
 		}
 	};

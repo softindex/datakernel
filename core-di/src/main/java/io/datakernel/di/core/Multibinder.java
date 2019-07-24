@@ -49,10 +49,10 @@ public interface Multibinder<T> {
 											.toArray(CompiledBinding[]::new);
 
 									@Override
-									public T createInstance(AtomicReferenceArray[] instances) {
+									public T createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 										//noinspection unchecked
 										return reducerFunction.apply(key,
-												Stream.of(conflictedBindings).map(binding -> (T) binding.createInstance(instances)));
+												Stream.of(conflictedBindings).map(binding -> (T) binding.createInstance(instances, lockedLevel)));
 									}
 								});
 	}

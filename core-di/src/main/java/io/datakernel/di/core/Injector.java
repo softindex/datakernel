@@ -246,7 +246,7 @@ public final class Injector {
 	public <T> T getInstance(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
 		if (binding != null) {
-			return (T) binding.getInstance(instances);
+			return (T) binding.getInstance(instances, -1);
 		}
 		throw DIException.cannotConstruct(key, null);
 	}
@@ -263,7 +263,7 @@ public final class Injector {
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
-		return binding != null ? (T) binding.getInstance(instances) : null;
+		return binding != null ? (T) binding.getInstance(instances, -1) : null;
 	}
 
 	/**
@@ -291,7 +291,7 @@ public final class Injector {
 	public <T> T createInstance(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
 		if (binding != null) {
-			return (T) binding.createInstance(instances);
+			return (T) binding.createInstance(instances, -1);
 		}
 		throw DIException.cannotConstruct(key, null);
 	}
@@ -305,7 +305,7 @@ public final class Injector {
 	@Nullable
 	public <T> T createInstanceOrNull(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
-		return binding != null ? (T) binding.createInstance(instances) : null;
+		return binding != null ? (T) binding.createInstance(instances, -1) : null;
 	}
 
 	@Nullable

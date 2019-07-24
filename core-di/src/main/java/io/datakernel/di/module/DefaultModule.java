@@ -5,6 +5,7 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.impl.AbstractCompiledBinding;
 import io.datakernel.di.impl.BindingInitializer;
 import io.datakernel.di.impl.CompiledBinding;
+import io.datakernel.di.impl.CompiledBindingInitializer;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 
@@ -12,7 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.BiConsumer;
 
 import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer;
 import static java.util.Collections.emptyMap;
@@ -56,7 +56,7 @@ public final class DefaultModule implements Module {
 										final CompiledBinding<Object> instanceCompiledBinding = compiledBindings.locate(instanceKey);
 
 										@Override
-										public InstanceProvider<Object> createInstance(AtomicReferenceArray[] instances) {
+										public InstanceProvider<Object> createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 											return new InstanceProvider<Object>() {
 												@Override
 												public Key<Object> key() {
@@ -65,7 +65,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public Object get() {
-													return instanceCompiledBinding.getInstance(instances);
+													return instanceCompiledBinding.getInstance(instances, lockedLevel);
 												}
 
 												@Override
@@ -93,7 +93,7 @@ public final class DefaultModule implements Module {
 										final CompiledBinding<Object> instanceCompiledBinding = compiledBindings.locate(instanceKey);
 
 										@Override
-										public InstanceFactory<Object> createInstance(AtomicReferenceArray[] instances) {
+										public InstanceFactory<Object> createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 											return new InstanceFactory<Object>() {
 												@Override
 												public Key<Object> key() {
@@ -102,7 +102,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public Object create() {
-													return instanceCompiledBinding.createInstance(instances);
+													return instanceCompiledBinding.createInstance(instances, lockedLevel);
 												}
 
 												@Override
@@ -124,10 +124,10 @@ public final class DefaultModule implements Module {
 							bindingInitializer.getDependencies(),
 							(compiledBindings, level, index) ->
 									new AbstractCompiledBinding<Object>(level, index) {
-										final BiConsumer<AtomicReferenceArray[], Object> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
+										final CompiledBindingInitializer<Object> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
 
 										@Override
-										public Object createInstance(AtomicReferenceArray[] instances) {
+										public Object createInstance(AtomicReferenceArray[] instances, int lockedLevel) {
 											return new InstanceInjector<Object>() {
 												@Override
 												public Key<Object> key() {
@@ -136,7 +136,7 @@ public final class DefaultModule implements Module {
 
 												@Override
 												public void injectInto(Object existingInstance) {
-													consumer.accept(instances, existingInstance);
+													consumer.initInstance(existingInstance, instances, lockedLevel);
 												}
 
 												@Override

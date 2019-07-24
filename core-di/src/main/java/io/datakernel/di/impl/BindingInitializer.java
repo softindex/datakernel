@@ -5,8 +5,6 @@ import io.datakernel.di.core.Dependency;
 
 import java.util.Collection;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -17,7 +15,8 @@ import static java.util.Collections.emptySet;
  * and run initialization code for instance after it was created.
  */
 public final class BindingInitializer<T> {
-	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(emptySet(), compiledBindings -> (instances, instance) -> {});
+	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(emptySet(),
+			compiledBindings -> (instance, instances, lockedLevel) -> {});
 
 	private final Set<Dependency> dependencies;
 	private final BindingInitializerCompiler<T> compiler;
@@ -48,23 +47,23 @@ public final class BindingInitializer<T> {
 		return new BindingInitializer<>(bindingInitializers.stream().map(BindingInitializer::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
 				compiledBindings -> {
 					//noinspection unchecked
-					BiConsumer<AtomicReferenceArray[], T>[] initializers = bindingInitializers.stream()
+					CompiledBindingInitializer<T>[] initializers = bindingInitializers.stream()
 							.filter(bindingInitializer -> bindingInitializer != NOOP)
 							.map(bindingInitializer -> bindingInitializer.compiler.compile(compiledBindings))
-							.toArray(BiConsumer[]::new);
-					if (initializers.length == 0) return (instances, instance) -> {};
+							.toArray(CompiledBindingInitializer[]::new);
+					if (initializers.length == 0) return (instance, instances, lockedLevel) -> {};
 					if (initializers.length == 1) return initializers[0];
 					if (initializers.length == 2) {
-						BiConsumer<AtomicReferenceArray[], T> initializer0 = initializers[0];
-						BiConsumer<AtomicReferenceArray[], T> initializer1 = initializers[1];
-						return (instances, instance) -> {
-							initializer0.accept(instances, instance);
-							initializer1.accept(instances, instance);
+						CompiledBindingInitializer<T> initializer0 = initializers[0];
+						CompiledBindingInitializer<T> initializer1 = initializers[1];
+						return (instance, instances, lockedLevel) -> {
+							initializer0.initInstance(instance, instances, lockedLevel);
+							initializer1.initInstance(instance, instances, lockedLevel);
 						};
 					}
-					return (instances, instance) -> {
-						for (BiConsumer<AtomicReferenceArray[], T> initializer : initializers) {
-							initializer.accept(instances, instance);
+					return (instance, instances, lockedLevel) -> {
+						for (CompiledBindingInitializer<T> initializer : initializers) {
+							initializer.initInstance(instance, instances, lockedLevel);
 						}
 					};
 				});
