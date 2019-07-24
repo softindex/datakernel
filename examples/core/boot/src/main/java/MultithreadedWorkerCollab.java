@@ -11,10 +11,11 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * @Author is Alex Syrotenko (@pantokrator)
+ * @author Alex Syrotenko (@pantokrator)
  * Created on 17.07.19.
  */
 
+//[START EXAMPLE]
 public final class MultithreadedWorkerCollab extends AbstractModule {
 
 	@Provides
@@ -68,3 +69,4 @@ public final class MultithreadedWorkerCollab extends AbstractModule {
 
 	}
 }
+//[END EXAMPLE]
