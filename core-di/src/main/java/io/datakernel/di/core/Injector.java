@@ -69,7 +69,7 @@ public final class Injector {
 	private final Trie<Scope, DependencyGraph> scopeTree;
 	private final Map<Key<?>, CompiledBinding<?>> compiledBindings;
 	private final Map<Key<?>, Integer> compiledIndexes;
-	private final AtomicReferenceArray[] instances;
+	private final AtomicReferenceArray[] scopedInstances;
 
 	private static final Object[] NO_OBJECTS = new Object[0];
 	private static final Object NO_KEY = new Object();
@@ -77,8 +77,8 @@ public final class Injector {
 	private Injector(@Nullable Injector parent, Trie<Scope, DependencyGraph> scopeTree) {
 		this.parent = parent;
 		this.scopeTree = scopeTree;
-		this.instances = parent == null ? new AtomicReferenceArray[1] : Arrays.copyOf(parent.instances, parent.instances.length + 1);
-		this.instances[this.instances.length - 1] = new AtomicReferenceArray(scopeTree.get().instanceIndexes.size());
+		this.scopedInstances = parent == null ? new AtomicReferenceArray[1] : Arrays.copyOf(parent.scopedInstances, parent.scopedInstances.length + 1);
+		this.scopedInstances[this.scopedInstances.length - 1] = new AtomicReferenceArray(scopeTree.get().instanceIndexes.size());
 		this.compiledBindings = scopeTree.get().compiledBindings;
 		this.compiledIndexes = scopeTree.get().instanceIndexes;
 	}
@@ -222,7 +222,7 @@ public final class Injector {
 		CompiledBinding<?> compiledBinding = binding.getCompiler().compile(
 				new CompiledBindingLocator() {
 					@Override
-					public @NotNull <Q> CompiledBinding<Q> locate(Key<Q> key) {
+					public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
 						//noinspection unchecked
 						return (CompiledBinding<Q>) compileBinding(scope, key, bindings, compiledBindingsParent,
 								compiledBindings, instanceIndexes);
@@ -246,7 +246,7 @@ public final class Injector {
 	public <T> T getInstance(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
 		if (binding != null) {
-			return (T) binding.getInstance(instances, -1);
+			return (T) binding.getInstance(scopedInstances, -1);
 		}
 		throw DIException.cannotConstruct(key, null);
 	}
@@ -263,7 +263,7 @@ public final class Injector {
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
-		return binding != null ? (T) binding.getInstance(instances, -1) : null;
+		return binding != null ? (T) binding.getInstance(scopedInstances, -1) : null;
 	}
 
 	/**
@@ -291,7 +291,7 @@ public final class Injector {
 	public <T> T createInstance(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
 		if (binding != null) {
-			return (T) binding.createInstance(instances, -1);
+			return (T) binding.createInstance(scopedInstances, -1);
 		}
 		throw DIException.cannotConstruct(key, null);
 	}
@@ -305,7 +305,7 @@ public final class Injector {
 	@Nullable
 	public <T> T createInstanceOrNull(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = compiledBindings.get(key);
-		return binding != null ? (T) binding.createInstance(instances, -1) : null;
+		return binding != null ? (T) binding.createInstance(scopedInstances, -1) : null;
 	}
 
 	@Nullable
@@ -322,7 +322,7 @@ public final class Injector {
 	public <T> T peekInstance(@NotNull Key<T> key) {
 		Integer index = compiledIndexes.get(key);
 		if (index == null) return null;
-		return (T) instances[instances.length - 1].get(index);
+		return (T) scopedInstances[scopedInstances.length - 1].get(index);
 	}
 
 	/**
@@ -338,7 +338,7 @@ public final class Injector {
 	public boolean hasInstance(@NotNull Key<?> key) {
 		Integer index = compiledIndexes.get(key);
 		if (index == null) return false;
-		return instances[instances.length - 1].get(index) != null;
+		return scopedInstances[scopedInstances.length - 1].get(index) != null;
 	}
 
 	/**
@@ -349,7 +349,7 @@ public final class Injector {
 		for (Map.Entry<Key<?>, Integer> entry : compiledIndexes.entrySet()) {
 			Key<?> key = entry.getKey();
 			Integer index = entry.getValue();
-			Object value = instances[instances.length - 1].get(index);
+			Object value = scopedInstances[scopedInstances.length - 1].get(index);
 			if (value != null) {
 				result.put(key, value);
 			}
@@ -370,7 +370,7 @@ public final class Injector {
 		if (index == null)
 			throw new IllegalArgumentException("Key " + key + " is not found in scope " + Arrays.toString(getScope()));
 		//noinspection unchecked
-		instances[instances.length - 1].set(index, instance);
+		scopedInstances[scopedInstances.length - 1].set(index, instance);
 	}
 
 	/**

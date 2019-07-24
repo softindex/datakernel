@@ -185,7 +185,7 @@ public final class ReflectionUtils {
 		return BindingInitializer.of(
 				singleton(Dependency.toKey(key, required)),
 				compiledBindings -> {
-					CompiledBinding<Object> binding = compiledBindings.locate(key);
+					CompiledBinding<Object> binding = compiledBindings.get(key);
 					return (instance, instances, synchronizedScope) -> {
 						Object arg = binding.getInstance(instances, synchronizedScope);
 						if (arg == null) {
@@ -207,7 +207,7 @@ public final class ReflectionUtils {
 				Stream.of(dependencies).collect(toSet()),
 				compiledBindings -> {
 					CompiledBinding[] argBindings = Stream.of(dependencies)
-							.map(dependency -> compiledBindings.locate(dependency.getKey()))
+							.map(dependency -> compiledBindings.get(dependency.getKey()))
 							.toArray(CompiledBinding[]::new);
 					return (instance, instances, synchronizedScope) -> {
 						Object[] args = new Object[argBindings.length];

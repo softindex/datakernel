@@ -57,7 +57,7 @@ public final class Binding<T> {
 	@SuppressWarnings("unchecked")
 	public static <T> Binding<T> to(Key<? extends T> key) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(key))),
-				(compiledBindings, scope, index) -> (CompiledBinding<T>) compiledBindings.locate(key));
+				(compiledBindings, scope, index) -> (CompiledBinding<T>) compiledBindings.get(key));
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
@@ -102,7 +102,7 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) -> {
 					CompiledBinding<?>[] bindings = new CompiledBinding[dependencies.length];
 					for (int i = 0; i < dependencies.length; i++) {
-						bindings[i] = compiledBindings.locate(dependencies[i].getKey());
+						bindings[i] = compiledBindings.get(dependencies[i].getKey());
 					}
 					return scope == 0 ?
 							new AbstractRootCompiledBinding<R>(scope, index) {
@@ -190,7 +190,7 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						scope == 0 ?
 								new AbstractRootCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 
 									@Nullable
 									@Override
@@ -200,7 +200,7 @@ public final class Binding<T> {
 									}
 								} :
 								new AbstractCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 
 									@Override
 									public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
@@ -222,8 +222,8 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						scope == 0 ?
 								new AbstractRootCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 
 									@Nullable
 									@Override
@@ -234,8 +234,8 @@ public final class Binding<T> {
 									}
 								} :
 								new AbstractCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 
 									@Nullable
 									@Override
@@ -253,9 +253,9 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						scope == 0 ?
 								new AbstractRootCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
 
 									@Nullable
 									@Override
@@ -267,9 +267,9 @@ public final class Binding<T> {
 									}
 								} :
 								new AbstractCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
 
 									@Nullable
 									@Override
@@ -288,10 +288,10 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						scope == 0 ?
 								new AbstractRootCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
-									final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
+									final CompiledBinding<T4> binding4 = compiledBindings.get(dependency4);
 
 									@Nullable
 									@Override
@@ -304,10 +304,10 @@ public final class Binding<T> {
 									}
 								} :
 								new AbstractCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
-									final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
+									final CompiledBinding<T4> binding4 = compiledBindings.get(dependency4);
 
 									@Nullable
 									@Override
@@ -327,11 +327,11 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						scope == 0 ?
 								new AbstractRootCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
-									final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
-									final CompiledBinding<T5> binding5 = compiledBindings.locate(dependency5);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
+									final CompiledBinding<T4> binding4 = compiledBindings.get(dependency4);
+									final CompiledBinding<T5> binding5 = compiledBindings.get(dependency5);
 
 									@Nullable
 									@Override
@@ -345,11 +345,11 @@ public final class Binding<T> {
 									}
 								} :
 								new AbstractCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
-									final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
-									final CompiledBinding<T5> binding5 = compiledBindings.locate(dependency5);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
+									final CompiledBinding<T4> binding4 = compiledBindings.get(dependency4);
+									final CompiledBinding<T5> binding5 = compiledBindings.get(dependency5);
 
 									@Nullable
 									@Override
@@ -370,12 +370,12 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						scope == 0 ?
 								new AbstractRootCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
-									final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
-									final CompiledBinding<T5> binding5 = compiledBindings.locate(dependency5);
-									final CompiledBinding<T6> binding6 = compiledBindings.locate(dependency6);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
+									final CompiledBinding<T4> binding4 = compiledBindings.get(dependency4);
+									final CompiledBinding<T5> binding5 = compiledBindings.get(dependency5);
+									final CompiledBinding<T6> binding6 = compiledBindings.get(dependency6);
 
 									@Nullable
 									@Override
@@ -390,12 +390,12 @@ public final class Binding<T> {
 									}
 								} :
 								new AbstractCompiledBinding<R>(scope, index) {
-									final CompiledBinding<T1> binding1 = compiledBindings.locate(dependency1);
-									final CompiledBinding<T2> binding2 = compiledBindings.locate(dependency2);
-									final CompiledBinding<T3> binding3 = compiledBindings.locate(dependency3);
-									final CompiledBinding<T4> binding4 = compiledBindings.locate(dependency4);
-									final CompiledBinding<T5> binding5 = compiledBindings.locate(dependency5);
-									final CompiledBinding<T6> binding6 = compiledBindings.locate(dependency6);
+									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
+									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
+									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
+									final CompiledBinding<T4> binding4 = compiledBindings.get(dependency4);
+									final CompiledBinding<T5> binding5 = compiledBindings.get(dependency5);
+									final CompiledBinding<T6> binding6 = compiledBindings.get(dependency6);
 
 									@Nullable
 									@Override
@@ -438,7 +438,7 @@ public final class Binding<T> {
 							final CompiledBinding[] bindings =
 									keys == null ?
 											null :
-											keys.stream().map(compiledBindings::locate).toArray(CompiledBinding[]::new);
+											keys.stream().map(compiledBindings::get).toArray(CompiledBinding[]::new);
 
 							@Nullable
 							@Override
@@ -477,8 +477,8 @@ public final class Binding<T> {
 				(compiledBindings, scope, index) ->
 						compiler.compile(new CompiledBindingLocator() {
 							@Override
-							public @NotNull <Q> CompiledBinding<Q> locate(Key<Q> k) {
-								CompiledBinding<Q> originalBinding = compiledBindings.locate(k);
+							public @NotNull <Q> CompiledBinding<Q> get(Key<Q> k) {
+								CompiledBinding<Q> originalBinding = compiledBindings.get(k);
 								if (!k.equals(key)) return originalBinding;
 								return new CompiledBinding<Q>() {
 									@Nullable

@@ -263,11 +263,7 @@ public final class Types {
 		return type;
 	}
 
-	@Contract("null -> null")
 	public static Type ensureEquality(Type type) {
-		if (type == null) {
-			return null;
-		}
 		if (type instanceof ParameterizedTypeImpl) {
 			return type;
 		}

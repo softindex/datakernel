@@ -76,7 +76,7 @@ public final class Preprocessor {
 		BindingLocator bindings = new BindingLocator() {
 			@Override
 			@Nullable
-			public <T> Binding<T> locate(Key<T> key) {
+			public <T> Binding<T> get(Key<T> key) {
 				Binding<T> binding = (Binding<T>) generated.get(key);
 				if (binding == null) {
 					binding = (Binding<T>) known.get(key);
@@ -96,7 +96,7 @@ public final class Preprocessor {
 
 				// ensure that its dependencies are generated if necessary
 				for (Dependency dependency : binding.getDependencies()) {
-					locate(dependency.getKey());
+					get(dependency.getKey());
 				}
 				return binding;
 			}
@@ -107,7 +107,7 @@ public final class Preprocessor {
 			Binding<Object> binding = (Binding<Object>) entry.getValue();
 
 			if (binding.getCompiler() == TO_BE_GENERATED) {
-				Binding<Object> generatedBinding = bindings.locate(key);
+				Binding<Object> generatedBinding = bindings.get(key);
 				if (generatedBinding == null) {
 					// these bindings are the ones requested with plain `bind(...);` call, here we fail fast
 					// see comment below where dependencies are generated
@@ -127,7 +127,7 @@ public final class Preprocessor {
 				if (known.containsKey(depKey)) {
 					continue;
 				}
-				known.put(depKey, bindings.locate(depKey)); // put even nulls in known just as a little optimization
+				known.put(depKey, bindings.get(depKey)); // put even nulls in known just as a little optimization
 				// when generating dependencies we don't fail and just do nothing
 				// unsatisfied dependency check will collect all of them and make a nice error
 			}

@@ -18,7 +18,7 @@ public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 		R instance = (R) array.get(index);
 		if (instance != null) return instance;
 		if (synchronizedScope == scope) {
-			instance = doCreateInstance(scopedInstances, scope);
+			instance = doCreateInstance(scopedInstances, synchronizedScope);
 			array.set(index, instance);
 			return instance;
 		}
@@ -34,7 +34,7 @@ public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 
 	@Override
 	public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-		if (synchronizedScope == scope) return doCreateInstance(scopedInstances, scope);
+		if (synchronizedScope == scope) return doCreateInstance(scopedInstances, synchronizedScope);
 		AtomicReferenceArray array = scopedInstances[scope];
 		//noinspection SynchronizationOnLocalVariableOrMethodParameter
 		synchronized (array) {

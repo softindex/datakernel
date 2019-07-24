@@ -45,7 +45,7 @@ public final class DefaultModule implements Module {
 		generators.put(InstanceProvider.class, singleton(
 				(bindings, scope, key) -> {
 					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
-					Binding<Object> instanceBinding = bindings.locate(instanceKey);
+					Binding<Object> instanceBinding = bindings.get(instanceKey);
 					if (instanceBinding == null) {
 						return null;
 					}
@@ -56,7 +56,7 @@ public final class DefaultModule implements Module {
 										@Override
 										public InstanceProvider<Object> doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 											return new InstanceProvider<Object>() {
-												final CompiledBinding<Object> compiledBinding = compiledBindings.locate(instanceKey);
+												final CompiledBinding<Object> compiledBinding = compiledBindings.get(instanceKey);
 
 												@Override
 												public Key<Object> key() {
@@ -82,7 +82,7 @@ public final class DefaultModule implements Module {
 		generators.put(InstanceFactory.class, singleton(
 				(bindings, scope, key) -> {
 					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
-					Binding<Object> instanceBinding = bindings.locate(instanceKey);
+					Binding<Object> instanceBinding = bindings.get(instanceKey);
 					if (instanceBinding == null) {
 						return (Binding<Object>) null;
 					}
@@ -93,7 +93,7 @@ public final class DefaultModule implements Module {
 										@Override
 										protected InstanceFactory<Object> doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 											return new InstanceFactory<Object>() {
-												final CompiledBinding<Object> compiledBinding = compiledBindings.locate(instanceKey);
+												final CompiledBinding<Object> compiledBinding = compiledBindings.get(instanceKey);
 
 												@Override
 												public Key<Object> key() {
