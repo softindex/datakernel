@@ -238,6 +238,7 @@ public abstract class HttpMessage {
 	/**
 	 * Consumes the body stream if this message works in {@link #MUST_LOAD_BODY streaming mode} and collects
 	 * it to a single {@link ByteBuf} or just returns the body if message is not in streaming mode.
+	 *
 	 * @param maxBodySize max number of bytes to load from the stream, an exception is returned if exceeded.
 	 */
 	public Promise<ByteBuf> loadBody(int maxBodySize) {
@@ -348,6 +349,13 @@ public abstract class HttpMessage {
 		}
 		Object res = attachments.get(key);
 		return (T) res;
+	}
+
+	/**
+	 * Retrieves a set of all attachment keys for this HttpMessage
+	 */
+	public Set<Object> getAttachmentKeys() {
+		return attachments.keySet();
 	}
 
 	/**
