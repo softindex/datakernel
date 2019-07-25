@@ -13,4 +13,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target(ANNOTATION_TYPE)
 @Retention(RUNTIME)
 public @interface ScopeAnnotation {
+	boolean threadsafe() default true;
 }

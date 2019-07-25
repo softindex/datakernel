@@ -51,7 +51,7 @@ public final class DefaultModule implements Module {
 					}
 					return new Binding<>(
 							instanceBinding.getDependencies(),
-							(compiledBindings, synchronizedScope, index) ->
+							(compiledBindings, threadsafe, synchronizedScope, index) ->
 									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
 										public InstanceProvider<Object> doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
@@ -88,7 +88,7 @@ public final class DefaultModule implements Module {
 					}
 					return new Binding<>(
 							instanceBinding.getDependencies(),
-							(compiledBindings, synchronizedScope, index) ->
+							(compiledBindings, threadsafe, synchronizedScope, index) ->
 									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
 										protected InstanceFactory<Object> doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
@@ -122,7 +122,7 @@ public final class DefaultModule implements Module {
 					BindingInitializer<Object> bindingInitializer = generateInjectingInitializer(instanceKey);
 					return new Binding<>(
 							bindingInitializer.getDependencies(),
-							(compiledBindings, synchronizedScope, index) ->
+							(compiledBindings, threadsafe, synchronizedScope, index) ->
 									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
 										public Object doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {

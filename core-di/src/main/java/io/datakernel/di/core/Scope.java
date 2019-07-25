@@ -15,9 +15,11 @@ import static io.datakernel.di.util.Utils.checkArgument;
  */
 public final class Scope extends AbstractAnnotation {
 	public static final Scope[] UNSCOPED = new Scope[0];
+	private final boolean threadsafe;
 
-	protected Scope(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {
+	protected Scope(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation, boolean threadsafe) {
 		super(annotationType, annotation);
+		this.threadsafe = threadsafe;
 	}
 
 	/**
@@ -25,8 +27,9 @@ public final class Scope extends AbstractAnnotation {
 	 */
 	public static Scope of(Class<? extends Annotation> annotationType) {
 		checkArgument(isMarker(annotationType), "Scope by annotation type only accepts marker annotations with no arguments");
-		checkArgument(annotationType.isAnnotationPresent(ScopeAnnotation.class), "Only annotations annotated with @ScopeAnnotation meta-annotation are allowed");
-		return new Scope(annotationType, null);
+		ScopeAnnotation scopeAnnotation = annotationType.getAnnotation(ScopeAnnotation.class);
+		checkArgument(scopeAnnotation != null, "Only annotations annotated with @ScopeAnnotation meta-annotation are allowed");
+		return new Scope(annotationType, null, scopeAnnotation.threadsafe());
 	}
 
 	/**
@@ -34,9 +37,14 @@ public final class Scope extends AbstractAnnotation {
 	 */
 	public static Scope of(Annotation annotation) {
 		Class<? extends Annotation> annotationType = annotation.annotationType();
-		checkArgument(annotationType.isAnnotationPresent(ScopeAnnotation.class), "Only annotations annotated with @ScopeAnnotation meta-annotation are allowed");
+		ScopeAnnotation scopeAnnotation = annotationType.getAnnotation(ScopeAnnotation.class);
+		checkArgument(scopeAnnotation != null, "Only annotations annotated with @ScopeAnnotation meta-annotation are allowed");
 		return isMarker(annotationType) ?
-				new Scope(annotationType, null) :
-				new Scope(annotationType, annotation);
+				new Scope(annotationType, null, scopeAnnotation.threadsafe()) :
+				new Scope(annotationType, annotation, scopeAnnotation.threadsafe());
+	}
+
+	public boolean isThreadsafe() {
+		return threadsafe;
 	}
 }

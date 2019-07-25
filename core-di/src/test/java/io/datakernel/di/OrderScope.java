@@ -13,9 +13,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * Created on 12.07.19.
  */
 //[START EXAMPLE]
-@ScopeAnnotation
+@ScopeAnnotation(threadsafe = false)
 @Target({ElementType.METHOD})
 @Retention(RUNTIME)
-public @interface Order {
+public @interface OrderScope {
 }
 //[END EXAMPLE]

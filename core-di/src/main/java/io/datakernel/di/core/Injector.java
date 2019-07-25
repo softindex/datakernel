@@ -202,13 +202,13 @@ public final class Injector {
 		Map<Key<?>, Integer> instanceIndexes = new HashMap<>();
 		for (Key<?> key : bindings.keySet()) {
 			compiledBindings.put(key,
-					compileBinding(path.length, key, bindings, compiledBindingsParent, compiledBindings, instanceIndexes));
+					compileBinding(path.length, path.length == 0 || path[path.length - 1].isThreadsafe(), key, bindings, compiledBindingsParent, compiledBindings, instanceIndexes));
 		}
 		compiledBindingsParent.forEach(compiledBindings::putIfAbsent);
 		return new DependencyGraph(path, bindingsTrie, compiledBindings, instanceIndexes);
 	}
 
-	private static CompiledBinding<?> compileBinding(int scope, Key<?> key,
+	private static CompiledBinding<?> compileBinding(int scope, boolean threadsafe, Key<?> key,
 			Map<Key<?>, Binding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent,
 			Map<Key<?>, CompiledBinding<?>> compiledBindings,
@@ -224,10 +224,10 @@ public final class Injector {
 					@Override
 					public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
 						//noinspection unchecked
-						return (CompiledBinding<Q>) compileBinding(scope, key, bindings, compiledBindingsParent,
-								compiledBindings, instanceIndexes);
+						return (CompiledBinding<Q>) compileBinding(scope, threadsafe, key, bindings,
+								compiledBindingsParent, compiledBindings, instanceIndexes);
 					}
-				},
+				}, threadsafe,
 				scope, index);
 		compiledBindings.put(key, compiledBinding);
 		return compiledBinding;

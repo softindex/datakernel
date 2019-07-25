@@ -33,7 +33,7 @@ import static junit.framework.TestCase.*;
  */
 public class DIFollowUpTest {
 	//[START REGION_9]
-	public static final Scope ORDER_SCOPE = Scope.of(Order.class);
+	public static final Scope ORDER_SCOPE = Scope.of(OrderScope.class);
 	//[END REGION_9]
 
 	static class Kitchen {
@@ -294,25 +294,25 @@ public class DIFollowUpTest {
 			Kitchen kitchen() { return new Kitchen(); }
 
 			@Provides
-			@Order
+			@OrderScope
 			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
 
 			@Provides
-			@Order
+			@OrderScope
 			Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
 
 			@Provides
-			@Order
+			@OrderScope
 			Flour flour() { return new Flour("Kyivska", 100.0f); }
 
 			@Provides
-			@Order
+			@OrderScope
 			Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
 				return new Pastry(sugar, butter, flour);
 			}
 
 			@Provides
-			@Order
+			@OrderScope
 			Cookie cookie(Pastry pastry) {
 				return new Cookie(pastry);
 			}

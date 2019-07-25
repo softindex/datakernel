@@ -41,15 +41,15 @@ public interface Multibinder<T> {
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
 		return (key, bindings) ->
 				new Binding<>(bindings.stream().map(Binding::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
-						(compiledBindings, scope, index) ->
+						(compiledBindings, threadsafe, scope, index) ->
 								new AbstractCompiledBinding<T>(scope, index) {
 									final CompiledBinding[] conflictedBindings = bindings.stream()
 											.map(Binding::getCompiler)
-											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings, scope, index))
+											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings, true, scope, index))
 											.toArray(CompiledBinding[]::new);
 
 									@Override
-									public T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										//noinspection unchecked
 										return reducerFunction.apply(key,
 												Stream.of(conflictedBindings).map(binding -> (T) binding.createInstance(scopedInstances, synchronizedScope)));
