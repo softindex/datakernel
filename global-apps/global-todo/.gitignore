@@ -4,5 +4,5 @@ node_modules
 build
 npm-debug.log
 target
-globalfs-app.properties
+global-todo.properties
 front/config.js
