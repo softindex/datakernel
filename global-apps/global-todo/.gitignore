@@ -1,0 +1,8 @@
+.idea
+*.iml
+node_modules
+build
+npm-debug.log
+target
+globalfs-app.properties
+front/config.js

@@ -19,6 +19,7 @@
     <module>global-fs-cli</module>
     <module>global-chat</module>
     <module>global-editor</module>
+    <module>global-todo</module>
     <module>global-apps-common</module>
   </modules>
 
