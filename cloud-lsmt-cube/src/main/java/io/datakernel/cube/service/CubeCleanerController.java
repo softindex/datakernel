@@ -171,6 +171,8 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 				.whenResult(findResult -> {
 					if (skipSnapshots <= 0) {
 						cb.set(Optional.of(findResult.getCommit()));
+					} else if (findResult.getCommitParents().isEmpty()) {
+						cb.set(Optional.empty());
 					} else {
 						findSnapshotImpl(findResult.getCommitParents(), skipSnapshots - 1, cb);
 					}
