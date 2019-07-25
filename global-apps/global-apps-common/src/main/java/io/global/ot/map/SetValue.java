@@ -1,36 +1,36 @@
-package io.global.ot.dictionary;
+package io.global.ot.map;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
-public final class SetOperation {
+public final class SetValue<T> {
 	@Nullable
-	private final String prev;
+	private final T prev;
 	@Nullable
-	private final String next;
+	private final T next;
 
-	public SetOperation(@Nullable String prev, @Nullable String next) {
+	private SetValue(@Nullable T prev, @Nullable T next) {
 		this.prev = prev;
 		this.next = next;
 	}
 
-	public static SetOperation set(@Nullable String prevValue, @Nullable String nextValue) {
-		return new SetOperation(prevValue, nextValue);
+	public static <T> SetValue<T> set(@Nullable T prevValue, @Nullable T nextValue) {
+		return new SetValue<>(prevValue, nextValue);
 	}
 
 	@Nullable
-	public String getPrev() {
+	public T getPrev() {
 		return prev;
 	}
 
 	@Nullable
-	public String getNext() {
+	public T getNext() {
 		return next;
 	}
 
-	public SetOperation invert() {
-		return new SetOperation(next, prev);
+	public SetValue<T> invert() {
+		return new SetValue<>(next, prev);
 	}
 
 	public boolean isEmpty() {
@@ -42,7 +42,7 @@ public final class SetOperation {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SetOperation that = (SetOperation) o;
+		SetValue that = (SetValue) o;
 
 		if (prev != null ? !prev.equals(that.prev) : that.prev != null) return false;
 		if (next != null ? !next.equals(that.next) : that.next != null) return false;

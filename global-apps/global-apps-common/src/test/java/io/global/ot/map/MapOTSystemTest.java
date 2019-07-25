@@ -1,4 +1,4 @@
-package io.global.ot.dictionary;
+package io.global.ot.map;
 
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.TransformResult;
@@ -10,100 +10,100 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.util.CollectionUtils.map;
-import static io.global.ot.dictionary.SetOperation.set;
+import static io.global.ot.map.SetValue.set;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
-public final class DictionaryOTSystemTest {
-	private final OTSystem<DictionaryOperation> SYSTEM = DictionaryOTSystem.createOTSystem();
+public final class MapOTSystemTest {
+	private final OTSystem<MapOperation<String, String>> SYSTEM = MapOTSystem.createOTSystem(String::compareTo);
 
 	@Test
 	public void testIsEmpty() {
-		assertTrue(SYSTEM.isEmpty(DictionaryOperation.of(map())));
-		assertTrue(SYSTEM.isEmpty(DictionaryOperation.of(map("a", set(null, null)))));
-		assertTrue(SYSTEM.isEmpty(DictionaryOperation.of(map("a", set("a", "a")))));
-		assertFalse(SYSTEM.isEmpty(DictionaryOperation.of(map("a", set(null, "")))));
+		assertTrue(SYSTEM.isEmpty(MapOperation.of(map())));
+		assertTrue(SYSTEM.isEmpty(MapOperation.of(map("a", set(null, null)))));
+		assertTrue(SYSTEM.isEmpty(MapOperation.of(map("a", set("a", "a")))));
+		assertFalse(SYSTEM.isEmpty(MapOperation.of(map("a", set(null, "")))));
 	}
 
 	@Test
 	public void testInversion() {
-		DictionaryOTState state = new DictionaryOTState();
-		DictionaryOperation initialOp = DictionaryOperation.of(map(
+		MapOTState<String, String> state = new MapOTState<>();
+		MapOperation<String, String> initialOp = MapOperation.of(map(
 				"a", set(null, "val_a"),
 				"b", set(null, "val_b"),
 				"c", set(null, "val_c")
 		));
 		state.apply(initialOp);
-		Map<String, String> dictionary = state.getDictionary();
-		Map<String, String> initialDictionary = new HashMap<>(dictionary);
-		List<DictionaryOperation> ops = asList(
-				DictionaryOperation.of(map(
+		Map<String, String> stateMap = state.getMap();
+		Map<String, String> initialMap = new HashMap<>(stateMap);
+		List<MapOperation<String, String>> ops = asList(
+				MapOperation.of(map(
 						"a", set("val_a", "new_val_a"),
 						"b", set("val_b", "val_bb"),
 						"c", set("val_c", "new_val_c"))),
-				DictionaryOperation.of(map(
+				MapOperation.of(map(
 						"c", set("new_val_c", "new_val_cc"),
 						"d", set(null, "val_d")))
 		);
 		ops.forEach(state::apply);
-		assertNotEquals(initialDictionary, dictionary);
-		List<DictionaryOperation> inverted = SYSTEM.invert(ops);
+		assertNotEquals(initialMap, stateMap);
+		List<MapOperation<String, String>> inverted = SYSTEM.invert(ops);
 		inverted.forEach(state::apply);
-		assertEquals(initialDictionary, dictionary);
+		assertEquals(initialMap, stateMap);
 	}
 
 	@Test
 	public void testTransform() throws OTTransformException {
-		DictionaryOTState stateLeft = new DictionaryOTState();
-		DictionaryOTState stateRight = new DictionaryOTState();
+		MapOTState<String, String> stateLeft = new MapOTState<>();
+		MapOTState<String, String> stateRight = new MapOTState<>();
 
-		DictionaryOperation left = DictionaryOperation.of(map(
+		MapOperation<String, String> left = MapOperation.of(map(
 				"a", set(null, "ab"),
 				"b", set("b", "cd"),
 				"c", set(null, "ef")
 		));
 		stateLeft.apply(left);
-		DictionaryOperation right = DictionaryOperation.of(map(
+		MapOperation<String, String> right = MapOperation.of(map(
 				"a", set(null, "bb"),
 				"b", set("b", null),
 				"c", set(null, "ef")
 		));
 		stateRight.apply(right);
 
-		TransformResult<DictionaryOperation> transform = SYSTEM.transform(left, right);
+		TransformResult<MapOperation<String, String>> transform = SYSTEM.transform(left, right);
 		transform.left.forEach(stateLeft::apply);
 		transform.right.forEach(stateRight::apply);
-		assertEquals(stateLeft.getDictionary(), stateRight.getDictionary());
+		assertEquals(stateLeft.getMap(), stateRight.getMap());
 
-		Map<Object, Object> expected = map(
+		Map<String, String> expected = map(
 				"a", "bb",
 				"b", "cd",
 				"c", "ef"
 		);
-		assertEquals(expected, stateLeft.getDictionary());
+		assertEquals(expected, stateLeft.getMap());
 	}
 
 	@Test
 	public void testSquash() {
-		List<DictionaryOperation> ops = asList(
-				DictionaryOperation.of(map(
+		List<MapOperation<String, String>> ops = asList(
+				MapOperation.of(map(
 						"a", set(null, "val_a"),
 						"b", set(null, "val_b"),
 						"c", set(null, "val_c")
 				)),
-				DictionaryOperation.of(map(
+				MapOperation.of(map(
 						"a", set("val_a", "new_val_a"),
 						"b", set("val_b", null),
 						"c", set("val_c", "new_val_c")
 				)),
-				DictionaryOperation.of(map(
+				MapOperation.of(map(
 						"c", set("new_val_c", "new_val_cc"),
 						"d", set(null, "val_d")
 				))
 		);
 
-		assertEquals(singletonList(DictionaryOperation.of(map(
+		assertEquals(singletonList(MapOperation.of(map(
 				"a", set(null, "new_val_a"),
 				"c", set(null, "new_val_cc"),
 				"d", set(null, "val_d")
