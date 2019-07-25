@@ -15,8 +15,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 
 /**
  * This module provides a set of default generators.
@@ -50,7 +49,7 @@ public final class DefaultModule implements Module {
 						return null;
 					}
 					return new Binding<>(
-							instanceBinding.getDependencies(),
+							emptySet(),
 							(compiledBindings, threadsafe, synchronizedScope, index) ->
 									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override
@@ -87,7 +86,7 @@ public final class DefaultModule implements Module {
 						return (Binding<Object>) null;
 					}
 					return new Binding<>(
-							instanceBinding.getDependencies(),
+							emptySet(),
 							(compiledBindings, threadsafe, synchronizedScope, index) ->
 									new AbstractCompiledBinding<Object>(synchronizedScope, index) {
 										@Override

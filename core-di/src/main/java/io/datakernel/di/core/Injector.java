@@ -214,9 +214,11 @@ public final class Injector {
 			Map<Key<?>, CompiledBinding<?>> compiledBindings,
 			Map<Key<?>, Integer> instanceIndexes) {
 		if (compiledBindings.containsKey(key)) return compiledBindings.get(key);
-		if (compiledBindingsParent.containsKey(key)) return compiledBindingsParent.get(key);
 		Binding<?> binding = bindings.get(key);
-		if (binding == null) return missingOptionalBinding();
+		if (binding == null) {
+			if (compiledBindingsParent.containsKey(key)) return compiledBindingsParent.get(key);
+			return missingOptionalBinding();
+		}
 		int index = instanceIndexes.size();
 		instanceIndexes.put(key, index);
 		CompiledBinding<?> compiledBinding = binding.getCompiler().compile(

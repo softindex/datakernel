@@ -332,6 +332,33 @@ public final class TestDI {
 		}
 	}
 
+	static class RecursiveX {
+		private final RecursiveY y;
+
+		@Inject
+		RecursiveX(RecursiveY y) {this.y = y;}
+	}
+
+	static class RecursiveY {
+		private final InstanceProvider<RecursiveX> xProvider;
+
+		@Inject
+		RecursiveY(InstanceProvider<RecursiveX> provider) {xProvider = provider;}
+	}
+
+	@Test
+	public void cyclicInjects2() {
+		Module module = new AbstractModule() {{
+			bind(RecursiveX.class);
+		}};
+
+		Injector injector = Injector.of(module);
+
+		RecursiveX x = injector.getInstance(RecursiveX.class);
+		RecursiveY y = injector.getInstance(RecursiveY.class);
+		assertSame(x, y.xProvider.get());
+	}
+
 	@Test
 	public void optionalInjects() {
 
