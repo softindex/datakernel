@@ -20,7 +20,6 @@ import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
@@ -135,7 +134,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 		transform(0, (bindings, scope, key, binding) -> {
 			if (!key.equals(KEY_OF_CONFIG)) return binding;
-			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>(OnStart.class) {};
+			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 			return ((Binding<Config>) (Binding) binding)
 					.addDependencies(completionStageKey)
 					.mapInstance(asList(completionStageKey), (args, config) -> {

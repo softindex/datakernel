@@ -50,7 +50,7 @@ public class RpcExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.defaultInstance();
+		return ServiceGraphModule.create();
 	}
 
 	@Override

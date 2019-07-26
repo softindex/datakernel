@@ -6,9 +6,11 @@ import io.datakernel.di.util.Trie;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
+import static io.datakernel.di.module.Modules.rebinder;
 import static java.util.Collections.emptyMap;
 
 /**
@@ -35,6 +37,22 @@ public interface Module {
 
 	default Module transformWith(Function<Module, Module> fn) {
 		return fn.apply(this);
+	}
+
+	default <T, V> Module rebind(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
+		return rebind(rebinder(componentKey, from, to));
+	}
+
+	default <V> Module rebind(Key<V> from, Key<? extends V> to) {
+		return rebind(rebinder(from, to));
+	}
+
+	default <V> Module rebind(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
+		return Modules.rebind(this, rebinder);
+	}
+
+	default <V> Module rebind(Key<?> componentKey, Function<Binding<V>, Binding<? extends V>> fn) {
+		return Modules.rebind(this, rebinder(componentKey, fn));
 	}
 
 	/**

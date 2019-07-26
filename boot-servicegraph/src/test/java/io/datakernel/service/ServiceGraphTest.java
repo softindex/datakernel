@@ -60,7 +60,7 @@ public class ServiceGraphTest {
 
 		@Override
 		protected void configure() {
-			install(ServiceGraphModule.defaultInstance());
+			install(ServiceGraphModule.create());
 		}
 
 		@Provides

@@ -5,6 +5,9 @@ import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
@@ -13,7 +16,6 @@ import static java.util.Collections.emptyMap;
 /**
  * This class contains a set of utilities for working with {@link Module modules}.
  */
-@SuppressWarnings("WeakerAccess")
 public final class Modules {
 	private Modules() {
 	}
@@ -146,6 +148,60 @@ public final class Modules {
 		public Map<Key<?>, Multibinder<?>> getMultibinders() {
 			return multibinders;
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Module rebind(Module module, BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
+		return new ModuleImpl(
+				module.getBindings().map(bindingsMap -> transformMultimapValues(bindingsMap, rebinder)),
+				transformMultimapValues(module.getBindingTransformers(),
+						(priority, bindingTransformer) ->
+								(bindings, scope, key, binding) -> {
+									Binding<Object> transformed = ((BindingTransformer<Object>) bindingTransformer).transform(bindings, scope, key, binding);
+									if (transformed == binding) return binding;
+									return (Binding<Object>) rebinder.apply(key, transformed);
+								}),
+				transformMultimapValues(module.getBindingGenerators(),
+						(clazz, bindingGenerator) ->
+								(provider, scope, key) -> {
+									Binding<Object> generated = ((BindingGenerator<Object>) bindingGenerator).generate(provider, scope, key);
+									if (generated == null) return null;
+									return (Binding<Object>) rebinder.apply(key, generated);
+								}),
+				module.getMultibinders());
+	}
+
+	@SafeVarargs
+	public static BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(BiFunction<Key<?>, Binding<?>, Binding<?>>... rebinders) {
+		return rebinder(Arrays.asList(rebinders));
+	}
+
+	public static BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(List<BiFunction<Key<?>, Binding<?>, Binding<?>>> rebinders) {
+		return rebinders.stream().reduce(
+				(key, binding) -> binding,
+				(fn1, fn2) -> (key, binding) -> fn2.apply(key, fn1.apply(key, binding)));
+	}
+
+	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
+		return (k, binding) -> {
+			if (!componentKey.equals(k)) return binding;
+			return binding.rebindDependency(from, to);
+		};
+	}
+
+	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<T> componentKey, Function<Binding<V>, Binding<? extends V>> fn) {
+		return (k, binding) -> {
+			if (!componentKey.equals(k)) return binding;
+			//noinspection unchecked
+			return fn.apply((Binding<V>) binding);
+		};
+	}
+
+	public static <V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<V> from, Key<? extends V> to) {
+		return (k, binding) ->
+				binding.getDependencies().stream().map(Dependency::getKey).anyMatch(Predicate.isEqual(from)) ?
+						binding.rebindDependency(from, to) :
+						binding;
 	}
 
 }

@@ -4,6 +4,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
@@ -11,6 +12,7 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
@@ -18,6 +20,7 @@ import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
 
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
@@ -75,9 +78,11 @@ public final class GlobalFilesApp extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
-				ConfigModule.create().printEffectiveConfig(),
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				override(
 						new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))

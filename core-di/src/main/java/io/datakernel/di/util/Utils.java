@@ -78,7 +78,7 @@ public final class Utils {
 						Entry::getKey,
 						entry -> entry.getValue()
 								.stream()
-								.map(binding -> fn.apply(entry.getKey(), binding))
+								.map(v -> fn.apply(entry.getKey(), v))
 								.collect(toSet())));
 	}
 

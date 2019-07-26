@@ -40,7 +40,7 @@ public class DatakernelServiceRunnerTest {
 		@Override
 		protected void configure() {
 			bind(Service.class).toInstance(new TestService());
-			install(ServiceGraphModule.defaultInstance());
+			install(ServiceGraphModule.create());
 		}
 
 		@Provides

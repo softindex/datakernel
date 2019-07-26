@@ -210,7 +210,7 @@ public class JmxRegistryTest {
 	}
 
 	private WorkerPool getWorkerPool() {
-		Injector injector = Injector.of(new WorkerPoolModule(), new AbstractModule() {{
+		Injector injector = Injector.of(WorkerPoolModule.create(), new AbstractModule() {{
 			bind(ServiceStub.class).in(Worker.class).to(ServiceStub::new);
 		}});
 		WorkerPools pools = injector.getInstance(WorkerPools.class);

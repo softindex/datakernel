@@ -22,6 +22,12 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
 public final class WorkerPoolModule extends AbstractModule {
+	private WorkerPoolModule() {}
+
+	public static WorkerPoolModule create() {
+		return new WorkerPoolModule();
+	}
+
 	@Override
 	protected void configure() {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);

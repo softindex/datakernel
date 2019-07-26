@@ -24,6 +24,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 import org.junit.Test;
 
@@ -42,7 +43,7 @@ public class TestGenericGraph {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			install(ServiceGraphModule.defaultInstance()
+			install(ServiceGraphModule.create()
 					.register(Pojo.class, new SimpleServiceAdapter<Pojo>(false, false) {
 						@Override
 						protected void start(Pojo instance) {
@@ -54,6 +55,7 @@ public class TestGenericGraph {
 							System.out.println("...stopping " + instance + " : " + instance.object);
 						}
 					}));
+			install(WorkerPoolModule.create());
 		}
 
 		@Provides

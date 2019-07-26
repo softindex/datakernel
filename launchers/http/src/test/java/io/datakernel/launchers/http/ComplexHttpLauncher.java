@@ -160,7 +160,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Modules.combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				JmxModule.create()
 						.withScopes(false),
 				TriggersModule.create()

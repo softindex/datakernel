@@ -5,9 +5,11 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
@@ -16,6 +18,7 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
@@ -89,8 +92,10 @@ public class RpcBenchmark extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create().printEffectiveConfig()
+				ServiceGraphModule.create(),
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
 		);
 	}
 

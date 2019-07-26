@@ -44,7 +44,7 @@ public final class MultithreadedWorkerCollab extends AbstractModule {
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-		Injector injector = Injector.of(new WorkerPoolModule(), new MultithreadedWorkerCollab());
+		Injector injector = Injector.of(WorkerPoolModule.create(), new MultithreadedWorkerCollab());
 		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
 		WorkerPool.Instances<Eventloop> eventloops = workerPool.getInstances(Eventloop.class);
 

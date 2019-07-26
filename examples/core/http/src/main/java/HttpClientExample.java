@@ -2,6 +2,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
@@ -10,9 +11,11 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpMessage;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.config.ConfigConverters.ofDuration;
@@ -55,8 +58,10 @@ public final class HttpClientExample extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create().printEffectiveConfig()
+				ServiceGraphModule.create(),
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
 		);
 	}
 

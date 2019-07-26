@@ -19,7 +19,6 @@ package io.datakernel.config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.launcher.OnStart;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
@@ -132,7 +131,6 @@ public class ConfigsModuleTest {
 		Injector injector = Injector.of(
 				new AbstractModule() {
 					@Provides
-					@OnStart
 					CompletionStage<Void> onStart() {
 						return onStart;
 					}
@@ -145,7 +143,8 @@ public class ConfigsModuleTest {
 								.overrideWith(Config.ofProperties("not-existing.properties", true));
 					}
 				},
-				ConfigModule.create().printEffectiveConfig()
+				ConfigModule.create()
+						.printEffectiveConfig()
 		);
 
 		Config config = injector.getInstance(Config.class);

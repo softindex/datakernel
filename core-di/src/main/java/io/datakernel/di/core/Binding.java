@@ -20,6 +20,8 @@ import static io.datakernel.di.util.Utils.checkArgument;
 import static io.datakernel.di.util.Utils.union;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
+import static java.util.function.Predicate.isEqual;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
@@ -59,7 +61,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(key))),
 				(compiledBindings, threadsafe, scope, index) ->
 						new CompiledBinding<T>() {
-							final CompiledBinding<T> compiledBinding = (CompiledBinding<T>) compiledBindings.get(key);
+							final CompiledBinding<? extends T> compiledBinding = compiledBindings.get(key);
 
 							@Override
 							public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
@@ -528,18 +530,18 @@ public final class Binding<T> {
 		return mapInstance(null, (args, instance) -> fn.apply(instance));
 	}
 
-	public <R> Binding<R> mapInstance(@Nullable List<Key<?>> keys, @NotNull BiFunction<Object[], ? super T, ? extends R> fn) {
-		if (keys != null) {
-			checkArgument(dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(new HashSet<>(keys)));
+	public <R> Binding<R> mapInstance(@Nullable List<Key<?>> dependencies, @NotNull BiFunction<Object[], ? super T, ? extends R> fn) {
+		if (dependencies != null) {
+			checkArgument(this.dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(new HashSet<>(dependencies)));
 		}
-		return new Binding<>(dependencies, location,
+		return new Binding<>(this.dependencies, location,
 				(compiledBindings, threadsafe, scope, index) ->
 						new AbstractCompiledBinding<R>(scope, index) {
 							final CompiledBinding<T> originalBinding = compiler.compileForCreateOnly(compiledBindings, threadsafe, scope, index);
 							final CompiledBinding[] bindings =
-									keys == null ?
+									dependencies == null ?
 											null :
-											keys.stream().map(compiledBindings::get).toArray(CompiledBinding[]::new);
+											dependencies.stream().map(compiledBindings::get).toArray(CompiledBinding[]::new);
 
 							@Nullable
 							@Override
@@ -573,14 +575,14 @@ public final class Binding<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <K> Binding<T> mapDependency(@NotNull Key<K> key, @NotNull Function<? super K, ? extends K> fn) {
+	public <K> Binding<T> mapDependency(@NotNull Key<K> dependency, @NotNull Function<? super K, ? extends K> fn) {
 		return new Binding<>(dependencies, location,
 				(compiledBindings, threadsafe, scope, index) ->
 						compiler.compile(new CompiledBindingLocator() {
 							@Override
-							public @NotNull <Q> CompiledBinding<Q> get(Key<Q> k) {
-								CompiledBinding<Q> originalBinding = compiledBindings.get(k);
-								if (!k.equals(key)) return originalBinding;
+							public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
+								CompiledBinding<Q> originalBinding = compiledBindings.get(key);
+								if (!key.equals(dependency)) return originalBinding;
 								return new CompiledBinding<Q>() {
 									@Nullable
 									@Override
@@ -618,10 +620,43 @@ public final class Binding<T> {
 				new Binding<>(union(dependencies, extraDependencies), location, compiler);
 	}
 
+	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
+		if (from.equals(to)) return this;
+		//noinspection unchecked
+		return rebindDependencyImpl(from,
+				(compiledBindings, threadsafe, scope, index) -> compiledBindings.get((Key<K>) to),
+				singleton(Dependency.toKey(to)));
+	}
+
+	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Binding<? extends K> to) {
+		return rebindDependencyImpl(from, to.compiler, to.getDependencies());
+	}
+
+	private <K> Binding<T> rebindDependencyImpl(@NotNull Key<K> from, @NotNull BindingCompiler<? extends K> to, @NotNull Set<Dependency> extraDependencies) {
+		checkArgument(dependencies.stream().map(Dependency::getKey).anyMatch(isEqual(from)));
+		HashSet<Dependency> newDependencies = new HashSet<>(dependencies);
+		newDependencies.removeIf(dependency -> dependency.getKey().equals(from));
+		newDependencies.addAll(extraDependencies);
+
+		return new Binding<>(newDependencies, location,
+				(compiledBindings, threadsafe, scope, index) ->
+						compiler.compile(
+								new CompiledBindingLocator() {
+									@Override
+									public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
+										//noinspection unchecked
+										return key.equals(from) ?
+												(CompiledBinding<Q>) to.compile(compiledBindings, threadsafe, scope, index) :
+												compiledBindings.get(key);
+									}
+								},
+								threadsafe, scope, index));
+	}
+
 	public Binding<T> initializeWith(BindingInitializer<T> bindingInitializer) {
 		return bindingInitializer == BindingInitializer.noop() ?
 				this :
-				new Binding<>(union(dependencies, bindingInitializer.getDependencies()),
+				new Binding<>(union(dependencies, bindingInitializer.getDependencies()), location,
 						(compiledBindings, threadsafe, scope, index) ->
 								new AbstractCompiledBinding<T>(scope, index) {
 									final CompiledBinding<T> compiledBinding = compiler.compileForCreateOnly(compiledBindings, threadsafe, scope, index);

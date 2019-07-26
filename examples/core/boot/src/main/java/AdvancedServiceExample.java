@@ -49,7 +49,7 @@ public class AdvancedServiceExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.defaultInstance();
+		return ServiceGraphModule.create();
 	}
 
 	@SuppressWarnings("FieldCanBeLocal")

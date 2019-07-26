@@ -22,15 +22,19 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.Initializer;
+
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
@@ -70,9 +74,11 @@ public abstract class RpcServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
-				ConfigModule.create().printEffectiveConfig(),
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				getBusinessLogicModule());
 	}
 

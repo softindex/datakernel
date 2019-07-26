@@ -34,7 +34,7 @@ public class EventloopServiceExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.defaultInstance();
+		return ServiceGraphModule.create();
 	}
 
 	@Override

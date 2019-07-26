@@ -22,10 +22,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.*;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -49,13 +46,14 @@ public final class WorkerNameTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			install(ServiceGraphModule.defaultInstance()
+			install(ServiceGraphModule.create()
 					.register(Element4.class, combinedAdapter(
 							immediateServiceAdapter(),
 							immediateServiceAdapter()))
 					.register(Element1.class, immediateServiceAdapter())
 					.register(Element2.class, immediateServiceAdapter())
 					.register(Element3.class, immediateServiceAdapter()));
+			install(WorkerPoolModule.create());
 		}
 
 		@Provides
