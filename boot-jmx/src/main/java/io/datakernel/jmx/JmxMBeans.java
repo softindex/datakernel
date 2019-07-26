@@ -287,8 +287,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			@Nullable Method setter,
 			Class<?> mbeanClass,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
-		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
+			ValueFetcher defaultFetcher = createAppropriateFetcher(getter);
 			// 4 cases: custom-type, simple-type, JmxRefreshableStats, POJO
 			Class<? extends JmxStats> returnClass = (Class<? extends JmxStats>) attrType;
 
@@ -354,13 +354,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						throw new RuntimeException(e);
 					}
 
-					if (reducer.getClass() == JmxAttribute.DEFAULT_REDUCER) {
-						return new AttributeNodeForPojo(
-								attrName, attrDescription, included, defaultFetcher, null, subNodes);
-					} else {
-						return new AttributeNodeForPojo(attrName, attrDescription, included,
-								defaultFetcher, reducer, subNodes);
-					}
+					return new AttributeNodeForPojo(
+							attrName, attrDescription, included, defaultFetcher, reducer == DEFAULT_REDUCER ? null : reducer, subNodes);
 				}
 			}
 		} else if (attrType instanceof ParameterizedType) {
@@ -400,7 +395,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 		JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
 		Class<?> reducerClass = attrAnnotation.reducer();
-		if (reducerClass == JmxAttribute.DEFAULT_REDUCER) {
+		if (reducerClass == DEFAULT_REDUCER.getClass()) {
 			return DEFAULT_REDUCER;
 		}
 		return ((Class<? extends JmxReducer<?>>) reducerClass).newInstance();
