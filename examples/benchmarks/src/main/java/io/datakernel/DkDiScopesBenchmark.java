@@ -263,67 +263,55 @@ public class DkDiScopesBenchmark {
             @Provides
             Kitchen kitchen() { return new Kitchen(); }
 
-            @Provides
             @Order
             Sugar sugar() { return new Sugar("Sugarello", 10.f); }
 
-            @Provides
             @Order
             Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
 
-            @Provides
             @Order
             Flour flour() { return new Flour("Kyivska", 100.0f); }
 
-            @Provides
             @Order
             Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
                 return new Pastry(sugar, butter, flour);
             }
 
-            @Provides
             @Order
             Cookie1 cookie1(Pastry pastry) {
                 return new Cookie1(pastry);
             }
 
-            @Provides
             @Order
             Cookie2 cookie2(Pastry pastry) {
                 return new Cookie2(pastry);
             }
 
-            @Provides
             @Order
             Cookie3 cookie3(Pastry pastry) {
                 return new Cookie3(pastry);
             }
 
-            @Provides
             @Order
             Cookie4 cookie4(Pastry pastry) {
                 return new Cookie4(pastry);
             }
 
-            @Provides
             @Order
             Cookie5 cookie5(Pastry pastry) {
                 return new Cookie5(pastry);
             }
 
-            @Provides
             @Order
             Cookie6 cookie6(Pastry pastry) {
                 return new Cookie6(pastry);
             }
 
-            @Provides
             @Order
             Cookie7 cookie7(Pastry pastry) {
                 return new Cookie7(pastry);
             }
 
-            @Provides
             @Order
             TORT tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6, Cookie7 c7) {
                 return new TORT(c1, c2, c3, c4, c5, c6, c7);
