@@ -57,7 +57,22 @@ public final class Binding<T> {
 	@SuppressWarnings("unchecked")
 	public static <T> Binding<T> to(Key<? extends T> key) {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(key))),
-				(compiledBindings, threadsafe, scope, index) -> (CompiledBinding<T>) compiledBindings.get(key));
+				(compiledBindings, threadsafe, scope, index) ->
+						new CompiledBinding<T>() {
+							final CompiledBinding<T> compiledBinding = (CompiledBinding<T>) compiledBindings.get(key);
+
+							@Override
+							public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								T instance = compiledBinding.getInstance(scopedInstances, synchronizedScope);
+								scopedInstances[scope].lazySet(index, instance);
+								return instance;
+							}
+
+							@Override
+							public T createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								return compiledBinding.createInstance(scopedInstances, synchronizedScope);
+							}
+						});
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
