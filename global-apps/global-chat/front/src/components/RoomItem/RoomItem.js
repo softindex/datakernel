@@ -1,4 +1,5 @@
 import React from "react";
+import path from 'path';
 import {withStyles} from '@material-ui/core';
 import ListItemAvatar from "@material-ui/core/ListItemAvatar";
 import Avatar from "@material-ui/core/Avatar";
@@ -6,11 +7,12 @@ import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
 import roomItemStyles from "./roomItemStyles";
 import SimpleMenu from "../SimpleMenu/SimpleMenu";
-import AddContactForm from "../AddContactDialog/AddContactDialog";
+import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import {Link, withRouter} from "react-router-dom";
 import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from "@material-ui/icons/Delete";
+import {getAvatarLetters, getRoomName, toEmoji} from "../../common/utils";
 
 class RoomItem extends React.Component {
   state = {
@@ -29,6 +31,10 @@ class RoomItem extends React.Component {
     this.checkContactExists(this.props.room)
   }
 
+  getRoomPath = (roomId) => {
+    return path.join('/room', roomId || '');
+  };
+
   onClickAddContact() {
     this.setState({
       showAddContactDialog: true,
@@ -40,7 +46,7 @@ class RoomItem extends React.Component {
     if (room.participants.length === 2) {
       const participantPublicKey = room.participants
         .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
-      if (this.props.contacts.get(participantPublicKey)) {
+      if (this.props.contacts.has(participantPublicKey)) {
         this.setState({
           showMenuIcon: false
         });
@@ -54,26 +60,8 @@ class RoomItem extends React.Component {
 
   closeAddDialog = () => {
     this.setState({
-      hover: false,
       showAddContactDialog: false
     });
-  };
-
-  getAvatarLetters = () => {
-    const roomName = this.props.room.name;
-    const nameString = [...roomName];
-    if (this.props.room.name.includes(" ")) {
-      if (nameString[0].length === 2) {
-        return nameString[0][0] + nameString[0][1] + nameString[roomName.indexOf(" ") - 2]
-      }
-      return nameString[0][0] + nameString[roomName.indexOf(" ") + 1]
-    } else {
-      return roomName.length > 1 ?
-        nameString[0].length === 2 ?
-          nameString[0][0] + nameString[0][1] :
-          nameString[0][0] + nameString[1] :
-        nameString[0][0];
-    }
   };
 
   getContactId(room) {
@@ -98,38 +86,37 @@ class RoomItem extends React.Component {
           selected={roomId === this.props.match.params.roomId && this.props.roomSelected}
         >
           <Link
-            to={this.props.getRoomPath(roomId)}
-            onClick={this.props.onClickLink(roomId)}
+            to={this.getRoomPath(roomId)}
+            style={this.props.linkDisabled ? {pointerEvents: "none"} : null}
             className={classes.link}
           >
-
-              <ListItemAvatar className={classes.avatar}>
-                <Badge
-                  className={classes.badge}
-                  invisible={!this.props.selected}
-                  color="primary"
-                  variant="dot"
-                >
+            <ListItemAvatar className={classes.avatar}>
+              <Badge
+                className={classes.badge}
+                invisible={!this.props.selected}
+                color="primary"
+                variant="dot"
+              >
                 <Avatar className={classes.avatarContent}>
-                  {this.getAvatarLetters().toUpperCase()}
+                  {getAvatarLetters(getRoomName(this.props.room.participants, this.props.contacts,
+                    this.props.publicKey)).toUpperCase()}
                 </Avatar>
-                </Badge>
-              </ListItemAvatar>
+              </Badge>
+            </ListItemAvatar>
 
             <ListItemText
-              primary={room.name}
+              primary={getRoomName(this.props.room.participants, this.props.contacts, this.props.publicKey)}
               className={classes.itemText}
               classes={{
                 primary: classes.itemTextPrimary
               }}
             />
           </Link>
-
           {this.state.hover && this.state.showMenuIcon && (
             <SimpleMenu
               className={classes.menu}
               onAddContact={this.onClickAddContact.bind(this)}
-              onDelete={this.props.quitRoom}
+              onDelete={this.props.onRemoveContact}
             />
           )}
           {this.state.hover && this.props.showDeleteButton && (
@@ -138,18 +125,18 @@ class RoomItem extends React.Component {
               aria-label="Delete"
             >
               <DeleteIcon
-                onClick={this.props.onRemoveContact(room)}
+                onClick={this.props.onRemoveContact}
                 fontSize="medium"
               />
             </IconButton>
           )}
         </ListItem>
-        <AddContactForm
+        <AddContactDialog
           open={this.state.showAddContactDialog}
           onClose={this.closeAddDialog}
           contactPublicKey={this.getContactId(room)}
           publicKey={this.props.publicKey}
-          addContact={this.props.addContact}
+          onAddContact={this.props.addContact}
         />
       </>
     )

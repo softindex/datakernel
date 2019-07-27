@@ -4,7 +4,7 @@ import connectService from '../../common/connectService';
 import {Redirect} from 'react-router-dom';
 import AccountContext from "../../modules/account/AccountContext";
 
-function AccountCallback({location, authByPrivateKey}) {
+function OAuthCallback({location, authByPrivateKey}) {
   const params = qs.parse(location.search);
 
   useEffect(() => {
@@ -13,7 +13,7 @@ function AccountCallback({location, authByPrivateKey}) {
     }
   });
 
-    return <Redirect to='/'/>;
+  return <Redirect to='/'/>;
 }
 
 export default connectService(
@@ -23,5 +23,5 @@ export default connectService(
     }
   })
 )(
-  AccountCallback
+  OAuthCallback
 );

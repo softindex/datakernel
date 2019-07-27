@@ -8,6 +8,9 @@ const profileStyles = theme => ({
   },
   input: {
     width: theme.spacing.unit * 85
+  },
+  progressWrapper: {
+    margin: 'auto'
   }
 });
 

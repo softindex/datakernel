@@ -63,10 +63,11 @@ class MessageForm extends React.Component {
 
 export default withStyles(messageFormStyles)(
   connectService(ChatRoomContext, (state, chatService) => ({
-    async sendMessage(message) {
-      await chatService.sendMessage(message);
-    }
-  }))(
+      async sendMessage(message) {
+        await chatService.sendMessage(message);
+      }
+    })
+  )(
     MessageForm
   )
 );

@@ -8,19 +8,20 @@ const roomItemStyles = theme => ({
     width: theme.spacing.unit * 6,
     height: theme.spacing.unit * 6,
     float: 'left',
-    marginTop: theme.spacing.unit * 1.5
+    alignItems: 'center'
   },
   avatarContent: {
     fontSize: '1rem'
   },
   link: {
+    display: 'flex',
+    minWidth: theme.spacing.unit * 33.75,
     textDecoration: 'none',
-    width: 'inherit',
-    height: theme.spacing.unit * 8
+    height: theme.spacing.unit * 8,
+    alignItems: 'center'
   },
   itemText: {
-    marginTop: theme.spacing.unit * 2.5,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   itemTextPrimary: {
     textOverflow: 'ellipsis',

@@ -12,6 +12,8 @@ import Tooltip from "@material-ui/core/Tooltip";
 import IconButton from "@material-ui/core/IconButton";
 import ProfileContext from "../../modules/profile/ProfileContext";
 import {withSnackbar} from "notistack";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import Grow from "@material-ui/core/Grow";
 
 class Profile extends React.Component {
   textField = React.createRef();
@@ -62,74 +64,88 @@ class Profile extends React.Component {
     return (
       <Dialog
         open={this.props.open}
-        className={classes.dialog}
         onClose={this.props.onClose}
         loading={this.state.loading}
-        aria-labelledby="form-dialog-title"
       >
-        <form onSubmit={this.onSubmit}>
-          <DialogTitle
-            id="customized-dialog-title"
-            onClose={this.props.onClose}
-          >
-            My Profile
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              className={classes.textField}
-              defaultValue={this.state.name === null ? this.props.profile.name : this.state.name}
-              disabled={this.state.loading}
-              margin="normal"
-              label="Name"
-              type="text"
-              fullWidth
-              onChange={this.onChangeName}
-              variant="outlined"
-            />
-            <TextField
-              className={classes.textField}
-              value={this.props.publicKey}
-              id="publicKeyField"
-              label="Public Key"
-              autoFocus
-              margin="normal"
-              fullWidth
-              ref={this.textField}
-              inputProps={{onDoubleClick: this.onDoubleClick, id: 'inputId'}}
-              type="text"
-              variant="outlined"
-              InputProps={{
-                readOnly: true,
-                classes: {input: classes.input},
-                endAdornment: (
-                  <IconButton
-                    className={classes.iconButton}
-                    onClick={this.copyToClipboard}
-                    disabled={this.state.loading}
-                  >
-                    <Tooltip title="Copy" aria-label="Copy">
-                      <i className="material-icons">
-                        file_copy
-                      </i>
-                    </Tooltip>
-                  </IconButton>
-                ),
-              }}
+        {/*{!this.props.profileReady && (*/}
+        {/*  <>*/}
+        {/*    <DialogTitle*/}
+        {/*      id="customized-dialog-title"*/}
+        {/*      onClose={this.props.onClose}*/}
+        {/*    >*/}
+        {/*      My Profile*/}
+        {/*    </DialogTitle>*/}
+        {/*    <Grow in={!this.props.ready}>*/}
+        {/*      <div className={this.props.classes.progressWrapper}>*/}
+        {/*        <CircularProgress/>*/}
+        {/*      </div>*/}
+        {/*    </Grow>*/}
+        {/*  </>*/}
+        {/*)}*/}
+        {/*{this.props.profileReady && (*/}
+          <form onSubmit={this.onSubmit}>
+            <DialogTitle
+              onClose={this.props.onClose}
             >
-            </TextField>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              className={this.props.classes.saveButton}
-              color="primary"
-              variant="contained"
-              type="submit"
-              disabled={this.state.loading}
-            >
-              Save
-            </Button>
-          </DialogActions>
-        </form>
+              My Profile
+            </DialogTitle>
+            <DialogContent>
+              <TextField
+                className={classes.textField}
+                defaultValue={this.state.name === null ? this.props.profile.name : this.state.name}
+                disabled={this.state.loading}
+                margin="normal"
+                label="Name"
+                type="text"
+                fullWidth
+                onChange={this.onChangeName}
+                variant="outlined"
+              />
+              <TextField
+                className={classes.textField}
+                value={this.props.publicKey}
+                id="publicKeyField"
+                label="Public Key"
+                autoFocus
+                margin="normal"
+                fullWidth
+                ref={this.textField}
+                inputProps={{onDoubleClick: this.onDoubleClick, id: 'inputId'}}
+                type="text"
+                variant="outlined"
+                InputProps={{
+                  readOnly: true,
+                  classes: {input: classes.input},
+                  endAdornment: (
+                    <IconButton
+                      className={classes.iconButton}
+                      onClick={this.copyToClipboard}
+                      disabled={this.state.loading}
+                    >
+                      <Tooltip title="Copy" aria-label="Copy">
+                        <i className="material-icons">
+                          file_copy
+                        </i>
+                      </Tooltip>
+                    </IconButton>
+                  ),
+                }}
+              >
+              </TextField>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                className={this.props.classes.saveButton}
+                color="primary"
+                variant="contained"
+                type="submit"
+                disabled={this.state.loading}
+              >
+                Save
+              </Button>
+            </DialogActions>
+          </form>
+        {/*)}*/}
       </Dialog>
     )
   }
@@ -137,8 +153,8 @@ class Profile extends React.Component {
 
 export default connectService(
   ProfileContext,
-  ({profile}, profileService) => ({
-    profile,
+  ({profile, profileReady}, profileService) => ({
+    profile, profileReady,
     setProfileField(fieldName, value) {
       return profileService.setProfileField(fieldName, value);
     }

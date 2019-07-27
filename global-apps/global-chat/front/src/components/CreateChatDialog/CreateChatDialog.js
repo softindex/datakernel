@@ -37,20 +37,31 @@ class CreateChatDialog extends React.Component {
   };
 
   sortContacts = () => {
-    return [...this.props.rooms].sort((array1, array2) => array1[1].name.localeCompare(array2[1].name));
+    return [...this.props.rooms].sort(((array1, array2) => {
+      const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
+      const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
+      if (this.props.contacts.has(contactId1) && this.props.contacts.has(contactId2)) {
+        return this.props.contacts.get(contactId1).name.localeCompare(this.props.contacts.get(contactId2).name)
+      }
+    }));
   };
 
   getFilteredRooms(rooms) {
-    return [...rooms]
-      .filter(([, {dialog, name}]) => {
-        if (!dialog) {
-          return false;
-        }
-        if (!name.toLowerCase().includes(this.state.search.toLowerCase())) {
-          return false;
-        }
-        return true;
-      })
+    return new Map(
+      [...rooms]
+        .filter(([, {dialog, participants}]) => {
+          if (!(dialog && this.props.contacts.has(participants.find((publicKey) =>
+            publicKey !== this.props.publicKey)))) {
+            return false;
+          }
+
+          const publicKey = participants.find(participantPublicKey => participantPublicKey !== this.props.publicKey);
+          if (!this.props.contacts.get(publicKey).name.toLowerCase().includes(this.state.search.toLowerCase())) {
+            return false
+          }
+
+          return true;
+        }))
   }
 
   handleSearchChange = (event) => {
@@ -107,8 +118,9 @@ class CreateChatDialog extends React.Component {
       loading: true
     });
 
-    return this.props.createRoom(this.state.name, [...this.state.participants])
-      .then(() => {
+    return this.props.createRoom([...this.state.participants])
+      .then((result) => {
+        console.log(result);
         this.props.onClose();
       })
       .catch((err) => {
@@ -133,13 +145,9 @@ class CreateChatDialog extends React.Component {
         open={this.props.open}
         onClose={this.onClose}
         loading={this.state.loading}
-        aria-labelledby="form-dialog-title"
       >
         <form onSubmit={this.handleSubmit}>
-          <DialogTitle
-            id="customized-dialog-title"
-            onClose={this.props.onClose}
-          >
+          <DialogTitle onClose={this.props.onClose}>
             {this.state.activeStep === 0 ? 'Create Group Chat' : 'Add Members'}
           </DialogTitle>
           <DialogContent>
@@ -215,8 +223,7 @@ class CreateChatDialog extends React.Component {
                       onClick={!this.state.loading && this.handleCheckContact.bind(this, room.participants)}
                       contacts={this.props.contacts}
                       publicKey={this.props.publicKey}
-                      getRoomPath={() => {}}
-                      onClickLink={() => {}}
+                      linkDisabled={true}
                     />
                   )}
                 </List>
@@ -271,8 +278,8 @@ class CreateChatDialog extends React.Component {
 
 export default connectService(
   ContactsContext,
-  ({ready, contacts}, contactsService) => ({
-    contactsService, ready, contacts
+  ({contacts}, contactsService) => ({
+    contactsService, contacts
   })
 )(
   connectService(

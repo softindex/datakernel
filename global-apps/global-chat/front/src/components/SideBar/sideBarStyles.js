@@ -2,6 +2,7 @@ const sideBarStyles = theme => {
   return {
     wrapper: {
       boxShadow: `2px 0px ${theme.spacing.unit}px -2px rgba(0,0,0,0.2)`,
+      background: theme.palette.primary.contrastText,
       width: 350,
       height: '100vh',
       display: 'flex',
@@ -11,12 +12,13 @@ const sideBarStyles = theme => {
       position: 'static'
     },
     paper: {
-      boxShadow: `0px ${theme.spacing.unit}px  ${theme.spacing.unit}px -5px rgba(0,0,0,0.2)`,
+      boxShadow: `0px ${theme.spacing.unit * 0.75}px  9px -5px rgba(0,0,0,0.2)`,
       background: theme.palette.primary.background
     },
     chatsList: {
       flexGrow: 1,
       overflowY: 'auto',
+      background: theme.palette.primary.contrastText,
       marginTop: theme.spacing.unit,
       marginBottom: theme.spacing.unit,
       '&::-webkit-scrollbar-track': {
@@ -54,6 +56,31 @@ const sideBarStyles = theme => {
     },
     iconButton: {
       padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`
+    },
+    paperDivider: {
+      background: theme.palette.primary.background,
+      padding: theme.spacing.unit * 2,
+      marginTop: theme.spacing.unit,
+      marginBottom: theme.spacing.unit,
+      boxShadow: 'none'
+    },
+    paperError: {
+      background: '#fa000066',
+      padding: theme.spacing.unit * 2,
+      margin: theme.spacing.unit,
+      borderRadius: theme.spacing.unit,
+      boxShadow: 'none'
+    },
+    dividerText: {
+      fontSize: '0.9rem'
+    },
+    progressWrapper: {
+      marginLeft: theme.spacing.unit * 18,
+      marginTop: theme.spacing.unit * 2
+    },
+    secondaryDividerText: {
+      textAlign: 'center',
+      marginTop: theme.spacing.unit * 2
     }
   }
 };

@@ -9,8 +9,10 @@ import connectService from "../../common/connectService";
 import RoomsContext from "../../modules/rooms/RoomsContext";
 import MenuIcon from "@material-ui/icons/Menu";
 import Drawer from "../Drawer/Drawer";
+import {getRoomName} from "../../common/utils";
+import ContactsContext from "../../modules/contacts/ContactsContext";
 
-function Header({classes, rooms, roomId}) {
+function Header({classes, rooms, roomId, contacts, publicKey}) {
   const [openDrawer, setOpenDrawer] = useState(false);
 
   function onDrawerOpen() {
@@ -49,7 +51,7 @@ function Header({classes, rooms, roomId}) {
                 <ListItemIcon className={classes.listItemIcon}>
                   <ArrowIcon className={classes.arrowIcon}/>
                 </ListItemIcon>
-                {rooms.get(roomId).name}
+                {getRoomName(rooms.get(roomId).participants, contacts, publicKey)}
               </Typography>
             )}
           </div>
@@ -64,7 +66,11 @@ function Header({classes, rooms, roomId}) {
 }
 
 export default connectService(RoomsContext, (
-  {ready, rooms}, roomsService) => ({ready, rooms, roomsService})
+  {rooms}, roomsService) => ({rooms, roomsService})
 )(
-  withStyles(headerStyles)(Header)
+  connectService(ContactsContext, (
+    {contacts}, contactsService) => ({contacts, contactsService})
+  )(
+    withStyles(headerStyles)(Header)
+  )
 );

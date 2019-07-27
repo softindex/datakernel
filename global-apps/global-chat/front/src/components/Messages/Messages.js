@@ -32,17 +32,17 @@ class Messages extends React.Component {
   };
 
   render() {
-    const {classes, ready, messages} = this.props;
+    const {classes, chatReady, messages} = this.props;
     return (
       <div className={classes.root}>
-        {!ready && (
-          <Grow in={!ready}>
+        {!chatReady && (
+          <Grow in={!chatReady}>
             <div className={classes.progressWrapper}>
               <CircularProgress/>
             </div>
           </Grow>
         )}
-        {ready && (
+        {chatReady && (
           <div ref={this.wrapper} className={classes.wrapper}>
             {messages.map((message, index) => {
               const previousMessageAuthor = messages[index - 1] && messages[index - 1].authorPublicKey;
@@ -76,16 +76,16 @@ class Messages extends React.Component {
 
 export default withStyles(messagesStyles)(
   connectService(ContactsContext, (
-    {ready, contacts}, contactsService) => (
-      {contactsService, ready, contacts })
+    {contacts}, contactsService) => (
+      {contactsService, contacts })
   )(
     connectService(RoomsContext, (
-      {ready, rooms}, roomsService) => (
-        {ready, rooms, roomsService})
+      {rooms}, roomsService) => (
+        {rooms, roomsService})
     )(
       connectService(ChatRoomContext, (
-        {messages, ready}) => (
-          {messages, ready})
+        {messages, chatReady}) => (
+          {messages, chatReady})
       )(
         connectService(AccountContext, ({publicKey}) => ({publicKey}))(
           Messages

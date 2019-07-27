@@ -10,7 +10,7 @@ class ChatRoomService extends Service {
   constructor(chatOTStateManager, publicKey) {
     super({
       messages: [],
-      ready: false,
+      chatReady: false,
     });
     this._chatOTStateManager = chatOTStateManager;
     this._reconnectTimeout = null;
@@ -57,7 +57,7 @@ class ChatRoomService extends Service {
   _onStateChange = () => {
     this.setState({
       messages: this._getMessagesFromStateManager(),
-      ready: true
+      chatReady: true
     });
   };
 

@@ -6,28 +6,29 @@ import MUDialog from '@material-ui/core/Dialog';
 import CircularProgress from "@material-ui/core/CircularProgress";
 import dialogStyles from "./dialogStyles";
 
-class Dialog extends React.Component {
-  render() {
-    const {children, onClose, loading, classes, ...otherProps} = this.props;
-    return (
-      <MUDialog {...otherProps} onclose={onClose}>
-        <IconButton
-          aria-label="Close"
-          className={classes.closeButton}
-          onClick={this.props.onClose}
-        >
-          <CloseIcon/>
-        </IconButton>
-        {children}
-        {loading  && (
-          <CircularProgress
-            size={24}
-            className={classes.circularProgress}
-          />
-        )}
-      </MUDialog>
-    );
-  }
+function Dialog({children, onClose, loading, classes, ...otherProps}) {
+  return (
+    <MUDialog
+      {...otherProps}
+      onClose={onClose}
+      classes={{paper: classes.muDialog}}
+    >
+      <IconButton
+        aria-label="Close"
+        className={classes.closeButton}
+        onClick={onClose}
+      >
+        <CloseIcon/>
+      </IconButton>
+      {children}
+      {loading && (
+        <CircularProgress
+          size={24}
+          className={classes.circularProgress}
+        />
+      )}
+    </MUDialog>
+  );
 }
 
 export default withStyles(dialogStyles)(Dialog);
