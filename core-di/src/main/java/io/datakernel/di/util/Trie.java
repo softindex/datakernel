@@ -81,7 +81,7 @@ public final class Trie<K, V> {
 
 	public <E> Trie<K, E> map(Function<? super V, ? extends E> fn) {
 		Trie<K, E> root = leaf(fn.apply(payload));
-		children.forEach((k, sub) -> root.getChildren().put(k, sub.map(fn)));
+		children.forEach((k, sub) -> root.children.put(k, sub.map(fn)));
 		return root;
 	}
 

@@ -8,20 +8,17 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.checkArgument;
 import static io.datakernel.di.util.Utils.union;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
-import static java.util.function.Predicate.isEqual;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
@@ -621,22 +618,30 @@ public final class Binding<T> {
 	}
 
 	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
-		if (from.equals(to)) return this;
-		//noinspection unchecked
-		return rebindDependencyImpl(from,
-				(compiledBindings, threadsafe, scope, index) -> compiledBindings.get((Key<K>) to),
-				singleton(Dependency.toKey(to)));
+		return rebindDependencies(singletonMap(from, to));
 	}
 
-	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Binding<? extends K> to) {
-		return rebindDependencyImpl(from, to.compiler, to.getDependencies());
+	public <K> Binding<T> rebindDependencies(@NotNull Map<Key<?>, Key<?>> map) {
+		if (map.isEmpty()) return this;
+		return rebindDependenciesImpl(
+				map.keySet(),
+				map.values().stream().map(Dependency::toKey).collect(toSet()),
+				key ->
+						(compiledBindings, threadsafe, scope, index) -> {
+							Key<?> newKey = map.get(key);
+							//noinspection unchecked
+							return newKey != null ?
+									(CompiledBinding<Object>) compiledBindings.get(newKey) :
+									(CompiledBinding<Object>) compiledBindings.get(key);
+						});
 	}
 
-	private <K> Binding<T> rebindDependencyImpl(@NotNull Key<K> from, @NotNull BindingCompiler<? extends K> to, @NotNull Set<Dependency> extraDependencies) {
-		checkArgument(dependencies.stream().map(Dependency::getKey).anyMatch(isEqual(from)));
+	private Binding<T> rebindDependenciesImpl(@NotNull Set<Key<?>> removedDependencies, @NotNull Set<Dependency> addedDependencies,
+			@NotNull Function<Key<?>, BindingCompiler<?>> fn) {
+		checkArgument(dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(removedDependencies));
 		HashSet<Dependency> newDependencies = new HashSet<>(dependencies);
-		newDependencies.removeIf(dependency -> dependency.getKey().equals(from));
-		newDependencies.addAll(extraDependencies);
+		newDependencies.removeIf(dependency -> removedDependencies.contains(dependency.getKey()));
+		newDependencies.addAll(addedDependencies);
 
 		return new Binding<>(newDependencies, location,
 				(compiledBindings, threadsafe, scope, index) ->
@@ -645,9 +650,8 @@ public final class Binding<T> {
 									@Override
 									public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
 										//noinspection unchecked
-										return key.equals(from) ?
-												(CompiledBinding<Q>) to.compile(compiledBindings, threadsafe, scope, index) :
-												compiledBindings.get(key);
+										BindingCompiler<Q> compiler = (BindingCompiler<Q>) fn.apply(key);
+										return compiler.compile(compiledBindings, threadsafe, scope, index);
 									}
 								},
 								threadsafe, scope, index));
@@ -674,6 +678,15 @@ public final class Binding<T> {
 	@NotNull
 	public Set<Dependency> getDependencies() {
 		return dependencies;
+	}
+
+	@NotNull
+	public Set<Key<?>> getDependencyKeys() {
+		return dependencies.stream().map(Dependency::getKey).collect(toSet());
+	}
+
+	public boolean hasDependency(Key<?> dependency) {
+		return dependencies.stream().map(Dependency::getKey).anyMatch(Predicate.isEqual(dependency));
 	}
 
 	@NotNull

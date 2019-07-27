@@ -1,17 +1,20 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * This class contains a set of utilities for working with {@link Module modules}.
@@ -182,26 +185,59 @@ public final class Modules {
 				(fn1, fn2) -> (key, binding) -> fn2.apply(key, fn1.apply(key, binding)));
 	}
 
-	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
-		return (k, binding) -> {
-			if (!componentKey.equals(k)) return binding;
-			return binding.rebindDependency(from, to);
-		};
-	}
+	@SuppressWarnings("unchecked")
+	public static Module export(Module module, Set<Key<?>> exportedKeys) {
+		Set<Key<?>> originalKeys = new HashSet<>();
+		module.getBindings().dfs(multimap -> originalKeys.addAll(multimap.keySet()));
+		checkArgument(originalKeys.containsAll(exportedKeys));
+		Map<Key<?>, Key<?>> originalToUnique = new HashMap<>();
+		Map<Key<?>, Key<?>> uniqueToOriginal = new HashMap<>();
+		for (Key<?> originalKey : originalKeys) {
+			if (exportedKeys.contains(originalKey)) continue;
+			Key<?> uniqueKey = Key.ofType(originalKey.getType(), uniqueName(originalKey.getName()));
+			originalToUnique.put(originalKey, uniqueKey);
+			uniqueToOriginal.put(uniqueKey, originalKey);
+		}
 
-	public static <T, V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<T> componentKey, Function<Binding<V>, Binding<? extends V>> fn) {
-		return (k, binding) -> {
-			if (!componentKey.equals(k)) return binding;
-			//noinspection unchecked
-			return fn.apply((Binding<V>) binding);
-		};
-	}
-
-	public static <V> BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder(Key<V> from, Key<? extends V> to) {
-		return (k, binding) ->
-				binding.getDependencies().stream().map(Dependency::getKey).anyMatch(Predicate.isEqual(from)) ?
-						binding.rebindDependency(from, to) :
-						binding;
+		return new ModuleImpl(
+				module.getBindings()
+						.map(bindingsMap ->
+								transformMultimap(bindingsMap,
+										key -> originalToUnique.getOrDefault(key, key),
+										(key, binding) ->
+												binding.rebindDependencies(
+														binding.getDependencies()
+																.stream()
+																.map(Dependency::getKey)
+																.filter(originalToUnique::containsKey)
+																.collect(toMap(identity(), originalToUnique::get))))),
+				transformMultimapValues(module.getBindingTransformers(),
+						(priority, transformer) ->
+								(bindings, scope, key, binding) ->
+										((BindingTransformer<Object>) transformer).transform(
+												new BindingLocator() {
+													@Override
+													public @Nullable <T> Binding<T> get(Key<T> key) {
+														return (Binding<T>) bindings.get(originalToUnique.getOrDefault(key, key));
+													}
+												},
+												scope,
+												(Key<Object>) uniqueToOriginal.getOrDefault(key, key),
+												binding)),
+				transformMultimapValues(module.getBindingGenerators(),
+						(clazz, generator) ->
+								(BindingGenerator<Object>) (bindings, scope, key) ->
+										((BindingGenerator<Object>) generator).generate(
+												new BindingLocator() {
+													@Override
+													public @Nullable <T> Binding<T> get(Key<T> key) {
+														return (Binding<T>) bindings.get(originalToUnique.getOrDefault(key, key));
+													}
+												},
+												scope,
+												(Key<Object>) uniqueToOriginal.getOrDefault(key, key))),
+				module.getMultibinders()
+		);
 	}
 
 }

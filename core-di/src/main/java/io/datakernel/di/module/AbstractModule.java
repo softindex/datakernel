@@ -19,6 +19,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
@@ -117,7 +118,7 @@ public abstract class AbstractModule implements Module {
 			Scope[] scope = getScope(method);
 
 			Binding<Object> binding = bindingFromMethod(instance, method);
-			Key<Object> key = Key.ofType(type, new InSetImpl());
+			Key<Object> key = Key.ofType(type, uniqueName());
 			addBinding(scope, key, binding);
 
 			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
@@ -128,33 +129,6 @@ public abstract class AbstractModule implements Module {
 				addKeyToSet(keySet, key);
 				addKeyToSet(keySet, setKey);
 			});
-		}
-	}
-
-	@NameAnnotation
-	private @interface InSet {
-		// so that this pseudo-annotation is not a 'marker'
-		int dummy() default 0;
-	}
-
-	@SuppressWarnings("ClassExplicitlyAnnotation")
-	private static class InSetImpl implements InSet {
-		@Override
-		public int dummy() {
-			return 0;
-		}
-
-		@Override
-		public Class<? extends Annotation> annotationType() {
-			return InSet.class;
-		}
-
-		@Override
-		public String toString() {
-			// this weirdness is for different GraphViz node ids
-			// `io.datakernel.di.x123456.` would be stripped by getShortName for labels,
-			// but would provide uniqueness so that the nodes are drawn separately
-			return "@io.datakernel.di.x" + hashCode() + ".InSet()";
 		}
 	}
 
