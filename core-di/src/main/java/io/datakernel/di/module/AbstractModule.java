@@ -8,6 +8,7 @@ import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -72,11 +73,18 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * This method scans given object for {@link Provides provider methods} and adds them as bindings or generators to this module.
 	 */
-	protected final void addDeclarativeBindingsFrom(Object instance) {
-		Class<?> cls = instance.getClass();
+	protected final void addDeclarativeBindingsFrom(@NotNull Object module) {
+		//noinspection unchecked
+		addDeclarativeBindingsImpl((Class<Object>) module.getClass(), module);
+	}
 
-		for (Method method : getAnnotatedElements(cls, Provides.class, Class::getDeclaredMethods, false)) {
-			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
+	protected final void addDeclarativeBindingsFrom(@NotNull Class<?> moduleClass) {
+		addDeclarativeBindingsImpl(moduleClass, null);
+	}
+
+	private <M> void addDeclarativeBindingsImpl(@NotNull Class<M> moduleClass, @Nullable M module) {
+		for (Method method : getAnnotatedElements(moduleClass, Provides.class, Class::getDeclaredMethods, false)) {
+			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
 			Set<Name> keySets = keySetsOf(method);
 			Name name = nameOf(method);
@@ -84,7 +92,7 @@ public abstract class AbstractModule implements Module {
 
 			if (typeVars.length == 0) {
 				Key<Object> key = Key.ofType(type, name);
-				addBinding(methodScope, key, bindingFromMethod(instance, method));
+				addBinding(methodScope, key, bindingFromMethod(module, method));
 				keySets.forEach(keySet -> addKeyToSet(keySet, key));
 			} else {
 				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
@@ -105,19 +113,19 @@ public abstract class AbstractModule implements Module {
 							return null;
 						}
 					}
-					return bindingFromGenericMethod(instance, key, method);
+					return bindingFromGenericMethod(module, key, method);
 				});
 			}
 		}
-		for (Method method : getAnnotatedElements(cls, ProvidesIntoSet.class, Class::getDeclaredMethods, false)) {
+		for (Method method : getAnnotatedElements(moduleClass, ProvidesIntoSet.class, Class::getDeclaredMethods, false)) {
 			if (method.getTypeParameters().length != 0) {
 				throw new IllegalStateException("@ProvidesIntoSet does not support templated methods, method " + method);
 			}
 
-			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), cls);
+			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
 			Scope[] scope = getScope(method);
 
-			Binding<Object> binding = bindingFromMethod(instance, method);
+			Binding<Object> binding = bindingFromMethod(module, method);
 			Key<Object> key = Key.ofType(type, uniqueName());
 			addBinding(scope, key, binding);
 
@@ -150,7 +158,7 @@ public abstract class AbstractModule implements Module {
 			if (key.getName() != null) {
 				throw new IllegalStateException("Already annotated with " + key.getName().getDisplayString());
 			}
-			key = Key.ofType(key.getType(), name);
+			key = key.named(name);
 			return this;
 		}
 

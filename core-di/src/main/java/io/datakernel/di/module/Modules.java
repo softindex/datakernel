@@ -44,7 +44,7 @@ public final class Modules {
 	 * @see #combine(Collection)
 	 */
 	public static Module combine(Module... modules) {
-		return modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
+		return modules.length == 0 ? Module.empty() : modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
 	/**

@@ -14,10 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static io.datakernel.di.core.BindingGenerator.REFUSING;
@@ -85,10 +82,14 @@ public final class Injector {
 
 	/**
 	 * This constructor combines given modules (along with a {@link DefaultModule})
-	 * and then {@link #compile(Module) compiles} them.
+	 * and then {@link #compile(Injector, Module) compiles} them.
 	 */
 	public static Injector of(Module... modules) {
-		return compile(Modules.combine(Modules.combine(modules), new DefaultModule()));
+		return compile(null, Modules.combine(Modules.combine(modules), new DefaultModule()));
+	}
+
+	public static Injector of(@Nullable Injector parent, Module... modules) {
+		return compile(parent, Modules.combine(Modules.combine(modules), new DefaultModule()));
 	}
 
 	/**
@@ -103,8 +104,8 @@ public final class Injector {
 	 * This constructor threadsafely {@link #compile(Injector, Scope[], Trie, Multibinder, BindingTransformer, BindingGenerator) compiles}
 	 * given module, extracting bindings and their multibinders, transformers and generators from it, with no instance overrides
 	 */
-	public static Injector compile(Module module) {
-		return compile(null, UNSCOPED, module.getBindings(),
+	public static Injector compile(@Nullable Injector parent, Module module) {
+		return compile(parent, UNSCOPED, module.getBindings(),
 				combinedMultibinder(module.getMultibinders()),
 				combinedTransformer(module.getBindingTransformers()),
 				combinedGenerator(module.getBindingGenerators()));
@@ -142,6 +143,10 @@ public final class Injector {
 		Preprocessor.completeBindingGraph(bindings, transformer, generator);
 
 		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = Preprocessor.getUnsatisfiedDependencies(bindings);
+		if (parent != null) {
+			new ArrayList<>(unsatisfied.keySet()).stream().filter(parent.compiledBindings::containsKey).forEach(unsatisfied::remove);
+		}
+
 		if (!unsatisfied.isEmpty()) {
 			throw new DIException(unsatisfied.entrySet().stream()
 					.map(entry -> {
@@ -176,33 +181,33 @@ public final class Injector {
 					.collect(joining("\n\n", "Cyclic dependencies detected:\n\n", "\n")));
 		}
 
-		Injector injector = new Injector(null, compileBindingsTrie(UNSCOPED, bindings, emptyMap()));
+		Injector injector = new Injector(parent, compileBindingsTrie(parent != null ? parent.scopedInstances.length : 0, UNSCOPED, bindings, parent != null ? parent.compiledBindings : emptyMap()));
 		injectorRef[0] = injector;
 
 		return injector;
 	}
 
-	protected static Trie<Scope, DependencyGraph> compileBindingsTrie(Scope[] path, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
+	protected static Trie<Scope, DependencyGraph> compileBindingsTrie(int scope, Scope[] path, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent) {
-		DependencyGraph dependencyGraph = compileBindings(path, bindingsTrie, compiledBindingsParent);
+		DependencyGraph dependencyGraph = compileBindings(scope, path, bindingsTrie, compiledBindingsParent);
 		Map<Scope, Trie<Scope, DependencyGraph>> children = new HashMap<>();
 		bindingsTrie.getChildren().forEach((childScope, trie) -> {
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsCopy = new HashMap<>(compiledBindingsParent);
 			compiledBindingsCopy.putAll(dependencyGraph.compiledBindings);
 			children.put(childScope,
-					compileBindingsTrie(next(path, childScope), bindingsTrie.get(childScope), compiledBindingsCopy));
+					compileBindingsTrie(scope + 1, next(path, childScope), bindingsTrie.get(childScope), compiledBindingsCopy));
 		});
 		return new Trie<>(dependencyGraph, children);
 	}
 
-	protected static DependencyGraph compileBindings(Scope[] path, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
+	protected static DependencyGraph compileBindings(int scope, Scope[] path, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent) {
 		Map<Key<?>, Binding<?>> bindings = bindingsTrie.get();
 		Map<Key<?>, CompiledBinding<?>> compiledBindings = new HashMap<>();
 		Map<Key<?>, Integer> instanceIndexes = new HashMap<>();
 		for (Key<?> key : bindings.keySet()) {
 			compiledBindings.put(key,
-					compileBinding(path.length, path.length == 0 || path[path.length - 1].isThreadsafe(), key, bindings, compiledBindingsParent, compiledBindings, instanceIndexes));
+					compileBinding(scope, path.length == 0 || path[path.length - 1].isThreadsafe(), key, bindings, compiledBindingsParent, compiledBindings, instanceIndexes));
 		}
 		compiledBindingsParent.forEach(compiledBindings::putIfAbsent);
 		return new DependencyGraph(path, bindingsTrie, compiledBindings, instanceIndexes);
@@ -365,6 +370,10 @@ public final class Injector {
 
 	public Set<Key<?>> getAllBindings() {
 		return compiledBindings.keySet();
+	}
+
+	public <T> void putInstance(Class<T> key, T instance) {
+		putInstance(Key.of(key), instance);
 	}
 
 	public <T> void putInstance(Key<T> key, T instance) {

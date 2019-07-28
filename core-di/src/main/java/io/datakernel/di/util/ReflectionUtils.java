@@ -260,7 +260,7 @@ public final class ReflectionUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Binding<T> bindingFromGenericMethod(Object module, Key<?> requestedKey, Method method) {
+	public static <T> Binding<T> bindingFromGenericMethod(@Nullable Object module, Key<?> requestedKey, Method method) {
 		method.setAccessible(true);
 
 		Type genericReturnType = method.getGenericReturnType();
@@ -274,18 +274,18 @@ public final class ReflectionUtils {
 				})
 				.toArray(Dependency[]::new);
 
-		return (Binding<T>) Binding.to(
+		Binding<T> binding = Binding.to(
 				args -> {
 					try {
-						return method.invoke(module, args);
+						return (T) method.invoke(module, args);
 					} catch (IllegalAccessException e) {
 						throw new DIException("Not allowed to call generic method " + method + " to provide requested key " + requestedKey, e);
 					} catch (InvocationTargetException e) {
 						throw new DIException("Failed to call generic method " + method + " to provide requested key " + requestedKey, e.getCause());
 					}
 				},
-				dependencies)
-				.at(LocationInfo.from(module, method));
+				dependencies);
+		return module != null ? binding.at(LocationInfo.from(module, method)) : binding;
 	}
 
 	public static <T> Binding<T> bindingFromConstructor(Key<T> key, Constructor<T> constructor) {

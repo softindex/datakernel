@@ -21,26 +21,38 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
+import java.lang.annotation.Annotation;
+
 public final class WorkerPoolModule extends AbstractModule {
-	private WorkerPoolModule() {}
+	private final Class<? extends Annotation>[] workerScopes;
+
+	@SafeVarargs
+	private WorkerPoolModule(Class<? extends Annotation>... workerScopes) {
+		this.workerScopes = workerScopes;
+	}
 
 	public static WorkerPoolModule create() {
-		return new WorkerPoolModule();
+		return new WorkerPoolModule(Worker.class);
+	}
+
+	@SafeVarargs
+	public static WorkerPoolModule create(Class<? extends Annotation>... workerScopes) {
+		return new WorkerPoolModule(workerScopes);
 	}
 
 	@Override
 	protected void configure() {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
-		bind(Key.of(int.class, WorkerId.class)).in(Worker.class);
 
-		generate(int.class, (bindings, scope, key) -> {
-			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
-				return null;
-			}
-			return Binding.to(() -> {
-				throw new IllegalStateException("Expected instance override for the worker id by Injector#enterScope call");
+		for (Class<? extends Annotation> scope : workerScopes) {
+			bind(int.class).annotatedWith(WorkerId.class).in(scope).to(() -> {
+				throw new AssertionError();
 			});
-		});
+			bind(Injector.class).annotatedWith(WorkerId.class).in(scope).to(() -> {
+				throw new AssertionError();
+			});
+		}
+
 		generate(WorkerPool.Instances.class, (bindings, scope, key) -> {
 			Key<Object> requestedKey = key.getTypeParameter(0);
 			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getName()));

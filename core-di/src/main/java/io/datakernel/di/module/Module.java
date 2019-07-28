@@ -85,6 +85,18 @@ public interface Module {
 		return Preprocessor.resolveConflicts(getBindings(), combinedMultibinder(getMultibinders()));
 	}
 
+	static Module ofDeclarativeBindingsFrom(Object module) {
+		return new AbstractModule() {{
+			addDeclarativeBindingsFrom(module);
+		}};
+	}
+
+	static Module ofDeclarativeBindingsFrom(Class<?> moduleClass) {
+		return new AbstractModule() {{
+			addDeclarativeBindingsFrom(moduleClass);
+		}};
+	}
+
 	static Module empty() {
 		return Modules.of(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
 	}
