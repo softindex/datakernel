@@ -10,10 +10,6 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import java.util.function.Function;
 
-/**
- * HTTP multithreaded server example.
- * Sends back a greeting and the number of worker which served the connection.
- */
 //[START EXAMPLE]
 public final class ScopeServerExample extends HttpServerLauncher {
 	@Provides

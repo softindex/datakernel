@@ -12,14 +12,11 @@ import io.datakernel.worker.WorkerId;
 
 import java.util.function.Function;
 
-/**
- * HTTP DI server example.
- */
 //[START EXAMPLE]
 public final class MultithreadedScopeServletExample extends MultithreadedHttpServerLauncher {
 	@Provides
 	@Worker
-	AsyncServlet servlet(@WorkerId Injector injector) {
+	AsyncServlet servlet(Injector injector) {
 		return new ScopeServlet(injector) {
 			@Provides
 			Function<Object[], String> template() {

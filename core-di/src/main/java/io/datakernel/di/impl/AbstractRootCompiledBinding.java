@@ -4,11 +4,9 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<R> {
 	private volatile R instance;
-	protected final int scope;
 	protected final int index;
 
-	protected AbstractRootCompiledBinding(int scope, int index) {
-		this.scope = scope;
+	protected AbstractRootCompiledBinding(int index) {
 		this.index = index;
 	}
 
@@ -20,7 +18,7 @@ public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<
 			if (instance != null) return instance;
 			instance = doCreateInstance(scopedInstances, synchronizedScope);
 		}
-		scopedInstances[scope].lazySet(index, instance);
+		scopedInstances[0].lazySet(index, instance);
 		return this.instance;
 	}
 

@@ -20,10 +20,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.TriggerResult;
 import io.datakernel.trigger.TriggersModule;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.*;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -161,6 +158,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	protected Module getModule() {
 		return Modules.combine(
 				ServiceGraphModule.create(),
+				WorkerPoolModule.create(Worker.class, MyWorker.class),
 				JmxModule.create()
 						.withScopes(false),
 				TriggersModule.create()

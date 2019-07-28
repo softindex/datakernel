@@ -48,9 +48,6 @@ public final class WorkerPoolModule extends AbstractModule {
 			bind(int.class).annotatedWith(WorkerId.class).in(scope).to(() -> {
 				throw new AssertionError();
 			});
-			bind(Injector.class).annotatedWith(WorkerId.class).in(scope).to(() -> {
-				throw new AssertionError();
-			});
 		}
 
 		generate(WorkerPool.Instances.class, (bindings, scope, key) -> {

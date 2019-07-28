@@ -119,7 +119,7 @@ public final class Binding<T> {
 						bindings[i] = compiledBindings.get(dependencies[i].getKey());
 					}
 					return threadsafe ? scope == 0 ?
-							new AbstractRootCompiledBinding<R>(scope, index) {
+							new AbstractRootCompiledBinding<R>(index) {
 								@Override
 								protected R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 									Object[] args = new Object[bindings.length];
@@ -186,7 +186,7 @@ public final class Binding<T> {
 		return new Binding<>(emptySet(),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									@Override
 									protected R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										return constructor.create();
@@ -217,7 +217,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1))),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 
 									@Override
@@ -256,7 +256,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2))),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 
@@ -296,7 +296,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3))),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
@@ -342,7 +342,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4))),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
@@ -394,7 +394,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5))),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);
@@ -452,7 +452,7 @@ public final class Binding<T> {
 		return new Binding<>(new HashSet<>(asList(Dependency.toKey(dependency1), Dependency.toKey(dependency2), Dependency.toKey(dependency3), Dependency.toKey(dependency4), Dependency.toKey(dependency5), Dependency.toKey(dependency6))),
 				(compiledBindings, threadsafe, scope, index) ->
 						threadsafe ? scope == 0 ?
-								new AbstractRootCompiledBinding<R>(scope, index) {
+								new AbstractRootCompiledBinding<R>(index) {
 									final CompiledBinding<T1> binding1 = compiledBindings.get(dependency1);
 									final CompiledBinding<T2> binding2 = compiledBindings.get(dependency2);
 									final CompiledBinding<T3> binding3 = compiledBindings.get(dependency3);

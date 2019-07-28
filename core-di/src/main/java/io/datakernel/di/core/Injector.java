@@ -46,38 +46,36 @@ import static java.util.stream.Collectors.toSet;
 public final class Injector {
 	public static final Key<Set<InstanceInjector<?>>> INSTANCE_INJECTORS_KEY = new Key<Set<InstanceInjector<?>>>() {};
 
-	@Nullable
-	private final Injector parent;
-
 	private static final class DependencyGraph {
 		private final Scope[] scope;
-		private final Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie;
+		private final Map<Key<?>, Binding<?>> bindings;
 		private final Map<Key<?>, CompiledBinding<?>> compiledBindings;
-		private final Map<Key<?>, Integer> instanceIndexes;
+		private final Map<Key<?>, Integer> compiledIndexes;
 
-		private DependencyGraph(Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie, Map<Key<?>, CompiledBinding<?>> compiledBindings, Map<Key<?>, Integer> indexes) {
+		private DependencyGraph(Scope[] scope, Map<Key<?>, Binding<?>> bindings, Map<Key<?>, CompiledBinding<?>> compiledBindings, Map<Key<?>, Integer> compiledIndexes) {
 			this.scope = scope;
-			this.bindingsTrie = bindingsTrie;
+			this.bindings = bindings;
 			this.compiledBindings = compiledBindings;
-			instanceIndexes = indexes;
+			this.compiledIndexes = compiledIndexes;
 		}
 	}
 
-	private final Trie<Scope, DependencyGraph> scopeTree;
 	private final Map<Key<?>, CompiledBinding<?>> compiledBindings;
 	private final Map<Key<?>, Integer> compiledIndexes;
 	private final AtomicReferenceArray[] scopedInstances;
+	private final Trie<Scope, DependencyGraph> scopeTree;
+	@Nullable
+	private final Injector parent;
 
-	private static final Object[] NO_OBJECTS = new Object[0];
-	private static final Object NO_KEY = new Object();
-
+	@SuppressWarnings("unchecked")
 	private Injector(@Nullable Injector parent, Trie<Scope, DependencyGraph> scopeTree) {
-		this.parent = parent;
-		this.scopeTree = scopeTree;
-		this.scopedInstances = parent == null ? new AtomicReferenceArray[1] : Arrays.copyOf(parent.scopedInstances, parent.scopedInstances.length + 1);
-		this.scopedInstances[this.scopedInstances.length - 1] = new AtomicReferenceArray(scopeTree.get().instanceIndexes.size());
 		this.compiledBindings = scopeTree.get().compiledBindings;
-		this.compiledIndexes = scopeTree.get().instanceIndexes;
+		this.compiledIndexes = scopeTree.get().compiledIndexes;
+		this.scopedInstances = parent == null ? new AtomicReferenceArray[1] : Arrays.copyOf(parent.scopedInstances, parent.scopedInstances.length + 1);
+		this.scopedInstances[this.scopedInstances.length - 1] = new AtomicReferenceArray(scopeTree.get().compiledIndexes.size());
+		this.scopedInstances[this.scopedInstances.length - 1].lazySet(0, this);
+		this.scopeTree = scopeTree;
+		this.parent = parent;
 	}
 
 	/**
@@ -135,14 +133,10 @@ public final class Injector {
 
 		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = Preprocessor.resolveConflicts(bindingsMultimap, multibinder);
 
-		Injector[] injectorRef = new Injector[1];
-
-		// well, can't do anything better than that
-		bindings.get().put(Key.of(Injector.class), Binding.to(() -> injectorRef[0]));
-
 		Preprocessor.completeBindingGraph(bindings, transformer, generator);
 
 		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = Preprocessor.getUnsatisfiedDependencies(bindings);
+		unsatisfied.remove(Key.of(Injector.class));
 		if (parent != null) {
 			new ArrayList<>(unsatisfied.keySet()).stream().filter(parent.compiledBindings::containsKey).forEach(unsatisfied::remove);
 		}
@@ -181,18 +175,16 @@ public final class Injector {
 					.collect(joining("\n\n", "Cyclic dependencies detected:\n\n", "\n")));
 		}
 
-		Injector injector = new Injector(parent, compileBindingsTrie(parent != null ? parent.scopedInstances.length : 0, UNSCOPED, bindings, parent != null ? parent.compiledBindings : emptyMap()));
-		injectorRef[0] = injector;
-
-		return injector;
+		return new Injector(parent, compileBindingsTrie(parent != null ? parent.scopedInstances.length : 0, UNSCOPED, bindings, parent != null ? parent.compiledBindings : emptyMap()));
 	}
 
-	protected static Trie<Scope, DependencyGraph> compileBindingsTrie(int scope, Scope[] path, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
-			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent) {
-		DependencyGraph dependencyGraph = compileBindings(scope, path, bindingsTrie, compiledBindingsParent);
+	protected static Trie<Scope, DependencyGraph> compileBindingsTrie(int scope, Scope[] path,
+			Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
+			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent) {
+		DependencyGraph dependencyGraph = compileBindings(scope, path, bindingsTrie.get(), compiledBindingsOfParent);
 		Map<Scope, Trie<Scope, DependencyGraph>> children = new HashMap<>();
 		bindingsTrie.getChildren().forEach((childScope, trie) -> {
-			Map<Key<?>, CompiledBinding<?>> compiledBindingsCopy = new HashMap<>(compiledBindingsParent);
+			Map<Key<?>, CompiledBinding<?>> compiledBindingsCopy = new HashMap<>(compiledBindingsOfParent);
 			compiledBindingsCopy.putAll(dependencyGraph.compiledBindings);
 			children.put(childScope,
 					compileBindingsTrie(scope + 1, next(path, childScope), bindingsTrie.get(childScope), compiledBindingsCopy));
@@ -200,39 +192,71 @@ public final class Injector {
 		return new Trie<>(dependencyGraph, children);
 	}
 
-	protected static DependencyGraph compileBindings(int scope, Scope[] path, Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
-			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent) {
-		Map<Key<?>, Binding<?>> bindings = bindingsTrie.get();
+	protected static DependencyGraph compileBindings(int scope, Scope[] path,
+			Map<Key<?>, Binding<?>> bindings,
+			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent) {
+		boolean threadsafe = path.length == 0 || path[path.length - 1].isThreadsafe();
 		Map<Key<?>, CompiledBinding<?>> compiledBindings = new HashMap<>();
-		Map<Key<?>, Integer> instanceIndexes = new HashMap<>();
+		Map<Key<?>, Integer> compiledIndexes = new HashMap<>();
+		compiledBindings.put(Key.of(Injector.class),
+				scope == 0 ?
+						new CompiledBinding<Object>() {
+							volatile Object instance;
+
+							@Override
+							public Object getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								Object instance = this.instance;
+								if (instance != null) return instance;
+								this.instance = scopedInstances[scope].get(0);
+								return this.instance;
+							}
+
+							@Override
+							public Object createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								throw new UnsupportedOperationException();
+							}
+						} :
+						new CompiledBinding<Object>() {
+							@Override
+							public Object getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								return scopedInstances[scope].get(0); // directly provided in Injector constructor
+							}
+
+							@Override
+							public Object createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								throw new UnsupportedOperationException();
+							}
+						});
+		compiledIndexes.put(Key.of(Injector.class), 0);
 		for (Key<?> key : bindings.keySet()) {
 			compiledBindings.put(key,
-					compileBinding(scope, path.length == 0 || path[path.length - 1].isThreadsafe(), key, bindings, compiledBindingsParent, compiledBindings, instanceIndexes));
+					compileBinding(scope, threadsafe, key, bindings, compiledBindingsOfParent, compiledBindings, compiledIndexes));
 		}
-		compiledBindingsParent.forEach(compiledBindings::putIfAbsent);
-		return new DependencyGraph(path, bindingsTrie, compiledBindings, instanceIndexes);
+		bindings.put(Key.of(Injector.class), Binding.to(() -> {throw new AssertionError();}));
+		compiledBindingsOfParent.forEach(compiledBindings::putIfAbsent);
+		return new DependencyGraph(path, bindings, compiledBindings, compiledIndexes);
 	}
 
 	private static CompiledBinding<?> compileBinding(int scope, boolean threadsafe, Key<?> key,
 			Map<Key<?>, Binding<?>> bindings,
-			Map<Key<?>, CompiledBinding<?>> compiledBindingsParent,
+			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent,
 			Map<Key<?>, CompiledBinding<?>> compiledBindings,
-			Map<Key<?>, Integer> instanceIndexes) {
+			Map<Key<?>, Integer> compiledIndexes) {
 		if (compiledBindings.containsKey(key)) return compiledBindings.get(key);
 		Binding<?> binding = bindings.get(key);
 		if (binding == null) {
-			if (compiledBindingsParent.containsKey(key)) return compiledBindingsParent.get(key);
+			if (compiledBindingsOfParent.containsKey(key)) return compiledBindingsOfParent.get(key);
 			return missingOptionalBinding();
 		}
-		int index = instanceIndexes.size();
-		instanceIndexes.put(key, index);
+		int index = compiledIndexes.size();
+		compiledIndexes.put(key, index);
 		CompiledBinding<?> compiledBinding = binding.getCompiler().compile(
 				new CompiledBindingLocator() {
 					@Override
 					public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
 						//noinspection unchecked
 						return (CompiledBinding<Q>) compileBinding(scope, threadsafe, key, bindings,
-								compiledBindingsParent, compiledBindings, instanceIndexes);
+								compiledBindingsOfParent, compiledBindings, compiledIndexes);
 					}
 				}, threadsafe,
 				scope, index);
@@ -429,7 +453,7 @@ public final class Injector {
 	}
 
 	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindingsTrie() {
-		return scopeTree.get().bindingsTrie;
+		return scopeTree.map(graph -> graph.bindings);
 	}
 
 	@Nullable
