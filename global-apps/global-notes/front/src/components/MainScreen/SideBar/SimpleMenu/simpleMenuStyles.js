@@ -1,10 +1,10 @@
-const simpleMenuStyles = (theme) => ({
+const simpleMenuStyles = theme => ({
   wrapperButton: {
-    minWidth: `${theme.spacing.unit*8}px`,
-    height: `${theme.spacing.unit*8}px`
+    minWidth: theme.spacing.unit * 8,
+    height: theme.spacing.unit * 8
   },
   iconButton: {
-    marginTop: `${theme.spacing.unit*1}px`
+    marginTop: theme.spacing.unit
   }
 });
 

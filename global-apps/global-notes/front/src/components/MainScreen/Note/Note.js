@@ -1,10 +1,10 @@
 import React from 'react';
-import {withStyles} from '@material-ui/core';
 import PropTypes from 'prop-types';
+import {withStyles} from '@material-ui/core';
 import noteStyles from './noteStyles';
-import NoteService from "../../../modules/note/NoteService";
+import NoteService from '../../../modules/note/NoteService';
 import NoteContext from '../../../modules/note/NoteContext';
-import NoteEditor from "../NoteEditor/NoteEditor";
+import NoteEditor from '../NoteEditor/NoteEditor';
 
 class Note extends React.Component {
   static propTypes = {
@@ -34,7 +34,7 @@ class Note extends React.Component {
         state.noteService.stop();
       }
 
-      const noteService = NoteService.from(props.noteId, props.isNew);
+      const noteService = NoteService.create(props.noteId, props.isNew);
       noteService.init();
 
       return {
@@ -42,6 +42,7 @@ class Note extends React.Component {
         noteService
       };
     }
+
     return state;
   }
 
@@ -49,10 +50,9 @@ class Note extends React.Component {
     this.state.noteService.stop();
   }
 
-  update = newState => this.setState(newState);
-
   render() {
     const {classes} = this.props;
+
     return (
       <NoteContext.Provider value={this.state.noteService}>
         <div className={classes.root}>

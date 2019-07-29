@@ -1,10 +1,10 @@
+import {ClientOTNode, OTStateManager} from 'ot-core/lib';
 import Service from '../../common/Service';
 import DeleteOperation from './ot/operations/DeleteOperation';
 import InsertOperation from './ot/operations/InsertOperation';
-import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import serializer from "../note/ot/serializer";
-import noteOTSystem from "./ot/NoteOTSystem";
-import {ROOT_COMMIT_ID} from "../../common/utils";
+import serializer from '../note/ot/serializer';
+import noteOTSystem from './ot/NoteOTSystem';
+import {ROOT_COMMIT_ID} from '../../common/utils';
 
 const RETRY_TIMEOUT = 1000;
 
@@ -21,18 +21,18 @@ class NoteService extends Service {
     this._isNew = isNew;
   }
 
-  static from(noteId, isNew) {
+  static create(noteId, isNew) {
     const noteOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/note/' + noteId,
       serializer: serializer
     });
     const noteOTStateManager = new OTStateManager(() => '', noteOTNode, noteOTSystem);
+
     return new NoteService(noteOTStateManager, isNew);
   }
 
   async init() {
     // Get initial state
-
     try {
       if (this._isNew) {
         this._noteOTStateManager.checkoutRoot(ROOT_COMMIT_ID);
@@ -47,6 +47,7 @@ class NoteService extends Service {
       await delay.promise;
 
       await this.init();
+
       return;
     }
 
@@ -81,7 +82,7 @@ class NoteService extends Service {
   }
 
   _onStateChange = () => {
-    let state = this._noteOTStateManager.getState();
+    const state = this._noteOTStateManager.getState();
     this.setState({
       content: state,
       ready: true
@@ -98,12 +99,14 @@ class NoteService extends Service {
     const promise = new Promise(resolve => {
       timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
     });
+
     return {timeoutId, promise};
   }
 
   async _sync() {
     try {
       await this._noteOTStateManager.sync();
+
       if (this._isNew && this._noteOTStateManager.getRevision() !== ROOT_COMMIT_ID) {
         this._isNew = false;
       }

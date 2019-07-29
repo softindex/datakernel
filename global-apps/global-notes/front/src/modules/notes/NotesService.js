@@ -24,6 +24,7 @@ class NotesService extends Service {
       serializer: serializer
     });
     const notesOTStateManager = new OTStateManager(() => new Map(), notesOTNode, notesOTSystem);
+
     return new NotesService(notesOTStateManager);
   }
 
@@ -34,6 +35,7 @@ class NotesService extends Service {
       console.error(err);
       await this._reconnectDelay();
       await this.init();
+
       return;
     }
 
@@ -50,9 +52,9 @@ class NotesService extends Service {
     const id = randomString(32);
     this._sendOperation(id, name);
     this.setState({
-      ...this.state,
       newNotes: new Set([...this.state.newNotes, id])
     });
+
     return id;
   };
 

@@ -18,6 +18,7 @@ class NotesOTOperation {
 
   apply(state) {
     const nextState = {...state};
+
     for (const [fieldName, {next}] of Object.entries(this._values)) {
       if (next){
         nextState[fieldName] = next;
@@ -25,6 +26,7 @@ class NotesOTOperation {
         delete nextState[fieldName];
       }
     }
+
     return nextState;
   }
 
@@ -34,6 +36,7 @@ class NotesOTOperation {
 
   invert() {
     const nextValues = {};
+
     for (const [fieldName, {prev, next}] of Object.entries(this._values)) {
       nextValues[fieldName] = {
         prev: next,

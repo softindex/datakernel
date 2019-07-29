@@ -1,14 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import cookies from 'js-cookie';
+import {SnackbarProvider} from 'notistack';
+import {MuiThemeProvider} from '@material-ui/core/styles';
+import CssBaseline from '@material-ui/core/CssBaseline';
 import Router from './components/Router';
 import * as serviceWorker from './serviceWorker';
-import cookies from 'js-cookie';
 import AccountService from './modules/account/AccountService';
-import {MuiThemeProvider} from '@material-ui/core/styles';
-import theme from "./components/themeConfig";
-import CssBaseline from '@material-ui/core/CssBaseline';
+import theme from './components/themeConfig';
 import AccountContext from './modules/account/AccountContext';
-import {SnackbarProvider} from "notistack";
+
 
 const accountService = new AccountService(process.env.REACT_APP_GLOBAL_OAUTH_LINK, cookies);
 accountService.init();

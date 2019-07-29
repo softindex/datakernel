@@ -1,16 +1,16 @@
 import React from 'react';
+import {Redirect} from 'react-router-dom';
 import {withStyles} from '@material-ui/core';
-import sideBarStyles from "./sideBarStyles";
 import Typography from '@material-ui/core/Typography';
-import Paper from "@material-ui/core/Paper";
-import Button from "@material-ui/core/Button";
-import CreateNoteForm from "../DialogsForms/CreateNoteForm"
-import NotesList from "./NotesList/NotesList";
-import connectService from "../../../common/connectService";
-import NotesContext from "../../../modules/notes/NotesContext";
-import DeleteNoteForm from "../DialogsForms/DeleteNoteForm";
-import RenameNoteForm from "../DialogsForms/RenameNoteForm";
-import {Redirect} from "react-router-dom";
+import Paper from '@material-ui/core/Paper';
+import Button from '@material-ui/core/Button';
+import sideBarStyles from "./sideBarStyles";
+import CreateNoteForm from '../DialogsForms/CreateNoteForm';
+import NotesList from './NotesList/NotesList';
+import connectService from '../../../common/connectService';
+import NotesContext from '../../../modules/notes/NotesContext';
+import DeleteNoteForm from '../DialogsForms/DeleteNoteForm';
+import RenameNoteForm from '../DialogsForms/RenameNoteForm';
 
 class SideBar extends React.Component {
   constructor(props) {
@@ -29,15 +29,17 @@ class SideBar extends React.Component {
     }
   };
 
-  showCreateDialog = () => this.setState({...this.state, showCreateDialog: true});
-  showDeleteDialog = (noteId) => this.setState({
-    ...this.state, deleteDialog: {
+  showCreateDialog = () => this.setState({showCreateDialog: true});
+
+  showDeleteDialog = noteId => this.setState({
+    deleteDialog: {
       show: true,
       noteId
     }
   });
+
   showRenameDialog = (noteId, noteName) => this.setState({
-    ...this.state, renameDialog: {
+    renameDialog: {
       show: true,
       noteId,
       noteName
@@ -62,16 +64,17 @@ class SideBar extends React.Component {
   render() {
     const {classes, notes, ready} = this.props;
     const {noteId} = this.props.match.params;
+
     if (noteId && ready && !notes[noteId]){
       return <Redirect to='/'/>;
     }
+
     return (
       <div className={classes.wrapper}>
         <Paper square className={classes.paper}/>
         <Typography
           className={classes.tabContent}
           component="div"
-          style={{padding: 12}}
         >
           <CreateNoteForm
             history={this.props.history}
@@ -89,7 +92,6 @@ class SideBar extends React.Component {
             noteName={this.state.renameDialog.noteName}
             onClose={this.closeDialogs}
           />
-
           <Button
             className={classes.button}
             fullWidth={true}
@@ -116,7 +118,8 @@ class SideBar extends React.Component {
 }
 
 export default connectService(
-  NotesContext, ({ready, notes}, notesService) => ({
+  NotesContext,
+  ({ready, notes}, notesService) => ({
     notesService, ready, notes,
   })
 )(

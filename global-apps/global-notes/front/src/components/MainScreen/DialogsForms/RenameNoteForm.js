@@ -1,16 +1,16 @@
-import React from "react";
+import React from 'react';
+import * as PropTypes from 'prop-types';
+import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
-import formStyles from "./formStyles";
 import Button from '@material-ui/core/Button';
-import Dialog from '../../common/Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import connectService from "../../../common/connectService";
-import NotesContext from "../../../modules/notes/NotesContext";
-import {withSnackbar} from "notistack";
-import * as PropTypes from "prop-types";
+import formStyles from './formStyles';
+import Dialog from '../../common/Dialog/Dialog'
+import connectService from '../../../common/connectService';
+import NotesContext from '../../../modules/notes/NotesContext';
 
 class RenameNoteForm extends React.Component {
   constructor(props) {
@@ -24,7 +24,6 @@ class RenameNoteForm extends React.Component {
   componentDidUpdate(prevProps, prevState, snapshot) {
     if (prevProps.noteName !== this.props.noteName) {
       this.setState({
-        ...this.state,
         name: this.props.noteName
       });
     }
@@ -47,7 +46,7 @@ class RenameNoteForm extends React.Component {
       .then(() => {
         this.props.onClose();
       })
-      .catch((err) => {
+      .catch(err => {
         this.props.enqueueSnackbar(err.message, {
           variant: 'error'
         });
@@ -97,9 +96,9 @@ class RenameNoteForm extends React.Component {
             </Button>
             <Button
               className={this.props.classes.actionButton}
-              type={"submit"}
-              color={"primary"}
-              variant={"contained"}
+              type="submit"
+              color="primary"
+              variant="contained"
             >
               Rename
             </Button>
@@ -115,7 +114,8 @@ RenameNoteForm.propTypes = {
 };
 
 export default connectService(
-  NotesContext, (state, notesService) => ({
+  NotesContext,
+  (state, notesService) => ({
     renameNote(noteId, noteName) {
       return notesService.renameNote(noteId, noteName);
     }

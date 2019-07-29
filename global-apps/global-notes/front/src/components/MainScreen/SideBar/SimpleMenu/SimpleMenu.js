@@ -1,17 +1,17 @@
-import React from 'react';
+import React, {useState} from 'react';
+import {withStyles} from '@material-ui/core';
 import IconButton from '@material-ui/core/IconButton';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
-import simpleMenuStyles from "./simpleMenuStyles";
-import {withStyles} from '@material-ui/core';
+import simpleMenuStyles from './simpleMenuStyles';
 
 const options = [
   'Rename', 'Delete'
 ];
 
 function SimpleMenu({onRename, onDelete, classes}) {
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
   function handleClick(event) {

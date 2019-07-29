@@ -3,108 +3,53 @@ import {ListItemIcon, withStyles} from '@material-ui/core';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
-import ArrowIcon from '@material-ui/icons/KeyboardArrowRight'
-import headerStyles from './headerStyles';
-import connectService from "../../../common/connectService";
-import AccountContext from "../../../modules/account/AccountContext";
-import NotesContext from "../../../modules/notes/NotesContext";
-import MenuIcon from "@material-ui/icons/Menu";
-import Drawer from "@material-ui/core/Drawer";
-import List from "@material-ui/core/List";
-import ListItemText from "@material-ui/core/ListItemText";
-import ListItem from "@material-ui/core/ListItem";
+import IconButton from '@material-ui/core/IconButton';
+import ArrowIcon from '@material-ui/icons/KeyboardArrowRight';
 import Icon from '@material-ui/core/Icon';
+import headerStyles from './headerStyles';
+import connectService from '../../../common/connectService';
+import AccountContext from '../../../modules/account/AccountContext';
+import NotesContext from '../../../modules/notes/NotesContext';
 
-class Header extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      openProfile: false,
-      openDrawer: false
-    };
-  }
+function Header({classes, notes, noteId, logout}) {
+  const note = notes[noteId];
 
-  onOpenDrawer = () => {
-    this.setState({
-      openDrawer: true
-    });
-  };
-
-  onCloseDrawer = () => {
-    this.setState({
-      openDrawer: false
-    });
-  };
-
-  render() {
-    const {classes} = this.props;
-    return (
-      <>
-        <AppBar className={classes.appBar} position="fixed">
-          <Toolbar>
-            <ListItemIcon
-              aria-label="Open drawer"
-              onClick={this.onOpenDrawer}
-              edge="start"
-              className={classes.iconButton}
-            >
-              <MenuIcon className={classes.menuIcon}/>
-            </ListItemIcon>
-            <Typography
-              color="inherit"
-              variant="h6"
-              className={classes.title}
-            >
-              Global Notes
-            </Typography>
-            <div className={classes.noteTitleContainer}>
-              {this.props.notes[this.props.noteId] !== undefined && (
-                <>
-                  <Typography
-                    className={classes.noteTitle}
-                    color="inherit"
-                  >
-                    {this.props.notes[(this.props.noteId)]}
-                  </Typography>
-                  <ListItemIcon className={classes.listItemIcon}>
-                    <ArrowIcon className={classes.arrowIcon}/>
-                  </ListItemIcon>
-                </>
-              )}
-            </div>
-          </Toolbar>
-        </AppBar>
-        <Drawer
-          className={classes.drawer}
-          open={this.state.openDrawer}
-          onClose={this.onCloseDrawer}
+  return (
+    <AppBar className={classes.appBar} position="fixed">
+      <Toolbar>
+        <Typography
+          color="inherit"
+          variant="h6"
+          className={classes.title}
         >
-          <div
-            className={classes.list}
-            role="presentation"
-            onClick={this.onCloseDrawer}
-            onKeyDown={this.onCloseDrawer}
-          >
-            <List>
-              <ListItem
-                button
-                onClick={this.props.logout}
+          Global Notes
+        </Typography>
+        <div className={classes.noteTitleContainer}>
+          {note !== undefined && (
+            <>
+              <ListItemIcon className={classes.listItemIcon}>
+                <ArrowIcon className={classes.arrowIcon}/>
+              </ListItemIcon>
+              <Typography
+                className={classes.noteTitle}
+                color="inherit"
               >
-                <ListItemIcon>
-                  <Icon className={classes.accountIcon}>logout</Icon>
-                </ListItemIcon>
-                <ListItemText primary={'Log Out'}/>
-              </ListItem>
-            </List>
-          </div>
-        </Drawer>
-      </>
-    );
-  }
+                {note}
+              </Typography>
+            </>
+          )}
+        </div>
+        <IconButton color="inherit" onClick={logout}>
+          <Icon className={classes.accountIcon}>logout</Icon>
+        </IconButton>
+      </Toolbar>
+    </AppBar>
+  );
 }
 
-export default connectService(NotesContext, (
-  {ready, notes}, notesService) => ({ready, notes, notesService})
+export default connectService(
+  NotesContext,
+  ({ready, notes}, notesService) => ({ready, notes, notesService})
 )(
   connectService(
     AccountContext,

@@ -14,6 +14,7 @@ class AccountService extends Service {
 
   init() {
     const privateKey = this._cookies.get('Key');
+
     if (privateKey) {
       this.setState({
         authorized: true,
@@ -31,7 +32,7 @@ class AccountService extends Service {
   };
 
   authByFile = file => {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const fileReader = new FileReader();
       fileReader.readAsText(file);
       fileReader.onload = () => {

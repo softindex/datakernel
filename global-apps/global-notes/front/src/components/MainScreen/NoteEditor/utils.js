@@ -22,6 +22,7 @@ export function getDifference(oldValue, nextValue, caretPosition) {
     if (nextValue.length > oldValue.length) {
       const length = nextValue.length - oldValue.length;
       const addedHtml = nextValue.slice(oldCaretPosition, oldCaretPosition + length);
+
       return {
         operation: 'insert',
         position: oldCaretPosition,
@@ -30,6 +31,7 @@ export function getDifference(oldValue, nextValue, caretPosition) {
     } else {
       const deletedLength = oldValue.length - nextValue.length;
       const deletedHtml = oldValue.slice(caretPosition, caretPosition + deletedLength);
+
       return {
         operation: 'delete',
         position: caretPosition,
@@ -46,12 +48,14 @@ export function getDifference(oldValue, nextValue, caretPosition) {
     if (i === caretPosition) {
       const deletedLength = oldValue.length - nextValue.length;
       const deletedHtml = oldValue.slice(caretPosition, caretPosition + deletedLength);
+
       return {
         operation: 'delete',
         position: caretPosition,
         content: deletedHtml
       };
     }
+
     const deletedLength = oldCaretPosition - i;
     const addedLength = caretPosition - i;
     const deletedHtml = oldValue.slice(i, i + deletedLength);

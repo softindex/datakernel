@@ -1,56 +1,51 @@
-import React from 'react';
-import Header from "./Header/Header"
-import SideBar from "./SideBar/SideBar";
+import React, {useEffect} from 'react';
+import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
-import mainScreenStyles from "./mainScreenStyles";
+import Header from './Header/Header';
+import SideBar from './SideBar/SideBar';
+import mainScreenStyles from './mainScreenStyles';
 import checkAuth from '../../common/checkAuth';
-import NotesContext from "../../modules/notes/NotesContext";
-import {withSnackbar} from "notistack";
-import NotesService from "../../modules/notes/NotesService";
-import EmptyNote from "./EmptyNote/EmptyNote";
-import Note from "./Note/Note";
+import NotesContext from '../../modules/notes/NotesContext';
+import NotesService from '../../modules/notes/NotesService';
+import EmptyNote from './EmptyNote/EmptyNote';
+import Note from './Note/Note';
 
-class MainScreen extends React.Component {
-  constructor(props) {
-    super(props);
-    this.notesService = NotesService.create();
-  }
+function MainScreen(props) {
+  const notesService = NotesService.create();
+  const {noteId} = props.match.params;
 
-  componentDidMount() {
-    this.notesService.init()
-      .catch((err) => {
-        this.props.enqueueSnackbar(err.message, {
+  useEffect(() => {
+    notesService.init()
+      .catch(err => {
+        props.enqueueSnackbar(err.message, {
           variant: 'error'
         });
       });
-  }
 
-  componentWillUnmount() {
-    this.notesService.stop();
-  }
+    return () => {
+      notesService.stop();
+    };
+  });
 
-  render() {
-    const {noteId} = this.props.match.params;
-    return (
-      <NotesContext.Provider value={this.notesService}>
-        <Header noteId={noteId}/>
-        <div className={this.props.classes.note}>
-          <SideBar
-            history={this.props.history}
-            match={this.props.match}
-          />
-          {!noteId && (
-            <EmptyNote/>
-          )}
-          {noteId && (
-            <Note
-              noteId={noteId}
-              isNew={this.notesService.state.newNotes.has(noteId)}/>
-          )}
-        </div>
-      </NotesContext.Provider>
-    );
-  }
+  return (
+    <NotesContext.Provider value={notesService}>
+      <Header noteId={noteId}/>
+      <div className={props.classes.note}>
+        <SideBar
+          history={props.history}
+          match={props.match}
+        />
+        {!noteId && (
+          <EmptyNote/>
+        )}
+        {noteId && (
+          <Note
+            noteId={noteId}
+            isNew={notesService.state.newNotes.has(noteId)}/>
+        )}
+      </div>
+    </NotesContext.Provider>
+  )
 }
 
 export default checkAuth(

@@ -1,5 +1,5 @@
 import React, {Component} from 'react';
-import {getRandomNumberInRange, getRandomArrayElement} from './utils'
+import {getRandomNumberInRange, getRandomArrayElement} from './utils';
 
 let ctx;
 
@@ -33,14 +33,13 @@ class SignUpAbstractionImage extends Component {
   }
 
   renderAnimation() {
-    const { nodesCount, nodesSize, size } = this.props;
-
-    let viewWidth = window.innerHeight * 1.6;
-    let viewHeight = window.innerHeight * 1.6;
-    let drawingCanvas = this._canvas;
+    const {nodesCount, nodesSize, size} = this.props;
+    const viewWidth = window.innerHeight * 1.6;
+    const viewHeight = window.innerHeight * 1.6;
+    const drawingCanvas = this._canvas;
 
     initDrawingCanvas();
-    let nodes = createNodes();
+    const nodes = createNodes();
     connectNodes();
     draw();
 
@@ -51,14 +50,14 @@ class SignUpAbstractionImage extends Component {
     }
 
     function createNodes() {
-      let rad = viewWidth * 0.5 - 10;
-      let nodes = [];
+      const rad = viewWidth * 0.5 - 10;
+      const nodes = [];
 
       for (let i = 0; i < nodesCount; i++) {
-        let q = Math.random() * (Math.PI * 2);
-        let r = Math.sqrt(Math.random());
-        let x = (rad * r) * Math.cos(q) + viewWidth * 0.5;
-        let y = (rad * r) * Math.sin(q) + viewWidth * 0.5;
+        const q = Math.random() * (Math.PI * 2);
+        const r = Math.sqrt(Math.random());
+        const x = (rad * r) * Math.cos(q) + viewWidth * 0.5;
+        const y = (rad * r) * Math.sin(q) + viewWidth * 0.5;
         nodes[i] = new Node(x, y, ctx, nodesSize, size);
       }
 

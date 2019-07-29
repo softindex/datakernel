@@ -35,7 +35,7 @@ function connectService(ServiceContext, mapStateToProps) {
         this.state.context.removeChangeListener(this.update);
       }
 
-      componentDidUpdate(prevProps, prevState) {
+      componentDidUpdate(prevProps, prevState, snapshot) {
         if (this.state.context !== prevState.context) {
           prevState.context.removeChangeListener(this.update);
           this.state.context.addChangeListener(this.update);

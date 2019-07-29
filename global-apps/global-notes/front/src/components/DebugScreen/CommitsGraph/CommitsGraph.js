@@ -1,18 +1,18 @@
 import React from 'react';
-import GraphModel from "../../../modules/GraphModel";
+import Viz from 'viz.js';
+import {Module, render} from 'viz.js/lite.render.js';
+import GraphModel from '../../../modules/GraphModel';
 import commitsGraphStyles from './commitsGraphStyles';
 import {withStyles} from '@material-ui/core';
 
-const Viz = window.Viz;
 const UPDATE_INTERVAL = 1000;
 
 class CommitsGraph extends React.Component {
-  constructor(props, context) {
-    super(props, context);
+  constructor(props) {
+    super(props);
     this.timerId = null;
+    this.graph = React.createRef();
   }
-
-  graph = React.createRef();
 
   async componentDidMount() {
     await this.updateGraph(this.props.noteId);
@@ -25,16 +25,16 @@ class CommitsGraph extends React.Component {
 
   updateGraph = async noteId => {
     try {
-      let rawGraph = await GraphModel.getGraph(noteId);
-      let viz = new Viz();
+      const rawGraph = await GraphModel.getGraph(noteId);
+      let viz = new Viz({Module, render});
 
       viz.renderSVGElement(rawGraph)
         .then(element => {
-          this.graph.current.innerHTML = "";
+          this.graph.current.innerHTML = '';
           this.graph.current.appendChild(element);
         })
         .catch(() => {
-          viz = new Viz();
+          viz = new Viz({Module, render});
         });
     } catch (e) {
       console.error(e);

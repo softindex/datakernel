@@ -22,6 +22,7 @@ const noteOTSystem = new OTSystemBuilder()
     // Left operation always has lesser position
     if (left.position > right.position) {
       const result = doTransformDeleteAndDelete(right, left);
+
       return TransformResult.of(result.rightOps, result.leftOps);
     } else {
       return doTransformDeleteAndDelete(left, right);
@@ -39,6 +40,7 @@ const noteOTSystem = new OTSystemBuilder()
 
     if (right.position > left.position && left.position + left.content.length > right.position) {
       const index = right.position - left.position;
+
       return TransformResult.right([
         new DeleteOperation(
           left.position,
@@ -66,6 +68,7 @@ const noteOTSystem = new OTSystemBuilder()
         + first.content.substring(second.position - first.position)
       );
     }
+
     return null;
   })
   .withSquashFunction(DeleteOperation, DeleteOperation, (first, second) => {
@@ -78,6 +81,7 @@ const noteOTSystem = new OTSystemBuilder()
         + second.content.substring(first.position - second.position)
       );
     }
+
     return null;
   })
   .withSquashFunction(DeleteOperation, InsertOperation, (first, second) => {
@@ -88,11 +92,11 @@ const noteOTSystem = new OTSystemBuilder()
           return new DeleteOperation(first.position + second.content.length,
             first.content.substring(second.content.length));
         }
+
         if (first.content.endsWith(second.content)) {
           return new DeleteOperation(first.position,
             first.content.substring(0, first.content.length - second.content.length));
         }
-
       } else {
         return getInsert(first, second);
       }
@@ -210,6 +214,7 @@ function getInsert(first, second) {
 
 function getStartIndex(subContent, content) {
   let startIndex = -1;
+
   for (let i = 0; i < subContent.length; i++) {
     if (content[i] === subContent[i]) {
       startIndex = i + 1;
@@ -217,11 +222,13 @@ function getStartIndex(subContent, content) {
       break;
     }
   }
+
   return startIndex;
 }
 
 function getEndIndex(subContent, content) {
   let endIndex = -1;
+
   for (let i = content.length - 1, j = subContent.length - 1; i >= 0 && j >= 0; i--) {
     if (content[i] === subContent[j--]) {
       endIndex = i;
@@ -229,6 +236,7 @@ function getEndIndex(subContent, content) {
       break;
     }
   }
+
   return endIndex;
 }
 

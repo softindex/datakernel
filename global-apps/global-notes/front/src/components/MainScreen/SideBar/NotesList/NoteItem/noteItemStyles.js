@@ -1,18 +1,9 @@
 const noteItemStyles = theme => ({
   listItem: {
-    width: `${theme.spacing.unit * 41}px`,
-    borderRadius: 4,
-    paddingTop: 3,
-    paddingBottom: 3
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    float: 'left',
-    marginTop: `${theme.spacing.unit}px`
-  },
-  avatarContent: {
-    fontSize: '1rem'
+    width: theme.spacing.unit * 41,
+    borderRadius: theme.spacing.unit / 2,
+    paddingTop: theme.spacing.unit * 0.375,
+    paddingBottom: theme.spacing.unit * 0.375
   },
   link: {
     textDecoration: 'none',
@@ -20,7 +11,7 @@ const noteItemStyles = theme => ({
     height: theme.spacing.unit * 8
   },
   itemText: {
-    marginTop: 20,
+    marginTop: theme.spacing.unit * 2.5,
     overflow: 'hidden',
   },
   itemTextPrimary: {

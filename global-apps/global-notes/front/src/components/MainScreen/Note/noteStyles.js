@@ -9,11 +9,9 @@ const noteStyles = theme => ({
   },
   headerPadding: theme.mixins.toolbar,
   noteEditor: {
-    // margin: '',
-    fontSize: '20px',
+    fontSize: theme.typography.h5.fontSize,
     display: 'flex',
-    flexGrow: 1,
-    // flexShrink: 1,
+    flexGrow: 1
   }
 });
 

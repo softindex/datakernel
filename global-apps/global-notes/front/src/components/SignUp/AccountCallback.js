@@ -1,25 +1,26 @@
-import React from 'react';
+import React, {useEffect} from 'react';
+import {Redirect} from 'react-router-dom';
 import qs from 'query-string';
 import connectService from '../../common/connectService';
-import {Redirect} from 'react-router-dom';
-import AccountContext from "../../modules/account/AccountContext";
+import AccountContext from '../../modules/account/AccountContext';
 
-class AccountCallback extends React.Component {
-  componentDidMount() {
-    const params = qs.parse(this.props.location.search);
+function AccountCallback(props) {
+  useEffect(() => {
+    const params = qs.parse(props.location.search);
 
     if (params.privateKey) {
-      this.props.authByPrivateKey(params.privateKey);
+      props.authByPrivateKey(params.privateKey);
     }
-  }
+  })
 
-  render() {
-    return <Redirect to='/'/>;
-  }
+  return (
+    <Redirect to='/'/>
+  );
 }
 
 export default connectService(
-  AccountContext, (state, accountService) => ({
+  AccountContext,
+  (state, accountService) => ({
     authByPrivateKey(privateKey) {
       accountService.authByPrivateKey(privateKey);
     }
