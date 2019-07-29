@@ -205,55 +205,33 @@ public class GuiceDiScopesBenchmark {
         }
     }
 
-    static class Cookie7 {
-        private final Pastry pastry;
-
-        @Inject
-        Cookie7(Pastry pastry) {
-            this.pastry = pastry;
-        }
-
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
-
-    static class TORT {
+    static class CookieBucket {
         private final Cookie1 c1;
         private final Cookie2 c2;
         private final Cookie3 c3;
         private final Cookie4 c4;
         private final Cookie5 c5;
         private final Cookie6 c6;
-        private final Cookie7 c7;
 
         public Cookie4 getC4() {
             return c4;
         }
 
         @Inject
-        public TORT(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6, Cookie7 c7) {
+        public CookieBucket(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
             this.c1 = c1;
             this.c2 = c2;
             this.c3 = c3;
             this.c4 = c4;
             this.c5 = c5;
             this.c6 = c6;
-            this.c7 = c7;
         }
     }
 
     AbstractModule cookbook;
     Injector injector;
 
-    Cookie1 cookie1;
-    Cookie2 cookie2;
-    Cookie3 cookie3;
-    Cookie4 cookie4;
-    Cookie5 cookie5;
-    Cookie6 cookie6;
-    Cookie7 cookie7;
-
+    CookieBucket cb;
     @Setup
     public void setup() {
 
@@ -276,71 +254,53 @@ public class GuiceDiScopesBenchmark {
             @Singleton
             Kitchen kitchen() { return new Kitchen(); }
 
-
             @Provides
-
             Sugar sugar() { return new Sugar("Sugarello", 10.f); }
 
             @Provides
-
             Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
 
             @Provides
-
             Flour flour() { return new Flour("Kyivska", 100.0f); }
 
             @Provides
-
             Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
                 return new Pastry(sugar, butter, flour);
             }
 
             @Provides
-
             Cookie1 cookie1(Pastry pastry) {
                 return new Cookie1(pastry);
             }
 
             @Provides
-
             Cookie2 cookie2(Pastry pastry) {
                 return new Cookie2(pastry);
             }
 
             @Provides
-
             Cookie3 cookie3(Pastry pastry) {
                 return new Cookie3(pastry);
             }
 
             @Provides
-
             Cookie4 cookie4(Pastry pastry) {
                 return new Cookie4(pastry);
             }
 
             @Provides
-
             Cookie5 cookie5(Pastry pastry) {
                 return new Cookie5(pastry);
             }
 
             @Provides
-
             Cookie6 cookie6(Pastry pastry) {
                 return new Cookie6(pastry);
             }
 
             @Provides
-
-            Cookie7 cookie7(Pastry pastry) {
-                return new Cookie7(pastry);
-            }
-
-            @Provides
-
-            TORT tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6, Cookie7 c7) {
-                return new TORT(c1, c2, c3, c4, c5, c6, c7);
+			CookieBucket tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
+                return new CookieBucket(c1, c2, c3, c4, c5, c6);
             }
 
         };
@@ -356,27 +316,13 @@ public class GuiceDiScopesBenchmark {
     public void testMethod(Blackhole blackhole) {
         Kitchen kitchen = injector.getInstance(Kitchen.class);
         for (int i = 0; i < arg; ++i) {
-            cookie1 = injector.getInstance(Cookie1.class);
-            cookie2 = injector.getInstance(Cookie2.class);
-            cookie3 = injector.getInstance(Cookie3.class);
-            cookie4 = injector.getInstance(Cookie4.class);
-            cookie5 = injector.getInstance(Cookie5.class);
-            cookie6 = injector.getInstance(Cookie6.class);
-            cookie7 = injector.getInstance(Cookie7.class);
-            blackhole.consume(cookie1);
-            blackhole.consume(cookie2);
-            blackhole.consume(cookie3);
-            blackhole.consume(cookie4);
-            blackhole.consume(cookie5);
-            blackhole.consume(cookie6);
-            blackhole.consume(cookie7);
-            blackhole.consume(kitchen);
+			cb = injector.getInstance(CookieBucket.class);
+			blackhole.consume(cb);
         }
 
     }
 
 	public static void main(String[] args) throws RunnerException {
-
 		Options opt = new OptionsBuilder()
 				.include(GuiceDiScopesBenchmark.class.getSimpleName())
 				.forks(2)
@@ -392,4 +338,9 @@ public class GuiceDiScopesBenchmark {
 		new Runner(opt).run();
 	}
 }
+// 29.07
+//	Benchmark                          (arg)  Mode  Cnt     Score     Error  Units
+//	GuiceDiScopesBenchmark.testMethod      0  avgt   20    77.086 ±   1.826  ns/op
+//	GuiceDiScopesBenchmark.testMethod      1  avgt   20  1050.370 ±  17.707  ns/op
+//	GuiceDiScopesBenchmark.testMethod     10  avgt   20  9069.315 ± 446.218  ns/op
 

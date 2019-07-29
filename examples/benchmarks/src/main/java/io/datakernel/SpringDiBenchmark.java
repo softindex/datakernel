@@ -22,8 +22,6 @@ import java.util.concurrent.TimeUnit;
 @State(org.openjdk.jmh.annotations.Scope.Benchmark)
 @Configuration
 public class SpringDiBenchmark {
-
-
 	static class Kitchen {
 		private final int places;
 
@@ -35,7 +33,6 @@ public class SpringDiBenchmark {
 			return places;
 		}
 	}
-
 
 	static class Sugar {
 		private final String name;
@@ -57,7 +54,6 @@ public class SpringDiBenchmark {
 		}
 	}
 
-
 	static class Butter {
 		private float weight;
 		private String name;
@@ -76,7 +72,6 @@ public class SpringDiBenchmark {
 			return name;
 		}
 	}
-
 
 	static class Flour {
 		private float weight;
@@ -101,7 +96,6 @@ public class SpringDiBenchmark {
 			return name;
 		}
 	}
-
 
 	static class Pastry {
 		private final Sugar sugar;
@@ -128,7 +122,6 @@ public class SpringDiBenchmark {
 		}
 	}
 
-
 	static class Cookie1 {
 		private final Pastry pastry;
 
@@ -141,7 +134,6 @@ public class SpringDiBenchmark {
 			return pastry;
 		}
 	}
-
 
 	static class Cookie2 {
 		private final Pastry pastry;
@@ -156,7 +148,6 @@ public class SpringDiBenchmark {
 		}
 	}
 
-
 	static class Cookie3 {
 		private final Pastry pastry;
 
@@ -169,7 +160,6 @@ public class SpringDiBenchmark {
 			return pastry;
 		}
 	}
-
 
 	static class Cookie4 {
 		private final Pastry pastry;
@@ -184,7 +174,6 @@ public class SpringDiBenchmark {
 		}
 	}
 
-
 	static class Cookie5 {
 		private final Pastry pastry;
 
@@ -197,7 +186,6 @@ public class SpringDiBenchmark {
 			return pastry;
 		}
 	}
-
 
 	static class Cookie6 {
 		private final Pastry pastry;
@@ -212,20 +200,28 @@ public class SpringDiBenchmark {
 		}
 	}
 
+	static class CookieBucket {
+		private final Cookie1 c1;
+		private final Cookie2 c2;
+		private final Cookie3 c3;
+		private final Cookie4 c4;
+		private final Cookie5 c5;
+		private final Cookie6 c6;
 
-	static class Cookie7 {
-		private final Pastry pastry;
+		public Cookie4 getC4() {
+			return c4;
+		}
 
 		@Autowired
-		Cookie7(Pastry pastry) {
-			this.pastry = pastry;
-		}
-
-		public Pastry getPastry() {
-			return pastry;
+		CookieBucket(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
+			this.c1 = c1;
+			this.c2 = c2;
+			this.c3 = c3;
+			this.c4 = c4;
+			this.c5 = c5;
+			this.c6 = c6;
 		}
 	}
-
 
 	@Bean
 	Kitchen kitchen() { return new Kitchen(); }
@@ -286,21 +282,13 @@ public class SpringDiBenchmark {
 
 	@Bean
 	@org.springframework.context.annotation.Scope("prototype")
-	Cookie7 cookie7(Pastry pastry) {
-		return new Cookie7(pastry);
+	CookieBucket tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
+		return new CookieBucket(c1, c2, c3, c4, c5, c6);
 	}
 
 
-
 	ConfigurableApplicationContext context;
-
-	Cookie1 cookie1;
-	Cookie2 cookie2;
-	Cookie3 cookie3;
-	Cookie4 cookie4;
-	Cookie5 cookie5;
-	Cookie6 cookie6;
-	Cookie7 cookie7;
+	CookieBucket cb;
 
 	@Param({"0", "1", "10"})
 	int arg;
@@ -313,23 +301,9 @@ public class SpringDiBenchmark {
 	@Benchmark
 	public void measure(Blackhole blackhole) {
 		Kitchen kitchen = context.getBean(Kitchen.class);
-		Cookie1 cookie = context.getBean(Cookie1.class);
 		for (int i = 0; i < arg; ++i) {
-			cookie1 = context.getBean(Cookie1.class);
-			cookie2 = context.getBean(Cookie2.class);
-			cookie3 = context.getBean(Cookie3.class);
-			cookie4 = context.getBean(Cookie4.class);
-			cookie5 = context.getBean(Cookie5.class);
-			cookie6 = context.getBean(Cookie6.class);
-			cookie7 = context.getBean(Cookie7.class);
-			assert cookie.equals(cookie1);
-			blackhole.consume(cookie1);
-			blackhole.consume(cookie2);
-			blackhole.consume(cookie3);
-			blackhole.consume(cookie4);
-			blackhole.consume(cookie5);
-			blackhole.consume(cookie6);
-			blackhole.consume(cookie7);
+			cb = context.getBean(CookieBucket.class);
+			blackhole.consume(cb);
 		}
 		blackhole.consume(kitchen);
 	}
@@ -350,12 +324,8 @@ public class SpringDiBenchmark {
 	}
 }
 
-// Benchmark                  (arg)  Mode  Cnt     Score   Error  Units
-//SpringDiBenchmark.measure      0  avgt   20    16.498 ± 0.189  us/op
-//SpringDiBenchmark.measure      1  avgt   20   133.197 ± 1.291  us/op
-//SpringDiBenchmark.measure     10  avgt   20  1180.808 ± 8.212  us/op
-//
+// 29.07
 //	Benchmark                  (arg)  Mode  Cnt     Score    Error  Units
-//	SpringDiBenchmark.measure      0  avgt   20    17.056 ±  0.244  us/op
-//	SpringDiBenchmark.measure      1  avgt   20   137.238 ±  1.658  us/op
-//	SpringDiBenchmark.measure     10  avgt   20  1255.057 ± 46.047  us/op
+//	SpringDiBenchmark.measure      0  avgt   20    18.583 ±  1.323  us/op
+//	SpringDiBenchmark.measure      1  avgt   20   141.145 ±  2.116  us/op
+//	SpringDiBenchmark.measure     10  avgt   20  1277.517 ± 28.185  us/op

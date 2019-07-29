@@ -15,5 +15,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @ScopeAnnotation(threadsafe = false)
 @Target({ElementType.METHOD})
 @Retention(RUNTIME)
-public @interface Order {
+public @interface OrderScope {
 }
