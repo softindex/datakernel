@@ -104,7 +104,6 @@ class Profile extends React.Component {
               <TextField
                 className={classes.textField}
                 value={this.props.publicKey}
-                id="publicKeyField"
                 label="Public Key"
                 autoFocus
                 margin="normal"

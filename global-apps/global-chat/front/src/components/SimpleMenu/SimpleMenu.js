@@ -38,26 +38,15 @@ function SimpleMenu({onAddContact, onDelete, classes}) {
 
   return (
     <div onClick={handleClick} className={classes.wrapperButton} >
-      <IconButton
-        aria-label="More"
-        aria-controls="simple-menu"
-        aria-haspopup="true"
-        className={classes.iconButton}
-      >
+      <IconButton className={classes.iconButton}>
         <MoreVertIcon />
       </IconButton>
         <Menu
-          id="simple-menu"
           anchorEl={anchorEl}
           keepMounted
           open={open}
           onClose={handleClose}
-          PaperProps={{
-            style: {
-              maxHeight: 48 * 4.5,
-              width: 200,
-            },
-          }}
+          classes={{paper: classes.menuPaper}}
         >
           {options.map(option => (
             <MenuItem

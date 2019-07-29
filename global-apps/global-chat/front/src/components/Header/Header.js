@@ -28,12 +28,11 @@ function Header({classes, rooms, roomId, contacts, publicKey}) {
       <AppBar className={classes.appBar} position="fixed">
         <Toolbar>
           <ListItemIcon
-            aria-label="Open drawer"
             onClick={onDrawerOpen}
             edge="start"
             className={classes.iconButton}
           >
-            <MenuIcon className={classes.menuIcon}/>
+            <MenuIcon/>
           </ListItemIcon>
           <Typography
             color="inherit"

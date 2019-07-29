@@ -12,18 +12,18 @@ import {Link, withRouter} from "react-router-dom";
 import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from "@material-ui/icons/Delete";
-import {getAvatarLetters, getRoomName, toEmoji} from "../../common/utils";
+import {getAvatarLetters, getRoomName} from "../../common/utils";
 
 class RoomItem extends React.Component {
   state = {
     hover: false,
     showAddContactDialog: false,
-    showMenuIcon: true
+    showMenuIcon: false
   };
 
   static defaultProps = {
     selected: false,
-    showDeleteButton: false,
+    isContactsTab: false,
     roomSelected: true
   };
 
@@ -46,15 +46,11 @@ class RoomItem extends React.Component {
     if (room.participants.length === 2) {
       const participantPublicKey = room.participants
         .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
-      if (this.props.contacts.has(participantPublicKey)) {
+      if (!this.props.contacts.has(participantPublicKey)) {
         this.setState({
-          showMenuIcon: false
+          showMenuIcon: true
         });
       }
-    } else {
-      this.setState({
-        showMenuIcon: false
-      })
     }
   }
 
@@ -112,18 +108,15 @@ class RoomItem extends React.Component {
               }}
             />
           </Link>
-          {this.state.hover && this.state.showMenuIcon && (
+          {this.state.hover && this.state.showMenuIcon && !this.props.isContactsTab && (
             <SimpleMenu
               className={classes.menu}
               onAddContact={this.onClickAddContact.bind(this)}
               onDelete={this.props.onRemoveContact}
             />
           )}
-          {this.state.hover && this.props.showDeleteButton && (
-            <IconButton
-              className={classes.deleteIcon}
-              aria-label="Delete"
-            >
+          {this.state.hover && this.props.isContactsTab && (
+            <IconButton className={classes.deleteIcon}>
               <DeleteIcon
                 onClick={this.props.onRemoveContact}
                 fontSize="medium"

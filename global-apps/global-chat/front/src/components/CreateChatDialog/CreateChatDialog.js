@@ -199,7 +199,6 @@ class CreateChatDialog extends React.Component {
                 <Paper className={classes.search}>
                   <IconButton
                     className={classes.searchIcon}
-                    aria-label="Search"
                     disabled={true}
                   >
                     <SearchIcon/>
@@ -209,7 +208,6 @@ class CreateChatDialog extends React.Component {
                     placeholder="Search..."
                     autoFocus
                     onChange={this.handleSearchChange}
-                    inputProps={{'aria-label': 'Search...'}}
                   />
                 </Paper>
                 <List>
@@ -238,9 +236,6 @@ class CreateChatDialog extends React.Component {
             {/*>*/}
             {/*  Back*/}
             {/*</Button>*/}
-
-            {/*CHANGE HERE*/}
-
             <Button
               className={this.props.classes.actionButton}
               onClick={this.onClose}

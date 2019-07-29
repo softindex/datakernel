@@ -5,13 +5,17 @@ import roomsListStyles from "./roomsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
+import {withSnackbar} from "notistack";
 
 class RoomsList extends React.Component {
 
   onRemoveContact(pubKey, name) {
-    //event.preventDefault();
-    //event.stopPropagation();
-    return this.props.removeContact(pubKey, name);
+    return this.props.removeContact(pubKey, name)
+      .catch(err => {
+      this.props.enqueueSnackbar(err.message, {
+        variant: 'error'
+      });
+    });
   }
 
   onContactDelete(room) {
@@ -39,7 +43,7 @@ class RoomsList extends React.Component {
                   roomId={roomId}
                   room={room}
                   roomsService={this.props.roomsService}
-                  showDeleteButton={this.props.showDeleteButton}
+                  isContactsTab={this.props.isContactsTab}
                   contacts={this.props.contacts}
                   publicKey={this.props.publicKey}
                   addContact={this.props.addContact}
@@ -54,4 +58,4 @@ class RoomsList extends React.Component {
   }
 }
 
-export default withStyles(roomsListStyles)(RoomsList);
+export default withSnackbar(withStyles(roomsListStyles)(RoomsList));
