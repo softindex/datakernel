@@ -268,9 +268,6 @@ public class DkDirectScopebindBenchmark {
 				bind(Cookie5.class).to(Cookie5::new, Pastry.class).in(Order.class);
 				bind(Cookie6.class).to(Cookie6::new, Pastry.class).in(Order.class);
 				bind(Cookie7.class).to(Cookie7::new, Pastry.class).in(Order.class);
-
-//				bind(TORT.class).to(TORT::new, Cookie1.class, Cookie2.class, Cookie3.class,
-//						Cookie4.class, Cookie5.class, Cookie6.class, Cookie6.class);
 			}
 
 			@Provides
@@ -337,15 +334,16 @@ public class DkDirectScopebindBenchmark {
 	}
 }
 
-// 3.0.1 threadsafe = false
+// 	3.0.1 threadsafe = false
 //	Benchmark                       (arg)  Mode  Cnt     Score    Error  Units
 //	DkDiScopesBenchmark.testMethod      0  avgt   20    40.871 ±  0.138  ns/op
 //	DkDiScopesBenchmark.testMethod      1  avgt   20   649.634 ±  5.981  ns/op
 //	DkDiScopesBenchmark.testMethod     10  avgt   20  6379.876 ± 87.901  ns/op
 //
+//	Manual bind, threadsafe = false
 //	Benchmark                              (arg)  Mode  Cnt     Score    Error  Units
-// 	DkDirectScopebindBenchmark.testMethod      0  avgt   20    41.306 ±  0.471  ns/op
-// 	DkDirectScopebindBenchmark.testMethod      1  avgt   20   624.437 ±  9.748  ns/op
+//	DkDirectScopebindBenchmark.testMethod      0  avgt   20    41.306 ±  0.471  ns/op
+//	DkDirectScopebindBenchmark.testMethod      1  avgt   20   624.437 ±  9.748  ns/op
 //	DkDirectScopebindBenchmark.testMethod     10  avgt   20  5890.257 ± 79.218  ns/op
 
 
