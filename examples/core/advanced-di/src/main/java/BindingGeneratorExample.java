@@ -17,7 +17,6 @@ public class BindingGeneratorExample {
 			this.name = "Sugarella";
 			this.weight = 10.f;
 		}
-		//[END REGION_8]
 
 		public Sugar(String name, float weight) {
 			this.name = name;

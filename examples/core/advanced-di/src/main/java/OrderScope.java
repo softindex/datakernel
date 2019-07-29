@@ -1,5 +1,3 @@
-package io.datakernel.di;
-
 import io.datakernel.di.annotation.ScopeAnnotation;
 
 import java.lang.annotation.ElementType;
