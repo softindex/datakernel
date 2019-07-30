@@ -14,6 +14,7 @@ import java.util.function.Function;
 
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonMap;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
 
@@ -44,20 +45,28 @@ public interface Module {
 		return fn.apply(this);
 	}
 
-	default <T, V> Module rebind(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
-		return rebind((key, binding) -> componentKey.equals(key) ? binding.rebindDependency(from, to) : binding);
+	default Module export(Key<?>... keys) {
+		return export(new HashSet<>(Arrays.asList(keys)));
 	}
 
-	default <T> Module rebind(Key<T> componentKey, @NotNull Map<Key<?>, Key<?>> map) {
-		return rebind((key, binding) -> componentKey.equals(key) ? binding.rebindDependencies(map) : binding);
+	default Module export(Set<Key<?>> keys) {
+		return Modules.export(this, keys);
 	}
 
-	default <V> Module rebind(Key<V> from, Key<? extends V> to) {
-		return rebind((key, binding) -> binding.hasDependency(from) ? binding.rebindDependency(from, to) : binding);
+	default <V> Module rebindExports(Key<V> from, Key<? extends V> to) {
+		return rebindExports(singletonMap(from, to));
 	}
 
-	default Module rebind(@NotNull Map<Key<?>, Key<?>> map) {
-		return rebind((key, binding) ->
+	default Module rebindExports(@NotNull Map<Key<?>, Key<?>> map) {
+		return Modules.rebindExports(this, map);
+	}
+
+	default <V> Module rebindImports(Key<V> from, Key<? extends V> to) {
+		return rebindImports(singletonMap(from, to));
+	}
+
+	default Module rebindImports(@NotNull Map<Key<?>, Key<?>> map) {
+		return Modules.rebindImports(this, (key, binding) ->
 				binding.rebindDependencies(
 						binding.getDependencies()
 								.stream()
@@ -66,16 +75,16 @@ public interface Module {
 								.collect(toMap(identity(), map::get))));
 	}
 
-	default <V> Module rebind(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
-		return Modules.rebind(this, rebinder);
+	default <T, V> Module rebindImports(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
+		return rebindImports((key, binding) -> componentKey.equals(key) ? binding.rebindDependency(from, to) : binding);
 	}
 
-	default Module export(Key<?>... keys) {
-		return export(new HashSet<>(Arrays.asList(keys)));
+	default <T> Module rebindImports(Key<T> componentKey, @NotNull Map<Key<?>, Key<?>> map) {
+		return rebindImports((key, binding) -> componentKey.equals(key) ? binding.rebindDependencies(map) : binding);
 	}
 
-	default Module export(Set<Key<?>> keys) {
-		return Modules.export(this, keys);
+	default <V> Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
+		return Modules.rebindImports(this, rebinder);
 	}
 
 	/**

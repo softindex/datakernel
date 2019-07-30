@@ -15,7 +15,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -629,25 +628,5 @@ public abstract class AbstractModule implements Module {
 	public final Map<Key<?>, Multibinder<?>> getMultibinders() {
 		doConfigure();
 		return multibinders;
-	}
-
-	@Override
-	public final Module combineWith(Module another) {
-		return Module.super.combineWith(another);
-	}
-
-	@Override
-	public final Module overrideWith(Module another) {
-		return Module.super.overrideWith(another);
-	}
-
-	@Override
-	public final Module transformWith(Function<Module, Module> fn) {
-		return Module.super.transformWith(fn);
-	}
-
-	@Override
-	public final Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
-		return Module.super.resolveBindings();
 	}
 }

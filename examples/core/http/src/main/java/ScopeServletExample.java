@@ -11,7 +11,7 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 import java.util.function.Function;
 
 //[START EXAMPLE]
-public final class ScopeServerExample extends HttpServerLauncher {
+public final class ScopeServletExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet(Injector injector) {
 		return new ScopeServlet(injector) {
@@ -35,7 +35,7 @@ public final class ScopeServerExample extends HttpServerLauncher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		ScopeServerExample example = new ScopeServerExample();
+		ScopeServletExample example = new ScopeServletExample();
 		example.launch(args);
 	}
 }

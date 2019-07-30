@@ -71,13 +71,12 @@ public abstract class HttpServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.export(new Key<Set<LauncherService>>() {}),
+				ServiceGraphModule.create(),
 				JmxModule.create()
 						.export(new Key<Set<LauncherService>>() {}),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				getBusinessLogicModule()
 		);
 	}

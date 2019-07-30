@@ -78,7 +78,7 @@ public abstract class RpcServerLauncher extends Launcher {
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				getBusinessLogicModule());
 	}
 

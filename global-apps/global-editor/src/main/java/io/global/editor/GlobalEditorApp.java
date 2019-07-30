@@ -51,7 +51,7 @@ public final class GlobalEditorApp extends Launcher {
 				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new EditorModule(),
 				new ContactsModule(),
 				new IndexRepoModule(EDITOR_INDEX_REPO),
