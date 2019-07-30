@@ -1,4 +1,4 @@
-package io.datakernel;
+package io.datakernel.di;
 
 import com.google.common.collect.Maps;
 import com.google.inject.*;

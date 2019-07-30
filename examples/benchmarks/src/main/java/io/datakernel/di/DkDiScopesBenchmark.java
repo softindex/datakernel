@@ -1,7 +1,10 @@
-package io.datakernel;
+package io.datakernel.di;
 
-import com.google.inject.*;
-import org.openjdk.jmh.annotations.Scope;
+import io.datakernel.OrderScope;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.module.AbstractModule;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -15,9 +18,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author is Alex Syrotenko (@pantokrator)
  * Created on 24.07.19.
+ * @since 3.0.0
  */
 @State(Scope.Benchmark)
-public class GuiceDiScopesBenchmark {
+public class DkDiScopesBenchmark {
 
     static class Kitchen {
         private final int places;
@@ -205,6 +209,19 @@ public class GuiceDiScopesBenchmark {
         }
     }
 
+    static class Cookie7 {
+        private final Pastry pastry;
+
+        @Inject
+        Cookie7(Pastry pastry) {
+            this.pastry = pastry;
+        }
+
+        public Pastry getPastry() {
+            return pastry;
+        }
+    }
+
     static class CookieBucket {
         private final Cookie1 c1;
         private final Cookie2 c2;
@@ -230,101 +247,97 @@ public class GuiceDiScopesBenchmark {
 
     AbstractModule cookbook;
     Injector injector;
-
     CookieBucket cb;
+
+    public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
+
     @Setup
     public void setup() {
-
         cookbook = new AbstractModule() {
-
             @Override
-            public void configure() {
-                SimpleScope orderScope = new SimpleScope();
-
-                // tell Guice about the scope
-                bindScope(GuiceOrder.class, orderScope);
-
-                // make our scope instance injectable
-                bind(SimpleScope.class)
-                        .annotatedWith(GuiceOrder.class)
-                        .toInstance(orderScope);
+            protected void configure() {
+                super.configure();
+                final SimpleScope orderScope = new SimpleScope();
+				bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
+						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
             }
 
             @Provides
-            @Singleton
             Kitchen kitchen() { return new Kitchen(); }
 
-            @Provides
+            @OrderScope
             Sugar sugar() { return new Sugar("Sugarello", 10.f); }
 
-            @Provides
+            @OrderScope
             Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
 
-            @Provides
+            @OrderScope
             Flour flour() { return new Flour("Kyivska", 100.0f); }
 
-            @Provides
+            @OrderScope
             Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
                 return new Pastry(sugar, butter, flour);
             }
 
-            @Provides
+            @OrderScope
             Cookie1 cookie1(Pastry pastry) {
                 return new Cookie1(pastry);
             }
 
-            @Provides
+            @OrderScope
             Cookie2 cookie2(Pastry pastry) {
                 return new Cookie2(pastry);
             }
 
-            @Provides
+            @OrderScope
             Cookie3 cookie3(Pastry pastry) {
                 return new Cookie3(pastry);
             }
 
-            @Provides
+            @OrderScope
             Cookie4 cookie4(Pastry pastry) {
                 return new Cookie4(pastry);
             }
 
-            @Provides
+            @OrderScope
             Cookie5 cookie5(Pastry pastry) {
                 return new Cookie5(pastry);
             }
 
-            @Provides
+            @OrderScope
             Cookie6 cookie6(Pastry pastry) {
                 return new Cookie6(pastry);
             }
 
-            @Provides
-			CookieBucket tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
-                return new CookieBucket(c1, c2, c3, c4, c5, c6);
+            @OrderScope
+            Cookie7 cookie7(Pastry pastry) {
+                return new Cookie7(pastry);
             }
-
         };
-        injector = Guice.createInjector(cookbook);
+
+        injector = Injector.of(cookbook);
     }
 
 
     @Param({"0", "1", "10"})
-    public int arg;
+    int arg;
 
     @Benchmark
     @OutputTimeUnit(value = TimeUnit.NANOSECONDS)
     public void testMethod(Blackhole blackhole) {
         Kitchen kitchen = injector.getInstance(Kitchen.class);
-        for (int i = 0; i < arg; ++i) {
-			cb = injector.getInstance(CookieBucket.class);
+		for (int i = 0; i < arg; ++i) {
+			Injector subinjector = injector.enterScope(ORDER_SCOPE);
+			cb = subinjector.getInstance(CookieBucket.class);
 			blackhole.consume(cb);
-        }
-
+		}
+        blackhole.consume(kitchen);
     }
 
 	public static void main(String[] args) throws RunnerException {
+
 		Options opt = new OptionsBuilder()
-				.include(GuiceDiScopesBenchmark.class.getSimpleName())
+				.include(DkDiScopesBenchmark.class.getSimpleName())
 				.forks(2)
 				.warmupIterations(3)
 				.warmupTime(TimeValue.seconds(1L))
@@ -332,15 +345,23 @@ public class GuiceDiScopesBenchmark {
 				.measurementTime(TimeValue.seconds(2L))
 				.mode(Mode.AverageTime)
 				.timeUnit(TimeUnit.NANOSECONDS)
-				.shouldDoGC(false)
 				.build();
 
 		new Runner(opt).run();
 	}
 }
-// 29.07
-//	Benchmark                          (arg)  Mode  Cnt     Score     Error  Units
-//	GuiceDiScopesBenchmark.testMethod      0  avgt   20    77.086 ±   1.826  ns/op
-//	GuiceDiScopesBenchmark.testMethod      1  avgt   20  1050.370 ±  17.707  ns/op
-//	GuiceDiScopesBenchmark.testMethod     10  avgt   20  9069.315 ± 446.218  ns/op
+
+//  master (24.07)
+//	Benchmark                       (arg)  Mode  Cnt     Score     Error  Units
+//	DkDiScopesBenchmark.testMethod      0  avgt   20    50.301 ±   0.340  ns/op
+//	DkDiScopesBenchmark.testMethod      1  avgt   20   934.922 ±  16.528  ns/op
+//	DkDiScopesBenchmark.testMethod     10  avgt   20  8658.261 ± 138.339  ns/op
+
+// 29.07, threadsafe = true.
+//	Benchmark                       (arg)  Mode  Cnt     Score    Error  Units
+//	DkDiScopesBenchmark.testMethod      0  avgt   20    41.203 ±  0.330  ns/op
+//	DkDiScopesBenchmark.testMethod      1  avgt   20   404.545 ±  5.134  ns/op
+//	DkDiScopesBenchmark.testMethod     10  avgt   20  3482.703 ± 72.545  ns/o
+
+
 

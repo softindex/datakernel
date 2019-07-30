@@ -1,9 +1,5 @@
-package io.datakernel;
+package io.datakernel.di;
 
-import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -11,21 +7,24 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
+ * @Author is Alex Syrotenko (@pantokrator)
  * Created on 26.07.19.
- * @since 3.0.0
  */
-@State(Scope.Benchmark)
-public class DkDirectScopebindBenchmark {
-
+@State(org.openjdk.jmh.annotations.Scope.Benchmark)
+@Configuration
+public class SpringDiBenchmark {
 	static class Kitchen {
 		private final int places;
 
-		@Inject
 		Kitchen() {
 			this.places = 1;
 		}
@@ -39,16 +38,12 @@ public class DkDirectScopebindBenchmark {
 		private final String name;
 		private final float weight;
 
+		@Autowired
 		public Sugar() {
 			this.name = "Sugarella";
 			this.weight = 10.f;
 		}
 		//[END REGION_8]
-
-		public Sugar(String name, float weight) {
-			this.name = name;
-			this.weight = weight;
-		}
 
 		public String getName() {
 			return name;
@@ -63,14 +58,10 @@ public class DkDirectScopebindBenchmark {
 		private float weight;
 		private String name;
 
+		@Autowired
 		public Butter() {
 			this.weight = 10.f;
 			this.name = "Butter";
-		}
-
-		public Butter(String name, float weight) {
-			this.weight = weight;
-			this.name = name;
 		}
 
 		public float getWeight() {
@@ -86,7 +77,11 @@ public class DkDirectScopebindBenchmark {
 		private float weight;
 		private String name;
 
-		public Flour() { }
+		@Autowired
+		public Flour() {
+			this.name = "Kyivska";
+			this.weight =  100.0f;
+		}
 
 		public Flour(String name, float weight) {
 			this.weight = weight;
@@ -107,6 +102,7 @@ public class DkDirectScopebindBenchmark {
 		private final Butter butter;
 		private final Flour flour;
 
+		@Autowired
 		Pastry(Sugar sugar, Butter butter, Flour flour) {
 			this.sugar = sugar;
 			this.butter = butter;
@@ -129,6 +125,7 @@ public class DkDirectScopebindBenchmark {
 	static class Cookie1 {
 		private final Pastry pastry;
 
+		@Autowired
 		Cookie1(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -141,6 +138,7 @@ public class DkDirectScopebindBenchmark {
 	static class Cookie2 {
 		private final Pastry pastry;
 
+		@Autowired
 		Cookie2(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -153,6 +151,7 @@ public class DkDirectScopebindBenchmark {
 	static class Cookie3 {
 		private final Pastry pastry;
 
+		@Autowired
 		Cookie3(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -165,6 +164,7 @@ public class DkDirectScopebindBenchmark {
 	static class Cookie4 {
 		private final Pastry pastry;
 
+		@Autowired
 		Cookie4(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -177,6 +177,7 @@ public class DkDirectScopebindBenchmark {
 	static class Cookie5 {
 		private final Pastry pastry;
 
+		@Autowired
 		Cookie5(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -189,6 +190,7 @@ public class DkDirectScopebindBenchmark {
 	static class Cookie6 {
 		private final Pastry pastry;
 
+		@Autowired
 		Cookie6(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -210,6 +212,7 @@ public class DkDirectScopebindBenchmark {
 			return c4;
 		}
 
+		@Autowired
 		CookieBucket(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
 			this.c1 = c1;
 			this.c2 = c2;
@@ -220,70 +223,109 @@ public class DkDirectScopebindBenchmark {
 		}
 	}
 
-	AbstractModule cookbook;
-	Injector injector;
+	@Bean
+	Kitchen kitchen() { return new Kitchen(); }
 
-	public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Sugar sugar() { return new Sugar(); }
 
-	@Setup
-	public void setup() {
-		cookbook = new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(Kitchen.class).to(Kitchen::new);
-				bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.f)).in(OrderScope.class);
-				bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f)).in(OrderScope.class);
-				bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f)).in(OrderScope.class);
-				bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class).in(OrderScope.class);
-				bind(Cookie1.class).to(Cookie1::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie2.class).to(Cookie2::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie3.class).to(Cookie3::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie4.class).to(Cookie4::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie5.class).to(Cookie5::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie6.class).to(Cookie6::new, Pastry.class).in(OrderScope.class);
-				bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
-						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
-			}
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Butter butter() { return new Butter(); }
 
-		};
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Flour flour() { return new Flour(); }
 
-		injector = Injector.of(cookbook);
-
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
+		return new Pastry(sugar, butter, flour);
 	}
 
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Cookie1 cookie1(Pastry pastry) {
+		return new Cookie1(pastry);
+	}
+
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Cookie2 cookie2(Pastry pastry) {
+		return new Cookie2(pastry);
+	}
+
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Cookie3 cookie3(Pastry pastry) {
+		return new Cookie3(pastry);
+	}
+
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Cookie4 cookie4(Pastry pastry) {
+		return new Cookie4(pastry);
+	}
+
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Cookie5 cookie5(Pastry pastry) {
+		return new Cookie5(pastry);
+	}
+
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	Cookie6 cookie6(Pastry pastry) {
+		return new Cookie6(pastry);
+	}
+
+	@Bean
+	@org.springframework.context.annotation.Scope("prototype")
+	CookieBucket tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
+		return new CookieBucket(c1, c2, c3, c4, c5, c6);
+	}
+
+
+	ConfigurableApplicationContext context;
 	CookieBucket cb;
-	Key<CookieBucket> key = Key.of(CookieBucket.class);
 
 	@Param({"0", "1", "10"})
 	int arg;
 
+	@Setup
+	public void setup() {
+		context = new AnnotationConfigApplicationContext(SpringDiBenchmark.class);
+	}
+
 	@Benchmark
-	@OutputTimeUnit(value = TimeUnit.NANOSECONDS)
-	public void testMethod(Blackhole blackhole) {
-		Kitchen kitchen = injector.getInstance(Kitchen.class);
+	public void measure(Blackhole blackhole) {
+		Kitchen kitchen = context.getBean(Kitchen.class);
 		for (int i = 0; i < arg; ++i) {
-			Injector subinjector = injector.enterScope(ORDER_SCOPE);
-			cb = subinjector.getInstance(key);
+			cb = context.getBean(CookieBucket.class);
 			blackhole.consume(cb);
 		}
 		blackhole.consume(kitchen);
 	}
 
 	public static void main(String[] args) throws RunnerException {
-
 		Options opt = new OptionsBuilder()
-				.include(DkDirectScopebindBenchmark.class.getSimpleName())
+				.include(SpringDiBenchmark.class.getSimpleName())
 				.forks(2)
 				.warmupIterations(3)
 				.warmupTime(TimeValue.seconds(1L))
 				.measurementIterations(10)
 				.measurementTime(TimeValue.seconds(2L))
 				.mode(Mode.AverageTime)
-				.timeUnit(TimeUnit.NANOSECONDS)
+				.timeUnit(TimeUnit.MICROSECONDS)
 				.build();
 
 		new Runner(opt).run();
 	}
 }
 
-
+// 29.07
+//	Benchmark                  (arg)  Mode  Cnt     Score    Error  Units
+//	SpringDiBenchmark.measure      0  avgt   20    18.583 ±  1.323  us/op
+//	SpringDiBenchmark.measure      1  avgt   20   141.145 ±  2.116  us/op
+//	SpringDiBenchmark.measure     10  avgt   20  1277.517 ± 28.185  us/op

@@ -1,4 +1,4 @@
-package io.datakernel;
+package io.datakernel.di;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.ScopeAnnotation;
