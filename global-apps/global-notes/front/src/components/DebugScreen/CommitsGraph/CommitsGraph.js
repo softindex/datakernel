@@ -8,11 +8,8 @@ import {withStyles} from '@material-ui/core';
 const UPDATE_INTERVAL = 1000;
 
 class CommitsGraph extends React.Component {
-  constructor(props) {
-    super(props);
-    this.timerId = null;
-    this.graph = React.createRef();
-  }
+  timerId = null;
+  graph = React.createRef();
 
   async componentDidMount() {
     await this.updateGraph(this.props.noteId);
@@ -24,21 +21,11 @@ class CommitsGraph extends React.Component {
   }
 
   updateGraph = async noteId => {
-    try {
-      const rawGraph = await GraphModel.getGraph(noteId);
-      let viz = new Viz({Module, render});
-
-      viz.renderSVGElement(rawGraph)
-        .then(element => {
-          this.graph.current.innerHTML = '';
-          this.graph.current.appendChild(element);
-        })
-        .catch(() => {
-          viz = new Viz({Module, render});
-        });
-    } catch (e) {
-      console.error(e);
-    }
+    const rawGraph = await GraphModel.getGraph(noteId);
+    const viz = new Viz({Module, render});
+    const element = await viz.renderSVGElement(rawGraph);
+    this.graph.current.innerHTML = '';
+    this.graph.current.appendChild(element);
   };
 
   render() {

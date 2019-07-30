@@ -59,7 +59,6 @@ class CreateNoteForm extends React.Component {
     });
   }
 
-
   render() {
     return (
       <Dialog

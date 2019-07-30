@@ -7,7 +7,7 @@ class Snackbar extends React.Component {
     isOpen: false
   };
 
-  componentDidUpdate(prevProps, prevState, snapshot) {
+  componentDidUpdate(prevProps, prevState) {
     if (prevProps.error !== this.props.error && Boolean(this.props.error)) {
       this.setState({
         error: this.props.error,
