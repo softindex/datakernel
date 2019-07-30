@@ -1,6 +1,7 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,6 +11,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
+import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -36,13 +38,22 @@ public final class Preprocessor {
 	@SuppressWarnings("unchecked")
 	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolveConflicts(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Multibinder<?> multibinder) {
 		return bindings.map(localBindings -> squash(localBindings, (k, v) -> {
-			switch (v.size()) {
+			Map<Boolean, Set<Binding<?>>> separated = v.stream().collect(partitioningBy(b -> b.getCompiler() != TO_BE_GENERATED, toSet()));
+			Set<Binding<?>> real = separated.get(true);
+			Set<Binding<?>> phantom = separated.get(false);
+
+			switch (real.size()) {
 				case 0:
-					throw new DIException("Provided key " + k + " with no associated bindings");
+					if (phantom.isEmpty()) {
+						throw new DIException("Provided key " + k + " with no associated bindings");
+					}
+					Set<Dependency> dependencies = phantom.stream().flatMap(binding -> binding.getDependencies().stream()).collect(toSet());
+					LocationInfo location = phantom.stream().map(Binding::getLocation).filter(Objects::nonNull).findAny().orElse(null);
+					return new Binding<>(dependencies, TO_BE_GENERATED).at(location);
 				case 1:
-					return v.iterator().next();
+					return real.iterator().next();
 				default:
-					return ((Multibinder) multibinder).multibind(k, v);
+					return ((Multibinder) multibinder).multibind(k, real);
 			}
 		}));
 	}
@@ -115,10 +126,11 @@ public final class Preprocessor {
 				}
 				generatedBinding.at(binding.getLocation()); // set its location to one from the generation request
 				known.put(key, generatedBinding);
+				generated.put(key, generatedBinding);
 			} else {
 				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(bindings, scope, key, binding);
 				if (transformed != binding) {
-					localBindings.put(key, transformed);
+					generated.put(key, transformed);
 				}
 			}
 

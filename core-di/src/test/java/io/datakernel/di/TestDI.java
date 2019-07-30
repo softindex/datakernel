@@ -8,6 +8,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 
@@ -31,10 +32,13 @@ public final class TestDI {
 
 	@Test
 	public void basic() {
-		AbstractModule module = new AbstractModule() {{
-			bind(Integer.class).toInstance(42);
-			bind(String.class).to(i -> "str: " + i, Integer.class);
-		}};
+		AbstractModule module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Integer.class).toInstance(42);
+				bind(String.class).to(i -> "str: " + i, Integer.class);
+			}
+		};
 
 		Injector injector = Injector.of(module);
 
@@ -43,11 +47,14 @@ public final class TestDI {
 
 	@Test
 	public void singletons() {
-		Injector injector = Injector.of(new AbstractModule() {{
-			int[] ref = new int[]{41};
-			bind(Integer.class).to(() -> ++ref[0]);
-			bind(String.class).to(i -> "str: " + i, Integer.class);
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				int[] ref = new int[]{41};
+				bind(Integer.class).to(() -> ++ref[0]);
+				bind(String.class).to(i -> "str: " + i, Integer.class);
+			}
+		});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
@@ -56,12 +63,15 @@ public final class TestDI {
 
 	@Test
 	public void provider() {
-		Injector injector = Injector.of(new AbstractModule() {{
-			int[] ref = new int[]{41};
-			bind(Integer.class).to(() -> ++ref[0]);
-			bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceFactory<Integer>>() {});
-			bind(new Key<InstanceFactory<String>>() {});
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				int[] ref = new int[]{41};
+				bind(Integer.class).to(() -> ++ref[0]);
+				bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceFactory<Integer>>() {});
+				bind(new Key<InstanceFactory<String>>() {});
+			}
+		});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
@@ -84,12 +94,18 @@ public final class TestDI {
 	@Test
 	public void crossmodule() {
 		Injector injector = Injector.of(
-				new AbstractModule() {{
-					bind(Integer.class).toInstance(42);
-				}},
-				new AbstractModule() {{
-					bind(String.class).to(i -> "str: " + i, Integer.class);
-				}});
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(Integer.class).toInstance(42);
+					}
+				},
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(String.class).to(i -> "str: " + i, Integer.class);
+					}
+				});
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 	}
@@ -97,24 +113,33 @@ public final class TestDI {
 	@Test
 	public void overrides() {
 		Injector injector = Injector.of(override(
-				new AbstractModule() {{
-					bind(Integer.class).toInstance(17);
-					bind(String.class).to(i -> "str: " + i, Integer.class);
-				}},
-				new AbstractModule() {{
-					bind(Integer.class).toInstance(42);
-				}}));
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(Integer.class).toInstance(17);
+						bind(String.class).to(i -> "str: " + i, Integer.class);
+					}
+				},
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(Integer.class).toInstance(42);
+					}
+				}));
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 	}
 
 	@Test
 	public void duplicates() {
-		Module module = new AbstractModule() {{
-			bind(Integer.class).toInstance(42);
-			bind(String.class).to(i -> "str1: " + i, Integer.class);
-			bind(String.class).to(i -> "str2: " + i, Integer.class);
-		}};
+		Module module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Integer.class).toInstance(42);
+				bind(String.class).to(i -> "str1: " + i, Integer.class);
+				bind(String.class).to(i -> "str2: " + i, Integer.class);
+			}
+		};
 		try {
 			Injector.of(module);
 			fail("should've failed");
@@ -126,10 +151,13 @@ public final class TestDI {
 
 	@Test
 	public void simpleCycle() {
-		AbstractModule module = new AbstractModule() {{
-			bind(Integer.class).to($ -> 42, String.class);
-			bind(String.class).to(i -> "str: " + i, Integer.class);
-		}};
+		AbstractModule module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Integer.class).to($ -> 42, String.class);
+				bind(String.class).to(i -> "str: " + i, Integer.class);
+			}
+		};
 
 		try {
 			Injector.of(module);
@@ -142,18 +170,24 @@ public final class TestDI {
 	@Test
 	public void advancedCycles() {
 
-		Module branch = new AbstractModule() {{
-			// branch that leads to the cycle(s) (should not be in exception output)
-			bind(Short.class).to(Integer::shortValue, Integer.class);
-			bind(Byte.class).to(Short::byteValue, Short.class);
-		}};
+		Module branch = new AbstractModule() {
+			@Override
+			protected void configure() {
+				// branch that leads to the cycle(s) (should not be in exception output)
+				bind(Short.class).to(Integer::shortValue, Integer.class);
+				bind(Byte.class).to(Short::byteValue, Short.class);
+			}
+		};
 
-		Module cyclic1 = new AbstractModule() {{
-			bind(Integer.class).to($ -> 42, Object.class);
-			bind(Object.class).to($ -> new Object(), String.class);
-			bind(String.class).to(i -> "str: " + i, Float.class);
-			bind(Float.class).to(i -> (float) i, Integer.class);
-		}};
+		Module cyclic1 = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Integer.class).to($ -> 42, Object.class);
+				bind(Object.class).to($ -> new Object(), String.class);
+				bind(String.class).to(i -> "str: " + i, Float.class);
+				bind(Float.class).to(i -> (float) i, Integer.class);
+			}
+		};
 
 		Set<Key<?>> expected1 = cyclic1.resolveBindings().get().keySet();
 
@@ -168,11 +202,14 @@ public final class TestDI {
 			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
 
-		Module cyclic2 = new AbstractModule() {{
-			bind(Double.class).to($ -> 42.0, Character.class);
-			bind(Character.class).to($ -> 'k', Boolean.class);
-			bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
-		}};
+		Module cyclic2 = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Double.class).to($ -> 42.0, Character.class);
+				bind(Character.class).to($ -> 'k', Boolean.class);
+				bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
+			}
+		};
 
 		Set<Key<?>> expected2 = cyclic2.resolveBindings().get().keySet();
 
@@ -193,7 +230,6 @@ public final class TestDI {
 	@Test
 	public void dsl() {
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Provides
 			String string(Integer integer) {
 				return "str: " + integer;
@@ -211,7 +247,6 @@ public final class TestDI {
 	@Test
 	public void namedDsl() {
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Provides
 			String string(@Named("test") Integer integer) {
 				return "str: " + integer;
@@ -293,12 +328,15 @@ public final class TestDI {
 		class Inherited extends ClassWithCustomDeps {
 		}
 
-		Injector injector = Injector.of(new AbstractModule() {{
-			bind(TestDI.class).toInstance(TestDI.this); // inherited class has implicit dependency on enclosing class
-			bind(Inherited.class);
-			bind(String.class).to(i -> "str: " + i, Integer.class);
-			bind(Integer.class).toInstance(42);
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(TestDI.class).toInstance(TestDI.this); // inherited class has implicit dependency on enclosing class
+				bind(Inherited.class);
+				bind(String.class).to(i -> "str: " + i, Integer.class);
+				bind(Integer.class).toInstance(42);
+			}
+		});
 
 		Inherited instance = injector.getInstance(Inherited.class);
 		assertEquals("str: 42", instance.string);
@@ -321,9 +359,12 @@ public final class TestDI {
 	@Test
 	public void cyclicInjects() {
 		try {
-			Module module = new AbstractModule() {{
-				bind(RecursiveA.class);
-			}};
+			Module module = new AbstractModule() {
+				@Override
+				protected void configure() {
+					bind(RecursiveA.class);
+				}
+			};
 
 			Injector.of(module);
 			fail("should've detected the cycle and fail");
@@ -348,9 +389,12 @@ public final class TestDI {
 
 	@Test
 	public void cyclicInjects2() {
-		Module module = new AbstractModule() {{
-			bind(RecursiveX.class);
-		}};
+		Module module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(RecursiveX.class);
+			}
+		};
 
 		Injector injector = Injector.of(module);
 
@@ -374,11 +418,14 @@ public final class TestDI {
 			Integer integer;
 		}
 
-		Module module = new AbstractModule() {{
-			bind(TestDI.class).toInstance(TestDI.this);
-			bind(ClassWithCustomDeps.class);
-			bind(Integer.class).toInstance(42);
-		}};
+		Module module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(TestDI.class).toInstance(TestDI.this);
+				bind(ClassWithCustomDeps.class);
+				bind(Integer.class).toInstance(42);
+			}
+		};
 
 		Injector injector = Injector.of(module);
 
@@ -386,20 +433,27 @@ public final class TestDI {
 		assertNull(instance.string);
 		assertEquals(42, instance.integer.intValue());
 
-		Injector injector2 = Injector.of(module, new AbstractModule() {{
-			bind(String.class).to(i -> "str: " + i, Integer.class);
-		}});
+		Injector injector2 = Injector.of(module, new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String.class).to(i -> "str: " + i, Integer.class);
+
+			}
+		});
 
 		ClassWithCustomDeps instance2 = injector2.getInstance(ClassWithCustomDeps.class);
 		assertEquals("str: 42", instance2.string);
 		assertEquals(42, instance2.integer.intValue());
 
 		try {
-			Injector injector3 = Injector.of(new AbstractModule() {{
-				bind(TestDI.class).toInstance(TestDI.this);
-				bind(ClassWithCustomDeps.class);
-				bind(String.class).toInstance("str");
-			}});
+			Injector injector3 = Injector.of(new AbstractModule() {
+				@Override
+				protected void configure() {
+					bind(TestDI.class).toInstance(TestDI.this);
+					bind(ClassWithCustomDeps.class);
+					bind(String.class).toInstance("str");
+				}
+			});
 			injector3.getInstance(ClassWithCustomDeps.class);
 			fail("should've failed, but didn't");
 		} catch (DIException e) {
@@ -431,11 +485,14 @@ public final class TestDI {
 	@Test
 	public void injectFactoryMethod() {
 
-		Injector injector = Injector.of(new AbstractModule() {{
-			bind(MyServiceImpl.class);
-			bind(String.class).to(() -> "hello");
-			bind(int.class).toInstance(43);
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(MyServiceImpl.class);
+				bind(String.class).to(() -> "hello");
+				bind(int.class).toInstance(43);
+			}
+		});
 
 		MyServiceImpl service = injector.getInstance(MyServiceImpl.class);
 
@@ -457,11 +514,14 @@ public final class TestDI {
 	@Test
 	public void simpleGeneric() {
 
-		AbstractModule module = new AbstractModule() {{
-			bind(String.class).toInstance("hello");
-			bind(Integer.class).toInstance(42);
-			bind(new Key<Container<Float, String, Integer>>() {});
-		}};
+		AbstractModule module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String.class).toInstance("hello");
+				bind(Integer.class).toInstance(42);
+				bind(new Key<Container<Float, String, Integer>>() {});
+			}
+		};
 
 		Injector injector = Injector.of(module);
 
@@ -482,7 +542,6 @@ public final class TestDI {
 		}
 
 		AbstractModule module = new AbstractModule() {
-
 			@Override
 			protected void configure() {
 				bind(new Key<Container<String>>() {});
@@ -528,9 +587,12 @@ public final class TestDI {
 
 		assertEquals("str: 42, null", injector.getInstance(String.class));
 
-		Injector injector2 = Injector.of(combine(module, new AbstractModule() {{
-			bind(Float.class).toInstance(3.14f);
-		}}));
+		Injector injector2 = Injector.of(combine(module, new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Float.class).toInstance(3.14f);
+			}
+		}));
 
 		assertEquals("str: 42, 3.14", injector2.getInstance(String.class));
 	}
@@ -626,6 +688,7 @@ public final class TestDI {
 		abstract class Module2<C> extends Module1<C> {
 			@Override
 			protected void configure() {
+				super.configure();
 				bind(TestDI.class).toInstance(TestDI.this);
 				bind(new Key<AndAContainerToo<C>>() {});
 			}
@@ -637,11 +700,17 @@ public final class TestDI {
 			}
 		}
 
-		Injector injector = Injector.of(new Module2<Integer>() {{
-			bind(Integer.class).toInstance(42);
-			bind(Key.of(Integer.class, "namedGeneric")).toInstance(-42);
-			bind(new Key<List<Integer>>() {}).toInstance(asList(1, 2, 3));
-		}});
+		Injector injector = Injector.of(new Module2<Integer>() {
+			@Override
+			protected void configure() {
+				super.configure();
+				bind(Integer.class).toInstance(42);
+				bind(Key.of(Integer.class, "namedGeneric")).toInstance(-42);
+				bind(new Key<List<Integer>>() {}).toInstance(asList(1, 2, 3));
+			}
+		});
+
+		Utils.printGraphVizGraph(injector.getBindingsTrie());
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: [1, 2, 3]", injector.getInstance(Key.of(String.class, "second")));
@@ -662,11 +731,14 @@ public final class TestDI {
 			}
 		}
 
-		Injector injector = Injector.of(new AbstractModule() {{
-			bind(TestDI.class).toInstance(TestDI.this);
-			bind(Injectable.class);
-			bind(String.class).toInstance("hello");
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(TestDI.class).toInstance(TestDI.this);
+				bind(Injectable.class);
+				bind(String.class).toInstance("hello");
+			}
+		});
 
 		Injectable instance = injector.getInstance(Injectable.class);
 		assertEquals("hello", instance.string);
@@ -681,11 +753,14 @@ public final class TestDI {
 			InstanceProvider<InstanceProvider<String>> provider;
 		}
 
-		Injector injector = Injector.of(new AbstractModule() {{
-			bind(TestDI.class).toInstance(TestDI.this);
-			bind(Container.class);
-			bind(String.class).toInstance("hello");
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(TestDI.class).toInstance(TestDI.this);
+				bind(Container.class);
+				bind(String.class).toInstance("hello");
+			}
+		});
 
 		Container instance = injector.getInstance(Container.class);
 
@@ -698,7 +773,6 @@ public final class TestDI {
 		Key<Map<String, Integer>> key = new Key<Map<String, Integer>>() {};
 
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Override
 			protected void configure() {
 				multibind(key, Multibinder.toMap());
@@ -739,7 +813,6 @@ public final class TestDI {
 	public void providesNull() {
 
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Provides
 			Integer integer() {
 				return null;
@@ -774,7 +847,6 @@ public final class TestDI {
 	public void keySets() {
 
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Override
 			protected void configure() {
 				bind(Integer.class).annotatedWith(Name.of("test")).toInstance(123).as(MyKeySet2.class);
@@ -828,7 +900,6 @@ public final class TestDI {
 	@Test
 	public void ignoringScopes() {
 		Module module = new AbstractModule() {
-
 			@Provides
 			@Scope1
 			Double first() {
@@ -879,7 +950,6 @@ public final class TestDI {
 		}
 
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Override
 			protected void configure() {
 				bind(Integer.class).toInstance(42);
@@ -924,7 +994,6 @@ public final class TestDI {
 		}
 
 		Injector injector = Injector.of(new AbstractModule() {
-
 			@Override
 			protected void configure() {
 				bind(String.class).toInstance("hello");
@@ -939,5 +1008,103 @@ public final class TestDI {
 		});
 
 		System.out.println(injector.getInstance(new Key<Container<String>>(Name.of("hello")) {}).peer);
+	}
+
+	@Test
+	public void methodLocalClass() {
+
+		String captured = "captured";
+
+		@Inject
+		class MethodLocal {
+
+			MethodLocal() {
+			}
+
+			String captured() {
+				return captured;
+			}
+		}
+		try {
+			Injector injector = Injector.of(new AbstractModule() {
+				@Override
+				protected void configure() {
+					bind(MethodLocal.class);
+				}
+			});
+			fail("Should've failed here");
+		} catch (DIException e) {
+			e.printStackTrace();
+			assertTrue(e.getMessage().contains("inject annotation on local class that closes over outside variables and/or has no default constructor"));
+		}
+	}
+
+	@Test
+	public void recursiveTemplate() {
+
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(new Key<Comparator<String>>() {});
+				bind(new Key<Comparator<Integer>>() {});
+			}
+
+			@Provides
+			<T extends Comparable<? super T>> Comparator<T> naturalComparator() {
+				return Comparator.naturalOrder();
+			}
+		});
+
+		assertEquals(Comparator.naturalOrder(), injector.getInstance(new Key<Comparator<String>>() {}));
+		assertEquals(Comparator.naturalOrder(), injector.getInstance(new Key<Comparator<Integer>>() {}));
+	}
+
+	@Test
+	public void uninterruptibeBindRequests() {
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String.class);
+				bind(String.class);
+				bind(String.class);
+			}
+
+			@Provides
+			String string() {
+				return "hello";
+			}
+		});
+
+		assertEquals("hello", injector.getInstance(String.class));
+	}
+
+	@Test
+	public void scopedBindRequestsFallsBackToUpperScopes() {
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String.class).in(Scope1.class);
+			}
+
+			@Provides
+			String string() {
+				return "hello from root";
+			}
+		});
+		Injector sub = injector.enterScope(Scope.of(Scope1.class));
+
+		assertEquals("hello from root", sub.getInstance(String.class));
+	}
+
+	@Test
+	public void exports() {
+
+		Module module = new AbstractModule() {
+			@Override
+			protected void configure() {
+				super.configure();
+			}
+		};
+
 	}
 }

@@ -131,14 +131,16 @@ public final class ReflectionUtils {
 			if (!factoryMethods.isEmpty()) {
 				throw failedImplicitBinding(key, "inject annotation on class with inject factory method");
 			}
+			Class<?> enclosingClass = cls.getEnclosingClass();
+			if (enclosingClass != null && !Modifier.isStatic(cls.getModifiers())) {
+				try {
+					return bindingFromConstructor(key, (Constructor<T>) cls.getDeclaredConstructor(enclosingClass));
+				} catch (NoSuchMethodException e) {
+					throw failedImplicitBinding(key, "inject annotation on local class that closes over outside variables and/or has no default constructor");
+				}
+			}
 			try {
-				Class<?> enclosingClass = cls.getEnclosingClass();
-
-				Constructor<?> constructor = enclosingClass != null && !Modifier.isStatic(cls.getModifiers()) ?
-						cls.getDeclaredConstructor(enclosingClass) :
-						cls.getDeclaredConstructor();
-
-				return bindingFromConstructor(key, (Constructor<T>) constructor);
+				return bindingFromConstructor(key, (Constructor<T>) cls.getDeclaredConstructor());
 			} catch (NoSuchMethodException e) {
 				throw failedImplicitBinding(key, "inject annotation on class with no default constructor");
 			}
@@ -248,7 +250,7 @@ public final class ReflectionUtils {
 		Binding<T> binding = Binding.to(
 				args -> {
 					try {
-						return (T) method.invoke(module, args);
+						return (T) method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, args);
 					} catch (IllegalAccessException e) {
 						throw new DIException("Not allowed to call method " + method, e);
 					} catch (InvocationTargetException e) {
@@ -277,7 +279,7 @@ public final class ReflectionUtils {
 		Binding<T> binding = Binding.to(
 				args -> {
 					try {
-						return (T) method.invoke(module, args);
+						return (T) method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, args);
 					} catch (IllegalAccessException e) {
 						throw new DIException("Not allowed to call generic method " + method + " to provide requested key " + requestedKey, e);
 					} catch (InvocationTargetException e) {

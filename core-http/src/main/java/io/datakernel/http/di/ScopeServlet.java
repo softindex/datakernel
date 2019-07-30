@@ -17,7 +17,7 @@ import java.util.Collection;
 
 import static java.util.Arrays.asList;
 
-public abstract class ScopeServlet implements AsyncServlet {
+public class ScopeServlet implements AsyncServlet {
 	public static final Scope REQUEST_SCOPE = Scope.of(RequestScope.class);
 
 	public static final Key<HttpRequest> HTTP_REQUEST_KEY = new Key<HttpRequest>() {};
@@ -33,10 +33,17 @@ public abstract class ScopeServlet implements AsyncServlet {
 		this.injector = Injector.of(injector,
 				Modules.combine(modules),
 				getModule(),
-				Module.ofDeclarativeBindingsFrom(ScopeServlet.this),
-				new AbstractModule() {{
-					bind(HTTP_REQUEST_KEY).in(REQUEST_SCOPE).to(() -> {throw new AssertionError();});
-				}}
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						// so anonymous servlet subclasses could use the DSL
+						addDeclarativeBindingsFrom(ScopeServlet.this);
+						// dummy binding to be replaced by subInjector.putInstance
+						bind(HTTP_REQUEST_KEY).in(REQUEST_SCOPE).toDynamic();
+						// make sure that response is provided or generated in request scope
+						bind(HTTP_RESPONSE_KEY).in(REQUEST_SCOPE);
+					}
+				}
 		);
 	}
 

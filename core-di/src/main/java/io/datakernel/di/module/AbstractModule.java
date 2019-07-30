@@ -17,7 +17,7 @@ import java.lang.reflect.TypeVariable;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
@@ -25,84 +25,70 @@ import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
-import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * This class provides DSL's for making bindings, transformers, generators or multibinders
  * fluently and declaratively.
  */
 public abstract class AbstractModule implements Module {
-	private boolean configured;
-
-	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
-	private final Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
-	private final Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
-	private final Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 	private final List<BindingBuilder<Object>> builders = new ArrayList<>();
 
-	/**
-	 * Add given binding at given key to this module at root scope
-	 */
-	protected final <T> void addBinding(Key<T> key, Binding<? extends T> binding) {
-		addBinding(UNSCOPED, key, binding);
-	}
+	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
+	private Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
+	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
+	private Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 
-	/**
-	 * Add given binding at given key to this module at one-level scope
-	 */
-	protected final <T> void addBinding(Scope scope, Key<T> key, Binding<? extends T> binding) {
-		addBinding(new Scope[]{scope}, key, binding);
-	}
-
-	/**
-	 * Add given binding at given key to this module at nested scope
-	 */
-	protected final <T> void addBinding(Scope[] scope, Key<T> key, Binding<? extends T> binding) {
-		bindings.computeIfAbsent(scope, $ -> new HashMap<>())
-				.get()
-				.computeIfAbsent(key, $ -> new HashSet<>())
-				.add(binding);
-	}
-
-	private void addKeyToSet(Name name, Key<?> key) {
-		Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
-		addBinding(setKey, Binding.toInstance(singleton(key)));
-		multibind(setKey, Multibinder.toSet());
-	}
+	private boolean configuring, configured;
 
 	/**
 	 * This method scans given object for {@link Provides provider methods} and adds them as bindings or generators to this module.
 	 */
 	protected final void addDeclarativeBindingsFrom(@NotNull Object module) {
-		//noinspection unchecked
-		addDeclarativeBindingsImpl((Class<Object>) module.getClass(), module);
+		addDeclarativeBindingsImpl(module.getClass(), module);
 	}
 
 	protected final void addDeclarativeBindingsFrom(@NotNull Class<?> moduleClass) {
 		addDeclarativeBindingsImpl(moduleClass, null);
 	}
 
-	private <M> void addDeclarativeBindingsImpl(@NotNull Class<M> moduleClass, @Nullable M module) {
+	private void addKeyToSet(Name name, Key<?> key) {
+		Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
+		bind(setKey).toInstance(singleton(key));
+		multibind(setKey, Multibinder.toSet());
+	}
+
+	private void addDeclarativeBindingsImpl(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		for (Method method : getAnnotatedElements(moduleClass, Provides.class, Class::getDeclaredMethods, false)) {
+			Name name = nameOf(method);
+			Set<Name> keySets = keySetsOf(method);
+			Scope[] methodScope = getScope(method);
+			boolean exported = method.isAnnotationPresent(Export.class);
+
 			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
-			Set<Name> keySets = keySetsOf(method);
-			Name name = nameOf(method);
-			Scope[] methodScope = getScope(method);
 
 			if (typeVars.length == 0) {
 				Key<Object> key = Key.ofType(type, name);
-				addBinding(methodScope, key, bindingFromMethod(module, method));
+
+				BindingBuilder<Object> methodBindingBuilder = bind(key).to(bindingFromMethod(module, method)).in(methodScope);
+				if (exported) {
+					methodBindingBuilder.export();
+				}
+
 				keySets.forEach(keySet -> addKeyToSet(keySet, key));
 			} else {
 				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
 						.filter(typeVar -> !Types.contains(type, typeVar))
-						.collect(Collectors.toSet());
+						.collect(toSet());
 				if (!unused.isEmpty()) {
 					throw new IllegalStateException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
 				}
 				if (!keySets.isEmpty()) {
 					throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
+				}
+				if (exported) {
+					throw new IllegalStateException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported");
 				}
 				generate(method.getReturnType(), (bindings, scope, key) -> {
 					if (scope.length < methodScope.length || !Objects.equals(key.getName(), name) || !Types.matches(key.getType(), type)) {
@@ -125,12 +111,11 @@ public abstract class AbstractModule implements Module {
 			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
 			Scope[] scope = getScope(method);
 
-			Binding<Object> binding = bindingFromMethod(module, method);
 			Key<Object> key = Key.ofType(type, uniqueName());
-			addBinding(scope, key, binding);
+			bind(key).to(bindingFromMethod(module, method)).in(scope);
 
 			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
-			addBinding(scope, setKey, Binding.to(Collections::singleton, key).at(LocationInfo.from(this)));
+			bind(setKey).to(Collections::singleton, key).in(scope);
 			multibind(setKey, Multibinder.toSet());
 
 			keySetsOf(method).forEach(keySet -> {
@@ -143,6 +128,7 @@ public abstract class AbstractModule implements Module {
 	@SuppressWarnings({"unchecked", "UnusedReturnValue", "WeakerAccess"})
 	public final class BindingBuilder<T> {
 		private Scope[] scope = UNSCOPED;
+		private boolean exported = false;
 		private Key<T> key;
 
 		private Binding<? extends T> binding = (Binding<? extends T>) new Binding<>(emptySet(), Preprocessor.TO_BE_GENERATED).at(LocationInfo.from(AbstractModule.this));
@@ -179,25 +165,30 @@ public abstract class AbstractModule implements Module {
 		/**
 		 * The binding being built by this builder will be added to the binding graph trie at given scope path
 		 */
-		public BindingBuilder<T> in(@NotNull Scope scope, @NotNull Scope... scopes) {
+		public BindingBuilder<T> in(@NotNull Scope[] scope) {
 			if (this.scope.length != 0) {
-				throw new IllegalStateException("Already bound to scope " + Arrays.stream(this.scope).map(Scope::getDisplayString).collect(joining("->", "()", "")));
+				throw new IllegalStateException("Already bound to scope " + getScopeDisplayString(this.scope));
 			}
-
-			Scope[] ss = new Scope[scopes.length + 1];
-			ss[0] = scope;
-			System.arraycopy(scopes, 0, ss, 1, scopes.length);
-
-			this.scope = ss;
+			this.scope = scope;
 			return this;
 		}
 
 		/**
-		 * @see #in(Scope, Scope...)
+		 * @see #in(Scope[])
+		 */
+		public BindingBuilder<T> in(@NotNull Scope scope, @NotNull Scope... scopes) {
+			Scope[] joined = new Scope[scopes.length + 1];
+			joined[0] = scope;
+			System.arraycopy(scopes, 0, joined, 1, scopes.length);
+			return in(joined);
+		}
+
+		/**
+		 * @see #in(Scope[])
 		 */
 		@SafeVarargs
 		public final BindingBuilder<T> in(@NotNull Class<? extends Annotation> annotationClass, @NotNull Class<? extends Annotation>... annotationClasses) {
-			return in(Scope.of(annotationClass), Arrays.stream(annotationClasses).map(Scope::of).toArray(Scope[]::new));
+			return in(Stream.concat(Stream.of(annotationClass), Arrays.stream(annotationClasses)).map(Scope::of).toArray(Scope[]::new));
 		}
 
 		/**
@@ -235,6 +226,16 @@ public abstract class AbstractModule implements Module {
 		 */
 		public <U extends T> BindingBuilder<T> toInstance(@NotNull U instance) {
 			return to(Binding.toInstance(instance));
+		}
+
+		/**
+		 * DSL shortcut for creating a dummy binding that will not create any instances
+		 * because they will be added later dynamically by calling {@link Injector#putInstance}.
+		 */
+		public BindingBuilder<T> toDynamic() {
+			return to(() -> {
+				throw new AssertionError("No instance was put into the injector dynamically for key " + key.getDisplayString() + " in scope " + getScopeDisplayString(scope));
+			});
 		}
 
 		/**
@@ -385,7 +386,7 @@ public abstract class AbstractModule implements Module {
 		 * @see KeySetAnnotation
 		 */
 		public BindingBuilder<T> as(@NotNull Name name) {
-			checkArgument(name.isMarkedBy(KeySetAnnotation.class));
+			checkArgument(name.isMarkedBy(KeySetAnnotation.class), "Should be a key set name");
 
 			Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
 			bind(setKey).toInstance(singleton(key));
@@ -444,12 +445,19 @@ public abstract class AbstractModule implements Module {
 			this.binding = this.binding.addDependencies(dependencies);
 			return this;
 		}
+
+		public BindingBuilder<T> export() {
+			checkState(!exported, "Binding was already exported");
+			exported = true;
+			return this;
+		}
 	}
 
 	/**
 	 * This method is meant to be overridden to call all the <code>bind(...)</code> methods.
 	 * Those methods can be called at any time before the module is given to the injector,
-	 * so this method is simply called from the constructor.
+	 * so this method is simply called on first call to any of {@link Module} methods.
+	 * <p>
 	 * It exists for consistency and code purity.
 	 * <p>
 	 * For quick-and-dirty modules <code>bind(...)</code> methods can be called using double-brace initialization.
@@ -461,6 +469,8 @@ public abstract class AbstractModule implements Module {
 	 * This method simply adds all bindings, transformers, generators and multibinders from given module to this one.
 	 */
 	protected final void install(Module module) {
+		checkState(configuring, "Cannot install modules before or after configure() call");
+
 		bindings.addAll(module.getBindings(), multimapMerger());
 		combineMultimap(bindingTransformers, module.getBindingTransformers());
 		combineMultimap(bindingGenerators, module.getBindingGenerators());
@@ -476,6 +486,8 @@ public abstract class AbstractModule implements Module {
 	 */
 	@SuppressWarnings("unchecked")
 	protected final <T> BindingBuilder<T> bind(@NotNull Key<T> key) {
+		checkState(configuring, "Cannot bind before or after configure() call");
+
 		// to support abstract modules with generics
 		Key<T> fullKey = Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName());
 		BindingBuilder<T> builder = new BindingBuilder<>(fullKey);
@@ -515,6 +527,8 @@ public abstract class AbstractModule implements Module {
 	 */
 	@SuppressWarnings("unchecked")
 	protected final <T> BindingBuilder<T> bind(Class<T> type) {
+		checkState(configuring, "Cannot add bindings before or after configure() call");
+
 		BindingBuilder<T> builder = new BindingBuilder<>(Key.of(type));
 		builders.add((BindingBuilder<Object>) builder);
 		return builder;
@@ -543,6 +557,8 @@ public abstract class AbstractModule implements Module {
 	 * Adds a {@link Multibinder multibinder} for a given key to this module.
 	 */
 	protected final <T> void multibind(Key<T> key, Multibinder<T> multibinder) {
+		checkState(configuring, "Cannot add multibinders before or after configure() call");
+
 		multibinders.put(key, multibinder);
 	}
 
@@ -550,6 +566,8 @@ public abstract class AbstractModule implements Module {
 	 * Adds a {@link BindingGenerator generator} for a given class to this module.
 	 */
 	protected final <T> void generate(Class<?> pattern, BindingGenerator<T> bindingGenerator) {
+		checkState(configuring, "Cannot add generators before or after configure() call");
+
 		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>()).add(bindingGenerator);
 	}
 
@@ -557,6 +575,8 @@ public abstract class AbstractModule implements Module {
 	 * Adds a {@link BindingTransformer transformer} with a given priority to this module.
 	 */
 	protected final <T> void transform(int priority, BindingTransformer<T> bindingTransformer) {
+		checkState(configuring, "Cannot add transformers before or after configure() call");
+
 		bindingTransformers.computeIfAbsent(priority, $ -> new HashSet<>()).add(bindingTransformer);
 	}
 
@@ -564,10 +584,27 @@ public abstract class AbstractModule implements Module {
 		if (configured) {
 			return;
 		}
-		configured = true;
+		configuring = true;
 		configure();
 		addDeclarativeBindingsFrom(this);
-		builders.forEach(builder -> addBinding(builder.scope, builder.key, builder.binding));
+		configuring = false;
+		configured = true;
+
+		builders.forEach(b ->
+				bindings.computeIfAbsent(b.scope, $ -> new HashMap<>())
+						.get()
+						.computeIfAbsent(b.key, $ -> new HashSet<>())
+						.add(b.binding));
+
+		Set<Key<?>> exportedKeys = builders.stream().filter(b -> b.exported).map(b -> b.key).collect(toSet());
+
+		if (!exportedKeys.isEmpty()) {
+			Module exported = Modules.of(bindings, bindingTransformers, bindingGenerators, multibinders).export(exportedKeys);
+			bindings = exported.getBindings();
+			bindingTransformers = exported.getBindingTransformers();
+			bindingGenerators = exported.getBindingGenerators();
+			multibinders = exported.getMultibinders();
+		}
 	}
 
 	@Override

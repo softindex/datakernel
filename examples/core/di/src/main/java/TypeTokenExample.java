@@ -16,10 +16,13 @@ import static java.util.Arrays.asList;
 public final class TypeTokenExample {
 
 	public static void main(String[] args) {
-		Injector injector = Injector.of(new AbstractModule() {{
-			bind(String.class).toInstance("hello");
-			bind(new Key<List<String>>() {}).to(s -> asList(s, s, s), String.class);
-		}});
+		Injector injector = Injector.of(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String.class).toInstance("hello");
+				bind(new Key<List<String>>() {}).to(s -> asList(s, s, s), String.class);
+			}
+		});
 
 		Key<List<String>> key = Key.ofType(Types.parameterized(List.class, String.class));
 		System.out.println(injector.getInstance(key));

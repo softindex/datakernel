@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.*;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.util.Utils.checkArgument;
 import static io.datakernel.di.util.Utils.union;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
@@ -529,7 +528,15 @@ public final class Binding<T> {
 
 	public <R> Binding<R> mapInstance(@Nullable List<Key<?>> dependencies, @NotNull BiFunction<Object[], ? super T, ? extends R> fn) {
 		if (dependencies != null) {
-			checkArgument(this.dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(new HashSet<>(dependencies)));
+			Set<Key<?>> missing = dependencies.stream()
+					.filter(required -> this.dependencies.stream().noneMatch(existing -> existing.getKey().equals(required)))
+					.collect(toSet());
+
+			if (!missing.isEmpty()) {
+				throw new DIException(missing.stream()
+						.map(Key::getDisplayString)
+						.collect(joining(", ", "Binding has no dependencies ", " required by mapInstance call")));
+			}
 		}
 		return new Binding<>(this.dependencies, location,
 				(compiledBindings, threadsafe, scope, index) ->
@@ -621,24 +628,29 @@ public final class Binding<T> {
 		return rebindDependencies(singletonMap(from, to));
 	}
 
+	@SuppressWarnings("unchecked")
 	public <K> Binding<T> rebindDependencies(@NotNull Map<Key<?>, Key<?>> map) {
 		if (map.isEmpty()) return this;
 		return rebindDependenciesImpl(
 				map.keySet(),
 				map.values().stream().map(Dependency::toKey).collect(toSet()),
 				key ->
-						(compiledBindings, threadsafe, scope, index) -> {
-							Key<?> newKey = map.get(key);
-							//noinspection unchecked
-							return newKey != null ?
-									(CompiledBinding<Object>) compiledBindings.get(newKey) :
-									(CompiledBinding<Object>) compiledBindings.get(key);
-						});
+						(compiledBindings, threadsafe, scope, index) ->
+								(CompiledBinding<Object>) compiledBindings.get(map.getOrDefault(key, key)));
 	}
 
 	private Binding<T> rebindDependenciesImpl(@NotNull Set<Key<?>> removedDependencies, @NotNull Set<Dependency> addedDependencies,
 			@NotNull Function<Key<?>, BindingCompiler<?>> fn) {
-		checkArgument(dependencies.stream().map(Dependency::getKey).collect(toSet()).containsAll(removedDependencies));
+
+		Set<Key<?>> missing = removedDependencies.stream()
+				.filter(required -> dependencies.stream().noneMatch(existing -> existing.getKey().equals(required)))
+				.collect(toSet());
+		if (!missing.isEmpty()) {
+			throw new DIException(missing.stream()
+					.map(Key::getDisplayString)
+					.collect(joining(", ", "Binding has no dependencies ", " required by rebind call")));
+		}
+
 		HashSet<Dependency> newDependencies = new HashSet<>(dependencies);
 		newDependencies.removeIf(dependency -> removedDependencies.contains(dependency.getKey()));
 		newDependencies.addAll(addedDependencies);

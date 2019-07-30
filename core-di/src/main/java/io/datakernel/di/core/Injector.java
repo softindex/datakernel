@@ -14,7 +14,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static io.datakernel.di.core.BindingGenerator.REFUSING;
@@ -138,7 +141,7 @@ public final class Injector {
 		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = Preprocessor.getUnsatisfiedDependencies(bindings);
 		unsatisfied.remove(Key.of(Injector.class));
 		if (parent != null) {
-			new ArrayList<>(unsatisfied.keySet()).stream().filter(parent.compiledBindings::containsKey).forEach(unsatisfied::remove);
+			unsatisfied.keySet().removeIf(parent.compiledBindings::containsKey);
 		}
 
 		if (!unsatisfied.isEmpty()) {

@@ -91,15 +91,15 @@ public final class Utils {
 				.collect(toMap(Entry::getKey, e -> squasher.apply(e.getKey(), e.getValue())));
 	}
 
-	public static void checkArgument(boolean condition) {
-		if (!condition) {
-			throw new IllegalArgumentException();
-		}
-	}
-
 	public static void checkArgument(boolean condition, String message) {
 		if (!condition) {
 			throw new IllegalArgumentException(message);
+		}
+	}
+
+	public static void checkState(boolean condition, String message) {
+		if (!condition) {
+			throw new IllegalStateException(message);
 		}
 	}
 

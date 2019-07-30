@@ -86,15 +86,21 @@ public interface Module {
 	}
 
 	static Module ofDeclarativeBindingsFrom(Object module) {
-		return new AbstractModule() {{
-			addDeclarativeBindingsFrom(module);
-		}};
+		return new AbstractModule() {
+			@Override
+			protected void configure() {
+				addDeclarativeBindingsFrom(module);
+			}
+		};
 	}
 
 	static Module ofDeclarativeBindingsFrom(Class<?> moduleClass) {
-		return new AbstractModule() {{
-			addDeclarativeBindingsFrom(moduleClass);
-		}};
+		return new AbstractModule() {
+			@Override
+			protected void configure() {
+				addDeclarativeBindingsFrom(moduleClass);
+			}
+		};
 	}
 
 	static Module empty() {

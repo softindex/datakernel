@@ -23,7 +23,7 @@ import static junit.framework.TestCase.*;
  * To represent the main concepts and features of DataKernel DI,
  * we've created an example which starts with low-level DI
  * concepts and gradually covers more specific advanced features.
- *
+ * <p>
  * In this example we have a kitchen, where you can
  * automatically create tasty cookies in different ways
  * with our wonderful DI.
@@ -178,13 +178,17 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_2]
 	public void moduleBindSnippet() {
-		AbstractModule module = new AbstractModule() {{
-			bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.0f));
-			bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f));
-			bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f));
-			bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class);
-			bind(Cookie.class).to(Cookie::new, Pastry.class);
-		}};
+		AbstractModule module = new AbstractModule() {
+
+			@Override
+			protected void configure() {
+				bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.0f));
+				bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f));
+				bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f));
+				bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class);
+				bind(Cookie.class).to(Cookie::new, Pastry.class);
+			}
+		};
 
 		Injector injector = Injector.of(module);
 		assertEquals("Kyivmlyn", injector.getInstance(Cookie.class).getPastry().getButter().getName());
@@ -223,9 +227,12 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_4]
 	public void injectAnnotationSnippet() {
-		AbstractModule cookbook = new AbstractModule() {{
-			bind(Cookie.class);
-		}};
+		AbstractModule cookbook = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Cookie.class);
+			}
+		};
 
 		Injector injector = Injector.of(cookbook);
 		assertEquals("Sugarella", injector.getInstance(Cookie.class).getPastry().getSugar().getName());
@@ -276,9 +283,9 @@ public class DIFollowUpTest {
 		Injector injector = Injector.of(cookbook);
 
 		float normalWeight = injector.getInstance(Key.of(Cookie.class, "normal"))
-							         .getPastry().getSugar().getWeight();
+				.getPastry().getSugar().getWeight();
 		float zerosugarWeight = injector.getInstance(Key.of(Cookie.class, "zerosugar"))
-									    .getPastry().getSugar().getWeight();
+				.getPastry().getSugar().getWeight();
 
 		assertEquals(10.f, normalWeight);
 		assertEquals(0.f, zerosugarWeight);

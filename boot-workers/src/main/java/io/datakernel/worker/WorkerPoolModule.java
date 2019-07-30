@@ -45,9 +45,7 @@ public final class WorkerPoolModule extends AbstractModule {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
 
 		for (Class<? extends Annotation> scope : workerScopes) {
-			bind(int.class).annotatedWith(WorkerId.class).in(scope).to(() -> {
-				throw new AssertionError();
-			});
+			bind(int.class).annotatedWith(WorkerId.class).in(scope).toDynamic();
 		}
 
 		generate(WorkerPool.Instances.class, (bindings, scope, key) -> {

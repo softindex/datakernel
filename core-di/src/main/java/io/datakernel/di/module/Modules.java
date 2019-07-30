@@ -14,6 +14,7 @@ import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -189,7 +190,15 @@ public final class Modules {
 	public static Module export(Module module, Set<Key<?>> exportedKeys) {
 		Set<Key<?>> originalKeys = new HashSet<>();
 		module.getBindings().dfs(multimap -> originalKeys.addAll(multimap.keySet()));
-		checkArgument(originalKeys.containsAll(exportedKeys));
+
+		Set<Key<?>> missing = new HashSet<>(exportedKeys);
+		missing.removeAll(originalKeys);
+		if (!missing.isEmpty()) {
+			throw new DIException(missing.stream()
+					.map(Key::getDisplayString)
+					.collect(joining(", ", "Exporting keys ", " that were not provided by the module")));
+		}
+
 		Map<Key<?>, Key<?>> originalToUnique = new HashMap<>();
 		Map<Key<?>, Key<?>> uniqueToOriginal = new HashMap<>();
 		for (Key<?> originalKey : originalKeys) {
@@ -212,7 +221,7 @@ public final class Modules {
 																.filter(originalToUnique::containsKey)
 																.collect(toMap(identity(), originalToUnique::get))))),
 				transformMultimapValues(module.getBindingTransformers(),
-						(priority, transformer) ->
+						($, transformer) ->
 								(bindings, scope, key, binding) ->
 										((BindingTransformer<Object>) transformer).transform(
 												new BindingLocator() {
@@ -225,7 +234,7 @@ public final class Modules {
 												(Key<Object>) uniqueToOriginal.getOrDefault(key, key),
 												binding)),
 				transformMultimapValues(module.getBindingGenerators(),
-						(clazz, generator) ->
+						($, generator) ->
 								(BindingGenerator<Object>) (bindings, scope, key) ->
 										((BindingGenerator<Object>) generator).generate(
 												new BindingLocator() {

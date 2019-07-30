@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
@@ -19,7 +20,7 @@ import static java.util.stream.Collectors.toSet;
 public final class Types {
 	private Types() {}
 
-	public static Class<?> getRawType(Type type) {
+	public static Class<?> getRawTypeOrNull(Type type) {
 		if (type instanceof Class) {
 			return (Class<?>) type;
 		}
@@ -29,75 +30,94 @@ public final class Types {
 		if (type instanceof GenericArrayType) {
 			return getRawType(((GenericArrayType) type).getGenericComponentType());
 		}
-		throw new IllegalArgumentException("Cannot get raw type from " + type);
+		return null;
+	}
+
+	public static Class<?> getRawType(Type type) {
+		Class<?> rawType = getRawTypeOrNull(type);
+		if (rawType == null) {
+			throw new IllegalArgumentException("Cannot get raw type from " + type);
+		}
+		return rawType;
 	}
 
 	public static boolean isInheritedFrom(Type type, Type from) {
-		return isInheritedFrom(type, from, getGenericTypeMapping(type));
+		return isInheritedFrom(type, from, new HashMap<>());
 	}
 
-	private static boolean isInheritedFrom(Type type, Type from, Map<TypeVariable<?>, Type> genericMapping) {
+	public static boolean isInheritedFrom(Type type, Type from, Map<Type, Type> dejaVu) {
 		if (from == Object.class) {
 			return true;
 		}
-		if (matches(resolveTypeVariables(type, genericMapping), from)) {
+		if (matches(type, from, dejaVu) || matches(from, type, dejaVu)) {
 			return true;
 		}
-		Class<?> rawType = getRawType(type);
+		Class<?> rawType = getRawTypeOrNull(type);
+		if (rawType == null) {
+			return false;
+		}
 
 		Type superclass = rawType.getGenericSuperclass();
-		if (superclass != null && isInheritedFrom(superclass, from, genericMapping)) {
+		if (superclass != null && isInheritedFrom(superclass, from, dejaVu)) {
 			return true;
 		}
-		return Arrays.stream(rawType.getGenericInterfaces())
-				.anyMatch(iface -> isInheritedFrom(iface, from, genericMapping));
+		return Arrays.stream(rawType.getGenericInterfaces()).anyMatch(iface -> isInheritedFrom(iface, from, dejaVu));
 	}
 
 	public static boolean matches(Type strict, Type pattern) {
-		if (strict.equals(pattern)) {
+		return matches(strict, pattern, new HashMap<>());
+	}
+
+	private static boolean matches(Type strict, Type pattern, Map<Type, Type> dejaVu) {
+		if (strict.equals(pattern) || dejaVu.get(strict) == pattern) {
 			return true;
 		}
-		if (pattern instanceof WildcardType) {
-			WildcardType wildcard = (WildcardType) pattern;
-			return Arrays.stream(wildcard.getUpperBounds()).allMatch(bound -> isInheritedFrom(strict, bound))
-					&& Arrays.stream(wildcard.getLowerBounds()).allMatch(bound -> isInheritedFrom(bound, strict));
-		}
-		if (pattern instanceof TypeVariable) {
-			TypeVariable<?> typevar = (TypeVariable<?>) pattern;
-			return Arrays.stream(typevar.getBounds()).allMatch(bound -> isInheritedFrom(strict, bound));
-		}
-		if (strict instanceof GenericArrayType && pattern instanceof GenericArrayType) {
-			return matches(((GenericArrayType) strict).getGenericComponentType(), ((GenericArrayType) pattern).getGenericComponentType());
-		}
-		if (!(strict instanceof ParameterizedType) || !(pattern instanceof ParameterizedType)) {
-			return false;
-		}
-		ParameterizedType parameterizedStrict = (ParameterizedType) strict;
-		ParameterizedType parameterizedPattern = (ParameterizedType) pattern;
+		dejaVu.put(strict, pattern);
+		try {
+			if (pattern instanceof WildcardType) {
+				WildcardType wildcard = (WildcardType) pattern;
+				return Arrays.stream(wildcard.getUpperBounds()).allMatch(bound -> isInheritedFrom(strict, bound, dejaVu))
+						&& Arrays.stream(wildcard.getLowerBounds()).allMatch(bound -> isInheritedFrom(bound, strict, dejaVu));
+			}
+			if (pattern instanceof TypeVariable) {
+				TypeVariable<?> typevar = (TypeVariable<?>) pattern;
+				return Arrays.stream(typevar.getBounds()).allMatch(bound -> isInheritedFrom(strict, bound, dejaVu));
+			}
+			if (strict instanceof GenericArrayType && pattern instanceof GenericArrayType) {
+				return matches(((GenericArrayType) strict).getGenericComponentType(), ((GenericArrayType) pattern).getGenericComponentType(), dejaVu);
+			}
+			if (!(strict instanceof ParameterizedType) || !(pattern instanceof ParameterizedType)) {
+				return false;
+			}
+			ParameterizedType parameterizedStrict = (ParameterizedType) strict;
+			ParameterizedType parameterizedPattern = (ParameterizedType) pattern;
 
-		if (parameterizedPattern.getOwnerType() != null) {
-			if (parameterizedStrict.getOwnerType() == null) {
+			if (parameterizedPattern.getOwnerType() != null) {
+				if (parameterizedStrict.getOwnerType() == null) {
+					return false;
+				}
+				if (!matches(parameterizedPattern.getOwnerType(), parameterizedStrict.getOwnerType(), dejaVu)) {
+					return false;
+				}
+			}
+			if (!matches(parameterizedPattern.getRawType(), parameterizedStrict.getRawType(), dejaVu)) {
 				return false;
 			}
-			if (!matches(parameterizedPattern.getOwnerType(), parameterizedStrict.getOwnerType())) {
-				return false;
-			}
-		}
-		if (!matches(parameterizedPattern.getRawType(), parameterizedStrict.getRawType())) {
-			return false;
-		}
 
-		Type[] strictParams = parameterizedStrict.getActualTypeArguments();
-		Type[] patternParams = parameterizedPattern.getActualTypeArguments();
-		if (strictParams.length != patternParams.length) {
-			return false;
-		}
-		for (int i = 0; i < strictParams.length; i++) {
-			if (!matches(strictParams[i], patternParams[i])) {
+			Type[] strictParams = parameterizedStrict.getActualTypeArguments();
+			Type[] patternParams = parameterizedPattern.getActualTypeArguments();
+			if (strictParams.length != patternParams.length) {
 				return false;
 			}
+			for (int i = 0; i < strictParams.length; i++) {
+				if (!matches(strictParams[i], patternParams[i], dejaVu)) {
+					return false;
+				}
+			}
+			return true;
+		} finally {
+			dejaVu.remove(strict);
 		}
-		return true;
 	}
 
 	public static boolean contains(Type type, Type sub) {
@@ -183,44 +203,33 @@ public final class Types {
 
 	private static final Map<Type, Map<TypeVariable<?>, Type>> genericMappingCache = new HashMap<>();
 
+	private static void getGenericTypeMappingImpl(Type t, Map<TypeVariable<?>, @Nullable Type> mapping) {
+		Class<?> cls = getRawType(t);
+
+		if (t instanceof ParameterizedType) {
+			Type[] typeArgs = ((ParameterizedType) t).getActualTypeArguments();
+			if (typeArgs.length != 0) {
+				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
+				for (TypeVariable<?> typeVar : typeVars) {
+					mapping.putIfAbsent(typeVar, null);
+				}
+				for (int i = 0; i < typeArgs.length; i++) {
+					Type typeArg = typeArgs[i];
+					mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
+				}
+			}
+		}
+
+		Stream.concat(Stream.of(cls.getGenericSuperclass()).filter(Objects::nonNull), Arrays.stream(cls.getGenericInterfaces()))
+				.forEach(supertype -> getGenericTypeMappingImpl(supertype, mapping));
+	}
+
 	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container) {
 		return genericMappingCache.computeIfAbsent(container, t -> {
 			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
-			Class<?> cls = getRawType(t);
 
-			// first handle if given type is parameterized too
-			if (t instanceof ParameterizedType) {
-				Type[] typeArgs = ((ParameterizedType) t).getActualTypeArguments();
-				if (typeArgs.length != 0) {
-					TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
-					for (TypeVariable<? extends Class<?>> typeVar : typeVars) {
-						mapping.put(typeVar, null); // not putIfAbsent because those all are first puts
-					}
-					for (int i = 0; i < typeArgs.length; i++) {
-						Type typeArg = typeArgs[i];
-						mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
-					}
-				}
-			}
-			// and then tail-recursively the superclasses
-			for (; ; ) {
-				Type genericSuperclass = cls.getGenericSuperclass();
-				cls = cls.getSuperclass();
-				if (cls == Object.class || cls == null) {
-					break;
-				}
-				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
-				for (TypeVariable<? extends Class<?>> typeVar : typeVars) {
-					mapping.putIfAbsent(typeVar, null);
-				}
-				if (genericSuperclass instanceof ParameterizedType) {
-					Type[] typeArgs = ((ParameterizedType) genericSuperclass).getActualTypeArguments();
-					for (int i = 0; i < typeArgs.length; i++) {
-						Type typeArg = typeArgs[i];
-						mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
-					}
-				}
-			}
+			getGenericTypeMappingImpl(t, mapping);
+
 			Set<TypeVariable<?>> unsatisfiedGenerics = mapping.entrySet().stream()
 					.filter(e -> e.getValue() == null)
 					.map(e -> (TypeVariable<?>) e.getKey())
@@ -245,9 +254,7 @@ public final class Types {
 		}
 		if (type instanceof TypeVariable) {
 			Type resolved = mapping.get(type);
-			if (resolved != null) {
-				return ensureEquality(resolved);
-			}
+			return resolved != null ? ensureEquality(resolved) : type;
 		}
 		if (type instanceof ParameterizedType) {
 			ParameterizedType parameterized = (ParameterizedType) type;

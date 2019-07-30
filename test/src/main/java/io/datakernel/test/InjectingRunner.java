@@ -57,10 +57,13 @@ public final class InjectingRunner extends BlockJUnit4ClassRunner {
 	protected Object createTest() throws Exception {
 		Object instance = super.createTest();
 		Key<InstanceInjector<Object>> key = Key.ofType(Types.parameterized(InstanceInjector.class, instance.getClass()));
-		Injector injector = Injector.of(module, new AbstractModule() {{
-			bind(key);
-			addDeclarativeBindingsFrom(instance);
-		}});
+		Injector injector = Injector.of(module, new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(key);
+				addDeclarativeBindingsFrom(instance);
+			}
+		});
 		injector.getInstance(key).injectInto(instance);
 
 		return instance;

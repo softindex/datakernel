@@ -13,13 +13,14 @@ public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<
 	@SuppressWarnings("unchecked")
 	@Override
 	public final R getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-		if (instance != null) return instance;
+		R localInstance = instance;
+		if (localInstance != null) return localInstance;
 		synchronized (this) {
 			if (instance != null) return instance;
 			instance = doCreateInstance(scopedInstances, synchronizedScope);
 		}
 		scopedInstances[0].lazySet(index, instance);
-		return this.instance;
+		return instance;
 	}
 
 	@Override
