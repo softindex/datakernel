@@ -1,4 +1,5 @@
 import React from "react";
+import path from 'path';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import Dialog from '../Dialog/Dialog'
@@ -20,6 +21,7 @@ import IconButton from "@material-ui/core/IconButton";
 import Paper from "@material-ui/core/Paper";
 import RoomItem from "../RoomItem/RoomItem";
 import createChatDialogStyles from "./createChatDialogStyles";
+import {withRouter} from "react-router-dom";
 
 class CreateChatDialog extends React.Component {
   state = {
@@ -118,23 +120,13 @@ class CreateChatDialog extends React.Component {
       loading: true
     });
 
-    return this.props.createRoom([...this.state.participants])
-      .then((result) => {
-        console.log(result);
-        this.props.onClose();
-      })
-      .catch((err) => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
-      .finally(() => {
-        this.setState({
-          participants: new Set(),
-          search: '',
-          loading: false
-        });
-      });
+    this.props.onCreateRoom([...this.state.participants]);
+    this.props.onClose();
+    this.setState({
+      participants: new Set(),
+      search: '',
+      loading: false
+    });
   };
 
   render() {
@@ -276,21 +268,33 @@ class CreateChatDialog extends React.Component {
   }
 }
 
-export default connectService(
-  ContactsContext,
-  ({contacts}, contactsService) => ({
-    contactsService, contacts
-  })
-)(
-  connectService(
-    RoomsContext,
-    ({rooms}, roomsService) => ({
-      rooms,
-      createRoom(name, participants) {
-        return roomsService.createRoom(name, participants);
-      }
-    })
-  )(
-    withSnackbar(withStyles(createChatDialogStyles)(CreateChatDialog))
+export default withRouter(
+  withSnackbar(
+    connectService(
+      ContactsContext,
+      ({contacts}, contactsService) => ({
+        contactsService, contacts
+      })
+    )(
+      connectService(
+        RoomsContext,
+        ({rooms}, roomsService, props) => ({
+          rooms,
+          onCreateRoom(name, participants) {
+            roomsService.createRoom(name, participants)
+              .then(roomId => {
+                props.history.push(path.join('/room', roomId || ''));
+              })
+              .catch((err) => {
+                props.enqueueSnackbar(err.message, {
+                  variant: 'error'
+                });
+              })
+          }
+        })
+      )(
+        withStyles(createChatDialogStyles)(CreateChatDialog)
+      )
+    )
   )
 );

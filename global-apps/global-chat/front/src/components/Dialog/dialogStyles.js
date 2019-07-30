@@ -11,7 +11,8 @@ const dialogStyles = (theme) => ({
     left: 'calc(50% - 12px)'
   },
   muDialog: {
-    minWidth: theme.spacing.unit * 47
+    minWidth: theme.spacing.unit * 47,
+    minHeight: theme.spacing.unit * 21
   }
 });
 

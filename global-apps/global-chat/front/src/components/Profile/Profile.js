@@ -67,22 +67,19 @@ class Profile extends React.Component {
         onClose={this.props.onClose}
         loading={this.state.loading}
       >
-        {/*{!this.props.profileReady && (*/}
-        {/*  <>*/}
-        {/*    <DialogTitle*/}
-        {/*      id="customized-dialog-title"*/}
-        {/*      onClose={this.props.onClose}*/}
-        {/*    >*/}
-        {/*      My Profile*/}
-        {/*    </DialogTitle>*/}
-        {/*    <Grow in={!this.props.ready}>*/}
-        {/*      <div className={this.props.classes.progressWrapper}>*/}
-        {/*        <CircularProgress/>*/}
-        {/*      </div>*/}
-        {/*    </Grow>*/}
-        {/*  </>*/}
-        {/*)}*/}
-        {/*{this.props.profileReady && (*/}
+        {!this.props.profileReady && (
+          <>
+            <DialogTitle onClose={this.props.onClose}>
+              My Profile
+            </DialogTitle>
+            <Grow in={!this.props.ready}>
+              <div className={this.props.classes.progressWrapper}>
+                <CircularProgress/>
+              </div>
+            </Grow>
+          </>
+        )}
+        {this.props.profileReady && (
           <form onSubmit={this.onSubmit}>
             <DialogTitle
               onClose={this.props.onClose}
@@ -145,7 +142,7 @@ class Profile extends React.Component {
               </Button>
             </DialogActions>
           </form>
-        {/*)}*/}
+        )}
       </Dialog>
     )
   }

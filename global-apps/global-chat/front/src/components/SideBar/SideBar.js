@@ -20,6 +20,7 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import ContactItem from "../ContactItem/ContactItem";
 import {getDialogRoomId, toEmoji} from "../../common/utils";
 import {withRouter} from "react-router-dom";
+import {withSnackbar} from "notistack";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
@@ -147,8 +148,8 @@ class SideBar extends React.Component {
             contacts={this.props.contacts}
             roomsService={this.props.roomsService}
             roomsReady={this.props.roomsReady}
-            addContact={this.props.addContact}
-            removeContact={this.props.removeContact}
+            onAddContact={this.props.addContact}
+            onRemoveContact={this.props.removeContact}
             createDialog={this.props.createDialog}
             quitRoom={this.props.quitRoom}
             publicKey={this.props.publicKey}
@@ -223,40 +224,56 @@ class SideBar extends React.Component {
 }
 
 export default withRouter(
-  withStyles(sideBarStyles)(
-    connectService(
-      ContactsContext, ({contacts}, contactsService, props) => ({
-        contacts, contactsService,
-        addContact(contactPublicKey, name) {
-          const roomId = getDialogRoomId([props.publicKey, contactPublicKey]);
-          props.history.push(path.join('/room', roomId || ''));
-          return contactsService.addContact(contactPublicKey, name);
-        },
-        removeContact(contactPublicKey, name) {
-          props.history.push(path.join('/room', ''));
-          return contactsService.removeContact(contactPublicKey, name);
-        }
-      })
-    )(
+  withSnackbar(
+    withStyles(sideBarStyles)(
       connectService(
-        RoomsContext, ({roomsReady, rooms}, roomsService) => ({
-          roomsService, roomsReady, rooms,
-          quitRoom(roomId) {
-            return roomsService.quitRoom(roomId);
+        ContactsContext, ({contacts}, contactsService, props) => ({
+          contacts, contactsService,
+          addContact(contactPublicKey, name) {
+            contactsService.addContact(contactPublicKey, name)
+              .then(() => {
+                const roomId = getDialogRoomId([props.publicKey, contactPublicKey]);
+                props.history.push(path.join('/room', roomId || ''));
+              })
+              .catch((err) => {
+                props.enqueueSnackbar(err.message, {
+                  variant: 'error'
+                });
+              })
           },
-          createDialog(participantId) {
-            return roomsService.createDialog(participantId);
+          removeContact(contactPublicKey, name) {
+            contactsService.removeContact(contactPublicKey, name)
+              .then(() => {
+                props.history.push(path.join('/room', ''));
+              })
+              .catch((err) => {
+                props.enqueueSnackbar(err.message, {
+                  variant: 'error'
+                });
+              })
           }
         })
       )(
         connectService(
-          SearchContactsContext, ({searchContacts, searchReady, error}, searchContactsService) => ({
-            searchContacts, searchReady, searchContactsService,
-            search(searchField) {
-              return searchContactsService.search(searchField);
+          RoomsContext, ({roomsReady, rooms}, roomsService) => ({
+            roomsService, roomsReady, rooms,
+            quitRoom(roomId) {
+              return roomsService.quitRoom(roomId);
+            },
+            createDialog(participantId) {
+              return roomsService.createDialog(participantId);
             }
           })
-        )(SideBar)
+        )(
+          connectService(
+            SearchContactsContext, ({searchContacts, searchReady, error}, searchContactsService) => ({
+              searchContacts, searchReady, searchContactsService,
+              search(searchField) {
+                return searchContactsService.search(searchField);
+              }
+            })
+          )(SideBar)
+        )
       )
     )
   )

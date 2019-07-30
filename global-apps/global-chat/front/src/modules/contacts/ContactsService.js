@@ -24,7 +24,7 @@ class ContactsService extends Service {
 
   static createFrom(contactsOTStateManager, roomsOTStateManager, roomsService, publicKey) {
     return new ContactsService(contactsOTStateManager, roomsOTStateManager, roomsService,
-      GlobalAppStoreAPI.create(), publicKey);
+      GlobalAppStoreAPI.create(process.env.REACT_APP_AUTH_LINK), publicKey);
   }
 
   async init() {

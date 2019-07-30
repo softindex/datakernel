@@ -10,7 +10,8 @@ const profileStyles = theme => ({
     width: theme.spacing.unit * 85
   },
   progressWrapper: {
-    margin: 'auto'
+    margin: 'auto',
+    marginTop: 0
   }
 });
 

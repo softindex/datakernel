@@ -6,7 +6,7 @@ import Avatar from "@material-ui/core/Avatar";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
 import roomItemStyles from "./roomItemStyles";
-import SimpleMenu from "../SimpleMenu/SimpleMenu";
+import ContactMenu from "../ContactMenu/ContactMenu";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import {Link, withRouter} from "react-router-dom";
 import Badge from "@material-ui/core/Badge";
@@ -16,9 +16,7 @@ import {getAvatarLetters, getRoomName, toEmoji} from "../../common/utils";
 
 class RoomItem extends React.Component {
   state = {
-    hover: false,
-    showAddContactDialog: false,
-    showMenuIcon: true
+    showAddContactDialog: false
   };
 
   static defaultProps = {
@@ -31,14 +29,14 @@ class RoomItem extends React.Component {
     this.checkContactExists(this.props.room)
   }
 
+
   getRoomPath = (roomId) => {
     return path.join('/room', roomId || '');
   };
 
   onClickAddContact() {
     this.setState({
-      showAddContactDialog: true,
-      showMenuIcon: false
+      showAddContactDialog: true
     });
   }
 
@@ -69,18 +67,12 @@ class RoomItem extends React.Component {
       .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
   }
 
-  toggleHover = () => {
-    this.setState({hover: !this.state.hover})
-  };
-
   render() {
     const {classes, room, roomId} = this.props;
     return (
       <>
         <ListItem
           onClick={this.props.onClick}
-          onMouseEnter={this.toggleHover}
-          onMouseLeave={this.toggleHover}
           className={classes.listItem}
           button
           selected={roomId === this.props.match.params.roomId && this.props.roomSelected}
@@ -112,12 +104,8 @@ class RoomItem extends React.Component {
               }}
             />
           </Link>
-          {this.state.hover && this.state.showMenuIcon && (
-            <SimpleMenu
-              className={classes.menu}
-              onAddContact={this.onClickAddContact.bind(this)}
-              onDelete={this.props.onRemoveContact}
-            />
+          {this.checkContactExists(room) && !this.props.isContactsTab && (
+            <ContactMenu onAddContact={this.onClickAddContact.bind(this)}/>
           )}
           {this.state.hover && this.props.showDeleteButton && (
             <IconButton
@@ -136,7 +124,7 @@ class RoomItem extends React.Component {
           onClose={this.closeAddDialog}
           contactPublicKey={this.getContactId(room)}
           publicKey={this.props.publicKey}
-          onAddContact={this.props.addContact}
+          onAddContact={this.props.onAddContact}
         />
       </>
     )

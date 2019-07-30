@@ -14,7 +14,7 @@ class SearchContactsService extends Service {
   }
 
   static create() {
-    return new SearchContactsService(GlobalAppStoreAPI.create());
+    return new SearchContactsService(GlobalAppStoreAPI.create(process.env.REACT_APP_AUTH_LINK));
   }
 
   getAppStoreContactName(publicKey) {

@@ -1,5 +1,4 @@
 import React from "react";
-import path from 'path'
 import {withStyles} from '@material-ui/core';
 import ListItemAvatar from "@material-ui/core/ListItemAvatar";
 import Avatar from "@material-ui/core/Avatar";
@@ -30,15 +29,8 @@ class ContactItem extends React.Component {
   }
 
   onClickAddContact = () => {
-    this.props.onAddContact(this.props.contactId, this.getContactName())
-      .then(() => {
-        this.onCloseAddContactDialog();
-      })
-      .catch((err) => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
+    this.props.onAddContact(this.props.contactId, this.getContactName());
+    this.onCloseAddContactDialog();
   };
 
   onCloseAddContactDialog = () => {

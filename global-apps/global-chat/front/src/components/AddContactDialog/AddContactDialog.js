@@ -27,20 +27,11 @@ class AddContactDialog extends React.Component {
       loading: true
     });
 
-    return this.props.onAddContact(this.props.contactPublicKey, this.state.name)
-      .then(() => {
-        this.props.onClose();
-      })
-      .catch((err) => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
-      .finally(() => {
-        this.setState({
-          loading: false
-        });
-      });
+    this.props.onAddContact(this.props.contactPublicKey, this.state.name);
+    this.props.onClose();
+    this.setState({
+      loading: false
+    });
   };
 
   render() {

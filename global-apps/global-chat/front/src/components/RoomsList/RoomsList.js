@@ -14,13 +14,6 @@ class RoomsList extends React.Component {
     return this.props.removeContact(pubKey, name);
   }
 
-  onContactDelete(room) {
-    if (room.participants.length === 2) {
-      const participantKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
-      return this.onRemoveContact(participantKey, this.props.contacts.get(participantKey).name)
-    }
-  };
-
   render() {
     return (
       <>
@@ -42,8 +35,8 @@ class RoomsList extends React.Component {
                   showDeleteButton={this.props.showDeleteButton}
                   contacts={this.props.contacts}
                   publicKey={this.props.publicKey}
-                  addContact={this.props.addContact}
-                  onRemoveContact={this.onContactDelete.bind(this, room)}
+                  onAddContact={this.props.onAddContact}
+                  onRemoveContact={this.onRemoveContact.bind(this, room)}
                 />
               )
             )}

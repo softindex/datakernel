@@ -43,6 +43,7 @@ class RoomsService extends Service {
   async createRoom(participants) {
     const roomId = randomString(ROOM_ID_LENGTH);
     await this._createRoom(roomId, [...participants, this._myPublicKey]);
+    return roomId;
   }
 
   async createDialog(participantPublicKey) {

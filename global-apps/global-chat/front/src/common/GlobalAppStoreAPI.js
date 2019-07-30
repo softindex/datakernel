@@ -1,7 +1,5 @@
-//import path from 'path';
+import url from 'url';
 import request from './request';
-
-const path = 'http://localhost:8088';
 
 class GlobalAppStoreAPI {
   constructor(request, url = '') {
@@ -14,17 +12,17 @@ class GlobalAppStoreAPI {
   }
 
   search(searchField) {
-    return this._request(path.concat(this._url, `/api/users/lookup?query=${encodeURIComponent(searchField)}`))
+    return this._request(url.resolve(this._url, `/api/users/lookup?query=${encodeURIComponent(searchField)}`))
       .then(response => response.json())
   }
 
   getUserByPublicKey(publicKey) {
-    return this._request(path.concat(this._url, `/api/users/${publicKey}`))
+    return this._request(url.resolve(this._url, `/api/users/${publicKey}`))
       .then(response => response.json())
   }
 
   getKeys() {
-    return this._request(path.concat(this._url, '/api/users/keys/pairs'))
+    return this._request(url.resolve(this._url, '/api/users/keys/pairs'))
       .then(response => response.json())
       .then(([firstPair]) => firstPair);
   }
@@ -40,7 +38,7 @@ class GlobalAppStoreAPI {
   }
 
   getProfile() {
-    return this._request(path.concat(this._url, 'api/users/profile'))
+    return this._request(url.resolve(this._url, 'api/users/profile'))
       .then(response => response.json());
   }
 }

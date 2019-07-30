@@ -2,7 +2,16 @@ const roomItemStyles = theme => ({
   listItem: {
     borderRadius: 4,
     paddingTop: theme.spacing.unit * 0.5,
-    paddingBottom: theme.spacing.unit * 0.5
+    paddingBottom: theme.spacing.unit * 0.5,
+    '& > div' : {
+      visibility: 'hidden'
+    },
+    '&:hover > button': {
+      display: 'flex' // should use display instead of visibility because of show/hide button when room name is too long
+    },
+    '&:hover > div': {
+      visibility: 'visible'
+    }
   },
   avatar: {
     width: theme.spacing.unit * 6,
