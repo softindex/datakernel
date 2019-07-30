@@ -14,7 +14,6 @@ function Dialog({children, onClose, loading, classes, ...otherProps}) {
       classes={{paper: classes.muDialog}}
     >
       <IconButton
-        aria-label="Close"
         className={classes.closeButton}
         onClick={onClose}
       >

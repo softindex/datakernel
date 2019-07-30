@@ -12,7 +12,7 @@ import {Link, withRouter} from "react-router-dom";
 import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from "@material-ui/icons/Delete";
-import {getAvatarLetters, getRoomName, toEmoji} from "../../common/utils";
+import {getAvatarLetters, getRoomName} from "../../common/utils";
 
 class RoomItem extends React.Component {
   state = {
@@ -21,7 +21,7 @@ class RoomItem extends React.Component {
 
   static defaultProps = {
     selected: false,
-    showDeleteButton: false,
+    isContactsTab: false,
     roomSelected: true
   };
 
@@ -41,18 +41,12 @@ class RoomItem extends React.Component {
   }
 
   checkContactExists(room) {
-    if (room.participants.length === 2) {
+    if (room.participants.length === 2 && room.dialog) {
       const participantPublicKey = room.participants
         .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
-      if (this.props.contacts.has(participantPublicKey)) {
-        this.setState({
-          showMenuIcon: false
-        });
+      if (!this.props.contacts.has(participantPublicKey)) {
+        return true
       }
-    } else {
-      this.setState({
-        showMenuIcon: false
-      })
     }
   }
 
@@ -99,19 +93,14 @@ class RoomItem extends React.Component {
             <ListItemText
               primary={getRoomName(this.props.room.participants, this.props.contacts, this.props.publicKey)}
               className={classes.itemText}
-              classes={{
-                primary: classes.itemTextPrimary
-              }}
+              classes={{primary: classes.itemTextPrimary}}
             />
           </Link>
           {this.checkContactExists(room) && !this.props.isContactsTab && (
             <ContactMenu onAddContact={this.onClickAddContact.bind(this)}/>
           )}
-          {this.state.hover && this.props.showDeleteButton && (
-            <IconButton
-              className={classes.deleteIcon}
-              aria-label="Delete"
-            >
+          {this.props.isContactsTab && (
+            <IconButton className={classes.deleteIcon}>
               <DeleteIcon
                 onClick={this.props.onRemoveContact}
                 fontSize="medium"

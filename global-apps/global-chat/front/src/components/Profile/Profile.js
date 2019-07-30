@@ -119,7 +119,7 @@ class Profile extends React.Component {
                       onClick={this.copyToClipboard}
                       disabled={this.state.loading}
                     >
-                      <Tooltip title="Copy" aria-label="Copy">
+                      <Tooltip title="Copy">
                         <i className="material-icons">
                           file_copy
                         </i>

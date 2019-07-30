@@ -103,7 +103,7 @@ class ContactsService extends Service {
         .filter(publicKey => publicKey !== this._myPublicKey)
         .forEach(publicKey => {
           this._getUserByPublicKey(publicKey)
-            .then(user => users.set(publicKey, user)) // TODO
+            .then(user => users.set(publicKey, user))
             .catch(error => console.error(error))
         })
     });

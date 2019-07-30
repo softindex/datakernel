@@ -11,7 +11,6 @@ import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 
 class ContactItem extends React.Component {
   state = {
-    hover: false, // TODO
     showAddContactDialog: false
   };
 
@@ -35,7 +34,6 @@ class ContactItem extends React.Component {
 
   onCloseAddContactDialog = () => {
     this.setState({
-      hover: false,
       showAddContactDialog: false
     });
   };
@@ -46,18 +44,12 @@ class ContactItem extends React.Component {
       this.props.contact.username
   };
 
-  toggleHover = () => {
-    this.setState({hover: !this.state.hover})
-  };
-
   render() {
     const {classes, contactId, contact} = this.props;
     return (
       <>
         <ListItem
           onClick={this.onContactClick.bind(this)}
-          onMouseEnter={this.toggleHover}
-          onMouseLeave={this.toggleHover}
           className={classes.listItem}
           button
           selected={getDialogRoomId([this.props.publicKey, contactId]) === this.props.match.params.roomId}

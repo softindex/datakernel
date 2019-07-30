@@ -46,6 +46,9 @@ export function toEmoji(str, length) {
 
 export function getAvatarLetters(roomName) {
   const nameString = [...roomName];
+  if (roomName === '') {
+    return 'Me'
+  }
   if (roomName.includes(" ")) {
     if (nameString[0].length === 2) {
       return nameString[0][0] + nameString[0][1] + nameString[roomName.indexOf(" ") - 2]

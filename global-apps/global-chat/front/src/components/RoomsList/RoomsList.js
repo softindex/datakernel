@@ -8,10 +8,10 @@ import Grow from "@material-ui/core/Grow";
 
 class RoomsList extends React.Component {
 
-  onRemoveContact(pubKey, name) {
-    //event.preventDefault();
-    //event.stopPropagation();
-    return this.props.removeContact(pubKey, name);
+  onRemoveContact(room) {
+    const publicKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
+    const name = this.props.contacts.get(publicKey).name;
+    return this.props.onRemoveContact(publicKey, name);
   }
 
   render() {
@@ -31,8 +31,7 @@ class RoomsList extends React.Component {
                 <RoomItem
                   roomId={roomId}
                   room={room}
-                  roomsService={this.props.roomsService}
-                  showDeleteButton={this.props.showDeleteButton}
+                  isContactsTab={this.props.isContactsTab}
                   contacts={this.props.contacts}
                   publicKey={this.props.publicKey}
                   onAddContact={this.props.onAddContact}

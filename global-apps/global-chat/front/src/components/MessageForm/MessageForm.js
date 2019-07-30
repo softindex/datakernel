@@ -48,11 +48,7 @@ class MessageForm extends React.Component {
             value={this.state.message}
           />
           <Divider className={this.props.classes.divider}/>
-          <IconButton
-            color="primary"
-            aria-label="Send"
-            type="submit"
-          >
+          <IconButton color="primary" type="submit">
             <SendIcon/>
           </IconButton>
         </Paper>

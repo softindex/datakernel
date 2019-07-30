@@ -116,7 +116,6 @@ class SideBar extends React.Component {
         <Paper className={classes.search}>
           <IconButton
             className={classes.iconButton}
-            aria-label="Search"
             disabled={true}
           >
             <SearchIcon/>
@@ -146,14 +145,11 @@ class SideBar extends React.Component {
           <RoomsList
             rooms={this.getFilteredRooms(this.sortContacts())}
             contacts={this.props.contacts}
-            roomsService={this.props.roomsService}
             roomsReady={this.props.roomsReady}
             onAddContact={this.props.addContact}
             onRemoveContact={this.props.removeContact}
-            createDialog={this.props.createDialog}
-            quitRoom={this.props.quitRoom}
             publicKey={this.props.publicKey}
-            showDeleteButton={this.state.tabId === "contacts"}
+            isContactsTab={this.state.tabId === "contacts"}
           />
 
           {this.state.search !== '' && (

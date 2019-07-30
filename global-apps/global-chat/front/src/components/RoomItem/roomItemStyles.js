@@ -24,6 +24,7 @@ const roomItemStyles = theme => ({
   },
   link: {
     display: 'flex',
+    flexGrow: 1,
     minWidth: theme.spacing.unit * 33.75,
     textDecoration: 'none',
     height: theme.spacing.unit * 8,
@@ -36,6 +37,9 @@ const roomItemStyles = theme => ({
     textOverflow: 'ellipsis',
     overflow: 'hidden',
     whiteSpace: 'nowrap'
+  },
+  deleteIcon: {
+    display: 'none'
   }
 });
 
