@@ -228,9 +228,6 @@ class CreateChatDialog extends React.Component {
             {/*>*/}
             {/*  Back*/}
             {/*</Button>*/}
-
-            {/*CHANGE HERE*/}
-
             <Button
               className={this.props.classes.actionButton}
               onClick={this.onClose}

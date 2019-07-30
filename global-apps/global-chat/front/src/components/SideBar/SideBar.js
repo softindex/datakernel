@@ -46,7 +46,7 @@ class SideBar extends React.Component {
     });
   };
 
-  sortContacts = () => {
+  sortContacts() {
     return [...this.props.rooms].sort(((array1, array2) => {
       const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
       const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
@@ -54,7 +54,7 @@ class SideBar extends React.Component {
         return this.props.contacts.get(contactId1).name.localeCompare(this.props.contacts.get(contactId2).name)
       }
     }));
-  };
+  }
 
   getFilteredRooms(rooms) {
     return new Map(
@@ -89,13 +89,13 @@ class SideBar extends React.Component {
     );
   }
 
-  checkSearch = () => {
+  checkSearch() {
     if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(this.state.search)) {
       this.setState({
         showAddDialog: true
       });
     }
-  };
+  }
 
   closeAddDialog = () => {
     this.setState({

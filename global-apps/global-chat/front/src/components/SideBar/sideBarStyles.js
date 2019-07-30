@@ -1,7 +1,7 @@
 const sideBarStyles = theme => {
   return {
     wrapper: {
-      boxShadow: `2px 0px ${theme.spacing.unit}px -2px rgba(0,0,0,0.2)`,
+      boxShadow: `2px 0px 1px -2px rgba(0,0,0,0.2)`,
       background: theme.palette.primary.contrastText,
       width: 350,
       height: '100vh',
@@ -12,7 +12,7 @@ const sideBarStyles = theme => {
       position: 'static'
     },
     paper: {
-      boxShadow: `0px ${theme.spacing.unit * 0.75}px  9px -5px rgba(0,0,0,0.2)`,
+      boxShadow: `0px 6px  9px -5px rgba(0,0,0,0.2)`,
       background: theme.palette.primary.background
     },
     chatsList: {
@@ -65,7 +65,7 @@ const sideBarStyles = theme => {
       boxShadow: 'none'
     },
     paperError: {
-      background: '#fa000066',
+      background: theme.palette.secondary.main,
       padding: theme.spacing.unit * 2,
       margin: theme.spacing.unit,
       borderRadius: theme.spacing.unit,

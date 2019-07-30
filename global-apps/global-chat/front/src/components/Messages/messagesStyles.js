@@ -37,15 +37,18 @@ const messageFormStyles = theme => {
       backgroundColor: theme.palette.grey[200],
       marginBottom: theme.spacing.unit,
       wordBreak: 'break-all',
-      borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
+      borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px 
+      ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
     },
     messageFromOther: {
       backgroundColor: theme.palette.grey[100],
       color: theme.palette.grey[100],
-      borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
+      borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius}px 
+      ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
     },
     messageMedium: {
-      borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`
+      borderRadius: `${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px
+       ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`
     },
     statusWrapper: {
       marginLeft: theme.spacing.unit,
