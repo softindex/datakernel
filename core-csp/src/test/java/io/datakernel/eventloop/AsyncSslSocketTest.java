@@ -53,6 +53,7 @@ import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
@@ -66,7 +67,7 @@ public final class AsyncSslSocketTest {
 
 	private static final String TEST_STRING = "Hello world";
 
-	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 37832);
+	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", getFreePort());
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(TEST_STRING.length())
 			.andThen(ByteBuf::asArray)

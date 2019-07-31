@@ -3,7 +3,6 @@ package io.datakernel.di.module;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.util.Trie;
-import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -21,31 +20,9 @@ import static java.util.stream.Collectors.toMap;
  * This class contains a set of utilities for working with {@link Module modules}.
  */
 public final class Modules {
+	static Module EMPTY = new SimpleModule(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
+
 	private Modules() {
-	}
-
-	/**
-	 * Creates a {@link Module module} out of given binding graph trie
-	 */
-	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return new ModuleImpl(bindings.map(Utils::toMultimap), emptyMap(), emptyMap(), emptyMap());
-	}
-
-	/**
-	 * Creates a {@link Module module} out of given binding graph trie, transformers, generators and multibinders
-	 */
-	public static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-			Map<Integer, Set<BindingTransformer<?>>> transformers,
-			Map<Class<?>, Set<BindingGenerator<?>>> generators,
-			Map<Key<?>, Multibinder<?>> multibinders) {
-		return new ModuleImpl(bindings, transformers, generators, multibinders);
-	}
-
-	/**
-	 * @see #combine(Collection)
-	 */
-	public static Module combine(Module... modules) {
-		return modules.length == 0 ? Module.empty() : modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
 	/**
@@ -67,15 +44,28 @@ public final class Modules {
 			mergeMultibinders(multibinders, module.getMultibinders());
 		}
 
-		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, multibinders);
+		return new SimpleModule(bindings, bindingTransformers, bindingGenerators, multibinders);
 	}
 
-	public static Module override(Module... modules) {
-		return override(Arrays.asList(modules));
+	/**
+	 * @see #combine(Collection)
+	 */
+	public static Module combine(Module... modules) {
+		return modules.length == 0 ? Module.empty() : modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
+	/**
+	 * Consecutively overrides each of the given modules with the next one after it and returns the accumulated result.
+	 */
 	public static Module override(List<Module> modules) {
 		return modules.stream().reduce(Module.empty(), Modules::override);
+	}
+
+	/**
+	 * @see #combine(Collection)
+	 */
+	public static Module override(Module... modules) {
+		return override(Arrays.asList(modules));
 	}
 
 	/**
@@ -94,7 +84,7 @@ public final class Modules {
 		Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>(into.getMultibinders());
 		multibinders.putAll(replacements.getMultibinders());
 
-		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, multibinders);
+		return new SimpleModule(bindings, bindingTransformers, bindingGenerators, multibinders);
 	}
 
 	/**
@@ -114,44 +104,7 @@ public final class Modules {
 					});
 					scopes.put(k, scope);
 				}));
-		return new ModuleImpl(Trie.leaf(bindings), from.getBindingTransformers(), from.getBindingGenerators(), from.getMultibinders());
-	}
-
-	static class ModuleImpl implements Module {
-		private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
-		private final Map<Integer, Set<BindingTransformer<?>>> transformers;
-		private final Map<Class<?>, Set<BindingGenerator<?>>> generators;
-		private final Map<Key<?>, Multibinder<?>> multibinders;
-
-		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-				Map<Integer, Set<BindingTransformer<?>>> transformers,
-				Map<Class<?>, Set<BindingGenerator<?>>> generators,
-				Map<Key<?>, Multibinder<?>> multibinders) {
-			this.bindings = bindings;
-			this.transformers = transformers;
-			this.generators = generators;
-			this.multibinders = multibinders;
-		}
-
-		@Override
-		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
-			return bindings;
-		}
-
-		@Override
-		public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
-			return transformers;
-		}
-
-		@Override
-		public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
-			return generators;
-		}
-
-		@Override
-		public Map<Key<?>, Multibinder<?>> getMultibinders() {
-			return multibinders;
-		}
+		return new SimpleModule(Trie.leaf(bindings), from.getBindingTransformers(), from.getBindingGenerators(), from.getMultibinders());
 	}
 
 	static Module export(Module module, Set<Key<?>> exportedKeys) {
@@ -183,7 +136,7 @@ public final class Modules {
 	@SuppressWarnings("unchecked")
 	private static Module doRebindExports(Module module, Map<Key<?>, Key<?>> originalToNew) {
 		Map<Key<?>, Key<?>> newToOriginal = originalToNew.entrySet().stream().collect(toMap(Map.Entry::getValue, Map.Entry::getKey));
-		return new ModuleImpl(
+		return new SimpleModule(
 				module.getBindings()
 						.map(bindingsMap ->
 								transformMultimap(bindingsMap,
@@ -226,7 +179,7 @@ public final class Modules {
 
 	@SuppressWarnings("unchecked")
 	static Module rebindImports(Module module, BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
-		return new ModuleImpl(
+		return new SimpleModule(
 				module.getBindings().map(bindingsMap -> transformMultimapValues(bindingsMap, rebinder)),
 				transformMultimapValues(module.getBindingTransformers(),
 						(priority, bindingTransformer) ->

@@ -3,6 +3,7 @@ package io.datakernel.di.module;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -83,7 +84,7 @@ public interface Module {
 		return rebindImports((key, binding) -> componentKey.equals(key) ? binding.rebindDependencies(map) : binding);
 	}
 
-	default <V> Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
+	default Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
 		return Modules.rebindImports(this, rebinder);
 	}
 
@@ -94,25 +95,31 @@ public interface Module {
 		return Preprocessor.resolveConflicts(getBindings(), combinedMultibinder(getMultibinders()));
 	}
 
-	static Module ofDeclarativeBindingsFrom(Object module) {
-		return new AbstractModule() {
-			@Override
-			protected void configure() {
-				addDeclarativeBindingsFrom(module);
-			}
-		};
-	}
-
-	static Module ofDeclarativeBindingsFrom(Class<?> moduleClass) {
-		return new AbstractModule() {
-			@Override
-			protected void configure() {
-				addDeclarativeBindingsFrom(moduleClass);
-			}
-		};
-	}
-
+	/**
+	 * Returns an empty {@link Module module}.
+	 */
 	static Module empty() {
-		return Modules.of(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
+		return Modules.EMPTY;
+	}
+
+	static BuilderModuleBindingStage create() {
+		return new BuilderModule<>();
+	}
+
+	/**
+	 * Creates a {@link Module module} out of given binding graph trie
+	 */
+	static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return new SimpleModule(bindings.map(Utils::toMultimap), emptyMap(), emptyMap(), emptyMap());
+	}
+
+	/**
+	 * Creates a {@link Module module} out of given binding graph trie, transformers, generators and multibinders
+	 */
+	static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+			Map<Integer, Set<BindingTransformer<?>>> transformers,
+			Map<Class<?>, Set<BindingGenerator<?>>> generators,
+			Map<Key<?>, Multibinder<?>> multibinders) {
+		return new SimpleModule(bindings, transformers, generators, multibinders);
 	}
 }

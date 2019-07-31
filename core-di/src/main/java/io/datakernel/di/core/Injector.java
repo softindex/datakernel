@@ -418,7 +418,7 @@ public final class Injector {
 	 */
 	public Set<Key<?>> createEagerSingletons() {
 		Set<Key<?>> eagerSingletons = getInstanceOr(new Key<Set<Key<?>>>(EagerSingleton.class) {}, emptySet());
-		eagerSingletons.forEach(this::getInstance);
+		eagerSingletons.forEach(this::getInstanceOrNull); // orNull because bindings for some keys could be provided in scopes
 		return eagerSingletons;
 	}
 

@@ -16,12 +16,10 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.LauncherService;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
@@ -72,8 +70,7 @@ public abstract class HttpServerLauncher extends Launcher {
 	protected final Module getModule() {
 		return combine(
 				ServiceGraphModule.create(),
-				JmxModule.create()
-						.export(new Key<Set<LauncherService>>() {}),
+				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),

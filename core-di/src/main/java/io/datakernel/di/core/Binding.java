@@ -717,6 +717,6 @@ public final class Binding<T> {
 
 	@Override
 	public String toString() {
-		return dependencies.toString();
+		return "Binding" + dependencies.toString();
 	}
 }
