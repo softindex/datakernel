@@ -13,7 +13,7 @@
 
   <name>DataKernel: UiKernel</name>
   <description>
-    Integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
+    Package provides integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
   </description>
 
   <dependencies>

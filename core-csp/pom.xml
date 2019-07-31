@@ -13,8 +13,8 @@
 
   <name>DataKernel: CSP</name>
   <description>
-    Communicating sequential process via channels, similar to that of the Go Lang.
-    A channel can be seen as a pipe that connects some processes.
+    Communicating sequential process via channels, similar to Golang's channels.
+    A channel could be imagine as a pipe which connects some processes.
   </description>
 
   <dependencies>

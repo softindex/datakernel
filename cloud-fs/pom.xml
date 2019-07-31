@@ -13,7 +13,8 @@
 
   <name>DataKernel: FS</name>
   <description>
-    Basis for building efficient, scalable remote file servers. Utilizes CSP for fast and reliable file transfer.
+    Package provides tools for building efficient, scalable remote file servers.
+    It utilizes CSP for fast and reliable file transfer.
   </description>
 
   <dependencies>

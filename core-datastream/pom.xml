@@ -13,8 +13,8 @@
 
   <name>DataKernel: DataStreams</name>
   <description>
-    Composable asynchronous/reactive streams with powerful data processing capabilities. Useful for transfering
-    high-volumes of lightweight values.
+    Composable asynchronous/reactive streams with powerful data processing capabilities.
+    They are useful for transferring big volumes of lightweight values or objects.
   </description>
 
   <dependencies>
