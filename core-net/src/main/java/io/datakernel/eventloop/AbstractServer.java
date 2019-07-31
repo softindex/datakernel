@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.eventloop.AsyncTcpSocketImpl.Inspector;
@@ -247,7 +246,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	}
 
 	@Override
-	public final MaterializedPromise<?> close() {
+	public final Promise<?> close() {
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Promise.complete();
 		running = false;
@@ -259,8 +258,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 					} else {
 						logger.error("Server closed exceptionally: " + this, e);
 					}
-				})
-				.materialize();
+				});
 	}
 
 	public final Future<?> closeFuture() {

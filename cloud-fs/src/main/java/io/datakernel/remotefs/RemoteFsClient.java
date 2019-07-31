@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
@@ -262,13 +261,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

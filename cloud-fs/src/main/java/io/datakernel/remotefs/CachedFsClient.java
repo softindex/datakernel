@@ -16,7 +16,10 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.AsyncSuppliers;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -103,14 +106,13 @@ public final class CachedFsClient implements FsClient, EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		checkState(cacheSizeLimit != null, "Cannot start cached client without specifying cache size limit");
 		return getTotalCacheSize()
 				.then(size -> {
 					totalCacheSize = size.toLong();
 					return ensureSpace();
-				})
-				.materialize();
+				});
 	}
 
 	@Override
@@ -259,8 +261,8 @@ public final class CachedFsClient implements FsClient, EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
-		return ensureSpace().materialize();
+	public Promise<Void> stop() {
+		return ensureSpace();
 	}
 
 	private Promise<Void> updateCacheStats(String fileName) {

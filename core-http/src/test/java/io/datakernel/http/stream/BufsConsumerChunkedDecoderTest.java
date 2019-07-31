@@ -16,7 +16,7 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -217,7 +217,7 @@ public final class BufsConsumerChunkedDecoderTest {
 
 	private void doTest(@Nullable Exception expectedException) {
 		chunkedDecoder.getInput().set(BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)));
-		MaterializedPromise<?> processResult = chunkedDecoder.getProcessCompletion();
+		Promise<?> processResult = chunkedDecoder.getProcessCompletion();
 		if (expectedException == null) {
 			await(processResult);
 		} else {

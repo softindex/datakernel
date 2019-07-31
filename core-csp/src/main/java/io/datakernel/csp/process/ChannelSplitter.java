@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.*;
@@ -79,7 +78,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		};
 	}
 
-	public MaterializedPromise<Void> splitInto(List<ChannelConsumer<T>> consumers, int requiredSuccesses, RefBoolean extraCondition) {
+	public Promise<Void> splitInto(List<ChannelConsumer<T>> consumers, int requiredSuccesses, RefBoolean extraCondition) {
 		RefInt up = new RefInt(consumers.size());
 
 		consumers.forEach(output ->
@@ -93,8 +92,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		return startProcess()
 				.then($ -> up.get() >= requiredSuccesses ?
 						Promise.complete() :
-						Promise.ofException(new StacklessException(ChannelSplitter.class, "Not enough successes")))
-				.materialize();
+						Promise.ofException(new StacklessException(ChannelSplitter.class, "Not enough successes")));
 	}
 
 	private void tryStart() {

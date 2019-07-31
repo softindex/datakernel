@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -164,7 +163,7 @@ public class GlobalOTNodeHttpClientTest {
 	public void upload() {
 		List<CommitId> commitIds = commitEntries.stream().map(CommitEntry::getCommitId).collect(toList());
 		Set<SignedData<RawCommitHead>> heads = singleton(toSignedHead(getLast(commitIds)));
-		MaterializedPromise<Void> uploadFinished = ChannelSupplier.ofIterable(commitEntries)
+		Promise<Void> uploadFinished = ChannelSupplier.ofIterable(commitEntries)
 				.streamTo(ChannelConsumer.ofPromise(client.upload(repository, heads)));
 		doTest(uploadFinished, repository, heads, commitIds);
 	}
@@ -174,7 +173,7 @@ public class GlobalOTNodeHttpClientTest {
 		CommitId head = getLast(commitEntries).getCommitId();
 		List<CommitId> commitIds = new ArrayList<>();
 		Set<CommitId> heads = singleton(head);
-		MaterializedPromise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, heads))
+		Promise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, heads))
 				.streamTo(ChannelConsumer.ofConsumer(entry -> commitIds.add(entry.getCommitId())));
 		doTest(downloadFinished, repository, heads, commitIds);
 	}

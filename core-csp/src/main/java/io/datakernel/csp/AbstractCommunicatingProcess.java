@@ -16,7 +16,10 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncProcess;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
@@ -72,7 +75,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> getProcessCompletion() {
+	public Promise<Void> getProcessCompletion() {
 		return processCompletion;
 	}
 
@@ -86,7 +89,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 */
 	@NotNull
 	@Override
-	public final MaterializedPromise<Void> startProcess() {
+	public final Promise<Void> startProcess() {
 		if (!processStarted) {
 			processStarted = true;
 			beforeProcess();

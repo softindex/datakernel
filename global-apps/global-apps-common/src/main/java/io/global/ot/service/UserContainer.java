@@ -1,6 +1,5 @@
 package io.global.ot.service;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -55,22 +54,20 @@ public final class UserContainer<D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete()
 				.then($ -> stateManager.start())
 				.then($ -> synchronizationService.start())
-				.then($ -> messagingService.start())
-				.materialize();
+				.then($ -> messagingService.start());
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete()
 				.then($ -> stateManager.stop())
 				.then($ -> synchronizationService.stop())
-				.then($ -> messagingService.stop())
-				.materialize();
+				.then($ -> messagingService.stop());
 	}
 
 	public MyRepositoryId<D> getMyRepositoryId() {

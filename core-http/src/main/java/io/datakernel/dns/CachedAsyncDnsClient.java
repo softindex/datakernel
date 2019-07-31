@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
@@ -46,7 +45,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	private final AsyncDnsClient client;
 
 	private DnsCache cache;
-	private final Map<DnsQuery, MaterializedPromise<DnsResponse>> pending = new HashMap<>();
+	private final Map<DnsQuery, Promise<DnsResponse>> pending = new HashMap<>();
 	private final Set<DnsQuery> refreshingNow = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
 	private CachedAsyncDnsClient(Eventloop eventloop, AsyncDnsClient client, DnsCache cache) {
@@ -90,7 +89,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		}
 		return new AsyncDnsClient() {
 			@Override
-			public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
+			public Promise<DnsResponse> resolve(DnsQuery query) {
 				DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 				if (fromQuery != null) {
 					logger.trace("{} already contained an IP address within itself", query);
@@ -144,7 +143,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	}
 
 	@Override
-	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
+	public Promise<DnsResponse> resolve(DnsQuery query) {
 		assert eventloop.inEventloopThread() : "Concurrent resolves are not allowed, to reuse the cache use adaptToOtherEventloop";
 
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
@@ -161,12 +160,12 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 			}
 			return cacheResult.getResponseAsPromise();
 		}
-		MaterializedPromise<DnsResponse> promise = pending.compute(query, (k, v) -> {
+		Promise<DnsResponse> promise = pending.compute(query, (k, v) -> {
 			if (v != null) {
 				logger.trace("{} is already pending", k);
 				return v;
 			}
-			MaterializedPromise<DnsResponse> resolve = client.resolve(k);
+			Promise<DnsResponse> resolve = client.resolve(k);
 			resolve.whenComplete((response, e) -> {
 				addToCache(k, response, e);
 				pending.remove(k);

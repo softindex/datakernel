@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
 import io.datakernel.eventloop.Eventloop;
@@ -286,7 +285,7 @@ public final class DnsCache {
 			this.needsRefreshing = needsRefreshing;
 		}
 
-		public MaterializedPromise<DnsResponse> getResponseAsPromise() {
+		public Promise<DnsResponse> getResponseAsPromise() {
 			if (response.getErrorCode() == NO_ERROR) {
 				return Promise.of(response);
 			}

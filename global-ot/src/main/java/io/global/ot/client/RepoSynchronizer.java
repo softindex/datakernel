@@ -1,6 +1,9 @@
 package io.global.ot.client;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
+import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -105,13 +108,13 @@ public final class RepoSynchronizer<D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		HashSet<SettablePromise<Set<CommitId>>> syncPromises = new HashSet<>(activeSyncs.values());
 		activeSyncs.clear();
 		syncPromises.forEach(syncPromise -> syncPromise.setException(SYNC_STOPPED));

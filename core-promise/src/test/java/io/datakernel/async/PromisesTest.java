@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.Promise.of;
-import static io.datakernel.async.Promise.ofException;
 import static io.datakernel.async.Promises.*;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
@@ -229,7 +228,7 @@ public final class PromisesTest {
 		Exception exception = new Exception();
 		Throwable e = awaitException(repeat(() -> {
 			if (counter.get() == 5) {
-				return ofException(exception);
+				return Promise.ofException(exception);
 			}
 			counter.incrementAndGet();
 			return Promise.of(null);
@@ -284,7 +283,7 @@ public final class PromisesTest {
 	public void testSomeMethodWithOneParamAndGetOne() {
 		Integer result = 100;
 		Promise<List<Integer>> some = some(Promise.of(result), 1);
-		Integer gotResult = some.materialize().getResult().get(0);
+		Integer gotResult = some.getResult().get(0);
 		assertEquals(result, gotResult);
 	}
 
@@ -293,7 +292,7 @@ public final class PromisesTest {
 	public void testSomeMethodWithOneParamAndGetNone() {
 		Integer value = 100;
 		Promise<List<Integer>> some = some(Promise.of(value), 0);
-		Integer gotResult = some.materialize().getResult().get(0);
+		Integer gotResult = some.getResult().get(0);
 	}
 
 	@SuppressWarnings("all")
@@ -317,7 +316,7 @@ public final class PromisesTest {
 	public void testSomeMethodWithTwoParamAndGetOne() {
 		Integer result = 100;
 		Promise<List<Integer>> some = some(Promise.of(result), Promise.of(result), 1);
-		List<Integer> list = some.materialize().getResult();
+		List<Integer> list = some.getResult();
 
 		assertEquals(1, list.size());
 		Integer gotResult1 = list.get(0);
@@ -355,7 +354,7 @@ public final class PromisesTest {
 	@SuppressWarnings("all")
 	@Test
 	public void testSomeTheWholeAreFailed() {
-		List<CompleteExceptionallyPromise<Object>> params = Stream.generate(() -> ofException(new RuntimeException()))
+		List<CompleteExceptionallyPromise<Object>> params = Stream.generate(() -> Promise.ofException(new RuntimeException()))
 				.limit(10)
 				.collect(Collectors.toList());
 
@@ -366,9 +365,9 @@ public final class PromisesTest {
 	@Test
 	public void testSomeNotEnoughCompleteResult() {
 		List<Promise<?>> params = asList(of(10),
-				delay(100L, ofException(new RuntimeException())),
+				delay(100L, Promise.ofException(new RuntimeException())),
 				of(100),
-				ofException(new RuntimeException()));
+				Promise.ofException(new RuntimeException()));
 
 		Promise<List<Object>> result = some(params, 3);
 		result.whenException(e -> assertTrue(true));

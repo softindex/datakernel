@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.async.SettablePromise;
@@ -150,12 +149,14 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	}
 
 	@Override
-	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
+	public Promise<DnsResponse> resolve(DnsQuery query) {
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);
 			return Promise.of(fromQuery);
 		}
+		// ignore the result because soon or later it will be sent and just completed
+		// here we use that transactions map because it easily could go completely out of order and we should be ok with that
 		return getSocket()
 				.then(socket -> {
 					logger.trace("Resolving {} with DNS server {}", query, dnsServerAddress);
@@ -216,7 +217,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 								}
 								return Promise.ofException(e);
 							});
-				}).materialize();
+				});
 	}
 
 	private void closeIfDone() {

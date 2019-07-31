@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.AbstractChannelSupplier;
@@ -70,7 +69,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	 */
 	void suspend();
 
-	MaterializedPromise<Void> getEndOfStream();
+	Promise<Void> getEndOfStream();
 
 	Set<StreamCapability> getCapabilities();
 
@@ -199,7 +198,7 @@ public interface StreamSupplier<T> extends Cancellable {
 
 	static <T> StreamSupplier<T> ofPromise(Promise<? extends StreamSupplier<T>> promise) {
 		if (promise.isResult()) {
-			return promise.materialize().getResult();
+			return promise.getResult();
 		}
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		promise.whenComplete((supplier, e) -> {
@@ -255,11 +254,10 @@ public interface StreamSupplier<T> extends Cancellable {
 		if (endOfStream == suppliedEndOfStream) {
 			return this;
 		}
-		MaterializedPromise<Void> newEndOfStream = suppliedEndOfStream.materialize();
 		return new ForwardingStreamSupplier<T>(this) {
 			@Override
-			public MaterializedPromise<Void> getEndOfStream() {
-				return newEndOfStream;
+			public Promise<Void> getEndOfStream() {
+				return suppliedEndOfStream;
 			}
 		};
 	}

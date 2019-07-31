@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
@@ -115,12 +114,12 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected void cleanup() {
 	}
 
-	public MaterializedPromise<Void> getEndOfStream() {
+	public Promise<Void> getEndOfStream() {
 		return endOfStream;
 	}
 
 	@Override
-	public final MaterializedPromise<Void> getAcknowledgement() {
+	public final Promise<Void> getAcknowledgement() {
 		return acknowledgement;
 	}
 

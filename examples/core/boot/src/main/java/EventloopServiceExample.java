@@ -1,4 +1,3 @@
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -55,21 +54,19 @@ public class EventloopServiceExample extends Launcher {
 		}
 
 		@Override
-		public @NotNull MaterializedPromise<?> start() {
+		public @NotNull Promise<?> start() {
 			System.out.println(String.format("|%s|", "Eventloop-Service starting".toUpperCase()));
 			return Promise.ofBlockingRunnable(executor,
-					() -> System.out.println(String.format("|%s|", "Eventloop-Service started".toUpperCase())))
-					.materialize();
+						() -> System.out.println(String.format("|%s|", "Eventloop-Service started".toUpperCase())));
 		}
 
 		@Override
-		public @NotNull MaterializedPromise<?> stop() {
+		public @NotNull Promise<?> stop() {
 			System.out.println(String.format("|%s|", "Eventloop-Service stopping".toUpperCase()));
 			return Promise.ofBlockingRunnable(executor,
-					() -> {
-						System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase()));
-					})
-					.materialize();
+						() -> {
+							System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase()));
+						});
 		}
 	}
 

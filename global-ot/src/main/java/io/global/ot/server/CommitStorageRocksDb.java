@@ -1,6 +1,5 @@
 package io.global.ot.server;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.eventloop.Eventloop;
@@ -96,7 +95,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					try {
@@ -104,13 +103,12 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					} catch (RocksDBException e) {
 						throw new UncheckedException(e);
 					}
-				})
-				.materialize();
+				});
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					try {
@@ -126,8 +124,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					}
 
 					db.close();
-				})
-				.materialize();
+				});
 	}
 
 	private void initDb() throws RocksDBException {

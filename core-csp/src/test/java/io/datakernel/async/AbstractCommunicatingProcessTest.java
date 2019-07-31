@@ -51,7 +51,7 @@ public final class AbstractCommunicatingProcessTest {
 	private final ParseException error = new ParseException(AbstractCommunicatingProcessTest.class, "Test Error");
 
 	private PassThroughProcess[] processes = new PassThroughProcess[size];
-	private MaterializedPromise<Void> acknowledgement;
+	private Promise<Void> acknowledgement;
 	private List<ByteBuf> expectedData = new ArrayList<>();
 	private boolean consumedAll = false;
 

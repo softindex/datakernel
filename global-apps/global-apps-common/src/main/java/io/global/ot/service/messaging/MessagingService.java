@@ -1,6 +1,9 @@
 package io.global.ot.service.messaging;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
@@ -60,14 +63,14 @@ public final class MessagingService implements EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		pollMessages();
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		stopPromise.trySetException(STOPPED_EXCEPTION);
 		return Promise.complete();
 	}

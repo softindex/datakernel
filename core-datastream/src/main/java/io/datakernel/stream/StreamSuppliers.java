@@ -16,7 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.ChannelSupplier;
 import org.jetbrains.annotations.NotNull;
@@ -63,7 +63,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public MaterializedPromise<Void> getEndOfStream() {
+		public Promise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -102,7 +102,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public MaterializedPromise<Void> getEndOfStream() {
+		public Promise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -135,7 +135,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public MaterializedPromise<Void> getEndOfStream() {
+		public Promise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 

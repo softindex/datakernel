@@ -17,7 +17,6 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -292,13 +291,13 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
-		return client.ping().materialize();
+	public Promise<Void> start() {
+		return client.ping();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

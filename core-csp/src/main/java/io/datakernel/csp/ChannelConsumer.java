@@ -185,12 +185,12 @@ public interface ChannelConsumer<T> extends Cancellable {
 	/**
 	 * @see #ofSupplier(Function, ChannelQueue)
 	 */
-	static <T> ChannelConsumer<T> ofSupplier(Function<ChannelSupplier<T>, MaterializedPromise<Void>> supplier) {
+	static <T> ChannelConsumer<T> ofSupplier(Function<ChannelSupplier<T>, Promise<Void>> supplier) {
 		return ofSupplier(supplier, new ChannelZeroBuffer<>());
 	}
 
-	static <T> ChannelConsumer<T> ofSupplier(Function<ChannelSupplier<T>, MaterializedPromise<Void>> supplier, ChannelQueue<T> queue) {
-		MaterializedPromise<Void> extraAcknowledge = supplier.apply(queue.getSupplier());
+	static <T> ChannelConsumer<T> ofSupplier(Function<ChannelSupplier<T>, Promise<Void>> supplier, ChannelQueue<T> queue) {
+		Promise<Void> extraAcknowledge = supplier.apply(queue.getSupplier());
 		ChannelConsumer<T> result = queue.getConsumer();
 		if (extraAcknowledge == Promise.complete()) return result;
 		return result
@@ -210,8 +210,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * @return ChannelConsumer b
 	 */
 	static <T> ChannelConsumer<T> ofPromise(Promise<? extends ChannelConsumer<T>> promise) {
-		if (promise.isResult()) return promise.materialize().getResult();
-		MaterializedPromise<? extends ChannelConsumer<T>> materializedPromise = promise.materialize();
+		if (promise.isResult()) return promise.getResult();
 		return new AbstractChannelConsumer<T>() {
 			ChannelConsumer<T> consumer;
 			Throwable exception;
@@ -219,7 +218,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected Promise<Void> doAccept(T value) {
 				if (consumer != null) return consumer.accept(value);
-				return materializedPromise.thenEx((consumer, e) -> {
+				return promise.thenEx((consumer, e) -> {
 					if (e == null) {
 						this.consumer = consumer;
 						return consumer.accept(value);
@@ -233,7 +232,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				materializedPromise.whenResult(supplier -> supplier.close(e));
+				promise.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -419,7 +418,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 */
 	default ChannelConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
 		SettablePromise<Void> acknowledgement = new SettablePromise<>();
-		MaterializedPromise<Void> newAcknowledgement = fn.apply(acknowledgement).materialize();
+		Promise<Void> newAcknowledgement = fn.apply(acknowledgement);
 		return new AbstractChannelConsumer<T>(this) {
 			@Override
 			protected Promise<Void> doAccept(@Nullable T value) {
@@ -446,9 +445,9 @@ public interface ChannelConsumer<T> extends Cancellable {
 	}
 
 	/**
-	 * Returns a MaterializedPromise as a marker of completion.
+	 * Returns a Promise as a marker of completion.
 	 */
-	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
+	static Promise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
 		return Promise.ofCallback(cb ->
 				fn.accept(ack -> ack.whenComplete(cb)));
 	}

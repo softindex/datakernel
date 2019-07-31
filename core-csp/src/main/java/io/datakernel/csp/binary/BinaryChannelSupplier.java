@@ -16,7 +16,10 @@
 
 package io.datakernel.csp.binary;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettableCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
@@ -177,7 +180,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 				this);
 	}
 
-	public MaterializedPromise<Void> bindTo(BinaryChannelInput input) {
+	public Promise<Void> bindTo(BinaryChannelInput input) {
 		return input.set(this);
 	}
 }

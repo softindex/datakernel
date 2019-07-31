@@ -16,7 +16,6 @@
 
 package io.global.kv.http;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
@@ -55,7 +54,7 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 	@Override
 	public Promise<ChannelConsumer<SignedData<RawKvItem>>> upload(PubKey space, String table) {
 		ChannelZeroBuffer<SignedData<RawKvItem>> buffer = new ChannelZeroBuffer<>();
-		MaterializedPromise<HttpResponse> request = client.request(
+		Promise<HttpResponse> request = client.request(
 				HttpRequest.post(
 						url + UrlBuilder.relative()
 								.appendPathPart(UPLOAD)
@@ -65,8 +64,7 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 						.withBodyStream(buffer.getSupplier()
 								.map(signedDbItem -> encodeWithSizePrefix(KV_ITEM_CODEC, signedDbItem))))
 				.then(response -> response.getCode() != 200 ?
-						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.materialize();
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response));
 		return Promise.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
 	}
 

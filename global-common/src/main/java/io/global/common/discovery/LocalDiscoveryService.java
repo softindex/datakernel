@@ -16,7 +16,6 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -113,13 +112,13 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

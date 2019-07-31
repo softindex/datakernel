@@ -142,9 +142,8 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<T> delay(long delayMillis, @NotNull Promise<T> promise) {
 		if (delayMillis <= 0) return promise;
-		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
-				getCurrentEventloop().delay(delayMillis, () -> materializedPromise.whenComplete(cb)));
+				getCurrentEventloop().delay(delayMillis, () -> promise.whenComplete(cb)));
 	}
 
 	@Contract(pure = true)
@@ -216,9 +215,8 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> schedule(@NotNull Promise<T> promise, long timestamp) {
-		MaterializedPromise<T> materializedPromise = promise.materialize();
 		return Promise.ofCallback(cb ->
-				getCurrentEventloop().schedule(timestamp, () -> materializedPromise.whenComplete(cb)));
+				getCurrentEventloop().schedule(timestamp, () -> promise.whenComplete(cb)));
 	}
 
 	/**
@@ -303,7 +301,7 @@ public final class Promises {
 		while (promises.hasNext()) {
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;
-			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
+			if (promise.isException()) return Promise.ofException(promise.getException());
 			resultPromise.countdown++;
 			promise.whenComplete(resultPromise);
 		}
@@ -440,7 +438,7 @@ public final class Promises {
 		@NotNull PromiseAny<T> resultPromise = new PromiseAny<>();
 		while (promises.hasNext()) {
 			Promise<? extends T> promise = promises.next();
-			if (promise.isResult()) return Promise.of(promise.materialize().getResult());
+			if (promise.isResult()) return Promise.of(promise.getResult());
 			if (promise.isException()) continue;
 			resultPromise.errors++;
 			promise.whenComplete((result, e) -> {
@@ -541,7 +539,7 @@ public final class Promises {
 		while (promises.hasNext()) {
 			Promise<? extends T> promise = promises.next();
 			if (promise.isResult()) {
-				some.resultArray.add(promise.materialize().getResult());
+				some.resultArray.add(promise.getResult());
 				if (some.isFull()) {
 					return Promise.of(some.resultArray);
 				}
@@ -627,10 +625,10 @@ public final class Promises {
 		for (int i = 0; i < size; i++) {
 			Promise<? extends T> promise = promises.get(i);
 			if (promise.isResult()) {
-				resultPromise.accumulator[i] = promise.materialize().getResult();
+				resultPromise.accumulator[i] = promise.getResult();
 				continue;
 			}
-			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
+			if (promise.isException()) return Promise.ofException(promise.getException());
 			int index = i;
 			resultPromise.countdown++;
 			promise.whenComplete((result, e) -> {
@@ -720,10 +718,10 @@ public final class Promises {
 		for (int i = 0; i < size; i++) {
 			Promise<? extends T> promise = promises.get(i);
 			if (promise.isResult()) {
-				resultPromise.accumulator[i] = promise.materialize().getResult();
+				resultPromise.accumulator[i] = promise.getResult();
 				continue;
 			}
-			if (promise.isException()) return Promise.ofException(promise.materialize().getException());
+			if (promise.isException()) return Promise.ofException(promise.getException());
 			int index = i;
 			resultPromise.countdown++;
 			promise.whenComplete((result, e) -> {
@@ -1248,7 +1246,7 @@ public final class Promises {
 		while (true) {
 			Promise<T> promise = next.apply(value);
 			if (promise.isResult()) {
-				value = promise.materialize().getResult();
+				value = promise.getResult();
 				if (breakCondition.test(value)) {
 					cb.set(value);
 					break;
@@ -1275,10 +1273,10 @@ public final class Promises {
 		while (true) {
 			Promise<T> promise = next.apply(value);
 			if (promise.isResult()) {
-				value = promise.materialize().getResult();
+				value = promise.getResult();
 				Promise<Boolean> breakPromise = breakCondition.test(value);
 				if (breakPromise.isResult()) {
-					if (breakPromise.materialize().getResult()) {
+					if (breakPromise.getResult()) {
 						cb.set(value);
 						break;
 					} else {
@@ -1413,10 +1411,10 @@ public final class Promises {
 			Promise<T> promise = promises.next();
 			if (promise.isComplete()) {
 				if (promise.isResult()) {
-					consumer.accept(accumulator, promise.materialize().getResult());
+					consumer.accept(accumulator, promise.getResult());
 					continue;
 				} else {
-					cb.setException(promise.materialize().getException());
+					cb.setException(promise.getException());
 					return;
 				}
 			}
@@ -1501,7 +1499,7 @@ public final class Promises {
 			assert !cb.isComplete();
 			Promise<T> promise = promises.next();
 			if (promise.isComplete()) {
-				@Nullable Try<R> maybeResult = consumer.apply(accumulator, promise.materialize().getTry());
+				@Nullable Try<R> maybeResult = consumer.apply(accumulator, promise.getTry());
 				if (maybeResult != null) {
 					cb.accept(maybeResult.getOrNull(), maybeResult.getExceptionOrNull());
 					return;

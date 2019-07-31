@@ -1,6 +1,5 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 
@@ -58,7 +57,7 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 		resultPromise.setException(e);
 	}
 
-	public MaterializedPromise<List<T>> getResult() {
+	public Promise<List<T>> getResult() {
 		return resultPromise;
 	}
 

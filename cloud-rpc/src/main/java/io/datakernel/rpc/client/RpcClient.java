@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.Callback;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettableCallback;
 import io.datakernel.csp.process.ChannelSerializer;
@@ -280,7 +279,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkNotNull(messageTypes, "Message types must be specified");
 		checkState(!running, "Already running");
@@ -318,7 +317,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		if (!running) return Promise.complete();
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 

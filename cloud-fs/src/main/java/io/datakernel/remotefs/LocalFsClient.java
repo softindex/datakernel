@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
@@ -412,7 +411,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.ofBlockingRunnable(executor,
 				() -> {
 					try {
@@ -421,13 +420,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 						throw new UncheckedException(e);
 					}
 				})
-				.then($ -> cleanup())
-				.materialize();
+				.then($ -> cleanup());
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

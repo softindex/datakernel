@@ -66,7 +66,7 @@ public interface Promise<T> extends Completable<T> {
 	 */
 	@NotNull
 	static <T> CompletePromise<T> of(@Nullable T value) {
-		return value == null ? CompleteNullPromise.instance() : new CompleteResultPromise<>(value);
+		return value != null ? new CompleteResultPromise<>(value) : CompleteNullPromise.instance();
 	}
 
 	/**
@@ -85,7 +85,7 @@ public interface Promise<T> extends Completable<T> {
 	 * {@link SettableCallback}
 	 */
 	@NotNull
-	static <T> MaterializedPromise<T> ofCallback(@NotNull Consumer<@NotNull SettableCallback<T>> callbackConsumer) {
+	static <T> Promise<T> ofCallback(@NotNull Consumer<@NotNull SettableCallback<T>> callbackConsumer) {
 		SettablePromise<T> cb = new SettablePromise<>();
 		try {
 			callbackConsumer.accept(cb);
@@ -315,6 +315,15 @@ public interface Promise<T> extends Completable<T> {
 	@Contract(pure = true)
 	boolean isException();
 
+	@Contract(pure = true)
+	T getResult();
+
+	@Contract(pure = true)
+	Throwable getException();
+
+	@Contract(pure = true)
+	Try<T> getTry();
+
 	/**
 	 * Ensures that {@code Promise} completes asynchronously:
 	 * if this {@code Promise} is already completed, its
@@ -327,19 +336,10 @@ public interface Promise<T> extends Completable<T> {
 
 	@Contract(pure = true)
 	@NotNull
-	default MaterializedPromise<T> post() {
+	default Promise<T> post() {
 		SettablePromise<T> result = new SettablePromise<>();
 		whenComplete((Callback<T>) result::post);
 		return result;
-	}
-
-	@Contract(pure = true)
-	@NotNull
-	default MaterializedPromise<T> materialize() {
-		assert !isComplete() : "Trying to materialize a completed promise";
-		SettablePromise<T> cb = new SettablePromise<>();
-		whenComplete(cb);
-		return cb;
 	}
 
 	/**

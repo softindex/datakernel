@@ -16,22 +16,21 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 
 import java.util.function.Function;
 
 public final class StreamSupplierWithResult<T, X> {
 	private final StreamSupplier<T> supplier;
-	private final MaterializedPromise<X> result;
+	private final Promise<X> result;
 
-	private StreamSupplierWithResult(StreamSupplier<T> supplier, MaterializedPromise<X> result) {
+	private StreamSupplierWithResult(StreamSupplier<T> supplier, Promise<X> result) {
 		this.supplier = supplier;
 		this.result = result;
 	}
 
 	public static <T, X> StreamSupplierWithResult<T, X> of(StreamSupplier<T> supplier, Promise<X> result) {
-		return new StreamSupplierWithResult<>(supplier, result.materialize());
+		return new StreamSupplierWithResult<>(supplier, result);
 	}
 
 	protected StreamSupplierWithResult<T, X> sanitize() {
@@ -44,7 +43,7 @@ public final class StreamSupplierWithResult<T, X> {
 			Function<Promise<X>, Promise<X1>> resultTransformer) {
 		return new StreamSupplierWithResult<>(
 				consumerTransformer.apply(supplier),
-				resultTransformer.apply(result).materialize());
+				resultTransformer.apply(result));
 	}
 
 	public <T1> StreamSupplierWithResult<T1, X> transformSupplier(Function<StreamSupplier<T>, StreamSupplier<T1>> consumerTransformer) {
@@ -56,7 +55,7 @@ public final class StreamSupplierWithResult<T, X> {
 	}
 
 	public static <T, X> StreamSupplierWithResult<T, X> ofPromise(Promise<StreamSupplierWithResult<T, X>> promise) {
-		if (promise.isResult()) return promise.materialize().getResult();
+		if (promise.isResult()) return promise.getResult();
 		return of(
 				StreamSupplier.ofPromise(promise.map(StreamSupplierWithResult::getSupplier)),
 				promise.then(StreamSupplierWithResult::getResult));
@@ -66,7 +65,7 @@ public final class StreamSupplierWithResult<T, X> {
 		return supplier;
 	}
 
-	public MaterializedPromise<X> getResult() {
+	public Promise<X> getResult() {
 		return result;
 	}
 }

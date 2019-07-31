@@ -16,16 +16,9 @@
 
 package io.datakernel.async;
 
-import org.jetbrains.annotations.NotNull;
-
 /**
  * Helps to create sequent chains of {@code Promise}s.
  */
 public abstract class NextPromise<T, R> extends AbstractPromise<R> implements Callback<T> {
-	@NotNull
-	@Override
-	public Promise<R> async() {
-		return this;
-	}
 
 }

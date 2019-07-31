@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
@@ -49,7 +48,7 @@ public interface StreamConsumer<T> extends Cancellable {
 	 */
 	void setSupplier(StreamSupplier<T> supplier);
 
-	MaterializedPromise<Void> getAcknowledgement();
+	Promise<Void> getAcknowledgement();
 
 	Set<StreamCapability> getCapabilities();
 
@@ -78,9 +77,9 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new OfChannelConsumerImpl<>(consumer);
 	}
 
-	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, MaterializedPromise<Void>> supplier) {
+	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, Promise<Void>> supplier) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
-		MaterializedPromise<Void> extraAcknowledge = supplier.apply(forwarder.getOutput());
+		Promise<Void> extraAcknowledge = supplier.apply(forwarder.getOutput());
 		StreamConsumer<T> result = forwarder.getInput();
 		if (extraAcknowledge == Promise.complete()) return result;
 		return result
@@ -114,7 +113,7 @@ public interface StreamConsumer<T> extends Cancellable {
 			"Alternatively, use .withLateBinding() modifier";
 
 	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
-		if (promise.isResult()) return promise.materialize().getResult();
+		if (promise.isResult()) return promise.getResult();
 		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
 		promise.whenComplete((consumer, e) -> {
 			if (e == null) {
@@ -132,10 +131,10 @@ public interface StreamConsumer<T> extends Cancellable {
 		Promise<Void> acknowledgement = getAcknowledgement();
 		Promise<Void> suppliedAcknowledgement = fn.apply(acknowledgement);
 		if (acknowledgement == suppliedAcknowledgement) return this;
-		MaterializedPromise<Void> newAcknowledgement = suppliedAcknowledgement.materialize();
+		Promise<Void> newAcknowledgement = suppliedAcknowledgement;
 		return new ForwardingStreamConsumer<T>(this) {
 			@Override
-			public MaterializedPromise<Void> getAcknowledgement() {
+			public Promise<Void> getAcknowledgement() {
 				return newAcknowledgement;
 			}
 		};

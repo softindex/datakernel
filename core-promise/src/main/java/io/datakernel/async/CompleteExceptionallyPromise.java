@@ -30,7 +30,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 /**
  * Represents a {@code Promise} which is completed with an exception.
  */
-public final class CompleteExceptionallyPromise<T> implements MaterializedPromise<T> {
+public final class CompleteExceptionallyPromise<T> implements Promise<T> {
 	@NotNull
 	private final Throwable exception;
 
@@ -55,16 +55,14 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@Override
 	public T getResult() {
-		throw new UnsupportedOperationException();
+		return null;
 	}
 
-	@NotNull
 	@Override
 	public Throwable getException() {
 		return exception;
 	}
 
-	@NotNull
 	@Override
 	public Try<T> getTry() {
 		return Try.ofException(exception);
@@ -81,7 +79,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Promise<U> map(@NotNull Function<? super T, ? extends U> fn) {
-		return (CompleteExceptionallyPromise<U>) this;
+		return (Promise<U>) this;
 	}
 
 	@NotNull
@@ -98,7 +96,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
-		return (CompleteExceptionallyPromise<U>) this;
+		return (Promise<U>) this;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -142,14 +140,14 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
-		return (CompleteExceptionallyPromise<V>) this;
+		return (Promise<V>) this;
 	}
 
 	@NotNull
 	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<Void> both(@NotNull Promise<?> other) {
-		return (CompleteExceptionallyPromise<Void>) this;
+		return (Promise<Void>) this;
 	}
 
 	@NotNull
@@ -161,7 +159,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 
 	@NotNull
 	@Override
-	public MaterializedPromise<T> async() {
+	public Promise<T> async() {
 		SettablePromise<T> result = new SettablePromise<>();
 		getCurrentEventloop().post(() -> result.setException(exception));
 		return result;
@@ -177,7 +175,7 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<Void> toVoid() {
-		return (CompleteExceptionallyPromise<Void>) this;
+		return (Promise<Void>) this;
 	}
 
 	@NotNull

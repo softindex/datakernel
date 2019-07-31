@@ -1,7 +1,6 @@
 package io.datakernel.csp.queue;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.AbstractChannelSupplier;
@@ -63,7 +62,7 @@ public interface ChannelQueue<T> extends Cancellable {
 	 * @return a ChannelConsumer with custom behaviour in case a
 	 * {@code null} value is accepted
 	 */
-	default ChannelConsumer<T> getConsumer(MaterializedPromise<Void> acknowledgement) {
+	default ChannelConsumer<T> getConsumer(Promise<Void> acknowledgement) {
 		return new AbstractChannelConsumer<T>(this) {
 			@Override
 			protected Promise<Void> doAccept(T value) {
