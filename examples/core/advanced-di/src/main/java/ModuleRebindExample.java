@@ -24,7 +24,7 @@ public class ModuleRebindExample extends Launcher {
 	protected Module getModule() {
 		return ConfigModule.create()
 				.printEffectiveConfig()
-				.rebind(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnRun.class) {});
+				.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnRun.class) {});
 	}
 
 	@Override
