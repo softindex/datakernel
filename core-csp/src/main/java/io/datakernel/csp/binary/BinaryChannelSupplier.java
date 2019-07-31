@@ -19,7 +19,7 @@ package io.datakernel.csp.binary;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
@@ -135,7 +135,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 		return Promise.ofCallback(cb -> doParse(parser, cb));
 	}
 
-	private <T> void doParse(ByteBufsParser<T> parser, SettableCallback<T> cb) {
+	private <T> void doParse(ByteBufsParser<T> parser, SettablePromise<T> cb) {
 		needMoreData()
 				.whenComplete(($, e) -> {
 					if (e == null) {

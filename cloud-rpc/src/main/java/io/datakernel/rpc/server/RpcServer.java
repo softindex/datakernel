@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -88,7 +88,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private BinarySerializer<RpcMessage> serializer;
 
-	private SettableCallback<Void> closeCallback;
+	private SettablePromise<Void> closeCallback;
 
 	// region JMX vars
 	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
@@ -203,7 +203,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected void onClose(SettableCallback<Void> cb) {
+	protected void onClose(SettablePromise<Void> cb) {
 		if (connections.size() == 0) {
 			logger.info("RpcServer is closing. Active connections count: 0.");
 			cb.set(null);

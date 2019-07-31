@@ -17,7 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.inspector.AbstractInspector;
@@ -55,10 +55,10 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	private final DatagramChannel channel;
 
-	private final ArrayDeque<SettableCallback<UdpPacket>> readQueue = new ArrayDeque<>();
+	private final ArrayDeque<SettablePromise<UdpPacket>> readQueue = new ArrayDeque<>();
 	private final ArrayDeque<UdpPacket> readBuffer = new ArrayDeque<>();
 
-	private final ArrayDeque<Tuple2<UdpPacket, SettableCallback<Void>>> writeQueue = new ArrayDeque<>();
+	private final ArrayDeque<Tuple2<UdpPacket, SettablePromise<Void>>> writeQueue = new ArrayDeque<>();
 
 	private int ops = 0;
 
@@ -201,7 +201,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			// at this point the packet is *received* so we either
 			// complete one of the listening callbacks or store it in the buffer
 
-			SettableCallback<UdpPacket> cb = readQueue.poll();
+			SettablePromise<UdpPacket> cb = readQueue.poll();
 			if (cb != null) {
 				cb.set(packet);
 				return;
@@ -224,7 +224,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	@Override
 	public void onWriteReady() {
 		while (true) {
-			Tuple2<UdpPacket, SettableCallback<Void>> entry = writeQueue.peek();
+			Tuple2<UdpPacket, SettablePromise<Void>> entry = writeQueue.peek();
 			if (entry == null) {
 				break;
 			}

@@ -17,7 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AsyncTcpSocketImpl.Inspector;
 import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
@@ -198,7 +198,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	protected void onListen() {
 	}
 
-	protected void onClose(SettableCallback<Void> cb) {
+	protected void onClose(SettablePromise<Void> cb) {
 		cb.set(null);
 	}
 

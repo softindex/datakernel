@@ -17,7 +17,6 @@
 package io.datakernel.dns;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket;
@@ -61,7 +60,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress("192.168.0.1", DNS_SERVER_PORT);
 
 	private final Eventloop eventloop;
-	private final Map<DnsTransaction, SettableCallback<DnsResponse>> transactions = new HashMap<>();
+	private final Map<DnsTransaction, SettablePromise<DnsResponse>> transactions = new HashMap<>();
 
 	private DatagramSocketSettings datagramSocketSettings = DatagramSocketSettings.create();
 	private InetSocketAddress dnsServerAddress = GOOGLE_PUBLIC_DNS;
@@ -179,7 +178,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 							.whenResult(packet -> {
 								try {
 									DnsResponse queryResult = DnsProtocol.readDnsResponse(packet.getBuf());
-									SettableCallback<DnsResponse> cb = transactions.remove(queryResult.getTransaction());
+									SettablePromise<DnsResponse> cb = transactions.remove(queryResult.getTransaction());
 									if (cb == null) {
 										logger.warn("Received a DNS response that had no listener (most likely because it timed out) : {}", queryResult);
 										return;

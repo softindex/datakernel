@@ -18,7 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -111,9 +111,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private RpcSender requestSender;
 
 	@Nullable
-	private SettableCallback<Void> startCallback;
+	private SettablePromise<Void> startCallback;
 	@Nullable
-	private SettableCallback<Void> stopCallback;
+	private SettablePromise<Void> stopCallback;
+
 	private boolean running;
 
 	private final RpcClientConnectionPool pool = address -> connections.get(address);
@@ -367,7 +368,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 					logger.info("Connection to {} established", address);
 					if (startCallback != null && !(requestSender instanceof NoSenderAvailable)) {
-						SettableCallback<Void> startPromise = this.startCallback;
+						SettablePromise<Void> startPromise = this.startCallback;
 						this.startCallback = null;
 						eventloop.postLater(() -> startPromise.set(null));
 					}

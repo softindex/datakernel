@@ -398,7 +398,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		private void doExcludeParents(PriorityQueue<CommitEntry> queue, long minLevel,
-				Set<CommitId> resultHeads, SettableCallback<Set<CommitId>> cb) {
+				Set<CommitId> resultHeads, SettablePromise<Set<CommitId>> cb) {
 			CommitEntry entry = queue.poll();
 			if (entry == null || entry.getLevel() < minLevel) {
 				cb.set(resultHeads);

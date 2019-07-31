@@ -20,7 +20,7 @@ import io.datakernel.async.AsyncSuppliers;
 import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -71,7 +71,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	private int failedFiles = 0;
 
 	@Nullable
-	private SettableCallback<Void> closeCallback;
+	private SettablePromise<Void> closeCallback;
 
 	private final PromiseStats repartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats singleFileRepartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));

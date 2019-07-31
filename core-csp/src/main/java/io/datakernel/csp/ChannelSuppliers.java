@@ -19,7 +19,7 @@ package io.datakernel.csp;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.queue.ChannelBuffer;
@@ -153,7 +153,7 @@ public final class ChannelSuppliers {
 
 	private static <T, A, R> void toCollectorImpl(ChannelSupplier<T> supplier,
 			A accumulatedValue, BiConsumer<A, T> accumulator, Function<A, R> finisher,
-			SettableCallback<R> cb) {
+			SettablePromise<R> cb) {
 		Promise<T> promise;
 		while (true) {
 			promise = supplier.get();
@@ -228,7 +228,7 @@ public final class ChannelSuppliers {
 				streamToImpl(supplier, consumer, cb));
 	}
 
-	private static <T> void streamToImpl(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer, SettableCallback<Void> cb) {
+	private static <T> void streamToImpl(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer, SettablePromise<Void> cb) {
 		Promise<T> supplierPromise;
 		while (true) {
 			supplierPromise = supplier.get();
@@ -297,7 +297,7 @@ public final class ChannelSuppliers {
 				return Promise.ofCallback(this::next);
 			}
 
-			private void next(SettableCallback<V> cb) {
+			private void next(SettablePromise<V> cb) {
 				if (!endOfStream) {
 					supplier.get()
 							.whenComplete((item, e) -> {

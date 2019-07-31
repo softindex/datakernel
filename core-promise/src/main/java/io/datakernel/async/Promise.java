@@ -82,10 +82,10 @@ public interface Promise<T> extends Completable<T> {
 	/**
 	 * Creates and returns a new {@link SettablePromise}
 	 * that is accepted by the provided {@link Consumer} of
-	 * {@link SettableCallback}
+	 * {@link SettablePromise}
 	 */
 	@NotNull
-	static <T> Promise<T> ofCallback(@NotNull Consumer<@NotNull SettableCallback<T>> callbackConsumer) {
+	static <T> Promise<T> ofCallback(@NotNull Consumer<@NotNull SettablePromise<T>> callbackConsumer) {
 		SettablePromise<T> cb = new SettablePromise<>();
 		try {
 			callbackConsumer.accept(cb);

@@ -17,6 +17,9 @@
 package io.datakernel.async;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
  * Represents a {@link Promise} which can be completed or completedExceptionally
@@ -27,13 +30,36 @@ import org.jetbrains.annotations.NotNull;
  *
  * @param <T> result type
  */
-public final class SettablePromise<T> extends AbstractPromise<T> implements SettableCallback<T> {
+public final class SettablePromise<T> extends AbstractPromise<T> implements Callback<T> {
+	/**
+	 * Accepts the provided values and performs this operation
+	 * on them. If the {@code Throwable e} is {@code null},
+	 * provided {@code result} will be set to this
+	 * {@code SettablePromise}.
+	 * <p>
+	 * Otherwise, {@code Throwable e} will be set.
+	 *
+	 * @param result a value to be set to this
+	 * 				{@code SettablePromise} if
+	 * 			    {@code e} is {@code null}
+	 * @param e 	a {@code Throwable}, which will
+	 *          	be set to this {@code SettablePromise}
+	 *          	if not {@code null}
+	 */
+	@Override
+	public void accept(T result, @Nullable Throwable e) {
+		if (e == null) {
+			set(result);
+		} else {
+			setException(e);
+		}
+	}
+
 	/**
 	 * Sets the result of this {@code SettablePromise} and
 	 * completes it. {@code AssertionError} is thrown when you
 	 * try to set result for an already completed {@code Promise}.
 	 */
-	@Override
 	public void set(T result) {
 		complete(result);
 	}
@@ -45,9 +71,68 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Sett
 	 *
 	 * @param e exception
 	 */
-	@Override
 	public void setException(@NotNull Throwable e) {
 		completeExceptionally(e);
+	}
+
+	/**
+	 * Tries to set provided {@code result} for this
+	 * {@code SettablePromise} if it is not completed yet.
+	 * Otherwise does nothing.
+	 */
+	public void trySet(T result) {
+		if (!isComplete()) {
+			set(result);
+		}
+	}
+
+	/**
+	 * Tries to set provided {@code e} exception for this
+	 * {@code SettablePromise} if it is not completed yet.
+	 * Otherwise does nothing.
+	 */
+	public void trySetException(@NotNull Throwable e) {
+		if (!isComplete()) {
+			setException(e);
+		}
+	}
+
+	/**
+	 * Tries to set result or exception for this {@code SettablePromise}
+	 * if it not completed yet. Otherwise does nothing.
+	 */
+	public void trySet(T result, @Nullable Throwable e) {
+		if (!isComplete()) {
+			if (e == null) {
+				trySet(result);
+			} else {
+				trySetException(e);
+			}
+		}
+	}
+
+	public void post(T result) {
+		getCurrentEventloop().post(() -> set(result));
+	}
+
+	public void postException(@NotNull Throwable e) {
+		getCurrentEventloop().post(() -> setException(e));
+	}
+
+	public void post(T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> accept(result, e));
+	}
+
+	public void tryPost(T result) {
+		getCurrentEventloop().post(() -> trySet(result));
+	}
+
+	public void tryPostException(@NotNull Throwable e) {
+		getCurrentEventloop().post(() -> trySetException(e));
+	}
+
+	public void tryPost(T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> trySet(result, e));
 	}
 
 	@Override

@@ -2,7 +2,7 @@ package io.datakernel.ot;
 
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
@@ -48,7 +48,7 @@ public final class OTAlgorithms {
 	}
 
 	private static <K, D, R> void walkGraphImpl(OTRepository<K, D> repository, GraphReducer<K, D, R> reducer,
-			PriorityQueue<OTCommit<K, D>> queue, Set<K> visited, SettableCallback<R> cb) {
+			PriorityQueue<OTCommit<K, D>> queue, Set<K> visited, SettablePromise<R> cb) {
 		OTCommit<K, D> commit = queue.peek();
 		if (commit == null) {
 			cb.setException(GRAPH_EXHAUSTED);

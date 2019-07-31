@@ -165,7 +165,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		return Promise.ofCallback(cb -> findSnapshotImpl(heads, skipSnapshots, cb));
 	}
 
-	private void findSnapshotImpl(Set<K> heads, int skipSnapshots, SettableCallback<Optional<K>> cb) {
+	private void findSnapshotImpl(Set<K> heads, int skipSnapshots, SettablePromise<Optional<K>> cb) {
 		findParent(repository, otSystem, heads, DiffsReducer.toVoid(),
 				commit -> repository.hasSnapshot(commit.getId()))
 				.whenResult(findResult -> {
