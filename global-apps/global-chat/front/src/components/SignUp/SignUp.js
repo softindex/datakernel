@@ -2,14 +2,14 @@ import React from "react";
 import {withStyles} from '@material-ui/core';
 import connectService from "../../common/connectService";
 import AccountContext from "../../modules/account/AccountContext";
-import Snackbar from '../common/Snackbar/Snackbar'
 import StoreIcon from '@material-ui/icons/Store';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Button from "@material-ui/core/Button";
 import signUpStyles from "./signUpStyles";
-import SignUpAbstractionImage from "./SignUpAbstractionImage/SignUpAbstractionImage";
+import SignUpAbstractionImage from "../SignUpAbstractionImage/SignUpAbstractionImage";
+import {withSnackbar} from "notistack";
 
 class SignUp extends React.Component {
   constructor(props) {
@@ -24,9 +24,15 @@ class SignUp extends React.Component {
   };
 
   onUploadFile = () => {
-    this.props.accountService.authByFile(this.input.files[0]).then(() => {
-      this.props.history.push('/');
-    });
+    this.props.accountService.authByFile(this.input.files[0])
+      .then(() => {
+        this.props.history.push('/');
+      })
+      .catch(error => {
+        this.props.enqueueSnackbar(error.message, {
+          variant: 'error'
+        });
+      });
   };
 
   componentDidMount() {
@@ -100,14 +106,6 @@ class SignUp extends React.Component {
             />
           </Grid>
         </Grid>
-        <Snackbar
-          error={this.props.error && this.props.error.message}
-          action={[
-            <Button key="undo" color="secondary" size="small" onClick={this.onAuthByAppStore}>
-              RETRY
-            </Button>,
-          ]}
-        />
         <input
           accept=".dat"
           ref={ref => this.input = ref}
@@ -122,7 +120,9 @@ class SignUp extends React.Component {
 }
 
 export default connectService(
-  AccountContext, ({authorized, loading}, accountService) => ({authorized, loading, accountService}))(
-      withStyles(signUpStyles)(SignUp)
+  AccountContext, ({authorized, loading}, accountService) => (
+    {authorized, loading, accountService})
+)(
+  withSnackbar(withStyles(signUpStyles)(SignUp))
 );
 

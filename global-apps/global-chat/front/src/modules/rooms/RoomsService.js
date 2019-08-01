@@ -1,38 +1,26 @@
 import Service from '../../common/Service';
-import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import roomsOTSystem from "./ot/RoomsOTSystem";
-import roomsSerializer from "./ot/serializer";
 import RoomsOTOperation from "./ot/RoomsOTOperation";
-import {randomString, wait, toEmoji, createDialogRoomId} from '../../common/utils';
+import {randomString, wait, createDialogRoomId} from '../../common/utils';
 
 const RETRY_TIMEOUT = 1000;
 const ROOM_ID_LENGTH = 32;
 
 class RoomsService extends Service {
-  constructor(roomsOTStateManager, contactsService, pubicKey) {
+  constructor(roomsOTStateManager, pubicKey) {
     super({
       rooms: new Map(),
-      ready: false,
-      newRooms: new Set()
+      roomsReady: false,
     });
     this._roomsOTStateManager = roomsOTStateManager;
     this._reconnectTimeout = null;
-    this._contactsService = contactsService;
     this._myPublicKey = pubicKey;
-    this._getRoomName.bind(this);
   }
 
-  static createForm(contactsService, pubKey) {
-    const roomsOTNode = ClientOTNode.createWithJsonKey({
-      url: '/ot/rooms',
-      serializer: roomsSerializer
-    });
-    const roomsOTStateManager = new OTStateManager(() => new Map(), roomsOTNode, roomsOTSystem);
-    return new RoomsService(roomsOTStateManager, contactsService, pubKey);
+  static createFrom(roomsOTStateManager, pubKey) {
+    return new RoomsService(roomsOTStateManager, pubKey);
   }
 
   async init() {
-    // Get initial state
     try {
       await this._roomsOTStateManager.checkout();
     } catch (err) {
@@ -45,33 +33,36 @@ class RoomsService extends Service {
     this._onStateChange();
 
     this._roomsOTStateManager.addChangeListener(this._onStateChange);
-    this._contactsService.addChangeListener(this._onStateChange);
   }
 
   stop() {
     clearTimeout(this._reconnectTimeout);
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
-    this._contactsService.removeChangeListener(this._onStateChange);
   }
 
-  async createRoom(name, participants) {
+  async createRoom(participants) {
     const roomId = randomString(ROOM_ID_LENGTH);
-    this._createRoom(roomId, name, [...participants, this._myPublicKey]);
+    await this._createRoom(roomId, [...participants, this._myPublicKey]);
+    return roomId;
   }
 
-  async createDialog(participantId) {
-    const participants = [this._myPublicKey, participantId];
-    const roomId = createDialogRoomId(...participants);
-    const {name} = this._contactsService.state.contacts.get(participantId);
-
-    const roomExists = [...this.state.rooms]
-      .find(([id, {virtual}]) => {
-        return id === roomId && !virtual;
-      });
-
-    if (!roomExists) {
-      this._createRoom(roomId, name, participants);
+  async createDialog(participantPublicKey) {
+    let participants = [this._myPublicKey];
+    if (this._myPublicKey !== participantPublicKey) {
+      participants = [this._myPublicKey, participantPublicKey];
     }
+    const roomId = createDialogRoomId(this._myPublicKey, participantPublicKey);
+
+    let roomExists = false;
+    [...this.state.rooms].map(([id, ]) => {
+      if (id === roomId) {
+        roomExists = true;
+      }
+    });
+    if (roomExists) {
+      return;
+    }
+    await this._createRoom(roomId, participants);
   }
 
   async quitRoom(roomId) {
@@ -85,56 +76,29 @@ class RoomsService extends Service {
     await this._sync();
   }
 
-  async _createRoom(roomId, name, participants) {
+  async _createRoom(roomId, participants) {
     const addRoomOperation = new RoomsOTOperation(roomId, participants, false);
     this._roomsOTStateManager.add([addRoomOperation]);
-    this.setState({
-      ...this.state,
-      newRooms: new Set([...this.state.newRooms, roomId])
-    });
     await this._sync();
   }
 
   _onStateChange = () => {
     this.setState({
       rooms: this._getRooms(),
-      ready: true
+      roomsReady: true
     });
   };
 
-  _getRoomName(room) {
-    return room.participants
-      .filter(participantPublicKey => participantPublicKey !== this._myPublicKey)
-      .map(participantPublicKey => {
-        return this._contactsService.getContactName(participantPublicKey) || toEmoji(participantPublicKey, 3);
-      })
-      .join(', ');
-  }
-
   _getRooms() {
-    const otState = [...this._roomsOTStateManager.getState()]
-      .map(([roomId, room]) => {
-        return {
-          id: roomId,
-          name: this._getRoomName(room),
+    const rooms = [...this._roomsOTStateManager.getState()]
+      .map(([roomId, room]) => (
+        [roomId, {
           participants: room.participants,
-          virtual: false
-        }
-      });
-    const contactState = [...this._contactsService.getAll().contacts].map(([contactPublicKey, contact]) => {
-      const participants = [this._myPublicKey, contactPublicKey];
-      return {
-        id: createDialogRoomId(...participants),
-        name: contact.name,
-        participants,
-        virtual: true
-      };
-    });
-
-    return new Map([
-      ...contactState,
-      ...otState
-    ].map(({id, name, participants, virtual}) => ([id, {name, participants, virtual}])));
+          dialog: room.participants.length === 2 && roomId === createDialogRoomId(this._myPublicKey,
+            room.participants.find(publicKey => publicKey !== this._myPublicKey))
+        }]
+      ));
+    return new Map(rooms);
   }
 
   _reconnectDelay() {

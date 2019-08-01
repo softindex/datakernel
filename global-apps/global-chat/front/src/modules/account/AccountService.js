@@ -50,8 +50,8 @@ class AccountService extends Service {
   };
 
   authWithAppStore() {
-    window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.origin + '/sign-up/oauth';
-  };
+    window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.href + '/auth';
+  }
 
   logout() {
     this._cookies.remove('Key');
@@ -64,7 +64,7 @@ class AccountService extends Service {
     });
   }
 
-  getPublicKey = (privateKey) => {
+  getPublicKey = privateKey => {
     const curve = new EC('secp256k1');
     let keys = curve.keyFromPrivate(privateKey, 'hex');
     return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
