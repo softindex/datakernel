@@ -68,53 +68,53 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 		return AsyncServletDecorator.onException((request, e) -> logger.warn("Request {}", request, e))
 				.serve(RoutingServlet.create()
 						.map(GET, "/" + CHECKOUT, request -> {
-					try {
-						return getNode(request, true).checkout()
-								.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
+							try {
+								return getNode(request, true).checkout()
+										.map(checkoutData -> jsonResponse(fetchDataCodec, checkoutData));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						})
 						.map(GET, "/" + FETCH, request -> {
-					try {
-						String id = request.getQueryParameter("id");
-						if (id == null) {
-							throw ID_REQUIRED;
-						}
-						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
-						return getNode(request, true).fetch(currentCommitId)
-								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
+							try {
+								String id = request.getQueryParameter("id");
+								if (id == null) {
+									throw ID_REQUIRED;
+								}
+								CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
+								return getNode(request, true).fetch(currentCommitId)
+										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						})
 						.map(GET, "/" + POLL, request -> {
-					try {
-						String id = request.getQueryParameter("id");
-						if (id == null) {
-							throw ID_REQUIRED;
-						}
-						CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
-						return getNode(request, true).poll(currentCommitId)
-								.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
+							try {
+								String id = request.getQueryParameter("id");
+								if (id == null) {
+									throw ID_REQUIRED;
+								}
+								CommitId currentCommitId = fromJson(COMMIT_ID_CODEC, id);
+								return getNode(request, true).poll(currentCommitId)
+										.map(fetchData -> jsonResponse(fetchDataCodec, fetchData));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						})
 						.map(POST, "/" + CREATE_COMMIT, loadBody().serve(request -> {
-					try {
-						FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, request.getBody().getString(UTF_8));
-						return getNode(request, false).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
-								.map(commit -> {
-									assert commit.getSerializedData() != null;
-									return HttpResponse.ok200()
-											.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
-											.withBody(commit.getSerializedData());
-								});
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				}))
+							try {
+								FetchData<CommitId, D> fetchData = fromJson(fetchDataCodec, request.getBody().getString(UTF_8));
+								return getNode(request, false).createCommit(fetchData.getCommitId(), fetchData.getDiffs(), fetchData.getLevel())
+										.map(commit -> {
+											assert commit.getSerializedData() != null;
+											return HttpResponse.ok200()
+													.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(PLAIN_TEXT)))
+													.withBody(commit.getSerializedData());
+										});
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							}
+						}))
 						.map(POST, "/" + PUSH, loadBody().serve(request -> {
 							try {
 								OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = getNode(request, false);
@@ -124,7 +124,7 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 							} catch (ParseException e) {
 								return Promise.ofException(e);
 							}
-				})));
+						})));
 	}
 
 	private static <T> HttpResponse jsonResponse(StructuredCodec<T> codec, T item) {

@@ -13,7 +13,7 @@ import io.global.pm.api.GlobalPmNode;
 
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
-public class UserContainerModule<D> extends AbstractModule {
+public abstract class UserContainerModule<D> extends AbstractModule {
 	private final String indexRepo;
 	private final String repoPrefix;
 

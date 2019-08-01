@@ -1,4 +1,4 @@
-package io.global.chat;
+package io.global.documents;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -12,7 +12,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.chat.chatroom.messages.MessageOperation;
+import io.global.documents.document.edit.EditOperation;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.ProfileModule;
 import io.global.ot.SharedRepoModule;
@@ -25,12 +25,12 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.override;
 
-public final class GlobalChatApp extends Launcher {
-	private static final String PROPERTIES_FILE = "chat.properties";
+public final class GlobalDocumentsApp extends Launcher {
+	private static final String PROPERTIES_FILE = "global-documents.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
-	private static final String DEFAULT_SERVER_ID = "Global Chat";
-	private static final String CHAT_REPO_PREFIX = "chat/room";
-	private static final String CHAT_INDEX_REPO = "chat/index";
+	private static final String DEFAULT_SERVER_ID = "Global Documents";
+	private static final String DOCUMENT_REPO_PREFIX = "documents/document";
+	private static final String DOCUMENTS_INDEX_REPO = "documents/index";
 
 	@Inject
 	AsyncHttpServer server;
@@ -51,12 +51,12 @@ public final class GlobalChatApp extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new ChatModule(),
+				new DocumentsModule(),
 				new ProfileModule(),
 				new ContactsModule(),
-				new IndexRepoModule(CHAT_INDEX_REPO),
-				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
-				new SharedRepoModule<MessageOperation>(CHAT_REPO_PREFIX) {},
+				new IndexRepoModule(DOCUMENTS_INDEX_REPO),
+				new UserContainerModule<EditOperation>(DOCUMENTS_INDEX_REPO, DOCUMENT_REPO_PREFIX) {},
+				new SharedRepoModule<EditOperation>(DOCUMENT_REPO_PREFIX) {},
 				// override for debug purposes
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))
@@ -69,6 +69,6 @@ public final class GlobalChatApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalChatApp().launch(args);
+		new GlobalDocumentsApp().launch(args);
 	}
 }

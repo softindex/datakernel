@@ -15,6 +15,7 @@ import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.service.UserContainer;
+import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
@@ -75,11 +76,11 @@ public final class MessagingService implements EventloopService {
 		return Promise.complete();
 	}
 
-	public Promise<Void> sendCreateMessage(PubKey receiver, String id, Set<PubKey> participants) {
+	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
 		MyRepositoryId<?> myRepositoryId = userContainer.getMyRepositoryId();
 		PrivKey senderPrivKey = myRepositoryId.getPrivKey();
 		PubKey senderPubKey = senderPrivKey.computePubKey();
-		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, participants));
+		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
 		Message<CreateSharedRepo> message = Message.now(senderPubKey, payload);
 		return pmDriver.send(senderPrivKey, receiver, mailBox, message);
 	}
@@ -100,7 +101,7 @@ public final class MessagingService implements EventloopService {
 						return Promise.complete()
 								.then($ -> {
 									if (!state.getSharedRepos().contains(sharedRepo)) {
-										SharedReposOperation createOp = SharedReposOperation.create(sharedRepo);
+										CreateOrDropRepo createOp = CreateOrDropRepo.create(sharedRepo);
 										stateManager.add(createOp);
 										return stateManager.sync()
 												.whenException(e -> stateManager.reset());

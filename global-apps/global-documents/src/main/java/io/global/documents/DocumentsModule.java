@@ -1,4 +1,4 @@
-package io.global.chat;
+package io.global.documents;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
@@ -11,8 +11,8 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.ot.OTSystem;
-import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.common.SimKey;
+import io.global.documents.document.edit.EditOperation;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
@@ -27,18 +27,18 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.chat.Utils.MESSAGE_OPERATION_CODEC;
-import static io.global.chat.chatroom.messages.MessagesOTSystem.createOTSystem;
+import static io.global.documents.Utils.EDIT_OPERATION_CODEC;
+import static io.global.documents.document.edit.EditOTSystem.createOTSystem;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
-public final class ChatModule extends AbstractModule {
+public final class DocumentsModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	public static final String RESOURCES_PATH = "front/build";
 
 	@Override
 	protected void configure() {
-		bind(new Key<OTSystem<MessageOperation>>() {}).toInstance(createOTSystem());
-		bind(new Key<StructuredCodec<MessageOperation>>() {}).toInstance(MESSAGE_OPERATION_CODEC);
+		bind(new Key<OTSystem<EditOperation>>() {}).toInstance(createOTSystem());
+		bind(new Key<StructuredCodec<EditOperation>>() {}).toInstance(EDIT_OPERATION_CODEC);
 		super.configure();
 	}
 
@@ -51,15 +51,15 @@ public final class ChatModule extends AbstractModule {
 	@Provides
 	RoutingServlet provideMainServlet(
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
-			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
-			DynamicOTNodeServlet<MessageOperation> roomServlet,
+			DynamicOTNodeServlet<SharedReposOperation> documentListServlet,
+			DynamicOTNodeServlet<EditOperation> documentServlet,
 			DynamicOTNodeServlet<DictionaryOperation> profileServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()
 				.map("/ot/contacts/*", contactsServlet)
-				.map("/ot/rooms/*", roomListServlet)
-				.map("/ot/room/:suffix/*", roomServlet)
+				.map("/ot/documents/*", documentListServlet)
+				.map("/ot/document/:suffix/*", documentServlet)
 				.map("/ot/profile/:pubKey/*", profileServlet)
 				.map("/ot/myProfile/*", profileServlet)
 				.map("/*", staticServlet);

@@ -6,7 +6,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.ot.OTSystem;
 import io.global.ot.client.OTDriver;
 
-public class SharedRepoModule<D> extends AbstractModule {
+public abstract class SharedRepoModule<D> extends AbstractModule {
 	private final String repoNamePrefix;
 
 	public SharedRepoModule(String repoNamePrefix) {

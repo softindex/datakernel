@@ -104,7 +104,7 @@ public final class SynchronizationService<D> implements EventloopService {
 										sharedRepo.setMessageSent(participant);
 									} else {
 										retry(() -> messagingService
-												.sendCreateMessage(participant, id, participants))
+												.sendCreateMessage(participant, id, sharedRepo.getName(), participants))
 												.get()
 												.whenResult($ -> sharedRepo.setMessageSent(participant));
 									}
