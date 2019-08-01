@@ -3,11 +3,9 @@ package io.datakernel.di;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
+import io.datakernel.di.core.*;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 import io.datakernel.di.util.Trie;
 import org.junit.Test;
 
@@ -178,17 +176,12 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_2]
 	public void moduleBindSnippet() {
-		AbstractModule module = new AbstractModule() {
-
-			@Override
-			protected void configure() {
-				bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.0f));
-				bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f));
-				bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f));
-				bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class);
-				bind(Cookie.class).to(Cookie::new, Pastry.class);
-			}
-		};
+		Module module = Module.create()
+				.bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.0f))
+				.bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f))
+				.bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f))
+				.bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class)
+				.bind(Cookie.class).to(Cookie::new, Pastry.class);
 
 		Injector injector = Injector.of(module);
 		assertEquals("Kyivmlyn", injector.getInstance(Cookie.class).getPastry().getButter().getName());
@@ -198,7 +191,7 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_3]
 	public void provideAnnotationSnippet() {
-		AbstractModule cookbook = new AbstractModule() {
+		Module cookbook = new AbstractModule() {
 			@Provides
 			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
 
@@ -227,12 +220,7 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_4]
 	public void injectAnnotationSnippet() {
-		AbstractModule cookbook = new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(Cookie.class);
-			}
-		};
+		Module cookbook = Module.create().bind(Cookie.class);
 
 		Injector injector = Injector.of(cookbook);
 		assertEquals("Sugarella", injector.getInstance(Cookie.class).getPastry().getSugar().getName());
@@ -242,7 +230,7 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_5]
 	public void namedAnnotationSnippet() {
-		AbstractModule cookbook = new AbstractModule() {
+		Module cookbook = new AbstractModule() {
 			@Provides
 			@Named("zerosugar")
 			Sugar sugar1() { return new Sugar("SugarFree", 0.f); }
@@ -295,35 +283,13 @@ public class DIFollowUpTest {
 	@Test
 	public void orderAnnotationSnippet() {
 		//[START REGION_10]
-		AbstractModule cookbook = new AbstractModule() {
-
-			@Provides
-			Kitchen kitchen() { return new Kitchen(); }
-
-			@Provides
-			@OrderScope
-			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
-
-			@Provides
-			@OrderScope
-			Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
-
-			@Provides
-			@OrderScope
-			Flour flour() { return new Flour("Kyivska", 100.0f); }
-
-			@Provides
-			@OrderScope
-			Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
-				return new Pastry(sugar, butter, flour);
-			}
-
-			@Provides
-			@OrderScope
-			Cookie cookie(Pastry pastry) {
-				return new Cookie(pastry);
-			}
-		};
+		Module cookbook = Module.create()
+				.bind(Kitchen.class).to(Kitchen::new)
+				.bind(Sugar.class).to(Sugar::new).in(OrderScope.class)
+				.bind(Butter.class).to(Butter::new).in(OrderScope.class)
+				.bind(Flour.class).to(Flour::new).in(OrderScope.class)
+				.bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class).in(OrderScope.class)
+				.bind(Cookie.class).to(Cookie::new, Pastry.class).in(OrderScope.class);
 		//[END REGION_10]
 
 		//[START REGION_6]
@@ -345,33 +311,14 @@ public class DIFollowUpTest {
 	@Test
 	//[START REGION_7]
 	public void transformBindingSnippet() {
-		AbstractModule cookbook = new AbstractModule() {
-
-			@Override
-			protected void configure() {
-				transform(0, (bindings, scope, key, binding) ->
+		Module cookbook = Module.create()
+				.bind(Sugar.class).to(Sugar::new)
+				.bind(Butter.class).to(Butter::new)
+				.bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f))
+				.bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class)
+				.bind(Cookie.class).to(Cookie::new, Pastry.class)
+				.transform(0, (bindings, scope, key, binding) ->
 						binding.onInstance(x -> System.out.println(Instant.now() + " -> " + key)));
-			}
-
-			@Provides
-			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
-
-			@Provides
-			Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
-
-			@Provides
-			Flour flour() { return new Flour("Kyivska", 100.0f); }
-
-			@Provides
-			Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
-				return new Pastry(sugar, butter, flour);
-			}
-
-			@Provides
-			Cookie cookie(Pastry pastry) {
-				return new Cookie(pastry);
-			}
-		};
 
 		Injector injector = Injector.of(cookbook);
 		assertEquals("Kyivska", injector.getInstance(Cookie.class).getPastry().getFlour().getName());
