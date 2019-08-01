@@ -120,7 +120,9 @@ class SignUp extends React.Component {
 }
 
 export default connectService(
-  AccountContext, ({authorized, loading}, accountService) => ({authorized, loading, accountService}))(
+  AccountContext, ({authorized, loading}, accountService) => (
+    {authorized, loading, accountService})
+)(
   withSnackbar(withStyles(signUpStyles)(SignUp))
 );
 

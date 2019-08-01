@@ -21,22 +21,6 @@ class GlobalAppStoreAPI {
       .then(response => response.json())
   }
 
-  getKeys() {
-    return this._request(url.resolve(this._url, '/api/users/keys/pairs'))
-      .then(response => response.json())
-      .then(([firstPair]) => firstPair);
-  }
-
-  getPublicKey() {
-    return this.getKeys()
-      .then((keys) => keys[1]);
-  }
-
-  getPrivateKey() {
-    return this.getKeys()
-      .then((keys) => keys[0]);
-  }
-
   getProfile() {
     return this._request(url.resolve(this._url, 'api/users/profile'))
       .then(response => response.json());

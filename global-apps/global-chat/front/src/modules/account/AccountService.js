@@ -64,7 +64,7 @@ class AccountService extends Service {
     });
   }
 
-  getPublicKey = (privateKey) => {
+  getPublicKey = privateKey => {
     const curve = new EC('secp256k1');
     let keys = curve.keyFromPrivate(privateKey, 'hex');
     return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;

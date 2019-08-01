@@ -1,5 +1,5 @@
 // See https://developers.google.com/web/tools/workbox/guides/configure-workbox
-workbox.core.setLogLevel(workbox.core.LOG_LEVELS.debug);
+workbox.setConfig({debug: true});
 
 self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
@@ -10,13 +10,13 @@ workbox.precaching.precacheAndRoute(self.__precacheManifest);
 // Cache the Google static and apis. Using for Google Fonts
 workbox.routing.registerRoute(
   /.*(?:googleapis|gstatic)\.com/,
-  workbox.strategies.staleWhileRevalidate(),
+  new workbox.strategies.StaleWhileRevalidate(),
 );
 
-// Cache images
+// // Cache images
 workbox.routing.registerRoute(
   /\.(?:png|gif|jpg|jpeg|svg)$/,
-  workbox.strategies.cacheFirst({
+  new workbox.strategies.CacheFirst({
     cacheName: 'images',
     plugins: [
       new workbox.expiration.Plugin({
@@ -27,19 +27,19 @@ workbox.routing.registerRoute(
   })
 );
 
-// Cache OTNode API
-workbox.routing.registerRoute(/\/graph.*$/, workbox.strategies.networkFirst({
+// Cache API
+workbox.routing.registerRoute(/\/ot\/.*$/, new workbox.strategies.NetworkFirst({
   cacheName: 'api',
+  networkTimeoutSeconds: 1,
   plugins: [
     new workbox.expiration.Plugin({
-      maxAgeSeconds: 24 * 60 * 60, // 1 Day
+      maxAgeSeconds: 60 * 60 * 24 * 7, // 1 Day
     }),
   ],
 }));
 
-// custom code
-// self.addEventListener('sync', event => {
-//     if (event.tag === 'firstTimeSync') {
-//         // synchronisation here after internet appears
-//     }
-// });
+self.addEventListener('sync', event => {
+  console.log('sync!', event.tag);
+    if (event.tag === 'firstTimeSync') {
+    }
+});

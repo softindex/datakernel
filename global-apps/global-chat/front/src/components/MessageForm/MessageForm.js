@@ -14,13 +14,13 @@ class MessageForm extends React.Component {
     message: ''
   };
 
-  onChangeMessage = (event) => {
+  onChangeMessage = event => {
     this.setState({
       message: event.target.value
     });
   };
 
-  onSubmit = (event) => {
+  onSubmit = event => {
     event.preventDefault();
 
     if (!this.state.message) {

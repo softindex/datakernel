@@ -16,11 +16,11 @@ class AddContactDialog extends React.Component {
     loading: false,
   };
 
-  handleNameChange = (event) => {
+  handleNameChange = event => {
     this.setState({name: event.target.value});
   };
 
-  onSubmit = (event) => {
+  onSubmit = event => {
     event.preventDefault();
 
     this.setState({

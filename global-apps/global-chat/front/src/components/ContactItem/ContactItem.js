@@ -14,12 +14,12 @@ class ContactItem extends React.Component {
     showAddContactDialog: false
   };
 
-  getAvatarLetters = contact => {
+  getAvatarLetters(contact) {
     if (contact.firstName !== null && contact.lastName !== null) {
       return getAvatarLetters(contact.firstName + ' ' + contact.lastName).toUpperCase();
     }
     return getAvatarLetters(contact.username).toUpperCase();
-  };
+  }
 
   onContactClick() {
     this.setState({
@@ -38,7 +38,7 @@ class ContactItem extends React.Component {
     });
   };
 
-  getContactName = () => {
+  getContactName() {
     return this.props.contact.firstName !== null && this.props.contact.lastName !== null ?
       this.props.contact.firstName + ' ' + this.props.contact.lastName :
       this.props.contact.username

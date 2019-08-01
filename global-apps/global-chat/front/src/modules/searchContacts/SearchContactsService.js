@@ -32,7 +32,8 @@ class SearchContactsService extends Service {
 
     this._globalAppStoreAPI.search(this.state.search)
       .then(contacts => {
-        const searchContacts = new Map([...contacts].map(({profile, pubKey}) => ([pubKey, profile])));
+        const searchContacts = new Map([...contacts]
+          .map(({profile, pubKey}) => ([pubKey, profile])));
         this.setState({searchContacts, searchReady: true});
       }).catch((error) => {
         console.error(error);

@@ -36,7 +36,7 @@ class SideBar extends React.Component {
     this.setState({tabId: nextTabId});
   };
 
-  onSearchChange = (event) => {
+  onSearchChange = event => {
     this.setState({
       search: event.target.value
     }, () => {
@@ -83,7 +83,6 @@ class SideBar extends React.Component {
             .join(', ')).toLowerCase().includes(this.state.search.toLowerCase())) {
             return false
           }
-
           return true;
         })
     );
@@ -240,7 +239,11 @@ export default withRouter(
           removeContact(contactPublicKey, name) {
             contactsService.removeContact(contactPublicKey, name)
               .then(() => {
-                props.history.push(path.join('/room', ''));
+                const {roomId} = props.match.params;
+                const dialogRoomId = getDialogRoomId([props.publicKey, contactPublicKey]);
+                if (roomId === dialogRoomId) {
+                  props.history.push(path.join('/room', ''));
+                }
               })
               .catch((err) => {
                 props.enqueueSnackbar(err.message, {
@@ -253,9 +256,6 @@ export default withRouter(
         connectService(
           RoomsContext, ({roomsReady, rooms}, roomsService) => ({
             roomsService, roomsReady, rooms,
-            quitRoom(roomId) {
-              return roomsService.quitRoom(roomId);
-            },
             createDialog(participantId) {
               return roomsService.createDialog(participantId);
             }

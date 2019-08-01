@@ -27,20 +27,20 @@ class Profile extends React.Component {
     navigator.clipboard.writeText(this.textField.current.props.value);
   };
 
-  onDoubleClick = (event) => {
+  onDoubleClick = event => {
     event.preventDefault();
     const input = document.getElementById('inputId');
     input.focus();
     input.setSelectionRange(0, this.textField.current.props.value.length);
   };
 
-  onChangeName = (event) => {
+  onChangeName = event => {
     this.setState({
       name: event.target.value
     });
   };
 
-  onSubmit = (event) => {
+  onSubmit = event => {
     event.preventDefault();
     this.setState({
       loading: true

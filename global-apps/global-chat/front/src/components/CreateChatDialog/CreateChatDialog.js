@@ -32,13 +32,7 @@ class CreateChatDialog extends React.Component {
     search: ''
   };
 
-  handleNameChange = (event) => {
-    this.setState({
-      name: event.target.value
-    });
-  };
-
-  sortContacts = () => {
+  sortContacts() {
     return [...this.props.rooms].sort(((array1, array2) => {
       const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
       const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
@@ -46,7 +40,7 @@ class CreateChatDialog extends React.Component {
         return this.props.contacts.get(contactId1).name.localeCompare(this.props.contacts.get(contactId2).name)
       }
     }));
-  };
+  }
 
   getFilteredRooms(rooms) {
     return new Map(
@@ -66,19 +60,25 @@ class CreateChatDialog extends React.Component {
         }))
   }
 
-  handleSearchChange = (event) => {
+  onNameChange = event => {
+    this.setState({
+      name: event.target.value
+    });
+  };
+
+  onSearchChange = event => {
     this.setState({
       search: event.target.value
     });
   };
 
-  gotoStep = (nextStep) => {
+  gotoStep = nextStep => {
     this.setState({
       activeStep: nextStep
     });
   };
 
-  handleCheckContact(roomParticipants) {
+  onContactCheck(roomParticipants) {
     const pubKey = roomParticipants.find(publicKey => publicKey !== this.props.publicKey);
     let participants = this.state.participants;
     if (participants.has(pubKey)) {
@@ -100,7 +100,7 @@ class CreateChatDialog extends React.Component {
     this.props.onClose();
   };
 
-  handleSubmit = (event) => {
+  onSubmit = event => {
     event.preventDefault();
 
     if (this.state.activeStep === 0) {
@@ -138,7 +138,7 @@ class CreateChatDialog extends React.Component {
         onClose={this.onClose}
         loading={this.state.loading}
       >
-        <form onSubmit={this.handleSubmit}>
+        <form onSubmit={this.onSubmit}>
           <DialogTitle onClose={this.props.onClose}>
             {this.state.activeStep === 0 ? 'Create Group Chat' : 'Add Members'}
           </DialogTitle>
@@ -158,7 +158,7 @@ class CreateChatDialog extends React.Component {
                   type="text"
                   fullWidth
                   variant="outlined"
-                  onChange={this.handleNameChange}
+                  onChange={this.onNameChange}
                 />
               </>
             )}
@@ -180,7 +180,7 @@ class CreateChatDialog extends React.Component {
                           }
                         </Avatar>
                       }
-                      onDelete={!this.state.loading && this.handleCheckContact.bind(this, [pubKey])}
+                      onDelete={!this.state.loading && this.onContactCheck.bind(this, [pubKey])}
                       className={classes.chip}
                       classes={{
                         label: classes.chipText
@@ -199,7 +199,7 @@ class CreateChatDialog extends React.Component {
                     className={classes.input}
                     placeholder="Search..."
                     autoFocus
-                    onChange={this.handleSearchChange}
+                    onChange={this.onSearchChange}
                   />
                 </Paper>
                 <List>
@@ -210,7 +210,7 @@ class CreateChatDialog extends React.Component {
                       selected={this.state.participants
                         .has(room.participants.find(pubKey => pubKey !== this.props.publicKey))}
                       roomSelected={false}
-                      onClick={!this.state.loading && this.handleCheckContact.bind(this, room.participants)}
+                      onClick={!this.state.loading && this.onContactCheck.bind(this, room.participants)}
                       contacts={this.props.contacts}
                       publicKey={this.props.publicKey}
                       linkDisabled={true}

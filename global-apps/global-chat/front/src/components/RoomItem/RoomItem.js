@@ -30,9 +30,9 @@ class RoomItem extends React.Component {
   }
 
 
-  getRoomPath = (roomId) => {
+  getRoomPath(roomId) {
     return path.join('/room', roomId || '');
-  };
+  }
 
   onClickAddContact() {
     this.setState({
@@ -48,6 +48,7 @@ class RoomItem extends React.Component {
         return true
       }
     }
+    return false;
   }
 
   closeAddDialog = () => {

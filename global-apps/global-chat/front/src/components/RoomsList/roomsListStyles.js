@@ -1,4 +1,4 @@
-const roomsListStyles = (theme) => {
+const roomsListStyles = theme => {
   return {
     progressWrapper: {
       marginLeft: theme.spacing.unit * 18,

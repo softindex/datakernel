@@ -42,7 +42,7 @@ function Header({classes, rooms, roomId, contacts, publicKey}) {
             Global Chat
           </Typography>
           <div className={classes.chatTitleContainer}>
-            {rooms.get(roomId) !== undefined && (
+            {rooms.has(roomId) && (
               <Typography
                 className={classes.chatTitle}
                 color="inherit"
@@ -56,10 +56,7 @@ function Header({classes, rooms, roomId, contacts, publicKey}) {
           </div>
         </Toolbar>
       </AppBar>
-      <Drawer
-        open={openDrawer}
-        onClose={onDrawerClose}
-      />
+      <Drawer open={openDrawer} onClose={onDrawerClose}/>
     </>
   );
 }

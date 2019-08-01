@@ -47,7 +47,10 @@ class RoomsService extends Service {
   }
 
   async createDialog(participantPublicKey) {
-    const participants = [this._myPublicKey, participantPublicKey];
+    let participants = [this._myPublicKey];
+    if (participantPublicKey !== this._myPublicKey) {
+      participants = [this._myPublicKey, participantPublicKey];
+    }
     const roomId = getDialogRoomId(participants);
 
     let roomExists = false;

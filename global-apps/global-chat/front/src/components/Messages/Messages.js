@@ -23,8 +23,8 @@ class Messages extends React.Component {
     }
   }
 
-  getMessageAuthor = (publicKey) => {
-    if (this.props.contacts.get(publicKey)){
+  getMessageAuthor = publicKey => {
+    if (this.props.contacts.has(publicKey)){
       return this.props.contacts.get(publicKey).name;
     } else {
       return toEmoji(publicKey, 3);
@@ -32,7 +32,7 @@ class Messages extends React.Component {
   };
 
   render() {
-    const {classes, chatReady, messages} = this.props;
+    const {classes, chatReady, messages, publicKey} = this.props;
     return (
       <div className={classes.root}>
         {!chatReady && (
@@ -55,14 +55,14 @@ class Messages extends React.Component {
                   key={index}
                   text={message.content}
                   author={
-                    message.authorPublicKey === this.props.publicKey
+                    message.authorPublicKey === publicKey
                       ? 'Me'
                       : this.getMessageAuthor(message.authorPublicKey)
                   }
                   time={new Date(message.timestamp).toLocaleString()}
                   loaded={message.loaded}
                   classes={classes}
-                  drawSide={(message.authorPublicKey === this.props.publicKey) ? 'left' : 'right'}
+                  drawSide={(message.authorPublicKey === publicKey) ? 'left' : 'right'}
                   shape={shape}
                 />
               )
@@ -87,7 +87,9 @@ export default withStyles(messagesStyles)(
         {messages, chatReady}) => (
           {messages, chatReady})
       )(
-        connectService(AccountContext, ({publicKey}) => ({publicKey}))(
+        connectService(AccountContext, (
+          {publicKey}) => ({publicKey})
+        )(
           Messages
         )
       )
