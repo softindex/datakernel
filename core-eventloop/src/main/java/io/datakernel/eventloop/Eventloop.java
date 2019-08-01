@@ -539,7 +539,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return keys;
 	}
 
-	private void executeTask(@Async.Execute Runnable task) {
+	private static void executeTask(@Async.Execute Runnable task) {
 		task.run();
 	}
 
@@ -795,7 +795,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException If some I/O error occurs
 	 */
 	@NotNull
-	public ServerSocketChannel listen(InetSocketAddress address, ServerSocketSettings serverSocketSettings, AcceptCallback acceptCallback) throws IOException {
+	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @Async.Schedule @NotNull AcceptCallback acceptCallback) throws IOException {
 		assert inEventloopThread();
 		ServerSocketChannel serverSocketChannel = null;
 		try {
@@ -867,7 +867,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param address socketChannel's address
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
-	public void connect(SocketAddress address, long timeout, @NotNull ConnectCallback cb) {
+	public void connect(@NotNull SocketAddress address, long timeout, @Async.Schedule @NotNull ConnectCallback cb) {
 		assert inEventloopThread();
 		SocketChannel channel;
 		try {

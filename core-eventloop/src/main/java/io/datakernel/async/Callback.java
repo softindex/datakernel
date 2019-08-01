@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -10,5 +11,6 @@ public interface Callback<T> {
 	/**
 	 * Performs action upon of completion of Completable computation
 	 */
+	@Async.Execute
 	void accept(T result, @Nullable Throwable e);
 }

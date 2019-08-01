@@ -49,5 +49,4 @@ public interface AsyncPredicate<T> {
 	static <T> AsyncPredicate<T> alwaysFalse() {
 		return t -> Promise.of(Boolean.FALSE);
 	}
-
 }

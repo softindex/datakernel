@@ -1,11 +1,12 @@
 package io.datakernel.async;
 
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 
 /**
- * An abstraction over something, which successfull or exceptional
+ * An abstraction over something, which successful or exceptional
  * completion at some point in the future can be listened to.
  * <p>
  * This is a more generic and flexible abstraction over
@@ -19,7 +20,7 @@ public interface Completable<T> {
 	 *
 	 * @param action to be executed
 	 */
-	void onComplete(@NotNull Callback<? super T> action);
+	void onComplete(@Async.Schedule @NotNull Callback<? super T> action);
 
 	/**
 	 * Subscribes given action to be executed
