@@ -1,6 +1,5 @@
 package io.global.ot.util;
 
-import io.datakernel.async.AsyncFunction2;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -22,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.global.ot.util.HttpDataFormats.COMMIT_CODEC;
@@ -81,7 +81,7 @@ public class RawCommitChannels {
 						}));
 	}
 
-	public static AsyncFunction2<Integer, CommitId, RawCommit> commitLoader(ChannelSupplier<CommitEntry> commitChannel) {
+	public static BiFunction<Integer, CommitId, Promise<RawCommit>> commitLoader(ChannelSupplier<CommitEntry> commitChannel) {
 		return (level, commitId) -> Promises.until(
 				commitChannel::get,
 				rawCommitEntry -> {
