@@ -15,8 +15,8 @@ public final class SimpleApplicationLauncher extends HttpServerLauncher {
 	}
 
 	@Provides
-	AsyncServlet servlet() {
-		return StaticServlet.ofClassPath(executor(), "build")
+	AsyncServlet servlet(Executor executor) {
+		return StaticServlet.ofClassPath(executor, "build")
 				.withIndexHtml();
 	}
 
