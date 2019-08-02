@@ -448,6 +448,11 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		}
 	}
 
+	@Override
+	public <I, O> void sendRequest(I request, Callback<O> cb) {
+		requestSender.sendRequest(request, cb);
+	}
+
 	public IRpcClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
 		if (anotherEventloop == this.eventloop) {
 			return this;

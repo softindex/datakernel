@@ -23,4 +23,8 @@ public interface RpcSender {
 	RpcException NO_SENDER_AVAILABLE_EXCEPTION = new RpcException(RpcSender.class, "No senders available");
 
 	<I, O> void sendRequest(I request, int timeout, Callback<O> cb);
+
+	default <I, O> void sendRequest(I request, Callback<O> cb) {
+		sendRequest(request, Integer.MAX_VALUE, cb);
+	}
 }

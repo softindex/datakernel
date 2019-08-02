@@ -32,5 +32,15 @@ public interface IRpcClient {
 		return resultPromise;
 	}
 
+	default <I, O> Promise<O> sendRequest(I request) {
+		SettablePromise<O> resultPromise = new SettablePromise<>();
+		sendRequest(request, resultPromise);
+		return resultPromise;
+	}
+
 	<I, O> void sendRequest(I request, int timeout, Callback<O> cb);
+
+	default <I, O> void sendRequest(I request, Callback<O> cb) {
+		sendRequest(request, Integer.MAX_VALUE, cb);
+	}
 }
