@@ -52,7 +52,7 @@ public final class GlobalChatApp extends Launcher {
 				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new ChatModule(),
 				new ProfileModule(),
 				new ContactsModule(),

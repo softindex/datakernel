@@ -45,6 +45,6 @@ public final class UniqueNameImpl implements UniqueName {
 
 	@Override
 	public String toString() {
-		return "@" + hashCode() + (originalName != null ? " " + originalName : "");
+		return "@" + Integer.toHexString(hashCode()) + (originalName != null ? " " + originalName : "");
 	}
 }

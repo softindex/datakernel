@@ -3,7 +3,6 @@ package io.datakernel.di.module;
 import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.annotation.NameAnnotation;
-import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.Constructors.*;
@@ -36,12 +35,19 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 	private Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 
-	private AtomicBoolean configured = new AtomicBoolean();
+	private final AtomicBoolean configured = new AtomicBoolean();
 
 	@Nullable
 	private volatile BindingDesc current = null;
 
+	@Nullable
+	private final StackTraceElement location;
+
 	BuilderModule() {
+		// builder module is (and should be) never instantiated directly,
+		// only by some factory methods (mainly the Module.create() ofc)
+		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+		location = trace.length >= 3 ? trace[3] : null;
 	}
 
 	private void completeCurrent() {
@@ -52,13 +58,6 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		}
 	}
 
-	/**
-	 * This method begins a chain of binding builder DSL calls.
-	 * <p>
-	 * You can use generics in it, only those that are defined at the module class.
-	 * And you need to subclass the module at the usage point to 'bake' those generics
-	 * into subclass bytecode so that they could be fetched by this bind call.
-	 */
 	@Override
 	@SuppressWarnings("unchecked")
 	public <U> BuilderModule<U> bind(@NotNull Key<U> key) {
@@ -68,9 +67,6 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		return (BuilderModule<U>) this;
 	}
 
-	/**
-	 * @see #bind(Key)
-	 */
 	@Override
 	public <U> BuilderModule<U> bind(Class<U> type) {
 		return bind(Key.of(type));
@@ -86,7 +82,7 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	/**
 	 * If bound key does not have a name already then sets it to a given one
 	 */
-	public BuilderModule<T> annotatedWith(@NotNull Name name) {
+	public BuilderModule<T> named(@NotNull Name name) {
 		BindingDesc desc = ensureCurrent();
 		Key<?> key = desc.getKey();
 		if (key.getName() != null) {
@@ -97,17 +93,24 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	}
 
 	/**
-	 * @see #annotatedWith(Name)
+	 * @see #named(Name)
 	 */
 	public BuilderModule<T> annotatedWith(@NotNull Annotation annotation) {
-		return annotatedWith(Name.of(annotation));
+		return named(Name.of(annotation));
 	}
 
 	/**
-	 * @see #annotatedWith(Name)
+	 * @see #named(Name)
 	 */
 	public BuilderModule<T> annotatedWith(@NotNull Class<? extends Annotation> annotationType) {
-		return annotatedWith(Name.of(annotationType));
+		return named(Name.of(annotationType));
+	}
+
+	/**
+	 * @see #named(Name)
+	 */
+	public BuilderModule<T> named(@NotNull String name) {
+		return named(Name.of(name));
 	}
 
 	/**
@@ -440,9 +443,6 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		return scan(container, null);
 	}
 
-	/**
-	 * This method simply adds all bindings, transformers, generators and multibinders from given modules to this one.
-	 */
 	@Override
 	public BuilderModuleBindingStage install(Collection<Module> modules) {
 		checkState(!configured.get(), "Cannot install modules after the module builder was used as a module");
@@ -456,19 +456,11 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		return this;
 	}
 
-	/**
-	 * @see #install(Collection)
-	 */
 	@Override
 	public BuilderModuleBindingStage install(Module... modules) {
 		return install(Arrays.asList(modules));
 	}
 
-	/**
-	 * This is a helper method that provides a functionality similar to {@link ProvidesIntoSet}.
-	 * It binds given binding as a singleton set to a set key made from given key
-	 * and also {@link Multibinder#toSet multibinds} each of such sets together.
-	 */
 	@Override
 	public <S, E extends S> BuilderModuleBindingStage bindIntoSet(Key<S> setOf, Binding<E> binding) {
 		checkState(!configured.get(), "Cannot install modules after the module builder was used as a module");
@@ -483,48 +475,26 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		return this;
 	}
 
-	/**
-	 * @see #bindIntoSet(Key, Binding)
-	 * @see Binding#to(Key)
-	 */
 	@Override
 	public <S, E extends S> BuilderModuleBindingStage bindIntoSet(Key<S> setOf, Key<E> item) {
 		return bindIntoSet(setOf, Binding.to(item));
 	}
 
-	/**
-	 * @see #bindIntoSet(Key, Binding)
-	 * @see Binding#toInstance(Object)
-	 */
 	@Override
 	public <S, E extends S> BuilderModuleBindingStage bindIntoSet(@NotNull Key<S> setOf, @NotNull E element) {
 		return bindIntoSet(setOf, Binding.toInstance(element));
 	}
 
-	/**
-	 * {@link #bindIntoSet(Key, Key) Binds into set} a key of instance injector for given type at a {@link Injector#postInjectInstances special}
-	 * key Set&lt;InstanceInjector&lt;?&gt;&gt;.
-	 * <p>
-	 * Instance injector bindings are {@link DefaultModule generated automatically}.
-	 *
-	 * @see Injector#postInjectInstances
-	 */
 	@Override
 	public BuilderModuleBindingStage postInjectInto(Key<?> key) {
 		return bindIntoSet(new Key<InstanceInjector<?>>() {}, Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
 	}
 
-	/**
-	 * @see #postInjectInto(Key)
-	 */
 	@Override
 	public BuilderModuleBindingStage postInjectInto(Class<?> type) {
 		return postInjectInto(Key.of(type));
 	}
 
-	/**
-	 * Adds a {@link BindingTransformer transformer} with a given priority to this module.
-	 */
 	@Override
 	public <E> BuilderModuleBindingStage transform(int priority, BindingTransformer<E> bindingTransformer) {
 		checkState(!configured.get(), "Cannot add transformers after the module builder was used as a module");
@@ -534,9 +504,6 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		return this;
 	}
 
-	/**
-	 * Adds a {@link BindingGenerator generator} for a given class to this module.
-	 */
 	@Override
 	public <E> BuilderModuleBindingStage generate(Class<?> pattern, BindingGenerator<E> bindingGenerator) {
 		checkState(!configured.get(), "Cannot add generators after the module builder was used as a module");
@@ -547,9 +514,6 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 		return this;
 	}
 
-	/**
-	 * Adds a {@link Multibinder multibinder} for a given key to this module.
-	 */
 	@Override
 	public <E> BuilderModuleBindingStage multibind(Key<E> key, Multibinder<E> multibinder) {
 		checkState(!configured.get(), "Cannot add multibinders after the module builder was used as a module");
@@ -610,5 +574,10 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	public final Map<Key<?>, Multibinder<?>> getMultibinders() {
 		finish();
 		return multibinders;
+	}
+
+	@Override
+	public String toString() {
+		return "BuilderModule(at " + (location != null ? location : "<unknown module location>") + ')';
 	}
 }

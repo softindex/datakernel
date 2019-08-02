@@ -732,8 +732,8 @@ public final class TestDI {
 	@Test
 	public void keySets() {
 		Injector injector = Injector.of(Module.create()
-				.bind(Integer.class).annotatedWith(Name.of("test")).toInstance(123).as(MyKeySet2.class)
-				.bind(String.class).annotatedWith(Name.of("test")).toInstance("123").as(MyKeySet2.class)
+				.bind(Integer.class).named("test").toInstance(123).as(MyKeySet2.class)
+				.bind(String.class).named("test").toInstance("123").as(MyKeySet2.class)
 				.scan(new Object() {
 
 					@Provides
@@ -954,5 +954,92 @@ public final class TestDI {
 		Injector sub = injector.enterScope(Scope.of(Scope1.class));
 
 		assertEquals("hello from root", sub.getInstance(String.class));
+	}
+
+	@Test
+	public void basicExports() {
+		Injector injector = Injector.of(Module.create()
+				.bind(Integer.class).toInstance(3000)
+				.bind(String.class).to(i -> "hello #" + i, Integer.class).export());
+
+		printGraphVizGraph(injector.getBindingsTrie());
+
+		assertEquals("hello #3000", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+	}
+
+	@Test
+	public void dslExports() {
+		Injector injector = Injector.of(Module.create()
+				.scan(new Object() {
+
+					@Provides
+					Integer priv() {
+						return 3000;
+					}
+
+					@Export
+					@Provides
+					String pub(Integer integer) {
+						return "hello #" + integer;
+					}
+				}));
+
+		printGraphVizGraph(injector.getBindingsTrie());
+
+		assertEquals("hello #3000", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+	}
+
+	@Test
+	public void rebindImport() {
+		Module importingModule = Module.create()
+				.bind(String.class).to(i -> "hello #" + i, Integer.class);
+
+		Module exportingModule = Module.create()
+				.bind(Integer.class).named("context-dependent-name").toInstance(3000);
+
+		Injector injector = Injector.of(
+				exportingModule,
+				importingModule.rebindImport(Key.of(Integer.class), Key.of(Integer.class, "context-dependent-name"))
+		);
+
+		assertEquals("hello #3000", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+		assertEquals(3000, injector.getInstance(Key.of(Integer.class, "context-dependent-name")).intValue());
+	}
+
+	@Test
+	public void rebindExport() {
+
+		Module exportingModule = Module.create()
+				.bind(Integer.class).toInstance(3000);
+
+		Module importingModule = Module.create()
+				.bind(String.class).to(i -> "hello #" + i, Key.of(Integer.class, "context-dependent-name"));
+
+		Injector injector = Injector.of(
+				exportingModule.rebindExport(Key.of(Integer.class), Key.of(Integer.class, "context-dependent-name")),
+				importingModule
+		);
+
+		assertEquals("hello #3000", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+		assertEquals(3000, injector.getInstance(Key.of(Integer.class, "context-dependent-name")).intValue());
+	}
+
+	static class MyModule extends AbstractModule {}
+
+	static class InheritedModule extends MyModule {}
+
+	@Test
+	public void abstractModuleToString() {
+		Module module = new AbstractModule() {};
+		Module module2 = new MyModule();
+		Module module3 = new InheritedModule();
+
+		assertTrue(module.toString().startsWith("AbstractModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
+		assertTrue(module2.toString().startsWith("MyModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
+		assertTrue(module3.toString().startsWith("InheritedModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 	}
 }

@@ -95,7 +95,7 @@ public class RpcBenchmark extends Launcher {
 				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
+						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
 		);
 	}
 

@@ -3,7 +3,6 @@ import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
 
 import java.lang.annotation.ElementType;
@@ -85,7 +84,7 @@ public final class ReflectionExample {
 			// it knows how to make instances of impls because they have inject annotations
 			// allowing us to know how they can be created
 			// we never automagically create instances of unaware classes
-			bind(MessageSender.class).annotatedWith(Name.of("first")).to(ConsoleMessageSenderImpl.class);
+			bind(MessageSender.class).named("first").to(ConsoleMessageSenderImpl.class);
 			bind(Key.of(MessageSender.class, SecondKey.class)).to(LoggingMessageSenderImpl.class);
 
 			// same as above, just trigger the automatic factory generation from the marked constructor
