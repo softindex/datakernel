@@ -4,14 +4,14 @@ import qs from 'query-string';
 import connectService from '../../common/connectService';
 import AccountContext from '../../modules/account/AccountContext';
 
-function AccountCallback(props) {
+function OAuthCallback(props) {
   useEffect(() => {
     const params = qs.parse(props.location.search);
 
     if (params.privateKey) {
       props.authByPrivateKey(params.privateKey);
     }
-  })
+  });
 
   return (
     <Redirect to='/'/>
@@ -26,5 +26,5 @@ export default connectService(
     }
   })
 )(
-  AccountCallback
+  OAuthCallback
 );

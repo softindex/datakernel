@@ -2,9 +2,11 @@ import React from 'react';
 import {getDifference} from './utils';
 import connectService from '../../../common/connectService';
 import NoteContext from '../../../modules/note/NoteContext';
+import nodeEditorStyles from "./nodeEditorStyles";
+import withStyles from "@material-ui/core/es/styles/withStyles";
 
 function NoteEditor(props) {
-  const onChange = (event) => {
+  const onChange = event => {
     const difference = getDifference(props.content, event.target.value, event.target.selectionEnd);
 
     if (!difference) {
@@ -28,7 +30,7 @@ function NoteEditor(props) {
 
   return (
     <textarea
-      className={props.className}
+      className={props.classes.noteEditor}
       value={props.content}
       onChange={onChange}
     />
@@ -39,5 +41,5 @@ export default connectService(
   NoteContext,
   ({content}, noteService) => ({content, noteService})
 )(
-  NoteEditor
+  withStyles(nodeEditorStyles)(NoteEditor)
 );

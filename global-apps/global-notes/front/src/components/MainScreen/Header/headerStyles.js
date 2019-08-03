@@ -5,7 +5,7 @@ const headerStyles = theme => ({
   },
   noteTitleContainer: {
     display: 'flex',
-    marginLeft: theme.spacing.unit * 24.2,
+    marginLeft: theme.spacing.unit * 24,
     flexGrow: 1
   },
   title: {
@@ -25,6 +25,11 @@ const headerStyles = theme => ({
   },
   accountIcon: {
     fontSize: theme.spacing.unit * 3
+  },
+  logout: {
+    '&:hover': {
+      cursor: 'pointer'
+    }
   }
 });
 

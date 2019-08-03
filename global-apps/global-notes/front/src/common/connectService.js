@@ -49,7 +49,7 @@ function connectService(ServiceContext, mapStateToProps) {
       render() {
         const props = {
           ...this.props,
-          ...mapStateToProps(this.state.value, this.state.context)
+          ...mapStateToProps(this.state.value, this.state.context, this.props)
         };
 
         return (

@@ -4,7 +4,7 @@ import {withStyles} from '@material-ui/core';
 import ListItemText from '@material-ui/core/ListItemText';
 import ListItem from '@material-ui/core/ListItem';
 import noteItemStyles from './noteItemStyles';
-import SimpleMenu from '../../SimpleMenu/SimpleMenu';
+import NoteMenu from '../../NoteMenu/NoteMenu';
 
 function NoteItem({classes, noteId, noteName, getNotePath, onRename, onDelete, ...otherProps}) {
   return (
@@ -25,7 +25,7 @@ function NoteItem({classes, noteId, noteName, getNotePath, onRename, onDelete, .
           }}
         />
       </Link>
-      <SimpleMenu
+      <NoteMenu
         className={classes.menu}
         onRename={() => onRename(noteId, noteName)}
         onDelete={() => onDelete(noteId)}

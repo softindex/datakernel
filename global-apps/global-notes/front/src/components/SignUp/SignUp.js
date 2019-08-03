@@ -7,17 +7,13 @@ import Grid from '@material-ui/core/Grid';
 import Button from '@material-ui/core/Button';
 import connectService from '../../common/connectService';
 import AccountContext from '../../modules/account/AccountContext';
-import Snackbar from '../common/Snackbar/Snackbar';
 import signUpStyles from './signUpStyles';
 import SignUpAbstractionImage from './SignUpAbstractionImage/SignUpAbstractionImage';
 
 class SignUp extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      online: window.navigator.onLine
-    };
-  }
+  state = {
+    online: window.navigator.onLine
+  };
 
   onAuthByAppStore = async () => {
     await this.props.accountService.authWithAppStore();
@@ -43,13 +39,13 @@ class SignUp extends React.Component {
     this.setState({
       online: true
     });
-  }
+  };
 
   _wentOffline = () => {
     this.setState({
       online: false
     });
-  }
+  };
 
   render() {
     const {classes} = this.props;
@@ -114,14 +110,6 @@ class SignUp extends React.Component {
             />
           </Grid>
         </Grid>
-        <Snackbar
-          error={this.props.error && this.props.error.message}
-          action={[
-            <Button key="undo" color="secondary" size="small" onClick={this.onAuthByAppStore}>
-              RETRY
-            </Button>,
-          ]}
-        />
         <input
           accept=".dat"
           ref={ref => this.input = ref}

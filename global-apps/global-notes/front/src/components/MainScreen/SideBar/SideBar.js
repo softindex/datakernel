@@ -1,31 +1,25 @@
 import React from 'react';
-import {Redirect} from 'react-router-dom';
+import {Redirect, withRouter} from 'react-router-dom';
 import {withStyles} from '@material-ui/core';
-import Typography from '@material-ui/core/Typography';
-import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 import sideBarStyles from "./sideBarStyles";
-import CreateNoteForm from '../DialogsForms/CreateNoteForm';
+import CreateNoteDialog from '../NoteDialogs/CreateNoteDialog';
 import NotesList from './NotesList/NotesList';
 import connectService from '../../../common/connectService';
 import NotesContext from '../../../modules/notes/NotesContext';
-import DeleteNoteForm from '../DialogsForms/DeleteNoteForm';
-import RenameNoteForm from '../DialogsForms/RenameNoteForm';
+import DeleteNoteDialog from '../NoteDialogs/DeleteNoteDialog';
 
 class SideBar extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      showCreateDialog: false,
-      deleteDialog: {
-        show: false,
-        noteId: null
-      },
-      renameDialog: {
-        show: false,
-        noteId: null,
-        noteName: ''
-      }
+  state = {
+    showCreateDialog: false,
+    deleteDialog: {
+      show: false,
+      noteId: null
+    },
+    renameDialog: {
+      show: false,
+      noteId: null,
+      noteName: ''
     }
   };
 
@@ -65,63 +59,53 @@ class SideBar extends React.Component {
     const {classes, notes, ready} = this.props;
     const {noteId} = this.props.match.params;
 
-    if (noteId && ready && !notes[noteId]){
+    if (noteId && ready && !notes[noteId]) {
       return <Redirect to='/'/>;
     }
 
     return (
       <div className={classes.wrapper}>
-        <Paper square className={classes.paper}/>
-        <Typography
-          className={classes.tabContent}
-          component="div"
+        <Button
+          className={classes.button}
+          fullWidth={true}
+          variant="contained"
+          size="medium"
+          color="primary"
+          onClick={this.showCreateDialog}
         >
-          <CreateNoteForm
-            history={this.props.history}
-            open={this.state.showCreateDialog}
-            onClose={this.closeDialogs}
+          New Note
+        </Button>
+        <div className={classes.notesList}>
+          <NotesList
+            notes={notes}
+            notesService={this.props.notesService}
+            ready={this.props.ready}
+            onRename={this.showRenameDialog}
+            onDelete={this.showDeleteDialog}
           />
-          <DeleteNoteForm
-            open={this.state.deleteDialog.show}
-            noteId={this.state.deleteDialog.noteId}
-            onClose={this.closeDialogs}
-          />
-          <RenameNoteForm
-            open={this.state.renameDialog.show}
-            noteId={this.state.renameDialog.noteId}
-            noteName={this.state.renameDialog.noteName}
-            onClose={this.closeDialogs}
-          />
-          <Button
-            className={classes.button}
-            fullWidth={true}
-            variant="contained"
-            size="medium"
-            color="primary"
-            onClick={this.showCreateDialog}
-          >
-            New Note
-          </Button>
-          <div className={classes.notesList}>
-            <NotesList
-              notes={notes}
-              notesService={this.props.notesService}
-              ready={this.props.ready}
-              onRename={this.showRenameDialog}
-              onDelete={this.showDeleteDialog}
-            />
-          </div>
-        </Typography>
+        </div>
+        <CreateNoteDialog
+          open={this.state.showCreateDialog || this.state.renameDialog.show}
+          onClose={this.closeDialogs}
+          rename={this.state.renameDialog}
+        />
+        <DeleteNoteDialog
+          open={this.state.deleteDialog.show}
+          noteId={this.state.deleteDialog.noteId}
+          onClose={this.closeDialogs}
+        />
       </div>
     );
   }
 }
 
-export default connectService(
-  NotesContext,
-  ({ready, notes}, notesService) => ({
-    notesService, ready, notes,
-  })
-)(
-  withStyles(sideBarStyles)(SideBar)
+export default withRouter(
+  connectService(
+    NotesContext,
+    ({ready, notes}, notesService) => ({
+      notesService, ready, notes,
+    })
+  )(
+    withStyles(sideBarStyles)(SideBar)
+  )
 );

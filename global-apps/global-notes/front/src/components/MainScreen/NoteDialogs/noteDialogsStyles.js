@@ -1,4 +1,4 @@
-const formStyles = theme => ({
+const noteDialogsStyles = theme => ({
   actionButton: {
     margin: theme.spacing.unit,
     position: 'relative',
@@ -6,4 +6,4 @@ const formStyles = theme => ({
   }
 });
 
-export default formStyles;
+export default noteDialogsStyles;

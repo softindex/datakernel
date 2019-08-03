@@ -1,4 +1,4 @@
-const dialogStyles = (theme) => ({
+const dialogStyles = theme => ({
   closeButton: {
     position: 'absolute',
     right: theme.spacing.unit * 2,

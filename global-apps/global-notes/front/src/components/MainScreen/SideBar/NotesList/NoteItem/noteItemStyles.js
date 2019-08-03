@@ -1,24 +1,34 @@
 const noteItemStyles = theme => ({
   listItem: {
-    width: theme.spacing.unit * 41,
-    borderRadius: theme.spacing.unit / 2,
-    paddingTop: theme.spacing.unit * 0.375,
-    paddingBottom: theme.spacing.unit * 0.375
+    borderRadius: 4,
+    paddingTop: theme.spacing.unit * 0.5,
+    paddingBottom: theme.spacing.unit * 0.5,
+    '& > div' : {
+      visibility: 'hidden'
+    },
+    '&:hover > button': {
+      display: 'flex'
+    },
+    '&:hover > div': {
+      visibility: 'visible'
+    }
   },
   link: {
+    display: 'flex',
+    flexGrow: 1,
+    minWidth: theme.spacing.unit * 33.75,
     textDecoration: 'none',
-    minWidth: theme.spacing.unit * 31,
-    height: theme.spacing.unit * 8
+    height: theme.spacing.unit * 8,
+    alignItems: 'center'
   },
   itemText: {
-    marginTop: theme.spacing.unit * 2.5,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   itemTextPrimary: {
     textOverflow: 'ellipsis',
     overflow: 'hidden',
     whiteSpace: 'nowrap'
-  }
+  },
 });
 
 export default noteItemStyles;

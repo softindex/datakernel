@@ -1,50 +1,34 @@
 const sideBarStyles = theme => ({
   wrapper: {
-    borderRight: '2px solid #DCDCDC',
-    marginTop: theme.spacing.unit * 8,
-    width: theme.spacing.unit * 44,
+    boxShadow: `2px 0px 1px -2px rgba(0,0,0,0.2)`,
+    background: theme.palette.primary.contrastText,
+    width: 350,
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
     flexGrow: 0,
     flexShrink: 0,
     position: 'static'
   },
-  tabContent: {
-    height: 'calc(100% - 115px)',
-    position: 'fixed',
-    padding: theme.spacing.unit * 1.5
-  },
   notesList: {
-    height: 'calc(100% - 240px)',
-    position: 'fixed',
+    flexGrow: 1,
     overflowY: 'auto',
+    background: theme.palette.primary.contrastText,
+    marginTop: theme.spacing.unit,
+    marginBottom: theme.spacing.unit,
     '&::-webkit-scrollbar-track': {
       background: 'border-box'
     },
     '&::-webkit-scrollbar-thumb': {
-      background: theme.palette.grey[700]
+      background: theme.palette.secondary.grey
     }
   },
   button: {
     width: theme.spacing.unit * 41,
+    margin: 'auto',
     borderRadius: theme.spacing.unit * 9,
     marginBottom: theme.spacing.unit,
-    marginTop: theme.spacing.unit
-  },
-  search: {
-    padding: '2px 4px',
-    display: 'flex',
-    alignItems: 'center',
-    width: 'auto',
-    boxShadow: 'none',
-    border: '1px solid #ccc',
-    marginTop: theme.spacing.unit,
-    marginBottom: theme.spacing.unit
-  },
-  input: {
-    marginLeft: theme.spacing.unit,
-    flex: 1
-  },
-  iconButton: {
-    padding: '5px 10px'
+    marginTop: theme.spacing.unit * 11
   }
 });
 

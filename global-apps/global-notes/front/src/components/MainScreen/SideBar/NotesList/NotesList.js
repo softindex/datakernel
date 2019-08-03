@@ -22,23 +22,21 @@ function NotesList({classes, ready, notes, onRename, onDelete}) {
         </Grow>
       )}
       {ready && (
-        <div className={classes.notesList}>
-          <List>
-            {Object.entries(notes).map(([noteId, noteName], index) =>
-              (
-                <NoteItem
-                  key={index}
-                  noteId={noteId}
-                  noteName={noteName}
-                  getNotePath={getNotePath}
-                  showMenuIcon={true}
-                  onRename={onRename}
-                  onDelete={onDelete}
-                />
-              )
-            )}
-          </List>
-        </div>
+        <List>
+          {Object.entries(notes).map(([noteId, noteName], index) =>
+            (
+              <NoteItem
+                key={index}
+                noteId={noteId}
+                noteName={noteName}
+                getNotePath={getNotePath}
+                showMenuIcon={true}
+                onRename={onRename}
+                onDelete={onDelete}
+              />
+            )
+          )}
+        </List>
       )}
     </>
   );

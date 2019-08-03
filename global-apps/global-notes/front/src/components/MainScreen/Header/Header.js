@@ -3,7 +3,6 @@ import {ListItemIcon, withStyles} from '@material-ui/core';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
-import IconButton from '@material-ui/core/IconButton';
 import ArrowIcon from '@material-ui/icons/KeyboardArrowRight';
 import Icon from '@material-ui/core/Icon';
 import headerStyles from './headerStyles';
@@ -39,9 +38,13 @@ function Header({classes, notes, noteId, logout}) {
             </>
           )}
         </div>
-        <IconButton color="inherit" onClick={logout}>
+        <div
+          color="inherit"
+          onClick={logout}
+          className={classes.logout}
+        >
           <Icon className={classes.accountIcon}>logout</Icon>
-        </IconButton>
+        </div>
       </Toolbar>
     </AppBar>
   );
@@ -49,7 +52,9 @@ function Header({classes, notes, noteId, logout}) {
 
 export default connectService(
   NotesContext,
-  ({ready, notes}, notesService) => ({ready, notes, notesService})
+  ({ready, notes}, notesService) => ({
+    ready, notes, notesService
+  })
 )(
   connectService(
     AccountContext,

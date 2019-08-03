@@ -6,13 +6,13 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContentText from '@material-ui/core/DialogContentText';
-import formStyles from './formStyles';
+import noteDialogsStyles from './noteDialogsStyles';
 import Dialog from '../../common/Dialog/Dialog'
 import connectService from '../../../common/connectService';
 import NotesContext from '../../../modules/notes/NotesContext';
 
-function DeleteNoteForm(props) {
-  const handleDelete = () => {
+function DeleteNoteDialog(props) {
+  const onDelete = () => {
     return props.deleteNote(props.noteId)
       .then(props.onClose)
       .catch(err => {
@@ -26,11 +26,9 @@ function DeleteNoteForm(props) {
     <Dialog
       open={props.open}
       onClose={props.onClose}
-      aria-labelledby="form-dialog-title"
     >
       <form>
         <DialogTitle
-          id="customized-dialog-title"
           onClose={props.onClose}
         >
           Delete note
@@ -51,7 +49,7 @@ function DeleteNoteForm(props) {
             className={props.classes.actionButton}
             color="primary"
             variant="contained"
-            onClick={handleDelete}
+            onClick={onDelete}
           >
             Yes
           </Button>
@@ -69,5 +67,5 @@ export default connectService(
     }
   })
 )(
-  withSnackbar(withStyles(formStyles)(DeleteNoteForm))
+  withSnackbar(withStyles(noteDialogsStyles)(DeleteNoteDialog))
 );

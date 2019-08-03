@@ -2,10 +2,10 @@ import React from 'react';
 import {BrowserRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from './MainScreen/MainScreen';
 import SignUp from './SignUp/SignUp';
-import AccountCallback from './SignUp/AccountCallback';
+import AccountCallback from './SignUp/OAuthCallback';
 import DebugScreen from './DebugScreen/DebugScreen';
 
-function Router() {
+function App() {
   return (
     <BrowserRouter>
       <Switch>
@@ -20,4 +20,4 @@ function Router() {
   );
 }
 
-export default Router;
+export default App;

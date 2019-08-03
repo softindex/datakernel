@@ -32,7 +32,6 @@ class NoteService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       if (this._isNew) {
         this._noteOTStateManager.checkoutRoot(ROOT_COMMIT_ID);
@@ -41,18 +40,14 @@ class NoteService extends Service {
       }
     } catch (err) {
       console.error(err);
-
       const delay = this._retryDelay();
       this._reconnectTimeout = delay.timeoutId;
       await delay.promise;
-
       await this.init();
-
       return;
     }
 
     this._onStateChange();
-
     this._noteOTStateManager.addChangeListener(this._onStateChange);
   }
 

@@ -31,10 +31,7 @@ function MainScreen(props) {
     <NotesContext.Provider value={notesService}>
       <Header noteId={noteId}/>
       <div className={props.classes.note}>
-        <SideBar
-          history={props.history}
-          match={props.match}
-        />
+        <SideBar/>
         {!noteId && (
           <EmptyNote/>
         )}

@@ -4,7 +4,7 @@ import cookies from 'js-cookie';
 import {SnackbarProvider} from 'notistack';
 import {MuiThemeProvider} from '@material-ui/core/styles';
 import CssBaseline from '@material-ui/core/CssBaseline';
-import Router from './components/Router';
+import App from './components/App';
 import * as serviceWorker from './serviceWorker';
 import AccountService from './modules/account/AccountService';
 import theme from './components/themeConfig';
@@ -19,7 +19,7 @@ ReactDOM.render((
     <CssBaseline/>
     <SnackbarProvider maxSnack={1}>
       <AccountContext.Provider value={accountService}>
-        <Router/>
+        <App/>
       </AccountContext.Provider>
     </SnackbarProvider>
   </MuiThemeProvider>
