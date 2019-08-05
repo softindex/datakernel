@@ -2,14 +2,13 @@ import React from "react";
 import {withStyles} from '@material-ui/core';
 import connectService from "../../common/connectService";
 import AccountContext from "../../modules/account/AccountContext";
-import Snackbar from '../common/Snackbar/Snackbar'
 import StoreIcon from '@material-ui/icons/Store';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Button from "@material-ui/core/Button";
 import signUpStyles from "./signUpStyles";
-import SignUpAbstractionImage from "./SignUpAbstractionImage/SignUpAbstractionImage";
+import SignUpAbstractionImage from "../SignUpAbstractionImage/SignUpAbstractionImage";
 
 class SignUp extends React.Component {
   constructor(props) {
@@ -100,14 +99,6 @@ class SignUp extends React.Component {
             />
           </Grid>
         </Grid>
-        <Snackbar
-          error={this.props.error && this.props.error.message}
-          action={[
-            <Button key="undo" color="secondary" size="small" onClick={this.onAuthByAppStore}>
-              RETRY
-            </Button>,
-          ]}
-        />
         <input
           accept=".dat"
           ref={ref => this.input = ref}

@@ -1,6 +1,6 @@
 import React from 'react';
-import Header from "./Header/Header"
-import SideBar from "./SideBar/SideBar";
+import Header from "../Header/Header"
+import SideBar from "../SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
 import checkAuth from '../../common/checkAuth';
@@ -8,13 +8,13 @@ import connectService from "../../common/connectService";
 import DocumentsContext from "../../modules/documents/DocumentsContext";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import {withSnackbar} from "notistack";
-import StartDocument from "./EmptyDocument/EmptyDocument";
+import StartDocument from "../EmptyDocument/EmptyDocument";
 import ContactsService from "../../modules/contacts/ContactsService";
 import DocumentsService from "../../modules/documents/DocumentsService";
 import AccountContext from "../../modules/account/AccountContext";
 import ProfileService from "../../modules/profile/ProfileService";
 import ProfileContext from "../../modules/profile/ProfileContext";
-import Document from "./Document/Document";
+import Document from "../Document/Document";
 
 class MainScreen extends React.Component {
   constructor(props) {
@@ -50,7 +50,7 @@ class MainScreen extends React.Component {
           <ContactsContext.Provider value={this.contactsService}>
             <Header documentId={documentId}/>
             <div className={this.props.classes.document}>
-              <SideBar publicKey={this.props.publicKey} history={this.props.history}/>
+              <SideBar publicKey={this.props.publicKey}/>
               {!documentId && (
                 <StartDocument/>
               )}

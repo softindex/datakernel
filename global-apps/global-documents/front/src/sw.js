@@ -1,5 +1,6 @@
 // See https://developers.google.com/web/tools/workbox/guides/configure-workbox
-workbox.core.setLogLevel(workbox.core.LOG_LEVELS.debug);
+//workbox.core.setLogLevel(workbox.core.LOG_LEVELS.debug);
+workbox.setConfig({debug: true});
 
 self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
@@ -27,9 +28,13 @@ workbox.routing.registerRoute(
   })
 );
 
-// custom code
-// self.addEventListener('sync', event => {
-//     if (event.tag === 'firstTimeSync') {
-//         // synchronisation here after internet appears
-//     }
-// });
+// Cache API
+workbox.routing.registerRoute(/\/ot\/.*$/, new workbox.strategies.NetworkFirst({
+  cacheName: 'api',
+  networkTimeoutSeconds: 1,
+  plugins: [
+    new workbox.expiration.Plugin({
+      maxAgeSeconds: 60 * 60 * 24 * 7, // 1 Day
+    }),
+  ],
+}));
