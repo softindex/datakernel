@@ -176,7 +176,9 @@ class SideBar extends React.Component {
                 <>
                   {this.props.searchContacts.size !== 0 && (
                     <List>
-                      {[...this.props.searchContacts].map(([publicKey, contact]) => (
+                      {[...this.props.searchContacts]
+                        .filter(([publicKey,]) => publicKey !== this.props.publicKey)
+                        .map(([publicKey, contact]) => (
                         <>
                           {!this.props.contacts.has(publicKey) && (
                             <ContactItem
@@ -185,8 +187,7 @@ class SideBar extends React.Component {
                               publicKey={this.props.publicKey}
                               onAddContact={this.props.addContact}
                             />
-                          )
-                          }
+                          )}
                         </>
                       ))}
                     </List>
