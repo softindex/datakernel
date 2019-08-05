@@ -1,6 +1,7 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
@@ -39,8 +40,9 @@ public abstract class AbstractModule implements Module {
 		for (int i = 2; i < trace.length; i++) {
 			StackTraceElement element = trace[i];
 			try {
-				Class<?> traceCls = Class.forName(element.getClassName());
-				if (!traceCls.isAssignableFrom(cls)) {
+				String className = element.getClassName();
+				Class<?> traceCls = Class.forName(className);
+				if (!traceCls.isAssignableFrom(cls) && !className.startsWith("sun.reflect") && !className.startsWith("java.lang")) {
 					found = element;
 					break;
 				}
@@ -144,12 +146,12 @@ public abstract class AbstractModule implements Module {
 		postInjectInto(Key.of(type));
 	}
 
-	protected final void addDeclarativeBindingsFrom(Object object) {
+	protected final void scan(Object object) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
 		builder.scan(object);
 	}
 
-	protected final void addDeclarativeBindingsFromStatics(Class<?> cls) {
+	protected final void scan(Class<?> cls) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
 		builder.scanStatics(cls);
 	}
@@ -265,7 +267,7 @@ public abstract class AbstractModule implements Module {
 	@Override
 	public String toString() {
 		Class<?> cls = getClass();
-		String name = cls.isAnonymousClass() ? "AbstractModule" : cls.getSimpleName();
-		return name + "(at " + (location != null ? location : "<unknown module location>") + ')';
+		return ReflectionUtils.getShortName(cls.isAnonymousClass() ? cls.getGenericSuperclass() : cls) +
+				"(at " + (location != null ? location : "<unknown module location>") + ')';
 	}
 }

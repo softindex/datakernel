@@ -5,7 +5,6 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.test.DatakernelRunner.UseModules;
 import io.datakernel.test.DatakernelServiceRunnerTest.TestModule;
 import org.junit.After;
 import org.junit.Assert;

@@ -37,7 +37,7 @@ public class ScopeServlet implements AsyncServlet {
 					@Override
 					protected void configure() {
 						// so anonymous servlet subclasses could use the DSL
-						addDeclarativeBindingsFrom(ScopeServlet.this);
+						scan(ScopeServlet.this);
 						// dummy binding to be replaced by subInjector.putInstance
 						bind(HTTP_REQUEST_KEY).in(REQUEST_SCOPE).toDynamic();
 						// make sure that response is provided or generated in request scope

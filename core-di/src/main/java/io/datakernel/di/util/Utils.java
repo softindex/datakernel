@@ -1,7 +1,6 @@
 package io.datakernel.di.util;
 
 import io.datakernel.di.core.*;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -32,7 +31,7 @@ public final class Utils {
 	}
 
 	public static String getScopeDisplayString(Scope[] scope) {
-		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", ""));
+		return scope.length != 0 ? Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", "")) : "()";
 	}
 
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
@@ -108,11 +107,18 @@ public final class Utils {
 		return "at " + (location != null ? location.toString() : "<unknown binding location>");
 	}
 
+	/**
+	 * A shortcut for printing the result of {@link #makeGraphVizGraph} into the standard output.
+	 */
 	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
 //		System.out.println("https://somegraphvizurl/#" + URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20"));
 		System.out.println(makeGraphVizGraph(trie));
 	}
 
+	/**
+	 * Makes a GraphViz graph representation of the binding graph.
+	 * Scopes are grouped nicely into subgraph boxes and dependencies are properly drawn from lower to upper scopes.
+	 */
 	public static String makeGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n	rankdir=BT;\n");
@@ -127,7 +133,7 @@ public final class Utils {
 		if (scope != UNSCOPED) {
 			sb.append('\n').append(indent)
 					.append("subgraph cluster_").append(scopeCount[0]++).append(" {\n")
-					.append(indent).append("\tlabel=\"").append(scope[scope.length - 1].getDisplayString()).append("\"\n");
+					.append(indent).append("\tlabel=\"").append(scope[scope.length - 1].getDisplayString().replace("\"", "\\\"")).append("\"\n");
 		}
 
 		for (Entry<Scope, Trie<Scope, Map<Key<?>, Binding<?>>>> entry : trie.getChildren().entrySet()) {
@@ -144,12 +150,14 @@ public final class Utils {
 			known.add(ScopedValue.of(scope, key));
 			sb.append(indent)
 					.append('\t')
-					.append('"').append(getScopeId(scope)).append(key).append('"')
-					.append(" [label=\"").append(key.getDisplayString()).append("\"];\n");
+					.append('"').append(getScopeId(scope)).append(key.toString().replace("\"", "\\\"")).append('"')
+					.append(" [label=\"").append(key.getDisplayString().replace("\"", "\\\"")).append("\"];\n");
 		}
 
 		if (!leafs.isEmpty()) {
-			sb.append(leafs.stream().map(key -> '"' + getScopeId(scope) + key + '"').collect(joining(" ", '\n' + indent + "\t{ rank=same; ", " }\n")));
+			sb.append(leafs.stream()
+					.map(key -> '"' + getScopeId(scope) + key.toString().replace("\"", "\\\"") + '"')
+					.collect(joining(" ", '\n' + indent + "\t{ rank=same; ", " }\n")));
 			if (scope == UNSCOPED) {
 				sb.append('\n');
 			}
@@ -164,26 +172,30 @@ public final class Utils {
 		String scopePath = getScopeId(scope);
 
 		for (Entry<Key<?>, Binding<?>> entry : trie.get().entrySet()) {
-			String key = "\"" + scopePath + entry.getKey() + "\"";
+			String key = "\"" + scopePath + entry.getKey().toString().replace("\"", "\\\"") + "\"";
 			for (Dependency dependency : entry.getValue().getDependencies()) {
 				Key<?> depKey = dependency.getKey();
-				Scope[] depScope = getDependencyScope(known, scope, depKey);
 
-				if (depScope == null) {
-					String dep = "\"" + scopePath + depKey + '"';
+				Scope[] depScope = scope;
+				while (!known.contains(ScopedValue.of(depScope, depKey)) & depScope.length != 0) {
+					depScope = Arrays.copyOfRange(depScope, 0, depScope.length - 1);
+				}
+
+				if (depScope.length == 0) {
+					String dep = "\"" + scopePath + depKey.toString().replace("\"", "\\\"") + '"';
 
 					if (known.add(ScopedValue.of(scope, depKey))) {
 						sb.append('\t')
 								.append(dep)
 								.append(" [label=\"")
-								.append(depKey.getDisplayString())
+								.append(depKey.getDisplayString().replace("\"", "\\\""))
 								.append("\", style=dashed, color=")
 								.append(dependency.isRequired() ? "red" : "orange")
 								.append("];\n");
 					}
 					sb.append('\t').append(key).append(" -> ").append(dep);
 				} else {
-					sb.append('\t').append(key).append(" -> \"").append(getScopeId(depScope)).append(depKey).append('"');
+					sb.append('\t').append(key).append(" -> \"").append(getScopeId(depScope)).append(depKey.toString().replace("\"", "\\\"")).append('"');
 				}
 				if (!dependency.isRequired()) {
 					sb.append(" [style=dashed]");
@@ -197,26 +209,20 @@ public final class Utils {
 	}
 
 	private static String getScopeId(Scope[] scope) {
-		return Arrays.stream(scope).map(Scope::toString).collect(joining("->", "()->", ""));
-	}
-
-	@Nullable
-	private static Scope[] getDependencyScope(Set<ScopedValue<Key<?>>> known, Scope[] scope, Key<?> key) {
-		for (; ; ) {
-			ScopedValue<Key<?>> scoped = ScopedValue.of(scope, key);
-			if (known.contains(scoped)) {
-				return scope;
-			}
-			if (scope.length == 0) {
-				return null;
-			}
-			scope = Arrays.copyOfRange(scope, 0, scope.length - 1);
-		}
+		return Arrays.stream(scope).map(Scope::toString).collect(joining("->", "()->", "")).replace("\"", "\\\"");
 	}
 
 	public static int getKeyDisplayCenter(Key<?> key) {
 		Name name = key.getName();
 		int nameOffset = name != null ? name.getDisplayString().length() + 1 : 0;
 		return nameOffset + (key.getDisplayString().length() - nameOffset) / 2;
+	}
+
+	public static String drawCycle(Key<?>[] cycle) {
+		int offset = getKeyDisplayCenter(cycle[0]);
+		String cycleString = Arrays.stream(cycle).map(Key::getDisplayString).collect(joining(" -> ", "\t", ""));
+		String indent = new String(new char[offset]).replace('\0', ' ');
+		String line = new String(new char[cycleString.length() - offset]).replace('\0', '-');
+		return cycleString + " -,\n\t" + indent + "^" + line + "'";
 	}
 }

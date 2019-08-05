@@ -63,7 +63,7 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	public <U> BuilderModule<U> bind(@NotNull Key<U> key) {
 		checkState(!configured.get(), "Cannot bind after the module builder was used as a module");
 		completeCurrent();
-		current = new BindingDesc(key, new Binding<>(emptySet(), Preprocessor.TO_BE_GENERATED), UNSCOPED, false);
+		current = new BindingDesc(key, new Binding<>(emptySet(), Preprocessor.TO_BE_GENERATED).at(LocationInfo.from(this)), UNSCOPED, false);
 		return (BuilderModule<U>) this;
 	}
 
@@ -392,6 +392,15 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	/**
 	 * Adds given dependencies to the underlying binding
 	 */
+	public BuilderModule<T> withExtraDependencies(Set<Dependency> dependencies) {
+		BindingDesc current = ensureCurrent();
+		current.setBinding(current.getBinding().addDependencies(dependencies));
+		return this;
+	}
+
+	/**
+	 * @see #withExtraDependencies(Set)
+	 */
 	public BuilderModule<T> withExtraDependencies(Dependency... dependencies) {
 		BindingDesc current = ensureCurrent();
 		current.setBinding(current.getBinding().addDependencies(dependencies));
@@ -399,7 +408,7 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	}
 
 	/**
-	 * @see #withExtraDependencies(Dependency...)
+	 * @see #withExtraDependencies(Set)
 	 */
 	public BuilderModule<T> withExtraDependencies(Key<?>... dependencies) {
 		BindingDesc current = ensureCurrent();
@@ -408,7 +417,7 @@ public final class BuilderModule<T> implements BuilderModuleBindingStage {
 	}
 
 	/**
-	 * @see #withExtraDependencies(Dependency...)
+	 * @see #withExtraDependencies(Set)
 	 */
 	public BuilderModule<T> withExtraDependencies(Class<?>... dependencies) {
 		BindingDesc current = ensureCurrent();

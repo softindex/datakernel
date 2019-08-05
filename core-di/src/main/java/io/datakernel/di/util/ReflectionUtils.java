@@ -26,10 +26,17 @@ import static java.util.stream.Collectors.toSet;
  * While you should not use them normally, they are pretty well organized and thus are left public.
  */
 public final class ReflectionUtils {
+	private static final String IDENT = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
+
 	private ReflectionUtils() {}
 
-	public static String getShortName(String className) {
-		return className.replaceAll("(?:\\p{javaJavaIdentifierPart}+\\.)*", "");
+	public static String getShortName(Type type) {
+		String defaultName = type.getTypeName()
+				.replaceAll("(?:" + IDENT + "\\.)*(?:" + IDENT + "\\$\\d*)?", "");
+		ShortTypeName override = Types.getRawType(type).getDeclaredAnnotation(ShortTypeName.class);
+		return override != null ?
+				defaultName.replaceAll("^" + IDENT, override.value()) :
+				defaultName;
 	}
 
 	@Nullable
@@ -381,7 +388,7 @@ public final class ReflectionUtils {
 			bindingGenerators
 					.computeIfAbsent(method.getReturnType(), $ -> new HashSet<>())
 					.add((bindings, scope, key) -> {
-						if (scope.length < methodScope.length || !Objects.equals(key.getName(), name) || !Types.matches(key.getType(), type)) {
+						if (scope.length < methodScope.length || (name != null && !name.equals(key.getName())) || !Types.matches(key.getType(), type)) {
 							return null;
 						}
 						for (int i = 0; i < methodScope.length; i++) {

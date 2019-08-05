@@ -314,6 +314,7 @@ public final class TestDI {
 	}
 
 	static class RecursiveX {
+		@SuppressWarnings({"FieldCanBeLocal", "unused"})
 		private final RecursiveY y;
 
 		@Inject
@@ -897,12 +898,13 @@ public final class TestDI {
 			MethodLocal() {
 			}
 
+			@SuppressWarnings("unused")
 			String captured() {
 				return captured;
 			}
 		}
 		try {
-			Injector injector = Injector.of(Module.create().bind(MethodLocal.class));
+			Injector.of(Module.create().bind(MethodLocal.class));
 			fail("Should've failed here");
 		} catch (DIException e) {
 			e.printStackTrace();
@@ -1032,14 +1034,44 @@ public final class TestDI {
 
 	static class InheritedModule extends MyModule {}
 
+	@ShortTypeName("RenamedModule")
+	static class OtherModule extends MyModule {}
+
+	@SuppressWarnings("unused")
+	static class GenericModule<A, B> extends AbstractModule {}
+
 	@Test
 	public void abstractModuleToString() {
 		Module module = new AbstractModule() {};
 		Module module2 = new MyModule();
 		Module module3 = new InheritedModule();
+		Module module4 = new GenericModule<String, Integer>() {};
+		Module module5 = new OtherModule();
 
 		assertTrue(module.toString().startsWith("AbstractModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 		assertTrue(module2.toString().startsWith("MyModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 		assertTrue(module3.toString().startsWith("InheritedModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
+		assertTrue(module4.toString().startsWith("GenericModule<String, Integer>(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
+		assertTrue(module5.toString().startsWith("RenamedModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
+	}
+
+	@Test
+	public void changeDisplayName() {
+
+		@ShortTypeName("GreatPojoName")
+		class Pojo {}
+		class PlainPojo {}
+
+		@SuppressWarnings("unused")
+		@ShortTypeName("GreatGenericPojoName")
+		class GenericPojo<A, B> {}
+		@SuppressWarnings("unused")
+		class PlainGenericPojo<A, B> {}
+
+		assertEquals("PlainPojo", Key.of(PlainPojo.class).getDisplayString());
+		assertEquals("GreatPojoName", Key.of(Pojo.class).getDisplayString());
+
+		assertEquals("PlainGenericPojo<Integer, List<String>>", new Key<PlainGenericPojo<Integer, List<String>>>() {}.getDisplayString());
+		assertEquals("GreatGenericPojoName<Integer, List<String>>", new Key<GenericPojo<Integer, List<String>>>() {}.getDisplayString());
 	}
 }
