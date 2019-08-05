@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {getDifference} from './utils';
 import connectService from '../../../common/connectService';
 import NoteContext from '../../../modules/note/NoteContext';
@@ -6,6 +6,13 @@ import nodeEditorStyles from "./nodeEditorStyles";
 import withStyles from "@material-ui/core/es/styles/withStyles";
 
 function NoteEditor(props) {
+  let textInput = React.createRef();
+
+  useEffect(() => {
+    textInput.scrollTop = textInput.scrollHeight;
+    textInput.focus();
+  }, [textInput]);
+
   const onChange = event => {
     const difference = getDifference(props.content, event.target.value, event.target.selectionEnd);
 
@@ -33,6 +40,7 @@ function NoteEditor(props) {
       className={props.classes.noteEditor}
       value={props.content}
       onChange={onChange}
+      ref={input => {textInput = input}}
     />
   );
 }

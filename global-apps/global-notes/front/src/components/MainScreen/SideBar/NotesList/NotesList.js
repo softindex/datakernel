@@ -23,10 +23,11 @@ function NotesList({classes, ready, notes, onRename, onDelete}) {
       )}
       {ready && (
         <List>
-          {Object.entries(notes).map(([noteId, noteName], index) =>
+          {Object.entries(notes)
+            .sort((array1, array2) => array1[1].localeCompare(array2[1]))
+            .map(([noteId, noteName],) =>
             (
               <NoteItem
-                key={index}
                 noteId={noteId}
                 noteName={noteName}
                 getNotePath={getNotePath}

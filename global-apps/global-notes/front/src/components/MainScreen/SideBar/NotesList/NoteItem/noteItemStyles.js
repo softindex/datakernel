@@ -4,13 +4,10 @@ const noteItemStyles = theme => ({
     paddingTop: theme.spacing.unit * 0.5,
     paddingBottom: theme.spacing.unit * 0.5,
     '& > div' : {
-      visibility: 'hidden'
-    },
-    '&:hover > button': {
-      display: 'flex'
+      display: 'none'
     },
     '&:hover > div': {
-      visibility: 'visible'
+      display: 'block'
     }
   },
   link: {

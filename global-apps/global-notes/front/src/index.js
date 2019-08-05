@@ -10,7 +10,6 @@ import AccountService from './modules/account/AccountService';
 import theme from './components/themeConfig';
 import AccountContext from './modules/account/AccountContext';
 
-
 const accountService = new AccountService(process.env.REACT_APP_GLOBAL_OAUTH_LINK, cookies);
 accountService.init();
 

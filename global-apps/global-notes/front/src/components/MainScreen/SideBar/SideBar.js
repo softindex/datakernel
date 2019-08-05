@@ -1,5 +1,5 @@
 import React from 'react';
-import {Redirect, withRouter} from 'react-router-dom';
+import {withRouter} from 'react-router-dom';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import sideBarStyles from "./sideBarStyles";
@@ -57,11 +57,6 @@ class SideBar extends React.Component {
 
   render() {
     const {classes, notes, ready} = this.props;
-    const {noteId} = this.props.match.params;
-
-    if (noteId && ready && !notes[noteId]) {
-      return <Redirect to='/'/>;
-    }
 
     return (
       <div className={classes.wrapper}>
@@ -79,7 +74,7 @@ class SideBar extends React.Component {
           <NotesList
             notes={notes}
             notesService={this.props.notesService}
-            ready={this.props.ready}
+            ready={ready}
             onRename={this.showRenameDialog}
             onDelete={this.showDeleteDialog}
           />
