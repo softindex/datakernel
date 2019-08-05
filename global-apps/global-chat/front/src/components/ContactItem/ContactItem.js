@@ -15,7 +15,7 @@ class ContactItem extends React.Component {
   };
 
   getAvatarLetters(contact) {
-    if (contact.firstName !== null && contact.lastName !== null) {
+    if (contact.firstName !== '' && contact.lastName !== '') {
       return getAvatarLetters(contact.firstName + ' ' + contact.lastName).toUpperCase();
     }
     return getAvatarLetters(contact.username).toUpperCase();
@@ -39,7 +39,7 @@ class ContactItem extends React.Component {
   };
 
   getContactName() {
-    return this.props.contact.firstName !== null && this.props.contact.lastName !== null ?
+    return this.props.contact.firstName !== '' && this.props.contact.lastName !== '' ?
       this.props.contact.firstName + ' ' + this.props.contact.lastName :
       this.props.contact.username
   };

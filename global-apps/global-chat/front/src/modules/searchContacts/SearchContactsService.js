@@ -20,7 +20,7 @@ class SearchContactsService extends Service {
   getAppStoreContactName(publicKey) {
     if (this.state.searchContacts.get(publicKey)){
       const contact = this.state.searchContacts.get(publicKey);
-      if (contact.firstName !== null && contact.lastName !== null) {
+      if (contact.firstName !== '' && contact.lastName !== '') {
         return contact.firstName + ' ' + contact.lastName;
       }
       return contact.username;
