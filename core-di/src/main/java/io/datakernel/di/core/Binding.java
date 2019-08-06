@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.*;
 import java.util.stream.Stream;
@@ -622,29 +621,28 @@ public final class Binding<T> {
 	public Binding<T> addDependencies(@NotNull Set<Dependency> extraDependencies) {
 		return extraDependencies.isEmpty() ?
 				this :
-				new Binding<>(union(dependencies, extraDependencies), location, (compiledBindings, threadsafe, scope, index) -> {
-					CompiledBinding<T> compiledBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
-					Set<CompiledBinding<?>> extra = extraDependencies.stream().map(d -> compiledBindings.get(d.getKey())).collect(toSet());
-					return new CompiledBinding<T>() {
-						AtomicBoolean extraCalled = new AtomicBoolean();
+				new Binding<>(union(dependencies, extraDependencies), location,
+						(compiledBindings, threadsafe, scope, index) -> {
+							CompiledBinding<T> compiledBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
+							CompiledBinding<?>[] compiledExtraBindings = extraDependencies.stream().map(d -> compiledBindings.get(d.getKey())).toArray(CompiledBinding[]::new);
+							return new CompiledBinding<T>() {
+								@Override
+								public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+									for (CompiledBinding<?> compiledExtraBinding : compiledExtraBindings) {
+										compiledExtraBinding.getInstance(scopedInstances, synchronizedScope);
+									}
+									return compiledBinding.getInstance(scopedInstances, synchronizedScope);
+								}
 
-						@Override
-						public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-							if (extraCalled.compareAndSet(false, true)) {
-								extra.forEach(b -> b.getInstance(scopedInstances, synchronizedScope));
-							}
-							return compiledBinding.getInstance(scopedInstances, synchronizedScope);
-						}
-
-						@Override
-						public T createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-							if (extraCalled.compareAndSet(false, true)) {
-								extra.forEach(b -> b.getInstance(scopedInstances, synchronizedScope));
-							}
-							return compiledBinding.createInstance(scopedInstances, synchronizedScope);
-						}
-					};
-				});
+								@Override
+								public T createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+									for (CompiledBinding<?> compiledExtraBinding : compiledExtraBindings) {
+										compiledExtraBinding.getInstance(scopedInstances, synchronizedScope);
+									}
+									return compiledBinding.createInstance(scopedInstances, synchronizedScope);
+								}
+							};
+						});
 	}
 
 	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
