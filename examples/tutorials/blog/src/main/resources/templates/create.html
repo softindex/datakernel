@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create article</title>
+
+  <style>
+    .wrapper{
+       display: flex;
+       justify-content: center;
+       align-items: center;
+    }
+    form {
+      text-align: center;
+    }
+
+
+
+  </style>
+</head>
+<body>
+<h3><a href="/admin">Go back</a></h3>
+
+<div class="wrapper">
+  <form method="post" action="/add">
+    <h2>Create new article</h2>
+    <input type="text" name="title" placeholder="Enter article title"><br>
+    <textarea name="text" placeholder="Enter article text" rows="30" cols="60"></textarea><br>
+    <input type="submit" value="Create">
+  </form>
+</div>
+</body>
+</html>

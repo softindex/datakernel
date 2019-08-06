@@ -1,0 +1,7 @@
+# db.properties file should go into resources/
+
+dataSource.user=
+dataSource.password=
+dataSource.databaseName=
+dataSource.timeZone=UTC
+dataSource.serverName=localhost

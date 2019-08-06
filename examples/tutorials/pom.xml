@@ -16,6 +16,7 @@
   <modules>
     <module>getting-started</module>
     <module>auth</module>
+    <module>blog</module>
     <module>react-integration</module>
     <module>advanced-react-integration</module>
     <module>template-engine</module>

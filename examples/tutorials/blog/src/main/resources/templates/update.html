@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit article '{{value2.title}}'</title>
+
+  <style>
+    .wrapper{
+       display: flex;
+       justify-content: center;
+       align-items: center;
+    }
+    form {
+      text-align: center;
+    }
+
+
+
+  </style>
+</head>
+<body>
+<h3><a href="/admin">Go back</a></h3>
+
+<div class="wrapper">
+  <form method="post" action="/update/{{value1}}">
+    <h2>Edit article</h2>
+    <input type="text" name="title" value="{{value2.title}}"><br>
+    <textarea name="text" rows="30" cols="60">{{value2.text}}</textarea><br>
+    <input type="submit" value="Edit">
+  </form>
+</div>
+</body>
+</html>
