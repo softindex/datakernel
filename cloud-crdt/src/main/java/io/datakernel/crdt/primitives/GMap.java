@@ -1,6 +1,5 @@
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
@@ -95,7 +94,7 @@ public final class GMap<K, V extends CrdtMergable<V>> implements Map<K, V>, Crdt
 		throw new UnsupportedOperationException("GMap#entrySet is not implemented yet");
 	}
 
-	public static class Serializer<K, V extends CrdtMergable<V>> extends AbstractBinarySerializer<GMap<K, V>> {
+	public static class Serializer<K, V extends CrdtMergable<V>> implements BinarySerializer<GMap<K, V>> {
 		private final BinarySerializer<K> keySerializer;
 		private final BinarySerializer<V> valueSerializer;
 

@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
@@ -63,7 +62,7 @@ public final class GCounterInt implements CrdtMergable<GCounterInt> {
 		return Integer.toString(value());
 	}
 
-	private static class Serializer extends AbstractBinarySerializer<GCounterInt> {
+	private static class Serializer implements BinarySerializer<GCounterInt> {
 		@Override
 		public void encode(BinaryOutput out, GCounterInt item) {
 			int[] state = item.state;

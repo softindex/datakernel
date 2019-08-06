@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
@@ -143,7 +142,7 @@ public final class TPSet<E> implements Set<E>, CrdtMergable<TPSet<E>> {
 		return set.toString();
 	}
 
-	public static class Serializer<T> extends AbstractBinarySerializer<TPSet<T>> {
+	public static class Serializer<T> implements BinarySerializer<TPSet<T>> {
 		private final BinarySerializer<GSet<T>> gSetSerializer;
 
 		public Serializer(BinarySerializer<T> valueSerializer) {
