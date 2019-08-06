@@ -36,6 +36,7 @@ class RoomsList extends React.Component {
                   publicKey={this.props.publicKey}
                   onAddContact={this.props.onAddContact}
                   onRemoveContact={this.onRemoveContact.bind(this, room)}
+                  myName={this.props.myName}
                 />
               )
             )}

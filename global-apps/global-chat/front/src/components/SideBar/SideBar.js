@@ -21,6 +21,7 @@ import ContactItem from "../ContactItem/ContactItem";
 import {createDialogRoomId, toEmoji} from "../../common/utils";
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
+import ProfileContext from "../../modules/profile/ProfileContext";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
@@ -149,6 +150,7 @@ class SideBar extends React.Component {
             onRemoveContact={this.props.removeContact}
             publicKey={this.props.publicKey}
             isContactsTab={this.state.tabId === "contacts"}
+            myName={this.props.profile.name}
           />
 
           {this.state.search !== '' && (
@@ -179,17 +181,17 @@ class SideBar extends React.Component {
                       {[...this.props.searchContacts]
                         .filter(([publicKey,]) => publicKey !== this.props.publicKey)
                         .map(([publicKey, contact]) => (
-                        <>
-                          {!this.props.contacts.has(publicKey) && (
-                            <ContactItem
-                              contactId={publicKey}
-                              contact={contact}
-                              publicKey={this.props.publicKey}
-                              onAddContact={this.props.addContact}
-                            />
-                          )}
-                        </>
-                      ))}
+                          <>
+                            {!this.props.contacts.has(publicKey) && (
+                              <ContactItem
+                                contactId={publicKey}
+                                contact={contact}
+                                publicKey={this.props.publicKey}
+                                onAddContact={this.props.addContact}
+                              />
+                            )}
+                          </>
+                        ))}
                     </List>
                   )}
                   {this.props.searchContacts.size === 0 && (
@@ -269,7 +271,12 @@ export default withRouter(
                 return searchContactsService.search(searchField);
               }
             })
-          )(SideBar)
+          )(
+            connectService(ProfileContext, ({profile, profileReady},) => ({
+                profile, profileReady
+              })
+            )(SideBar)
+          )
         )
       )
     )

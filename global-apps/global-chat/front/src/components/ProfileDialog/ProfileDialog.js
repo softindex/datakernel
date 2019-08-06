@@ -1,5 +1,5 @@
 import * as React from "react";
-import {withStyles} from '@material-ui/core';
+import {Icon, withStyles} from '@material-ui/core';
 import profileDialogStyles from './profileDialogStyles'
 import connectService from "../../common/connectService";
 import Dialog from "../Dialog/Dialog";
@@ -119,9 +119,7 @@ class ProfileDialog extends React.Component {
                       disabled={this.state.loading}
                     >
                       <Tooltip title="Copy">
-                        <i className="material-icons">
-                          file_copy
-                        </i>
+                        <Icon>file_copy</Icon>
                       </Tooltip>
                     </IconButton>
                   ),

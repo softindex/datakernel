@@ -85,13 +85,13 @@ class RoomItem extends React.Component {
               >
                 <Avatar className={classes.avatarContent}>
                   {getAvatarLetters(getRoomName(room.participants, this.props.contacts,
-                    this.props.publicKey)).toUpperCase()}
+                    this.props.publicKey, this.props.myName)).toUpperCase()}
                   </Avatar>
               </Badge>
             </ListItemAvatar>
 
             <ListItemText
-              primary={getRoomName(room.participants, this.props.contacts, this.props.publicKey)}
+              primary={getRoomName(room.participants, this.props.contacts, this.props.publicKey, this.props.myName)}
               className={classes.itemText}
               classes={{primary: classes.itemTextPrimary}}
             />

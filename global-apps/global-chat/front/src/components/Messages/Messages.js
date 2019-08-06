@@ -55,9 +55,8 @@ class Messages extends React.Component {
                   key={index}
                   text={message.content}
                   author={
-                    message.authorPublicKey === publicKey
-                      ? 'Me'
-                      : this.getMessageAuthor(message.authorPublicKey)
+                    message.authorPublicKey === publicKey ? '' :
+                      this.getMessageAuthor(message.authorPublicKey)
                   }
                   time={new Date(message.timestamp).toLocaleString()}
                   loaded={message.loaded}
