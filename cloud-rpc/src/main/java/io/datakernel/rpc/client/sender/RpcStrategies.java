@@ -32,6 +32,7 @@ import static java.util.Arrays.asList;
  *     <li>Getting a single RPC-service</li>
  *     <li>Failover</li>
  *     <li>Load balancing</li>
+ *     <li>Rendezvous hashing</li>
  * </ul>
  */
 public final class RpcStrategies {

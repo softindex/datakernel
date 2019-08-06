@@ -44,7 +44,7 @@ public class RpcStrategiesTest {
 	private static final InetSocketAddress ADDRESS_5 = new InetSocketAddress(HOST, getFreePort());
 
 	@Test
-	public void testCombination1() {
+	public void roundRobinTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -72,7 +72,7 @@ public class RpcStrategiesTest {
 	}
 
 	@Test
-	public void testCombination2() {
+	public void roundRobinAndFirstValidTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -99,7 +99,7 @@ public class RpcStrategiesTest {
 	}
 
 	@Test
-	public void testCombination3() {
+	public void shardingAndFirstValidTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -123,16 +123,18 @@ public class RpcStrategiesTest {
 		sender.sendRequest(1, 50, assertNoCalls());
 		sender.sendRequest(1, 50, assertNoCalls());
 		sender.sendRequest(0, 50, assertNoCalls());
+		sender.sendRequest(0, 50, assertNoCalls());
+		sender.sendRequest(1, 50, assertNoCalls());
 
-		assertEquals(3, connection1.getRequests());
+		assertEquals(4, connection1.getRequests());
 		assertEquals(0, connection2.getRequests());
-		assertEquals(2, connection3.getRequests());
-		assertEquals(2, connection4.getRequests());
-		assertEquals(2, connection5.getRequests());
+		assertEquals(3, connection3.getRequests());
+		assertEquals(3, connection4.getRequests());
+		assertEquals(3, connection5.getRequests());
 	}
 
 	@Test
-	public void testCombination4() {
+	public void rendezvousHashingTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -172,7 +174,7 @@ public class RpcStrategiesTest {
 	}
 
 	@Test
-	public void testCombination5() {
+	public void typeDispatchTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();

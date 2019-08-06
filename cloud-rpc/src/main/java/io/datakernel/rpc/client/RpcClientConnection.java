@@ -27,6 +27,7 @@ import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.stream.StreamDataAcceptor;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -45,6 +46,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
 	private static final Logger logger = getLogger(RpcClientConnection.class);
+	private static final int BUCKET_CAPACITY = ApplicationSettings.getInt(int.class, "rpc.bucketCapacity", 16);
 
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
 	private boolean overloaded = false;
@@ -109,7 +111,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 			if (timeout != Integer.MAX_VALUE) {
 				ExpirationList list = expirationLists.computeIfAbsent(eventloop.currentTimeMillis() + timeout, t -> {
-					ExpirationList l = new ExpirationList(new int[16]);
+					ExpirationList l = new ExpirationList(new int[BUCKET_CAPACITY]);
 					eventloop.scheduleBackground(t, () -> {
 						expirationLists.remove(t);
 
