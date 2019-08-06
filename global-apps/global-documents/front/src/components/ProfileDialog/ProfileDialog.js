@@ -12,8 +12,9 @@ import Tooltip from "@material-ui/core/Tooltip";
 import IconButton from "@material-ui/core/IconButton";
 import ProfileContext from "../../modules/profile/ProfileContext";
 import {withSnackbar} from "notistack";
-import FileCopy from "@material-ui/icons/FileCopy"
 import Icon from "@material-ui/core/Icon";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import Grow from "@material-ui/core/Grow";
 
 class ProfileDialog extends React.Component {
   textField = React.createRef();
@@ -25,6 +26,13 @@ class ProfileDialog extends React.Component {
 
   copyToClipboard = () => {
     navigator.clipboard.writeText(this.textField.current.props.value);
+  };
+
+  onDoubleClick = event => {
+    event.preventDefault();
+    const input = document.getElementById('inputId');
+    input.focus();
+    input.setSelectionRange(0, this.textField.current.props.value.length);
   };
 
   onChangeName = event => {
@@ -61,62 +69,77 @@ class ProfileDialog extends React.Component {
         onClose={this.props.onClose}
         loading={this.state.loading}
       >
-        <form onSubmit={this.onSubmit}>
-          <DialogTitle onClose={this.props.onClose}>
-            My Profile
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              className={classes.textField}
-              defaultValue={this.state.name === null ? this.props.profile.name : this.state.name}
-              disabled={this.state.loading}
-              margin="normal"
-              label="Name"
-              type="text"
-              fullWidth
-              onChange={this.onChangeName}
-              variant="outlined"
-            />
-            <TextField
-              className={classes.textField}
-              value={this.props.publicKey}
-              label="Public Key"
-              autoFocus
-              disabled={true}
-              margin="normal"
-              fullWidth
-              ref={this.textField}
-              type="text"
-              variant="outlined"
-              InputProps={{
-                classes: {input: classes.input},
-                endAdornment: (
-                  <IconButton
-                    className={classes.iconButton}
-                    onClick={this.copyToClipboard}
-                    disabled={this.state.loading}
-                  >
-                    <Tooltip title="Copy">
-                      <Icon>file_copy</Icon>
-                    </Tooltip>
-                  </IconButton>
-                ),
-              }}
-            >
-            </TextField>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              className={this.props.classes.saveButton}
-              color="primary"
-              variant="contained"
-              type="submit"
-              disabled={this.state.loading}
-            >
-              Save
-            </Button>
-          </DialogActions>
-        </form>
+        {!this.props.profileReady && (
+          <>
+            <DialogTitle onClose={this.props.onClose}>
+              My Profile
+            </DialogTitle>
+            <Grow in={!this.props.ready}>
+              <div className={this.props.classes.progressWrapper}>
+                <CircularProgress/>
+              </div>
+            </Grow>
+          </>
+        )}
+        {this.props.profileReady && (
+          <form onSubmit={this.onSubmit}>
+            <DialogTitle onClose={this.props.onClose}>
+              My Profile
+            </DialogTitle>
+            <DialogContent>
+              <TextField
+                className={classes.textField}
+                defaultValue={this.state.name === null ? this.props.profile.name : this.state.name}
+                disabled={this.state.loading}
+                margin="normal"
+                label="Name"
+                type="text"
+                fullWidth
+                onChange={this.onChangeName}
+                variant="outlined"
+              />
+              <TextField
+                className={classes.textField}
+                value={this.props.publicKey}
+                label="Public Key"
+                autoFocus
+                margin="normal"
+                fullWidth
+                ref={this.textField}
+                inputProps={{onDoubleClick: this.onDoubleClick, id: 'inputId'}}
+                type="text"
+                variant="outlined"
+                InputProps={{
+                  readOnly: true,
+                  classes: {input: classes.input},
+                  endAdornment: (
+                    <IconButton
+                      className={classes.iconButton}
+                      onClick={this.copyToClipboard}
+                      disabled={this.state.loading}
+                    >
+                      <Tooltip title="Copy">
+                        <Icon>file_copy</Icon>
+                      </Tooltip>
+                    </IconButton>
+                  ),
+                }}
+              >
+              </TextField>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                className={this.props.classes.saveButton}
+                color="primary"
+                variant="contained"
+                type="submit"
+                disabled={this.state.loading}
+              >
+                Save
+              </Button>
+            </DialogActions>
+          </form>
+        )}
       </Dialog>
     )
   }
@@ -124,8 +147,8 @@ class ProfileDialog extends React.Component {
 
 export default connectService(
   ProfileContext,
-  ({profile}, profileService) => ({
-    profile,
+  ({profile, profileReady}, profileService) => ({
+    profile, profileReady,
     setProfileField(fieldName, value) {
       return profileService.setProfileField(fieldName, value);
     }

@@ -41,3 +41,22 @@ export function toEmoji(str, length) {
   }
   return emoji;
 }
+
+export function getAvatarLetters(name) {
+  const nameString = [...name];
+  if (name === '') {
+    return 'Me'
+  }
+  if (name.includes(" ")) {
+    if (nameString[0].length === 2) {
+      return nameString[0][0] + nameString[0][1] + nameString[name.indexOf(" ") - 2]
+    }
+    return nameString[0][0] + nameString[name.indexOf(" ") + 1]
+  } else {
+    return name.length > 1 ?
+      nameString[0].length === 2 ?
+        nameString[0][0] + nameString[0][1] :
+        nameString[0][0] + nameString[1] :
+      nameString[0][0];
+  }
+}

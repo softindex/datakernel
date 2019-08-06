@@ -7,7 +7,7 @@ import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
 
-function DocumentsList({classes, contacts, publicKey, addContact, ready, documents, documentsService, deleteDocument}) {
+function DocumentsList({classes, ready, documents, deleteDocument}) {
   function onDelete(documentId) {
     deleteDocument(documentId);
   }
@@ -28,18 +28,15 @@ function DocumentsList({classes, contacts, publicKey, addContact, ready, documen
       {ready && (
         <div className={classes.documentsList}>
           <List>
-            {[...documents].map(([documentId, document]) =>
-              (
+            {[...documents].sort((document1, document2) =>
+              document1[1].name.localeCompare(document2[1].name))
+              .map(([documentId, document]) => (
                 <DocumentItem
                   documentId={documentId}
                   document={document}
                   onClickLink={onClickLink}
                   deleteDocument={() => {onDelete(documentId)}}
-                  documentsService={documentsService}
                   showMenuIcon={true}
-                  contacts={contacts}
-                  publicKey={publicKey}
-                  addContact={addContact}
                 />
               )
             )}

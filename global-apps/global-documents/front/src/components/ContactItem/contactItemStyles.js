@@ -1,20 +1,24 @@
 const contactItemStyles = theme => ({
-  contactItem: {
-    width: `${theme.spacing.unit * 41}px`,
+  listItem: {
     borderRadius: 4,
-    paddingTop: 11,
-    paddingBottom: 11
+    '& > button' : {
+      display: 'none'
+    },
+    '&:hover > button': {
+      display: 'flex'
+    }
   },
   avatar: {
-    width: 48,
-    height: 48
+    width: theme.spacing.unit * 6,
+    height: theme.spacing.unit * 6,
+    float: 'left',
+    alignItems: 'center'
   },
   avatarContent: {
     fontSize: '1rem'
   },
   itemText: {
-    overflow: 'hidden',
-    minWidth: `${theme.spacing.unit * 25}px`
+    overflow: 'hidden'
   },
   itemTextPrimary: {
     textOverflow: 'ellipsis',

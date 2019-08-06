@@ -15,21 +15,9 @@ class Document extends React.Component {
     documentService: null
   };
 
-  onInsert = (position, content) => {
-    this.state.documentService.insert(position, content);
-  };
-
-  onDelete = (position, content) => {
-    this.state.documentService.delete(position, content);
-  };
-
-  onReplace = (position, oldContent, newContent) => {
-    this.state.documentService.replace(position, oldContent, newContent);
-  };
-
-  onRename = newName => {
-    this.state.documentService.rename(newName);
-  };
+  componentWillUnmount() {
+    this.state.documentService.stop();
+  }
 
   static getDerivedStateFromProps(props, state) {
     if (props.documentId !== state.documentId) {
@@ -53,9 +41,21 @@ class Document extends React.Component {
     return state;
   }
 
-  componentWillUnmount() {
-    this.state.documentService.stop();
-  }
+  onInsert = (position, content) => {
+    this.state.documentService.insert(position, content);
+  };
+
+  onDelete = (position, content) => {
+    this.state.documentService.delete(position, content);
+  };
+
+  onReplace = (position, oldContent, newContent) => {
+    this.state.documentService.replace(position, oldContent, newContent);
+  };
+
+  onRename = newName => {
+    this.state.documentService.rename(newName);
+  };
 
   update = newState => this.setState(newState);
 

@@ -11,7 +11,7 @@ class ContactsService extends Service {
   constructor(contactsOTStateManager) {
     super({
       contacts: new Map(),
-      ready: false,
+      contactsReady: false,
     });
     this._contactsOTStateManager = contactsOTStateManager;
     this._reconnectTimeout = null;
@@ -28,7 +28,6 @@ class ContactsService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       await this._contactsOTStateManager.checkout();
     } catch (err) {
@@ -37,7 +36,6 @@ class ContactsService extends Service {
       await this.init();
       return;
     }
-
 
     this._onStateChange();
 
@@ -72,7 +70,7 @@ class ContactsService extends Service {
   _onStateChange = () => {
     this.setState({
       contacts: this._getContactsFromStateManager(),
-      ready: true
+      contactsReady: true
     });
   };
 

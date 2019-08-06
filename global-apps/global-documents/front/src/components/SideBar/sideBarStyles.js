@@ -59,6 +59,31 @@ const sideBarStyles = theme => {
     secondaryText: {
       textAlign: 'center',
       marginTop: theme.spacing.unit
+    },
+    paperDivider: {
+      background: theme.palette.primary.background,
+      padding: theme.spacing.unit * 2,
+      marginTop: theme.spacing.unit,
+      marginBottom: theme.spacing.unit,
+      boxShadow: 'none'
+    },
+    paperError: {
+      background: theme.palette.secondary.main,
+      padding: theme.spacing.unit * 2,
+      margin: theme.spacing.unit,
+      borderRadius: theme.spacing.unit,
+      boxShadow: 'none'
+    },
+    dividerText: {
+      fontSize: '0.9rem'
+    },
+    progressWrapper: {
+      marginLeft: theme.spacing.unit * 18,
+      marginTop: theme.spacing.unit * 2
+    },
+    secondaryDividerText: {
+      textAlign: 'center',
+      marginTop: theme.spacing.unit * 2
     }
   }
 };

@@ -5,9 +5,7 @@ import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import Typography from '@material-ui/core/Typography';
 import Paper from "@material-ui/core/Paper";
-import Button from "@material-ui/core/Button";
-import AddContactForm from "../AddContactDialog/AddContactDialog";
-import DocumentForm from "../CreateDocumentDialog/CreateDocumentDialog"
+import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import DocumentsList from "../DocumentsList/DocumentsList";
 import ContactsList from "../ContactsList/ContactsList";
 import connectService from "../../common/connectService";
@@ -16,6 +14,11 @@ import IconButton from "@material-ui/core/IconButton";
 import SearchIcon from "@material-ui/icons/Search";
 import InputBase from "@material-ui/core/InputBase";
 import DocumentsContext from "../../modules/documents/DocumentsContext";
+import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
+import ContactItem from "../ContactItem/ContactItem";
+import List from "@material-ui/core/List";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import Grow from "@material-ui/core/Grow";
 
 const DOCUMENTS_TAB = 'documents';
 const CONTACTS_TAB = 'contacts';
@@ -26,64 +29,73 @@ class SideBar extends React.Component {
     this.state = {
       tabId: DOCUMENTS_TAB,
       showAddDialog: false,
-      contactsList: props.contacts,
-      documentsList: props.documents,
-      beforeInitState: false
+      search: ''
     }
   };
 
   onChangeTab = (event, nextTabId) => {
-    this.setState({tabId: nextTabId})
-  };
-
-  onSearchChangeContacts = (event) => {
-    if (event.target.value === '') {
-      this.setState({
-        contactsList: this.props.contacts,
-        documentsList: this.props.documents
-      });
-    } else {
-      this.setState({
-        contactsList: new Map([...this.props.contacts]
-          .filter(([pubKey, {name}]) => name
-            .toLowerCase()
-            .includes(event.target.value.toLowerCase()))),
-        beforeInitState: true
-      });
-    }
-  };
-
-  onSearchChangeDocuments = (event) => {
-    if (event.target.value === '') {
-      this.setState({
-        contactsList: this.props.contacts,
-        documentsList: this.props.documents
-      })
-    } else {
-      this.setState({
-        documentsList: new Map([...this.props.documents]
-          .filter(([documentId, {name}]) => name
-            .toLowerCase()
-            .includes(event.target.value.toLowerCase()))),
-        beforeInitState: true
-      });
-    }
-  };
-
-  showAddDialog = () => {
     this.setState({
-      showAddDialog: true
+      tabId: nextTabId,
+      search: ''
+    })
+  };
+
+  onSearchChange = event => {
+    this.setState({
+      search: event.target.value
+    }, () => {
+      if (this.state.search !== '' && this.state.tabId === CONTACTS_TAB) {
+        this.props.search(this.state.search)
+      }
     });
   };
 
+  checkSearch() {
+    if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(this.state.search)) {
+      if (this.state.tabId !== DOCUMENTS_TAB) {
+        this.setState({
+          showAddDialog: true
+        });
+      }
+    }
+  }
+
+  getFilteredContacts() {
+    if (this.state.search === '') {
+      return this.props.contacts;
+    } else {
+      return new Map([...this.props.contacts]
+        .filter(([, {name}]) => name
+          .toLowerCase()
+          .includes(this.state.search.toLowerCase())))
+    }
+  }
+
+  getFilteredDocuments() {
+    if (this.state.search === '') {
+      return this.props.documents
+    } else {
+      return new Map([...this.props.documents]
+        .filter(([, {name}]) => name
+          .toLowerCase()
+          .includes(this.state.search.toLowerCase())))
+    }
+  }
+
   closeAddDialog = () => {
     this.setState({
+      search: '',
       showAddDialog: false
     });
   };
 
   render() {
     const {classes} = this.props;
+
+    if (!this.state.showAddDialog) {
+      this.checkSearch();
+    }
+
     return (
       <div className={classes.wrapper}>
         <Paper className={classes.search}>
@@ -95,10 +107,10 @@ class SideBar extends React.Component {
           </IconButton>
           <InputBase
             className={classes.inputDiv}
-            placeholder={this.state.tabId === DOCUMENTS_TAB? "Documents..." : "People, public keys..."}
+            placeholder={this.state.tabId === DOCUMENTS_TAB ? "Documents..." : "People, public keys..."}
             autoFocus
             value={this.state.search}
-            onChange={this.onSearchChangeDocuments}
+            onChange={this.onSearchChange}
             classes={{input: classes.input}}
           />
         </Paper>
@@ -116,95 +128,137 @@ class SideBar extends React.Component {
         </Paper>
 
         {this.state.tabId === DOCUMENTS_TAB && (
-          <div className={classes.tabContent}>
-            <DocumentForm
-              open={this.state.showAddDialog}
-              onClose={this.closeAddDialog}
+          <div className={classes.documentsList}>
+            <DocumentsList
+              documents={this.getFilteredDocuments()}
+              ready={this.props.documentsReady}
+              quitDocument={this.props.deleteDocument}
+              renameDocument={this.props.renameDocument}
             />
-            <div className={classes.documentsList}>
-              <DocumentsList
-                documents={this.state.documentsList.size === 0 && !this.state.beforeInitState ?
-                  this.props.documents : this.state.documentsList}
-                contacts={this.props.contacts}
-                documentsService={this.props.documentsService}
-                ready={this.props.ready}
-                addContact={this.props.addContact}
-                createDialog={this.props.createDialog}
-                quitDocument={this.props.deleteDocument}
-                renameDocument={this.props.renameDocument}
-                publicKey={this.props.publicKey}
-              />
-            </div>
-            {/*{this.state.documentsList.size === 0 && this.state.search !== '' && (*/}
-            {/*  <Typography*/}
-            {/*    className={classes.secondaryText}*/}
-            {/*    color="textSecondary"*/}
-            {/*    variant="body1"*/}
-            {/*  >*/}
-            {/*    Nothing found*/}
-            {/*  </Typography>*/}
-            {/*)}*/}
+            {this.getFilteredDocuments().size === 0 && this.state.search !== '' && (
+              <Typography
+                className={classes.secondaryText}
+                color="textSecondary"
+                variant="body1"
+              >
+                Nothing found
+              </Typography>
+            )}
           </div>
         )}
         {this.state.tabId === CONTACTS_TAB && (
-          <div className={classes.tabContent}>
-            <AddContactForm
+          <>
+            <AddContactDialog
               open={this.state.showAddDialog}
               onClose={this.closeAddDialog}
               publicKey={this.props.publicKey}
+              contactPublicKey={this.state.search}
               addContact={this.props.addContact}
             />
-            {/*<Button*/}
-            {/*  className={classes.button}*/}
-            {/*  fullWidth={true}*/}
-            {/*  variant="contained"*/}
-            {/*  size="medium"*/}
-            {/*  color="primary"*/}
-            {/*  onClick={this.showAddDialog}*/}
-            {/*>*/}
-            {/*  Add Contact*/}
-            {/*</Button>*/}
             <div className={classes.documentsList}>
               <ContactsList
-                contacts={this.state.contactsList.size === 0 && !this.state.beforeInitState ?
-                  this.props.contacts : this.state.contactsList}
+                contacts={this.getFilteredContacts()}
                 documents={this.props.documents}
                 addContact={this.props.addContact}
                 removeContact={this.props.removeContact}
                 contactsService={this.props.contactsService}
-                ready={this.props.ready}
+                ready={this.props.contactsReady}
               />
+              {this.state.search !== '' && (
+                <>
+                  <Paper square className={classes.paperDivider}>
+                    <Typography className={classes.dividerText}>
+                      People
+                    </Typography>
+                  </Paper>
+                  {!this.props.searchReady && this.props.error === '' && (
+                    <Grow in={!this.props.searchReady}>
+                      <div className={this.props.classes.progressWrapper}>
+                        <CircularProgress/>
+                      </div>
+                    </Grow>
+                  )}
+                  {this.props.error !== '' && (
+                    <Paper square className={classes.paperError}>
+                      <Typography className={classes.dividerText}>
+                        {this.props.error}
+                      </Typography>
+                    </Paper>
+                  )}
+                  {this.props.searchReady && (
+                    <>
+                      {this.props.searchContacts.size !== 0 && (
+                        <List>
+                          {[...this.props.searchContacts].map(([publicKey, contact]) => (
+                            <>
+                              {!this.props.contacts.has(publicKey) && (
+                                <ContactItem
+                                  contactId={publicKey}
+                                  contact={contact}
+                                  name={contact.firstName !== '' && contact.lastName !== '' ?
+                                    contact.firstName + ' ' + contact.lastName : contact.username
+                                  }
+                                  publicKey={this.props.publicKey}
+                                  onAddContact={this.props.addContact}
+                                />
+                              )
+                              }
+                            </>
+                          ))}
+                        </List>
+                      )}
+                      {this.props.searchContacts.size === 0 && (
+                        <Typography
+                          className={classes.secondaryDividerText}
+                          color="textSecondary"
+                          variant="body1"
+                        >
+                          Nothing found
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
             </div>
-          </div>
+          </>
         )}
       </div>
     );
   }
 }
 
-export default connectService(
-  ContactsContext, ({ready, contacts}, contactsService) => ({
-    ready, contacts, contactsService,
-    addContact(pubKey, name) {
-      return contactsService.addContact(pubKey, name);
-    },
-    removeContact(pubKey, name) {
-      return contactsService.removeContact(pubKey, name);
-    }
-  })
-)(
+export default withStyles(sideBarStyles)(
   connectService(
-    DocumentsContext, ({ready, documents}, documentsService) => ({
-      documentsService, ready, documents,
-      quitDocument(documentId) {
-        return documentsService.deleteDocument(documentId);
+    ContactsContext, ({contactsReady, contacts}, contactsService) => ({
+      contactsReady, contacts, contactsService,
+      addContact(pubKey, name) {
+        return contactsService.addContact(pubKey, name);
       },
-      renameDocument(documentId, newName) {
-        return documentsService.renameDocument(documentId, newName);
+      removeContact(pubKey, name) {
+        return contactsService.removeContact(pubKey, name);
       }
-
     })
   )(
-    withStyles(sideBarStyles)(SideBar)
+    connectService(
+      DocumentsContext, ({documentsReady, documents}, documentsService) => ({
+        documentsService, documentsReady, documents,
+        quitDocument(documentId) {
+          return documentsService.deleteDocument(documentId);
+        },
+        renameDocument(documentId, newName) {
+          return documentsService.renameDocument(documentId, newName);
+        }
+      })
+    )(
+      connectService(
+        SearchContactsContext, ({searchContacts, searchReady, error}, searchContactsService) => ({
+          searchContacts, searchReady, error, searchContactsService,
+          search(searchField) {
+            return searchContactsService.search(searchField);
+          }
+        })
+      )(SideBar)
+    )
   )
 );

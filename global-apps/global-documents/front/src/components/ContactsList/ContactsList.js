@@ -1,7 +1,7 @@
 import React from "react";
 import path from "path";
 import {withStyles} from '@material-ui/core';
-import Contact from "../ContactItem/ContactItem";
+import ContactItem from "../ContactItem/ContactItem";
 import contactsListStyles from "./contactsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
@@ -43,9 +43,8 @@ class ContactsList extends React.Component {
           </Grow>
         )}
         {ready && (
-          <div className={classes.contactList}>
-            <List>
-              {this.sortContacts([...contacts]).map(([pubKey, {name}]) => {
+          <List>
+            {this.sortContacts([...contacts]).map(([pubKey, {name}]) => {
                 let documentId = '';
 
                 for (const [documentPublicKey, {participants}] of documents) {
@@ -55,19 +54,18 @@ class ContactsList extends React.Component {
                 }
 
                 return (
-                    <Link key={pubKey} to={this.getDocumentPath(documentId)} className={classes.link}>
-                      <Contact
-                        name={name}
-                        showDeleteButton={true}
-                        dialogFormContext={true}
-                        onRemoveContact={this.onRemoveContact.bind(this, pubKey, name)}
-                        documentId={documentId}
-                      />
-                    </Link>
-                )}
-              )}
-            </List>
-          </div>
+                  <Link key={pubKey} to={this.getDocumentPath(documentId)} className={classes.link}>
+                    <ContactItem
+                      name={name}
+                      showDeleteButton={true}
+                      onRemoveContact={this.onRemoveContact.bind(this, pubKey, name)}
+                      documentId={documentId}
+                    />
+                  </Link>
+                )
+              }
+            )}
+          </List>
         )}
       </>
     );

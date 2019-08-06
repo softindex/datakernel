@@ -22,17 +22,13 @@ import Paper from "@material-ui/core/Paper";
 import {withRouter} from "react-router-dom";
 
 class CreateDocumentDialog extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      participants: new Set(),
-      name: '',
-      contactsList: [...props.contacts],
-      loading: false,
-      activeStep: 0,
-      beforeInitState: false
-    };
-  }
+  state = {
+    participants: new Set(),
+    name: '',
+    search: '',
+    loading: false,
+    activeStep: 0
+  };
 
   onNameChange = event => {
     this.setState({
@@ -40,32 +36,33 @@ class CreateDocumentDialog extends React.Component {
     });
   };
 
-  gotoStep = (nextStep) => {
+  gotoStep = nextStep => {
     this.setState({
       activeStep: nextStep
     });
   };
 
-  sortContacts = (contactsList) => {
+  onSearchChange = event => {
+    this.setState({
+      search: event.target.value
+    });
+  };
+
+  sortContacts = contactsList => {
     return [...contactsList]
       .sort((array1, array2) => array1[1].name.localeCompare(array2[1].name));
   };
 
-  onSearchChange = event => {
-    if (event.target.value === '') {
-      this.setState({
-        contactsList: [...this.props.contacts]
-      })
+  getFilteredContacts() {
+    if (this.state.search === '') {
+      return [...this.props.contacts];
     } else {
-      this.setState({
-        contactsList: [...this.props.contacts]
-          .filter(([pubKey, {name}]) => name
-            .toLowerCase()
-            .includes(event.target.value.toLowerCase())),
-        beforeInitState: true
-      })
+      return [...this.props.contacts]
+        .filter(([, {name}]) => name
+          .toLowerCase()
+          .includes(this.state.search.toLowerCase()))
     }
-  };
+  }
 
   onCheckContact(pubKey) {
     let participants = this.state.participants;
@@ -185,24 +182,15 @@ class CreateDocumentDialog extends React.Component {
                   />
                 </Paper>
                 <List>
-                  {this.state.contactsList.length === 0 && !this.state.beforeInitState ?
-                    this.sortContacts([...this.props.contacts]).map(([pubKey, {name}]) =>
-                      <Contact
-                        key={pubKey}
-                        pubKey={pubKey}
-                        name={name}
-                        selected={this.state.participants.has(pubKey)}
-                        onClick={!this.state.loading && this.onCheckContact.bind(this, pubKey)}
-                      />
-                    ) : this.sortContacts(this.state.contactsList).map(([pubKey, {name}]) =>
-                      <Contact
-                        key={pubKey}
-                        pubKey={pubKey}
-                        name={name}
-                        selected={this.state.participants.has(pubKey)}
-                        onClick={!this.state.loading && this.onCheckContact.bind(this, pubKey)}
-                      />
-                    )}
+                  {this.sortContacts(this.getFilteredContacts()).map(([pubKey, {name}]) =>
+                    <Contact
+                      key={pubKey}
+                      pubKey={pubKey}
+                      name={name}
+                      selected={this.state.participants.has(pubKey)}
+                      onClick={!this.state.loading && this.onCheckContact.bind(this, pubKey)}
+                    />
+                  )}
                 </List>
               </>
             )}
@@ -247,8 +235,8 @@ class CreateDocumentDialog extends React.Component {
 export default withRouter(
   connectService(
     ContactsContext,
-    ({ready, contacts}, contactsService) => ({
-      contactsService, ready, contacts
+    ({contactsReady, contacts}, contactsService) => ({
+      contactsService, contactsReady, contacts
     })
   )(
     connectService(

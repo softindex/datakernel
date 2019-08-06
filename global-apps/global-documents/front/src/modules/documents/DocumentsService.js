@@ -13,7 +13,7 @@ class DocumentsService extends Service {
   constructor(documentsOTStateManager, contactsService, pubicKey) {
     super({
       documents: new Map(),
-      ready: false,
+      documentsReady: false,
       newDocuments: new Set()
     });
     this._documentsOTStateManager = documentsOTStateManager;
@@ -33,7 +33,6 @@ class DocumentsService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       await this._documentsOTStateManager.checkout();
     } catch (err) {
@@ -96,7 +95,7 @@ class DocumentsService extends Service {
   _onStateChange = () => {
     this.setState({
       documents: this._getDocuments(),
-      ready: true
+      documentsReady: true
     });
   };
 
