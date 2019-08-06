@@ -4,7 +4,7 @@ import {withStyles} from '@material-ui/core';
 import List from '@material-ui/core/List';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Grow from '@material-ui/core/Grow';
-import NoteItem from './NoteItem/NoteItem';
+import NoteItem from '../NoteItem/NoteItem';
 import notesListStyles from './notesListStyles';
 
 function NotesList({classes, ready, notes, onRename, onDelete}) {
@@ -23,8 +23,7 @@ function NotesList({classes, ready, notes, onRename, onDelete}) {
       )}
       {ready && (
         <List>
-          {Object.entries(notes)
-            .sort((array1, array2) => array1[1].localeCompare(array2[1]))
+          {notes.sort((array1, array2) => array1[1].localeCompare(array2[1]))
             .map(([noteId, noteName],) =>
             (
               <NoteItem

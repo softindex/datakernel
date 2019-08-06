@@ -4,10 +4,10 @@ import {withStyles} from '@material-ui/core';
 import List from '@material-ui/core/List';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Grow from '@material-ui/core/Grow';
-import NoteItem from './DebugNoteItem/DebugNoteItem';
+import NoteItem from '../DebugNoteItem/DebugNoteItem';
 import notesListStyles from './notesListStyles';
-import connectService from '../../../common/connectService';
-import NotesContext from '../../../modules/notes/NotesContext';
+import connectService from '../../common/connectService';
+import NotesContext from '../../modules/notes/NotesContext';
 
 function DebugNotesList({classes, ready, notes}) {
   const getNotePath = noteId => {

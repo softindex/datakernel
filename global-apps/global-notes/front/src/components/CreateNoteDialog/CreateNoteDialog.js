@@ -7,9 +7,9 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import noteDialogsStyles from './noteDialogsStyles';
-import Dialog from '../../common/Dialog/Dialog'
-import connectService from '../../../common/connectService';
-import NotesContext from '../../../modules/notes/NotesContext';
+import Dialog from '../Dialog/Dialog'
+import connectService from '../../common/connectService';
+import NotesContext from '../../modules/notes/NotesContext';
 import {withRouter} from "react-router-dom";
 
 class CreateNoteDialog extends React.Component {

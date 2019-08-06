@@ -4,8 +4,8 @@
 # Builds the docker image and then runs it, stopping any already running instances beforehand
 #
 
-IMAGE_NAME=global-editor
-CONTAINER_NAME=global-editor
+IMAGE_NAME=global-notes
+CONTAINER_NAME=global-notes
 
 # Go to main project folder from anywhere
 cd $(dirname "$(readlink $(test $(uname -s) = 'Linux' && echo "-f") "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")/..

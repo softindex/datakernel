@@ -8,7 +8,7 @@ import Button from '@material-ui/core/Button';
 import connectService from '../../common/connectService';
 import AccountContext from '../../modules/account/AccountContext';
 import signUpStyles from './signUpStyles';
-import SignUpAbstractionImage from './SignUpAbstractionImage/SignUpAbstractionImage';
+import SignUpAbstractionImage from '../SignUpAbstractionImage/SignUpAbstractionImage';
 
 class SignUp extends React.Component {
   state = {

@@ -1,13 +1,13 @@
 import React, {useEffect} from 'react';
 import {withSnackbar} from 'notistack';
 import Grid from '@material-ui/core/Grid';
-import DebugNotesList from './DebugNotesList/DebugNotesList';
+import DebugNotesList from '../DebugNotesList/DebugNotesList';
 import NotesContext from '../../modules/notes/NotesContext';
 import NotesService from '../../modules/notes/NotesService';
 import connectService from '../../common/connectService';
 import AccountContext from '../../modules/account/AccountContext';
 import checkAuth from '../../common/checkAuth';
-import CommitsGraph from './CommitsGraph/CommitsGraph';
+import CommitsGraph from '../CommitsGraph/CommitsGraph';
 
 function DebugScreen(props) {
   const notesService = NotesService.create();

@@ -1,7 +1,13 @@
 const notesListStyles = theme => ({
   notesList: {
     height: '100vh',
-    overflow: 'auto'
+    overflow: 'auto',
+    '&::-webkit-scrollbar-track': {
+      background: 'border-box'
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: theme.palette.secondary.grey
+    }
   },
   progressWrapper: {
     marginLeft: theme.spacing.unit * 19,

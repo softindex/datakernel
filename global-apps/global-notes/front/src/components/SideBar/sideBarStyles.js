@@ -28,8 +28,35 @@ const sideBarStyles = theme => ({
     width: theme.spacing.unit * 41,
     margin: 'auto',
     borderRadius: theme.spacing.unit * 9,
-    marginBottom: theme.spacing.unit,
-    marginTop: theme.spacing.unit * 11
+    marginTop: theme.spacing.unit * 2
+  },
+  search: {
+    padding: `${theme.spacing.unit}px 0px`,
+    boxShadow: 'none',
+    background: theme.palette.secondary.lightBlue,
+    display: 'flex',
+    alignItems: 'center',
+    border: 'none',
+    flexGrow: 0,
+    paddingBottom: theme.spacing.unit,
+    marginTop: theme.spacing.unit * 8
+  },
+  inputDiv: {
+    marginLeft: theme.spacing.unit,
+    marginRight: theme.spacing.unit * 3,
+    flex: 1
+  },
+  input: {
+    textOverflow: 'ellipsis',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap'
+  },
+  iconButton: {
+    padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`
+  },
+  secondaryText: {
+    textAlign: 'center',
+    marginTop: theme.spacing.unit
   }
 });
 

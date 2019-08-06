@@ -1,7 +1,7 @@
 import React from 'react';
 import Viz from 'viz.js';
 import {Module, render} from 'viz.js/lite.render.js';
-import GraphModel from '../../../modules/GraphModel';
+import GraphModel from '../../modules/GraphModel';
 import commitsGraphStyles from './commitsGraphStyles';
 import {withStyles} from '@material-ui/core';
 

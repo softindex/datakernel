@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
 import {getDifference} from './utils';
-import connectService from '../../../common/connectService';
-import NoteContext from '../../../modules/note/NoteContext';
+import connectService from '../../common/connectService';
+import NoteContext from '../../modules/note/NoteContext';
 import nodeEditorStyles from "./nodeEditorStyles";
 import withStyles from "@material-ui/core/es/styles/withStyles";
 
@@ -9,7 +9,7 @@ function NoteEditor(props) {
   let textInput = React.createRef();
 
   useEffect(() => {
-    textInput.scrollTop = textInput.scrollHeight;
+    textInput.blur();
     textInput.focus();
   }, [textInput]);
 

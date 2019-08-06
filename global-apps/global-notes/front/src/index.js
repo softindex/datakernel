@@ -7,7 +7,7 @@ import CssBaseline from '@material-ui/core/CssBaseline';
 import App from './components/App';
 import * as serviceWorker from './serviceWorker';
 import AccountService from './modules/account/AccountService';
-import theme from './components/themeConfig';
+import theme from './components/themeConfig/themeConfig';
 import AccountContext from './modules/account/AccountContext';
 
 const accountService = new AccountService(process.env.REACT_APP_GLOBAL_OAUTH_LINK, cookies);

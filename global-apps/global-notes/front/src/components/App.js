@@ -2,7 +2,7 @@ import React from 'react';
 import {BrowserRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from './MainScreen/MainScreen';
 import SignUp from './SignUp/SignUp';
-import AccountCallback from './SignUp/OAuthCallback';
+import AccountCallback from './OAuthCallback/OAuthCallback';
 import DebugScreen from './DebugScreen/DebugScreen';
 
 function App() {

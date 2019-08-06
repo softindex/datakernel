@@ -1,4 +1,9 @@
 const noteItemStyles = theme => ({
+  listItem: {
+    borderRadius: 4,
+    paddingTop: theme.spacing.unit * 0.5,
+    paddingBottom: theme.spacing.unit * 0.5
+  },
   avatar: {
     width: theme.spacing.unit * 6,
     height: theme.spacing.unit * 6,

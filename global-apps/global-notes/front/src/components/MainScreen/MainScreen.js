@@ -1,14 +1,14 @@
 import React, {useEffect} from 'react';
 import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
-import Header from './Header/Header';
-import SideBar from './SideBar/SideBar';
+import Header from '../Header/Header';
+import SideBar from '../SideBar/SideBar';
 import mainScreenStyles from './mainScreenStyles';
 import checkAuth from '../../common/checkAuth';
 import NotesContext from '../../modules/notes/NotesContext';
 import NotesService from '../../modules/notes/NotesService';
-import EmptyNote from './EmptyNote/EmptyNote';
-import Note from './Note/Note';
+import EmptyNote from '../EmptyNote/EmptyNote';
+import Note from '../Note/Note';
 
 function MainScreen(props) {
   const notesService = NotesService.create();

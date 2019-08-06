@@ -4,7 +4,7 @@ import {withStyles} from '@material-ui/core';
 import ListItemText from '@material-ui/core/ListItemText';
 import ListItem from '@material-ui/core/ListItem';
 import noteItemStyles from './noteItemStyles';
-import NoteMenu from '../../NoteMenu/NoteMenu';
+import NoteMenu from '../NoteMenu/NoteMenu';
 
 function NoteItem({classes, noteId, noteName, getNotePath, onRename, onDelete, ...otherProps}) {
   return (

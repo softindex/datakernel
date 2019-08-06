@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import NoteService from '../../../modules/note/NoteService';
-import NoteContext from '../../../modules/note/NoteContext';
+import NoteService from '../../modules/note/NoteService';
+import NoteContext from '../../modules/note/NoteContext';
 import NoteEditor from '../NoteEditor/NoteEditor';
 import {withSnackbar} from "notistack";
 

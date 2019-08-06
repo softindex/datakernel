@@ -6,9 +6,9 @@ import Typography from '@material-ui/core/Typography';
 import ArrowIcon from '@material-ui/icons/KeyboardArrowRight';
 import Icon from '@material-ui/core/Icon';
 import headerStyles from './headerStyles';
-import connectService from '../../../common/connectService';
-import AccountContext from '../../../modules/account/AccountContext';
-import NotesContext from '../../../modules/notes/NotesContext';
+import connectService from '../../common/connectService';
+import AccountContext from '../../modules/account/AccountContext';
+import NotesContext from '../../modules/notes/NotesContext';
 
 function Header({classes, notes, noteId, logout}) {
   const note = notes[noteId];
