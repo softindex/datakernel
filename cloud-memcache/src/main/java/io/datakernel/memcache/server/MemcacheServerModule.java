@@ -3,10 +3,13 @@ package io.datakernel.memcache.server;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
-import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.memcache.protocol.SerializerGenByteBuf;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.time.Duration;
 
@@ -17,6 +20,10 @@ import static io.datakernel.rpc.server.RpcServer.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.util.MemSize.kilobytes;
 
 public class MemcacheServerModule extends AbstractModule {
+	public static MemcacheServerModule create() {
+		return new MemcacheServerModule();
+	}
+
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
@@ -30,6 +37,7 @@ public class MemcacheServerModule extends AbstractModule {
 	}
 
 	@Provides
+	@Export
 	RpcServer server(Eventloop eventloop, Config config, RingBuffer storage) {
 		return RpcServer.create(eventloop)
 				.withHandler(GetRequest.class, GetResponse.class,
@@ -41,6 +49,8 @@ public class MemcacheServerModule extends AbstractModule {
 							buf.recycle();
 							return Promise.of(PutResponse.INSTANCE);
 						})
+				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
+						.withSerializer(ByteBuf.class, new SerializerGenByteBuf(false)))
 				.withMessageTypes(MESSAGE_TYPES)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
