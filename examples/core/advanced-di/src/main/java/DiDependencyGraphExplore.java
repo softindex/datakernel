@@ -153,6 +153,7 @@ public class DiDependencyGraphExplore {
 
 
 		/// peekInstance, hasInstance and getInstance instance.
+		//[START REGION_1]
 		Cookie cookie1 = injector.peekInstance(Cookie.class);
 		System.out.println("Instance is present in injector before 'get' : " + injector.hasInstance(Cookie.class));
 		System.out.println("Instance before get : " + cookie1);
@@ -164,31 +165,38 @@ public class DiDependencyGraphExplore {
 		System.out.println("Instance after get : " + cookie2);
 		System.out.println();	/// created instance check.
 		System.out.println("Instances are same : " + cookie.equals(cookie2));
+		//[END REGION_1]
 		System.out.println();
 		System.out.println("============================ ");
 		System.out.println();
 
 
 		/// parent injectors
+		//[START REGION_2]
 		final Scope ORDER_SCOPE = Scope.of(OrderScope.class);
 
-		System.out.println("Parent injector, before entering scope : " + injector.getParent());
+		System.out.println("Parent injector, before entering scope : " + injector);
 
 		Injector subinjector = injector.enterScope(ORDER_SCOPE);
 		System.out.println("Parent injector, after entering scope : " + subinjector.getParent());
 		System.out.println("Parent injector is 'injector' : " + injector.equals(subinjector.getParent()));
+		//[END REGION_2]
 		System.out.println();
 		System.out.println("============================ ");
 		System.out.println();
 
 		/// bindings check
 		// FYI: getBinding().toString() gives us a dependencies of current binding.
+		//[START REGION_3]
 		System.out.println("Butter binding check : " + subinjector.getBinding(Pastry.class));
+		//[END REGION_3]
 		System.out.println();
 		System.out.println("============================ ");
 		System.out.println();
 
 		// graphviz visualization.
+		//[START REGION_4]
 		Utils.printGraphVizGraph(subinjector.getBindingsTrie());
+		//[END REGION_4]
 	}
 }

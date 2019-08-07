@@ -9,6 +9,7 @@ import io.datakernel.launcher.OnRun;
 
 import java.util.concurrent.CompletionStage;
 
+//[START EXAMPLE]
 public class ModuleRebindExample extends Launcher {
 
 	@Inject Config config;
@@ -19,14 +20,12 @@ public class ModuleRebindExample extends Launcher {
 				.with("counter", "10")
 				.with("message", "Launcher is working");
 	}
-
 	@Override
 	protected Module getModule() {
 		return ConfigModule.create()
 				.printEffectiveConfig()
 				.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnRun.class) {});
 	}
-
 	@Override
 	protected void run() {
 		int counter = Integer.parseInt(config.get("counter"));
@@ -34,9 +33,9 @@ public class ModuleRebindExample extends Launcher {
 			System.out.println(config.get("message"));
 		}
 	}
-
 	public static void main(String[] args) throws Exception {
 		ModuleRebindExample example = new ModuleRebindExample();
 		example.launch(args);
 	}
+	//[END EXAMPLE]
 }

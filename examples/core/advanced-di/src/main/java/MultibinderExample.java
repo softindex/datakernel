@@ -18,7 +18,7 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 
 public final class MultibinderExample {
-
+//[START REGION_1]
 	static class AnnotatedServletsProvider extends AbstractModule {
 
 		@ProvidesIntoSet
@@ -49,7 +49,9 @@ public final class MultibinderExample {
 			return routingServlet;
 		}
 	}
+	//[END REGION_1]
 
+	//[START REGION_2]
 	static class DirectServletProvider extends AbstractModule {
 
 		@Override
@@ -83,7 +85,9 @@ public final class MultibinderExample {
 			return RoutingServlet.create().initialize(Initializer.combine(initializers));
 		}
 	}
+	//[END REGION_2]
 
+	//[START REGION_3]
 	static class ServletMapProvider extends AbstractModule {
 
 		@Override
@@ -110,7 +114,9 @@ public final class MultibinderExample {
 			return routingServlet;
 		}
 	}
+	//[END REGION_3]
 
+	//[START REGION_4]
 	public static void main(String[] args) {
 		AnnotatedServletsProvider annotatedServletsProvider = new AnnotatedServletsProvider();
 		DirectServletProvider directServletProvider = new DirectServletProvider();
@@ -120,4 +126,5 @@ public final class MultibinderExample {
 		String s = injector.getInstance(new Key<Set<AsyncServlet>>() {}).toString();
 		System.out.println(s);
 	}
+	//[END REGION_4]
 }

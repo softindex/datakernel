@@ -103,6 +103,7 @@ public class BindingGeneratorExample {
 	}
 
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+	//[START REGION_1]
 	static class Cookie<T> {
 		private final Optional<T> pastry;
 
@@ -115,8 +116,10 @@ public class BindingGeneratorExample {
 			return pastry;
 		}
 	}
+	//[END REGION_1]
 
 	public static void main(String[] args) {
+		//[START REGION_2]
 		AbstractModule cookbook = new AbstractModule() {
 			@Override
 			protected void configure() {
@@ -130,6 +133,7 @@ public class BindingGeneratorExample {
 
 				bind(new Key<Cookie<Pastry>>() {});
 			}
+			//[END REGION_2]
 
 			@Provides
 			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
@@ -152,8 +156,10 @@ public class BindingGeneratorExample {
 //			}
 		};
 
+		//[START REGION_3]
 		Injector injector = Injector.of(cookbook);
 		System.out.println(injector.getInstance(new Key<Cookie<Pastry>>() {}).getPastry().get().getButter().getName());
+		//[END REGION_3]
 	}
 
 }

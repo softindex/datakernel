@@ -10,6 +10,7 @@ public class InstanceFactoryExample {
 
 	public static void main(String[] args) {
 		Random random = new Random(System.currentTimeMillis());
+		//[START REGION_1]
 		AbstractModule cookbook = new AbstractModule() {
 			@Override
 			protected void configure() {
@@ -21,11 +22,14 @@ public class InstanceFactoryExample {
 				return random.nextInt(1000);
 			}
 		};
+		//[END REGION_1]
 
+		//[START REGION_2]
 		Injector injector = Injector.of(cookbook);
 		InstanceFactory<Integer> factory = injector.getInstance(new Key<InstanceFactory<Integer>>() {});
 		Integer someInt = factory.create();
 		Integer otherInt = factory.create();
 		System.out.println("First : " + someInt + ", second one : " + otherInt);
+		//[END REGION_2]
 	}
 }

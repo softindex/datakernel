@@ -4,6 +4,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
+//[START EXAMPLE]
 public class ModulesExportExample {
 	static AbstractModule module = new AbstractModule() {
 		@Override
@@ -27,3 +28,4 @@ public class ModulesExportExample {
 		System.out.println("String is null : " + (s == null));
 	}
 }
+//[END EXAMPLE]
