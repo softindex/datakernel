@@ -20,10 +20,10 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.decoder.Decoders.ofPost;
 import static io.datakernel.util.CollectionUtils.map;
 
+//[START REGION_1]
 public final class HttpDecoderExample extends HttpServerLauncher {
 	private final static String SEPARATOR = "-";
 
-	//[START REGION_1]
 	private final static Decoder<Address> ADDRESS_DECODER = Decoder.of(Address::new,
 			ofPost("title", "")
 					.validate(param -> !param.isEmpty(), "Title cannot be empty")
@@ -39,16 +39,20 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 	);
 	//[END REGION_1]
 
+	//[START REGION_5]
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
 		ByteBufWriter writer = new ByteBufWriter();
 		mustache.execute(writer, scopes);
 		return writer.getBuf();
 	}
+	//[END REGION_5]
 
+	//[START REGION_6]
 	@Provides
 	ContactDAO dao() {
 		return new ContactDAOImpl();
 	}
+	//[END REGION_6]
 
 	//[START REGION_2]
 	@Provides
@@ -76,8 +80,10 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 	}
 	//[END REGION_2]
 
+	//[START REGION_4]
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new HttpDecoderExample();
 		launcher.launch(args);
 	}
+	//[END REGION_4]
 }
