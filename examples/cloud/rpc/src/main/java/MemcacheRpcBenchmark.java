@@ -1,3 +1,4 @@
+import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -15,6 +16,7 @@ import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.server.MemcacheServerModule;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.PrintWriter;
 import java.sql.Timestamp;
@@ -23,19 +25,21 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import static io.datakernel.di.module.Modules.combine;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.lang.Math.min;
 
 public class MemcacheRpcBenchmark extends Launcher {
-	private final static int MAX_REQUESTS = 10;
-	private final static int WARMUP_ROUNDS = 0;
-	private final static int BENCHMARK_ROUNDS = 3;
-	private final static int REQUESTS_PER_TIME = 10;
+	private final static int TOTAL_REQUESTS = 7_500_000;
+	private final static int WARMUP_ROUNDS = 1;
+	private final static int BENCHMARK_ROUNDS = 7;
+	private final static int ACTIVE_REQUESTS_MAX = 1500;
+	private final static int ACTIVE_REQUESTS_MIN = 1000;
 	private final static boolean GENERATE_FILE = false;
 
-	private final static int NUMBER_BUFFERS = 100;
-	private final static int BUFFER_CAPACITY = 1024;
+	private final static int NUMBER_BUFFERS = 2 << 9;
+	private final static int BUFFER_CAPACITY = 2 << 12;
 	private ByteBuf message = ByteBuf.wrapForReading("Hello world".getBytes());
 	private PrintWriter resultsFile;
+	private boolean warmup = false;
 
 	@Inject
 	Eventloop eventloop;
@@ -67,7 +71,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				MemcacheServerModule.create(),
-				new MemcacheClientModule()
+				MemcacheClientModule.create()
 		);
 	}
 
@@ -80,7 +84,9 @@ public class MemcacheRpcBenchmark extends Launcher {
 
 		if (WARMUP_ROUNDS > 0) {
 			System.out.println("Start warming up cache");
+			warmup = true;
 			warmUp();
+			warmup = false;
 		}
 
 		profiler(this::benchmarkPut, "Put");
@@ -113,7 +119,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 		}
 
 		double avgTime = (double) timeAllRounds / BENCHMARK_ROUNDS;
-		long requestsPerSecond = (long) (MAX_REQUESTS / avgTime * 1000);
+		long requestsPerSecond = (long) (TOTAL_REQUESTS / avgTime * 1000);
 		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + "ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
 
@@ -127,7 +133,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 			long worstTime,
 			long requestsPerSecond) {
 		if (GENERATE_FILE) {
-			resultsFile.println("    <td> -k -c " + REQUESTS_PER_TIME + "</td>");
+			resultsFile.println("    <td> -k -c " + ACTIVE_REQUESTS_MAX + "</td>");
 			resultsFile.println("    <td>" + avgTime + "</td>");
 			resultsFile.println("    <td>" + bestTime + "</td>");
 			resultsFile.println("    <td>" + worstTime + "</td>");
@@ -151,15 +157,44 @@ public class MemcacheRpcBenchmark extends Launcher {
 		return eventloop.submit(function).get();
 	}
 
+	int sent;
+	int completed;
+
 	private Promise<Long> benchmarkPut() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
+		Callback<Void> callback = new Callback<Void>() {
+			@Override
+			public void accept(Void result, @Nullable Throwable e) {
+				completed++;
+
+				int active = sent - completed;
+
+				if (e != null) {
+					promise.setException(new FailedRequestException());
+					return;
+				}
+
+				if (completed == TOTAL_REQUESTS) {
+					promise.set(null);
+					return;
+				}
+
+				if (active <= ACTIVE_REQUESTS_MIN) {
+					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
+						sendRequest(this, sent);
+						sent++;
+					}
+				}
+			}
+		};
 		long start = System.currentTimeMillis();
+		sent = 0;
+		completed = 0;
 
-		Counters counters = new Counters();
-
-		for (int i = 0; i < REQUESTS_PER_TIME; i++) {
-			sendRequest(promise, counters, MAX_REQUESTS);
+		for (int i = 0; i < min(ACTIVE_REQUESTS_MIN, TOTAL_REQUESTS); i++) {
+			sendRequest(callback, sent);
+			sent++;
 		}
 
 		return promise.map($ -> System.currentTimeMillis() - start);
@@ -168,70 +203,58 @@ public class MemcacheRpcBenchmark extends Launcher {
 	private Promise<Long> benchmarkGet() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
+		Callback<ByteBuf> callback = new Callback<ByteBuf>() {
+			@Override
+			public void accept(ByteBuf result, @Nullable Throwable e) {
+				completed++;
+
+				int active = sent - completed;
+
+				if (e != null) {
+					promise.setException(new FailedRequestException());
+					return;
+				}
+
+				if (completed == TOTAL_REQUESTS) {
+					promise.set(null);
+					return;
+				}
+
+				if (active <= ACTIVE_REQUESTS_MAX) {
+					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
+						getResponse(this, sent);
+						sent++;
+					}
+				}
+			}
+		};
+		sent = 0;
+		completed = 0;
+
 		long start = System.currentTimeMillis();
 
-		Counters counters = new Counters();
-
-		for (int i = 0; i < REQUESTS_PER_TIME; i++) {
-			getResponse(promise, counters, MAX_REQUESTS);
+		for (int i = 0; i < min(ACTIVE_REQUESTS_MAX, TOTAL_REQUESTS); i++) {
+			getResponse(callback, sent);
+			sent++;
 		}
 
 		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
-	private void getResponse(SettablePromise<Long> promise, Counters counters, int limit) {
-		if (counters.sentRequests == limit) {
-			return;
-		}
-		++counters.sentRequests;
-
-		client.get(new byte[]{(byte) counters.sentRequests}, 1000)
-				.whenResult(res -> System.out.println(res.getString(UTF_8)))
-				.whenComplete((res, e) -> {
-					if (promise.isComplete()) {
-						return;
-					}
-
-					if (e != null) {
-						promise.setException(new FailedRequestException());
-					}
-					++counters.completedRequests;
-
-					if (counters.completedRequests == limit) {
-						promise.set(null);
-						return;
-					}
-
-					getResponse(promise, counters, limit);
-				});
+	private void getResponse(Callback<ByteBuf> callback, int sent) {
+		if (!warmup) {
+			client.get(new byte[]{(byte) sent})
+					.whenComplete(callback);
+		} else client.get(new byte[]{(byte) sent}, 1000)
+				.whenComplete(callback);
 	}
 
-	private void sendRequest(SettablePromise<Long> promise, Counters counters, int limit) {
-		if (counters.sentRequests == limit) {
-			return;
-		}
-		++counters.sentRequests;
-
-		client.get(new byte[]{(byte) counters.sentRequests}, 1000)
-				.whenComplete((res, e) -> {
-					if (promise.isComplete()) {
-						return;
-					}
-
-					if (e != null) {
-						promise.setException(new FailedRequestException());
-						return;
-					}
-
-					++counters.completedRequests;
-
-					if (counters.completedRequests == limit) {
-						promise.set(null);
-						return;
-					}
-
-					sendRequest(promise, counters, limit);
-				});
+	private void sendRequest(Callback<Void> callback, int sent) {
+		if (!warmup) {
+			client.put(new byte[]{(byte) sent}, message)
+					.whenComplete(callback);
+		} else client.put(new byte[]{(byte) sent}, message, 750)
+				.whenComplete(callback);
 	}
 
 	private void fillHeaderFile(PrintWriter resultsFile) {
@@ -246,10 +269,6 @@ public class MemcacheRpcBenchmark extends Launcher {
 		resultsFile.println("  </tr>");
 	}
 
-	private static final class Counters {
-		int completedRequests;
-		int sentRequests;
-	}
 
 	public static void main(String[] args) throws Exception {
 		Launcher benchmark = new MemcacheRpcBenchmark();

@@ -22,6 +22,9 @@ import static io.datakernel.util.MemSize.kilobytes;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public class MemcacheClientModule extends AbstractModule {
+
+	public static MemcacheClientModule create() { return new MemcacheClientModule(); }
+
 	@Provides
 	RpcClient rpcClient(Config config, Eventloop eventloop) {
 		return RpcClient.create(eventloop)

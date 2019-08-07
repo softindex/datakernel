@@ -61,7 +61,9 @@ public class MemcacheLikeClient extends Launcher {
 			byte[] message = "Strong and smart people always be successful".getBytes();
 			Promise<Void> put = client.put(bytes[idx], ByteBuf.wrapForReading(message), 50);
 			put.whenComplete((res, e) ->  {
-				if (e != null) e.printStackTrace();
+				if (e != null) {
+					e.printStackTrace();
+				}
 				System.out.println("Request sent");
 				Promise<ByteBuf> byteBufPromise = client.get(bytes[idx], 20);
 				byteBufPromise.whenResult(resp -> System.out.println("Got back from [" + idx + "] : " + resp.getString(UTF_8)));

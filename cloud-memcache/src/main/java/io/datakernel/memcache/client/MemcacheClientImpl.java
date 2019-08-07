@@ -31,4 +31,22 @@ public final class MemcacheClientImpl implements MemcacheClient {
 					return response.getData();
 				});
 	}
+
+	@Override
+	public Promise<Void> put(byte[] key, ByteBuf buf) {
+		PutRequest request = new PutRequest(key, buf);
+		return rpcClient.sendRequest(request).toVoid();
+	}
+
+	@Override
+	public Promise<ByteBuf> get(byte[] key) {
+		GetRequest request = new GetRequest(key);
+		return rpcClient.<GetRequest, GetResponse>sendRequest(request)
+				.map(response -> {
+					if (response == null) {
+						return null;
+					}
+					return response.getData();
+				});
+	}
 }

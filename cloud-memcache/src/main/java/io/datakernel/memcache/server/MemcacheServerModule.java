@@ -17,7 +17,6 @@ import static io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SERVER_SOCKET_SETTINGS;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.util.MemSize.kilobytes;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MemcacheServerModule extends AbstractModule {
 	public static MemcacheServerModule create() {
@@ -41,12 +40,7 @@ public class MemcacheServerModule extends AbstractModule {
 	RpcServer server(Eventloop eventloop, Config config, RingBuffer storage) {
 		return RpcServer.create(eventloop)
 				.withHandler(GetRequest.class, GetResponse.class,
-						request -> {
-							ByteBuf res = storage.get(request.getKey());
-							if (res != null)
-								System.out.println(res.getString(UTF_8));
-							return Promise.of(new GetResponse(res));
-						})
+						request -> Promise.of(new GetResponse(storage.get(request.getKey()))))
 				.withHandler(PutRequest.class, PutResponse.class,
 						request -> {
 							ByteBuf buf = request.getData();
