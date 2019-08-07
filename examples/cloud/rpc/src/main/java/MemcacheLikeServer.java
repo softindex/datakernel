@@ -19,7 +19,7 @@ import static io.datakernel.di.module.Modules.combine;
  * @author is Alex Syrotenko (@pantokrator)
  * Created on 06.08.19.
  */
-public class MemcacheLikeServerWithRendezvous extends Launcher {
+public class MemcacheLikeServer extends Launcher {
 
 	@Provides
 	Eventloop eventloop() { return Eventloop.create(); }
@@ -27,8 +27,8 @@ public class MemcacheLikeServerWithRendezvous extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
-				.with("memcache.buffers", "2")
-				.with("memcache.bufferCapacity", "64")
+				.with("memcache.buffers", "64")
+				.with("memcache.bufferCapacity", "128")
 				.with("server.listenAddresses", "localhost:8080")
 				.overrideWith(Config.ofProperties(System.getProperties()));
 	}
@@ -55,7 +55,7 @@ public class MemcacheLikeServerWithRendezvous extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		MemcacheLikeServerWithRendezvous server = new MemcacheLikeServerWithRendezvous();
+		MemcacheLikeServer server = new MemcacheLikeServer();
 		server.launch(args);
 	}
 }

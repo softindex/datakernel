@@ -3,13 +3,14 @@ package io.datakernel.memcache.client;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage;
 import io.datakernel.memcache.protocol.SerializerGenByteBuf;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 import java.time.Duration;
 
@@ -29,7 +30,7 @@ public class MemcacheClientModule extends AbstractModule {
 						.withShards(config.get(ofList(ofInetSocketAddress()), "client.addresses")))
 				.withMessageTypes(MemcacheRpcMessage.MESSAGE_TYPES)
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(ByteBuf.class, new SerializerGenByteBuf(false)))
+						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(false))))
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
 						config.get(ofMemSize(), "protocol.packetSizeMax", kilobytes(64)),
@@ -37,7 +38,6 @@ public class MemcacheClientModule extends AbstractModule {
 				.withSocketSettings(config.get(ofSocketSettings(), "client.socketSettings", DEFAULT_SOCKET_SETTINGS))
 				.withConnectTimeout(config.get(ofDuration(), "client.connectSettings.connectTimeout", Duration.ofSeconds(10)))
 				.withReconnectInterval(config.get(ofDuration(), "client.connectSettings.reconnectInterval", Duration.ofSeconds(1)))
-				.withAutoFlushInterval(config.get(ofDuration(), "client.flushDelay", Duration.ZERO))
 				.withLogger(getLogger(MemcacheClient.class));
 	}
 

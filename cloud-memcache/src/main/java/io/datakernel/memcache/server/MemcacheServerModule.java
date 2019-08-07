@@ -10,14 +10,14 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.memcache.protocol.SerializerGenByteBuf;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
-
-import java.time.Duration;
+import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SERVER_SOCKET_SETTINGS;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.util.MemSize.kilobytes;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MemcacheServerModule extends AbstractModule {
 	public static MemcacheServerModule create() {
@@ -41,7 +41,12 @@ public class MemcacheServerModule extends AbstractModule {
 	RpcServer server(Eventloop eventloop, Config config, RingBuffer storage) {
 		return RpcServer.create(eventloop)
 				.withHandler(GetRequest.class, GetResponse.class,
-						request -> Promise.of(new GetResponse(storage.get(request.getKey()))))
+						request -> {
+							ByteBuf res = storage.get(request.getKey());
+							if (res != null)
+								System.out.println(res.getString(UTF_8));
+							return Promise.of(new GetResponse(res));
+						})
 				.withHandler(PutRequest.class, PutResponse.class,
 						request -> {
 							ByteBuf buf = request.getData();
@@ -50,7 +55,7 @@ public class MemcacheServerModule extends AbstractModule {
 							return Promise.of(PutResponse.INSTANCE);
 						})
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(ByteBuf.class, new SerializerGenByteBuf(false)))
+						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(false))))
 				.withMessageTypes(MESSAGE_TYPES)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
@@ -58,7 +63,6 @@ public class MemcacheServerModule extends AbstractModule {
 						config.get(ofBoolean(), "protocol.compression", false))
 				.withServerSocketSettings(config.get(ofServerSocketSettings(), "server.serverSocketSettings", DEFAULT_SERVER_SOCKET_SETTINGS))
 				.withSocketSettings(config.get(ofSocketSettings(), "server.socketSettings", DEFAULT_SOCKET_SETTINGS))
-				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "server.listenAddresses"))
-				.withAutoFlushInterval(config.get(ofDuration(), "server.flushDelayMillis", Duration.ZERO));
+				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "server.listenAddresses"));
 	}
 }
