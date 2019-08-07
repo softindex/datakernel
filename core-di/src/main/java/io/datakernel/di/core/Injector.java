@@ -21,8 +21,6 @@ import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
 import static io.datakernel.di.core.BindingTransformer.IDENTITY;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
-import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
-import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.Utils.next;
@@ -91,20 +89,20 @@ public final class Injector {
 	}
 
 	/**
-	 * This constructor is a shortcut for threadsafe {@link #compile(Injector, Scope[], Trie, Multibinder, BindingTransformer, BindingGenerator) compile}
+	 * This constructor is a shortcut for threadsafe {@link #compile(Injector, Scope[], Trie, Map, BindingTransformer, BindingGenerator) compile}
 	 * with no instance overrides and no multibinders, transformers or generators.
 	 */
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return compile(null, UNSCOPED, bindings.map(Utils::toMultimap), ERROR_ON_DUPLICATE, IDENTITY, REFUSING);
+		return compile(null, UNSCOPED, bindings.map(Utils::toMultimap), emptyMap(), IDENTITY, REFUSING);
 	}
 
 	/**
-	 * This constructor threadsafely {@link #compile(Injector, Scope[], Trie, Multibinder, BindingTransformer, BindingGenerator) compiles}
+	 * This constructor threadsafely {@link #compile(Injector, Scope[], Trie, Map, BindingTransformer, BindingGenerator) compiles}
 	 * given module, extracting bindings and their multibinders, transformers and generators from it, with no instance overrides
 	 */
 	public static Injector compile(@Nullable Injector parent, Module module) {
 		return compile(parent, UNSCOPED, module.getBindings(),
-				combinedMultibinder(module.getMultibinders()),
+				module.getMultibinders(),
 				combinedTransformer(module.getBindingTransformers()),
 				combinedGenerator(module.getBindingGenerators()));
 	}
@@ -119,7 +117,7 @@ public final class Injector {
 	 *                         used when {@link #enterScope entering scopes}
 	 * @param bindingsMultimap a trie of binding set graph with multiple possible conflicting bindings per key
 	 *                         that are resolved as part of the compilation.
-	 * @param multibinder      a multibindinder that is called on every binding conflict (see {@link Multibinder#combinedMultibinder})
+	 * @param multibinders     multibindinders that are called on every binding conflict
 	 * @param transformer      a transformer that is called on every binding once (see {@link BindingTransformer#combinedTransformer})
 	 * @param generator        a generator that is called on every missing binding (see {@link BindingGenerator#combinedGenerator})
 	 * @see #enterScope
@@ -127,11 +125,11 @@ public final class Injector {
 	public static Injector compile(@Nullable Injector parent,
 			Scope[] scope,
 			@NotNull Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindingsMultimap,
-			@NotNull Multibinder<?> multibinder,
+			@NotNull Map<Key<?>, Multibinder<?>> multibinders,
 			@NotNull BindingTransformer<?> transformer,
 			@NotNull BindingGenerator<?> generator) {
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = Preprocessor.resolveConflicts(bindingsMultimap, multibinder);
+		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = Preprocessor.resolveConflicts(bindingsMultimap, multibinders);
 
 		Preprocessor.completeBindingGraph(bindings, transformer, generator);
 

@@ -6,6 +6,7 @@ import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.BiFunction;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
@@ -135,7 +136,7 @@ public final class Modules {
 
 	@SuppressWarnings("unchecked")
 	private static Module doRebindExports(Module module, Map<Key<?>, Key<?>> originalToNew) {
-		Map<Key<?>, Key<?>> newToOriginal = originalToNew.entrySet().stream().collect(toMap(Map.Entry::getValue, Map.Entry::getKey));
+		Map<Key<?>, Key<?>> newToOriginal = originalToNew.entrySet().stream().collect(toMap(Entry::getValue, Entry::getKey));
 		return new SimpleModule(
 				module.getBindings()
 						.map(bindingsMap ->
@@ -163,7 +164,7 @@ public final class Modules {
 												binding)),
 				transformMultimapValues(module.getBindingGenerators(),
 						($, generator) ->
-								(BindingGenerator<Object>) (bindings, scope, key) ->
+								(bindings, scope, key) ->
 										((BindingGenerator<Object>) generator).generate(
 												new BindingLocator() {
 													@Override
@@ -174,7 +175,9 @@ public final class Modules {
 												scope,
 												(Key<Object>) newToOriginal.getOrDefault(key, key))),
 				module.getMultibinders()
-		);
+						.entrySet()
+						.stream()
+						.collect(toMap(e -> originalToNew.getOrDefault(e.getKey(), e.getKey()), Entry::getValue)));
 	}
 
 	@SuppressWarnings("unchecked")

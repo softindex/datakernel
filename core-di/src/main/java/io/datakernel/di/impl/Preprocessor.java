@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.stream.Collectors.partitioningBy;
@@ -32,12 +33,9 @@ public final class Preprocessor {
 	/**
 	 * This method converts a trie of binding multimaps, that is provided from the modules,
 	 * into a trie of binding maps on which the {@link Injector} would actually operate.
-	 * <p>
-	 * It uses a {@link Multibinder} for this purpose, which is usually a {@link Multibinder#combinedMultibinder combination}
-	 * of multibinders that were provided from the modules.
 	 */
 	@SuppressWarnings("unchecked")
-	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolveConflicts(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Multibinder<?> multibinder) {
+	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolveConflicts(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Map<Key<?>, Multibinder<?>> multibinders) {
 		return bindings.map(localBindings -> squash(localBindings, (k, v) -> {
 			Map<Boolean, Set<Binding<?>>> separated = v.stream().collect(partitioningBy(b -> b.getCompiler() != TO_BE_GENERATED, toSet()));
 			Set<Binding<?>> real = separated.get(true);
@@ -54,7 +52,7 @@ public final class Preprocessor {
 				case 1:
 					return real.iterator().next();
 				default:
-					return ((Multibinder) multibinder).multibind(k, real);
+					return ((Multibinder) multibinders.getOrDefault(k, ERROR_ON_DUPLICATE)).multibind(real);
 			}
 		}));
 	}

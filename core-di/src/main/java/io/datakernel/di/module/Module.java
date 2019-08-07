@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
-import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.function.Function.identity;
@@ -92,7 +91,7 @@ public interface Module {
 	 * A shortcut that resolves conflicting bindings in this module using multibinders from this module
 	 */
 	default Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
-		return Preprocessor.resolveConflicts(getBindings(), combinedMultibinder(getMultibinders()));
+		return Preprocessor.resolveConflicts(getBindings(), getMultibinders());
 	}
 
 	/**

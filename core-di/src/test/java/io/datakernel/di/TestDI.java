@@ -24,8 +24,7 @@ import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.printGraphVizGraph;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -114,7 +113,7 @@ public final class TestDI {
 			fail("should've failed");
 		} catch (DIException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("Duplicate bindings for key String"));
+			assertTrue(e.getMessage().startsWith("Duplicate bindings found"));
 		}
 	}
 
@@ -1073,5 +1072,25 @@ public final class TestDI {
 
 		assertEquals("PlainGenericPojo<Integer, List<String>>", new Key<PlainGenericPojo<Integer, List<String>>>() {}.getDisplayString());
 		assertEquals("GreatGenericPojoName<Integer, List<String>>", new Key<GenericPojo<Integer, List<String>>>() {}.getDisplayString());
+	}
+
+	@Test
+	public void exportingMultibinders() {
+		Key<Set<String>> setOfStrings = new Key<Set<String>>() {};
+
+		Injector injector = Injector.of(Module.create()
+				.bind(setOfStrings).to(() -> singleton("one"))
+				.bind(setOfStrings).to(() -> singleton("two"))
+				.bind(setOfStrings).to(() -> singleton("three"))
+				.multibind(setOfStrings, Multibinder.toSet())
+				.bind(new Key<List<String>>() {}).to(ArrayList::new, setOfStrings)
+				.export(new Key<List<String>>() {}));
+
+		Set<String> expected = new HashSet<>();
+		expected.add("one");
+		expected.add("two");
+		expected.add("three");
+
+		assertEquals(expected, new HashSet<>(injector.getInstance(new Key<List<String>>() {})));
 	}
 }
