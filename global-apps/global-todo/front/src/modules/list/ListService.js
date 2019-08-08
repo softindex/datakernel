@@ -2,13 +2,12 @@ import Service from '../../common/Service';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import serializer from "../ot/serializer";
 import createMapOTSystem from "../ot/MapOTSystem";
-import {ROOT_COMMIT_ID} from "../../common/utils";
 import MapOTOperation from "../ot/MapOTOperation";
 
 const RETRY_TIMEOUT = 1000;
 
 class ListService extends Service {
-  constructor(listOTStateManager, isNew) {
+  constructor(listOTStateManager) {
     super({
       items: {},
       ready: false
@@ -17,26 +16,21 @@ class ListService extends Service {
     this._listOTStateManager = listOTStateManager;
     this._reconnectTimeout = null;
     this._resyncTimeout = null;
-    this._isNew = isNew;
   }
 
-  static createFrom(listId, isNew) {
+  static create() {
     const listOTNode = ClientOTNode.createWithJsonKey({
-      url: '/ot/list/' + listId,
+      url: '/ot/list/',
       serializer: serializer
     });
     const otSystem = createMapOTSystem((first, second) => (first === second) ? 0 : (first ? 1 : -1));
     const listOTStateManager = new OTStateManager(() => new Map(), listOTNode, otSystem);
-    return new ListService(listOTStateManager, isNew);
+    return new ListService(listOTStateManager);
   }
 
   async init() {
     try {
-      if (this._isNew) {
-        this._listOTStateManager.checkoutRoot(ROOT_COMMIT_ID);
-      } else {
         await this._listOTStateManager.checkout();
-      }
     } catch (err) {
       console.error(err);
 
@@ -142,9 +136,6 @@ class ListService extends Service {
   async _sync() {
     try {
       await this._listOTStateManager.sync();
-      if (this._isNew && this._listOTStateManager.getRevision() !== ROOT_COMMIT_ID) {
-        this._isNew = false;
-      }
     } catch (err) {
       console.error(err);
 

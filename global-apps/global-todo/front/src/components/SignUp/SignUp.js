@@ -60,7 +60,7 @@ class SignUp extends React.Component {
               across all your devices.
             </Typography>
             <Grid container spacing={32}>
-              <Grid item xs={12} lg={6} md={6}>
+              <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
                 <Button
                   variant="contained"
                   color="primary"
@@ -74,7 +74,7 @@ class SignUp extends React.Component {
                   Auth by App Store
                 </Button>
               </Grid>
-              <Grid item xs={12} lg={6} md={6}>
+              <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
                 <Button
                   variant="outlined"
                   color="inherit"

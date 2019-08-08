@@ -13,11 +13,20 @@ class TodoItem extends React.Component {
     isDone: this.props.isDone
   };
 
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.name !== this.state.name || nextProps.isDone !== this.state.isDone) {
+      this.setState({
+        name: nextProps.name,
+        isDone: nextProps.isDone
+      })
+    }
+  }
+
   handleDelete = () => this.props.onDeleteItem(this.state.name);
 
   handleStatusChange = () => {
     this.props.onChangeItemState(this.state.name);
-    this.setState({isDone: !this.state.isDone})
+    this.setState({isDone: !this.state.isDone});
   };
 
   handleNameChange = e => this.setState({name: e.target.value});

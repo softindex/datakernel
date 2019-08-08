@@ -2,21 +2,20 @@ import React from 'react';
 import {Typography, withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
 import checkAuth from '../../common/checkAuth';
-import ListsContext from "../../modules/lists/ListsContext";
+import ListContext from "../../modules/list/ListContext";
 import {withSnackbar} from "notistack";
-import ListsService from "../../modules/lists/ListsService";
-import ListServiceProvider from "../../modules/lists/ListServiceProvider";
 import TodoList from "../TodoList/TodoList";
 import Container from '@material-ui/core/Container';
+import ListService from "../../modules/list/ListService";
 
 class MainScreen extends React.Component {
   constructor(props) {
     super(props);
-    this.listsService = ListsService.create();
+    this.listService = ListService.create();
   }
 
   componentDidMount() {
-    this.listsService.init()
+    this.listService.init()
       .catch((err) => {
         this.props.enqueueSnackbar(err.message, {
           variant: 'error'
@@ -25,12 +24,12 @@ class MainScreen extends React.Component {
   }
 
   componentWillUnmount() {
-    this.listsService.stop();
+    this.listService.stop();
   }
 
   render() {
     return (
-      <ListsContext.Provider value={this.listsService}>
+      <ListContext.Provider value={this.listService}>
         <Container
           maxWidth="sm"
           className={this.props.classes.container}
@@ -42,11 +41,7 @@ class MainScreen extends React.Component {
           >
             Global Todo
           </Typography>
-          <ListServiceProvider
-            listId={this.props.listId}
-            isNew={this.listsService.state.newLists.has(this.props.listId)}>
             <TodoList/>
-          </ListServiceProvider>
           <Typography
             align="center"
             variant="subtitle2"
@@ -58,7 +53,7 @@ class MainScreen extends React.Component {
             All rights reserved
           </Typography>
         </Container>
-      </ListsContext.Provider>
+      </ListContext.Provider>
     );
   }
 }

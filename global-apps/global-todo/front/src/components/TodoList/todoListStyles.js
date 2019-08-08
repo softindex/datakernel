@@ -13,9 +13,9 @@ const todoListStyles = theme => ({
   },
   iconButton: {
     margin: `0px ${theme.spacing(2)}px`,
-    '&:hover': {
-      cursor: 'pointer'
-    }
+    // '&:hover': {
+    //   cursor: 'pointer'
+    // }
   },
   itemInput: {
     padding: `${theme.spacing(2)}px 0px`,

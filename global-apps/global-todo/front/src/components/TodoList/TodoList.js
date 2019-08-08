@@ -10,10 +10,15 @@ import Typography from "@material-ui/core/Typography";
 import DoneAllIcon from '@material-ui/icons/DoneAll';
 
 class TodoList extends React.Component {
-  constructor(props, context) {
-    super(props, context);
+  constructor(props) {
+    super(props);
     this.state = {
-      newItemName: ''
+      newItemName: '',
+      selected: {
+        allSelected: true,
+        activeSelected: false,
+        completedSelected: false
+      }
     };
   }
 
@@ -26,12 +31,71 @@ class TodoList extends React.Component {
   onItemChange = e => {
     this.setState({
       newItemName: e.target.value
+    });
+  };
+
+  getAmountUncompletedTodo() {
+    let counter = 0;
+    Object.entries(this.props.items).map(([, isDone]) => {
+      if (!isDone) {
+        counter++;
+      }
+    });
+    return counter;
+  }
+
+  onAllSelected = () => {
+    this.setState({
+      selected: {
+        allSelected: true,
+        activeSelected: false,
+        completedSelected: false
+      }
+    });
+  };
+
+  onActiveSelected = () => {
+    this.setState({
+      selected: {
+        allSelected: false,
+        activeSelected: true,
+        completedSelected: false
+      }
+    });
+  };
+
+  onCompletedSelected = () => {
+    this.setState({
+      selected: {
+        allSelected: false,
+        activeSelected: false,
+        completedSelected: true
+      }
+    });
+  };
+
+  onClearCompleted = () => {
+    Object.entries(this.props.items).map(([name, isDone]) => {
+      if (isDone) {
+        return this.props.onDeleteItem(name);
+      }
     })
   };
 
+  getFilteredTodo() {
+    return Object.entries(this.props.items).filter(([, isDone]) => {
+      if (this.state.selected.activeSelected) {
+        return isDone === false;
+      }
+      if (this.state.selected.completedSelected) {
+        return isDone === true;
+      }
+      return true;
+    })
+  }
+
   render() {
     const {classes} = this.props;
-    let counter = 0;
     return (
       <Paper className={classes.paper}>
         <form onSubmit={this.onSubmit}>
@@ -54,20 +118,17 @@ class TodoList extends React.Component {
             }}
           />
         </form>
-        {Object.entries(this.props.items).map(item => {
-          if (!item[1]) {
-            counter++;
-          }
-          return (
+        {this.getFilteredTodo().map(([itemName, isDone]) => (
             <TodoItem
-              name={item[0]}
-              isDone={item[1]}
+              name={itemName}
+              isDone={isDone}
+              doneAll={this.state.doneAll}
               onChangeItemState={this.props.onChangeItemState}
               onDeleteItem={this.props.onDeleteItem}
               onRenameItem={this.props.onRenameItem}
             />
           )
-        })}
+        )}
         {Object.entries(this.props.items).length !== 0 && (
           <div className={classes.listCaption}>
             <Typography
@@ -75,12 +136,30 @@ class TodoList extends React.Component {
               className={classes.captionCounter}
               color="textSecondary"
             >
-              {counter} items left
+              {this.getAmountUncompletedTodo()} items left
             </Typography>
-            <Button className={classes.captionButton} variant="outlined">All</Button>
-            <Button className={classes.captionButton}>Active</Button>
-            <Button className={classes.captionButton}>Completed</Button>
-            <Button className={classes.captionButton}>Clear completed</Button>
+            <Button
+              className={classes.captionButton}
+              variant={this.state.selected.allSelected ? "outlined" : null}
+              onClick={this.onAllSelected}
+            >
+              All
+            </Button>
+            <Button
+              className={classes.captionButton}
+              variant={this.state.selected.activeSelected ? "outlined" : null}
+              onClick={this.onActiveSelected}
+            >
+              Active
+            </Button>
+            <Button
+              className={classes.captionButton}
+              onClick={this.onCompletedSelected}
+              variant={this.state.selected.completedSelected ? "outlined" : null}
+            >
+              Completed
+            </Button>
+            <Button className={classes.captionButton} onClick={this.onClearCompleted}>Clear completed</Button>
           </div>
         )}
       </Paper>
