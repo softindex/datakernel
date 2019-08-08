@@ -30,7 +30,7 @@ public class InstanceInjectorExample {
 		AbstractModule cookbook = new AbstractModule() {
 			@Override
 			protected void configure() {
-				bind(new Key<InstanceInjector<Butter>>() {});
+				bindInstanceInjector(Butter.class);
 			}
 
 			@Provides

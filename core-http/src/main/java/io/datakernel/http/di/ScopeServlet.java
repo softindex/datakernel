@@ -39,7 +39,9 @@ public class ScopeServlet implements AsyncServlet {
 						// so anonymous servlet subclasses could use the DSL
 						scan(ScopeServlet.this);
 						// dummy binding to be replaced by subInjector.putInstance
-						bind(HTTP_REQUEST_KEY).in(REQUEST_SCOPE).toDynamic();
+						bind(HTTP_REQUEST_KEY).in(REQUEST_SCOPE).to(() -> {
+							throw new AssertionError();
+						});
 						// make sure that response is provided or generated in request scope
 						bind(HTTP_RESPONSE_KEY).in(REQUEST_SCOPE);
 					}

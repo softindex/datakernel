@@ -7,6 +7,7 @@ import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,9 +17,10 @@ import java.util.function.UnaryOperator;
 import static io.datakernel.di.util.Utils.checkState;
 
 /**
- * This class is an abstract module wrapper around {@link BuilderModule}.
+ * This class is an abstract module wrapper around {@link ModuleBuilder}.
  * It provides functionality that is similar to some other DI frameworks for the ease of transition.
  */
+@SuppressWarnings({"SameParameterValue", "UnusedReturnValue"})
 public abstract class AbstractModule implements Module {
 	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
 	private Map<Integer, Set<BindingTransformer<?>>> bindingTransformers;
@@ -28,7 +30,7 @@ public abstract class AbstractModule implements Module {
 	private AtomicBoolean configured = new AtomicBoolean();
 
 	@Nullable
-	private BuilderModuleBindingStage builder = null;
+	private ModuleBuilder builder = null;
 
 	@Nullable
 	private final StackTraceElement location;
@@ -60,55 +62,77 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * @see BuilderModule#bind(Key)
+	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> BuilderModule<T> bind(@NotNull Key<T> key) {
+	protected final <T> ModuleBuilderBinder<T> bind(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-
-		// support generics from subclasses of this class
 		return builder.bind(Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName()));
 	}
 
 	/**
-	 * @see BuilderModule#bind(Key)
+	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> BuilderModule<T> bind(Class<T> type) {
+	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bind(type);
 	}
 
-	protected final <T> BuilderModuleBindingStage bindInstanceProvider(@NotNull Class<T> key) {
+	/**
+	 * @see ModuleBuilder#bind(Key)
+	 */
+	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type, Name name) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bind(type, name);
+	}
+
+	/**
+	 * @see ModuleBuilder#bind(Key)
+	 */
+	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type, String name) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bind(type, name);
+	}
+
+	/**
+	 * @see ModuleBuilder#bind(Key)
+	 */
+	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type, Class<? extends Annotation> annotationType) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bind(type, annotationType);
+	}
+
+	protected final <T> ModuleBuilder bindInstanceProvider(@NotNull Class<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceProvider(key);
 	}
 
-	protected final <T> BuilderModuleBindingStage bindInstanceProvider(@NotNull Key<T> key) {
+	protected final <T> ModuleBuilder bindInstanceProvider(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceProvider(key);
 	}
 
-	protected final <T> BuilderModuleBindingStage bindInstanceFactory(@NotNull Class<T> key) {
+	protected final <T> ModuleBuilder bindInstanceFactory(@NotNull Class<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceFactory(key);
 	}
 
-	protected final <T> BuilderModuleBindingStage bindInstanceFactory(@NotNull Key<T> key) {
+	protected final <T> ModuleBuilder bindInstanceFactory(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceFactory(key);
 	}
 
-	protected final <T> BuilderModuleBindingStage bindInstanceInjector(@NotNull Class<T> key) {
+	protected final <T> ModuleBuilder bindInstanceInjector(@NotNull Class<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceInjector(key);
 	}
 
-	protected final <T> BuilderModuleBindingStage bindInstanceInjector(@NotNull Key<T> key) {
+	protected final <T> ModuleBuilder bindInstanceInjector(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceInjector(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
 	}
 
 	/**
-	 * @see BuilderModule#install
+	 * @see ModuleBuilder#install
 	 */
 	protected final void install(Module module) {
 		checkState(builder != null, "Cannot install modules before or after configure() call");
@@ -116,7 +140,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * @see BuilderModule#transform
+	 * @see ModuleBuilder#transform
 	 */
 	protected final <T> void transform(int priority, BindingTransformer<T> bindingTransformer) {
 		checkState(builder != null, "Cannot add transformers before or after configure() call");
@@ -124,7 +148,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * @see BuilderModule#generate
+	 * @see ModuleBuilder#generate
 	 */
 	protected final <T> void generate(Class<?> pattern, BindingGenerator<T> bindingGenerator) {
 		checkState(builder != null, "Cannot add generators before or after configure() call");
@@ -132,50 +156,50 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * @see BuilderModule#multibind
+	 * @see ModuleBuilder#multibind
 	 */
 	protected final <T> void multibind(Key<T> key, Multibinder<T> multibinder) {
 		checkState(builder != null, "Cannot add multibinders before or after configure() call");
 		builder.multibind(key, multibinder);
 	}
 
-	protected final <V> BuilderModuleBindingStage multibindToSet(Class<V> type) {
+	protected final <V> void multibindToSet(Class<V> type) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToSet(type);
+		builder.multibindToSet(type);
 	}
 
-	protected final <V> BuilderModuleBindingStage multibindToSet(Class<V> type, String name) {
+	protected final <V> void multibindToSet(Class<V> type, String name) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToSet(type, name);
+		builder.multibindToSet(type, name);
 	}
 
-	protected final <V> BuilderModuleBindingStage multibindToSet(Class<V> type, Name name) {
+	protected final <V> void multibindToSet(Class<V> type, Name name) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToSet(type, name);
+		builder.multibindToSet(type, name);
 	}
 
-	protected final <V> BuilderModuleBindingStage multibindToSet(Key<V> key) {
+	protected final <V> void multibindToSet(Key<V> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToSet(key);
+		builder.multibindToSet(key);
 	}
 
-	protected final <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType) {
+	protected final <K, V> void multibindToMap(Class<K> keyType, Class<V> valueType) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToMap(keyType, valueType);
+		builder.multibindToMap(keyType, valueType);
 	}
 
-	protected final <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType, String name) {
+	protected final <K, V> void multibindToMap(Class<K> keyType, Class<V> valueType, String name) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToMap(keyType, valueType, name);
+		builder.multibindToMap(keyType, valueType, name);
 	}
 
-	protected final <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
+	protected final <K, V> void multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.multibindToMap(keyType, valueType, name);
+		builder.multibindToMap(keyType, valueType, name);
 	}
 
 	/**
-	 * @see BuilderModule#bindIntoSet(Key, Binding)
+	 * @see ModuleBuilder#bindIntoSet(Key, Binding)
 	 */
 	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, Binding<T> binding) {
 		checkState(builder != null, "Cannot bind into set before or after configure() call");
@@ -183,21 +207,21 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * @see BuilderModule#bindIntoSet(Key, Binding)
+	 * @see ModuleBuilder#bindIntoSet(Key, Binding)
 	 */
 	protected final <S, T extends S> void bindIntoSet(Key<S> setOf, Key<T> item) {
 		bindIntoSet(setOf, Binding.to(item));
 	}
 
 	/**
-	 * @see BuilderModule#bindIntoSet(Key, Binding)
+	 * @see ModuleBuilder#bindIntoSet(Key, Binding)
 	 */
 	protected final <S, T extends S> void bindIntoSet(@NotNull Key<S> setOf, @NotNull T element) {
 		bindIntoSet(setOf, Binding.toInstance(element));
 	}
 
 	/**
-	 * @see BuilderModule#postInjectInto(Key)
+	 * @see ModuleBuilder#postInjectInto(Key)
 	 */
 	protected final <T> void postInjectInto(Key<T> key) {
 		checkState(builder != null, "Cannot post inject into something before or after configure() call");
@@ -205,7 +229,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	/**
-	 * @see BuilderModule#postInjectInto(Key)
+	 * @see ModuleBuilder#postInjectInto(Key)
 	 */
 	protected final <T> void postInjectInto(Class<T> type) {
 		postInjectInto(Key.of(type));
@@ -218,7 +242,7 @@ public abstract class AbstractModule implements Module {
 
 	protected final void scan(Class<?> cls) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
-		builder.scanStatics(cls);
+		builder.scan(cls);
 	}
 
 	private void finish() {
@@ -226,7 +250,7 @@ public abstract class AbstractModule implements Module {
 			return;
 		}
 
-		BuilderModuleBindingStage b = Module.create().scan(this);
+		ModuleBuilder b = Module.create().scan(this);
 		builder = b;
 		configure();
 		builder = null;
@@ -319,8 +343,8 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public final Module export(Key<?>... keys) {
-		return Module.super.export(keys);
+	public final Module export(Key<?> key, Key<?>... keys) {
+		return Module.super.export(key, keys);
 	}
 
 	@Override

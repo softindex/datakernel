@@ -7,16 +7,17 @@ import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * A module is an object, that provides certain sets of bindings, transformers, generators or multibinders
@@ -45,8 +46,8 @@ public interface Module {
 		return fn.apply(this);
 	}
 
-	default Module export(Key<?>... keys) {
-		return export(new HashSet<>(Arrays.asList(keys)));
+	default Module export(Key<?> key, Key<?>... keys) {
+		return export(Stream.concat(Stream.of(key), Arrays.stream(keys)).collect(toSet()));
 	}
 
 	default Module export(Set<Key<?>> keys) {
@@ -101,8 +102,8 @@ public interface Module {
 		return Modules.EMPTY;
 	}
 
-	static BuilderModuleBindingStage create() {
-		return new BuilderModule<>();
+	static ModuleBuilder create() {
+		return new ModuleBuilderImpl<>();
 	}
 
 	/**

@@ -117,11 +117,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return this;
 	}
 
-	@Override
-	protected void configure() {
-		multibind(new Key<Set<Initializer<TriggersModule>>>() {}, Multibinder.toSet());
-	}
-
 	@Provides
 	Triggers triggersWatcher(Injector injector) {
 		return Triggers.create();

@@ -14,7 +14,7 @@ public class InstanceFactoryExample {
 		AbstractModule cookbook = new AbstractModule() {
 			@Override
 			protected void configure() {
-				bind(new Key<InstanceFactory<Integer>>() {});
+				bindInstanceFactory(Integer.class);
 			}
 
 			@Provides

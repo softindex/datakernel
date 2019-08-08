@@ -170,11 +170,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return this;
 	}
 
-	@Override
-	protected void configure() {
-		multibind(new Key<Set<Initializer<JmxModule>>>() {}, Multibinder.toSet());
-	}
-
 	@Export
 	@ProvidesIntoSet
 	LauncherService start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {

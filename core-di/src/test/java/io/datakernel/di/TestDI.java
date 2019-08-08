@@ -59,7 +59,7 @@ public final class TestDI {
 		Injector injector = Injector.of(Module.create()
 				.bind(Integer.class).to(ref::incrementAndGet)
 				.bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceFactory<Integer>>() {})
-				.bind(new Key<InstanceFactory<String>>() {}));
+				.bindInstanceFactory(String.class));
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
@@ -237,7 +237,7 @@ public final class TestDI {
 		}
 
 		Injector injector = Injector.of(Module.create()
-				.bind(new Key<InstanceInjector<ClassWithCustomDeps>>() {})
+				.bindInstanceInjector(ClassWithCustomDeps.class)
 				.scan(new Object() {
 
 					@Provides
@@ -601,7 +601,7 @@ public final class TestDI {
 			protected void configure() {
 				super.configure();
 				bind(Integer.class).toInstance(42);
-				bind(Key.of(Integer.class, "namedGeneric")).toInstance(-42);
+				bind(Integer.class, "namedGeneric").toInstance(-42);
 				bind(new Key<List<Integer>>() {}).toInstance(asList(1, 2, 3));
 			}
 		});
@@ -661,7 +661,7 @@ public final class TestDI {
 		Key<Map<String, Integer>> key = new Key<Map<String, Integer>>() {};
 
 		Injector injector = Injector.of(Module.create()
-				.multibind(key, Multibinder.toMap())
+				.multibindToMap(String.class, Integer.class)
 				.scan(new Object() {
 
 					@Provides
@@ -913,7 +913,6 @@ public final class TestDI {
 
 	@Test
 	public void recursiveTemplate() {
-
 		Injector injector = Injector.of(Module.create()
 				.bind(new Key<Comparator<String>>() {})
 				.bind(new Key<Comparator<Integer>>() {})
@@ -1082,7 +1081,7 @@ public final class TestDI {
 				.bind(setOfStrings).to(() -> singleton("one"))
 				.bind(setOfStrings).to(() -> singleton("two"))
 				.bind(setOfStrings).to(() -> singleton("three"))
-				.multibind(setOfStrings, Multibinder.toSet())
+				.multibindToSet(String.class)
 				.bind(new Key<List<String>>() {}).to(ArrayList::new, setOfStrings)
 				.export(new Key<List<String>>() {}));
 

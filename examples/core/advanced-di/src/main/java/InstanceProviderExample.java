@@ -14,7 +14,7 @@ public class InstanceProviderExample {
 		AbstractModule cookbook = new AbstractModule() {
 			@Override
 			protected void configure() {
-				bind(new Key<InstanceProvider<Integer>>() {});
+				bindInstanceProvider(Integer.class);
 			}
 
 			@Provides

@@ -130,8 +130,6 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void configure() {
-		multibind(new Key<Set<Initializer<ConfigModule>>>() {}, Multibinder.toSet());
-
 		transform(0, (bindings, scope, key, binding) -> {
 			if (!key.equals(KEY_OF_CONFIG)) return binding;
 			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
