@@ -3,6 +3,7 @@ package io.datakernel.di.module;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
+import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
@@ -32,6 +33,30 @@ public interface BuilderModuleBindingStage extends Module {
 	 * @see #bind(Key)
 	 */
 	<T> BuilderModule<T> bind(Class<T> cls);
+
+	default <T> BuilderModuleBindingStage bindInstanceProvider(Class<T> type) {
+		return bind(Key.of(type));
+	}
+
+	default <T> BuilderModuleBindingStage bindInstanceProvider(Key<T> key) {
+		return bind(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getName()));
+	}
+
+	default <T> BuilderModuleBindingStage bindInstanceFactory(Class<T> type) {
+		return bind(Key.of(type));
+	}
+
+	default <T> BuilderModuleBindingStage bindInstanceFactory(Key<T> key) {
+		return bind(Key.ofType(Types.parameterized(InstanceFactory.class, key.getType()), key.getName()));
+	}
+
+	default <T> BuilderModuleBindingStage bindInstanceInjector(Class<T> type) {
+		return bind(Key.of(type));
+	}
+
+	default <T> BuilderModuleBindingStage bindInstanceInjector(Key<T> key) {
+		return bind(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
+	}
 
 	/**
 	 * Adds all bindings, transformers, generators and multibinders from given modules to this one.
@@ -107,6 +132,34 @@ public interface BuilderModuleBindingStage extends Module {
 	 * Adds a {@link Multibinder multibinder} for a given key to this module.
 	 */
 	<E> BuilderModuleBindingStage multibind(Key<E> key, Multibinder<E> multibinder);
+
+	default <V> BuilderModuleBindingStage multibindToSet(Class<V> type) {
+		return multibindToSet(Key.of(type));
+	}
+
+	default <V> BuilderModuleBindingStage multibindToSet(Class<V> type, String name) {
+		return multibindToSet(Key.of(type, name));
+	}
+
+	default <V> BuilderModuleBindingStage multibindToSet(Class<V> type, Name name) {
+		return multibindToSet(Key.of(type, name));
+	}
+
+	default <V> BuilderModuleBindingStage multibindToSet(Key<V> key) {
+		return multibind(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()), Multibinder.toSet());
+	}
+
+	default <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType) {
+		return multibindToMap(keyType, valueType, (Name) null);
+	}
+
+	default <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType, String name) {
+		return multibindToMap(keyType, valueType, Name.of(name));
+	}
+
+	default <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
+		return multibind(Key.ofType(Types.parameterized(Map.class, keyType, valueType), name), Multibinder.toMap());
+	}
 
 	@Override
 	default BuilderModuleBindingStage transformWith(UnaryOperator<Module> fn) {

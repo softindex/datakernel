@@ -9,6 +9,7 @@ import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Types;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -351,6 +352,36 @@ public final class Injector {
 		Integer index = compiledIndexes.get(key);
 		if (index == null) return null;
 		return (T) scopedInstances[scopedInstances.length - 1].get(index);
+	}
+
+	@NotNull
+	public <T> InstanceProvider<T> getInstanceProvider(@NotNull Class<T> type) {
+		return getInstanceProvider(Key.of(type));
+	}
+
+	@NotNull
+	public <T> InstanceProvider<T> getInstanceProvider(@NotNull Key<T> key) {
+		return getInstance(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getName()));
+	}
+
+	@NotNull
+	public <T> InstanceFactory<T> getInstanceFactory(@NotNull Class<T> type) {
+		return getInstanceFactory(Key.of(type));
+	}
+
+	@NotNull
+	public <T> InstanceFactory<T> getInstanceFactory(@NotNull Key<T> key) {
+		return getInstance(Key.ofType(Types.parameterized(InstanceFactory.class, key.getType()), key.getName()));
+	}
+
+	@NotNull
+	public <T> InstanceInjector<T> getInstanceInjector(@NotNull Class<T> type) {
+		return getInstanceInjector(Key.of(type));
+	}
+
+	@NotNull
+	public <T> InstanceInjector<T> getInstanceInjector(@NotNull Key<T> key) {
+		return getInstance(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
 	}
 
 	/**

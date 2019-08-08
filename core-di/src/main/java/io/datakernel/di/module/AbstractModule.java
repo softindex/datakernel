@@ -74,7 +74,37 @@ public abstract class AbstractModule implements Module {
 	 */
 	protected final <T> BuilderModule<T> bind(Class<T> type) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bind(Key.of(type));
+		return builder.bind(type);
+	}
+
+	protected final <T> BuilderModuleBindingStage bindInstanceProvider(@NotNull Class<T> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bindInstanceProvider(key);
+	}
+
+	protected final <T> BuilderModuleBindingStage bindInstanceProvider(@NotNull Key<T> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bindInstanceProvider(key);
+	}
+
+	protected final <T> BuilderModuleBindingStage bindInstanceFactory(@NotNull Class<T> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bindInstanceFactory(key);
+	}
+
+	protected final <T> BuilderModuleBindingStage bindInstanceFactory(@NotNull Key<T> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bindInstanceFactory(key);
+	}
+
+	protected final <T> BuilderModuleBindingStage bindInstanceInjector(@NotNull Class<T> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bindInstanceInjector(key);
+	}
+
+	protected final <T> BuilderModuleBindingStage bindInstanceInjector(@NotNull Key<T> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.bindInstanceInjector(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
 	}
 
 	/**
@@ -107,6 +137,41 @@ public abstract class AbstractModule implements Module {
 	protected final <T> void multibind(Key<T> key, Multibinder<T> multibinder) {
 		checkState(builder != null, "Cannot add multibinders before or after configure() call");
 		builder.multibind(key, multibinder);
+	}
+
+	protected final <V> BuilderModuleBindingStage multibindToSet(Class<V> type) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToSet(type);
+	}
+
+	protected final <V> BuilderModuleBindingStage multibindToSet(Class<V> type, String name) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToSet(type, name);
+	}
+
+	protected final <V> BuilderModuleBindingStage multibindToSet(Class<V> type, Name name) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToSet(type, name);
+	}
+
+	protected final <V> BuilderModuleBindingStage multibindToSet(Key<V> key) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToSet(key);
+	}
+
+	protected final <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToMap(keyType, valueType);
+	}
+
+	protected final <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType, String name) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToMap(keyType, valueType, name);
+	}
+
+	protected final <K, V> BuilderModuleBindingStage multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
+		checkState(builder != null, "Cannot add bindings before or after configure() call");
+		return builder.multibindToMap(keyType, valueType, name);
 	}
 
 	/**
