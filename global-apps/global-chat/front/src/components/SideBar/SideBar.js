@@ -227,8 +227,8 @@ export default withRouter(
       connectService(
         ContactsContext, ({contacts}, contactsService, props) => ({
           contacts, contactsService,
-          addContact(contactPublicKey, name) {
-            contactsService.addContact(contactPublicKey, name)
+          addContact(contactPublicKey, name, isAppStoreName = false) {
+            contactsService.addContact(contactPublicKey, name, isAppStoreName)
               .then(() => {
                 const roomId = createDialogRoomId(props.publicKey, contactPublicKey);
                 props.history.push(path.join('/room', roomId || ''));

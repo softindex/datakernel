@@ -2,6 +2,8 @@ import Service from '../../common/Service';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
 import {wait, retry, createDialogRoomId} from '../../common/utils';
 import GlobalAppStoreAPI from "../../common/GlobalAppStoreAPI";
+import ProfileService from "../profile/ProfileService";
+import ProfilesService from "../profiles/ProfilesService";
 
 const RETRY_TIMEOUT = 1000;
 
@@ -10,6 +12,7 @@ class ContactsService extends Service {
     super({
       contacts: new Map(),
       users: new Map(),
+      profiles: new Map(),
       contactsReady: false,
     });
     this._myPublicKey = publicKey;
@@ -57,7 +60,13 @@ class ContactsService extends Service {
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async addContact(publicKey, name) {
+  async addContact(publicKey, name, isAppStoreName) {
+    // if (isAppStoreName) {
+    //   if (this.getChatName(publicKey)) {
+    //     name = await this.getChatName();
+    //   }
+    // }
+
     let operation = new ContactsOTOperation(publicKey, name, false);
     this._contactsOTStateManager.add([operation]);
 
@@ -72,6 +81,12 @@ class ContactsService extends Service {
     const roomId = createDialogRoomId(this._myPublicKey, publicKey);
     await this._roomsService.quitRoom(roomId);
     await this._sync();
+  }
+
+  async getChatName(publicKey) {
+    const profilesService = ProfilesService.create(publicKey);
+    await profilesService.init(); // TODO fix error with async
+    return profilesService.getProfile().name;
   }
 
   _getRooms() {

@@ -66,20 +66,20 @@ class MainScreen extends React.Component {
     return (
       <SearchContactsContext.Provider value={this.searchContactsService}>
         <ProfileContext.Provider value={this.profileService}>
-          <RoomsContext.Provider value={this.roomsService}>
-            <ContactsContext.Provider value={this.contactsService}>
-              <Header roomId={roomId} publicKey={this.props.publicKey}/>
-              <div className={this.props.classes.chat}>
-                <SideBar publicKey={this.props.publicKey}/>
-                {!roomId && (
-                  <StartChat/>
-                )}
-                {roomId && (
-                  <ChatRoom roomId={roomId}/>
-                )}
-              </div>
-            </ContactsContext.Provider>
-          </RoomsContext.Provider>
+            <RoomsContext.Provider value={this.roomsService}>
+              <ContactsContext.Provider value={this.contactsService}>
+                <Header roomId={roomId} publicKey={this.props.publicKey}/>
+                <div className={this.props.classes.chat}>
+                  <SideBar publicKey={this.props.publicKey}/>
+                  {!roomId && (
+                    <StartChat/>
+                  )}
+                  {roomId && (
+                    <ChatRoom roomId={roomId}/>
+                  )}
+                </div>
+              </ContactsContext.Provider>
+            </RoomsContext.Provider>
         </ProfileContext.Provider>
       </SearchContactsContext.Provider>
     );
