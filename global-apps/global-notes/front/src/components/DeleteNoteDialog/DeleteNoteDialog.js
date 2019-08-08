@@ -10,16 +10,11 @@ import noteDialogsStyles from '../CreateNoteDialog/noteDialogsStyles';
 import Dialog from '../Dialog/Dialog'
 import connectService from '../../common/connectService';
 import NotesContext from '../../modules/notes/NotesContext';
+import {withRouter} from "react-router-dom";
 
 function DeleteNoteDialog(props) {
   const onDelete = () => {
-    return props.deleteNote(props.noteId)
-      .then(props.onClose)
-      .catch(err => {
-        props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
+    return props.deleteNote(props.noteId);
   };
 
   return (
@@ -59,13 +54,27 @@ function DeleteNoteDialog(props) {
   );
 }
 
-export default connectService(
-  NotesContext,
-  (state, notesService) => ({
-    deleteNote(noteId) {
-      return notesService.deleteNote(noteId);
-    }
-  })
-)(
-  withSnackbar(withStyles(noteDialogsStyles)(DeleteNoteDialog))
+export default withRouter(
+  connectService(
+    NotesContext,
+    (state, notesService, props) => ({
+      deleteNote(currentNoteId) {
+        notesService.deleteNote(currentNoteId)
+          .then(() => {
+            const {noteId} = props.match.params;
+            props.onClose();
+            if (currentNoteId === noteId) {
+              props.history.push('/note/');
+            }
+          })
+          .catch(err => {
+            props.enqueueSnackbar(err.message, {
+              variant: 'error'
+            });
+          })
+      }
+    })
+  )(
+    withSnackbar(withStyles(noteDialogsStyles)(DeleteNoteDialog))
+  )
 );
