@@ -33,12 +33,13 @@ import static java.lang.Math.min;
  */
 public class HttpServerWorkloadBenchmark extends Launcher {
 	private final static int TOTAL_REQUESTS = 1_000_000;
-	private final static int WARMUP_ROUNDS = 1;
+	private final static int WARMUP_ROUNDS = 3;
 	private final static int BENCHMARK_ROUNDS = 5;
 	private final static int ACTIVE_REQUESTS_MAX = 500;
 	private final static int ACTIVE_REQUESTS_MIN = 300;
 	private final static boolean GENERATE_FILE = false;
 	private PrintWriter resultsFile;
+	private String address;
 
 	@Provides
 	@Named("server")
@@ -52,6 +53,8 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	Config config() {
 		return Config.create()
 				.with("address", "0.0.0.0:9001")
+				.with("client.address", "http://127.0.0.1:9001/")
+				.with("client.keepAlive", "30")
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
@@ -82,7 +85,13 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	@Provides
 	AsyncHttpClient client() {
 		return AsyncHttpClient.create(clientEventloop)
-				.withKeepAliveTimeout(Duration.ofSeconds(30));
+				.withKeepAliveTimeout(Duration.ofSeconds(Integer.parseInt(config.get("client.keepAlive"))));
+	}
+
+	@Override
+	protected void onStart() throws Exception {
+		this.address = config.get("client.address");
+		super.onStart();
 	}
 
 	@Override
@@ -132,7 +141,8 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 				worstTime = roundTime;
 			}
 
-			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms");
+			long rpc = TOTAL_REQUESTS / roundTime * 1000;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
 		}
 
 		double avgTime = (double) timeAllRounds / BENCHMARK_ROUNDS;
@@ -162,7 +172,9 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 
 	private void warmUp() throws Exception {
 		for (int i = 0; i < WARMUP_ROUNDS; i++) {
-			round();
+			long roundTime = round();
+			long rpc = TOTAL_REQUESTS / roundTime * 1000;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
 		}
 	}
 
@@ -187,7 +199,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 				int active = sent - completed;
 
 				if (e != null) {
-					e.printStackTrace();
 					promise.setException(new FailedRequestException());
 					return;
 				}
@@ -218,7 +229,7 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	}
 
 	private void sendRequest(Callback<HttpResponse> callback) {
-		client.request(HttpRequest.get("http://127.0.0.1:9001/")).whenComplete(callback);
+		client.request(HttpRequest.get(address)).whenComplete(callback);
 	}
 
 	private void fillHeaderFile(PrintWriter resultsFile) {

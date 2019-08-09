@@ -29,7 +29,7 @@ import static java.lang.Math.min;
 
 public class MemcacheRpcBenchmark extends Launcher {
 	private final static int TOTAL_REQUESTS = 7_500_000;
-	private final static int WARMUP_ROUNDS = 1;
+	private final static int WARMUP_ROUNDS = 2;
 	private final static int BENCHMARK_ROUNDS = 7;
 	private final static int ACTIVE_REQUESTS_MAX = 1500;
 	private final static int ACTIVE_REQUESTS_MIN = 1000;
@@ -86,8 +86,9 @@ public class MemcacheRpcBenchmark extends Launcher {
 			System.out.println("Start warming up cache");
 			warmup = true;
 			warmUp();
-			warmup = false;
 		}
+
+		warmup = false;
 
 		profiler(this::benchmarkPut, "Put");
 		profiler(this::benchmarkGet, "Get");
@@ -115,7 +116,8 @@ public class MemcacheRpcBenchmark extends Launcher {
 				worstTime = roundTime;
 			}
 
-			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms");
+			long rpc = TOTAL_REQUESTS / roundTime * 1000;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
 		}
 
 		double avgTime = (double) timeAllRounds / BENCHMARK_ROUNDS;
@@ -145,7 +147,9 @@ public class MemcacheRpcBenchmark extends Launcher {
 
 	private void warmUp() throws Exception {
 		for (int i = 0; i < WARMUP_ROUNDS; i++) {
-			round();
+			long time = round();
+			long rpc = TOTAL_REQUESTS / time * 1000;
+			System.out.println("Warm-up round: " + (i + 1) + "; Round time: " + time + "ms; RPC : " + rpc);
 		}
 	}
 
@@ -245,15 +249,12 @@ public class MemcacheRpcBenchmark extends Launcher {
 		if (!warmup) {
 			client.get(new byte[]{(byte) sent})
 					.whenComplete(callback);
-		} else client.get(new byte[]{(byte) sent}, 1000)
+		} else client.get(new byte[]{(byte) sent}, 50)
 				.whenComplete(callback);
 	}
 
 	private void sendRequest(Callback<Void> callback, int sent) {
-		if (!warmup) {
-			client.put(new byte[]{(byte) sent}, message)
-					.whenComplete(callback);
-		} else client.put(new byte[]{(byte) sent}, message, 750)
+		client.put(new byte[]{(byte) sent}, message)
 				.whenComplete(callback);
 	}
 
