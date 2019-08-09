@@ -87,7 +87,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 	@Override
 	public BinaryChannelInput getInput() {
 		return input -> {
-			this.input = sanitize(input);
+			this.input = input;
 			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
 			return getProcessCompletion();

@@ -46,7 +46,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
 	private static final Logger logger = getLogger(RpcClientConnection.class);
-	private static final int BUCKET_CAPACITY = ApplicationSettings.getInt(int.class, "rpc.bucketCapacity", 16);
+	private static final int BUCKET_CAPACITY = ApplicationSettings.getInt(RpcClientConnection.class, "bucketCapacity", 16);
 
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
 	private boolean overloaded = false;
