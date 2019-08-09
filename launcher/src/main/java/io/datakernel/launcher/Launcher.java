@@ -18,7 +18,6 @@ package io.datakernel.launcher;
 
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -255,27 +254,27 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		return Injector.of(getInternalModule().combineWith(getModule()).overrideWith(getOverrideModule()));
 	}
 
+	@SuppressWarnings("unchecked")
 	private Module getInternalModule() {
-		return new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(String[].class).annotatedWith(Args.class).toInstance(args);
+		Class<Launcher> launcherClass = (Class<Launcher>) getClass();
+		Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 
-				//noinspection unchecked
-				Class<Launcher> launcherClass = (Class<Launcher>) Launcher.this.getClass();
-				bind(Launcher.class).to(launcherClass);
-				bind(launcherClass).toInstance(Launcher.this);
+		Module.create()
+				.bind(List.class).toInstance(new ArrayList<>());
 
-				postInjectInto(launcherClass);
+		return Module.create()
+				.bind(String[].class).annotatedWith(Args.class).toInstance(args)
 
-				Key<CompletionStage<Void>> completionStage = new Key<CompletionStage<Void>>() {};
-				bind(completionStage.named(OnStart.class)).toInstance(onStartFuture);
-				bind(completionStage.named(OnRun.class)).toInstance(onRunFuture);
-				bind(completionStage.named(OnComplete.class)).toInstance(onCompleteFuture);
+				.bind(Launcher.class).to(launcherClass)
+				.bind(launcherClass).toInstance(this)
 
-				scan(Launcher.this);
-			}
-		};
+				.postInjectInto(launcherClass)
+				.bind(completionStageKey.named(OnStart.class)).toInstance(onStartFuture)
+				.bind(completionStageKey.named(OnRun.class)).toInstance(onRunFuture)
+				.bind(completionStageKey.named(OnComplete.class)).toInstance(onCompleteFuture)
+
+				// install scanned bindings as a separate module so their exports do not mess up this root module
+				.install(Module.create().scan(Launcher.this));
 	}
 
 	/**

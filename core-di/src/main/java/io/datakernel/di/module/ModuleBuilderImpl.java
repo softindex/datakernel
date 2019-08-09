@@ -1,7 +1,6 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.annotation.KeySetAnnotation;
-import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.LocationInfo;

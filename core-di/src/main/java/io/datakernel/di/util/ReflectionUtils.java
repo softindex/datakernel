@@ -4,6 +4,7 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.BindingInitializer;
+import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.module.BindingDesc;
 import org.jetbrains.annotations.NotNull;
@@ -359,11 +360,11 @@ public final class ReflectionUtils {
 			Scope[] methodScope = getScope(method);
 			boolean exported = method.isAnnotationPresent(Export.class);
 
-			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
+			Type returnType = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
 			TypeVariable<Method>[] typeVars = method.getTypeParameters();
 
 			if (typeVars.length == 0) {
-				Key<Object> key = Key.ofType(type, name);
+				Key<Object> key = Key.ofType(returnType, name);
 				bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, exported));
 				keySets.forEach(keySet -> {
 					Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
@@ -373,7 +374,7 @@ public final class ReflectionUtils {
 				continue;
 			}
 			Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
-					.filter(typeVar -> !Types.contains(type, typeVar))
+					.filter(typeVar -> !Types.contains(returnType, typeVar))
 					.collect(toSet());
 			if (!unused.isEmpty()) {
 				throw new IllegalStateException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
@@ -387,17 +388,7 @@ public final class ReflectionUtils {
 
 			bindingGenerators
 					.computeIfAbsent(method.getReturnType(), $ -> new HashSet<>())
-					.add((bindings, scope, key) -> {
-						if (scope.length < methodScope.length || (name != null && !name.equals(key.getName())) || !Types.matches(key.getType(), type)) {
-							return null;
-						}
-						for (int i = 0; i < methodScope.length; i++) {
-							if (!scope[i].equals(methodScope[i])) {
-								return null;
-							}
-						}
-						return bindingFromGenericMethod(module, key, method);
-					});
+					.add(new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
 		}
 		for (Method method : getAnnotatedElements(moduleClass, ProvidesIntoSet.class, Class::getDeclaredMethods, false)) {
 			if (module == null && !Modifier.isStatic(method.getModifiers())) {
@@ -427,5 +418,53 @@ public final class ReflectionUtils {
 			});
 		}
 		return new ProviderScanResults(bindingDescs, bindingGenerators, multibinders);
+	}
+
+	private static class TemplatedProviderGenerator implements BindingGenerator<Object> {
+		private final Scope[] methodScope;
+		@Nullable
+		private final Name name;
+		private final Method method;
+
+		private final Object module;
+		private final Type returnType;
+
+		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Name name, Method method, Object module, Type returnType) {
+			this.methodScope = methodScope;
+			this.name = name;
+			this.method = method;
+			this.module = module;
+			this.returnType = returnType;
+		}
+
+		@Override
+		public @Nullable Binding<Object> generate(BindingLocator bindings, Scope[] scope, Key<Object> key) {
+			if (scope.length < methodScope.length || (name != null && !name.equals(key.getName())) || !Types.matches(key.getType(), returnType)) {
+				return null;
+			}
+			for (int i = 0; i < methodScope.length; i++) {
+				if (!scope[i].equals(methodScope[i])) {
+					return null;
+				}
+			}
+			return bindingFromGenericMethod(module, key, method);
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			TemplatedProviderGenerator generator = (TemplatedProviderGenerator) o;
+
+			if (!Arrays.equals(methodScope, generator.methodScope)) return false;
+			if (!Objects.equals(name, generator.name)) return false;
+			return method.equals(generator.method);
+		}
+
+		@Override
+		public int hashCode() {
+			return 961 * Arrays.hashCode(methodScope) + 31 * (name != null ? name.hashCode() : 0) + method.hashCode();
+		}
 	}
 }

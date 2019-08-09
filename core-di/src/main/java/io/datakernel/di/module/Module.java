@@ -66,6 +66,14 @@ public interface Module {
 		return rebindImports(singletonMap(from, to));
 	}
 
+	default <V> Module bindImport(Key<V> from, Binding<? extends V> binding) {
+		return bindImports(singletonMap(from, binding));
+	}
+
+	default Module bindImports(@NotNull Map<Key<?>, Binding<?>> map) {
+		return Modules.bindImports(this, map);
+	}
+
 	default Module rebindImports(@NotNull Map<Key<?>, Key<?>> map) {
 		return Modules.rebindImports(this, (key, binding) ->
 				binding.rebindDependencies(

@@ -128,7 +128,7 @@ public final class Preprocessor {
 				generated.put(key, generatedBinding);
 			} else {
 				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(bindings, scope, key, binding);
-				if (transformed != binding) {
+				if (!transformed.equals(binding)) {
 					generated.put(key, transformed);
 				}
 			}

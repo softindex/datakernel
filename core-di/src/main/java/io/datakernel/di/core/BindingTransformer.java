@@ -12,7 +12,7 @@ import java.util.Set;
 import static java.util.stream.Collectors.toList;
 
 /**
- * This is a tranformation function that is applied by the {@link Injector injector} to each binding once.
+ * This is a transformation function that is applied by the {@link Injector injector} to each binding once.
  */
 @FunctionalInterface
 public interface BindingTransformer<T> {
@@ -52,7 +52,7 @@ public interface BindingTransformer<T> {
 
 				for (BindingTransformer<?> transformer : localTransformers) {
 					Binding<Object> b = ((BindingTransformer<Object>) transformer).transform(bindings, scope, key, result);
-					if (b == binding) {
+					if (b.equals(binding)) {
 						continue;
 					}
 					if (transformed != null) {

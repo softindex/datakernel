@@ -148,7 +148,9 @@ public interface ModuleBuilder extends Module {
 	 * @see Injector#postInjectInstances
 	 */
 	default ModuleBuilder postInjectInto(Key<?> key) {
-		return bindIntoSet(new Key<InstanceInjector<?>>() {}, Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
+		Key<InstanceInjector<?>> instanceInjectorKey = Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName());
+		bind(instanceInjectorKey); // so that its location is set to this module
+		return bindIntoSet(new Key<InstanceInjector<?>>() {}, instanceInjectorKey);
 	}
 
 	/**

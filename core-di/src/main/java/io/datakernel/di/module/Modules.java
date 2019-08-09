@@ -114,6 +114,7 @@ public final class Modules {
 
 		Set<Key<?>> missing = new HashSet<>(exportedKeys);
 		missing.removeAll(originalKeys);
+
 		if (!missing.isEmpty()) {
 			throw new DIException(missing.stream()
 					.map(Key::getDisplayString)
@@ -129,8 +130,12 @@ public final class Modules {
 
 	static Module rebindExports(Module module, Map<Key<?>, Key<?>> originalToNew) {
 		Set<Key<?>> originalKeys = new HashSet<>();
+
 		module.getBindings().dfs(multimap -> originalKeys.addAll(multimap.keySet()));
-		if (originalToNew.keySet().stream().noneMatch(originalKeys::contains)) return module;
+
+		if (originalToNew.keySet().stream().noneMatch(originalKeys::contains)) {
+			return module;
+		}
 		return doRebindExports(module, originalToNew);
 	}
 
@@ -164,16 +169,20 @@ public final class Modules {
 												binding)),
 				transformMultimapValues(module.getBindingGenerators(),
 						($, generator) ->
-								(bindings, scope, key) ->
-										((BindingGenerator<Object>) generator).generate(
-												new BindingLocator() {
-													@Override
-													public @Nullable <T> Binding<T> get(Key<T> key) {
-														return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
-													}
-												},
-												scope,
-												(Key<Object>) newToOriginal.getOrDefault(key, key))),
+								(bindings, scope, key) -> {
+									Binding<Object> binding = ((BindingGenerator<Object>) generator).generate(
+											new BindingLocator() {
+												@Override
+												public @Nullable <T> Binding<T> get(Key<T> key) {
+													return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
+												}
+											},
+											scope,
+											(Key<Object>) newToOriginal.getOrDefault(key, key));
+									return binding != null ?
+											binding.rebindDependencies(originalToNew) :
+											null;
+								}),
 				module.getMultibinders()
 						.entrySet()
 						.stream()
@@ -201,4 +210,26 @@ public final class Modules {
 				module.getMultibinders());
 	}
 
+	@SuppressWarnings("unchecked")
+	static Module bindImports(Module module, Map<Key<?>, Binding<?>> bindings) {
+		ModuleBuilder builder = Module.create().install(module);
+		Map<Key<?>, Key<?>> originalToNew = new HashMap<>();
+		bindings.forEach((k, b) -> {
+			Key<Object> priv = (Key<Object>) k.named(uniqueName(k.getName()));
+			originalToNew.put(k, priv);
+			builder.bind(priv).to(b);
+		});
+		return Modules.rebindImports(builder, (k, b) -> {
+			// do not rebind dependencies of those added bindings
+			if (bindings.containsValue(b)) {
+				return b;
+			}
+			return b.rebindDependencies(
+					b.getDependencies()
+							.stream()
+							.map(Dependency::getKey)
+							.filter(originalToNew::containsKey)
+							.collect(toMap(identity(), originalToNew::get)));
+		});
+	}
 }

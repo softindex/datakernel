@@ -1092,4 +1092,30 @@ public final class TestDI {
 
 		assertEquals(expected, new HashSet<>(injector.getInstance(new Key<List<String>>() {})));
 	}
+
+	@Test
+	public void bindImport() {
+		Module importingModule = Module.create()
+				.bind(String.class).to(i -> "hello #" + i, Integer.class);
+
+		Injector injector = Injector.of(importingModule
+				.bindImport(Key.of(Integer.class), Binding.toInstance(3000)));
+
+		assertEquals("hello #3000", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+	}
+
+	@Test
+	public void recursiveBindImport() {
+
+		Module importingModule = Module.create()
+				.bind(String.class).to(i -> "hello #" + i, Integer.class);
+
+		Injector injector = Injector.of(
+				Module.create().bind(Integer.class).toInstance(3000),
+				importingModule.bindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
+
+		assertEquals("hello #6000", injector.getInstance(String.class));
+		assertEquals(3000, injector.getInstance(Integer.class).intValue());
+	}
 }
