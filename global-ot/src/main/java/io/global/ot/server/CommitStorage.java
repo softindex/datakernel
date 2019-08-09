@@ -61,5 +61,5 @@ public interface CommitStorage {
 
 	default Promise<Boolean> isIncompleteCommit(CommitId commitId) {
 		return isCompleteCommit(commitId).map(complete -> !complete);
-	};
+	}
 }

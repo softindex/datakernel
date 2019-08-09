@@ -97,8 +97,8 @@ public class StringDimensionTest {
 		await(aggregationChunkStorage.finish(consumer1Result.addedChunks().map(id -> (long) id).collect(toSet())));
 		await(aggregationChunkStorage.finish(consumer2Result.addedChunks().map(id -> (long) id).collect(toSet())));
 
-		cube.apply(consumer1Result);
-		cube.apply(consumer2Result);
+		await(cube.apply(consumer1Result));
+		await(cube.apply(consumer2Result));
 
 		StreamConsumerToList<DataItemResultString> consumerToList = StreamConsumerToList.create();
 		await(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),

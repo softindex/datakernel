@@ -84,7 +84,6 @@ public final class MessagingService implements EventloopService {
 		return pmDriver.send(senderPrivKey, receiver, mailBox, message);
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	private void pollMessages() {
 		KeyPair keys = userContainer.getMyRepositoryId().getPrivKey().computeKeys();
 		OTStateManager<CommitId, SharedReposOperation> stateManager = userContainer.getStateManager();
@@ -101,9 +100,10 @@ public final class MessagingService implements EventloopService {
 								.then($ -> {
 									if (!state.getSharedRepos().contains(sharedRepo)) {
 										SharedReposOperation createOp = SharedReposOperation.create(sharedRepo);
-										stateManager.add(createOp);
-										return stateManager.sync()
-												.whenException(e -> stateManager.reset());
+
+										return stateManager.add(createOp)
+												.then($2 -> stateManager.sync())
+												.thenEx(($2, e) -> e != null ? stateManager.reset().then($3 -> Promise.ofException(e)) : Promise.complete());
 									} else {
 										return Promise.complete();
 									}

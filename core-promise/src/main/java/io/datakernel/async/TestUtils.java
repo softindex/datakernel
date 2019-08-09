@@ -53,6 +53,11 @@ public class TestUtils {
 	}
 
 	private static <T> T compute(Promise<T> promise) throws ExecutionException {
+		if (promise.isResult()) {
+			return promise.getResult();
+		} else if (promise.isException()) {
+			throw new ExecutionException(promise.getException());
+		}
 		Future<T> future = promise.toCompletableFuture();
 		Eventloop.getCurrentEventloop().run();
 		try {

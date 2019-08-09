@@ -109,7 +109,7 @@ public class OTStateManagerGlobalTest {
 	public void testSync() {
 		await(stateManager.checkout());
 		List<TestOp> diffs = asList(add(12), set(12, 23), add(-2));
-		stateManager.addAll(diffs);
+		await(stateManager.addAll(diffs));
 
 		await(stateManager.sync());
 		assertEquals(21, state.getValue());

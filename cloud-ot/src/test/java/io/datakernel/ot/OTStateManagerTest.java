@@ -68,8 +68,7 @@ public class OTStateManagerTest {
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 
 		initializeRepository(repository, stateManager);
-		stateManager.add(add(1));
-		stateManager.sync();
+		await(stateManager.add(add(1)));
 		await(stateManager.sync());
 
 		assertFalse(stateManager.hasWorkingDiffs());
@@ -98,7 +97,7 @@ public class OTStateManagerTest {
 		}
 
 		assertEquals(0, testOpState.getValue());
-		stateManager.add(add(1));
+		await(stateManager.add(add(1)));
 		assertEquals(1, testOpState.getValue());
 
 		await(stateManager.sync());
@@ -126,7 +125,7 @@ public class OTStateManagerTest {
 
 		assertEquals(0, testOpState.getValue());
 
-		stateManager.add(add(3));
+		await(stateManager.add(add(3)));
 		await(stateManager.sync());
 
 		assertEquals(8, testOpState.getValue());
@@ -138,7 +137,7 @@ public class OTStateManagerTest {
 
 		assertEquals(0, testOpState.getValue());
 
-		stateManager.add(set(0, 10));
+		await(stateManager.add(set(0, 10)));
 		await(stateManager.sync());
 
 		assertEquals(10, testOpState.getValue());
@@ -150,7 +149,7 @@ public class OTStateManagerTest {
 
 		assertEquals(0, testOpState.getValue());
 
-		stateManager.add(add(5));
+		await(stateManager.add(add(5)));
 		await(stateManager.sync());
 
 		assertEquals(10, testOpState.getValue());
@@ -162,7 +161,7 @@ public class OTStateManagerTest {
 
 		assertEquals(0, testOpState.getValue());
 
-		stateManager.add(set(0, 10));
+		await(stateManager.add(set(0, 10)));
 		await(stateManager.sync());
 
 		assertEquals(10, testOpState.getValue());
@@ -174,7 +173,7 @@ public class OTStateManagerTest {
 
 		assertEquals(0, testOpState.getValue());
 
-		stateManager.add(add(5));
+		await(stateManager.add(add(5)));
 		await(stateManager.sync());
 
 		assertEquals(15, testOpState.getValue());
@@ -192,7 +191,7 @@ public class OTStateManagerTest {
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 		initializeRepository(repository, stateManager);
 
-		stateManager.add(add(1));
+		await(stateManager.add(add(1)));
 		Throwable exception = awaitException(stateManager.sync());
 
 		assertEquals(FAILED, exception);
@@ -201,7 +200,7 @@ public class OTStateManagerTest {
 		assertTrue(stateManager.hasWorkingDiffs());
 
 		// new ops added in the meantime
-		stateManager.add(add(100));
+		await(stateManager.add(add(100)));
 
 		await(stateManager.sync());
 		assertEquals((Integer) 1, stateManager.getCommitId());
@@ -229,7 +228,7 @@ public class OTStateManagerTest {
 			g.add(1, 2, add(20));
 		});
 
-		stateManager.add(add(1));
+		await(stateManager.add(add(1)));
 		Throwable exception = awaitException(stateManager.sync());
 
 		assertEquals(FAILED, exception);
@@ -238,7 +237,7 @@ public class OTStateManagerTest {
 		assertTrue(stateManager.hasWorkingDiffs());
 
 		// new ops added in the meantime
-		stateManager.add(add(100));
+		await(stateManager.add(add(100)));
 
 		await(stateManager.sync());
 		assertEquals((Integer) 3, stateManager.getCommitId());
@@ -262,7 +261,7 @@ public class OTStateManagerTest {
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
 		initializeRepository(repository, stateManager);
 
-		stateManager.add(add(1));
+		await(stateManager.add(add(1)));
 		Throwable exception = awaitException(stateManager.sync());
 
 		assertEquals(FAILED, exception);
@@ -271,7 +270,7 @@ public class OTStateManagerTest {
 		assertFalse(stateManager.hasWorkingDiffs());
 
 		// new ops added in the meantime, repo changed
-		stateManager.add(add(100));
+		await(stateManager.add(add(100)));
 		repository.setGraph(g -> {
 			g.add(0, 1, add(10));
 			g.add(1, 2, add(20));

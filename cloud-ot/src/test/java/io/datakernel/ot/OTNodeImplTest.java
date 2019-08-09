@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.Promises;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.utils.OTGraphBuilder;
@@ -217,8 +218,8 @@ public class OTNodeImplTest {
 	private static void assertFetchData(Integer expectedId, long expectedLevel, Integer expectedState, FetchData<Integer, TestOp> fetchData) {
 		assertEquals(expectedId, fetchData.getCommitId());
 		assertEquals(expectedLevel, fetchData.getLevel());
-		state.init();
-		fetchData.getDiffs().forEach(state::apply);
+		await(state.init());
+		await(Promises.sequence(fetchData.getDiffs().stream().map(op -> () -> state.apply(op))));
 		assertEquals(expectedState, (Integer) state.getValue());
 	}
 

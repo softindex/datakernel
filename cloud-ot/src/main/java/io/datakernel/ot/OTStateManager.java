@@ -16,11 +16,8 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncExecutors;
-import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.*;
 import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
-import io.datakernel.async.Promise;
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
@@ -125,16 +122,14 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public Promise<Void> checkout() {
 		checkState(commitId == null);
 		return repository.checkout()
-				.whenResult(checkoutData -> {
-					state.init();
-					apply(checkoutData.getDiffs());
-
-					workingDiffs.clear();
-
-					commitId = checkoutData.getCommitId();
-					level = checkoutData.getLevel();
-				})
-				.toVoid()
+				.then(checkoutData ->
+						state.init()
+								.then($ -> apply(checkoutData.getDiffs()))
+								.whenResult($ -> {
+									workingDiffs.clear();
+									commitId = checkoutData.getCommitId();
+									level = checkoutData.getLevel();
+								}))
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
@@ -179,8 +174,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Promise<Void> fetch() {
 		K fetchCommitId = this.commitId;
 		return repository.fetch(fetchCommitId)
-				.whenResult(fetchData -> rebase(fetchCommitId, fetchData))
-				.toVoid()
+				.then(fetchData -> rebase(fetchCommitId, fetchData))
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
@@ -189,43 +183,43 @@ public final class OTStateManager<K, D> implements EventloopService {
 		if (!isValid()) return Promise.complete();
 		K pollCommitId = this.commitId;
 		return repository.poll(pollCommitId)
-				.whenResult(fetchData -> {
-					if (!sync.isRunning()) {
-						rebase(pollCommitId, fetchData);
-					}
-				})
-				.toVoid()
+				.then(fetchData -> sync.isRunning() ? Promise.complete() : rebase(pollCommitId, fetchData))
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private void rebase(K originalCommitId, FetchData<K, D> fetchData) {
+	private Promise<Void> rebase(K originalCommitId, FetchData<K, D> fetchData) {
 		logger.info("Rebasing - {} {}", originalCommitId, fetchData);
-		if (commitId != originalCommitId) return;
-		if (pendingCommit != null) return;
+		if (commitId != originalCommitId) {
+			return Promise.complete();
+		}
+		if (pendingCommit != null) {
+			return Promise.complete();
+		}
 
 		List<D> fetchedDiffs = fetchData.getDiffs();
 
 		TransformResult<D> transformed;
 		try {
-			transformed = otSystem.transform(
-					otSystem.squash(workingDiffs),
-					otSystem.squash(fetchedDiffs));
+			transformed = otSystem.transform(otSystem.squash(workingDiffs), otSystem.squash(fetchedDiffs));
 		} catch (OTTransformException e) {
 			invalidateInternalState();
 			throw new UncheckedException(e);
 		}
 
-		apply(transformed.left);
-		workingDiffs = new ArrayList<>(transformed.right);
-
-		commitId = fetchData.getCommitId();
-		level = fetchData.getLevel();
+		return apply(transformed.left)
+				.whenResult($ -> {
+					workingDiffs = new ArrayList<>(transformed.right);
+					commitId = fetchData.getCommitId();
+					level = fetchData.getLevel();
+				});
 	}
 
 	@NotNull
 	private Promise<Void> commit() {
 		assert pendingCommit == null;
-		if (workingDiffs.isEmpty()) return Promise.complete();
+		if (workingDiffs.isEmpty()) {
+			return Promise.complete();
+		}
 		int originalSize = workingDiffs.size();
 		List<D> diffs = new ArrayList<>(otSystem.squash(workingDiffs));
 		return repository.createCommit(this.commitId, diffs, level)
@@ -241,52 +235,53 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> push() {
-		if (pendingCommit == null) return Promise.complete();
+		if (pendingCommit == null) {
+			return Promise.complete();
+		}
 		K currentCommitId = this.commitId;
 		return repository.push(pendingCommit)
-				.whenResult(fetchData -> {
+				.then(fetchData -> {
 					pendingCommit = null;
 					pendingCommitDiffs = null;
-					rebase(currentCommitId, fetchData);
+					return rebase(currentCommitId, fetchData);
 				})
-				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public void reset() {
+	public Promise<Void> reset() {
 		checkState(!sync.isRunning());
-		apply(otSystem.invert(
-				concat(pendingCommitDiffs != null ? pendingCommitDiffs : emptyList(), workingDiffs)));
-		workingDiffs.clear();
-		pendingCommit = null;
-		pendingCommitDiffs = null;
+
+		return apply(otSystem.invert(concat(pendingCommitDiffs != null ? pendingCommitDiffs : emptyList(), workingDiffs)))
+				.whenResult($ -> {
+					workingDiffs.clear();
+					pendingCommit = null;
+					pendingCommitDiffs = null;
+				});
 	}
 
-	public void add(@NotNull D diff) {
+	public Promise<Void> add(@NotNull D diff) {
 		checkState(isValid());
-		addAll(singletonList(diff));
+		return addAll(singletonList(diff));
 	}
 
-	public void addAll(@NotNull List<? extends D> diffs) {
+	public Promise<Void> addAll(@NotNull List<? extends D> diffs) {
 		checkState(isValid());
 		try {
-			for (D diff : diffs) {
-				if (!otSystem.isEmpty(diff)) {
-					workingDiffs.add(diff);
-					state.apply(diff);
-				}
-			}
+			return Promises.sequence(diffs.stream()
+					.filter(diff -> !otSystem.isEmpty(diff))
+					.map(diff -> () -> {
+						workingDiffs.add(diff);
+						return state.apply(diff);
+					}));
 		} catch (RuntimeException e) {
 			invalidateInternalState();
 			throw e;
 		}
 	}
 
-	private void apply(List<D> diffs) {
+	private Promise<Void> apply(List<D> diffs) {
 		try {
-			for (D op : diffs) {
-				state.apply(op);
-			}
+			return Promises.sequence(diffs.stream().map(d -> () -> state.apply(d)));
 		} catch (RuntimeException e) {
 			invalidateInternalState();
 			throw e;

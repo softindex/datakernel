@@ -85,7 +85,7 @@ import static java.util.stream.Collectors.toList;
  * Represents an OLAP cube. Provides methods for loading and querying data.
  * Also provides functionality for managing aggregations.
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked", "rawtypes", "UnusedReturnValue"})
 public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
@@ -441,18 +441,16 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	@Override
-	public void init() {
-		for (AggregationContainer container : aggregations.values()) {
-			container.aggregation.getState().init();
-		}
+	public Promise<Void> init() {
+		return Promises.all(aggregations.values().stream().map(c -> c.aggregation.getState().init()));
 	}
 
 	@Override
-	public void apply(CubeDiff op) {
-		for (String aggregationId : op.keySet()) {
+	public Promise<Void> apply(CubeDiff op) {
+		return Promises.all(op.keySet().stream().map(aggregationId -> {
 			AggregationDiff aggregationDiff = op.get(aggregationId);
-			aggregations.get(aggregationId).aggregation.getState().apply(aggregationDiff);
-		}
+			return aggregations.get(aggregationId).aggregation.getState().apply(aggregationDiff);
+		}));
 	}
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass) {
@@ -1117,10 +1115,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (limit == null) {
 				end = results.size();
 				limit = results.size();
-			} else if (start + limit > results.size()) {
-				end = results.size();
 			} else {
-				end = start + limit;
+				end = Math.min(start + limit, results.size());
 			}
 
 			if (comparator != null) {

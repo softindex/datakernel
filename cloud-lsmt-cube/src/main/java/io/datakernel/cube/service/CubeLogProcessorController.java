@@ -115,10 +115,10 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 							.whenComplete(promiseProcessLogsImpl.recordStats())
 							.whenResult(this::cubeDiffJmx)
 							.then(diffs -> Promise.complete()
-									.whenResult($ -> stateManager.addAll(diffs))
+									.then($ -> stateManager.addAll(diffs))
 									.then($ -> chunkStorage.finish(addedChunks(diffs)))
 									.then($ -> stateManager.sync())
-									.whenException(e -> stateManager.reset())
+									.thenEx(($, e) -> e != null ? stateManager.reset().then($2 -> Promise.ofException(e)) : Promise.complete())
 									.map($ -> true));
 				})
 				.whenComplete(toLogger(logger, thisMethod(), stateManager));

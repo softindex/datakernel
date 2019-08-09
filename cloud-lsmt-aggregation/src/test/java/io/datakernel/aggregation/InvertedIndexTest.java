@@ -151,7 +151,7 @@ public class InvertedIndexTest {
 
 	public void doProcess(AggregationChunkStorage<Long> aggregationChunkStorage, Aggregation aggregation, StreamSupplier<InvertedIndexRecord> supplier) {
 		AggregationDiff diff = await(aggregation.consume(supplier, InvertedIndexRecord.class));
-		aggregation.getState().apply(diff);
+		await(aggregation.getState().apply(diff));
 		await(aggregationChunkStorage.finish(getAddedChunks(diff)));
 	}
 

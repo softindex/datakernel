@@ -18,6 +18,7 @@ package io.datakernel.ot;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
@@ -77,7 +78,7 @@ public class OTRepositoryMySqlTest {
 
 	private static int apply(List<TestOp> testOps) {
 		TestOpState testOpState = new TestOpState();
-		testOps.forEach(testOpState::apply);
+		await(Promises.sequence(testOps.stream().map(op -> () -> testOpState.apply(op))));
 		return testOpState.getValue();
 	}
 

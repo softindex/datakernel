@@ -23,6 +23,7 @@ import org.junit.Test;
 import java.util.*;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
+import static io.datakernel.async.TestUtils.await;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 import static org.junit.Assert.assertEquals;
@@ -44,7 +45,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks.add(createTestChunk(7, 5, 8));
 		chunks.add(createTestChunk(8, 7, 8));
 
-		state.apply(AggregationDiff.of(chunks));
+		await(state.apply(AggregationDiff.of(chunks)));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationHotSegment(100);
 		assertEquals(chunks, new HashSet<>(selectedChunks));
@@ -80,7 +81,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks2.add(createTestChunk(12, 10, 13));
 		chunks2.add(createTestChunk(13, 12, 13));
 
-		state.apply(AggregationDiff.of(concat(chunks1.stream(), chunks2.stream()).collect(toSet())));
+		await(state.apply(AggregationDiff.of(concat(chunks1.stream(), chunks2.stream()).collect(toSet()))));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationMinKey(100, 4000);
 		assertEquals(chunks1, new HashSet<>(selectedChunks));
@@ -109,7 +110,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks3.add(createTestChunk(8, 14, 15, 3));
 		chunks3.add(createTestChunk(9, 14, 15, 6));
 
-		state.apply(AggregationDiff.of(concat(chunks1.stream(), concat(chunks2.stream(), chunks3.stream())).collect(toSet())));
+		await(state.apply(AggregationDiff.of(concat(chunks1.stream(), concat(chunks2.stream(), chunks3.stream())).collect(toSet()))));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationMinKey(maxChunks, optimalChunkSize);
 		assertEquals(chunks2, new HashSet<>(selectedChunks));
@@ -133,7 +134,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks3.add(createTestChunk(6, 2, 2, 2, 2, 1, 1));
 		chunks3.add(createTestChunk(7, 2, 2, 2, 2, 1, 10));
 
-		state.apply(AggregationDiff.of(concat(chunks1.stream(), concat(chunks2.stream(), chunks3.stream())).collect(toSet())));
+		await(state.apply(AggregationDiff.of(concat(chunks1.stream(), concat(chunks2.stream(), chunks3.stream())).collect(toSet()))));
 
 		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = state.groupByPartition(2);
 

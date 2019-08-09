@@ -180,7 +180,7 @@ public class CubeIntegrationTest {
 		CubeDiff consolidatingCubeDiff = await(cube.consolidate(Aggregation::consolidateHotSegment));
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
-		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
+		await(logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff)));
 		await(logCubeStateManager.sync());
 
 		await(aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())));

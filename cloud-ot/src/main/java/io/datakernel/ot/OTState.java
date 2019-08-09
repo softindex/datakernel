@@ -1,7 +1,9 @@
 package io.datakernel.ot;
 
-public interface OTState<D> {
-	void init();
+import io.datakernel.async.Promise;
 
-	void apply(D op);
+public interface OTState<D> {
+	Promise<Void> init();
+
+	Promise<Void> apply(D op);
 }

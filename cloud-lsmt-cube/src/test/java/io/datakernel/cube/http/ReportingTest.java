@@ -351,9 +351,8 @@ public final class ReportingTest {
 				.streamTo(StreamConsumer.ofPromise(multilog.write("partitionA"))));
 
 		LogDiff<CubeDiff> logDiff = await(logOTProcessor.processLog());
-		await(aggregationChunkStorage
-				.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet())));
-		logCubeStateManager.add(logDiff);
+		await(aggregationChunkStorage.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet())));
+		await(logCubeStateManager.add(logDiff));
 		await(logCubeStateManager.sync());
 
 		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))

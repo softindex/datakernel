@@ -108,7 +108,7 @@ public class ChatRoomTest {
 		ChatMultiOperation diffs1 = ChatMultiOperation.create()
 				.withMessageOps(insert(new Message(time++, "User 1", "Hello")));
 
-		stateManager1.add(diffs1);
+		await(stateManager1.add(diffs1));
 
 		sync();
 
@@ -123,7 +123,7 @@ public class ChatRoomTest {
 		ChatMultiOperation diffs2 = ChatMultiOperation.create()
 				.withMessageOps(insert(new Message(time++, "User 1", "From user 1")));
 
-		stateManager1.addAll(asList(diffs1, diffs2));
+		await(stateManager1.addAll(asList(diffs1, diffs2)));
 
 		ChatMultiOperation diffs3 = ChatMultiOperation.create()
 				.withMessageOps(
@@ -131,7 +131,7 @@ public class ChatRoomTest {
 						insert(new Message(time++, "User 2", "From user 2"))
 				);
 
-		stateManager2.add(diffs3);
+		await(stateManager2.add(diffs3));
 
 		sync();
 

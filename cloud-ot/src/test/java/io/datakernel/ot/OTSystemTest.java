@@ -91,13 +91,13 @@ public final class OTSystemTest {
 		System.out.println(await(repository.loadCommit("m")));
 		System.out.println(stateManager);
 		System.out.println();
-		stateManager.add(new TestAdd(50));
+		await(stateManager.add(new TestAdd(50)));
 		System.out.println(stateManager);
 
 		await(stateManager.sync());
 		System.out.println(stateManager);
 		System.out.println();
-		stateManager.add(new TestAdd(3));
+		await(stateManager.add(new TestAdd(3)));
 		System.out.println(stateManager);
 
 		await(stateManager.sync());

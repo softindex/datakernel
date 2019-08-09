@@ -51,5 +51,4 @@ public interface OTNode<K, D, C> {
 	Promise<C> createCommit(K parent, List<D> diffs, long parentLevel);
 
 	Promise<FetchData<K, D>> push(C commit);
-
 }

@@ -102,7 +102,7 @@ public class DocumentTest {
 		DocumentMultiOperation diffs1 = DocumentMultiOperation.create()
 				.withEditOps(insert(0, "Hello"));
 
-		stateManager1.add(diffs1);
+		await(stateManager1.add(diffs1));
 
 		sync();
 
@@ -117,7 +117,7 @@ public class DocumentTest {
 		DocumentMultiOperation diffs2 = DocumentMultiOperation.create()
 				.withEditOps(insert(2, "ef"));
 
-		stateManager1.addAll(asList(diffs1, diffs2));
+		await(stateManager1.addAll(asList(diffs1, diffs2)));
 
 		DocumentMultiOperation diffs3 = DocumentMultiOperation.create()
 				.withEditOps(
@@ -125,7 +125,7 @@ public class DocumentTest {
 						insert(2, "45")
 				);
 
-		stateManager2.add(diffs3);
+		await(stateManager2.add(diffs3));
 
 		sync();
 

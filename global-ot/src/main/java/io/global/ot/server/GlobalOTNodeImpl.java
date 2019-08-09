@@ -159,8 +159,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits) {
-		return Promises.all(newCommits.entrySet()
-				.stream()
+		return Promises.all(newCommits.entrySet().stream()
 				.map(entry -> commitStorage.saveCommit(entry.getKey(), entry.getValue())))
 				.whenComplete(toLogger(logger, "save", repositoryId, newCommits, this));
 	}

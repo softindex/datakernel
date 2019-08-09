@@ -47,9 +47,8 @@ public final class TestUtils {
 
 	public static <T> void runProcessLogs(AggregationChunkStorage<Long> aggregationChunkStorage, OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager, LogOTProcessor<T, CubeDiff> logOTProcessor) {
 		LogDiff<CubeDiff> logDiff = await(logOTProcessor.processLog());
-		await(aggregationChunkStorage
-				.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet())));
-		logCubeStateManager.add(logDiff);
+		await(aggregationChunkStorage.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet())));
+		await(logCubeStateManager.add(logDiff));
 		await(logCubeStateManager.sync());
 	}
 

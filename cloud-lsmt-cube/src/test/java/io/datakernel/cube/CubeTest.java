@@ -116,7 +116,7 @@ public final class CubeTest {
 				.streamTo(consumer.getConsumer())
 				.then($ -> consumer.getResult())
 				.then(cubeDiff -> chunkStorage.finish(cubeDiff.<Long>addedChunks().collect(toSet()))
-						.whenResult($ -> cube.apply(cubeDiff)));
+						.then($ -> cube.apply(cubeDiff)));
 	}
 
 	@Test

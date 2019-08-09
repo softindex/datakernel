@@ -16,6 +16,8 @@
 
 package io.datakernel.ot;
 
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestSet;
@@ -26,6 +28,7 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.ot.MergedOTSystem.mergeOtSystems;
 import static io.datakernel.ot.TransformResult.left;
 import static io.datakernel.ot.TransformResult.right;
@@ -72,13 +75,13 @@ public final class MergedOTSystemTest {
 				ops(add(-5), set(12, 123), setName("test2", "test3"))
 		);
 		State state = new State();
-		state.init();
-		ops.forEach(state::apply);
+		await(state.init());
+		await(Promises.sequence(ops.stream().map(op -> () -> state.apply(op))));
 		assertState("test3", 8, 123, state);
 
 		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> inverted = MERGED.invert(ops);
 		System.out.println(inverted);
-		inverted.forEach(state::apply);
+		await(Promises.sequence(inverted.stream().map(op -> () -> state.apply(op))));
 		assertTrue(state.isEmpty());
 	}
 
@@ -93,18 +96,18 @@ public final class MergedOTSystemTest {
 				ops(add(-5), set(12, 123), setName("test2", "test3"))
 		);
 		State state1 = new State();
-		state1.init();
-		ops.forEach(state1::apply);
+		await(state1.init());
+		await(Promises.sequence(ops.stream().map(op -> () -> state1.apply(op))));
 		assertState("test3", 8, 123, state1);
 
 		State state2 = new State();
-		state2.init();
+		await(state2.init());
 		List<Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>>> squashed = MERGED.squash(ops);
 
 		assertEquals(singletonList(ops(add(8), set(0, 123), setName("", "test3"))), squashed);
 
 		System.out.println(squashed);
-		squashed.forEach(state2::apply);
+		await(Promises.sequence(squashed.stream().map(op -> () -> state2.apply(op))));
 
 		assertEquals(state1, state2);
 	}
@@ -135,13 +138,13 @@ public final class MergedOTSystemTest {
 		);
 
 		State stateLeft = new State();
-		stateLeft.init();
+		await(stateLeft.init());
 
 		State stateRight = new State();
-		stateRight.init();
+		await(stateRight.init());
 
-		left.forEach(stateLeft::apply);
-		right.forEach(stateRight::apply);
+		await(Promises.sequence(left.stream().map(op -> () -> stateLeft.apply(op))));
+		await(Promises.sequence(right.stream().map(op -> () -> stateRight.apply(op))));
 
 		assertState("left4", 146, 3, stateLeft);
 		assertState("right4", 916, 22, stateRight);
@@ -150,8 +153,8 @@ public final class MergedOTSystemTest {
 		System.out.println(transform.left);
 		System.out.println(transform.right);
 
-		transform.left.forEach(stateLeft::apply);
-		transform.right.forEach(stateRight::apply);
+		await(Promises.sequence(transform.left.stream().map(op -> () -> stateLeft.apply(op))));
+		await(Promises.sequence(transform.right.stream().map(op -> () -> stateRight.apply(op))));
 
 		assertEquals(stateLeft, stateRight);
 	}
@@ -245,14 +248,15 @@ public final class MergedOTSystemTest {
 		private int setVal;
 
 		@Override
-		public void init() {
+		public Promise<Void> init() {
 			name = "";
 			addVal = 0;
 			setVal = 0;
+			return Promise.complete();
 		}
 
 		@Override
-		public void apply(Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>> op) {
+		public Promise<Void> apply(Tuple3<List<TestAdd>, List<TestSet>, List<TestSetName>> op) {
 			op.getValue1().forEach(add -> addVal += add.getDelta());
 			op.getValue2().forEach(set -> {
 				assert setVal == set.getPrev();
@@ -262,6 +266,7 @@ public final class MergedOTSystemTest {
 				assert name.equals(setName.getPrev());
 				name = setName.getNext();
 			});
+			return Promise.complete();
 		}
 
 		public int getAddVal() {

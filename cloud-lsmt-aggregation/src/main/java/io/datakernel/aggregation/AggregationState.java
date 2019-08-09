@@ -20,6 +20,7 @@ import io.datakernel.aggregation.AggregationPredicates.RangeScan;
 import io.datakernel.aggregation.RangeTree.Segment;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Promise;
 import io.datakernel.ot.OTState;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -60,7 +61,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	@Override
-	public void apply(AggregationDiff commit) {
+	public Promise<Void> apply(AggregationDiff commit) {
 		checkArgument(intersection(commit.getAddedChunks(), commit.getRemovedChunks()), Set::isEmpty,
 				v -> "Non-empty intersection between added and removed chunks: " + v +
 						"\n Added chunks " + toLimitedString(commit.getAddedChunks(), 100) +
@@ -73,6 +74,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		for (AggregationChunk chunk : commit.getRemovedChunks()) {
 			removeFromIndex(chunk);
 		}
+		return Promise.complete();
 	}
 
 	public void addToIndex(AggregationChunk chunk) {
@@ -116,9 +118,10 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	@Override
-	public void init() {
+	public Promise<Void> init() {
 		initIndex();
 		chunks.clear();
+		return Promise.complete();
 	}
 
 	private static int getNumberOfOverlaps(Segment<?> segment) {

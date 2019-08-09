@@ -237,7 +237,7 @@ public class CubeMeasureRemovalTest {
 		await(aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())));
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
-		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
+		await(logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff)));
 		await(logCubeStateManager.sync());
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());

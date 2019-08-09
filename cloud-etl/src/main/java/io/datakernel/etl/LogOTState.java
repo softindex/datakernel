@@ -1,5 +1,7 @@
 package io.datakernel.etl;
 
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.multilog.LogPosition;
 import io.datakernel.ot.OTState;
 
@@ -29,20 +31,18 @@ public final class LogOTState<D> implements OTState<LogDiff<D>> {
 	}
 
 	@Override
-	public void init() {
+	public Promise<Void> init() {
 		positions.clear();
-		dataState.init();
+		return dataState.init();
 	}
 
 	@Override
-	public void apply(LogDiff<D> op) {
-		for (String log : op.getPositions().keySet()) {
-			LogPositionDiff positionDiff = op.getPositions().get(log);
+	public Promise<Void> apply(LogDiff<D> logDiff) {
+		for (String log : logDiff.getPositions().keySet()) {
+			LogPositionDiff positionDiff = logDiff.getPositions().get(log);
 			positions.put(log, positionDiff.to);
 		}
-		for (D d : op.getDiffs()) {
-			dataState.apply(d);
-		}
+		return Promises.sequence(logDiff.getDiffs().stream().map(op -> () -> dataState.apply(op)));
 	}
 
 	@Override

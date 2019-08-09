@@ -77,23 +77,23 @@ public class ChatRoomOTSystemTest {
 	public void test() {
 		await(stateManager1.checkout(), stateManager2.checkout());
 
-		stateManager1.add(ChatMultiOperation.create().withRoomNameOps(changeName(state1.getRoomName(), "My Room 1", timestamp())));
-		stateManager2.add(ChatMultiOperation.create().withRoomNameOps(changeName(state2.getRoomName(), "My Room 2", timestamp())));
+		await(stateManager1.add(ChatMultiOperation.create().withRoomNameOps(changeName(state1.getRoomName(), "My Room 1", timestamp()))));
+		await(stateManager2.add(ChatMultiOperation.create().withRoomNameOps(changeName(state2.getRoomName(), "My Room 2", timestamp()))));
 
 		sync();
 
 		System.out.println(state1.getRoomName());
 		System.out.println(state2.getRoomName());
 
-		stateManager1.add(ChatMultiOperation.create().withMessageOps(
+		await(stateManager1.add(ChatMultiOperation.create().withMessageOps(
 				insert(new Message(timestamp(), auth1, "Hello")),
 				insert(new Message(timestamp(), auth1, "How are you?"))
-		));
+		)));
 
-		stateManager2.add(ChatMultiOperation.create().withMessageOps(
+		await(stateManager2.add(ChatMultiOperation.create().withMessageOps(
 				insert(new Message(timestamp(), auth2, "Test")),
 				insert(new Message(timestamp(), auth2, "Message"))
-		));
+		)));
 
 		sync();
 

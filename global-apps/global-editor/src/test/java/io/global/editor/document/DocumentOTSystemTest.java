@@ -68,23 +68,23 @@ public class DocumentOTSystemTest {
 	public void test() {
 		await(stateManager1.checkout(), stateManager2.checkout());
 
-		stateManager1.add(DocumentMultiOperation.create().withDocumentNameOps(changeName(state1.getDocumentName(), "My Document 1", 10)));
-		stateManager2.add(DocumentMultiOperation.create().withDocumentNameOps(changeName(state2.getDocumentName(), "My Document 2", 20)));
+		await(stateManager1.add(DocumentMultiOperation.create().withDocumentNameOps(changeName(state1.getDocumentName(), "My Document 1", 10))));
+		await(stateManager2.add(DocumentMultiOperation.create().withDocumentNameOps(changeName(state2.getDocumentName(), "My Document 2", 20))));
 
 		sync();
 
 		System.out.println(state1.getDocumentName());
 		System.out.println(state2.getDocumentName());
 
-		stateManager1.add(DocumentMultiOperation.create().withEditOps(
+		await(stateManager1.add(DocumentMultiOperation.create().withEditOps(
 				insert(0, "ABC"),
 				insert(0, "123")
-		));
+		)));
 
-		stateManager2.add(DocumentMultiOperation.create().withEditOps(
+		await(stateManager2.add(DocumentMultiOperation.create().withEditOps(
 				insert(0, "DEF"),
 				insert(0, "456")
-		));
+		)));
 
 		sync();
 

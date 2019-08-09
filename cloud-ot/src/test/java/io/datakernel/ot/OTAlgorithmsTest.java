@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.Promises;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
@@ -77,7 +78,8 @@ public class OTAlgorithmsTest {
 
 		Set<Integer> heads = await(REPOSITORY.getHeads());
 		List<TestOp> changes = await(checkout(REPOSITORY, TEST_OP, getLast(heads)));
-		changes.forEach(opState::apply);
+
+		await(Promises.all(changes.stream().map(opState::apply)));
 
 		assertEquals(15, opState.getValue());
 	}
@@ -262,7 +264,7 @@ public class OTAlgorithmsTest {
 
 	private static int applyToState(List<TestOp> diffs) {
 		TestOpState opState = new TestOpState();
-		diffs.forEach(opState::apply);
+		await(Promises.sequence(diffs.stream().map(op -> () -> opState.apply(op))));
 		return opState.getValue();
 	}
 }

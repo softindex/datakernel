@@ -4,6 +4,7 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
@@ -134,7 +135,7 @@ public class GlobalOTNodeSynchronizationTest {
 	public void testRepoSynchronizationSingleMessage() {
 		startSyncing();
 
-		stateManager1.add(add(10));
+		await(stateManager1.add(add(10)));
 
 		syncAll();
 
@@ -145,18 +146,18 @@ public class GlobalOTNodeSynchronizationTest {
 	public void testRepoSynchronizationMultipleMessages() {
 		startSyncing();
 
-		stateManager1.add(add(10));
+		await(stateManager1.add(add(10)));
 		await(stateManager1.sync());
 
 		assertSynced(10);
 
-		stateManager2.add(add(20));
+		await(stateManager2.add(add(20)));
 		await(stateManager2.sync());
 
 		assertSynced(30);
 
-		stateManager1.add(add(30));
-		stateManager2.add(add(40));
+		await(stateManager1.add(add(30)));
+		await(stateManager2.add(add(40)));
 		syncAll();
 
 		assertSynced(100);
@@ -164,16 +165,20 @@ public class GlobalOTNodeSynchronizationTest {
 
 	@Test
 	public void testRepoSynchronizationNotEmpty() {
-		stateManager1.add(add(10));
-		stateManager2.add(add(20));
+		await(stateManager1.add(add(10)));
+		await(stateManager2.add(add(20)));
 
 		syncAll();
 
 		startSyncing();
 
+		System.out.println(await(OTAlgorithms.loadGraph(repository1, otSystem, await(commitStorage1.getHeads(repoID1)).keySet())).toGraphViz());
+		System.out.println("-------------------------------------");
+		System.out.println(await(OTAlgorithms.loadGraph(repository2, otSystem, await(commitStorage2.getHeads(repoID2)).keySet())).toGraphViz());
+
 		assertSynced(30);
 
-		stateManager1.add(add(100));
+		await(stateManager1.add(add(100)));
 		await(stateManager1.sync());
 
 		assertSynced(130);

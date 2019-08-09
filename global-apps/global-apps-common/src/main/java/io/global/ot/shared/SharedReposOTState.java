@@ -1,5 +1,6 @@
 package io.global.ot.shared;
 
+import io.datakernel.async.Promise;
 import io.datakernel.ot.OTState;
 
 import java.util.HashSet;
@@ -13,13 +14,16 @@ public final class SharedReposOTState implements OTState<SharedReposOperation> {
 	private Consumer<SharedReposOperation> listener = NO_ACTION;
 
 	@Override
-	public void init() {
+	public Promise<Void> init() {
 		sharedRepos.clear();
+		return Promise.complete();
 	}
 
 	@Override
-	public void apply(SharedReposOperation op) {
-		if (op.isEmpty()) return;
+	public Promise<Void> apply(SharedReposOperation op) {
+		if (op.isEmpty()) {
+			return Promise.complete();
+		}
 
 		if (op.isRemove()) {
 			sharedRepos.remove(op.getSharedRepo());
@@ -27,6 +31,8 @@ public final class SharedReposOTState implements OTState<SharedReposOperation> {
 			sharedRepos.add(op.getSharedRepo());
 		}
 		listener.accept(op);
+
+		return Promise.complete();
 	}
 
 	public Set<SharedRepo> getSharedRepos() {

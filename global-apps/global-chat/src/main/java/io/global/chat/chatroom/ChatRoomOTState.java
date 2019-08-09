@@ -1,5 +1,6 @@
 package io.global.chat.chatroom;
 
+import io.datakernel.async.Promise;
 import io.datakernel.ot.OTState;
 import io.global.chat.chatroom.messages.Message;
 import io.global.ot.name.ChangeName;
@@ -16,13 +17,14 @@ public final class ChatRoomOTState implements OTState<ChatMultiOperation> {
 	private Set<Message> messages;
 
 	@Override
-	public void init() {
+	public Promise<Void> init() {
 		roomName = "";
 		messages = new TreeSet<>(Comparator.comparingLong(Message::getTimestamp));
+		return Promise.complete();
 	}
 
 	@Override
-	public void apply(ChatMultiOperation multiOperation) {
+	public Promise<Void> apply(ChatMultiOperation multiOperation) {
 		multiOperation.getMessageOps().forEach(op -> {
 			if (op.isEmpty()) return;
 			if (op.isTombstone()) {
@@ -35,6 +37,7 @@ public final class ChatRoomOTState implements OTState<ChatMultiOperation> {
 		if (!roomNameOps.isEmpty()) {
 			roomName = getLast(roomNameOps).getNext();
 		}
+		return Promise.complete();
 	}
 
 	public String getRoomName() {
@@ -64,9 +67,7 @@ public final class ChatRoomOTState implements OTState<ChatMultiOperation> {
 
 	@Override
 	public int hashCode() {
-		int result = roomName.hashCode();
-		result = 31 * result + messages.hashCode();
-		return result;
+		return 31 * roomName.hashCode() + messages.hashCode();
 	}
 
 	@Override

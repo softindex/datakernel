@@ -1,5 +1,6 @@
 package io.global.editor.document;
 
+import io.datakernel.async.Promise;
 import io.datakernel.ot.OTState;
 import io.global.ot.name.ChangeName;
 
@@ -12,18 +13,20 @@ public final class DocumentOTState implements OTState<DocumentMultiOperation> {
 	private StringBuilder content = new StringBuilder();
 
 	@Override
-	public void init() {
+	public Promise<Void> init() {
 		documentName = "";
 		content.setLength(0);
+		return Promise.complete();
 	}
 
 	@Override
-	public void apply(DocumentMultiOperation multiOperation) {
+	public Promise<Void> apply(DocumentMultiOperation multiOperation) {
 		multiOperation.getEditOps().forEach(op -> op.apply(content));
 		List<ChangeName> documentNameOps = multiOperation.getDocumentNameOps();
 		if (!documentNameOps.isEmpty()) {
 			documentName = getLast(documentNameOps).getNext();
 		}
+		return Promise.complete();
 	}
 
 	public String getDocumentName() {
