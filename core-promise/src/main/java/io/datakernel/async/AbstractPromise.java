@@ -130,7 +130,8 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return promise;
 	}
 
-	protected void subscribe(@Async.Schedule @NotNull Callback<? super T> consumer) {
+	@Async.Schedule
+	protected void subscribe(@NotNull Callback<? super T> consumer) {
 		assert !isComplete();
 		if (next == null) {
 			next = consumer;

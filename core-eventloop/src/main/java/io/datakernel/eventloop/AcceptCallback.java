@@ -33,6 +33,5 @@ public interface AcceptCallback {
 	 *
 	 * @param socketChannel accepted connection.
 	 */
-//	@Async.Execute
 	void onAccept(@NotNull SocketChannel socketChannel);
 }

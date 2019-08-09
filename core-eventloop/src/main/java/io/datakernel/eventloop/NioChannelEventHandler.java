@@ -24,12 +24,10 @@ public interface NioChannelEventHandler {
 	/**
 	 * Callback which is called when NIO channel is ready for reading.
 	 */
-//	@Async.Execute
 	void onReadReady();
 
 	/**
 	 * Callback which is called when NIO channel is ready for writing.
 	 */
-//	@Async.Execute
 	void onWriteReady();
 }

@@ -216,7 +216,6 @@ public interface Promise<T> extends Completable<T> {
 	@FunctionalInterface
 	interface BlockingCallable<V> {
 
-		//		@Async.Execute
 		V call() throws Exception;
 	}
 
@@ -229,7 +228,7 @@ public interface Promise<T> extends Completable<T> {
 	 * @param callable the task itself
 	 * @return {@code Promise} for the given task
 	 */
-	static <T> Promise<T> ofBlockingCallable(@NotNull Executor executor, @Async.Schedule @NotNull BlockingCallable<? extends T> callable) {
+	static <T> Promise<T> ofBlockingCallable(@NotNull Executor executor, @NotNull BlockingCallable<? extends T> callable) {
 		return ofCallback(cb -> {
 			Eventloop eventloop = Eventloop.getCurrentEventloop();
 			eventloop.startExternalTask();
@@ -260,7 +259,6 @@ public interface Promise<T> extends Completable<T> {
 	@FunctionalInterface
 	interface BlockingRunnable {
 
-		//		@Async.Execute
 		void run() throws Exception;
 	}
 
@@ -269,7 +267,7 @@ public interface Promise<T> extends Completable<T> {
 	 * (returned {@code Promise} is only a marker of completion).
 	 */
 	@NotNull
-	static Promise<Void> ofBlockingRunnable(@NotNull Executor executor, @Async.Schedule @NotNull BlockingRunnable runnable) {
+	static Promise<Void> ofBlockingRunnable(@NotNull Executor executor, @NotNull BlockingRunnable runnable) {
 		return ofCallback(cb -> {
 			Eventloop eventloop = Eventloop.getCurrentEventloop();
 			eventloop.startExternalTask();
