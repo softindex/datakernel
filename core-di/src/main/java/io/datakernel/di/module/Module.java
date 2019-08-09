@@ -54,6 +54,18 @@ public interface Module {
 		return Modules.export(this, keys);
 	}
 
+	default <V> Module rebindExport(Class<V> from, Key<? extends V> to) {
+		return rebindExport(Key.of(from), to);
+	}
+
+	default <V> Module rebindExport(Class<V> from, Class<? extends V> to) {
+		return rebindExport(Key.of(from), Key.of(to));
+	}
+
+	default <V> Module rebindExport(Key<V> from, Class<? extends V> to) {
+		return rebindExport(from, Key.of(to));
+	}
+
 	default <V> Module rebindExport(Key<V> from, Key<? extends V> to) {
 		return rebindExports(singletonMap(from, to));
 	}
@@ -64,6 +76,10 @@ public interface Module {
 
 	default <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
 		return rebindImports(singletonMap(from, to));
+	}
+
+	default <V> Module bindImport(Class<V> from, Binding<? extends V> binding) {
+		return bindImport(Key.of(from), binding);
 	}
 
 	default <V> Module bindImport(Key<V> from, Binding<? extends V> binding) {
