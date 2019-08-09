@@ -216,7 +216,7 @@ public interface Promise<T> extends Completable<T> {
 	@FunctionalInterface
 	interface BlockingCallable<V> {
 
-		@Async.Execute
+		//		@Async.Execute
 		V call() throws Exception;
 	}
 
@@ -260,7 +260,7 @@ public interface Promise<T> extends Completable<T> {
 	@FunctionalInterface
 	interface BlockingRunnable {
 
-		@Async.Execute
+		//		@Async.Execute
 		void run() throws Exception;
 	}
 

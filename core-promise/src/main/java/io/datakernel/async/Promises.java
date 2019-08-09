@@ -496,7 +496,6 @@ public final class Promises {
 		return some(asIterator(promise1, promise2), number);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<List<T>> some(@NotNull List<? extends Promise<? extends T>> promises, int number) {

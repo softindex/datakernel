@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.channels.SocketChannel;
@@ -33,7 +32,7 @@ public interface ConnectCallback {
 	 *
 	 * @param socketChannel established connection.
 	 */
-	@Async.Execute
+//	@Async.Execute
 	void onConnect(@NotNull SocketChannel socketChannel);
 
 	/**
@@ -41,6 +40,6 @@ public interface ConnectCallback {
 	 *
 	 * @param e some raised exception, usually a low-level IOException from NIO.
 	 */
-	@Async.Execute
+//	@Async.Execute
 	void onException(@NotNull Throwable e);
 }
