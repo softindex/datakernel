@@ -1,7 +1,10 @@
 package io.datakernel.di.util;
 
+import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
 
+import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
@@ -100,6 +103,32 @@ public final class Utils {
 		if (!condition) {
 			throw new IllegalStateException(message);
 		}
+	}
+
+	public static boolean isKeySet(Key<?> key) {
+		if (Types.getRawType(key.getType()) != Set.class) {
+			return false;
+		}
+		Name name = key.getName();
+		if (name == null || !name.isMarkedBy(KeySetAnnotation.class)) {
+			return false;
+		}
+		Key<?> param = key.getTypeParameter(0);
+		if (Types.getRawType(param.getType()) != Key.class) {
+			return false;
+		}
+		Type subparam = param.getTypeParameter(0).getType();
+		if (!(subparam instanceof WildcardType)) {
+			return false;
+		}
+		WildcardType wildcard = (WildcardType) subparam;
+		if (wildcard.getLowerBounds().length != 0) {
+			return false;
+		}
+		if (wildcard.getUpperBounds().length != 1) {
+			return false;
+		}
+		return wildcard.getUpperBounds()[0] == Object.class;
 	}
 
 	public static String getLocation(Binding<?> binding) {

@@ -3,6 +3,7 @@ package io.datakernel.di.core;
 import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.impl.CompiledBindingLocator;
+import io.datakernel.di.impl.PlainCompiler;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.DefaultModule;
@@ -245,6 +246,15 @@ public final class Injector {
 			return compiledBindingsOfParent.containsKey(key) ?
 					compiledBindingsOfParent.get(key) :
 					missingOptionalBinding();
+		}
+		if (binding.getCompiler() instanceof PlainCompiler) {
+			Key<?> destination = ((PlainCompiler<?>) binding.getCompiler()).getDestination();
+			CompiledBinding<?> compiledBinding = compileBinding(scope, threadsafe, destination, bindings,
+					compiledBindingsOfParent, compiledBindings, compiledIndexes);
+
+			// the index should be there at this point
+			compiledIndexes.put(key, compiledIndexes.get(destination));
+			return compiledBinding;
 		}
 		int index = compiledIndexes.size();
 		compiledIndexes.put(key, index);

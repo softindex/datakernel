@@ -66,14 +66,15 @@ public final class Preprocessor {
 	 */
 	public static void completeBindingGraph(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
-		completeBindingGraph(new HashMap<>(bindings.get()), UNSCOPED, bindings, transformer, generator);
+		completeBindingGraph(new HashMap<>(), UNSCOPED, bindings, transformer, generator);
 	}
 
 	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
 			Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
 			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
-		bindings.getChildren().forEach((subscope, subtrie) -> completeBindingGraph(override(known, subtrie.get()), next(scope, subscope), subtrie, transformer, generator));
 		completeBindingGraph(known, scope, bindings.get(), generator, transformer);
+		Map<Key<?>, Binding<?>> nextKnown = override(known, bindings.get());
+		bindings.getChildren().forEach((subscope, subtrie) -> completeBindingGraph(nextKnown, next(scope, subscope), subtrie, transformer, generator));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -81,69 +82,71 @@ public final class Preprocessor {
 			Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
 			BindingGenerator<?> generator, BindingTransformer<?> transformer) {
 
-		Map<Key<?>, Binding<?>> generated = new HashMap<>();
+		Map<Key<?>, Binding<?>> touched = new HashMap<>();
 
-		BindingLocator bindings = new BindingLocator() {
+		BindingLocator locator = new BindingLocator() {
 			@Override
 			@Nullable
 			public <T> Binding<T> get(Key<T> key) {
-				Binding<T> binding = (Binding<T>) generated.get(key);
-				if (binding == null) {
-					binding = (Binding<T>) known.get(key);
+				Binding<T> touchedBinding = (Binding<T>) touched.get(key);
+				if (touchedBinding != null) {
+					return touchedBinding;
 				}
-				if (binding != null && binding.getCompiler() != TO_BE_GENERATED) {
-					return binding;
-				}
+				Binding<T> binding = (Binding<T>) localBindings.get(key);
 
-				binding = ((BindingGenerator<T>) generator).generate(this, scope, key);
 				if (binding == null) {
-					return null;
-				}
+					Binding<?> upper = known.get(key);
+					if (upper != null) {
+						return (Binding<T>) upper;
+					}
 
+					Binding<Object> generatedBinding = ((BindingGenerator<Object>) generator).generate(this, scope, (Key<Object>) key);
+					if (generatedBinding == null) {
+						return null;
+					}
+					binding = (Binding<T>) generatedBinding;
+				} else if (binding.getCompiler() == TO_BE_GENERATED) {
+					Binding<Object> generatedBinding = ((BindingGenerator<Object>) generator).generate(this, scope, (Key<Object>) key);
+					if (generatedBinding == null) {
+						// these bindings are the ones requested with plain `bind(...);` call
+
+						// either there is an upper binding
+						Binding<?> upper = known.get(key);
+						if (upper != null) {
+							touched.put(key, upper); // so we 'generate' it by adding it to touched
+							return (Binding<T>) upper;
+						}
+						// or we just fail fast
+						throw new DIException("Refused to generate a requested binding for key " + key.getDisplayString());
+					}
+
+					binding = new Binding<>(union(generatedBinding.getDependencies(), binding.getDependencies()), binding.getLocation(), ((BindingCompiler<T>) generatedBinding.getCompiler()));
+				}
 				binding = ((BindingTransformer<T>) transformer).transform(this, scope, key, binding);
-
-				generated.put(key, binding);
-
-				// ensure that its dependencies are generated if necessary
-				for (Dependency dependency : binding.getDependencies()) {
-					get(dependency.getKey());
-				}
+				touched.put(key, binding);
 				return binding;
 			}
 		};
 
-		for (Entry<Key<?>, Binding<?>> entry : localBindings.entrySet()) {
-			Key<Object> key = (Key<Object>) entry.getKey();
-			Binding<Object> binding = (Binding<Object>) entry.getValue();
-
-			if (binding.getCompiler() == TO_BE_GENERATED) {
-				Binding<Object> generatedBinding = bindings.get(key);
-				if (generatedBinding == null) {
-					// these bindings are the ones requested with plain `bind(...);` call, here we fail fast
-					// see comment below where dependencies are generated
-					throw new DIException("Refused to generate a requested binding for key " + key.getDisplayString());
-				}
-				generatedBinding.at(binding.getLocation()); // set its location to one from the generation request
-				known.put(key, generatedBinding);
-				generated.put(key, generatedBinding);
-			} else {
-				Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(bindings, scope, key, binding);
-				if (!transformed.equals(binding)) {
-					generated.put(key, transformed);
-				}
-			}
-
-			for (Dependency dependency : binding.getDependencies()) {
-				Key<?> depKey = dependency.getKey();
-				if (known.containsKey(depKey)) {
-					continue;
-				}
-				known.put(depKey, bindings.get(depKey)); // put even nulls in known just as a little optimization
-				// when generating dependencies we don't fail and just do nothing
-				// unsatisfied dependency check will collect all of them and make a nice error
-			}
+		Set<Key<?>> dejaVu = new HashSet<>();
+		for (Key<?> k : localBindings.keySet()) {
+			locatorDfs(locator, k, dejaVu);
 		}
-		localBindings.putAll(generated);
+		localBindings.putAll(touched);
+	}
+
+	private static void locatorDfs(BindingLocator locator, Key<?> key, Set<Key<?>> dejaVu) {
+		if (!dejaVu.add(key)) {
+			return;
+		}
+		Binding<?> binding = locator.get(key);
+		if (binding == null) {
+			// will be checked by unsatisfied dependency checker and collected into a nice error message
+			return;
+		}
+		for (Dependency d : binding.getDependencies()) {
+			locatorDfs(locator, d.getKey(), dejaVu);
+		}
 	}
 
 	/**

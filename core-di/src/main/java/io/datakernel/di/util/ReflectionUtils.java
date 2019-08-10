@@ -7,6 +7,7 @@ import io.datakernel.di.impl.BindingInitializer;
 import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.module.BindingDesc;
+import io.datakernel.di.module.Module;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,8 +17,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.Name.uniqueName;
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -345,79 +346,90 @@ public final class ReflectionUtils {
 		}
 	}
 
-	public static ProviderScanResults scanProviderMethods(@NotNull Class<?> moduleClass, @Nullable Object module) {
+	public static ProviderScanResults scanClassForProviders(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		List<BindingDesc> bindingDescs = new ArrayList<>();
 		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 		Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 
-		for (Method method : getAnnotatedElements(moduleClass, Provides.class, Class::getDeclaredMethods, false)) {
-			if (module == null && !Modifier.isStatic(method.getModifiers())) {
-				throw new IllegalStateException("Found non-static provider method while scanning for statics");
-			}
+		for (Method method : moduleClass.getDeclaredMethods()) {
+			if (method.isAnnotationPresent(Provides.class)) {
+				if (module == null && !Modifier.isStatic(method.getModifiers())) {
+					throw new IllegalStateException("Found non-static provider method while scanning for statics");
+				}
 
-			Name name = nameOf(method);
-			Set<Name> keySets = keySetsOf(method);
-			Scope[] methodScope = getScope(method);
-			boolean exported = method.isAnnotationPresent(Export.class);
+				Name name = nameOf(method);
+				Set<Name> keySets = keySetsOf(method);
+				Scope[] methodScope = getScope(method);
+				boolean exported = method.isAnnotationPresent(Export.class);
 
-			Type returnType = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
-			TypeVariable<Method>[] typeVars = method.getTypeParameters();
+				Type returnType = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass);
+				TypeVariable<Method>[] typeVars = method.getTypeParameters();
 
-			if (typeVars.length == 0) {
-				Key<Object> key = Key.ofType(returnType, name);
-				bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, exported));
-				keySets.forEach(keySet -> {
+				if (typeVars.length == 0) {
+					Key<Object> key = Key.ofType(returnType, name);
+					bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, exported));
+					keySets.forEach(keySet -> {
+						Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
+						bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
+						multibinders.put(keySetKey, Multibinder.toSet());
+					});
+					continue;
+				}
+				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
+						.filter(typeVar -> !Types.contains(returnType, typeVar))
+						.collect(toSet());
+				if (!unused.isEmpty()) {
+					throw new IllegalStateException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
+				}
+				if (!keySets.isEmpty()) {
+					throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
+				}
+				if (exported) {
+					throw new IllegalStateException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported");
+				}
+
+				bindingGenerators
+						.computeIfAbsent(method.getReturnType(), $ -> new HashSet<>())
+						.add(new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
+			} else if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
+				if (module == null && !Modifier.isStatic(method.getModifiers())) {
+					throw new IllegalStateException("Found non-static provider method while scanning for statics");
+				}
+				if (method.getTypeParameters().length != 0) {
+					throw new IllegalStateException("@ProvidesIntoSet does not support templated methods, method " + method);
+				}
+
+				Type type = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass);
+				Scope[] methodScope = getScope(method);
+				boolean exported = method.isAnnotationPresent(Export.class);
+
+				Key<Object> key = Key.ofType(type, uniqueName());
+				bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, false));
+
+				Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
+				bindingDescs.add(new BindingDesc(setKey, Binding.to(Collections::singleton, key), methodScope, exported));
+
+				multibinders.put(setKey, Multibinder.toSet());
+
+				keySetsOf(method).forEach(keySet -> {
 					Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
 					bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
+					bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(setKey).mapInstance(Collections::singleton), UNSCOPED, false));
 					multibinders.put(keySetKey, Multibinder.toSet());
 				});
-				continue;
 			}
-			Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
-					.filter(typeVar -> !Types.contains(returnType, typeVar))
-					.collect(toSet());
-			if (!unused.isEmpty()) {
-				throw new IllegalStateException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
-			}
-			if (!keySets.isEmpty()) {
-				throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
-			}
-			if (exported) {
-				throw new IllegalStateException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported");
-			}
-
-			bindingGenerators
-					.computeIfAbsent(method.getReturnType(), $ -> new HashSet<>())
-					.add(new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
-		}
-		for (Method method : getAnnotatedElements(moduleClass, ProvidesIntoSet.class, Class::getDeclaredMethods, false)) {
-			if (module == null && !Modifier.isStatic(method.getModifiers())) {
-				throw new IllegalStateException("Found non-static provider method while scanning for statics");
-			}
-			if (method.getTypeParameters().length != 0) {
-				throw new IllegalStateException("@ProvidesIntoSet does not support templated methods, method " + method);
-			}
-
-			Type type = Types.resolveTypeVariables(method.getGenericReturnType(), moduleClass);
-			Scope[] methodScope = getScope(method);
-			boolean exported = method.isAnnotationPresent(Export.class);
-
-			Key<Object> key = Key.ofType(type, uniqueName());
-			bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, false));
-
-			Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
-			bindingDescs.add(new BindingDesc(setKey, Binding.to(Collections::singleton, key), methodScope, exported));
-
-			multibinders.put(setKey, Multibinder.toSet());
-
-			keySetsOf(method).forEach(keySet -> {
-				Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
-				bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
-				bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(setKey).mapInstance(Collections::singleton), UNSCOPED, false));
-				multibinders.put(keySetKey, Multibinder.toSet());
-			});
 		}
 		return new ProviderScanResults(bindingDescs, bindingGenerators, multibinders);
+	}
+
+	public static List<Module> scanProvidersHierarchy(@NotNull Class<?> moduleClass, @Nullable Object module) {
+		List<Module> result = new ArrayList<>();
+		Class<?> cls = moduleClass;
+		while (cls != Object.class && cls != null) {
+			result.add(Module.create().scan(cls, module));
+			cls = cls.getSuperclass();
+		}
+		return result;
 	}
 
 	private static class TemplatedProviderGenerator implements BindingGenerator<Object> {

@@ -5,6 +5,7 @@ import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
@@ -37,15 +38,46 @@ public interface ModuleBuilder extends Module {
 	 * Scans given object for provider methods (ones annotated with {@link Provides @Provides} annotation)
 	 * and adds them as bindings (or generators, in case of generic template methods) of this module.
 	 * <p>
-	 * It scans both static and non-static methods.
+	 * It scans both static and non-static methods, only in the class of the object (for scanning the whole hierarchy, see {@link #deepScan}).
 	 */
-	ModuleBuilder scan(Object container);
+	ModuleBuilder scan(Class<?> containerClass, Object container);
+
+	/**
+	 * Same as {@link #scan}, with class defaulting to exact class of the given instance
+	 */
+	default ModuleBuilder scan(Object container) {
+		return scan(container.getClass(), container);
+	}
 
 	/**
 	 * Same as {@link #scan}, but scans only static methods and does not depend on instance of the class.
 	 * Non-static annotated methods are {@link IllegalStateException prohibited}.
 	 */
-	ModuleBuilder scan(Class<?> container);
+	default ModuleBuilder scan(Class<?> container) {
+		return scan(container, null);
+	}
+
+	/**
+	 * Scans entire class hierarchy and then installs providers from each class as modules,
+	 * so that exports do not interfere between classes.
+	 * Class parameter is used to specify from which class in the hierarchy to start.
+	 */
+	ModuleBuilder deepScan(Class<?> containerClass, @Nullable Object container);
+
+	/**
+	 * Same as {@link #deepScan}, with staring class defaulting to the class of the object instance.
+	 */
+	default ModuleBuilder deepScan(Object container) {
+		return deepScan(container.getClass(), container);
+	}
+
+	/**
+	 * Same as {@link #deepScan}, but scans only static methods and does not depend on instance of the class.
+	 * Non-static annotated methods are {@link IllegalStateException prohibited}.
+	 */
+	default ModuleBuilder deepScan(Class<?> container) {
+		return deepScan(container, null);
+	}
 
 	/**
 	 * @see #bind(Key)

@@ -18,24 +18,9 @@ public final class UniqueNameImpl implements UniqueName {
 		this.originalName = originalName;
 	}
 
-	public static Name uniqueName() {
-		return Name.of(new UniqueNameImpl());
-	}
-
-	public static Name uniqueName(@Nullable Name name) {
-		return name != null && name.getAnnotation() instanceof UniqueNameImpl ?
-				name :
-				Name.of(new UniqueNameImpl(name));
-	}
-
 	@Nullable
 	public Name getOriginalName() {
 		return originalName;
-	}
-
-	@Override
-	public int dummy() {
-		return 0;
 	}
 
 	@Override

@@ -25,7 +25,7 @@ public abstract class AbstractAnnotation {
 
 	protected AbstractAnnotation(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {
 		this.annotationType = annotationType;
-		this.annotation = annotation == null || isMarker(annotationType) ? null : annotation;
+		this.annotation = annotation;
 	}
 
 	public static boolean isMarker(Class<? extends Annotation> annotationType) {
@@ -48,11 +48,11 @@ public abstract class AbstractAnnotation {
 
 	public String getDisplayString() {
 		if (annotation == null) {
-			return ReflectionUtils.getShortName(annotationType);
+			return "@" + ReflectionUtils.getShortName(annotationType);
 		}
 		String typeName = annotationType.getName();
 		String str = annotation.toString();
-		return str.startsWith(typeName) ? "@" + ReflectionUtils.getShortName(annotationType) + str.substring(typeName.length() + 1) : str;
+		return str.startsWith("@" + typeName) ? "@" + ReflectionUtils.getShortName(annotationType) + str.substring(typeName.length() + 1) : str;
 	}
 
 	@Override

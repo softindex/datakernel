@@ -9,13 +9,12 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiFunction;
 
+import static io.datakernel.di.core.Name.uniqueName;
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.*;
 
 /**
  * This class contains a set of utilities for working with {@link Module modules}.
@@ -147,13 +146,20 @@ public final class Modules {
 						.map(bindingsMap ->
 								transformMultimap(bindingsMap,
 										key -> originalToNew.getOrDefault(key, key),
-										(key, binding) ->
-												binding.rebindDependencies(
-														binding.getDependencies()
-																.stream()
-																.map(Dependency::getKey)
-																.filter(originalToNew::containsKey)
-																.collect(toMap(identity(), originalToNew::get))))),
+										(key, binding) -> {
+											if (isKeySet(key)) {
+												binding = binding.mapInstance(set ->
+														((Set<Key<Object>>) set).stream()
+																.map(k -> originalToNew.getOrDefault(k, k))
+																.collect(toSet()));
+											}
+											return binding.rebindDependencies(
+													binding.getDependencies()
+															.stream()
+															.map(Dependency::getKey)
+															.filter(originalToNew::containsKey)
+															.collect(toMap(identity(), originalToNew::get)));
+										})),
 				transformMultimapValues(module.getBindingTransformers(),
 						($, transformer) ->
 								(bindings, scope, key, binding) ->
@@ -201,7 +207,8 @@ public final class Modules {
 			localBindings.computeIfAbsent(priv, $ -> new HashSet<>()).add(b);
 		});
 
-		return rebindImports(Module.of(Trie.of(localBindings, bindings.getChildren())), (k, b) -> {
+		Module renamed = Module.of(Trie.of(localBindings, bindings.getChildren()), module.getBindingTransformers(), module.getBindingGenerators(), module.getMultibinders());
+		return rebindImports(renamed, (k, b) -> {
 			// do not rebind dependencies of those added bindings
 			if (rebinds.containsValue(b)) {
 				return b;

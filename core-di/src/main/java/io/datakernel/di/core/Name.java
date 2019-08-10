@@ -3,6 +3,8 @@ package io.datakernel.di.core;
 import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Named;
+import io.datakernel.di.module.UniqueName;
+import io.datakernel.di.module.UniqueNameImpl;
 import io.datakernel.di.util.AbstractAnnotation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -58,8 +60,22 @@ public final class Name extends AbstractAnnotation {
 		return new Name(Named.class, new NamedImpl(name));
 	}
 
+	public static Name uniqueName() {
+		return new Name(UniqueName.class, new UniqueNameImpl());
+	}
+
+	public static Name uniqueName(@Nullable Name name) {
+		return name != null && name.isUnique() ?
+				name :
+				new Name(UniqueName.class, new UniqueNameImpl(name));
+	}
+
+	public boolean isUnique() {
+		return getAnnotation() instanceof UniqueNameImpl;
+	}
+
 	@SuppressWarnings("ClassExplicitlyAnnotation")
-	private static class NamedImpl implements Named {
+	private static final class NamedImpl implements Named {
 		@NotNull
 		private final String value;
 

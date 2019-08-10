@@ -2,8 +2,9 @@ package io.datakernel.di.module;
 
 import io.datakernel.di.annotation.NameAnnotation;
 
+import java.lang.annotation.Target;
+
 @NameAnnotation
+@Target({}) // no target since this is a dummy annotation type
 public @interface UniqueName {
-	// so that this pseudo-annotation is not a 'marker'
-	int dummy() default 0;
 }

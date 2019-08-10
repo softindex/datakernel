@@ -273,8 +273,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				.bind(completionStageKey.named(OnRun.class)).toInstance(onRunFuture)
 				.bind(completionStageKey.named(OnComplete.class)).toInstance(onCompleteFuture)
 
-				// install scanned bindings as a separate module so their exports do not mess up this root module
-				.install(Module.create().scan(Launcher.this));
+				.deepScan(Launcher.this);
 	}
 
 	/**

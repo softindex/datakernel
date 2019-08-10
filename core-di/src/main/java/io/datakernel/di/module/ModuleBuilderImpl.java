@@ -15,8 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static io.datakernel.di.util.ReflectionUtils.ProviderScanResults;
-import static io.datakernel.di.util.ReflectionUtils.scanProviderMethods;
+import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -170,10 +169,11 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		return this;
 	}
 
-	private ModuleBuilder scan(@NotNull Class<?> moduleClass, @Nullable Object module) {
+	@Override
+	public ModuleBuilder scan(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
 		completeCurrent();
-		ProviderScanResults results = scanProviderMethods(moduleClass, module);
+		ProviderScanResults results = scanClassForProviders(moduleClass, module);
 		bindingDescs.addAll(results.getBindingDescs());
 		multibinders.putAll(results.getMultibinders());
 		combineMultimap(bindingGenerators, results.getBindingGenerators());
@@ -181,13 +181,9 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilder scan(Object container) {
-		return scan(container.getClass(), container);
-	}
-
-	@Override
-	public ModuleBuilder scan(Class<?> container) {
-		return scan(container, null);
+	public ModuleBuilder deepScan(@NotNull Class<?> moduleClass, @Nullable Object module) {
+		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
+		return install(scanProvidersHierarchy(moduleClass, module));
 	}
 
 	@Override

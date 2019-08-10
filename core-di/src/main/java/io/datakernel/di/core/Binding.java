@@ -16,8 +16,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.util.Utils.union;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
@@ -48,31 +47,6 @@ public final class Binding<T> {
 		this.location = location;
 	}
 
-	public static <T> Binding<T> to(Class<? extends T> key) {
-		return Binding.to(Key.of(key));
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T> Binding<T> to(Key<? extends T> key) {
-		return new Binding<>(new HashSet<>(asList(Dependency.toKey(key))),
-				(compiledBindings, threadsafe, scope, index) ->
-						new CompiledBinding<T>() {
-							final CompiledBinding<? extends T> compiledBinding = compiledBindings.get(key);
-
-							@Override
-							public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-								T instance = compiledBinding.getInstance(scopedInstances, synchronizedScope);
-								scopedInstances[scope].lazySet(index, instance);
-								return instance;
-							}
-
-							@Override
-							public T createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-								return compiledBinding.createInstance(scopedInstances, synchronizedScope);
-							}
-						});
-	}
-
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
 		return new Binding<>(emptySet(),
 				(compiledBindings, threadsafe, scope, index) ->
@@ -97,6 +71,16 @@ public final class Binding<T> {
 
 	public static <T> Binding<T> toSupplier(@NotNull Class<? extends Supplier<? extends T>> supplierType) {
 		return Binding.to(Supplier::get, supplierType);
+	}
+
+	// region Various Binding.to(...) overloads
+
+	public static <T> Binding<T> to(Class<? extends T> key) {
+		return Binding.to(Key.of(key));
+	}
+
+	public static <T> Binding<T> to(Key<? extends T> key) {
+		return new Binding<>(singleton(Dependency.toKey(key)), new PlainCompiler<>(key));
 	}
 
 	public static <R> Binding<R> to(@NotNull ConstructorN<R> constructor, @NotNull Class<?>[] types) {
@@ -509,6 +493,8 @@ public final class Binding<T> {
 									}
 								});
 	}
+
+	// endregion
 
 	public Binding<T> at(@Nullable LocationInfo location) {
 		this.location = location;
