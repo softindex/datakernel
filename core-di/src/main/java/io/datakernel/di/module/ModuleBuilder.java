@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 /**
  * This interface is used to restrict the DSL.
@@ -195,63 +194,4 @@ public interface ModuleBuilder extends Module {
 	default <K, V> ModuleBuilder multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
 		return multibind(Key.ofType(Types.parameterized(Map.class, keyType, valueType), name), Multibinder.toMap());
 	}
-
-	@Override
-	default ModuleBuilder combineWith(Module another) {
-		return install(another);
-	}
-
-	// region Override default module methods with return type changed to this so that DSL call-chain could continue even further
-
-	@Override
-	default ModuleBuilder overrideWith(Module another) {
-		return Module.create().install(Module.super.overrideWith(another));
-	}
-
-	@Override
-	default ModuleBuilder export(Key<?> key, Key<?>... keys) {
-		return Module.create().install(Module.super.export(key, keys));
-	}
-
-	@Override
-	default ModuleBuilder export(Set<Key<?>> keys) {
-		return Module.create().install(Module.super.export(keys));
-	}
-
-	@Override
-	default <V> ModuleBuilder rebindExport(Key<V> from, Key<? extends V> to) {
-		return Module.create().install(Module.super.rebindExport(from, to));
-	}
-
-	@Override
-	default ModuleBuilder rebindExports(@NotNull Map<Key<?>, Key<?>> map) {
-		return Module.create().install(Module.super.rebindExports(map));
-	}
-
-	@Override
-	default <V> ModuleBuilder rebindImport(Key<V> from, Key<? extends V> to) {
-		return Module.create().install(Module.super.rebindImport(from, to));
-	}
-
-	@Override
-	default ModuleBuilder rebindImports(@NotNull Map<Key<?>, Key<?>> map) {
-		return Module.create().install(Module.super.rebindImports(map));
-	}
-
-	@Override
-	default <T, V> ModuleBuilder rebindImports(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
-		return Module.create().install(Module.super.rebindImports(componentKey, from, to));
-	}
-
-	@Override
-	default <T> ModuleBuilder rebindImports(Key<T> componentKey, @NotNull Map<Key<?>, Key<?>> map) {
-		return Module.create().install(Module.super.rebindImports(componentKey, map));
-	}
-
-	@Override
-	default ModuleBuilder rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
-		return Module.create().install(Module.super.rebindImports(rebinder));
-	}
-
-	// endregion
 }

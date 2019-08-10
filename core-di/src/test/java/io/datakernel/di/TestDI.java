@@ -145,7 +145,7 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str: " + i, Float.class)
 				.bind(Float.class).to(i -> (float) i, Integer.class);
 
-		Set<Key<?>> expected1 = cyclic1.resolveBindings().get().keySet();
+		Set<Key<?>> expected1 = cyclic1.getResolvedBindings().get().keySet();
 
 		try {
 			Injector.of(branch, cyclic1);
@@ -153,7 +153,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1).resolveBindings());
+			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1).getResolvedBindings());
 			assertEquals(1, cycles.size());
 			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
@@ -163,7 +163,7 @@ public final class TestDI {
 				.bind(Character.class).to($ -> 'k', Boolean.class)
 				.bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
 
-		Set<Key<?>> expected2 = cyclic2.resolveBindings().get().keySet();
+		Set<Key<?>> expected2 = cyclic2.getResolvedBindings().get().keySet();
 
 		try {
 			Injector.of(branch, cyclic1, cyclic2);
@@ -171,7 +171,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1, cyclic2).resolveBindings());
+			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1, cyclic2).getResolvedBindings());
 			assertEquals(2, cycles.size());
 
 			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
@@ -809,9 +809,9 @@ public final class TestDI {
 			}
 		});
 
-		printGraphVizGraph(module.resolveBindings());
+		printGraphVizGraph(module.getResolvedBindings());
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).resolveBindings();
+		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getResolvedBindings();
 
 		printGraphVizGraph(flattened);
 
@@ -1099,7 +1099,7 @@ public final class TestDI {
 				.bind(String.class).to(i -> "hello #" + i, Integer.class);
 
 		Injector injector = Injector.of(importingModule
-				.bindImport(Key.of(Integer.class), Binding.toInstance(3000)));
+				.rebindImport(Key.of(Integer.class), Binding.toInstance(3000)));
 
 		assertEquals("hello #3000", injector.getInstance(String.class));
 		assertNull(injector.getInstanceOrNull(Integer.class));
@@ -1113,7 +1113,7 @@ public final class TestDI {
 
 		Injector injector = Injector.of(
 				Module.create().bind(Integer.class).toInstance(3000),
-				importingModule.bindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
+				importingModule.rebindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
 
 		assertEquals("hello #6000", injector.getInstance(String.class));
 		assertEquals(3000, injector.getInstance(Integer.class).intValue());

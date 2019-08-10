@@ -190,6 +190,36 @@ public final class Modules {
 	}
 
 	@SuppressWarnings("unchecked")
+	static Module rebindImports(Module module, Map<Key<?>, Binding<?>> rebinds) {
+		Map<Key<?>, Key<?>> originalToNew = new HashMap<>();
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = module.getBindings();
+		Map<Key<?>, Set<Binding<?>>> localBindings = new HashMap<>(bindings.get());
+
+		rebinds.forEach((k, b) -> {
+			Key<Object> priv = (Key<Object>) k.named(uniqueName(k.getName()));
+			originalToNew.put(k, priv);
+			localBindings.computeIfAbsent(priv, $ -> new HashSet<>()).add(b);
+		});
+
+		return rebindImports(Module.of(Trie.of(localBindings, bindings.getChildren())), (k, b) -> {
+			// do not rebind dependencies of those added bindings
+			if (rebinds.containsValue(b)) {
+				return b;
+			}
+			return b.rebindDependencies(
+					b.getDependencies()
+							.stream()
+							.map(Dependency::getKey)
+							.filter(originalToNew::containsKey)
+							.collect(toMap(identity(), originalToNew::get)));
+		});
+	}
+
+	static Module rebindImportKeys(Module module, Map<Key<?>, Key<?>> mapping) {
+		return rebindImports(module, mapping.entrySet().stream().collect(toMap(Entry::getKey, e -> Binding.to(e.getValue()))));
+	}
+
+	@SuppressWarnings("unchecked")
 	static Module rebindImports(Module module, BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
 		return new SimpleModule(
 				module.getBindings().map(bindingsMap -> transformMultimapValues(bindingsMap, rebinder)),
@@ -204,32 +234,8 @@ public final class Modules {
 						(clazz, bindingGenerator) ->
 								(provider, scope, key) -> {
 									Binding<Object> generated = ((BindingGenerator<Object>) bindingGenerator).generate(provider, scope, key);
-									if (generated == null) return null;
-									return (Binding<Object>) rebinder.apply(key, generated);
+									return generated != null ? (Binding<Object>) rebinder.apply(key, generated) : null;
 								}),
 				module.getMultibinders());
-	}
-
-	@SuppressWarnings("unchecked")
-	static Module bindImports(Module module, Map<Key<?>, Binding<?>> bindings) {
-		ModuleBuilder builder = Module.create().install(module);
-		Map<Key<?>, Key<?>> originalToNew = new HashMap<>();
-		bindings.forEach((k, b) -> {
-			Key<Object> priv = (Key<Object>) k.named(uniqueName(k.getName()));
-			originalToNew.put(k, priv);
-			builder.bind(priv).to(b);
-		});
-		return Modules.rebindImports(builder, (k, b) -> {
-			// do not rebind dependencies of those added bindings
-			if (bindings.containsValue(b)) {
-				return b;
-			}
-			return b.rebindDependencies(
-					b.getDependencies()
-							.stream()
-							.map(Dependency::getKey)
-							.filter(originalToNew::containsKey)
-							.collect(toMap(identity(), originalToNew::get)));
-		});
 	}
 }

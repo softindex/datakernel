@@ -40,10 +40,10 @@ public class ModuleRebindExample extends Launcher {
 		return Module.create()
 				.install(ServiceGraphModule.create())
 				.install(new ServerModule()
-						.bindImport(Config.class, Binding.to(cfg -> cfg.getChild("modules.1"), Config.class))
+						.rebindImport(Config.class, Binding.to(cfg -> cfg.getChild("modules.1"), Config.class))
 						.rebindExport(AsyncHttpServer.class, Key.of(AsyncHttpServer.class, "server1")))
 				.install(new ServerModule()
-						.bindImport(Config.class, Binding.to(cfg -> cfg.getChild("modules.2"), Config.class))
+						.rebindImport(Config.class, Binding.to(cfg -> cfg.getChild("modules.2"), Config.class))
 						.rebindExport(AsyncHttpServer.class, Key.of(AsyncHttpServer.class, "server2")))
 				.bind(Eventloop.class).to(Eventloop::create)
 				.bind(Config.class).toInstance(

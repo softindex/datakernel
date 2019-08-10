@@ -3,7 +3,6 @@ package io.datakernel.di.module;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.Trie;
-import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -15,8 +14,6 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -70,52 +67,46 @@ public interface Module {
 		return rebindExports(singletonMap(from, to));
 	}
 
+	default <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
+		return rebindImportKeys(singletonMap(from, to));
+	}
+
+	default <V> Module rebindImport(Class<V> from, Binding<? extends V> binding) {
+		return rebindImport(Key.of(from), binding);
+	}
+
+	default <V> Module rebindImport(Key<V> from, Binding<? extends V> binding) {
+		return rebindImports(singletonMap(from, binding));
+	}
+
 	default Module rebindExports(@NotNull Map<Key<?>, Key<?>> map) {
 		return Modules.rebindExports(this, map);
 	}
 
-	default <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
-		return rebindImports(singletonMap(from, to));
-	}
-
-	default <V> Module bindImport(Class<V> from, Binding<? extends V> binding) {
-		return bindImport(Key.of(from), binding);
-	}
-
-	default <V> Module bindImport(Key<V> from, Binding<? extends V> binding) {
-		return bindImports(singletonMap(from, binding));
-	}
-
-	default Module bindImports(@NotNull Map<Key<?>, Binding<?>> map) {
-		return Modules.bindImports(this, map);
-	}
-
-	default Module rebindImports(@NotNull Map<Key<?>, Key<?>> map) {
-		return Modules.rebindImports(this, (key, binding) ->
-				binding.rebindDependencies(
-						binding.getDependencies()
-								.stream()
-								.map(Dependency::getKey)
-								.filter(map::containsKey)
-								.collect(toMap(identity(), map::get))));
-	}
-
-	default <T, V> Module rebindImports(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
-		return rebindImports((key, binding) -> componentKey.equals(key) ? binding.rebindDependency(from, to) : binding);
-	}
-
-	default <T> Module rebindImports(Key<T> componentKey, @NotNull Map<Key<?>, Key<?>> map) {
-		return rebindImports((key, binding) -> componentKey.equals(key) ? binding.rebindDependencies(map) : binding);
+	default Module rebindImports(@NotNull Map<Key<?>, Binding<?>> map) {
+		return Modules.rebindImports(this, map);
 	}
 
 	default Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
 		return Modules.rebindImports(this, rebinder);
 	}
 
+	default Module rebindImportKeys(@NotNull Map<Key<?>, Key<?>> mapping) {
+		return Modules.rebindImportKeys(this, mapping);
+	}
+
+	default <T, V> Module rebindImportDependencies(Key<T> key, Key<V> dependency, Key<? extends V> to) {
+		return rebindImports((k, binding) -> k.equals(key) ? binding.rebindDependency(dependency, to) : binding);
+	}
+
+	default <T> Module rebindImportDependencies(Key<T> key, @NotNull Map<Key<?>, Key<?>> dependencyMapping) {
+		return rebindImports((k, binding) -> key.equals(k) ? binding.rebindDependencies(dependencyMapping) : binding);
+	}
+
 	/**
 	 * A shortcut that resolves conflicting bindings in this module using multibinders from this module
 	 */
-	default Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
+	default Trie<Scope, Map<Key<?>, Binding<?>>> getResolvedBindings() {
 		return Preprocessor.resolveConflicts(getBindings(), getMultibinders());
 	}
 
@@ -133,8 +124,8 @@ public interface Module {
 	/**
 	 * Creates a {@link Module module} out of given binding graph trie
 	 */
-	static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return new SimpleModule(bindings.map(Utils::toMultimap), emptyMap(), emptyMap(), emptyMap());
+	static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings) {
+		return new SimpleModule(bindings, emptyMap(), emptyMap(), emptyMap());
 	}
 
 	/**

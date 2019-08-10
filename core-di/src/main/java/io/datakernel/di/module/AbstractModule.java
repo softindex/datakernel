@@ -288,23 +288,28 @@ public abstract class AbstractModule implements Module {
 	// region forbid overriding default module methods
 
 	@Override
-	public final Module combineWith(Module another) {
+	public Module combineWith(Module another) {
 		return Module.super.combineWith(another);
 	}
 
 	@Override
-	public final Module overrideWith(Module another) {
+	public Module overrideWith(Module another) {
 		return Module.super.overrideWith(another);
 	}
 
 	@Override
-	public final Module transformWith(UnaryOperator<Module> fn) {
+	public Module transformWith(UnaryOperator<Module> fn) {
 		return Module.super.transformWith(fn);
 	}
 
 	@Override
-	public final Trie<Scope, Map<Key<?>, Binding<?>>> resolveBindings() {
-		return Module.super.resolveBindings();
+	public Module export(Key<?> key, Key<?>... keys) {
+		return Module.super.export(key, keys);
+	}
+
+	@Override
+	public Module export(Set<Key<?>> keys) {
+		return Module.super.export(keys);
 	}
 
 	@Override
@@ -313,28 +318,38 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Module rebindExports(@NotNull Map<Key<?>, Key<?>> map) {
-		return Module.super.rebindExports(map);
-	}
-
-	@Override
 	public <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
 		return Module.super.rebindImport(from, to);
 	}
 
 	@Override
-	public Module rebindImports(@NotNull Map<Key<?>, Key<?>> map) {
-		return Module.super.rebindImports(map);
+	public <V> Module rebindImport(Key<V> from, Binding<? extends V> binding) {
+		return Module.super.rebindImport(from, binding);
 	}
 
 	@Override
-	public <T, V> Module rebindImports(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
-		return Module.super.rebindImport(from, to);
+	public Module rebindExports(@NotNull Map<Key<?>, Key<?>> mapping) {
+		return Module.super.rebindExports(mapping);
 	}
 
 	@Override
-	public <T> Module rebindImports(Key<T> componentKey, @NotNull Map<Key<?>, Key<?>> map) {
-		return Module.super.rebindImports(componentKey, map);
+	public Module rebindImports(@NotNull Map<Key<?>, Binding<?>> mapping) {
+		return Module.super.rebindImports(mapping);
+	}
+
+	@Override
+	public Module rebindImportKeys(@NotNull Map<Key<?>, Key<?>> mapping) {
+		return Module.super.rebindImportKeys(mapping);
+	}
+
+	@Override
+	public <T, V> Module rebindImportDependencies(Key<T> key, Key<V> dependency, Key<? extends V> to) {
+		return Module.super.rebindImportDependencies(key, dependency, to);
+	}
+
+	@Override
+	public <T> Module rebindImportDependencies(Key<T> key, @NotNull Map<Key<?>, Key<?>> dependencyMapping) {
+		return Module.super.rebindImportDependencies(key, dependencyMapping);
 	}
 
 	@Override
@@ -343,14 +358,10 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public final Module export(Key<?> key, Key<?>... keys) {
-		return Module.super.export(key, keys);
+	public Trie<Scope, Map<Key<?>, Binding<?>>> getResolvedBindings() {
+		return Module.super.getResolvedBindings();
 	}
 
-	@Override
-	public final Module export(Set<Key<?>> keys) {
-		return Module.super.export(keys);
-	}
 	// endregion
 
 	@Override
