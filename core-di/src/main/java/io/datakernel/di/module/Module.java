@@ -12,6 +12,8 @@ import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
+import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toSet;
@@ -104,10 +106,10 @@ public interface Module {
 	}
 
 	/**
-	 * A shortcut that resolves conflicting bindings in this module using multibinders from this module
+	 * A shortcut that reduces bindings multimap trie from this module using multibinders, transformers and generators from this module
 	 */
-	default Trie<Scope, Map<Key<?>, Binding<?>>> getResolvedBindings() {
-		return Preprocessor.resolveConflicts(getBindings(), getMultibinders());
+	default Trie<Scope, Map<Key<?>, Binding<?>>> getReducedBindings() {
+		return Preprocessor.reduce(getBindings(), getMultibinders(), combinedTransformer(getBindingTransformers()), combinedGenerator(getBindingGenerators()));
 	}
 
 	/**

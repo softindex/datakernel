@@ -15,7 +15,6 @@ import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -28,7 +27,6 @@ import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -131,45 +129,14 @@ public final class Injector {
 			@NotNull BindingTransformer<?> transformer,
 			@NotNull BindingGenerator<?> generator) {
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = Preprocessor.resolveConflicts(bindingsMultimap, multibinders);
+		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = Preprocessor.reduce(bindingsMultimap, multibinders, transformer, generator);
 
-		Preprocessor.completeBindingGraph(bindings, transformer, generator);
-
-		Set<Key<?>> known = new HashSet<>(bindings.get().keySet());
+		Set<Key<?>> known = new HashSet<>();
 		known.add(Key.of(Injector.class)); // injector is hardcoded in and will always be present
 		if (parent != null) {
 			known.addAll(parent.compiledBindings.keySet());
 		}
-
-		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = Preprocessor.getUnsatisfiedDependencies(known, bindings);
-
-		if (!unsatisfied.isEmpty()) {
-			throw new DIException(unsatisfied.entrySet().stream()
-					.map(entry -> {
-						Key<?> required = entry.getKey();
-						String displayString = required.getDisplayString();
-						return entry.getValue().stream()
-								.map(binding -> {
-									Key<?> key = binding.getKey();
-									String displayAndLocation = key.getDisplayString() + " " + Utils.getLocation(binding.getValue());
-									Class<?> rawType = key.getRawType();
-									if (Modifier.isStatic(rawType.getModifiers()) || !required.getRawType().equals(rawType.getEnclosingClass())) {
-										return displayAndLocation;
-									}
-									String indent = new String(new char[Utils.getKeyDisplayCenter(key) + 2]).replace('\0', ' ');
-									return displayAndLocation + "\n\t\t" + indent + "^- this is a non-static inner class with implicit dependency on its enclosing class";
-								})
-								.collect(joining("\n\t\t- ", "\tkey " + displayString + " required to make:\n\t\t- ", ""));
-					})
-					.collect(joining("\n", "Unsatisfied dependencies detected:\n", "\n")));
-		}
-
-		Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(bindings);
-		if (!cycles.isEmpty()) {
-			throw new DIException(cycles.stream()
-					.map(Utils::drawCycle)
-					.collect(joining("\n\n", "Cyclic dependencies detected:\n\n", "\n")));
-		}
+		Preprocessor.check(known, bindings);
 
 		return new Injector(parent, compileBindingsTrie(parent != null ? parent.scopedInstances.length : 0, UNSCOPED, bindings, parent != null ? parent.compiledBindings : emptyMap()));
 	}

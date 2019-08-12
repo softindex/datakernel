@@ -8,7 +8,6 @@ import io.datakernel.di.util.Constructors.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.annotation.Annotation;
-import java.util.Set;
 import java.util.function.Supplier;
 
 public interface ModuleBuilderBinder<T> extends ModuleBuilder {
@@ -259,26 +258,6 @@ public interface ModuleBuilderBinder<T> extends ModuleBuilder {
 	default ModuleBuilderBinder<T> asEagerSingleton() {
 		return as(EagerSingleton.class);
 	}
-
-	/**
-	 * Adds given dependencies to the underlying binding
-	 */
-	ModuleBuilderBinder<T> withExtraDependencies(Set<Dependency> dependencies);
-
-	/**
-	 * @see #withExtraDependencies(Set)
-	 */
-	ModuleBuilderBinder<T> withExtraDependencies(Dependency... dependencies);
-
-	/**
-	 * @see #withExtraDependencies(Set)
-	 */
-	ModuleBuilderBinder<T> withExtraDependencies(Key<?>... dependencies);
-
-	/**
-	 * @see #withExtraDependencies(Set)
-	 */
-	ModuleBuilderBinder<T> withExtraDependencies(Class<?>... dependencies);
 
 	ModuleBuilderBinder<T> export();
 }

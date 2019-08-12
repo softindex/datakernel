@@ -148,7 +148,7 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str: " + i, Float.class)
 				.bind(Float.class).to(i -> (float) i, Integer.class);
 
-		Set<Key<?>> expected1 = cyclic1.getResolvedBindings().get().keySet();
+		Set<Key<?>> expected1 = cyclic1.getReducedBindings().get().keySet();
 
 		try {
 			Injector.of(branch, cyclic1);
@@ -156,7 +156,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1).getResolvedBindings());
+			Set<Key<?>[]> cycles = Preprocessor.collectCycles(combine(branch, cyclic1).getReducedBindings().get());
 			assertEquals(1, cycles.size());
 			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
@@ -166,7 +166,7 @@ public final class TestDI {
 				.bind(Character.class).to($ -> 'k', Boolean.class)
 				.bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
 
-		Set<Key<?>> expected2 = cyclic2.getResolvedBindings().get().keySet();
+		Set<Key<?>> expected2 = cyclic2.getReducedBindings().get().keySet();
 
 		try {
 			Injector.of(branch, cyclic1, cyclic2);
@@ -174,7 +174,7 @@ public final class TestDI {
 		} catch (DIException e) {
 			e.printStackTrace();
 
-			Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(combine(branch, cyclic1, cyclic2).getResolvedBindings());
+			Set<Key<?>[]> cycles = Preprocessor.collectCycles(combine(branch, cyclic1, cyclic2).getReducedBindings().get());
 			assertEquals(2, cycles.size());
 
 			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
@@ -812,9 +812,9 @@ public final class TestDI {
 			}
 		});
 
-		printGraphVizGraph(module.getResolvedBindings());
+		printGraphVizGraph(module.getReducedBindings());
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getResolvedBindings();
+		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getReducedBindings();
 
 		printGraphVizGraph(flattened);
 
@@ -949,14 +949,26 @@ public final class TestDI {
 	}
 
 	@Test
-	public void scopedBindRequestsFallsBackToUpperScopes() {
-		Injector injector = Injector.of(Module.create()
-				.bind(String.class).in(Scope1.class)
-				.bind(String.class).toInstance("hello from root"));
+	public void scopedBindFail() {
+		try {
+			Injector.of(
+					Module.create().bind(String.class).in(Scope1.class),
+					Module.create().bind(String.class).toInstance("root string"));
+			fail("Should've failed");
+		} catch (DIException e) {
+			assertTrue(e.getMessage().startsWith("Refused to generate an explicitly requested binding for key String"));
+		}
+	}
 
-		Injector sub = injector.enterScope(Scope.of(Scope1.class));
+	@Test
+	public void scopedBindWin() {
+		Injector injector = Injector.of(
+				Module.create().bind(String.class).in(Scope1.class),
+				Module.create().bind(String.class).in(Scope1.class).toInstance("scoped string"));
 
-		assertEquals("hello from root", sub.getInstance(String.class));
+		Injector subInjector = injector.enterScope(Scope.of(Scope1.class));
+
+		assertEquals("scoped string", subInjector.getInstance(String.class));
 	}
 
 	@Test

@@ -373,8 +373,8 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public Trie<Scope, Map<Key<?>, Binding<?>>> getResolvedBindings() {
-		return Module.super.getResolvedBindings();
+	public Trie<Scope, Map<Key<?>, Binding<?>>> getReducedBindings() {
+		return Module.super.getReducedBindings();
 	}
 
 	// endregion

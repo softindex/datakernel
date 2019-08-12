@@ -1,5 +1,6 @@
 package io.datakernel.test;
 
+import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
@@ -116,10 +117,8 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 		currentInjector = Injector.of(currentModule,
 				Module.create()
 						.scan(instance)
-						.bind(self).toInstance(instance)
+						.bind(self).to(Binding.toInstance(instance).addDependencies(currentDependencies).addDependencies(staticDependencies))
 						// and also have all the dependencies from methods in binding for the test class instance
-						.withExtraDependencies(currentDependencies)
-						.withExtraDependencies(staticDependencies)
 						.postInjectInto(self));
 
 		currentInjector.getInstance(self);

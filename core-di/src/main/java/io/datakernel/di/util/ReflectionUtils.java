@@ -270,6 +270,7 @@ public final class ReflectionUtils {
 					}
 				},
 				toDependencies(module != null ? module.getClass() : method.getDeclaringClass(), method.getParameters()));
+
 		return module != null ? binding.at(LocationInfo.from(module, method)) : binding;
 	}
 
@@ -346,6 +347,12 @@ public final class ReflectionUtils {
 		}
 	}
 
+	private static void addToKeySet(List<BindingDesc> bindingDescs, Map<Key<?>, Multibinder<?>> multibinders, Key<?> key, Name keySet) {
+		Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
+		bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
+		multibinders.put(keySetKey, Multibinder.toSet());
+	}
+
 	public static ProviderScanResults scanClassForProviders(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		List<BindingDesc> bindingDescs = new ArrayList<>();
 		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
@@ -368,11 +375,7 @@ public final class ReflectionUtils {
 				if (typeVars.length == 0) {
 					Key<Object> key = Key.ofType(returnType, name);
 					bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, exported));
-					keySets.forEach(keySet -> {
-						Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
-						bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
-						multibinders.put(keySetKey, Multibinder.toSet());
-					});
+					keySets.forEach(keySet -> addToKeySet(bindingDescs, multibinders, key, keySet));
 					continue;
 				}
 				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
@@ -407,15 +410,15 @@ public final class ReflectionUtils {
 				bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, false));
 
 				Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
-				bindingDescs.add(new BindingDesc(setKey, Binding.to(Collections::singleton, key), methodScope, exported));
+
+				Binding<Set<Object>> binding = Binding.to(Collections::singleton, key);
+				bindingDescs.add(new BindingDesc(setKey, module != null ? binding.at(LocationInfo.from(module, method)) : binding, methodScope, exported));
 
 				multibinders.put(setKey, Multibinder.toSet());
 
 				keySetsOf(method).forEach(keySet -> {
-					Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
-					bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
-					bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(setKey).mapInstance(Collections::singleton), UNSCOPED, false));
-					multibinders.put(keySetKey, Multibinder.toSet());
+					addToKeySet(bindingDescs, multibinders, key, keySet);
+					addToKeySet(bindingDescs, multibinders, setKey, keySet);
 				});
 			}
 		}

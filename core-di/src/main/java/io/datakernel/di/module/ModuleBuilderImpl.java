@@ -2,7 +2,6 @@ package io.datakernel.di.module;
 
 import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
-import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
@@ -15,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.ReflectionUtils.*;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
@@ -23,6 +23,8 @@ import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("UnusedReturnValue")
 final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
+	private static final Binding<?> TO_BE_GENERATED = new Binding<>(emptySet(), (compiledBindings, threadsafe, scope, index) -> missingOptionalBinding());
+
 	private final List<BindingDesc> bindingDescs = new ArrayList<>();
 
 	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
@@ -58,7 +60,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	public <U> ModuleBuilderBinder<U> bind(@NotNull Key<U> key) {
 		checkState(!configured.get(), "Cannot bind after the module builder was used as a module");
 		completeCurrent();
-		current = new BindingDesc(key, new Binding<>(emptySet(), Preprocessor.TO_BE_GENERATED).at(LocationInfo.from(this)), UNSCOPED, false);
+		current = new BindingDesc(key, TO_BE_GENERATED, UNSCOPED, false);
 		return (ModuleBuilderBinder<U>) this;
 	}
 
@@ -107,9 +109,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	@Override
 	public ModuleBuilderBinder<T> to(@NotNull Binding<? extends T> binding) {
 		BindingDesc desc = ensureCurrent();
-		if (desc.getBinding().getCompiler() != Preprocessor.TO_BE_GENERATED) {
-			throw new IllegalStateException("Already mapped to a binding");
-		}
+		checkState(desc.getBinding() == TO_BE_GENERATED, "Already mapped to a binding");
 		if (binding.getLocation() == null) {
 			binding.at(LocationInfo.from(this));
 		}
@@ -130,34 +130,6 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		bindingDescs.add(new BindingDesc(setKey, Binding.to(() -> singleton(desc.getKey())), UNSCOPED, false));
 
 		multibinders.put(setKey, Multibinder.toSet());
-		return this;
-	}
-
-	@Override
-	public ModuleBuilderBinder<T> withExtraDependencies(Set<Dependency> dependencies) {
-		BindingDesc current = ensureCurrent();
-		current.setBinding(current.getBinding().addDependencies(dependencies));
-		return this;
-	}
-
-	@Override
-	public ModuleBuilderBinder<T> withExtraDependencies(Dependency... dependencies) {
-		BindingDesc current = ensureCurrent();
-		current.setBinding(current.getBinding().addDependencies(dependencies));
-		return this;
-	}
-
-	@Override
-	public ModuleBuilderBinder<T> withExtraDependencies(Key<?>... dependencies) {
-		BindingDesc current = ensureCurrent();
-		current.setBinding(current.getBinding().addDependencies(dependencies));
-		return this;
-	}
-
-	@Override
-	public ModuleBuilderBinder<T> withExtraDependencies(Class<?>... dependencies) {
-		BindingDesc current = ensureCurrent();
-		current.setBinding(current.getBinding().addDependencies(dependencies));
 		return this;
 	}
 
@@ -246,11 +218,15 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		}
 		completeCurrent(); // finish the last binding
 
-		bindingDescs.forEach(b ->
-				bindings.computeIfAbsent(b.getScope(), $ -> new HashMap<>())
-						.get()
-						.computeIfAbsent(b.getKey(), $ -> new HashSet<>())
-						.add(b.getBinding()));
+		bindingDescs.forEach(b -> {
+			Set<Binding<?>> bindingSet = this.bindings.computeIfAbsent(b.getScope(), $ -> new HashMap<>())
+					.get()
+					.computeIfAbsent(b.getKey(), $ -> new HashSet<>());
+			Binding<?> binding = b.getBinding();
+			if (binding != TO_BE_GENERATED) {
+				bindingSet.add(binding);
+			}
+		});
 
 		Set<Key<?>> exportedKeys = bindingDescs.stream()
 				.filter(BindingDesc::isExported)

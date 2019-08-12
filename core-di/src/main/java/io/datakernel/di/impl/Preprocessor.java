@@ -1,225 +1,225 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
-import static java.util.stream.Collectors.partitioningBy;
-import static java.util.stream.Collectors.toSet;
+import static java.util.Collections.emptyMap;
+import static java.util.stream.Collectors.joining;
 
 /**
  * This class contains a set of utils for working with binding graph trie.
  */
 public final class Preprocessor {
-	/**
-	 * This is a special marker {@link BindingCompiler} for phantom bindings that will to be replaced by a generated ones.
-	 *
-	 * @see #completeBindingGraph
-	 */
-	public static final BindingCompiler<?> TO_BE_GENERATED = (compiledBindings, threadsafe, synchronizedScope, index) -> {
-		throw new AssertionError("This binding exists as a marker to be replaced by a generated one, so if you see this message then somethning is really wrong");
-	};
-
 	private Preprocessor() {}
 
 	/**
 	 * This method converts a trie of binding multimaps, that is provided from the modules,
 	 * into a trie of binding maps on which the {@link Injector} would actually operate.
-	 */
-	@SuppressWarnings("unchecked")
-	public static Trie<Scope, Map<Key<?>, Binding<?>>> resolveConflicts(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Map<Key<?>, Multibinder<?>> multibinders) {
-		return bindings.map(localBindings -> squash(localBindings, (k, v) -> {
-			Map<Boolean, Set<Binding<?>>> separated = v.stream().collect(partitioningBy(b -> b.getCompiler() != TO_BE_GENERATED, toSet()));
-			Set<Binding<?>> real = separated.get(true);
-			Set<Binding<?>> phantom = separated.get(false);
-
-			switch (real.size()) {
-				case 0:
-					if (phantom.isEmpty()) {
-						throw new DIException("Provided key " + k + " with no associated bindings");
-					}
-					Set<Dependency> dependencies = phantom.stream().flatMap(binding -> binding.getDependencies().stream()).collect(toSet());
-					LocationInfo location = phantom.stream().map(Binding::getLocation).filter(Objects::nonNull).findAny().orElse(null);
-					return new Binding<>(dependencies, TO_BE_GENERATED).at(location);
-				case 1:
-					return real.iterator().next();
-				default:
-					return ((Multibinder) multibinders.getOrDefault(k, ERROR_ON_DUPLICATE)).multibind(real);
-			}
-		}));
-	}
-
-	/**
-	 * This method recursively tries to generate missing dependency bindings using given {@link BindingGenerator generator}
-	 * and apply given {@link BindingTransformer} to all bindings once.
+	 * <p>
+	 * While doing so it also recursively tries to generate missing dependency bindings
+	 * using given {@link BindingGenerator generator} and apply given {@link BindingTransformer} to all of them.
 	 *
 	 * @see BindingGenerator#combinedGenerator
 	 * @see BindingTransformer#combinedTransformer
 	 */
-	public static void completeBindingGraph(Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
-		completeBindingGraph(new HashMap<>(), UNSCOPED, bindings, transformer, generator);
+	public static Trie<Scope, Map<Key<?>, Binding<?>>> reduce(
+			Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+			Map<Key<?>, Multibinder<?>> multibinders,
+			BindingTransformer<?> transformer,
+			BindingGenerator<?> generator) {
+
+		Trie<Scope, Map<Key<?>, Binding<?>>> reduced = Trie.leaf(new HashMap<>());
+		reduce(UNSCOPED, emptyMap(), bindings, reduced, multibinders, transformer, generator);
+		return reduced;
 	}
 
-	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
-			Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings,
-			BindingTransformer<?> transformer, BindingGenerator<?> generator) {
-		completeBindingGraph(known, scope, bindings.get(), generator, transformer);
-		Map<Key<?>, Binding<?>> nextKnown = override(known, bindings.get());
-		bindings.getChildren().forEach((subscope, subtrie) -> completeBindingGraph(nextKnown, next(scope, subscope), subtrie, transformer, generator));
+	private static void reduce(
+			Scope[] scope, Map<Key<?>, Binding<?>> upper,
+			Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Trie<Scope, Map<Key<?>, Binding<?>>> reduced,
+			Map<Key<?>, Multibinder<?>> multibinders,
+			BindingTransformer<?> transformer,
+			BindingGenerator<?> generator) {
+
+		Map<Key<?>, Set<Binding<?>>> localBindings = bindings.get();
+
+		localBindings.forEach((key, bindingSet) -> resolve(upper, localBindings, reduced.get(), scope, key, bindingSet, multibinders, transformer, generator));
+
+		Map<Key<?>, Binding<?>> nextUpper = override(upper, reduced.get());
+
+		bindings.getChildren().forEach((subScope, subLocalBindings) ->
+				reduce(next(scope, subScope), nextUpper, subLocalBindings, reduced.computeIfAbsent(subScope, $ -> new HashMap<>()), multibinders, transformer, generator));
 	}
 
 	@SuppressWarnings("unchecked")
-	private static void completeBindingGraph(Map<Key<?>, Binding<?>> known,
-			Scope[] scope, Map<Key<?>, Binding<?>> localBindings,
-			BindingGenerator<?> generator, BindingTransformer<?> transformer) {
+	@Nullable
+	private static Binding<?> resolve(
+			Map<Key<?>, Binding<?>> upper, Map<Key<?>, Set<Binding<?>>> localBindings, Map<Key<?>, Binding<?>> resolved,
+			Scope[] scope, Key<?> key, @Nullable Set<Binding<?>> bindingSet,
+			Map<Key<?>, Multibinder<?>> multibinders, BindingTransformer<?> transformer, BindingGenerator<?> generator) {
 
-		Map<Key<?>, Binding<?>> touched = new HashMap<>();
+		// shortest path - if it was already resolved, just return it (also serves as a visited set so graph loops dont cause infinite recursion)
+		Binding<?> reduced = resolved.get(key);
+		if (reduced != null) {
+			return reduced;
+		}
 
-		BindingLocator locator = new BindingLocator() {
+		BindingLocator recursiveLocator = new BindingLocator() {
 			@Override
 			@Nullable
 			public <T> Binding<T> get(Key<T> key) {
-				Binding<T> touchedBinding = (Binding<T>) touched.get(key);
-				if (touchedBinding != null) {
-					return touchedBinding;
-				}
-				Binding<T> binding = (Binding<T>) localBindings.get(key);
-
-				if (binding == null) {
-					Binding<?> upper = known.get(key);
-					if (upper != null) {
-						return (Binding<T>) upper;
-					}
-
-					Binding<Object> generatedBinding = ((BindingGenerator<Object>) generator).generate(this, scope, (Key<Object>) key);
-					if (generatedBinding == null) {
-						return null;
-					}
-					binding = (Binding<T>) generatedBinding;
-				} else if (binding.getCompiler() == TO_BE_GENERATED) {
-					Binding<Object> generatedBinding = ((BindingGenerator<Object>) generator).generate(this, scope, (Key<Object>) key);
-					if (generatedBinding == null) {
-						// these bindings are the ones requested with plain `bind(...);` call
-
-						// either there is an upper binding
-						Binding<?> upper = known.get(key);
-						if (upper != null) {
-							touched.put(key, upper); // so we 'generate' it by adding it to touched
-							return (Binding<T>) upper;
-						}
-						// or we just fail fast
-						throw new DIException("Refused to generate a requested binding for key " + key.getDisplayString());
-					}
-
-					binding = new Binding<>(union(generatedBinding.getDependencies(), binding.getDependencies()), binding.getLocation(), ((BindingCompiler<T>) generatedBinding.getCompiler()));
-				}
-				binding = ((BindingTransformer<T>) transformer).transform(this, scope, key, binding);
-				touched.put(key, binding);
-				return binding;
+				return (Binding<T>) resolve(upper, localBindings, resolved, scope, key, localBindings.get(key), multibinders, transformer, generator);
 			}
 		};
 
-		Set<Key<?>> dejaVu = new HashSet<>();
-		for (Key<?> k : localBindings.keySet()) {
-			locatorDfs(locator, k, dejaVu);
-		}
-		localBindings.putAll(touched);
-	}
+		// if it was explicitly bound
+		if (bindingSet != null) {
+			switch (bindingSet.size()) {
+				case 0:
+					// try to recursively generate a requested binding
+					reduced = ((BindingGenerator<Object>) generator).generate(recursiveLocator, scope, (Key<Object>) key);
+					// when empty set is explicitly provided it means that a plain `bind(...)` request was used, and we fail fast then
+					if (reduced == null) {
+						throw new DIException("Refused to generate an explicitly requested binding for key " + key.getDisplayString());
+					}
+					break;
+				case 1:
+					reduced = bindingSet.iterator().next();
+					break;
+				default:
+					reduced = ((Multibinder) multibinders.getOrDefault(key, ERROR_ON_DUPLICATE)).multibind(bindingSet);
+			}
+		} else { // or if it was never bound
+			// first check if it was already resolved in upper scope
+			reduced = upper.get(key);
+			if (reduced != null) {
+				return reduced;
+			}
+			// try to generate it
+			reduced = ((BindingGenerator<Object>) generator).generate(recursiveLocator, scope, (Key<Object>) key);
 
-	private static void locatorDfs(BindingLocator locator, Key<?> key, Set<Key<?>> dejaVu) {
-		if (!dejaVu.add(key)) {
-			return;
+			// if it was not generated then it's simply unsatisfied and later will be checked
+			if (reduced == null) {
+				return null;
+			}
 		}
-		Binding<?> binding = locator.get(key);
-		if (binding == null) {
-			// will be checked by unsatisfied dependency checker and collected into a nice error message
-			return;
+
+		// transform it (once!)
+		reduced = ((BindingTransformer) transformer).transform(recursiveLocator, scope, key, reduced);
+
+		// and store it as resolved (also mark as visited)
+		resolved.put(key, reduced);
+
+		// and then recursively walk over its dependencies (so this is a recursive dfs after all)
+		for (Dependency d : reduced.getDependencies()) {
+			Key<?> dkey = d.getKey();
+			resolve(upper, localBindings, resolved, scope, dkey, localBindings.get(dkey), multibinders, transformer, generator);
 		}
-		for (Dependency d : binding.getDependencies()) {
-			locatorDfs(locator, d.getKey(), dejaVu);
-		}
+
+		return reduced;
 	}
 
 	/**
 	 * A method that checks binding graph trie completeness, meaning that no binding references a key that is not present
-	 * at same or lower level of the trie.
+	 * at same or lower level of the trie, and that there is no cycles in each scope (cycles between scopes are not possible).
 	 * <p>
-	 * It returns a mapping from unsatisfied keys to a set of key-binding pairs that require them.
-	 * If that mapping is empty then the graph trie is valid.
+	 * It doesn't throw an error if and only if this graph is complete and being complete means that each bindings dependencies should
+	 * have a respective binding in the local or upper scope, and that there is no cyclic dependencies.
 	 */
-	public static Map<Key<?>, Set<Entry<Key<?>, Binding<?>>>> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getUnsatisfiedDependenciesStream(new HashSet<>(known), bindings)
-				.collect(toMultimap(dtb -> dtb.dependency, dtb -> dtb.keybinding));
+	public static void check(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		checkUnsatisfied(UNSCOPED, known, bindings);
+		checkCycles(UNSCOPED, bindings);
 	}
 
-	private static Stream<DependencyToBinding> getUnsatisfiedDependenciesStream(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return Stream.concat(
-				bindings.get().entrySet().stream()
-						.flatMap(e -> e.getValue().getDependencies().stream()
-								.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
-								.map(dependency -> new DependencyToBinding(dependency.getKey(), e))),
-				bindings.getChildren()
-						.values()
-						.stream()
-						.flatMap(scopeBindings -> getUnsatisfiedDependenciesStream(union(known, scopeBindings.get().keySet()), scopeBindings))
-		);
-	}
+	private static void checkUnsatisfied(Scope[] scope, Set<Key<?>> upperKnown, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 
-	private static class DependencyToBinding {
-		final Key<?> dependency;
-		final Entry<Key<?>, Binding<?>> keybinding;
+		class DependencyToBinding {
+			final Key<?> dependency;
+			final Entry<Key<?>, Binding<?>> keybinding;
 
-		public DependencyToBinding(Key<?> dependency, Entry<Key<?>, Binding<?>> keybinding) {
-			this.dependency = dependency;
-			this.keybinding = keybinding;
+			public DependencyToBinding(Key<?> dependency, Entry<Key<?>, Binding<?>> keybinding) {
+				this.dependency = dependency;
+				this.keybinding = keybinding;
+			}
 		}
+
+		Set<Key<?>> known = union(upperKnown, bindings.get().keySet());
+
+		Map<? extends Key<?>, Set<Entry<Key<?>, Binding<?>>>> unsatisfied = bindings.get().entrySet().stream()
+				.flatMap(e -> e.getValue().getDependencies().stream()
+						.filter(dependency -> dependency.isRequired() && !known.contains(dependency.getKey()))
+						.map(dependency -> new DependencyToBinding(dependency.getKey(), e)))
+
+				.collect(toMultimap(dtb -> dtb.dependency, dtb -> dtb.keybinding));
+
+		if (!unsatisfied.isEmpty()) {
+			throw new DIException(unsatisfied.entrySet().stream()
+					.map(entry -> {
+						Key<?> required = entry.getKey();
+						String displayString = required.getDisplayString();
+						return entry.getValue().stream()
+								.map(binding -> {
+									Key<?> key = binding.getKey();
+									String displayAndLocation = key.getDisplayString() + " " + Utils.getLocation(binding.getValue());
+									Class<?> rawType = key.getRawType();
+									if (Modifier.isStatic(rawType.getModifiers()) || !required.getRawType().equals(rawType.getEnclosingClass())) {
+										return displayAndLocation;
+									}
+									String indent = new String(new char[Utils.getKeyDisplayCenter(key) + 2]).replace('\0', ' ');
+									return displayAndLocation + "\n\t\t" + indent + "^- this is a non-static inner class with implicit dependency on its enclosing class";
+								})
+								.collect(joining("\n\t\t- ", "\tkey " + displayString + " required to make:\n\t\t- ", ""));
+					})
+					.collect(joining("\n", "Unsatisfied dependencies detected" + (scope.length != 0 ? " in scope " + getScopeDisplayString(scope) : "") + ":\n", "\n")));
+		}
+
+		bindings.getChildren().forEach((subScope, subBindings) -> checkUnsatisfied(next(scope, subScope), known, subBindings));
 	}
 
-	/**
-	 * A method that checks binding graph trie for cycles, it ensures that each trie node is a <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">DAG</a>.
-	 * <p>
-	 * It does so by performing a simple DFS on each graph that ignores unsatisfied dependencies (dependency keys that have no associated binding).
-	 * <p>
-	 * It returns a set of key arrays that represent cycles.
-	 * If that set is empty then no graphs in given trie contains cycles.
-	 */
-	public static Set<Key<?>[]> getCyclicDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getCyclicDependenciesStream(bindings).collect(toSet());
-	}
-
-	private static Stream<Key<?>[]> getCyclicDependenciesStream(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	private static void checkCycles(Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		// since no cycles are possible between scopes,
 		// we just run a simple dfs that ignores unsatisfied
 		// dependencies for each scope independently
-		return Stream.concat(
-				dfs(bindings.get()).stream(),
-				bindings.getChildren().values().stream().flatMap(Preprocessor::getCyclicDependenciesStream)
-		);
+		Set<Key<?>[]> cycles = collectCycles(bindings.get());
+
+		if (!cycles.isEmpty()) {
+			throw new DIException(cycles.stream()
+					.map(Utils::drawCycle)
+					.collect(joining("\n\n", "Cyclic dependencies detected" + (scope.length != 0 ? " in scope " + getScopeDisplayString(scope) : "") + ":\n\n", "\n")));
+		}
+
+		bindings.getChildren()
+				.forEach((subScope, subBindings) ->
+						checkCycles(next(scope, subScope), subBindings));
 	}
 
-	private static Set<Key<?>[]> dfs(Map<Key<?>, Binding<?>> bindings) {
+	/**
+	 * This method performs a simple recursive DFS on given binding graph and returns all found cycles.
+	 * <p>
+	 * Unsatisfied dependencies are ignored.
+	 */
+	public static Set<Key<?>[]> collectCycles(Map<Key<?>, Binding<?>> bindings) {
 		Set<Key<?>> visited = new HashSet<>();
 		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
 		Set<Key<?>[]> cycles = new HashSet<>();
 		// the DAG is not necessarily connected, so we go through any possibly disconnected part
 		for (Key<?> key : bindings.keySet()) {
 			if (!visited.contains(key)) {
-				dfs(bindings, visited, visiting, cycles, key);
+				collectCycles(bindings, visited, visiting, cycles, key);
 			}
 		}
 		return cycles;
 	}
 
-	private static void dfs(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<Key<?>[]> cycles, Key<?> key) {
+	private static void collectCycles(Map<Key<?>, Binding<?>> bindings, Set<Key<?>> visited, LinkedHashSet<Key<?>> visiting, Set<Key<?>[]> cycles, Key<?> key) {
 		Binding<?> binding = bindings.get(key);
 		if (binding == null) {
 			// just ignore unsatisfied dependencies as if they never existed
@@ -231,7 +231,7 @@ public final class Preprocessor {
 		if (visiting.add(key)) {
 			for (Dependency dependency : binding.getDependencies()) {
 				if (!visited.contains(dependency.getKey())) {
-					dfs(bindings, visited, visiting, cycles, dependency.getKey());
+					collectCycles(bindings, visited, visiting, cycles, dependency.getKey());
 				}
 			}
 			visiting.remove(key);
