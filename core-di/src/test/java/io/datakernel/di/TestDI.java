@@ -5,11 +5,13 @@ import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.ConsumerApplierModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.annotation.ElementType;
@@ -18,6 +20,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.combine;
@@ -1117,6 +1120,70 @@ public final class TestDI {
 
 		assertEquals("hello #6000", injector.getInstance(String.class));
 		assertEquals(3000, injector.getInstance(Integer.class).intValue());
+	}
+
+	@Test
+	public void consumerTransformerHookupTest() {
+		AbstractModule module = new AbstractModule() {
+			@ProvidesIntoSet
+			Consumer<String> consumer() {
+				return System.out::println;
+			}
+
+			@ProvidesIntoSet
+			Consumer<String> consumer2() {
+				return System.err::println;
+			}
+
+			@Provides
+			String string() { return "Hello, World"; }
+		};
+
+		Module module1 = Module.create()
+				.install(module)
+				.combineWith(ConsumerApplierModule.create()
+						.withPriority(99));
+
+		Injector injector = Injector.of(module1);
+		String instance = injector.getInstance(String.class);
+		Assert.assertEquals("Hello, World", instance);
+	}
+
+	@Test
+	public void consumerTransformerHookupWithNameTest() {
+		int [] calls = {0};
+		AbstractModule module = new AbstractModule() {
+			@Named("consumer1")
+			@ProvidesIntoSet
+			Consumer<String> consumer() {
+				return str -> {
+					System.out.println(str);
+					System.out.println(++calls[0]);
+				};
+			}
+
+			@ProvidesIntoSet
+			Consumer<String> consumer2() {
+				return str -> {
+					System.err.println(str);
+					System.out.println(++calls[0]);
+				};
+			}
+
+			@Named("consumer1")
+			@Provides
+			String string() { return "Hello, World"; }
+		};
+
+		Module module1 = Module.create()
+				.install(module)
+				.install(ConsumerApplierModule.create()
+						.withPriority(99));
+
+		Injector injector = Injector.of(module1);
+		String instance = injector.getInstance(Key.of(String.class, "consumer1"));
+		assertEquals(instance, "Hello, World");
+		assertEquals(1, calls[0]);
 	}
 
 //	@Test
