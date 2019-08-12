@@ -44,6 +44,7 @@ public class RpcStrategiesTest {
 	private static final InetSocketAddress ADDRESS_5 = new InetSocketAddress(HOST, getFreePort());
 
 	@Test
+	//[START REGION_1]
 	public void roundRobinTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
@@ -70,9 +71,11 @@ public class RpcStrategiesTest {
 			assertEquals(iterations / 5, connections.get(i).getRequests());
 		}
 	}
+	//[END REGION_1]
 
 	@Test
-	public void roundRobinAndFirstValidTest() {
+	//[START REGION_2]
+	public void roundRobinAndFirstAvailableTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -97,8 +100,10 @@ public class RpcStrategiesTest {
 		assertEquals(0, connection3.getRequests());
 		assertEquals(iterations / 2, connection4.getRequests());
 	}
+	//[END REGION_2]
 
 	@Test
+	//[START REGION_3]
 	public void shardingAndFirstValidTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
@@ -132,8 +137,10 @@ public class RpcStrategiesTest {
 		assertEquals(3, connection4.getRequests());
 		assertEquals(3, connection5.getRequests());
 	}
+	//[END REGION_3]
 
 	@Test
+	//[START REGION_4]
 	public void rendezvousHashingTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
@@ -158,6 +165,8 @@ public class RpcStrategiesTest {
 		for (int i = 0; i < iterationsPerLoop; i++) {
 			sender.sendRequest(i, 50, ignore());
 		}
+		//[END REGION_4]
+		//[START REGION_5]
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
 		sender = strategy.createSender(pool);
@@ -172,8 +181,10 @@ public class RpcStrategiesTest {
 		assertEquals(0, connection4.getRequests());
 		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection5.getRequests(), acceptableError);
 	}
+	//[END REGION_5]
 
 	@Test
+	//[START REGION_6]
 	public void typeDispatchTest() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
@@ -210,4 +221,5 @@ public class RpcStrategiesTest {
 		assertEquals(0, connection4.getRequests());
 		assertEquals(0, connection5.getRequests());
 	}
+	//[END REGION_6]
 }
