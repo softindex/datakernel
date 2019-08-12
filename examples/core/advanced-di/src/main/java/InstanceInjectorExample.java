@@ -6,6 +6,7 @@ import io.datakernel.launcher.Launcher;
 
 @SuppressWarnings("FinalClass")
 public final class InstanceInjectorExample extends Launcher {
+	//[START REGION_1]
 	@Inject
 	String message;
 
@@ -23,12 +24,15 @@ public final class InstanceInjectorExample extends Launcher {
 		Launcher launcher = new InstanceInjectorExample();
 		launcher.launch(args);
 	}
+	//[END REGION_1]
 
 	// internal job of post-creation objects inject.
+	//[START REGION_2]
 	private void postInjectInstances(String [] args) {
 		Injector injector = this.createInjector(args);
 		InstanceInjector<Launcher> instanceInjector = injector.getInstanceInjector(Launcher.class);
 		instanceInjector.injectInto(this);
 	}
+	//[END REGION_2]
 
 }
