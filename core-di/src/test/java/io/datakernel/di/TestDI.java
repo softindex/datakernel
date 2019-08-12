@@ -5,7 +5,7 @@ import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.ConsumerApplierModule;
+import io.datakernel.di.module.InstanceConsumerModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.Trie;
@@ -1141,7 +1141,7 @@ public final class TestDI {
 
 		Module module1 = Module.create()
 				.install(module)
-				.combineWith(ConsumerApplierModule.create()
+				.combineWith(InstanceConsumerModule.create()
 						.withPriority(99));
 
 		Injector injector = Injector.of(module1);
@@ -1177,7 +1177,7 @@ public final class TestDI {
 
 		Module module1 = Module.create()
 				.install(module)
-				.install(ConsumerApplierModule.create()
+				.install(InstanceConsumerModule.create()
 						.withPriority(99));
 
 		Injector injector = Injector.of(module1);

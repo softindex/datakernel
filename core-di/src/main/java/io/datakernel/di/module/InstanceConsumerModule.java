@@ -17,33 +17,24 @@ import static java.util.Collections.singletonList;
  * It allows to accept any T instances after their creatoon, if
  * multibinder to Set <Consumer <? extends T >> was defined for current module.
  */
-public class ConsumerApplierModule extends AbstractModule {
-	private Class<? extends Consumer> consumerType;
-	private Predicate<Key<?>> matcher;
-	private int priority;
+public class InstanceConsumerModule extends AbstractModule {
+	private Predicate<Key<?>> matcher = key -> true;
+	private int priority = 0;
 
-	public static ConsumerApplierModule create() {
-		return new ConsumerApplierModule();
+	public static InstanceConsumerModule create() {
+		return new InstanceConsumerModule();
 	}
 
-	private ConsumerApplierModule() {
-		this.consumerType = Consumer.class;
-		this.priority = 0;
-		this.matcher = key -> true;
+	private InstanceConsumerModule() {
 	}
 
-	public ConsumerApplierModule withConsumerType(Class<? extends Consumer> consumerType) {
-		this.consumerType = consumerType;
-		return this;
-	}
-
-	public ConsumerApplierModule withPriority(int priority) {
-		this.priority = priority;
-		return this;
-	}
-
-	public ConsumerApplierModule withMatcher(Predicate<Key<?>> matcher) {
+	public InstanceConsumerModule withMatcher(Predicate<Key<?>> matcher) {
 		this.matcher = matcher;
+		return this;
+	}
+
+	public InstanceConsumerModule withPriority(int priority) {
+		this.priority = priority;
 		return this;
 	}
 
@@ -54,7 +45,7 @@ public class ConsumerApplierModule extends AbstractModule {
 				return binding;
 			}
 			Key<Set<Consumer<?>>> consumerSet = Key.ofType(Types.parameterized(Set.class,
-					Types.parameterized(consumerType, key.getType())), key.getName());
+					Types.parameterized(Consumer.class, key.getType())), key.getName());
 			Binding<Set<Consumer<?>>> consumerBinding = bindings.get(consumerSet);
 			if (consumerBinding == null) {
 				return binding;
