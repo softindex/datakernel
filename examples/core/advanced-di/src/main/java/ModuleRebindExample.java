@@ -48,15 +48,15 @@ public class ModuleRebindExample extends Launcher {
 				.bind(Eventloop.class).to(Eventloop::create)
 				.bind(Config.class).toInstance(
 						Config.create()
-								.with("modules.1.port", "80")
-								.with("modules.1.message", "Hello from Server 1")
-								.with("modules.2.port", "8080")
+								.with("modules.1.port", "8080")
+								.with("modules.1.message", 	"Hello from Server 1")
+								.with("modules.2.port", "8081")
 								.with("modules.2.message", "Hello from Server 2"));
 	}
 
 	@Override
 	protected void run() throws InterruptedException {
-		System.out.println("Server1: http://127.0.0.1:80/ \nServer2: http://127.0.0.1:8080/");
+		System.out.println("Server1: http://127.0.0.1:8080/ \nServer2: http://127.0.0.1:8081/");
 		awaitShutdown();
 	}
 

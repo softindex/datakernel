@@ -2,52 +2,33 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.InstanceInjector;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
+import io.datakernel.launcher.Launcher;
 
-public class InstanceInjectorExample {
+@SuppressWarnings("FinalClass")
+public final class InstanceInjectorExample extends Launcher {
+	@Inject
+	String message;
 
-	//[START REGION_1]
-	static class Butter {
-		@Inject
-		Float weight;
-
-		@Inject
-		String name;
-
-		public float getWeight() {
-			return weight;
-		}
-
-		public String getName() {
-			return name;
-		}
+	@Provides
+	String message() {
+		return "Hello, world!";
 	}
-	//[END REGION_1]
 
-	public static void main(String[] args) {
-		//[START REGION_2]
-		AbstractModule cookbook = new AbstractModule() {
-			@Override
-			protected void configure() {
-				bindInstanceInjector(Butter.class);
-			}
-
-			@Provides
-			Float weight() { return 20.f; }
-
-			@Provides
-			String name() { return "Foreign Butter"; }
-		};
-		//[END REGION_2]
-
-		//[START REGION_3]
-		Injector injector = Injector.of(cookbook);
-		Butter butter = new Butter();
-		InstanceInjector<Butter> instanceInjector = injector.getInstance(new Key<InstanceInjector<Butter>>() {});
-		instanceInjector.injectInto(butter);
-
-		System.out.println("After Inject : " + butter.getWeight());
-		//[END REGION_3]
+	@Override
+	protected void run() {
+		System.out.println(message);
 	}
+
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new InstanceInjectorExample();
+		launcher.launch(args);
+	}
+
+	// internal job of post-creation objects inject.
+	private void postInjectInstances(String [] args) {
+		Injector injector = this.createInjector(args);
+		InstanceInjector<Launcher> instanceInjector = injector.getInstanceInjector(Launcher.class);
+		instanceInjector.injectInto(this);
+	}
+
 }
