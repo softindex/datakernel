@@ -73,8 +73,8 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 
 			@Provides
 			@RequestScope
-			Promise<HttpResponse> httpResponse(String content) {
-				return Promise.of(HttpResponse.ok200().withPlainText(content));
+			HttpResponse httpResponse(String content) {
+				return HttpResponse.ok200().withPlainText(content);
 			}
 		};
 	}
