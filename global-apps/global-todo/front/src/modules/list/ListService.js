@@ -1,8 +1,8 @@
 import Service from '../../common/Service';
 import {ClientOTNode, OTStateManager} from "ot-core";
-import serializer from "../ot/serializer";
-import mapOTSystem from "../ot/mapOTSystem";
-import MapOTOperation from "../ot/MapOTOperation";
+import serializer from "./ot/serializer";
+import mapOTSystem from "./ot/mapOTSystem";
+import MapOTOperation from "./ot/MapOTOperation";
 
 const RETRY_TIMEOUT = 1000;
 
@@ -53,7 +53,7 @@ class ListService extends Service {
   }
 
   createItem(name) {
-    if (!name) {
+    if (name !== ' ' && name) {
       this._sendOperation(name, false);
     }
   };
@@ -86,8 +86,8 @@ class ListService extends Service {
     return this._sendOperation(name, !this.state.items[name]);
   };
 
-  toggleAllItemsStatus(name, nextValue) {
-    return this._sendAllOperation(name, nextValue);
+  toggleAllItemsStatus() {
+    return this._sendAllOperation();
   };
 
   _sendOperation(name, nextValue) {
@@ -101,20 +101,28 @@ class ListService extends Service {
     this._sync();
   };
 
-  _sendAllOperation(names, nextValue) {
+  _sendAllOperation() {
     let operations = [];
-    names.forEach(name => {
+    let counterDone = 0;
+    Object.entries(this.state.items).map(([, isDone]) => {
+     if (isDone) {
+       counterDone++;
+     }
+    });
+
+    Object.entries(this.state.items).map(([name,]) => {
       const operation = new MapOTOperation({
         [name]: {
           prev: name in this.state.items ? this.state.items[name] : null,
-          next: nextValue
+          next: !(Object.keys(this.state.items).length === counterDone)
         }
       });
       operations.push(operation);
     });
-    operations.forEach(operation => {
-      this._listOTStateManager.add([operation]);
-    });
+
+    for (let i=0; i<operations.length; i++) {
+      this._listOTStateManager.add([operations[i]]);
+    }
     this._sync();
   };
 

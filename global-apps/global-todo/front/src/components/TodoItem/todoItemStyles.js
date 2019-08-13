@@ -8,6 +8,7 @@ const todoItemStyles = theme => ({
   },
   itemInput: {
     padding: `${theme.spacing(2)}px 0px`,
+    fontSize: '1.2rem',
     '&:before': {
       borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
       borderRadius: theme.spacing(0.5)
@@ -21,6 +22,12 @@ const todoItemStyles = theme => ({
     },
     '&:hover:not(.Mui-disabled):before': {
       borderBottom: '2px solid rgba(197, 193, 193)'
+    }
+  },
+  textField: {
+    textDecoration: 'line-through',
+    '& > div > input': {
+      color: theme.palette.secondary.grey
     }
   }
 });

@@ -6,66 +6,46 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import {withStyles} from "@material-ui/core";
 import todoItemStyles from "./todoItemStyles";
 
-class TodoItem extends React.Component {
-  state = {
-    oldName: this.props.name,
-    name: this.props.name,
-    isDone: this.props.isDone
+function TodoItem(props) {
+
+  const onDelete = () => props
+    .onDeleteItem(props.name);
+
+  const onStatusChange = () => {
+    props.onToggleItemStatus(props.name);
   };
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.name !== this.state.name || nextProps.isDone !== this.state.isDone) {
-      this.setState({
-        name: nextProps.name,
-        isDone: nextProps.isDone
-      })
-    }
-  }
+  const onNameChange = event => props
+    .onRenameItem(props.name, event.target.value);
 
-  onDelete = () => this.props.onDeleteItem(this.state.name);
-
-  onStatusChange = () => {
-    this.props.onToggleItemStatus(this.state.name);
-    this.setState({isDone: !this.state.isDone});
-  };
-
-  onNameChange = e => this.setState({name: e.target.value});
-
-  onNameSubmit = () => {
-    this.props.onRenameItem(this.state.oldName, this.state.name);
-    this.setState({oldName: this.state.name});
-  };
-
-  render() {
-    return (
-      <TextField
-        value={this.state.name}
-        fullWidth
-        onChange={this.onNameChange}
-        onBlur={this.onNameSubmit}
-        InputProps={{
-          classes: {
-            root: this.props.classes.itemInput,
-          },
-          startAdornment: (
-            <Checkbox
-              checked={this.state.isDone}
-              className={this.props.classes.checkbox}
-              onChange={this.onStatusChange}
-            />
-          ),
-          endAdornment: (
-            <IconButton
-              className={this.props.classes.deleteIconButton}
-              onClick={this.onDelete}
-            >
-              <DeleteIcon/>
-            </IconButton>
-          )
-        }}
-      />
-    );
-  }
+  return (
+    <TextField
+      value={props.name}
+      fullWidth
+      onChange={event => onNameChange(event)}
+      className={props.isDone ? props.classes.textField : null}
+      InputProps={{
+        classes: {
+          root: props.classes.itemInput,
+        },
+        startAdornment: (
+          <Checkbox
+            checked={props.isDone}
+            className={props.classes.checkbox}
+            onChange={onStatusChange}
+          />
+        ),
+        endAdornment: (
+          <IconButton
+            className={props.classes.deleteIconButton}
+            onClick={onDelete}
+          >
+            <DeleteIcon/>
+          </IconButton>
+        )
+      }}
+    />
+  );
 }
 
 export default withStyles(todoItemStyles)(TodoItem);

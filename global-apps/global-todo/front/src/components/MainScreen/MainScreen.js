@@ -7,6 +7,9 @@ import {withSnackbar} from "notistack";
 import TodoList from "../TodoList/TodoList";
 import Container from '@material-ui/core/Container';
 import ListService from "../../modules/list/ListService";
+import Icon from '@material-ui/core/Icon';
+import connectService from "../../common/connectService";
+import AccountContext from "../../modules/account/AccountContext";
 
 class MainScreen extends React.Component {
   constructor(props) {
@@ -16,7 +19,7 @@ class MainScreen extends React.Component {
 
   componentDidMount() {
     this.listService.init()
-      .catch((err) => {
+      .catch(err => {
         this.props.enqueueSnackbar(err.message, {
           variant: 'error'
         });
@@ -30,6 +33,13 @@ class MainScreen extends React.Component {
   render() {
     return (
       <ListContext.Provider value={this.listService}>
+        <div
+          color="inherit"
+          onClick={this.props.logout}
+          className={this.props.classes.logout}
+        >
+          <Icon className={this.props.classes.logoutIcon} color="primary">logout</Icon>
+        </div>
         <Container
           maxWidth="sm"
           className={this.props.classes.container}
@@ -59,7 +69,15 @@ class MainScreen extends React.Component {
 }
 
 export default checkAuth(
-  withSnackbar(
-    withStyles(mainScreenStyles)(MainScreen)
+  connectService(
+    AccountContext, (state, accountService) => ({
+      logout() {
+        accountService.logout();
+      }
+    })
+  )(
+    withSnackbar(
+      withStyles(mainScreenStyles)(MainScreen)
+    )
   )
 );

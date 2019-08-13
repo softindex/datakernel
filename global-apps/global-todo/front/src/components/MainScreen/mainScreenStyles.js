@@ -12,6 +12,17 @@ const mainScreenStyles = theme => ({
   },
   caption: {
     padding: theme.spacing(8)
+  },
+  logoutIcon: {
+    fontSize: theme.spacing(3.5)
+  },
+  logout: {
+    position: 'fixed',
+    top: theme.spacing(2),
+    right: theme.spacing(3),
+    '&:hover': {
+      cursor: 'pointer'
+    }
   }
 });
 

@@ -13,11 +13,7 @@ class TodoList extends React.Component {
   state = {
     newItemName: '',
     doneAll: false,
-    selected: {
-      allSelected: true,
-      activeSelected: false,
-      completedSelected: false
-    }
+    selected: 'all'
   };
 
   onSubmit = e => {
@@ -33,13 +29,7 @@ class TodoList extends React.Component {
   };
 
   toggleDoneAll = () => {
-    const names = [];
-    this.setState({
-      doneAll: !this.state.doneAll
-    });
-    Object.entries(this.props.items).forEach(([name,]) => {
-     names.push(name);
-    });
+    this.props.onToggleAllItemsStatus();
   };
 
   getAmountUncompletedTodo() {
@@ -52,36 +42,6 @@ class TodoList extends React.Component {
     return counter;
   }
 
-  onAllSelected = () => {
-    this.setState({
-      selected: {
-        allSelected: true,
-        activeSelected: false,
-        completedSelected: false
-      }
-    });
-  };
-
-  onActiveSelected = () => {
-    this.setState({
-      selected: {
-        allSelected: false,
-        activeSelected: true,
-        completedSelected: false
-      }
-    });
-  };
-
-  onCompletedSelected = () => {
-    this.setState({
-      selected: {
-        allSelected: false,
-        activeSelected: false,
-        completedSelected: true
-      }
-    });
-  };
-
   onClearCompleted = () => {
     Object.entries(this.props.items).map(([name, isDone]) => {
       if (isDone) {
@@ -90,12 +50,16 @@ class TodoList extends React.Component {
     })
   };
 
+  onSelectedChange(selected) {
+    this.setState({selected});
+  }
+
   getFilteredTodo() {
     return Object.entries(this.props.items).filter(([, isDone]) => {
-      if (this.state.selected.activeSelected) {
+      if (this.state.selected === 'active') {
         return isDone === false;
       }
-      if (this.state.selected.completedSelected) {
+      if (this.state.selected === 'completed') {
         return isDone === true;
       }
       return true;
@@ -126,11 +90,11 @@ class TodoList extends React.Component {
             }}
           />
         </form>
-        {this.getFilteredTodo().map(([itemName, isDone]) => (
+        {this.getFilteredTodo(this.state.selected).map(([itemName, isDone]) => (
             <TodoItem
               name={itemName}
               isDone={isDone}
-              onChangeItemState={this.props.onToggleItemStatus}
+              onToggleItemStatus={this.props.onToggleItemStatus}
               onDeleteItem={this.props.onDeleteItem}
               onRenameItem={this.props.onRenameItem}
             />
@@ -147,22 +111,22 @@ class TodoList extends React.Component {
             </Typography>
             <Button
               className={classes.captionButton}
-              variant={this.state.selected.allSelected ? "outlined" : null}
-              onClick={this.onAllSelected}
+              variant={this.state.selected === 'all' ? "outlined" : null}
+              onClick={this.onSelectedChange.bind(this, 'all')}
             >
               All
             </Button>
             <Button
               className={classes.captionButton}
-              variant={this.state.selected.activeSelected ? "outlined" : null}
-              onClick={this.onActiveSelected}
+              variant={this.state.selected === 'active' ? "outlined" : null}
+              onClick={this.onSelectedChange.bind(this, 'active')}
             >
               Active
             </Button>
             <Button
               className={classes.captionButton}
-              onClick={this.onCompletedSelected}
-              variant={this.state.selected.completedSelected ? "outlined" : null}
+              variant={this.state.selected === 'completed' ? "outlined" : null}
+              onClick={this.onSelectedChange.bind(this, 'completed')}
             >
               Completed
             </Button>
@@ -195,8 +159,8 @@ export default connectService(ListContext,
       listService.toggleItemStatus(name);
     },
 
-    onToggleAllItemsStatus(name, doneAll) {
-      listService.toggleAllItemsStatus(name, doneAll);
+    onToggleAllItemsStatus() {
+      listService.toggleAllItemsStatus();
     }
 
   }))(
