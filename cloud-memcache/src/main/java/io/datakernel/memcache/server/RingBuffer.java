@@ -4,8 +4,7 @@ import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.LongLongHashMap;
 import com.carrotsearch.hppc.ObjectLongHashMap;
 import io.datakernel.jmx.EventStats;
-import io.datakernel.memcache.client.MemcacheClient;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -164,9 +163,9 @@ public final class RingBuffer implements RingBufferMBean {
 			int current = currentBuffer - i;
 			if (current < 0)
 				current = ringBuffers.length + current;
-			Slice buf = ringBuffers[current].get(key);
-			if (buf != null) {
-				return buf;
+			Slice slice = ringBuffers[current].get(key);
+			if (slice != null) {
+				return slice;
 			}
 		}
 		statsMisses.recordEvent();

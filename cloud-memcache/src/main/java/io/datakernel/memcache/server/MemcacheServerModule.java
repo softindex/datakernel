@@ -6,8 +6,7 @@ import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.memcache.client.MemcacheClient;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.protocol.SerializerGenSlice;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -46,8 +45,8 @@ public class MemcacheServerModule extends AbstractModule {
 						request -> Promise.of(new GetResponse(storage.get(request.getKey()))))
 				.withHandler(PutRequest.class, PutResponse.class,
 						request -> {
-							Slice buf = request.getData();
-							storage.put(request.getKey(), buf.array(), buf.offset(), buf.length());
+							Slice slice = request.getData();
+							storage.put(request.getKey(), slice.array(), slice.offset(), slice.length());
 							return Promise.of(PutResponse.INSTANCE);
 						})
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())

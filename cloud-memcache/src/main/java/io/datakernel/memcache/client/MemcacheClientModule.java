@@ -4,8 +4,8 @@ import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.protocol.SerializerGenSlice;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.serializer.SerializerBuilder;
@@ -45,8 +45,8 @@ public class MemcacheClientModule extends AbstractModule {
 	}
 
 	@Provides
-	MemcacheClient memcacheClient(RpcClient client, Eventloop eventloop) {
-		return new MemcacheClientImpl(client.adaptToAnotherEventloop(eventloop));
+	RawMemcacheClient memcacheClient(RpcClient client) {
+		return RawMemcacheClient.create(client);
 	}
 
 }

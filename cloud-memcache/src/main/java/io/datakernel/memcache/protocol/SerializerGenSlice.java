@@ -2,8 +2,7 @@ package io.datakernel.memcache.protocol;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.memcache.client.MemcacheClient;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
@@ -61,19 +60,19 @@ public class SerializerGenSlice implements SerializerGen, NullableOptimization {
 				arg(0));
 	}
 
-	public static int write(byte[] output, int offset, Slice buf) {
-		offset = BinaryOutputUtils.writeVarInt(output, offset, buf.length());
-		offset = BinaryOutputUtils.write(output, offset, buf.array(), buf.offset(), buf.length());
+	public static int write(byte[] output, int offset, Slice slice) {
+		offset = BinaryOutputUtils.writeVarInt(output, offset, slice.length());
+		offset = BinaryOutputUtils.write(output, offset, slice.array(), slice.offset(), slice.length());
 		return offset;
 	}
 
-	public static int writeNullable(byte[] output, int offset, Slice buf) {
-		if (buf == null) {
+	public static int writeNullable(byte[] output, int offset, Slice slice) {
+		if (slice == null) {
 			output[offset] = 0;
 			return offset + 1;
 		} else {
-			offset = BinaryOutputUtils.writeVarInt(output, offset, buf.length() + 1);
-			offset = BinaryOutputUtils.write(output, offset, buf.array(), buf.offset(), buf.length());
+			offset = BinaryOutputUtils.writeVarInt(output, offset, slice.length() + 1);
+			offset = BinaryOutputUtils.write(output, offset, slice.array(), slice.offset(), slice.length());
 			return offset;
 		}
 	}

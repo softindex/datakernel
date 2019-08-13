@@ -11,7 +11,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClient;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
+import io.datakernel.memcache.client.RawMemcacheClient;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.server.MemcacheServerModule;
 import io.datakernel.rpc.server.RpcServer;
@@ -42,7 +43,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 	Eventloop eventloop() {return Eventloop.create(); }
 
 	@Inject
-	MemcacheClient client;
+	RawMemcacheClient client;
 
 	@Inject
 	RpcServer server;

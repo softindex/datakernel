@@ -9,7 +9,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClient;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
+import io.datakernel.memcache.client.RawMemcacheClient;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -38,7 +39,7 @@ public class MemcacheLikeClient extends Launcher {
 	}
 
 	@Inject
-	MemcacheClient client;
+	RawMemcacheClient client;
 
 	@Inject
 	Eventloop eventloop;

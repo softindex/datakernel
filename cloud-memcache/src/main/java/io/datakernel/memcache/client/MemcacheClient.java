@@ -2,46 +2,17 @@ package io.datakernel.memcache.client;
 
 import io.datakernel.async.Promise;
 
-public interface MemcacheClient {
-	final class Slice {
-		private final byte[] array;
-		private final int offset;
-		private final int length;
+public interface MemcacheClient<K, V> {
 
-		public Slice(byte[] array) {
-			this.array = array;
-			this.offset = 0;
-			this.length = array.length;
-		}
+	Promise<Void> put(K key, V value, int timeout);
 
-		public Slice(byte[] array, int offset, int length) {
-			this.array = array;
-			this.offset = offset;
-			this.length = length;
-		}
+	Promise<V> get(K key, int timeout);
 
-		public byte[] array() {
-			return array;
-		}
-
-		public int offset() {
-			return offset;
-		}
-
-		public int length() {
-			return length;
-		}
+	default Promise<Void> put(K key, V value) {
+		return put(key, value, Integer.MAX_VALUE);
 	}
 
-	Promise<Void> put(byte[] key, Slice buf, int timeout);
-
-	Promise<Slice> get(byte[] key, int timeout);
-
-	default Promise<Void> put(byte[] key, Slice buf) {
-		return put(key, buf, Integer.MAX_VALUE);
-	}
-
-	default Promise<Slice> get(byte[] key) {
+	default Promise<V> get(K key) {
 		return get(key, Integer.MAX_VALUE);
 	}
 }

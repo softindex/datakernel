@@ -1,7 +1,5 @@
 package io.datakernel.memcache.protocol;
 
-import io.datakernel.memcache.client.MemcacheClient;
-import io.datakernel.memcache.client.MemcacheClient.Slice;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMandatoryData;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -78,4 +76,33 @@ public class MemcacheRpcMessage {
 		public static final PutResponse INSTANCE = new PutResponse();
 	}
 
+	public static final class Slice {
+		private final byte[] array;
+		private final int offset;
+		private final int length;
+
+		public Slice(byte[] array) {
+			this.array = array;
+			this.offset = 0;
+			this.length = array.length;
+		}
+
+		public Slice(byte[] array, int offset, int length) {
+			this.array = array;
+			this.offset = offset;
+			this.length = length;
+		}
+
+		public byte[] array() {
+			return array;
+		}
+
+		public int offset() {
+			return offset;
+		}
+
+		public int length() {
+			return length;
+		}
+	}
 }
