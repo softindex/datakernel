@@ -116,7 +116,7 @@ public final class TestDI {
 			fail("should've failed");
 		} catch (DIException e) {
 			e.printStackTrace();
-			assertTrue(e.getMessage().startsWith("Duplicate bindings found"));
+			assertTrue(e.getMessage().startsWith("Duplicate bindings for key String"));
 		}
 	}
 
@@ -1007,7 +1007,7 @@ public final class TestDI {
 	}
 
 	@Test
-	public void rebindImport() {
+	public void rebindImportKey() {
 		Module importingModule = Module.create()
 				.bind(String.class).to(i -> "hello #" + i, Integer.class);
 
@@ -1109,7 +1109,7 @@ public final class TestDI {
 	}
 
 	@Test
-	public void bindImport() {
+	public void rebindImport() {
 		Module importingModule = Module.create()
 				.bind(String.class).to(i -> "hello #" + i, Integer.class);
 
@@ -1121,17 +1121,63 @@ public final class TestDI {
 	}
 
 	@Test
-	public void recursiveBindImport() {
+	public void recursiveRebindImport() {
 
 		Module importingModule = Module.create()
 				.bind(String.class).to(i -> "hello #" + i, Integer.class);
 
-		Injector injector = Injector.of(
+		Module m = Modules.combine(
 				Module.create().bind(Integer.class).toInstance(3000),
 				importingModule.rebindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
 
+		printGraphVizGraph(m.getReducedBindings());
+
+		Injector injector = Injector.of(m);
+
 		assertEquals("hello #6000", injector.getInstance(String.class));
 		assertEquals(3000, injector.getInstance(Integer.class).intValue());
+	}
+
+	@Test
+	public void scopedBindImport() {
+		Module importingModule = Module.create()
+				.bind(String.class).in(Scope1.class).to(i -> "hello #" + i, Integer.class);
+
+		Module m = Modules.combine(
+				Module.create().bind(Integer.class).toInstance(1500),
+				importingModule.rebindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
+
+		Injector injector = Injector.of(m);
+
+		Injector subinjector = injector.enterScope(Scope.of(Scope1.class));
+		assertEquals("hello #3000", subinjector.getInstance(String.class));
+	}
+
+	@Test
+	public void consumerTransformerHookupTest() {
+		AbstractModule module = new AbstractModule() {
+			@ProvidesIntoSet
+			Consumer<String> consumer() {
+				return System.out::println;
+			}
+
+			@ProvidesIntoSet
+			Consumer<String> consumer2() {
+				return System.err::println;
+			}
+
+			@Provides
+			String string() { return "Hello, World"; }
+		};
+
+		Module module1 = Module.create()
+				.install(module)
+				.combineWith(InstanceConsumerModule.create()
+						.withPriority(99));
+
+		Injector injector = Injector.of(module1);
+		String instance = injector.getInstance(String.class);
+		Assert.assertEquals("Hello, World", instance);
 	}
 
 	//[START REGION_1]
@@ -1173,18 +1219,161 @@ public final class TestDI {
 	}
 	//[END REGION_1]
 
-//	@Test
-//	public void keySetExports() {
-//		Injector injector = Injector.of(
-//				Module.create()
-//						.bind(new Key<Set<Key<?>>>(EagerSingleton.class) {}).export()
-//						.bind(Integer.class).toInstance(3000).export()
-//						.bind(String.class).toInstance("hello").as(EagerSingleton.class));
-//
-//		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
-//		assertEquals(1, keySet.size());
-//		Name name = keySet.iterator().next().getName();
-//		assertNotNull(name);
-//		assertTrue(name.isUnique());
-//	}
+	@Test
+	public void exportMultibinders() {
+		Module withSet = Module.create()
+				.scan(new Object() {
+
+					@ProvidesIntoSet
+					String first() {
+						return "one";
+					}
+
+					@ProvidesIntoSet
+					String second() {
+						return "two";
+					}
+
+					@Export
+					@Provides
+					Integer integer(Set<String> strings) {
+						return strings.size();
+					}
+				});
+
+		Injector injector = Injector.of(withSet);
+
+		assertEquals(2, injector.getInstance(Integer.class).intValue());
+		assertNull(injector.getInstanceOrNull(new Key<Set<String>>() {}));
+	}
+
+	@Test
+	public void rebindMultibinders() {
+		Key<Set<String>> set = new Key<Set<String>>() {};
+
+		Module withSet = Module.create()
+				.scan(new Object() {
+
+					@ProvidesIntoSet
+					String first(Integer i) {
+						return "one #" + i;
+					}
+
+					@ProvidesIntoSet
+					String second(Integer i) {
+						return "two #" + i;
+					}
+				})
+				.rebindImport(Key.of(Integer.class), Key.of(Integer.class, "renamed"));
+
+		Set<String> expected = Stream.of("one #42", "two #42").collect(toSet());
+
+		Injector injector = Injector.of(withSet, Module.create().bind(Key.of(Integer.class, "renamed")).toInstance(42));
+
+		assertEquals(expected, injector.getInstance(set));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+	}
+
+	@Test
+	public void exportTransformers() {
+		Module module = Module.create()
+				.bind(String.class).to(i -> "str #" + i, Integer.class).export()
+				.bind(Integer.class).toInstance(123)
+				.transform(1, (bindings, scope, key, binding) -> {
+					if (key.getRawType() != (Class) Integer.class) {
+						return binding;
+					}
+					return binding.mapInstance(i -> ((Integer) i) * 2);
+				});
+
+		Injector injector = Injector.of(module);
+
+		assertEquals("str #246", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Integer.class));
+	}
+
+	@Test
+	public void rebindTransformers() {
+
+		Key<Integer> integerKey = Key.of(Integer.class);
+
+		Module module = Module.create()
+				.bind(String.class).to(i -> "str #" + i, Integer.class)
+
+				.transform(0, (bindings, scope, key, binding) ->
+						key.equals(integerKey) ?
+								binding
+										.addDependencies(Float.class)
+										.mapInstance(singletonList(Key.of(Float.class)), (args, i) -> ((Integer) i) * ((Float) args[0]).intValue()) :
+								binding)
+
+				.rebindImport(Key.of(Integer.class), Key.of(Integer.class, "renamed"))
+				.rebindImport(Key.of(Float.class), Key.of(Float.class, "renamed"));
+
+		Injector injector = Injector.of(
+				module,
+				Module.create()
+						.bind(Key.of(Integer.class, "renamed")).toInstance(42)
+						.bind(Key.of(Float.class, "renamed")).toInstance(2f)
+		);
+
+		printGraphVizGraph(injector.getBindingsTrie());
+
+		assertEquals("str #84", injector.getInstance(String.class));
+
+		assertNull(injector.getInstanceOrNull(Integer.class));
+	}
+
+	@Test
+	public void exportGenerators() {
+		Module module = Module.create()
+				.bind(String.class).to(i -> "str #" + i, Integer.class).export()
+				.bind(Float.class).toInstance(123f)
+				.generate(Integer.class, (bindings, scope, key) -> {
+					if (scope.length != 0 || !key.equals(Key.of(Integer.class))) {
+						return null;
+					}
+					return Binding.to(Float::intValue, Float.class);
+				});
+
+		Injector injector = Injector.of(module);
+
+		assertEquals("str #123", injector.getInstance(String.class));
+		assertNull(injector.getInstanceOrNull(Float.class));
+	}
+
+	@Test
+	public void rebindGenerators() {
+		Module module = Module.create()
+				.bind(String.class).to(i -> "str #" + i, Integer.class)
+				.generate(Integer.class, (bindings, scope, key) -> {
+					if (scope.length != 0 || !key.equals(Key.of(Integer.class))) {
+						return null;
+					}
+					return Binding.to(Float::intValue, Float.class);
+				})
+				.rebindImport(Key.of(Float.class), Key.of(Float.class, "renamed"));
+
+		Injector injector = Injector.of(
+				module,
+				Module.create()
+						.bind(Key.of(Float.class, "renamed")).toInstance(42f));
+
+		assertEquals("str #42", injector.getInstance(String.class));
+	}
+
+	@Test
+	public void keySetExports() {
+		Injector injector = Injector.of(
+				Module.create()
+						.bind(new Key<Set<Key<?>>>(EagerSingleton.class) {}).export()
+						.bind(Integer.class).toInstance(3000).export()
+						.bind(String.class).toInstance("hello").as(EagerSingleton.class));
+
+		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
+		assertEquals(1, keySet.size());
+		Name name = keySet.iterator().next().getName();
+		assertNotNull(name);
+		assertTrue(name.isUnique());
+	}
 }

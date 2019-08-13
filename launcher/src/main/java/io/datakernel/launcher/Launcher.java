@@ -259,9 +259,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		Class<Launcher> launcherClass = (Class<Launcher>) getClass();
 		Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 
-		Module.create()
-				.bind(List.class).toInstance(new ArrayList<>());
-
 		return Module.create()
 				.bind(String[].class).annotatedWith(Args.class).toInstance(args)
 

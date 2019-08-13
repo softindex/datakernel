@@ -2,6 +2,7 @@ package io.datakernel.di.util;
 
 import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
@@ -131,8 +132,8 @@ public final class Utils {
 		return wildcard.getUpperBounds()[0] == Object.class;
 	}
 
-	public static String getLocation(Binding<?> binding) {
-		LocationInfo location = binding.getLocation();
+	public static String getLocation(@Nullable Binding<?> binding) {
+		LocationInfo location = binding != null ? binding.getLocation() : null;
 		return "at " + (location != null ? location.toString() : "<unknown binding location>");
 	}
 

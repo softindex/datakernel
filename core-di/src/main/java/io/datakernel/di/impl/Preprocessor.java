@@ -1,19 +1,22 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.module.UniqueNameImpl;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.stream.Stream;
 
-import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 /**
  * This class contains a set of utils for working with binding graph trie.
@@ -33,30 +36,30 @@ public final class Preprocessor {
 	 */
 	public static Trie<Scope, Map<Key<?>, Binding<?>>> reduce(
 			Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-			Map<Key<?>, Multibinder<?>> multibinders,
+			Multibinder<?> multibinder,
 			BindingTransformer<?> transformer,
 			BindingGenerator<?> generator) {
 
 		Trie<Scope, Map<Key<?>, Binding<?>>> reduced = Trie.leaf(new HashMap<>());
-		reduce(UNSCOPED, emptyMap(), bindings, reduced, multibinders, transformer, generator);
+		reduce(UNSCOPED, emptyMap(), bindings, reduced, multibinder, transformer, generator);
 		return reduced;
 	}
 
 	private static void reduce(
 			Scope[] scope, Map<Key<?>, Binding<?>> upper,
 			Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Trie<Scope, Map<Key<?>, Binding<?>>> reduced,
-			Map<Key<?>, Multibinder<?>> multibinders,
+			Multibinder<?> multibinder,
 			BindingTransformer<?> transformer,
 			BindingGenerator<?> generator) {
 
 		Map<Key<?>, Set<Binding<?>>> localBindings = bindings.get();
 
-		localBindings.forEach((key, bindingSet) -> resolve(upper, localBindings, reduced.get(), scope, key, bindingSet, multibinders, transformer, generator));
+		localBindings.forEach((key, bindingSet) -> resolve(upper, localBindings, reduced.get(), scope, key, bindingSet, multibinder, transformer, generator));
 
 		Map<Key<?>, Binding<?>> nextUpper = override(upper, reduced.get());
 
 		bindings.getChildren().forEach((subScope, subLocalBindings) ->
-				reduce(next(scope, subScope), nextUpper, subLocalBindings, reduced.computeIfAbsent(subScope, $ -> new HashMap<>()), multibinders, transformer, generator));
+				reduce(next(scope, subScope), nextUpper, subLocalBindings, reduced.computeIfAbsent(subScope, $ -> new HashMap<>()), multibinder, transformer, generator));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -64,7 +67,7 @@ public final class Preprocessor {
 	private static Binding<?> resolve(
 			Map<Key<?>, Binding<?>> upper, Map<Key<?>, Set<Binding<?>>> localBindings, Map<Key<?>, Binding<?>> resolved,
 			Scope[] scope, Key<?> key, @Nullable Set<Binding<?>> bindingSet,
-			Map<Key<?>, Multibinder<?>> multibinders, BindingTransformer<?> transformer, BindingGenerator<?> generator) {
+			Multibinder<?> multibinder, BindingTransformer<?> transformer, BindingGenerator<?> generator) {
 
 		// shortest path - if it was already resolved, just return it (also serves as a visited set so graph loops dont cause infinite recursion)
 		Binding<?> reduced = resolved.get(key);
@@ -76,7 +79,7 @@ public final class Preprocessor {
 			@Override
 			@Nullable
 			public <T> Binding<T> get(Key<T> key) {
-				return (Binding<T>) resolve(upper, localBindings, resolved, scope, key, localBindings.get(key), multibinders, transformer, generator);
+				return (Binding<T>) resolve(upper, localBindings, resolved, scope, key, localBindings.get(key), multibinder, transformer, generator);
 			}
 		};
 
@@ -95,7 +98,7 @@ public final class Preprocessor {
 					reduced = bindingSet.iterator().next();
 					break;
 				default:
-					reduced = ((Multibinder) multibinders.getOrDefault(key, ERROR_ON_DUPLICATE)).multibind(bindingSet);
+					reduced = ((Multibinder) multibinder).multibind(key, bindingSet);
 			}
 		} else { // or if it was never bound
 			// first check if it was already resolved in upper scope
@@ -121,7 +124,7 @@ public final class Preprocessor {
 		// and then recursively walk over its dependencies (so this is a recursive dfs after all)
 		for (Dependency d : reduced.getDependencies()) {
 			Key<?> dkey = d.getKey();
-			resolve(upper, localBindings, resolved, scope, dkey, localBindings.get(dkey), multibinders, transformer, generator);
+			resolve(upper, localBindings, resolved, scope, dkey, localBindings.get(dkey), multibinder, transformer, generator);
 		}
 
 		return reduced;
@@ -163,20 +166,37 @@ public final class Preprocessor {
 		if (!unsatisfied.isEmpty()) {
 			throw new DIException(unsatisfied.entrySet().stream()
 					.map(entry -> {
-						Key<?> required = entry.getKey();
-						String displayString = required.getDisplayString();
+						Key<?> missing = entry.getKey();
+						String header = "\tkey " + missing.getDisplayString() + " required to make:\n";
+
+						List<String> mkhs = missingKeyHints.stream()
+								.map(it -> it.getHintFor(missing, upperKnown, bindings))
+								.filter(Objects::nonNull)
+								.collect(toList());
+
+						if (!mkhs.isEmpty()) {
+							String prefix = "\t" + new String(new char[getKeyDisplayCenter(missing) + 4]).replace('\0', ' ') + "^- ";
+							header += prefix + String.join("\n" + prefix, mkhs) + "\n";
+						}
+
 						return entry.getValue().stream()
-								.map(binding -> {
-									Key<?> key = binding.getKey();
-									String displayAndLocation = key.getDisplayString() + " " + Utils.getLocation(binding.getValue());
-									Class<?> rawType = key.getRawType();
-									if (Modifier.isStatic(rawType.getModifiers()) || !required.getRawType().equals(rawType.getEnclosingClass())) {
-										return displayAndLocation;
+								.map(keybind -> {
+									Key<?> key = keybind.getKey();
+									String missingDesc = key.getDisplayString() + " " + Utils.getLocation(keybind.getValue());
+
+									List<String> ehs = errorHints.stream()
+											.map(it -> it.getHintFor(keybind, missing, upperKnown, bindings))
+											.filter(Objects::nonNull)
+											.collect(toList());
+
+									if (!ehs.isEmpty()) {
+										String prefix = "\n\t\t" + new String(new char[Utils.getKeyDisplayCenter(key) + 2]).replace('\0', ' ') + "^- ";
+										missingDesc += prefix + String.join(prefix, ehs);
 									}
-									String indent = new String(new char[Utils.getKeyDisplayCenter(key) + 2]).replace('\0', ' ');
-									return displayAndLocation + "\n\t\t" + indent + "^- this is a non-static inner class with implicit dependency on its enclosing class";
+
+									return missingDesc;
 								})
-								.collect(joining("\n\t\t- ", "\tkey " + displayString + " required to make:\n\t\t- ", ""));
+								.collect(joining("\n\t\t- ", header + "\t\t- ", ""));
 					})
 					.collect(joining("\n", "Unsatisfied dependencies detected" + (scope.length != 0 ? " in scope " + getScopeDisplayString(scope) : "") + ":\n", "\n")));
 		}
@@ -260,4 +280,56 @@ public final class Preprocessor {
 		cycle[cycle.length - 1] = key;
 		cycles.add(cycle);
 	}
+
+	@FunctionalInterface
+	interface MissingKeyHint {
+
+		@Nullable
+		String getHintFor(Key<?> missing, Set<Key<?>> upperKnown, Trie<Scope, Map<Key<?>, Binding<?>>> bindings);
+	}
+
+	@FunctionalInterface
+	interface ErrorHint {
+
+		@Nullable
+		String getHintFor(Entry<Key<?>, Binding<?>> keybind, Key<?> missing, Set<Key<?>> upperKnown, Trie<Scope, Map<Key<?>, Binding<?>>> bindings);
+	}
+
+	private static final List<MissingKeyHint> missingKeyHints = Arrays.asList(
+			(missing, upperKnown, bindings) -> {
+				if (missing.getRawType() != InstanceFactory.class && missing.getRawType() != InstanceProvider.class) {
+					return null;
+				}
+				return "it was not generated because there were no *exported* binding for key " + missing.getTypeParameter(0).getDisplayString();
+			}
+	);
+
+	private static final List<ErrorHint> errorHints = Arrays.asList(
+			(keybind, missing, upperKnown, bindings) -> {
+				Class<?> rawType = keybind.getKey().getRawType();
+				if (Modifier.isStatic(rawType.getModifiers()) || !missing.getRawType().equals(rawType.getEnclosingClass())) {
+					return null;
+				}
+				return "this is a non-static inner class with implicit dependency on its enclosing class";
+			},
+			(keybind, missing, upperKnown, bindings) -> {
+				if (keybind.getKey().getRawType() != InstanceInjector.class) {
+					return null;
+				}
+
+				Name missingName = missing.getName();
+				Type missingType = missing.getType();
+
+				Key<?> priv = Stream.concat(bindings.get().keySet().stream(), upperKnown.stream())
+						.filter(k -> k.getAnnotation() instanceof UniqueNameImpl
+								&& k.getType().equals(missingType)
+								&& Objects.equals(missingName, ((UniqueNameImpl) k.getAnnotation()).getOriginalName()))
+						.findAny()
+						.orElse(null);
+				if (priv == null) {
+					return null;
+				}
+				return "instance injectors cannot inject non-exported keys (found private key " + priv.getDisplayString() + " " + Utils.getLocation(bindings.get().get(priv)) + ")";
+			}
+	);
 }

@@ -18,10 +18,8 @@ package io.datakernel.config;
 
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +31,13 @@ import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
-import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 /**
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
@@ -131,11 +128,13 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@Override
 	protected void configure() {
 		transform(0, (bindings, scope, key, binding) -> {
-			if (!key.equals(KEY_OF_CONFIG)) return binding;
+			if (!key.equals(KEY_OF_CONFIG)) {
+				return binding;
+			}
 			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 			return ((Binding<Config>) (Binding) binding)
 					.addDependencies(completionStageKey)
-					.mapInstance(asList(completionStageKey), (args, config) -> {
+					.mapInstance(singletonList(completionStageKey), (args, config) -> {
 						CompletionStage<Void> onStart = (CompletionStage<Void>) args[0];
 						AtomicBoolean started = new AtomicBoolean();
 						ProtectedConfig protectedConfig = new ProtectedConfig(ConfigWithFullPath.wrap(config), started);

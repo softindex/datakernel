@@ -120,7 +120,7 @@ public final class Modules {
 					.collect(joining(", ", "Exporting keys ", " that were not provided by the module")));
 		}
 
-		return doRebindExports(module,
+		return doRebind(module,
 				originalKeys.stream()
 						.filter(originalKey -> !exportedKeys.contains(originalKey))
 						.collect(toMap(identity(), originalKey ->
@@ -135,91 +135,29 @@ public final class Modules {
 		if (originalToNew.keySet().stream().noneMatch(originalKeys::contains)) {
 			return module;
 		}
-		return doRebindExports(module, originalToNew);
-	}
-
-	@SuppressWarnings("unchecked")
-	private static Module doRebindExports(Module module, Map<Key<?>, Key<?>> originalToNew) {
-		Map<Key<?>, Key<?>> newToOriginal = originalToNew.entrySet().stream().collect(toMap(Entry::getValue, Entry::getKey));
-		return new SimpleModule(
-				module.getBindings()
-						.map(bindingsMap ->
-								transformMultimap(bindingsMap,
-										key -> originalToNew.getOrDefault(key, key),
-										(key, binding) -> {
-											if (isKeySet(key)) {
-												binding = binding.mapInstance(set ->
-														((Set<Key<Object>>) set).stream()
-																.map(k -> originalToNew.getOrDefault(k, k))
-																.collect(toSet()));
-											}
-											return binding.rebindDependencies(
-													binding.getDependencies()
-															.stream()
-															.map(Dependency::getKey)
-															.filter(originalToNew::containsKey)
-															.collect(toMap(identity(), originalToNew::get)));
-										})),
-				transformMultimapValues(module.getBindingTransformers(),
-						($, transformer) ->
-								(bindings, scope, key, binding) ->
-										((BindingTransformer<Object>) transformer).transform(
-												new BindingLocator() {
-													@Override
-													public @Nullable <T> Binding<T> get(Key<T> key) {
-														return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
-													}
-												},
-												scope,
-												(Key<Object>) newToOriginal.getOrDefault(key, key),
-												binding)),
-				transformMultimapValues(module.getBindingGenerators(),
-						($, generator) ->
-								(bindings, scope, key) -> {
-									Binding<Object> binding = ((BindingGenerator<Object>) generator).generate(
-											new BindingLocator() {
-												@Override
-												public @Nullable <T> Binding<T> get(Key<T> key) {
-													return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
-												}
-											},
-											scope,
-											(Key<Object>) newToOriginal.getOrDefault(key, key));
-									return binding != null ?
-											binding.rebindDependencies(originalToNew) :
-											null;
-								}),
-				module.getMultibinders()
-						.entrySet()
-						.stream()
-						.collect(toMap(e -> originalToNew.getOrDefault(e.getKey(), e.getKey()), Entry::getValue)));
+		return doRebind(module, originalToNew);
 	}
 
 	@SuppressWarnings("unchecked")
 	static Module rebindImports(Module module, Map<Key<?>, Binding<?>> rebinds) {
 		Map<Key<?>, Key<?>> originalToNew = new HashMap<>();
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = module.getBindings();
-		Map<Key<?>, Set<Binding<?>>> localBindings = new HashMap<>(bindings.get());
 
 		rebinds.forEach((k, b) -> {
 			Key<Object> priv = (Key<Object>) k.named(uniqueName(k.getName()));
 			originalToNew.put(k, priv);
-			localBindings.computeIfAbsent(priv, $ -> new HashSet<>()).add(b);
 		});
 
-		Module renamed = Module.of(Trie.of(localBindings, bindings.getChildren()), module.getBindingTransformers(), module.getBindingGenerators(), module.getMultibinders());
-		return rebindImports(renamed, (k, b) -> {
-			// do not rebind dependencies of those added bindings
-			if (rebinds.containsValue(b)) {
-				return b;
-			}
-			return b.rebindDependencies(
-					b.getDependencies()
-							.stream()
-							.map(Dependency::getKey)
-							.filter(originalToNew::containsKey)
-							.collect(toMap(identity(), originalToNew::get)));
+		Module renamed = doRebind(module, originalToNew);
+		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = renamed.getBindings();
+		Map<Key<?>, Set<Binding<?>>> localBindings = new HashMap<>(bindings.get());
+
+		rebinds.forEach((k, b) -> {
+			Set<Binding<?>> bindingSet = localBindings.computeIfAbsent(originalToNew.get(k), $ -> new HashSet<>());
+			bindingSet.clear();
+			bindingSet.add(b);
 		});
+
+		return Module.of(Trie.of(localBindings, bindings.getChildren()), renamed.getBindingTransformers(), renamed.getBindingGenerators(), renamed.getMultibinders());
 	}
 
 	static Module rebindImportKeys(Module module, Map<Key<?>, Key<?>> mapping) {
@@ -244,5 +182,76 @@ public final class Modules {
 									return generated != null ? (Binding<Object>) rebinder.apply(key, generated) : null;
 								}),
 				module.getMultibinders());
+	}
+
+	private static <T> Binding<T> rebindMatchedDependencies(Binding<T> binding, Map<Key<?>, Key<?>> originalToNew) {
+		return binding.rebindDependencies(
+				binding.getDependencies()
+						.stream()
+						.map(Dependency::getKey)
+						.filter(originalToNew::containsKey)
+						.collect(toMap(identity(), originalToNew::get)));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Module doRebind(Module module, Map<Key<?>, Key<?>> originalToNew) {
+		Map<Key<?>, Key<?>> newToOriginal = originalToNew.entrySet().stream().collect(toMap(Entry::getValue, Entry::getKey));
+		return new SimpleModule(
+				module.getBindings()
+						.map(bindingsMap ->
+								transformMultimap(bindingsMap,
+										key -> originalToNew.getOrDefault(key, key),
+										(key, binding) -> {
+											if (isKeySet(key)) {
+												binding = binding.mapInstance(set ->
+														((Set<Key<Object>>) set).stream()
+																.map(k -> originalToNew.getOrDefault(k, k))
+																.collect(toSet()));
+											}
+											return rebindMatchedDependencies(binding, originalToNew);
+										})),
+				transformMultimapValues(module.getBindingTransformers(),
+						($, transformer) ->
+								(bindings, scope, key, binding) -> {
+									Binding<Object> transformed = ((BindingTransformer<Object>) transformer).transform(
+											new BindingLocator() {
+												@Override
+												public @Nullable <T> Binding<T> get(Key<T> key) {
+													return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
+												}
+											},
+											scope,
+											(Key<Object>) newToOriginal.getOrDefault(key, key),
+											binding);
+									return transformed.equals(binding) ?
+											binding :
+											rebindMatchedDependencies(transformed, originalToNew);
+								}),
+				transformMultimapValues(module.getBindingGenerators(),
+						($, generator) ->
+								(bindings, scope, key) -> {
+									Binding<Object> binding = ((BindingGenerator<Object>) generator).generate(
+											new BindingLocator() {
+												@Override
+												public @Nullable <T> Binding<T> get(Key<T> key) {
+													return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
+												}
+											},
+											scope,
+											(Key<Object>) newToOriginal.getOrDefault(key, key));
+									return binding != null ?
+											rebindMatchedDependencies(binding, originalToNew) :
+											null;
+								}),
+				module.getMultibinders()
+						.entrySet()
+						.stream()
+						.collect(toMap(e -> originalToNew.getOrDefault(e.getKey(), e.getKey()), e -> {
+							Multibinder<?> value = e.getValue();
+							if (!originalToNew.containsKey(e.getKey())) {
+								return value;
+							}
+							return (key, bindings) -> rebindMatchedDependencies(((Multibinder<Object>) value).multibind(key, bindings), originalToNew);
+						})));
 	}
 }

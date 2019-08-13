@@ -637,7 +637,9 @@ public final class Binding<T> {
 
 	@SuppressWarnings("unchecked")
 	public <K> Binding<T> rebindDependencies(@NotNull Map<Key<?>, Key<?>> map) {
-		if (map.isEmpty()) return this;
+		if (map.isEmpty()) {
+			return this;
+		}
 		return rebindDependenciesImpl(
 				map.keySet(),
 				map.values().stream().map(Dependency::toKey).collect(toSet()),
@@ -655,7 +657,7 @@ public final class Binding<T> {
 		if (!missing.isEmpty()) {
 			throw new DIException(missing.stream()
 					.map(Key::getDisplayString)
-					.collect(joining(", ", "Binding has no dependencies ", " required by rebind call")));
+					.collect(joining(", ", "Binding has no dependencies [", "] required by the rebind call")));
 		}
 
 		HashSet<Dependency> newDependencies = new HashSet<>(dependencies);

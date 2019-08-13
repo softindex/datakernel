@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
+import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toSet;
@@ -109,7 +110,10 @@ public interface Module {
 	 * A shortcut that reduces bindings multimap trie from this module using multibinders, transformers and generators from this module
 	 */
 	default Trie<Scope, Map<Key<?>, Binding<?>>> getReducedBindings() {
-		return Preprocessor.reduce(getBindings(), getMultibinders(), combinedTransformer(getBindingTransformers()), combinedGenerator(getBindingGenerators()));
+		return Preprocessor.reduce(getBindings(),
+				combinedMultibinder(getMultibinders()),
+				combinedTransformer(getBindingTransformers()),
+				combinedGenerator(getBindingGenerators()));
 	}
 
 	/**
