@@ -1,4 +1,4 @@
-import createMapOtSystem from '../MapOTSystem'
+import createMapOtSystem from '../mapOTSystem'
 import MapOTOperation from "../MapOTOperation";
 
 const mapOtSystem = createMapOtSystem((left, right) => left.localeCompare(right));

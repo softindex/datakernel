@@ -10,17 +10,15 @@ import Typography from "@material-ui/core/Typography";
 import DoneAllIcon from '@material-ui/icons/DoneAll';
 
 class TodoList extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      newItemName: '',
-      selected: {
-        allSelected: true,
-        activeSelected: false,
-        completedSelected: false
-      }
-    };
-  }
+  state = {
+    newItemName: '',
+    doneAll: false,
+    selected: {
+      allSelected: true,
+      activeSelected: false,
+      completedSelected: false
+    }
+  };
 
   onSubmit = e => {
     e.preventDefault();
@@ -31,6 +29,16 @@ class TodoList extends React.Component {
   onItemChange = e => {
     this.setState({
       newItemName: e.target.value
+    });
+  };
+
+  toggleDoneAll = () => {
+    const names = [];
+    this.setState({
+      doneAll: !this.state.doneAll
+    });
+    Object.entries(this.props.items).forEach(([name,]) => {
+     names.push(name);
     });
   };
 
@@ -111,7 +119,7 @@ class TodoList extends React.Component {
                 root: this.props.classes.itemInput,
               },
               startAdornment: (
-                <div className={classes.iconButton}>
+                <div className={classes.iconButton} onClick={this.toggleDoneAll}>
                   <DoneAllIcon/>
                 </div>
               )
@@ -122,8 +130,7 @@ class TodoList extends React.Component {
             <TodoItem
               name={itemName}
               isDone={isDone}
-              doneAll={this.state.doneAll}
-              onChangeItemState={this.props.onChangeItemState}
+              onChangeItemState={this.props.onToggleItemStatus}
               onDeleteItem={this.props.onDeleteItem}
               onRenameItem={this.props.onRenameItem}
             />
@@ -184,8 +191,12 @@ export default connectService(ListContext,
       listService.renameItem(name, newName);
     },
 
-    onChangeItemState(name) {
-      listService.changeItemState(name);
+    onToggleItemStatus(name) {
+      listService.toggleItemStatus(name);
+    },
+
+    onToggleAllItemsStatus(name, doneAll) {
+      listService.toggleAllItemsStatus(name, doneAll);
     }
 
   }))(

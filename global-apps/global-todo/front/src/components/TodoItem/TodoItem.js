@@ -22,16 +22,16 @@ class TodoItem extends React.Component {
     }
   }
 
-  handleDelete = () => this.props.onDeleteItem(this.state.name);
+  onDelete = () => this.props.onDeleteItem(this.state.name);
 
-  handleStatusChange = () => {
-    this.props.onChangeItemState(this.state.name);
+  onStatusChange = () => {
+    this.props.onToggleItemStatus(this.state.name);
     this.setState({isDone: !this.state.isDone});
   };
 
-  handleNameChange = e => this.setState({name: e.target.value});
+  onNameChange = e => this.setState({name: e.target.value});
 
-  handleNameSubmit = () => {
+  onNameSubmit = () => {
     this.props.onRenameItem(this.state.oldName, this.state.name);
     this.setState({oldName: this.state.name});
   };
@@ -41,8 +41,8 @@ class TodoItem extends React.Component {
       <TextField
         value={this.state.name}
         fullWidth
-        onChange={this.handleNameChange}
-        onBlur={this.handleNameSubmit}
+        onChange={this.onNameChange}
+        onBlur={this.onNameSubmit}
         InputProps={{
           classes: {
             root: this.props.classes.itemInput,
@@ -51,13 +51,13 @@ class TodoItem extends React.Component {
             <Checkbox
               checked={this.state.isDone}
               className={this.props.classes.checkbox}
-              onChange={this.handleStatusChange}
+              onChange={this.onStatusChange}
             />
           ),
           endAdornment: (
             <IconButton
               className={this.props.classes.deleteIconButton}
-              onClick={this.handleDelete}
+              onClick={this.onDelete}
             >
               <DeleteIcon/>
             </IconButton>

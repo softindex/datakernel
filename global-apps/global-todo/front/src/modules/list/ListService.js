@@ -1,7 +1,7 @@
 import Service from '../../common/Service';
-import {ClientOTNode, OTStateManager} from "ot-core/lib";
+import {ClientOTNode, OTStateManager} from "ot-core";
 import serializer from "../ot/serializer";
-import createMapOTSystem from "../ot/MapOTSystem";
+import mapOTSystem from "../ot/mapOTSystem";
 import MapOTOperation from "../ot/MapOTOperation";
 
 const RETRY_TIMEOUT = 1000;
@@ -23,14 +23,13 @@ class ListService extends Service {
       url: '/ot/list/',
       serializer: serializer
     });
-    const otSystem = createMapOTSystem((first, second) => (first === second) ? 0 : (first ? 1 : -1));
-    const listOTStateManager = new OTStateManager(() => new Map(), listOTNode, otSystem);
+    const listOTStateManager = new OTStateManager(() => new Map(), listOTNode, mapOTSystem);
     return new ListService(listOTStateManager);
   }
 
   async init() {
     try {
-        await this._listOTStateManager.checkout();
+      await this._listOTStateManager.checkout();
     } catch (err) {
       console.error(err);
 
@@ -54,34 +53,21 @@ class ListService extends Service {
   }
 
   createItem(name) {
-    if (this._itemExists(name)) {
-      // TODO maybe add deduplication or prohibit identical item names by showing error to user
-      console.error('Item with this name already exists', name);
-      return;
+    if (!name) {
+      this._sendOperation(name, false);
     }
-    this._sendOperation(name, false);
   };
 
   deleteItem(name) {
-    if (this._itemExists(name)) {
-      return this._sendOperation(name, null);
-    }
-    console.error('No such item', name);
+    return this._sendOperation(name, null);
   };
 
   renameItem(name, newName) {
-    if (name === newName) return;
+    if (name === newName) {
+      return;
+    }
 
-    if (!this._itemExists(name)) {
-      console.error('No such item', name);
-      return;
-    }
-    if (this._itemExists(newName)) {
-      // TODO maybe add deduplication or prohibit identical item names by showing error to user
-      console.error('Item with this name already exists', name);
-      return;
-    }
-    let value = this.state.items[name];
+    const value = this.state.items[name];
     const operation = new MapOTOperation({
       [name]: {
         prev: value,
@@ -96,29 +82,45 @@ class ListService extends Service {
     this._sync();
   }
 
-  changeItemState(name) {
-    if (!this._itemExists(name)){
-      console.error('No such item', name);
-      return;
-    }
+  toggleItemStatus(name) {
     return this._sendOperation(name, !this.state.items[name]);
   };
 
-  _sendOperation(name, next) {
+  toggleAllItemsStatus(name, nextValue) {
+    return this._sendAllOperation(name, nextValue);
+  };
+
+  _sendOperation(name, nextValue) {
     const operation = new MapOTOperation({
       [name]: {
-        prev: this.state.items[name],
-        next: next
+        prev: name in this.state.items ? this.state.items[name] : null,
+        next: nextValue
       }
     });
     this._listOTStateManager.add([operation]);
     this._sync();
   };
 
+  _sendAllOperation(names, nextValue) {
+    let operations = [];
+    names.forEach(name => {
+      const operation = new MapOTOperation({
+        [name]: {
+          prev: name in this.state.items ? this.state.items[name] : null,
+          next: nextValue
+        }
+      });
+      operations.push(operation);
+    });
+    operations.forEach(operation => {
+      this._listOTStateManager.add([operation]);
+    });
+    this._sync();
+  };
+
   _onStateChange = () => {
-    let state = this._listOTStateManager.getState();
     this.setState({
-      items: state,
+      items: this._listOTStateManager.getState(),
       ready: true
     });
   };

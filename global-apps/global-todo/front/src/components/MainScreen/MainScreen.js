@@ -41,7 +41,7 @@ class MainScreen extends React.Component {
           >
             Global Todo
           </Typography>
-            <TodoList/>
+          <TodoList/>
           <Typography
             align="center"
             variant="subtitle2"

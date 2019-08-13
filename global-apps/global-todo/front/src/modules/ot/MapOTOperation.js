@@ -1,15 +1,13 @@
 import isEqual from 'lodash/isEqual';
-import values from 'lodash/values';
 import mapValues from 'lodash/mapValues';
+import omitBy from 'lodash/omitBy';
+import isEmpty from 'lodash/isEmpty';
 
 class MapOTOperation {
   static EMPTY = new MapOTOperation({});
 
   constructor(values) {
-    this._values = mapValues(values, (value) => ({
-      prev: value.prev === undefined ? null : value.prev,
-      next: value.next === undefined ? null : value.next
-    }));
+    this._values = omitBy(values, ({prev, next}) => prev === next);
   }
 
   static createFromJson(json) {
@@ -19,38 +17,35 @@ class MapOTOperation {
   apply(state) {
     const nextState = {...state};
     for (const [fieldName, {next}] of Object.entries(this._values)) {
-      if (next !== undefined && next !== null) { // next can be boolean
-        nextState[fieldName] = next;
-      } else {
+      if (next === undefined || next === null) {
         delete nextState[fieldName];
+      } else {
+        nextState[fieldName] = next;
       }
     }
 
     return nextState;
   }
 
-  values() {
+  getValues() {
     return this._values;
   }
 
   isEmpty() {
-    return values(this._values).every(({next, prev}) => next === prev);
+    return isEmpty(this._values);
   }
 
   invert() {
-    const nextValues = {};
-    for (const [fieldName, {prev, next}] of Object.entries(this._values)) {
-      nextValues[fieldName] = {
+    return new MapOTOperation(
+      mapValues(this._values, ({prev, next}) => ({
         prev: next,
         next: prev
-      };
-    }
-
-    return new MapOTOperation(nextValues);
+      }))
+    );
   }
 
   isEqual(mapOTOperation) {
-    return isEqual(mapOTOperation.toJSON(), this.toJSON());
+    return isEqual(mapOTOperation._values, this._values);
   }
 
   toJSON() {
