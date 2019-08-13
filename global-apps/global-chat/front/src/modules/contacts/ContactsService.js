@@ -34,7 +34,7 @@ class ContactsService extends Service {
     this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
     this._roomsCheckoutPromise = retry(() => this._roomsOTStateManager.checkout(), RETRY_TIMEOUT);
 
-    const [, appStoreUsers]  = await Promise.all([
+    const [, appStoreUsers] = await Promise.all([
       this._contactsCheckoutPromise,
       this._roomsCheckoutPromise.then(() => {
         this._appStoreNamesPromise = retry(() => this._getAppStoreNames(), RETRY_TIMEOUT);
@@ -61,11 +61,12 @@ class ContactsService extends Service {
   }
 
   async addContact(publicKey, name, isAppStoreName) {
-    // if (isAppStoreName) {
-    //   if (this.getChatName(publicKey)) {
-    //     name = await this.getChatName();
-    //   }
-    // }
+    if (isAppStoreName) {
+      const userProfile = await this.getChatProfileName(publicKey);
+      if (Object.getOwnPropertyNames(userProfile).length !== 0) {
+        name = userProfile.name;
+      }
+    }
 
     let operation = new ContactsOTOperation(publicKey, name, false);
     this._contactsOTStateManager.add([operation]);
@@ -83,10 +84,13 @@ class ContactsService extends Service {
     await this._sync();
   }
 
-  async getChatName(publicKey) {
+  async getChatProfileName(publicKey) {
     const profilesService = ProfilesService.create(publicKey);
-    await profilesService.init(); // TODO fix error with async
-    return profilesService.getProfile().name;
+    profilesService.init()
+      .catch(error => {
+        console.error(error);
+      });
+    return profilesService.getProfile();
   }
 
   _getRooms() {

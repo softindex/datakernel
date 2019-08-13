@@ -10,7 +10,7 @@ class ProfilesService extends Service {
   constructor(profilesOTStateManager) {
     super({
       profile: {},
-      profileReady: false
+      profilesReady: false
     });
     this._profilesOTStateManager = profilesOTStateManager;
     this._reconnectTimeout = null;
@@ -51,7 +51,7 @@ class ProfilesService extends Service {
   _onStateChange = () => {
     this.setState({
       profile: this._getProfileFields(),
-      profileReady: true
+      profilesReady: true
     });
   };
 
