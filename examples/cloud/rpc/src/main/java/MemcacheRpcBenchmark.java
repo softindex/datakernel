@@ -23,11 +23,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
+import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
 import static java.lang.Math.min;
 
 public class MemcacheRpcBenchmark extends Launcher {
 	private final static int TOTAL_REQUESTS = 10_000_000;
+	private final static int WARMUP_ROUNDS = 2;
 	private final static int BENCHMARK_ROUNDS = 10;
 	private final static int ACTIVE_REQUESTS_MAX = 2000;
 	private final static int ACTIVE_REQUESTS_MIN = 2000;
@@ -35,6 +37,12 @@ public class MemcacheRpcBenchmark extends Launcher {
 	private final static int NUMBER_BUFFERS = 4;
 	private final static MemSize BUFFER_CAPACITY = MemSize.megabytes(1);
 	public static final byte[] BYTES = "Hello world".getBytes();
+
+	private int totalRequests;
+	private int warmupRounds;
+	private int benchmarkRounds;
+	private int activeRequestsMax;
+	private int activeRequestsMin;
 
 	@Inject
 	Eventloop eventloop;
@@ -48,6 +56,9 @@ public class MemcacheRpcBenchmark extends Launcher {
 	@Inject
 	RpcServer server;
 
+	@Inject
+	Config config;
+
 	@Provides
 	Config config() {
 		return Config.create()
@@ -55,7 +66,12 @@ public class MemcacheRpcBenchmark extends Launcher {
 				.with("memcache.bufferCapacity", BUFFER_CAPACITY.format())
 				.with("server.listenAddresses", "localhost:8080")
 				.with("client.addresses", "localhost:8080")
-				.overrideWith(Config.ofProperties(System.getProperties()));
+				.with("benchmark.totalRequests", "10000000")
+				.with("benchmark.warmupRounds", "3")
+				.with("benchmark.benchmarkRounds", "10")
+				.with("benchmark.activeRequestsMax", "2000")
+				.with("benchmark.activeRequestsMin", "2500")
+				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Override
@@ -71,6 +87,16 @@ public class MemcacheRpcBenchmark extends Launcher {
 	}
 
 	@Override
+	protected void onStart() throws Exception {
+		this.totalRequests = config.get(ofInteger(), "benchmark.totalRequests", TOTAL_REQUESTS);
+		this.warmupRounds = config.get(ofInteger(), "benchmark.warmupRounds", WARMUP_ROUNDS);
+		this.benchmarkRounds = config.get(ofInteger(), "benchmark.benchmarkRounds", BENCHMARK_ROUNDS);
+		this.activeRequestsMax = config.get(ofInteger(), "benchmark.activeRequestsMax", ACTIVE_REQUESTS_MAX);
+		this.activeRequestsMin = config.get(ofInteger(), "benchmark.activeRequestsMin", ACTIVE_REQUESTS_MIN);
+		super.onStart();
+	}
+
+	@Override
 	protected void run() throws Exception {
 		benchmark(this::roundPut, "Put");
 		benchmark(this::roundGet, "Get");
@@ -81,8 +107,15 @@ public class MemcacheRpcBenchmark extends Launcher {
 		long bestTime = -1;
 		long worstTime = -1;
 
+		System.out.println("Warming up ...");
+		for (int i = 0; i < warmupRounds; i++) {
+			long roundTime = round(function);
+			long rps = totalRequests * 1000L / roundTime;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
+		}
+
 		System.out.println("Start benchmarking " + nameBenchmark);
-		for (int i = 0; i < BENCHMARK_ROUNDS; i++) {
+		for (int i = 0; i < benchmarkRounds; i++) {
 			long roundTime = round(function);
 			timeAllRounds += roundTime;
 
@@ -94,12 +127,12 @@ public class MemcacheRpcBenchmark extends Launcher {
 				worstTime = roundTime;
 			}
 
-			long rpc = TOTAL_REQUESTS * 1000L / roundTime;
-			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
+			long rps = totalRequests * 1000L / roundTime;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
 		}
 
-		double avgTime = (double) timeAllRounds / BENCHMARK_ROUNDS;
-		long requestsPerSecond = (long) (TOTAL_REQUESTS / avgTime * 1000);
+		double avgTime = (double) timeAllRounds / benchmarkRounds;
+		long requestsPerSecond = (long) (totalRequests / avgTime * 1000);
 		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + "ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
 	}
@@ -126,13 +159,13 @@ public class MemcacheRpcBenchmark extends Launcher {
 					return;
 				}
 
-				if (completed == TOTAL_REQUESTS) {
+				if (completed == totalRequests) {
 					promise.set(null);
 					return;
 				}
 
-				if (active <= ACTIVE_REQUESTS_MIN) {
-					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
+				if (active <= activeRequestsMin) {
+					for (int i = 0; i < min(activeRequestsMax - active, totalRequests - sent); i++) {
 						doPut(this);
 						sent++;
 					}
@@ -143,7 +176,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 		sent = 0;
 		completed = 0;
 
-		for (int i = 0; i < min(ACTIVE_REQUESTS_MIN, TOTAL_REQUESTS); i++) {
+		for (int i = 0; i < min(activeRequestsMax, totalRequests); i++) {
 			doPut(callback);
 			sent++;
 		}
@@ -166,13 +199,13 @@ public class MemcacheRpcBenchmark extends Launcher {
 					return;
 				}
 
-				if (completed == TOTAL_REQUESTS) {
+				if (completed == totalRequests) {
 					promise.set(null);
 					return;
 				}
 
-				if (active <= ACTIVE_REQUESTS_MAX) {
-					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
+				if (active <= activeRequestsMax) {
+					for (int i = 0; i < min(activeRequestsMax - active, totalRequests - sent); i++) {
 						doGet(this);
 						sent++;
 					}
@@ -181,10 +214,9 @@ public class MemcacheRpcBenchmark extends Launcher {
 		};
 		sent = 0;
 		completed = 0;
-
 		long start = System.currentTimeMillis();
 
-		for (int i = 0; i < min(ACTIVE_REQUESTS_MAX, TOTAL_REQUESTS); i++) {
+		for (int i = 0; i < min(activeRequestsMax, totalRequests); i++) {
 			doGet(callback);
 			sent++;
 		}

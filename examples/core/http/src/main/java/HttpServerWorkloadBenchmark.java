@@ -15,31 +15,27 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.PrintWriter;
-import java.sql.Timestamp;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.config.ConfigConverters.ofList;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
 import static java.lang.Math.min;
 
-/**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 07.08.19.
- */
 public class HttpServerWorkloadBenchmark extends Launcher {
 	private final static int TOTAL_REQUESTS = 1_000_000;
 	private final static int WARMUP_ROUNDS = 3;
 	private final static int BENCHMARK_ROUNDS = 5;
 	private final static int ACTIVE_REQUESTS_MAX = 500;
 	private final static int ACTIVE_REQUESTS_MIN = 300;
-	private final static boolean GENERATE_FILE = false;
-	private PrintWriter resultsFile;
+
 	private String address;
+	private int totalRequests;
+	private int warmupRounds;
+	private int measureRounds;
+	private int activeRequestsMax;
+	private int activeRequestsMin;
 
 	@Provides
 	@Named("server")
@@ -48,15 +44,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	@Provides
 	@Named("client")
 	Eventloop clientEventloop() { return Eventloop.create(); }
-
-	@Provides
-	Config config() {
-		return Config.create()
-				.with("address", "0.0.0.0:9001")
-				.with("client.address", "http://127.0.0.1:9001/")
-				.with("client.keepAlive", "30")
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
-	}
 
 	@Inject
 	@Named("server")
@@ -88,10 +75,18 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 				.withKeepAliveTimeout(Duration.ofSeconds(Integer.parseInt(config.get("client.keepAlive"))));
 	}
 
-	@Override
-	protected void onStart() throws Exception {
-		this.address = config.get("client.address");
-		super.onStart();
+	@Provides
+	Config config() {
+		return Config.create()
+				.with("address", "0.0.0.0:9001")
+				.with("client.address", "http://127.0.0.1:9001/")
+				.with("client.keepAlive", "30")
+				.with("benchmark.totalRequests", "1000000")
+				.with("benchmark.warmupRounds", "3")
+				.with("benchmark.measureRounds", "5")
+				.with("benchmark.activeRequestsMax", "500")
+				.with("benchmark.activeRequestsMin", "300")
+				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Override
@@ -105,31 +100,35 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	}
 
 	@Override
-	protected void run() throws Exception {
-		if (GENERATE_FILE) {
-			resultsFile = new PrintWriter("benchmarkResult" + Timestamp.from(Instant.now()), "UTF-8");
-			fillHeaderFile(resultsFile);
-		}
-
-		if (WARMUP_ROUNDS > 0) {
-			System.out.println("Start warming up cache");
-			warmUp();
-		}
-
-		profiler(this::benchmark, "GET Request");
-
-		if (GENERATE_FILE) {
-			resultsFile.close();
-		}
+	protected void onStart() throws Exception {
+		this.address = config.get("client.address");
+		this.totalRequests = config.get(ofInteger(), "benchmark.totalRequests", TOTAL_REQUESTS);
+		this.warmupRounds = config.get(ofInteger(), "benchmark.warmupRounds", WARMUP_ROUNDS);
+		this.measureRounds = config.get(ofInteger(), "benchmark.measureRounds", BENCHMARK_ROUNDS);
+		this.activeRequestsMax = config.get(ofInteger(), "benchmark.activeRequestsMax", ACTIVE_REQUESTS_MAX);
+		this.activeRequestsMin = config.get(ofInteger(), "benchmark.activeRequestsMin", ACTIVE_REQUESTS_MIN);
+		super.onStart();
 	}
 
-	private void profiler(Supplier<Promise<Long>> function, String nameBenchmark) throws Exception {
+	@Override
+	protected void run() throws Exception {
+		benchmark(this::roundGet, "GET Request");
+	}
+
+	private void benchmark(Supplier<Promise<Long>> function, String nameBenchmark) throws Exception {
 		long timeAllRounds = 0;
 		long bestTime = -1;
 		long worstTime = -1;
 
+		System.out.println("Warming up ...");
+		for (int i = 0; i < warmupRounds; i++) {
+			long roundTime = round(function);
+			long rps = totalRequests * 1000L / roundTime;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
+		}
+
 		System.out.println("Start benchmarking " + nameBenchmark);
-		for (int i = 0; i < BENCHMARK_ROUNDS; i++) {
+		for (int i = 0; i < measureRounds; i++) {
 			long roundTime = round(function);
 			timeAllRounds += roundTime;
 
@@ -141,45 +140,15 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 				worstTime = roundTime;
 			}
 
-			long rpc = TOTAL_REQUESTS / roundTime * 1000;
-			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
+			long rps = totalRequests * 1000L / roundTime;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + " ms; RPS : " + rps);
 		}
 
-		double avgTime = (double) timeAllRounds / BENCHMARK_ROUNDS;
-		long requestsPerSecond = (long) (TOTAL_REQUESTS / avgTime * 1000);
-		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + "ms; Best time: " +
+		double avgTime = (double) timeAllRounds / measureRounds;
+		long requestsPerSecond = (long) (totalRequests / avgTime * 1000);
+		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + " ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
 
-		if (GENERATE_FILE) {
-			fillFooterFile(avgTime, bestTime, worstTime, requestsPerSecond);
-		}
-	}
-
-	private void fillFooterFile(double avgTime,
-			long bestTime,
-			long worstTime,
-			long requestsPerSecond) {
-		if (GENERATE_FILE) {
-			resultsFile.println("    <td> -k -c " + ACTIVE_REQUESTS_MAX + "</td>");
-			resultsFile.println("    <td>" + avgTime + "</td>");
-			resultsFile.println("    <td>" + bestTime + "</td>");
-			resultsFile.println("    <td>" + worstTime + "</td>");
-			resultsFile.println("    <td>" + requestsPerSecond + "</td>");
-			resultsFile.println("  </tr>");
-			resultsFile.println("</table>");
-		}
-	}
-
-	private void warmUp() throws Exception {
-		for (int i = 0; i < WARMUP_ROUNDS; i++) {
-			long roundTime = round();
-			long rpc = TOTAL_REQUESTS / roundTime * 1000;
-			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
-		}
-	}
-
-	private long round() throws Exception {
-		return clientEventloop.submit(this::benchmark).get();
 	}
 
 	private long round(Supplier<Promise<Long>> function) throws Exception {
@@ -189,7 +158,7 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	int sent;
 	int completed;
 
-	private Promise<Long> benchmark() {
+	private Promise<Long> roundGet() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
 		Callback<HttpResponse> callback = new Callback<HttpResponse>() {
@@ -203,45 +172,33 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 					return;
 				}
 
-				if (completed == TOTAL_REQUESTS) {
+				if (completed == totalRequests) {
 					promise.set(null);
 					return;
 				}
 
-				if (active <= ACTIVE_REQUESTS_MIN) {
-					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
-						sendRequest(this);
+				if (active <= activeRequestsMin) {
+					for (int i = 0; i < min(activeRequestsMax - active, totalRequests - sent); i++) {
+						doGet(this);
 						sent++;
 					}
 				}
 			}
 		};
-		long start = System.currentTimeMillis();
 		sent = 0;
 		completed = 0;
+		long start = System.currentTimeMillis();
 
-		for (int i = 0; i < min(ACTIVE_REQUESTS_MIN, TOTAL_REQUESTS); i++) {
-			sendRequest(callback);
+		for (int i = 0; i < min(activeRequestsMin, totalRequests); i++) {
+			doGet(callback);
 			sent++;
 		}
 
 		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
-	private void sendRequest(Callback<HttpResponse> callback) {
+	private void doGet(Callback<HttpResponse> callback) {
 		client.request(HttpRequest.get(address)).whenComplete(callback);
-	}
-
-	private void fillHeaderFile(PrintWriter resultsFile) {
-		resultsFile.println("<table>");
-		resultsFile.println("  <tr>");
-		resultsFile.println("    <th>ApacheBench parameters</th>");
-		resultsFile.println("    <th>Time</th>");
-		resultsFile.println("    <th>Average time</th>");
-		resultsFile.println("    <th>Best time</th>");
-		resultsFile.println("    <th>Worst time</th>");
-		resultsFile.println("    <th>Requests per second</th>");
-		resultsFile.println("  </tr>");
 	}
 
 	public static void main(String[] args) throws Exception {
