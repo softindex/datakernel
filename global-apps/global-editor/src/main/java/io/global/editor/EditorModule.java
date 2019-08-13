@@ -19,7 +19,10 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.service.ServiceEnsuringServlet;
+import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.SharedReposOperation;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +33,7 @@ import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.editor.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
 import static io.global.editor.Utils.createMergedOTSystem;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
+import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
 public final class EditorModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
@@ -75,6 +79,11 @@ public final class EditorModule extends AbstractModule {
 	OTDriver provideDriver(Eventloop eventloop, GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);
+	}
+
+	@Provides
+	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode pmNode) {
+		return new GlobalPmDriver<>(pmNode, SHARED_REPO_MESSAGE_CODEC);
 	}
 
 	@Provides

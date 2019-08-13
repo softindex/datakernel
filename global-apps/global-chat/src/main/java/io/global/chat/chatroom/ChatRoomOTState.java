@@ -1,7 +1,6 @@
 package io.global.chat.chatroom;
 
 import io.datakernel.ot.OTState;
-import io.global.chat.chatroom.messages.Message;
 import io.global.ot.name.ChangeName;
 
 import java.util.Comparator;
@@ -24,11 +23,10 @@ public final class ChatRoomOTState implements OTState<ChatMultiOperation> {
 	@Override
 	public void apply(ChatMultiOperation multiOperation) {
 		multiOperation.getMessageOps().forEach(op -> {
-			if (op.isEmpty()) return;
-			if (op.isTombstone()) {
-				messages.remove(op.getMessage());
+			if (op.isRemove()) {
+				messages.remove(op.getElement());
 			} else {
-				messages.add(op.getMessage());
+				messages.add(op.getElement());
 			}
 		});
 		List<ChangeName> roomNameOps = multiOperation.getRoomNameOps();

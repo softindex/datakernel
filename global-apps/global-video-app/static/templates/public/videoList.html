@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Global Videos</title>
+  <style>
+    .container {
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+<a href="/myChannel">My channel</a>
+
+<div class="container">
+  <div>
+    <h1>Videos</h1>
+    {{#.}}
+    <div>
+      <a href=./{{key}}/>
+        <img width="128" height="72" src="./{{key}}/thumbnail">
+        <p>{{value.title}}</p>
+      </a>
+    </div>
+    {{/.}}
+    <div>
+      {{^.}}
+      <h3>No videos</h3>
+      {{/.}}
+    </div>
+  </div>
+</div>
+
+</body>
+
+</html>

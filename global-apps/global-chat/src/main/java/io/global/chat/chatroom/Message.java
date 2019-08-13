@@ -1,4 +1,4 @@
-package io.global.chat.chatroom.messages;
+package io.global.chat.chatroom;
 
 public class Message {
 	private final long timestamp;

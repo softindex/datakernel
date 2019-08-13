@@ -6,7 +6,6 @@ import io.datakernel.ot.*;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.time.CurrentTimeProvider;
-import io.global.chat.chatroom.messages.Message;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.SimKey;
@@ -29,8 +28,8 @@ import java.util.Iterator;
 import static io.datakernel.async.TestUtils.await;
 import static io.global.chat.Utils.CHAT_ROOM_CODEC;
 import static io.global.chat.Utils.createMergedOTSystem;
-import static io.global.chat.chatroom.messages.MessageOperation.insert;
 import static io.global.ot.name.ChangeName.changeName;
+import static io.global.ot.set.SetOperation.add;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.junit.Assert.*;
@@ -86,13 +85,13 @@ public class ChatRoomOTSystemTest {
 		System.out.println(state2.getRoomName());
 
 		stateManager1.add(ChatMultiOperation.create().withMessageOps(
-				insert(new Message(timestamp(), auth1, "Hello")),
-				insert(new Message(timestamp(), auth1, "How are you?"))
+				add(new Message(timestamp(), auth1, "Hello")),
+				add(new Message(timestamp(), auth1, "How are you?"))
 		));
 
 		stateManager2.add(ChatMultiOperation.create().withMessageOps(
-				insert(new Message(timestamp(), auth2, "Test")),
-				insert(new Message(timestamp(), auth2, "Message"))
+				add(new Message(timestamp(), auth2, "Test")),
+				add(new Message(timestamp(), auth2, "Message"))
 		));
 
 		sync();

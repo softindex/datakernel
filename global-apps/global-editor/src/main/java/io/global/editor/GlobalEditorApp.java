@@ -8,22 +8,33 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.common.PrivKey;
 import io.global.editor.document.DocumentMultiOperation;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.SharedRepoModule;
+import io.global.ot.api.RepoID;
+import io.global.ot.client.MyRepositoryId;
+import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsModule;
-import io.global.ot.service.UserContainerModule;
+import io.global.ot.service.ContainerModule;
+import io.global.ot.service.UserContainer;
+import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
+import io.global.pm.GlobalPmDriver;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.override;
+import static io.global.editor.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
+import static io.global.editor.Utils.createMergedOTSystem;
 
 public final class GlobalEditorApp extends Launcher {
 	private static final String PROPERTIES_FILE = "editor.properties";
@@ -56,7 +67,17 @@ public final class GlobalEditorApp extends Launcher {
 				new ContactsModule(),
 				new IndexRepoModule(EDITOR_INDEX_REPO),
 				new SharedRepoModule<DocumentMultiOperation>(DOCUMENT_REPO_PREFIX) {},
-				new UserContainerModule<DocumentMultiOperation>(EDITOR_INDEX_REPO, DOCUMENT_REPO_PREFIX) {},
+				new ContainerModule<UserContainer<DocumentMultiOperation>>() {
+					@Provides
+					BiFunction<Eventloop, PrivKey, UserContainer<DocumentMultiOperation>> factory(OTDriver driver,
+							GlobalPmDriver<CreateSharedRepo> pmDriver) {
+						return (eventloop, privKey) -> {
+							RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
+							MyRepositoryId<DocumentMultiOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, DOCUMENT_MULTI_OPERATION_CODEC);
+							return UserContainer.create(eventloop, driver, createMergedOTSystem(), myRepositoryId, pmDriver, EDITOR_INDEX_REPO);
+						};
+					}
+				},
 				// override for debug purposes
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))

@@ -1,7 +1,7 @@
 package io.global.chat.chatroom;
 
-import io.global.chat.chatroom.messages.MessageOperation;
 import io.global.ot.name.ChangeName;
+import io.global.ot.set.SetOperation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,10 +9,10 @@ import java.util.List;
 import static java.util.Arrays.asList;
 
 public final class ChatMultiOperation {
-	private final List<MessageOperation> messageOps;
+	private final List<SetOperation<Message>> messageOps;
 	private final List<ChangeName> roomNameOps;
 
-	public ChatMultiOperation(List<MessageOperation> messageOps, List<ChangeName> roomNameOps) {
+	public ChatMultiOperation(List<SetOperation<Message>> messageOps, List<ChangeName> roomNameOps) {
 		this.messageOps = messageOps;
 		this.roomNameOps = roomNameOps;
 	}
@@ -21,7 +21,8 @@ public final class ChatMultiOperation {
 		return new ChatMultiOperation(new ArrayList<>(), new ArrayList<>());
 	}
 
-	public ChatMultiOperation withMessageOps(MessageOperation... messageOps) {
+	@SafeVarargs
+	public final ChatMultiOperation withMessageOps(SetOperation<Message>... messageOps) {
 		this.messageOps.addAll(asList(messageOps));
 		return this;
 	}
@@ -31,7 +32,7 @@ public final class ChatMultiOperation {
 		return this;
 	}
 
-	public List<MessageOperation> getMessageOps() {
+	public List<SetOperation<Message>> getMessageOps() {
 		return messageOps;
 	}
 

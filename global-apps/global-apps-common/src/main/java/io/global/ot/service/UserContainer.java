@@ -19,10 +19,11 @@ import org.jetbrains.annotations.NotNull;
 
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static io.global.ot.OTUtils.SHARED_REPO_OPERATION_CODEC;
-import static io.global.ot.service.UserContainerHolder.LIST_SYSTEM;
+import static io.global.ot.shared.SharedReposOTSystem.createOTSystem;
 import static java.util.Collections.emptySet;
 
 public final class UserContainer<D> implements EventloopService {
+	private static final OTSystem<SharedReposOperation> LIST_SYSTEM = createOTSystem();
 	private final Eventloop eventloop;
 	private final MyRepositoryId<D> myRepositoryId;
 	private final OTStateManager<CommitId, SharedReposOperation> stateManager;
@@ -80,10 +81,6 @@ public final class UserContainer<D> implements EventloopService {
 
 	public OTStateManager<CommitId, SharedReposOperation> getStateManager() {
 		return stateManager;
-	}
-
-	public SynchronizationService<D> getSynchronizationService() {
-		return synchronizationService;
 	}
 
 	public MessagingService getMessagingService() {

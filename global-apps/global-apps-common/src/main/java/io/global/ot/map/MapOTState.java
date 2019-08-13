@@ -6,8 +6,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MapOTState<K, V> implements OTState<MapOperation<K, V>> {
-	private final Map<K, V> map = new HashMap<>();
+public final class MapOTState<K, V> implements OTState<MapOperation<K, V>> {
+	private final Map<K, V> map;
+
+	public MapOTState() {
+		this.map = new HashMap<>();
+	}
+
+	public MapOTState(Map<K, V> map) {
+		this.map = map;
+	}
 
 	@Override
 	public void init() {

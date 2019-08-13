@@ -12,7 +12,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.ot.OTSystem;
-import io.global.chat.chatroom.messages.MessageOperation;
+import io.global.chat.chatroom.Message;
 import io.global.common.SimKey;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
@@ -20,7 +20,11 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ServiceEnsuringServlet;
+import io.global.ot.service.messaging.CreateSharedRepo;
+import io.global.ot.set.SetOperation;
 import io.global.ot.shared.SharedReposOperation;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,17 +33,19 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.chat.Utils.MESSAGE_OPERATION_CODEC;
-import static io.global.chat.chatroom.messages.MessagesOTSystem.createOTSystem;
+import static io.global.chat.Utils.MESSAGE_OT_SYSTEM;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
+import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
 public final class ChatModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
+
 	public static final String RESOURCES_PATH = "front/build";
 
 	@Override
 	protected void configure() {
-		bind(new Key<OTSystem<MessageOperation>>() {}).toInstance(createOTSystem());
-		bind(new Key<StructuredCodec<MessageOperation>>() {}).toInstance(MESSAGE_OPERATION_CODEC);
+		bind(new Key<OTSystem<SetOperation<Message>>>() {}).toInstance(MESSAGE_OT_SYSTEM);
+		bind(new Key<StructuredCodec<SetOperation<Message>>>() {}).toInstance(MESSAGE_OPERATION_CODEC);
 		super.configure();
 	}
 
@@ -54,7 +60,7 @@ public final class ChatModule extends AbstractModule {
 	RoutingServlet provideMainServlet(
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
-			DynamicOTNodeServlet<MessageOperation> roomServlet,
+			DynamicOTNodeServlet<SetOperation<Message>> roomServlet,
 			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
 			StaticServlet staticServlet
 	) {
@@ -79,6 +85,11 @@ public final class ChatModule extends AbstractModule {
 	OTDriver provideDriver(Eventloop eventloop, GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);
+	}
+
+	@Provides
+	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode pmNode) {
+		return new GlobalPmDriver<>(pmNode, SHARED_REPO_MESSAGE_CODEC);
 	}
 
 	@Provides

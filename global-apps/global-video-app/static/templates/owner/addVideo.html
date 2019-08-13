@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Global Videos | Add video</title>
+
+  <style>
+    table {
+      font-family: arial, sans-serif;
+      border-collapse: collapse;
+      width: 300px;
+    }
+
+    td,
+    th {
+      border: 1px solid #dddddd;
+      text-align: left;
+      padding: 8px;
+    }
+
+    tr:nth-child(even) {
+      background-color: #dddddd;
+    }
+
+  </style>
+</head>
+
+<body>
+<a href="/myChannel">My channel</a>
+
+<div>
+  <form action="upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" id="file">
+    <input type="file" name="thumbnail" id="thumbnail">
+    <input type="submit" value="Submit">
+  </form>
+</div>
+</body>
+
+</html>

@@ -8,7 +8,6 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.global.chat.chatroom.messages.Message;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -36,9 +35,9 @@ import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.chat.Utils.CHAT_ROOM_CODEC;
 import static io.global.chat.Utils.createMergedOTSystem;
-import static io.global.chat.chatroom.messages.MessageOperation.insert;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.SignedData.sign;
+import static io.global.ot.set.SetOperation.add;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
@@ -106,7 +105,7 @@ public class ChatRoomTest {
 	@Test
 	public void testRepoSynchronizationSingleMessage() {
 		ChatMultiOperation diffs1 = ChatMultiOperation.create()
-				.withMessageOps(insert(new Message(time++, "User 1", "Hello")));
+				.withMessageOps(add(new Message(time++, "User 1", "Hello")));
 
 		stateManager1.add(diffs1);
 
@@ -118,17 +117,17 @@ public class ChatRoomTest {
 	@Test
 	public void testRepoSynchronizationMultipleMessages() {
 		ChatMultiOperation diffs1 = ChatMultiOperation.create()
-				.withMessageOps(insert(new Message(time++, "User 1", "Hello")));
+				.withMessageOps(add(new Message(time++, "User 1", "Hello")));
 
 		ChatMultiOperation diffs2 = ChatMultiOperation.create()
-				.withMessageOps(insert(new Message(time++, "User 1", "From user 1")));
+				.withMessageOps(add(new Message(time++, "User 1", "From user 1")));
 
 		stateManager1.addAll(asList(diffs1, diffs2));
 
 		ChatMultiOperation diffs3 = ChatMultiOperation.create()
 				.withMessageOps(
-						insert(new Message(time++, "User 2", "Hi")),
-						insert(new Message(time++, "User 2", "From user 2"))
+						add(new Message(time++, "User 2", "Hi")),
+						add(new Message(time++, "User 2", "From user 2"))
 				);
 
 		stateManager2.add(diffs3);

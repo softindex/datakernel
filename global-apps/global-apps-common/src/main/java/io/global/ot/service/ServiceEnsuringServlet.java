@@ -10,15 +10,15 @@ import io.global.common.PrivKey;
 import org.jetbrains.annotations.NotNull;
 
 public final class ServiceEnsuringServlet implements AsyncServlet {
-	private final UserContainerHolder<?> serviceHolder;
+	private final ContainerHolder<?> serviceHolder;
 	private final AsyncServlet next;
 
-	private ServiceEnsuringServlet(UserContainerHolder serviceHolder, AsyncServlet next) {
+	private ServiceEnsuringServlet(ContainerHolder serviceHolder, AsyncServlet next) {
 		this.serviceHolder = serviceHolder;
 		this.next = next;
 	}
 
-	public static ServiceEnsuringServlet create(UserContainerHolder serviceHolder, AsyncServlet next) {
+	public static ServiceEnsuringServlet create(ContainerHolder serviceHolder, AsyncServlet next) {
 		return new ServiceEnsuringServlet(serviceHolder, next);
 	}
 

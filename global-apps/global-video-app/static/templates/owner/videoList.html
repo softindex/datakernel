@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+  <meta charset="UTF-8">
+  <title>Global Videos | My Channel</title>
+  <style>
+    .container {
+      display: flex;
+    }
+    .column {
+      flex: 50%;
+      text-align: center;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<a href="/myChannel/add" class="btn btn-info btn-lg">
+  <span class="glyphicon glyphicon-plus"></span> Add video
+</a>
+<a href="/user/{{public key}}/"><h4>Link to channel</h4></a>
+
+<div class="container">
+  <div class="column">
+    <h1>Public videos</h1>
+    {{#public}}
+    <img width="128" height="72" src="/myChannel/{{key}}/thumbnail">
+    <h3>Title: {{value.title}}</h3>
+    <a href="/myChannel/{{key}}/">Go to video</a>
+    <form action="myChannel/deleteMetadata/{{key}}" method="post">
+      <button type="submit">Delete Metadata</button>
+    </form>
+    <form action="myChannel/delete/{{key}}" method="post">
+      <button type="submit">Delete video</button>
+    </form>
+    {{/public}}
+
+    {{^public}}
+    <h3>No public videos</h3>
+    {{/public}}
+  </div>
+
+  <div class="column">
+    <h1>Untagged videos</h1>
+    {{#untagged}}
+    <div>
+      <img width="128" height="72" src="/myChannel/{{.}}/thumbnail">
+      <h3>Video Id: {{.}}</h3>
+      <a href="/myChannel/{{.}}">Go to video</a>
+      <form action="myChannel/delete/{{.}}" method="post">
+        <button type="submit">Delete video</button>
+      </form>
+    </div>
+    {{/untagged}}
+
+    {{^untagged}}
+    <h3>No untagged videos</h3>
+    {{/untagged}}
+  </div>
+</div>
+
+</body>
+
+</html>
