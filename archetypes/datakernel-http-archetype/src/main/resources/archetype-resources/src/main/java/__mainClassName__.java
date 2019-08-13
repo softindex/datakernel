@@ -15,8 +15,8 @@ public class ${mainClassName} extends HttpServerLauncher {
 
     @Provides
     AsyncServlet servlet() {
-        String time = LocalDateTime.now().format(ISO_LOCAL_DATE_TIME);
-        return request -> Promise.of(ok200().withPlainText("Hello World at " + time));
+        return request -> Promise.of(ok200().withPlainText("Hello World at " +
+			LocalDateTime.now().format(ISO_LOCAL_DATE_TIME)));
     }
 
     public static void main(String[] args) throws Exception {
