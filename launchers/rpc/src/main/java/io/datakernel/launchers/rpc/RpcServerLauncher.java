@@ -40,7 +40,6 @@ import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.launchers.rpc.Initializers.ofRpcServer;
 
 public abstract class RpcServerLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "rpc-server.properties";
@@ -57,12 +56,6 @@ public abstract class RpcServerLauncher extends Launcher {
 				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
-	@Provides
-	RpcServer provideRpcServer(Config config, Eventloop eventloop, Initializer<RpcServer> rpcServerInitializer) {
-		return RpcServer.create(eventloop)
-				.initialize(ofRpcServer(config))
-				.initialize(rpcServerInitializer);
-	}
 
 	@Provides
 	Config config() {
@@ -82,6 +75,7 @@ public abstract class RpcServerLauncher extends Launcher {
 				getBusinessLogicModule());
 	}
 
+	// By design, user should provide rpcServer here.
 	protected Module getBusinessLogicModule() {
 		return Module.empty();
 	}
