@@ -10,6 +10,7 @@ import java.util.Optional;
 /**
  * @since 3.0.0
  */
+//[START REGION_1]
 public class OptionalGeneratorModuleExample extends AbstractModule {
 	@Inject
 	Optional<String> string;
@@ -26,3 +27,4 @@ public class OptionalGeneratorModuleExample extends AbstractModule {
 		System.out.println(instance.get());
 	}
 }
+//[END REGION_1]

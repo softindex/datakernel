@@ -46,12 +46,13 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 			String content(HttpRequest request, @WorkerId int workerId, Function<Object[], String> template) {
 				return template.apply(new Object[]{workerId, request});
 			}
-
+			//[START REGION_1]
 			@Provides
 			@RequestScope
 			Promise<HttpResponse> httpResponse(String content) {
 				return Promise.of(HttpResponse.ok200().withPlainText(content));
 			}
+			//[END REGION_1]
 		};
 	}
 
@@ -70,12 +71,13 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 			String content(HttpRequest request, @WorkerId int workerId, Function<Object[], String> template) {
 				return template.apply(new Object[]{workerId, request});
 			}
-
+			//[START REGION_2]
 			@Provides
 			@RequestScope
 			HttpResponse httpResponse(String content) {
 				return HttpResponse.ok200().withPlainText(content);
 			}
+			//[END REGION_2]
 		};
 	}
 
