@@ -1,7 +1,6 @@
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -12,6 +11,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClient;
+import io.datakernel.memcache.client.MemcacheClient.Slice;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.server.MemcacheServerModule;
 import io.datakernel.rpc.server.RpcServer;
@@ -153,9 +153,9 @@ public class MemcacheRpcBenchmark extends Launcher {
 	private Promise<Long> roundGet() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
-		Callback<ByteBuf> callback = new Callback<ByteBuf>() {
+		Callback<Slice> callback = new Callback<Slice>() {
 			@Override
-			public void accept(ByteBuf result, @Nullable Throwable e) {
+			public void accept(Slice result, @Nullable Throwable e) {
 				completed++;
 
 				int active = sent - completed;
@@ -191,14 +191,13 @@ public class MemcacheRpcBenchmark extends Launcher {
 		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
-	private void doGet(Callback<ByteBuf> callback) {
-		client.get(new byte[]{(byte) sent})
-				.whenResult(ByteBuf::recycle)
+	private void doPut(Callback<Void> callback) {
+		client.put(new byte[]{(byte) sent}, new Slice(BYTES))
 				.whenComplete(callback);
 	}
 
-	private void doPut(Callback<Void> callback) {
-		client.put(new byte[]{(byte) sent}, ByteBuf.wrapForReading(BYTES))
+	private void doGet(Callback<Slice> callback) {
+		client.get(new byte[]{(byte) sent})
 				.whenComplete(callback);
 	}
 

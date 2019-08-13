@@ -1,5 +1,4 @@
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -10,6 +9,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClient;
+import io.datakernel.memcache.client.MemcacheClient.Slice;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -57,17 +57,17 @@ public class MemcacheLikeClient extends Launcher {
 		byte[][] bytes = new byte[15][1];
 		for (int i = 0; i < 15; ++i) {
 			final int idx = i;
-			bytes[idx] = new byte[] { (byte) idx };
+			bytes[idx] = new byte[]{(byte) idx};
 			byte[] message = "Strong and smart people always be successful".getBytes();
-			Promise<Void> put = client.put(bytes[idx], ByteBuf.wrapForReading(message), 50);
-			put.whenComplete((res, e) ->  {
+			Promise<Void> put = client.put(bytes[idx], new Slice(message), 50);
+			put.whenComplete((res, e) -> {
 				if (e != null) {
 					e.printStackTrace();
 				}
 				System.out.println("Request sent");
-				Promise<ByteBuf> byteBufPromise = client.get(bytes[idx], 20);
-				byteBufPromise.whenResult(resp -> System.out.println("Got back from [" + idx + "] : " + resp.getString(UTF_8)));
-			} );
+				Promise<Slice> byteBufPromise = client.get(bytes[idx], 20);
+				byteBufPromise.whenResult(resp -> System.out.println("Got back from [" + idx + "] : " + new String(resp.array(), resp.offset(), resp.length(), UTF_8)));
+			});
 		}
 
 		eventloop.run();

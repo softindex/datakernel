@@ -1,7 +1,6 @@
 package io.datakernel.memcache.client;
 
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.GetRequest;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.GetResponse;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.PutRequest;
@@ -15,31 +14,26 @@ public final class MemcacheClientImpl implements MemcacheClient {
 	}
 
 	@Override
-	public Promise<Void> put(byte[] key, ByteBuf buf, int timeout) {
+	public Promise<Void> put(byte[] key, Slice buf, int timeout) {
 		PutRequest request = new PutRequest(key, buf);
 		return rpcClient.sendRequest(request, timeout).toVoid();
 	}
 
 	@Override
-	public Promise<ByteBuf> get(byte[] key, int timeout) {
+	public Promise<Slice> get(byte[] key, int timeout) {
 		GetRequest request = new GetRequest(key);
 		return rpcClient.<GetRequest, GetResponse>sendRequest(request, timeout)
-				.map(response -> {
-					if (response == null) {
-						return null;
-					}
-					return response.getData();
-				});
+				.map(GetResponse::getData);
 	}
 
 	@Override
-	public Promise<Void> put(byte[] key, ByteBuf buf) {
+	public Promise<Void> put(byte[] key, Slice buf) {
 		PutRequest request = new PutRequest(key, buf);
 		return rpcClient.sendRequest(request).toVoid();
 	}
 
 	@Override
-	public Promise<ByteBuf> get(byte[] key) {
+	public Promise<Slice> get(byte[] key) {
 		GetRequest request = new GetRequest(key);
 		return rpcClient.<GetRequest, GetResponse>sendRequest(request)
 				.map(response -> {

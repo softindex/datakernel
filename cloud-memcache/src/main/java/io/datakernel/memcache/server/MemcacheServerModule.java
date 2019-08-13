@@ -1,13 +1,14 @@
 package io.datakernel.memcache.server;
 
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.memcache.protocol.SerializerGenByteBuf;
+import io.datakernel.memcache.client.MemcacheClient;
+import io.datakernel.memcache.client.MemcacheClient.Slice;
+import io.datakernel.memcache.protocol.SerializerGenSlice;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
@@ -45,13 +46,12 @@ public class MemcacheServerModule extends AbstractModule {
 						request -> Promise.of(new GetResponse(storage.get(request.getKey()))))
 				.withHandler(PutRequest.class, PutResponse.class,
 						request -> {
-							ByteBuf buf = request.getData();
-							storage.put(request.getKey(), buf.array(), buf.head(), buf.readRemaining());
-							buf.recycle();
+							Slice buf = request.getData();
+							storage.put(request.getKey(), buf.array(), buf.offset(), buf.length());
 							return Promise.of(PutResponse.INSTANCE);
 						})
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(true, true))))
+						.withSerializer(Slice.class, new SerializerGenBuilderConst(new SerializerGenSlice())))
 				.withMessageTypes(MESSAGE_TYPES)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),

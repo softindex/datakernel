@@ -1,6 +1,7 @@
 package io.datakernel.memcache.protocol;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.memcache.client.MemcacheClient;
+import io.datakernel.memcache.client.MemcacheClient.Slice;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMandatoryData;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -39,24 +40,24 @@ public class MemcacheRpcMessage {
 	}
 
 	public static final class GetResponse {
-		private final ByteBuf data;
+		private final Slice data;
 
-		public GetResponse(@Deserialize("data") ByteBuf data) {
+		public GetResponse(@Deserialize("data") Slice data) {
 			this.data = data;
 		}
 
 		@Serialize(order = 1)
 		@SerializeNullable
-		public ByteBuf getData() {
+		public Slice getData() {
 			return data;
 		}
 	}
 
 	public static final class PutRequest {
 		private final byte[] key;
-		private final ByteBuf data;
+		private final Slice data;
 
-		public PutRequest(@Deserialize("key") byte[] key, @Deserialize("data") ByteBuf data) {
+		public PutRequest(@Deserialize("key") byte[] key, @Deserialize("data") Slice data) {
 			this.key = key;
 			this.data = data;
 		}
@@ -68,7 +69,7 @@ public class MemcacheRpcMessage {
 
 		@SerializeNullable
 		@Serialize(order = 2)
-		public ByteBuf getData() {
+		public Slice getData() {
 			return data;
 		}
 	}

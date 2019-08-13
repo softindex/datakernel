@@ -1,18 +1,47 @@
 package io.datakernel.memcache.client;
 
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
 
 public interface MemcacheClient {
-	Promise<Void> put(byte[] key, ByteBuf buf, int timeout);
+	final class Slice {
+		private final byte[] array;
+		private final int offset;
+		private final int length;
 
-	Promise<ByteBuf> get(byte[] key, int timeout);
+		public Slice(byte[] array) {
+			this.array = array;
+			this.offset = 0;
+			this.length = array.length;
+		}
 
-	default Promise<Void> put(byte[] key, ByteBuf buf) {
+		public Slice(byte[] array, int offset, int length) {
+			this.array = array;
+			this.offset = offset;
+			this.length = length;
+		}
+
+		public byte[] array() {
+			return array;
+		}
+
+		public int offset() {
+			return offset;
+		}
+
+		public int length() {
+			return length;
+		}
+	}
+
+	Promise<Void> put(byte[] key, Slice buf, int timeout);
+
+	Promise<Slice> get(byte[] key, int timeout);
+
+	default Promise<Void> put(byte[] key, Slice buf) {
 		return put(key, buf, Integer.MAX_VALUE);
 	}
 
-	default Promise<ByteBuf> get(byte[] key) {
+	default Promise<Slice> get(byte[] key) {
 		return get(key, Integer.MAX_VALUE);
 	}
 }

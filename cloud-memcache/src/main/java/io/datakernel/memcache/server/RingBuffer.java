@@ -3,8 +3,9 @@ package io.datakernel.memcache.server;
 import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.LongLongHashMap;
 import com.carrotsearch.hppc.ObjectLongHashMap;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.jmx.EventStats;
+import io.datakernel.memcache.client.MemcacheClient;
+import io.datakernel.memcache.client.MemcacheClient.Slice;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -85,7 +86,7 @@ public final class RingBuffer implements RingBufferMBean {
 					(((long) bytes[7] & 0xff)));
 		}
 
-		ByteBuf get(byte[] key) {
+		Slice get(byte[] key) {
 			long segment;
 			if (key.length == 4) {
 				segment = indexInt.getOrDefault(intValueOf(key), -1L);
@@ -98,7 +99,7 @@ public final class RingBuffer implements RingBufferMBean {
 				return null;
 			int offset = (int) (segment);
 			int size = (int) (segment >>> 32);
-			return ByteBuf.wrap(array, offset, offset + size);
+			return new Slice(array, offset, size);
 		}
 
 		void put(byte[] key, byte[] data, int offset, int length) {
@@ -153,16 +154,17 @@ public final class RingBuffer implements RingBufferMBean {
 	/**
 	 * The method is used to try to get the from the {@see Buffer}
 	 * It will return the latest actual data for the {@param key}
+	 *
 	 * @param key of your item
 	 * @return the item in case your item is still present in {@see Buffer}
 	 */
-	public ByteBuf get(byte[] key) {
+	public Slice get(byte[] key) {
 		statsGets.recordEvent();
 		for (int i = 0; i < ringBuffers.length; i++) {
 			int current = currentBuffer - i;
 			if (current < 0)
 				current = ringBuffers.length + current;
-			ByteBuf buf = ringBuffers[current].get(key);
+			Slice buf = ringBuffers[current].get(key);
 			if (buf != null) {
 				return buf;
 			}
@@ -173,7 +175,8 @@ public final class RingBuffer implements RingBufferMBean {
 
 	/**
 	 * The method is used to cache the actual information for the {@param key}
-	 * @param key is used as a pointer for the cached {@param data}
+	 *
+	 * @param key  is used as a pointer for the cached {@param data}
 	 * @param data is thing to need to cache
 	 */
 	public void put(byte[] key, byte[] data) {
@@ -254,7 +257,8 @@ public final class RingBuffer implements RingBufferMBean {
 
 	/**
 	 * Is used to figure out the amount of byte[] arrays which are stored
-	 * @return	amount of stored data
+	 *
+	 * @return amount of stored data
 	 */
 	@Override
 	public int getItems() {
@@ -265,9 +269,9 @@ public final class RingBuffer implements RingBufferMBean {
 		return items;
 	}
 
-
 	/**
 	 * Is used to get the occupied capacity
+	 *
 	 * @return amount of occupied capacity
 	 */
 	@Override
