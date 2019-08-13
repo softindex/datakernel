@@ -23,6 +23,7 @@
   </licenses>
 
   <modules>
+    <module>archetypes</module>
     <module>core-eventloop</module>
     <module>core-bytebuf</module>
     <module>core-codegen</module>
