@@ -16,6 +16,7 @@
 
   <modules>
     <module>datakernel-http-archetype</module>
+    <module>datakernel-rpc-archetype</module>
   </modules>
 
 </project>
