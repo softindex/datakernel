@@ -13,7 +13,7 @@ class ContactsService extends Service {
       contacts: new Map(),
       users: new Map(),
       profiles: new Map(),
-      contactsReady: false,
+      contactsReady: false
     });
     this._myPublicKey = publicKey;
     this._contactsOTStateManager = contactsOTStateManager;
@@ -60,15 +60,8 @@ class ContactsService extends Service {
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async addContact(publicKey, name, isAppStoreName) {
-    if (isAppStoreName) {
-      const userProfile = await this.getChatProfileName(publicKey);
-      if (Object.getOwnPropertyNames(userProfile).length !== 0) {
-        name = userProfile.name;
-      }
-    }
-
-    let operation = new ContactsOTOperation(publicKey, name, false);
+  async addContact(publicKey, alias) {
+    const operation = new ContactsOTOperation(publicKey, alias, false);
     this._contactsOTStateManager.add([operation]);
 
     await this._roomsService.createDialog(publicKey);
@@ -84,20 +77,24 @@ class ContactsService extends Service {
     await this._sync();
   }
 
-  async getChatProfileName(publicKey) {
-    const profilesService = ProfilesService.create(publicKey);
-    profilesService.init()
-      .catch(error => {
-        console.error(error);
-      });
-    return profilesService.getProfile();
-  }
+  // async getChatProfileName(publicKey) {
+  //   const profilesService = ProfilesService.create(publicKey);
+  //   profilesService.init()
+  //     .catch(error => {
+  //       console.error(error);
+  //     });
+  //   return profilesService.getProfile();
+  // }
 
   _getRooms() {
     return [...this._roomsOTStateManager.getState()]
   }
 
   _onStateChange = () => {
+    // TODO 1. Get actual rooms and contacts
+    // TODO 2. Collect publicKeys
+    // TODO 3. Check if resolved names
+
     this.setState({
       contacts: this._getContactsFromStateManager(),
       contactsReady: true
@@ -115,17 +112,20 @@ class ContactsService extends Service {
     return this._globalAppStoreAPI.getUserByPublicKey(publicKey);
   }
 
-  async _getAppStoreNames() {
-    let users = this.state.users;
-    this._getRooms().map(([, {participants}]) => {
-      participants
+  async _getAppStoreNames() { // TODO set of publicKeys
+    const users = new Map(this.state.users);
+
+    for (const [, {participants}] of this._getRooms()) {
+      const usersPromises = participants
         .filter(publicKey => publicKey !== this._myPublicKey)
-        .forEach(publicKey => {
-          this._getUserByPublicKey(publicKey)
-            .then(user => users.set(publicKey, user))
-            .catch(error => console.error(error))
-        })
-    });
+        .map(publicKey => {
+          return this._getUserByPublicKey(publicKey)
+            .then(user => users.set(publicKey, user));
+        });
+
+      await Promise.all(usersPromises);
+    }
+
     return users;
   }
 
