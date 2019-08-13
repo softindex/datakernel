@@ -43,8 +43,8 @@ public class MemcacheLikeServer extends Launcher {
 	protected Module getModule() {
 		return combine(ServiceGraphModule.create(),
 				ConfigModule.create()
-				.printEffectiveConfig()
-				.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.printEffectiveConfig()
+						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				MemcacheServerModule.create());
 	}
 

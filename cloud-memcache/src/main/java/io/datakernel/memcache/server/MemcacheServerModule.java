@@ -19,6 +19,8 @@ import static io.datakernel.rpc.server.RpcServer.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.util.MemSize.kilobytes;
 
 public class MemcacheServerModule extends AbstractModule {
+	private MemcacheServerModule() {}
+
 	public static MemcacheServerModule create() {
 		return new MemcacheServerModule();
 	}
@@ -29,7 +31,7 @@ public class MemcacheServerModule extends AbstractModule {
 	}
 
 	@Provides
-	RingBuffer ringBuffer(Eventloop eventloop, Config config) {
+	RingBuffer ringBuffer(Config config) {
 		return RingBuffer.create(
 				config.get(ofInteger(), "memcache.buffers"),
 				config.get(ofMemSize(), "memcache.bufferCapacity").toInt());
@@ -49,7 +51,7 @@ public class MemcacheServerModule extends AbstractModule {
 							return Promise.of(PutResponse.INSTANCE);
 						})
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(false))))
+						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(true, true))))
 				.withMessageTypes(MESSAGE_TYPES)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),

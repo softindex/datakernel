@@ -16,11 +16,9 @@ import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.server.MemcacheServerModule;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.PrintWriter;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -28,18 +26,14 @@ import static io.datakernel.di.module.Modules.combine;
 import static java.lang.Math.min;
 
 public class MemcacheRpcBenchmark extends Launcher {
-	private final static int TOTAL_REQUESTS = 7_500_000;
-	private final static int WARMUP_ROUNDS = 2;
-	private final static int BENCHMARK_ROUNDS = 7;
-	private final static int ACTIVE_REQUESTS_MAX = 1500;
-	private final static int ACTIVE_REQUESTS_MIN = 1000;
-	private final static boolean GENERATE_FILE = false;
+	private final static int TOTAL_REQUESTS = 10_000_000;
+	private final static int BENCHMARK_ROUNDS = 10;
+	private final static int ACTIVE_REQUESTS_MAX = 2000;
+	private final static int ACTIVE_REQUESTS_MIN = 2000;
 
-	private final static int NUMBER_BUFFERS = 2 << 9;
-	private final static int BUFFER_CAPACITY = 2 << 12;
-	private ByteBuf message = ByteBuf.wrapForReading("Hello world".getBytes());
-	private PrintWriter resultsFile;
-	private boolean warmup = false;
+	private final static int NUMBER_BUFFERS = 4;
+	private final static MemSize BUFFER_CAPACITY = MemSize.megabytes(1);
+	public static final byte[] BYTES = "Hello world".getBytes();
 
 	@Inject
 	Eventloop eventloop;
@@ -57,7 +51,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 	Config config() {
 		return Config.create()
 				.with("memcache.buffers", Integer.toString(NUMBER_BUFFERS))
-				.with("memcache.bufferCapacity", Integer.toString(BUFFER_CAPACITY))
+				.with("memcache.bufferCapacity", BUFFER_CAPACITY.format())
 				.with("server.listenAddresses", "localhost:8080")
 				.with("client.addresses", "localhost:8080")
 				.overrideWith(Config.ofProperties(System.getProperties()));
@@ -77,28 +71,11 @@ public class MemcacheRpcBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		if (GENERATE_FILE) {
-			resultsFile = new PrintWriter("benchmarkResult" + Timestamp.from(Instant.now()), "UTF-8");
-			fillHeaderFile(resultsFile);
-		}
-
-		if (WARMUP_ROUNDS > 0) {
-			System.out.println("Start warming up cache");
-			warmup = true;
-			warmUp();
-		}
-
-		warmup = false;
-
-		profiler(this::benchmarkPut, "Put");
-		profiler(this::benchmarkGet, "Get");
-
-		if (GENERATE_FILE) {
-			resultsFile.close();
-		}
+		benchmark(this::roundPut, "Put");
+		benchmark(this::roundGet, "Get");
 	}
 
-	private void profiler(Supplier<Promise<Long>> function, String nameBenchmark) throws Exception {
+	private void benchmark(Supplier<Promise<Long>> function, String nameBenchmark) throws Exception {
 		long timeAllRounds = 0;
 		long bestTime = -1;
 		long worstTime = -1;
@@ -116,7 +93,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 				worstTime = roundTime;
 			}
 
-			long rpc = TOTAL_REQUESTS / roundTime * 1000;
+			long rpc = TOTAL_REQUESTS * 1000L / roundTime;
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPC : " + rpc);
 		}
 
@@ -124,37 +101,6 @@ public class MemcacheRpcBenchmark extends Launcher {
 		long requestsPerSecond = (long) (TOTAL_REQUESTS / avgTime * 1000);
 		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + "ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
-
-		if (GENERATE_FILE) {
-			fillFooterFile(avgTime, bestTime, worstTime, requestsPerSecond);
-		}
-	}
-
-	private void fillFooterFile(double avgTime,
-			long bestTime,
-			long worstTime,
-			long requestsPerSecond) {
-		if (GENERATE_FILE) {
-			resultsFile.println("    <td> -k -c " + ACTIVE_REQUESTS_MAX + "</td>");
-			resultsFile.println("    <td>" + avgTime + "</td>");
-			resultsFile.println("    <td>" + bestTime + "</td>");
-			resultsFile.println("    <td>" + worstTime + "</td>");
-			resultsFile.println("    <td>" + requestsPerSecond + "</td>");
-			resultsFile.println("  </tr>");
-			resultsFile.println("</table>");
-		}
-	}
-
-	private void warmUp() throws Exception {
-		for (int i = 0; i < WARMUP_ROUNDS; i++) {
-			long time = round();
-			long rpc = TOTAL_REQUESTS / time * 1000;
-			System.out.println("Warm-up round: " + (i + 1) + "; Round time: " + time + "ms; RPC : " + rpc);
-		}
-	}
-
-	private long round() throws Exception {
-		return eventloop.submit(this::benchmarkGet).get();
 	}
 
 	private long round(Supplier<Promise<Long>> function) throws Exception {
@@ -164,7 +110,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 	int sent;
 	int completed;
 
-	private Promise<Long> benchmarkPut() {
+	private Promise<Long> roundPut() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
 		Callback<Void> callback = new Callback<Void>() {
@@ -186,7 +132,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 
 				if (active <= ACTIVE_REQUESTS_MIN) {
 					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
-						sendRequest(this, sent);
+						doPut(this);
 						sent++;
 					}
 				}
@@ -197,14 +143,14 @@ public class MemcacheRpcBenchmark extends Launcher {
 		completed = 0;
 
 		for (int i = 0; i < min(ACTIVE_REQUESTS_MIN, TOTAL_REQUESTS); i++) {
-			sendRequest(callback, sent);
+			doPut(callback);
 			sent++;
 		}
 
 		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
-	private Promise<Long> benchmarkGet() {
+	private Promise<Long> roundGet() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
 		Callback<ByteBuf> callback = new Callback<ByteBuf>() {
@@ -226,7 +172,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 
 				if (active <= ACTIVE_REQUESTS_MAX) {
 					for (int i = 0; i < min(ACTIVE_REQUESTS_MAX - active, TOTAL_REQUESTS - sent); i++) {
-						getResponse(this, sent);
+						doGet(this);
 						sent++;
 					}
 				}
@@ -238,38 +184,23 @@ public class MemcacheRpcBenchmark extends Launcher {
 		long start = System.currentTimeMillis();
 
 		for (int i = 0; i < min(ACTIVE_REQUESTS_MAX, TOTAL_REQUESTS); i++) {
-			getResponse(callback, sent);
+			doGet(callback);
 			sent++;
 		}
 
 		return promise.map($ -> System.currentTimeMillis() - start);
 	}
 
-	private void getResponse(Callback<ByteBuf> callback, int sent) {
-		if (!warmup) {
-			client.get(new byte[]{(byte) sent})
-					.whenComplete(callback);
-		} else client.get(new byte[]{(byte) sent}, 50)
+	private void doGet(Callback<ByteBuf> callback) {
+		client.get(new byte[]{(byte) sent})
+				.whenResult(ByteBuf::recycle)
 				.whenComplete(callback);
 	}
 
-	private void sendRequest(Callback<Void> callback, int sent) {
-		client.put(new byte[]{(byte) sent}, message)
+	private void doPut(Callback<Void> callback) {
+		client.put(new byte[]{(byte) sent}, ByteBuf.wrapForReading(BYTES))
 				.whenComplete(callback);
 	}
-
-	private void fillHeaderFile(PrintWriter resultsFile) {
-		resultsFile.println("<table>");
-		resultsFile.println("  <tr>");
-		resultsFile.println("    <th>ApacheBench parameters</th>");
-		resultsFile.println("    <th>Time</th>");
-		resultsFile.println("    <th>Average time</th>");
-		resultsFile.println("    <th>Best time</th>");
-		resultsFile.println("    <th>Worst time</th>");
-		resultsFile.println("    <th>Requests per second</th>");
-		resultsFile.println("  </tr>");
-	}
-
 
 	public static void main(String[] args) throws Exception {
 		Launcher benchmark = new MemcacheRpcBenchmark();

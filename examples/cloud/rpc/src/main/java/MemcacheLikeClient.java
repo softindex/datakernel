@@ -49,7 +49,7 @@ public class MemcacheLikeClient extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new MemcacheClientModule());
+				MemcacheClientModule.create());
 	}
 
 	@Override

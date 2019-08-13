@@ -2,7 +2,6 @@ package io.datakernel.memcache.client;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
-import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -22,18 +21,19 @@ import static io.datakernel.util.MemSize.kilobytes;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public class MemcacheClientModule extends AbstractModule {
+	private MemcacheClientModule() {}
 
 	public static MemcacheClientModule create() { return new MemcacheClientModule(); }
 
 	@Provides
-	RpcClient rpcClient(Config config, Eventloop eventloop) {
+	RpcClient rpcClient(Eventloop eventloop, Config config) {
 		return RpcClient.create(eventloop)
 				.withStrategy(rendezvousHashing(HASH_FUNCTION)
 						.withMinActiveShards(config.get(ofInteger(), "client.minAliveConnections", 1))
 						.withShards(config.get(ofList(ofInetSocketAddress()), "client.addresses")))
 				.withMessageTypes(MemcacheRpcMessage.MESSAGE_TYPES)
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(false))))
+						.withSerializer(ByteBuf.class, new SerializerGenBuilderConst(new SerializerGenByteBuf(true, true))))
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
 						config.get(ofMemSize(), "protocol.packetSizeMax", kilobytes(64)),
@@ -45,7 +45,6 @@ public class MemcacheClientModule extends AbstractModule {
 	}
 
 	@Provides
-	@Export
 	MemcacheClient memcacheClient(RpcClient client, Eventloop eventloop) {
 		return new MemcacheClientImpl(client.adaptToAnotherEventloop(eventloop));
 	}

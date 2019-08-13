@@ -8,11 +8,11 @@ public interface MemcacheClient {
 
 	Promise<ByteBuf> get(byte[] key, int timeout);
 
-	default Promise<Void> put (byte [] key, ByteBuf buf) {
+	default Promise<Void> put(byte[] key, ByteBuf buf) {
 		return put(key, buf, Integer.MAX_VALUE);
 	}
 
-	default Promise<ByteBuf> get(byte [] key) {
+	default Promise<ByteBuf> get(byte[] key) {
 		return get(key, Integer.MAX_VALUE);
 	}
 }
