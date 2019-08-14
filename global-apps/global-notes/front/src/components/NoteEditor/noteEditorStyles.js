@@ -1,4 +1,4 @@
-const nodeEditorStyles = theme => ({
+const noteEditorStyles = theme => ({
   noteEditor: {
     fontSize: theme.typography.h6.fontSize,
     fontFamily: 'Roboto',
@@ -19,4 +19,4 @@ const nodeEditorStyles = theme => ({
   }
 });
 
-export default nodeEditorStyles;
+export default noteEditorStyles;

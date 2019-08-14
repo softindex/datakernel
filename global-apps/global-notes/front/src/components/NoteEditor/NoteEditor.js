@@ -2,7 +2,7 @@ import React, {useEffect} from 'react';
 import {getDifference} from './utils';
 import connectService from '../../common/connectService';
 import NoteContext from '../../modules/note/NoteContext';
-import nodeEditorStyles from "./nodeEditorStyles";
+import noteEditorStyles from "./noteEditorStyles";
 import withStyles from "@material-ui/core/es/styles/withStyles";
 import {Paper} from "@material-ui/core";
 
@@ -53,5 +53,5 @@ export default connectService(
   NoteContext,
   ({content}, noteService) => ({content, noteService})
 )(
-  withStyles(nodeEditorStyles)(NoteEditor)
+  withStyles(noteEditorStyles)(NoteEditor)
 );
