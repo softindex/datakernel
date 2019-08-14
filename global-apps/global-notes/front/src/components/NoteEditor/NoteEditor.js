@@ -4,12 +4,12 @@ import connectService from '../../common/connectService';
 import NoteContext from '../../modules/note/NoteContext';
 import nodeEditorStyles from "./nodeEditorStyles";
 import withStyles from "@material-ui/core/es/styles/withStyles";
+import {Paper} from "@material-ui/core";
 
 function NoteEditor(props) {
   let textInput = React.createRef();
 
   useEffect(() => {
-    textInput.blur();
     textInput.focus();
   }, [textInput]);
 
@@ -36,12 +36,16 @@ function NoteEditor(props) {
   };
 
   return (
-    <textarea
-      className={props.classes.noteEditor}
-      value={props.content}
-      onChange={onChange}
-      ref={input => {textInput = input}}
-    />
+    <Paper className={props.classes.paper}>
+      <textarea
+        className={props.classes.noteEditor}
+        value={props.content}
+        onChange={onChange}
+        ref={input => {
+          textInput = input
+        }}
+      />
+    </Paper>
   );
 }
 

@@ -5,18 +5,17 @@ const nodeEditorStyles = theme => ({
     display: 'flex',
     flexGrow: 1,
     outline: 0,
+    width: '100%',
+    height: '100%',
     resize: 'none',
-    borderStyle: 'none',
-    background: theme.palette.primary.background,
+    borderStyle: 'none'
+  },
+  paper: {
+    flexGrow: 1,
+    margin: theme.spacing.unit * 3,
+    marginTop: theme.spacing.unit * 11,
     padding: theme.spacing.unit * 3,
-    paddingTop: theme.spacing.unit * 2,
-    marginTop: theme.spacing.unit * 9,
-    '&::-webkit-scrollbar-track': {
-      background: 'border-box'
-    },
-    '&::-webkit-scrollbar-thumb': {
-      background: theme.palette.secondary.grey
-    }
+    paddingRight: theme.spacing.unit * 2
   }
 });
 
