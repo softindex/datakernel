@@ -4,7 +4,7 @@ import intersection from 'lodash/intersection';
 import isEqual from 'lodash/isEqual';
 import pickBy from 'lodash/pickBy';
 
-const mapOTSystem = new OTSystemBuilder()
+const createOTSystem = (comparator) => new OTSystemBuilder()
   .withEmptyPredicate(MapOTOperation, operation => operation.isEmpty())
   .withInvertFunction(MapOTOperation, operation => operation.invert())
   .withSquashFunction(MapOTOperation, MapOTOperation, (firstOperation, secondOperation) => {
@@ -64,7 +64,7 @@ const mapOTSystem = new OTSystemBuilder()
         continue;
       }
 
-      if (left.next > right.next) {
+      if (comparator(left, right) > 0) {
         rightTransformed[key] = {
           prev: right.next,
           next: left.next
@@ -84,4 +84,6 @@ const mapOTSystem = new OTSystemBuilder()
   })
   .build();
 
-export default mapOTSystem;
+const booleanMapOTSystem = createOTSystem((first, second) => (first === second) ? 0 : (first ? 1 : -1));
+
+export default booleanMapOTSystem;
