@@ -57,7 +57,7 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
               <ListItemIcon>
                 <ChatIcon className={classes.accountIcon}/>
               </ListItemIcon>
-              <ListItemText primary="Create new document"/>
+              <ListItemText primary="Create Document"/>
             </ListItem>
             <ListItem button onClick={logout}>
               <ListItemIcon>

@@ -1,5 +1,5 @@
 import React, {useEffect} from 'react';
-import {withStyles} from '@material-ui/core';
+import {Paper, withStyles} from '@material-ui/core';
 import {getDifference} from './utils';
 import connectService from "../../common/connectService";
 import DocumentContext from "../../modules/document/DocumentContext";
@@ -9,7 +9,6 @@ function DocumentEditor(props) {
   let textInput = React.createRef();
 
   useEffect(() => {
-    textInput.blur();
     textInput.focus();
   }, [textInput]);
 
@@ -35,12 +34,14 @@ function DocumentEditor(props) {
   };
 
   return (
-    <textarea
-      className={props.classes.editor}
-      value={props.content}
-      onChange={onContentChange}
-      ref={input => textInput = input}
-    />
+    <Paper className={props.classes.paper}>
+      <textarea
+        className={props.classes.editor}
+        value={props.content}
+        onChange={onContentChange}
+        ref={input => textInput = input}
+      />
+    </Paper>
   );
 }
 

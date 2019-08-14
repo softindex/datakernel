@@ -79,7 +79,7 @@ class CreateDocumentDialog extends React.Component {
   onSubmit = event => {
     event.preventDefault();
 
-    if (this.state.activeStep === 0) {
+    if (this.state.activeStep === 0 && this.props.contacts.size !== 0) {
       this.setState({
         participants: new Set(),
         search: ''
@@ -121,12 +121,9 @@ class CreateDocumentDialog extends React.Component {
       >
         <form onSubmit={this.onSubmit}>
           <DialogTitle>
-            Create document
+            {this.state.activeStep === 0 ? 'Enter document name' : 'Choose document members'}
           </DialogTitle>
           <DialogContent>
-            <Typography className={classes.subTitleType}>
-              Type: {this.state.participants.size ? 'shared' : 'private'}
-            </Typography>
             {this.state.activeStep === 0 && (
               <TextField
                 required={true}
@@ -211,7 +208,7 @@ class CreateDocumentDialog extends React.Component {
                 color="primary"
                 variant="contained"
               >
-                Next
+                {this.props.contacts.size !== 0 ? 'Next' : 'Create'}
               </Button>
             )}
             {this.state.activeStep !== 0 && (
