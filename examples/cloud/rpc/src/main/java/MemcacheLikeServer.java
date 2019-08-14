@@ -15,10 +15,6 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.di.module.Modules.combine;
 
-/**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 06.08.19.
- */
 public class MemcacheLikeServer extends Launcher {
 
 	@Provides
@@ -27,10 +23,10 @@ public class MemcacheLikeServer extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
-				.with("memcache.buffers", "64")
-				.with("memcache.bufferCapacity", "128")
+				.with("memcache.buffers", "8")
+				.with("memcache.bufferCapacity", "512")
 				.with("server.listenAddresses", "localhost:8080")
-				.overrideWith(Config.ofProperties(System.getProperties()));
+				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Inject
