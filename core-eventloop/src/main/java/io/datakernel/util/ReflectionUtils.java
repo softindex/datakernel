@@ -402,4 +402,12 @@ public final class ReflectionUtils {
 		return value;
 	}
 
+	public static boolean isPrivateApiAvailable() {
+		try {
+			Class.forName("java.lang.Module");
+			return false;
+		} catch (ClassNotFoundException e) {
+			return true;
+		}
+	}
 }
