@@ -1,20 +1,69 @@
-<img src="http://datakernel.io/static/images/logo-icon.png">
+<p align="center">
+  <a href="https://datakernel.io" target="_blank">
+    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.png" width="409">
+  </a>
+</p>
 
 ## Introduction
 
-DataKernel is a full-featured **alternative Java framework** for efficient and scalable web, network and big data solutions.
-It is **event-driven** and **legacy-free**, featuring modern **high-level abstractions** and **DSLs**. Its **asynchronous** 
-architecture was **inspired by Node.js**. 
+DataKernel is a full-featured alternative Java framework for **efficient** and **scalable** solutions.
+Was inspired by Node.js.
 
-DataKernel main goal is to **free Java projects** from the frameworks which restrict developers with redundant standards and 
-boilerplates. Get a **true freedom** to express yourself as a developer - create projects and **concentrate on their 
-business logic instead of learning framework specifications**. 
+## Features
+
+- 🌞 Fully **asynchronous** modular framework combined with **exceptionally low** entry barrier.
+- 🚀 Magnificently **fast build** and **execution** of your applications with **extremely small** JAR size.
+- ❤️  Perfect choice for **microservice** applications.
+- 📗 A wide selection of application launchers. DataKernel **doesn't** use **application servers**!
+- 🔥 Contains full set of **elegant** data structures and tools with outstanding **performance**.
+- 🏎 Supports **HTTP, TCP, UDP** and **FTP** protocols; in love with **RPC, CSP** (inspired by Go) and **Datastreams**.
+- 💥 Has archetypes to support HTTP and RPC applications scaffolding with **minimal configuration**!
+- 🚨 User-friendly and detailed stacktraces.
+
+## Getting started
+
+Just insert this snippet to your terminal...
+
+```
+mvn archetype:generate \
+        -DarchetypeGroupId=io.datakernel                  \
+        -DarchetypeArtifactId=datakernel-http-archetype   \
+        -DarchetypeVersion=3.0.0-SNAPSHOT                 \
+        -DgroupId=org.example                             \
+        -DartifactId=dkapp                                \
+        -DmainClassName=MyFirstDkApp 
+```
+
+... and open project in your favourite IDE. Then, you can build and run the application and open browser on [localhost:8080](http://localhost:8080). 
+
+To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
+
+## Why DataKernel?
+
+**Best technologies**  
+DataKernel is legacy-free. Build application-specific embedded databases and high-performance HTTP/RPC servers using high-level abstractions, LSM-Tree, Operational Transformations, CRDT, Go-inspired CSP and other modern algorithms and technologies.
+
+**Explicit design**  
+There are no under-the-hood magic, endless XML configurations and dependency hell of third-party components glued together via layers of abstractions. DataKernel gives a full control over your applications.
+
+**Born to be async**  
+DataKernel allows you to create async web applications in a Node.js manner while preserving all of the Java advantages. We also use Node.js-inspired features, such as single-threaded async Promises and pool of event loops as the building blocks of our framework.
+
+**No overweight**  
+To achieve the lowest GC footprint possible, we’ve designed thoroughly optimized core modules - improved Java ByteBuffer ByteBuf, minimalistic Datastreams, stateless single-threaded Promises and also one of the fastest Serializers available nowadays.
+
+**Easy-to-use and flexible**  
+DataKernel has everything you need to create applications of different scales - from standalone high-performance async network solutions and HTTP web applications up to big-data cloud solutions and decentralized internet-wide applications.
+
+**Modern approach**  
+DataKernel has simple yet powerful set of abstractions with clean OOP design favoring Java 8+ functional programming style. It also radically downplays Dependency Injection role, giving way to your business logic instead.
+
+## DataKernel structure
 
 DataKernel consists of three modules:
  * [Core](https://datakernel.io/docs/core/) - building blocks of the framework and everything you need to create **asynchronous web applications**.
  * [Cloud](https://datakernel.io/docs/cloud/) - components for **decentralized cloud solutions** of different complexity.
  * [Global Cloud](https://datakernel.io/docs/global-cloud/) (coming soon) - components for **ultimately scalable**, decentralized, yet practical and high-performance **cloud solutions**.
 
-To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow [this](https://datakernel.io/docs/core/tutorials/getting-started) 
-5-minute getting-started guide. 
-
+## License
+Apache License 2.0
