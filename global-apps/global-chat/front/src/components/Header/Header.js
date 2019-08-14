@@ -13,7 +13,7 @@ import {getRoomName} from "../../common/utils";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import ProfileContext from "../../modules/profile/ProfileContext";
 
-function Header({classes, rooms, roomId, contacts, publicKey, profile}) {
+function Header({classes, rooms, roomId, names, publicKey, profile}) {
   const [openDrawer, setOpenDrawer] = useState(false);
 
   function onDrawerOpen() {
@@ -51,7 +51,7 @@ function Header({classes, rooms, roomId, contacts, publicKey, profile}) {
                 <ListItemIcon className={classes.listItemIcon}>
                   <ArrowIcon className={classes.arrowIcon}/>
                 </ListItemIcon>
-                {getRoomName(rooms.get(roomId).participants, contacts, publicKey, profile.name)}
+                {getRoomName(rooms.get(roomId).participants, names, publicKey, profile.name)}
               </Typography>
             )}
           </div>
@@ -66,7 +66,7 @@ export default connectService(RoomsContext, (
   {rooms}, roomsService) => ({rooms, roomsService})
 )(
   connectService(ContactsContext, (
-    {contacts}, contactsService) => ({contacts, contactsService})
+    {names}, contactsService) => ({names, contactsService})
   )(
     connectService(ProfileContext, ({profile, profileReady},) => ({
         profile, profileReady

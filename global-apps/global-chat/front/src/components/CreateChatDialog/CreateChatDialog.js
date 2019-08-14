@@ -221,13 +221,6 @@ class CreateChatDialog extends React.Component {
             )}
           </DialogContent>
           <DialogActions>
-            {/*<Button*/}
-            {/*  className={this.props.classes.actionButton}*/}
-            {/*  disabled={this.state.activeStep === 0}*/}
-            {/*  onClick={this.gotoStep.bind(this, this.state.activeStep - 1)}*/}
-            {/*>*/}
-            {/*  Back*/}
-            {/*</Button>*/}
             <Button
               className={this.props.classes.actionButton}
               onClick={this.onClose}

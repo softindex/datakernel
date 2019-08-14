@@ -63,6 +63,7 @@ class RoomItem extends React.Component {
 
   render() {
     const {classes, room, roomId} = this.props;
+    const contactsNames = !this.props.linkDisabled ? this.props.names : this.props.contacts;
     return (
       <>
         <ListItem
@@ -84,14 +85,14 @@ class RoomItem extends React.Component {
                 variant="dot"
               >
                 <Avatar className={classes.avatarContent}>
-                  {getAvatarLetters(getRoomName(room.participants, this.props.contacts,
+                  {getAvatarLetters(getRoomName(room.participants, contactsNames,
                     this.props.publicKey, this.props.myName)).toUpperCase()}
                   </Avatar>
               </Badge>
             </ListItemAvatar>
 
             <ListItemText
-              primary={getRoomName(room.participants, this.props.contacts, this.props.publicKey, this.props.myName)}
+              primary={getRoomName(room.participants, contactsNames, this.props.publicKey, this.props.myName)}
               className={classes.itemText}
               classes={{primary: classes.itemTextPrimary}}
             />

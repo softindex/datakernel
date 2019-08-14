@@ -33,6 +33,7 @@ class RoomsList extends React.Component {
                   room={room}
                   isContactsTab={this.props.isContactsTab}
                   contacts={this.props.contacts}
+                  names={this.props.names}
                   publicKey={this.props.publicKey}
                   onAddContact={this.props.onAddContact}
                   onRemoveContact={this.onRemoveContact.bind(this, room)}

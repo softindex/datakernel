@@ -1,8 +1,7 @@
 import Service from '../../common/Service';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
-import {wait, retry, createDialogRoomId} from '../../common/utils';
+import {wait, retry, createDialogRoomId, toEmoji} from '../../common/utils';
 import GlobalAppStoreAPI from "../../common/GlobalAppStoreAPI";
-import ProfileService from "../profile/ProfileService";
 import ProfilesService from "../profiles/ProfilesService";
 
 const RETRY_TIMEOUT = 1000;
@@ -11,8 +10,7 @@ class ContactsService extends Service {
   constructor(contactsOTStateManager, roomsOTStateManager, roomsService, globalAppStoreAPI, publicKey) {
     super({
       contacts: new Map(),
-      users: new Map(),
-      profiles: new Map(),
+      names: new Map(),
       contactsReady: false
     });
     this._myPublicKey = publicKey;
@@ -22,7 +20,6 @@ class ContactsService extends Service {
     this._globalAppStoreAPI = globalAppStoreAPI;
     this._contactsCheckoutPromise = null;
     this._roomsCheckoutPromise = null;
-    this._appStoreNamesPromise = null;
   }
 
   static createFrom(contactsOTStateManager, roomsOTStateManager, roomsService, publicKey) {
@@ -34,17 +31,11 @@ class ContactsService extends Service {
     this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
     this._roomsCheckoutPromise = retry(() => this._roomsOTStateManager.checkout(), RETRY_TIMEOUT);
 
-    const [, appStoreUsers] = await Promise.all([
+    await Promise.all([
       this._contactsCheckoutPromise,
       this._roomsCheckoutPromise.then(() => {
-        this._appStoreNamesPromise = retry(() => this._getAppStoreNames(), RETRY_TIMEOUT);
-        return this._appStoreNamesPromise;
       })
     ]);
-
-    this.setState({
-      users: appStoreUsers
-    });
 
     this._onStateChange();
 
@@ -55,21 +46,22 @@ class ContactsService extends Service {
   stop() {
     this._contactsCheckoutPromise.stop();
     this._roomsCheckoutPromise.stop();
-    this._appStoreNamesPromise.stop();
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async addContact(publicKey, alias) {
-    const operation = new ContactsOTOperation(publicKey, alias, false);
-    this._contactsOTStateManager.add([operation]);
+  async addContact(publicKey, alias = null) {
+    if (alias) {
+      const operation = new ContactsOTOperation(publicKey, alias, false);
+      this._contactsOTStateManager.add([operation]);
+    }
 
     await this._roomsService.createDialog(publicKey);
     await this._sync();
   }
 
-  async removeContact(publicKey, name) {
-    let operation = new ContactsOTOperation(publicKey, name, true);
+  async removeContact(publicKey, alias) {
+    let operation = new ContactsOTOperation(publicKey, alias, true);
     this._contactsOTStateManager.add([operation]);
 
     const roomId = createDialogRoomId(this._myPublicKey, publicKey);
@@ -77,28 +69,38 @@ class ContactsService extends Service {
     await this._sync();
   }
 
-  // async getChatProfileName(publicKey) {
-  //   const profilesService = ProfilesService.create(publicKey);
-  //   profilesService.init()
-  //     .catch(error => {
-  //       console.error(error);
-  //     });
-  //   return profilesService.getProfile();
-  // }
+  async _getChatProfileName(publicKey) {
+    const profilesService = ProfilesService.create(publicKey);
+    profilesService.init()
+      .catch(error => {
+        console.error(error);
+      });
+    return profilesService.getProfile();
+  }
 
   _getRooms() {
     return [...this._roomsOTStateManager.getState()]
   }
 
   _onStateChange = () => {
-    // TODO 1. Get actual rooms and contacts
-    // TODO 2. Collect publicKeys
-    // TODO 3. Check if resolved names
-
     this.setState({
       contacts: this._getContactsFromStateManager(),
       contactsReady: true
     });
+
+    let roomParticipants = new Set();
+    for (const [, {participants}] of this._getRooms()) {
+      participants
+        .filter(publicKey => publicKey !== this._myPublicKey)
+        .map(publicKey => roomParticipants.add(publicKey));
+    }
+
+    this._getNames(new Set([...roomParticipants]))
+      .then(names => {
+        this.setState({
+          names
+        });
+      })
   };
 
   _getContactsFromStateManager() {
@@ -112,21 +114,32 @@ class ContactsService extends Service {
     return this._globalAppStoreAPI.getUserByPublicKey(publicKey);
   }
 
-  async _getAppStoreNames() { // TODO set of publicKeys
-    const users = new Map(this.state.users);
+  async _getNames(publicKeys) {
+    const names = new Map(this.state.names);
 
-    for (const [, {participants}] of this._getRooms()) {
-      const usersPromises = participants
-        .filter(publicKey => publicKey !== this._myPublicKey)
-        .map(publicKey => {
-          return this._getUserByPublicKey(publicKey)
-            .then(user => users.set(publicKey, user));
-        });
+    for (const publicKey of publicKeys) {
+      if (this.state.contacts.has(publicKey)) {
+        names.set(publicKey, this.state.contacts.get(publicKey).name);
+        continue;
+      }
 
-      await Promise.all(usersPromises);
+      const userProfile = await this._getChatProfileName(publicKey);
+      if (Object.entries(userProfile).length !== 0 && userProfile.name !== '') {
+        names.set(publicKey, userProfile.name);
+        continue;
+      }
+
+      const user = await this._getUserByPublicKey(publicKey);
+      if (user !== null) {
+        const appStoreName = user.firstName !== null && user.lastName !== null ?
+          user.firstName + ' ' + user.lastName : user.username;
+        names.set(publicKey, appStoreName);
+      } else {
+        names.set(publicKey, toEmoji(publicKey, 3));
+      }
     }
 
-    return users;
+    return names;
   }
 
   async _sync() {

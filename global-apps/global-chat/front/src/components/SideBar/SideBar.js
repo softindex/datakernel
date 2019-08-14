@@ -77,8 +77,6 @@ class SideBar extends React.Component {
             .map(publicKey => {
               if (this.props.contacts.has(publicKey)) {
                 return this.props.contacts.get(publicKey).name
-              } else {
-                return toEmoji(publicKey, 3)
               }
             })
             .join(', ')).toLowerCase().includes(this.state.search.toLowerCase())) {
@@ -145,6 +143,7 @@ class SideBar extends React.Component {
           <RoomsList
             rooms={this.getFilteredRooms(this.sortContacts())}
             contacts={this.props.contacts}
+            names={this.props.names}
             roomsReady={this.props.roomsReady}
             onAddContact={this.props.addContact}
             onRemoveContact={this.props.removeContact}
@@ -225,10 +224,10 @@ export default withRouter(
   withSnackbar(
     withStyles(sideBarStyles)(
       connectService(
-        ContactsContext, ({contacts}, contactsService, props) => ({
-          contacts, contactsService,
-          addContact(contactPublicKey, name, isAppStoreName = false) {
-            contactsService.addContact(contactPublicKey, name, isAppStoreName)
+        ContactsContext, ({contacts, names}, contactsService, props) => ({
+          contacts, contactsService, names,
+          addContact(contactPublicKey, name) {
+            contactsService.addContact(contactPublicKey, name)
               .then(() => {
                 const roomId = createDialogRoomId(props.publicKey, contactPublicKey);
                 props.history.push(path.join('/room', roomId || ''));

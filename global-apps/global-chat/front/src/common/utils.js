@@ -101,18 +101,18 @@ export function retry(fn, delay) {
   return promise;
 }
 
-export function getRoomName(participants, contacts, myPublicKey, myName) {
+export function getRoomName(participants, names, myPublicKey, myName) {
   if (participants.length === 1) {
-    return myName;
+    return myName === '' ? 'Me' : myName;
   }
+
   return participants
     .filter(participantPublicKey => participantPublicKey !== myPublicKey)
     .map(publicKey => {
-      if (contacts.has(publicKey)) {
-        return contacts.get(publicKey).name
-      } else {
-        return toEmoji(publicKey, 3)
+      if (typeof names.get(publicKey) === 'object') {
+        return names.get(publicKey).name
       }
+      return names.get(publicKey)
     })
     .join(', ');
 }
