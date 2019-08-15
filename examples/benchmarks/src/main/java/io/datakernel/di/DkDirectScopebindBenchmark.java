@@ -16,8 +16,6 @@ import org.openjdk.jmh.runner.options.TimeValue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 26.07.19.
  * @since 3.0.0
  */
 @State(Scope.Benchmark)
@@ -260,7 +258,7 @@ public class DkDirectScopebindBenchmark {
 
 	@Benchmark
 	@OutputTimeUnit(value = TimeUnit.NANOSECONDS)
-	public void testMethod(Blackhole blackhole) {
+	public void measure(Blackhole blackhole) {
 		Kitchen kitchen = injector.getInstance(Kitchen.class);
 		for (int i = 0; i < arg; ++i) {
 			Injector subinjector = injector.enterScope(ORDER_SCOPE);

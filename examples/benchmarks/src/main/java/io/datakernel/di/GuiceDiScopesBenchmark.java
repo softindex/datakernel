@@ -313,7 +313,7 @@ public class GuiceDiScopesBenchmark {
 
     @Benchmark
     @OutputTimeUnit(value = TimeUnit.NANOSECONDS)
-    public void testMethod(Blackhole blackhole) {
+    public void measure(Blackhole blackhole) {
         Kitchen kitchen = injector.getInstance(Kitchen.class);
         for (int i = 0; i < arg; ++i) {
 			cb = injector.getInstance(CookieBucket.class);

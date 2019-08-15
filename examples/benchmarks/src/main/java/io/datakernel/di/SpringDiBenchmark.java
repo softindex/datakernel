@@ -16,8 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @Author is Alex Syrotenko (@pantokrator)
- * Created on 26.07.19.
+ * @since 3.0.0
  */
 @State(org.openjdk.jmh.annotations.Scope.Benchmark)
 @Configuration

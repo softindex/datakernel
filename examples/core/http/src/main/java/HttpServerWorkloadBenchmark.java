@@ -24,11 +24,12 @@ import static io.datakernel.di.module.Modules.combine;
 import static java.lang.Math.min;
 
 public class HttpServerWorkloadBenchmark extends Launcher {
+	private final static int KEEP_ALIVE = 30;
 	private final static int TOTAL_REQUESTS = 1_000_000;
 	private final static int WARMUP_ROUNDS = 3;
 	private final static int BENCHMARK_ROUNDS = 5;
-	private final static int ACTIVE_REQUESTS_MAX = 500;
-	private final static int ACTIVE_REQUESTS_MIN = 300;
+	private final static int ACTIVE_REQUESTS_MAX = 300;
+	private final static int ACTIVE_REQUESTS_MIN = 200;
 
 	private String address;
 	private int totalRequests;
@@ -72,7 +73,8 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	@Provides
 	AsyncHttpClient client() {
 		return AsyncHttpClient.create(clientEventloop)
-				.withKeepAliveTimeout(Duration.ofSeconds(Integer.parseInt(config.get("client.keepAlive"))));
+				.withKeepAliveTimeout(Duration.ofSeconds(config.get(ofInteger(),
+						"client.keepAlive", KEEP_ALIVE)));
 	}
 
 	@Provides
@@ -80,12 +82,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 		return Config.create()
 				.with("address", "0.0.0.0:9001")
 				.with("client.address", "http://127.0.0.1:9001/")
-				.with("client.keepAlive", "30")
-				.with("benchmark.totalRequests", "1000000")
-				.with("benchmark.warmupRounds", "3")
-				.with("benchmark.measureRounds", "5")
-				.with("benchmark.activeRequestsMax", "500")
-				.with("benchmark.activeRequestsMin", "300")
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 

@@ -28,9 +28,9 @@ import static java.lang.Math.min;
 
 public class MemcacheRpcBenchmark extends Launcher {
 	private final static int TOTAL_REQUESTS = 10_000_000;
-	private final static int WARMUP_ROUNDS = 2;
+	private final static int WARMUP_ROUNDS = 3;
 	private final static int BENCHMARK_ROUNDS = 10;
-	private final static int ACTIVE_REQUESTS_MAX = 2000;
+	private final static int ACTIVE_REQUESTS_MAX = 2500;
 	private final static int ACTIVE_REQUESTS_MIN = 2000;
 
 	private final static int NUMBER_BUFFERS = 4;
@@ -65,11 +65,6 @@ public class MemcacheRpcBenchmark extends Launcher {
 				.with("memcache.bufferCapacity", BUFFER_CAPACITY.format())
 				.with("server.listenAddresses", "localhost:8080")
 				.with("client.addresses", "localhost:8080")
-				.with("benchmark.totalRequests", "10000000")
-				.with("benchmark.warmupRounds", "3")
-				.with("benchmark.benchmarkRounds", "10")
-				.with("benchmark.activeRequestsMax", "2000")
-				.with("benchmark.activeRequestsMin", "2500")
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
