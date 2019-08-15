@@ -28,7 +28,7 @@ class ContactItem extends React.Component {
   }
 
   onClickAddContact = () => {
-    this.props.onAddContact(this.props.contactId);
+    this.props.onAddContact(this.props.contactId, this.getContactName());
     this.onCloseAddContactDialog();
   };
 

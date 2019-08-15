@@ -17,16 +17,13 @@ const sideBarStyles = theme => {
     },
     chatsList: {
       flexGrow: 1,
-      overflowY: 'auto',
+      overflowY: 'hidden',
+      '&:hover': {
+        overflowY: 'auto'
+      },
       background: theme.palette.primary.contrastText,
       marginTop: theme.spacing.unit,
-      marginBottom: theme.spacing.unit,
-      '&::-webkit-scrollbar-track': {
-        background: 'border-box'
-      },
-      '&::-webkit-scrollbar-thumb': {
-        background: theme.palette.secondary.grey
-      }
+      marginBottom: theme.spacing.unit
     },
     button: {
       width: theme.spacing.unit*41,

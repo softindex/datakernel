@@ -11,12 +11,9 @@ const messageFormStyles = theme => {
     },
     wrapper: {
       width: '100%',
-      overflowY: 'auto',
-      '&::-webkit-scrollbar-track': {
-        background: 'border-box'
-      },
-      '&::-webkit-scrollbar-thumb': {
-        background: theme.palette.secondary.grey
+      overflowY: 'hidden',
+      '&:hover': {
+        overflowY: 'auto'
       }
     },
     progressWrapper: {

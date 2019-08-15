@@ -48,11 +48,11 @@ class Messages extends React.Component {
                   text={message.content}
                   author={
                     message.authorPublicKey === publicKey ? '' :
-                      this.props.names.get(publicKey)
+                      this.props.names.get(message.authorPublicKey)
                   }
                   time={new Date(message.timestamp).toLocaleString()}
                   loaded={message.loaded}
-                  drawSide={(message.authorPublicKey === publicKey) ? 'left' : 'right'}
+                  drawSide={(message.authorPublicKey !== publicKey) ? 'left' : 'right'}
                   shape={shape}
                 />
               )
@@ -67,15 +67,15 @@ class Messages extends React.Component {
 export default withStyles(messagesStyles)(
   connectService(ContactsContext, (
     {names}, contactsService) => (
-      {contactsService, names })
+    {contactsService, names})
   )(
     connectService(RoomsContext, (
       {rooms}, roomsService) => (
-        {rooms, roomsService})
+      {rooms, roomsService})
     )(
       connectService(ChatRoomContext, (
         {messages, chatReady}) => (
-          {messages, chatReady})
+        {messages, chatReady})
       )(
         connectService(AccountContext, (
           {publicKey}) => ({publicKey})
