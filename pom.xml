@@ -298,6 +298,9 @@
                 <goals>
                   <goal>jar</goal>
                 </goals>
+                <configuration> <!-- add this to disable checking -->
+                  <additionalparam>-Xdoclint:none</additionalparam>
+                </configuration>
               </execution>
             </executions>
           </plugin>
@@ -349,7 +352,7 @@
         <module>global-fs</module>
         <module>global-kv</module>
         <module>global-pm</module>
-				<module>global-launchers</module>
+        <module>global-launchers</module>
         <module>global-apps</module>
       </modules>
     </profile>
