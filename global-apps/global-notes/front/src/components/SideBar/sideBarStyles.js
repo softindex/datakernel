@@ -12,7 +12,10 @@ const sideBarStyles = theme => ({
   },
   notesList: {
     flexGrow: 1,
-    overflowY: 'auto',
+    overflowY: 'hidden',
+    '&:hover': {
+      overflowY: 'auto'
+    },
     overflowX: 'hidden',
     background: theme.palette.primary.contrastText,
     marginTop: theme.spacing.unit,

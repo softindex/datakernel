@@ -1,7 +1,10 @@
 const commitsGraphStyles = theme => ({
   root: {
     height: '100vh',
-    overflow: 'auto',
+    overflowY: 'hidden',
+    '&:hover': {
+      overflowY: 'auto'
+    },
     background: theme.palette.common.white,
     display: 'flex',
     justifyContent: 'center',
