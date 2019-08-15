@@ -230,37 +230,34 @@ public abstract class HttpHeaderValue {
 
 	static final class HttpHeaderValueOfSetCookies extends HttpHeaderValue {
 		@NotNull
-		final List<HttpCookie> cookies;
+		final HttpCookie cookie;
 
-		HttpHeaderValueOfSetCookies(@NotNull List<HttpCookie> cookies) {
-			this.cookies = cookies;
+		HttpHeaderValueOfSetCookies(@NotNull HttpCookie cookie) {
+			this.cookie = cookie;
 		}
 
 		@Override
 		int estimateSize() {
 			int size = 0;
-			for (HttpCookie cookie : cookies) {
-				size += cookie.getName().length();
-				size += cookie.getValue() == null ? 0 : cookie.getValue().length() + 1;
-				size += cookie.getDomain() == null ? 0 : cookie.getDomain().length() + 10;
-				size += cookie.getPath() == null ? 0 : cookie.getPath().length() + 6;
-				size += cookie.getExtension() == null ? 0 : cookie.getExtension().length();
-				size += 102;
-			}
-			size += (cookies.size() - 1) * 2;
+			size += cookie.getName().length();
+			size += cookie.getValue() == null ? 0 : cookie.getValue().length() + 1;
+			size += cookie.getDomain() == null ? 0 : cookie.getDomain().length() + 10;
+			size += cookie.getPath() == null ? 0 : cookie.getPath().length() + 6;
+			size += cookie.getExtension() == null ? 0 : cookie.getExtension().length();
+			size += 102;
 			return size;
 		}
 
 		@Override
 		void writeTo(@NotNull ByteBuf buf) {
-			HttpCookie.renderFull(cookies, buf);
+			cookie.renderFull(buf);
 		}
 
 		@NotNull
 		@Override
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
-			HttpCookie.renderFull(cookies, buf);
+			cookie.renderFull(buf);
 			return ByteBufStrings.asAscii(buf);
 		}
 	}

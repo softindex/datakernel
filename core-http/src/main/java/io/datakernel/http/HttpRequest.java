@@ -38,6 +38,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents the HTTP request which {@link AsyncHttpClient} sends to
@@ -128,6 +129,11 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public void addCookies(@NotNull List<HttpCookie> cookies) {
 		assert !isRecycled();
 		headers.add(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
+	}
+
+	@Override
+	public void addCookie(@NotNull HttpCookie cookie) {
+		addCookies(singletonList(cookie));
 	}
 
 	@NotNull

@@ -31,6 +31,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.time.Month.JANUARY;
 import static java.time.ZoneOffset.UTC;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class HttpCookieTest {
@@ -94,7 +95,7 @@ public class HttpCookieTest {
 		String expected = "name1=value1; name2=value2; name3";
 
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
-		HttpCookie.renderSimple(Arrays.asList(cookie1, cookie2, cookie3), buf);
+		HttpCookie.renderSimple(asList(cookie1, cookie2, cookie3), buf);
 		assertEquals(expected, ByteBufStrings.asAscii(buf));
 	}
 
@@ -171,5 +172,12 @@ public class HttpCookieTest {
 		assertEquals(cookieName, cookie.getName());
 		assertEquals(cookieValue, cookie.getValue());
 		assertEquals("/", cookie.getPath());
+	}
+
+	@Test
+	public void testCommaDelimiter() {
+		HttpResponse response = HttpResponse.ofCode(200);
+		response.addCookies(asList(HttpCookie.of("key1", "value1"), HttpCookie.of("key2", "value2")));
+		assertEquals(2, response.getCookies().size());
 	}
 }

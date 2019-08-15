@@ -131,8 +131,14 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@Override
 	public void addCookies(@NotNull List<HttpCookie> cookies) {
-		assert !isRecycled();
-		headers.add(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookies));
+		for (HttpCookie cookie : cookies) {
+			addCookie(cookie);
+		}
+	}
+
+	@Override
+	public void addCookie(@NotNull HttpCookie cookie) {
+		headers.add(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookie));
 	}
 
 	@NotNull

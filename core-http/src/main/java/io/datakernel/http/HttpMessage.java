@@ -146,15 +146,13 @@ public abstract class HttpMessage {
 		return headerBuf != null ? headerBuf.getBuf() : null;
 	}
 
-	public abstract void addCookies(@NotNull List<HttpCookie> cookies);
-
 	public void addCookies(@NotNull HttpCookie... cookies) {
 		addCookies(Arrays.asList(cookies));
 	}
 
-	public void addCookie(@NotNull HttpCookie cookie) {
-		addCookies(Collections.singletonList(cookie));
-	}
+	public abstract void addCookies(@NotNull List<HttpCookie> cookies);
+
+	public abstract void addCookie(@NotNull HttpCookie cookie);
 
 	public void setBodyStream(@NotNull ChannelSupplier<ByteBuf> bodySupplier) {
 		this.bodyStream = bodySupplier;

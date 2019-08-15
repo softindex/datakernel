@@ -316,16 +316,6 @@ public final class HttpCookie {
 		}
 	}
 
-	static void renderFull(List<HttpCookie> cookies, ByteBuf buf) {
-		for (int i = 0; i < cookies.size(); i++) {
-			cookies.get(i).renderFull(buf);
-			if (i < cookies.size() - 1) {
-				buf.put((byte) ',');
-				buf.put((byte) ' ');
-			}
-		}
-	}
-
 	void renderFull(ByteBuf buf) {
 		putAscii(buf, name);
 		putAscii(buf, "=");
