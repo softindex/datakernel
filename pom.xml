@@ -64,6 +64,18 @@
     <connection>scm:git:git@github.com:softindex/datakernel.git</connection>
   </scm>
 
+  <developers>
+    <developer>
+      <id>dvolvach</id>
+      <name>Dmitry Volvach</name>
+      <email>dmitry@datakernel.io</email>
+      <roles>
+        <role>owner</role>
+        <role>developer</role>
+      </roles>
+    </developer>
+  </developers>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
