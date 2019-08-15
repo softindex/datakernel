@@ -6,19 +6,16 @@
 
 ## Introduction
 
-DataKernel is a full-featured alternative Java framework for **efficient** and **scalable** solutions.
-Was inspired by Node.js.
+DataKernel is a full-featured alternative Java framework, created from ground up for **efficient** and **scalable** solutions. Was inspired by Node.js.
 
 ## Features
 
-- 🌞 Fully **asynchronous** modular framework combined with **exceptionally low** entry barrier.
-- 🚀 Magnificently **fast build** and **execution** of your applications with **extremely small** JAR size.
-- ❤️  Perfect choice for **microservice** applications.
-- 📗 A wide selection of application launchers. DataKernel **doesn't** use **application servers**!
-- 🔥 Contains full set of **elegant** data structures and tools with outstanding **performance**.
-- 🏎 Supports **HTTP, TCP, UDP** and **FTP** protocols; in love with **RPC, CSP** (inspired by Go) and **Datastreams**.
-- 💥 Has archetypes to support HTTP and RPC applications scaffolding with **minimal configuration**!
-- 🚨 User-friendly and detailed stacktraces.
+- 🌞 Fully **asynchronous** modular framework; **exceptionally fast and simple** Dependency Injection.
+- 🚀 Magnificently **fast build** and **start-up times** of your applications with **extremely small** JAR sizes.
+- 📗 A wide selection of application launchers with **embedded servers**.
+- 🔥 Contains full set of **elegant** data structures and components with outstanding **performance**.
+- 🏎 Supports **HTTP, TCP, UDP** protocols; **microservice** architecture with **15M requests per second** per CPU core. 
+- 💥 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**.
 
 ## Getting started
 
