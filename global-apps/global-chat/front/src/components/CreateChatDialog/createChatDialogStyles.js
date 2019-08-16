@@ -1,23 +1,19 @@
 const createChatDialogStyles = theme => ({
-  wrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    flexGrow: 0,
-    flexShrink: 0,
-    width: theme.spacing.unit * 58
-  },
   dialogContent: {
     paddingBottom: theme.spacing.unit,
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 0
   },
   form: {
-   display: 'contents'
+    display: 'contents'
   },
   chip: {
     margin: theme.spacing.unit,
     marginBottom: theme.spacing.unit * 2,
     marginTop: 0,
-    width: theme.spacing.unit * 17,
+    width: theme.spacing.unit * 14,
     overflow: 'hidden'
   },
   actionButton: {
@@ -29,10 +25,7 @@ const createChatDialogStyles = theme => ({
     display: 'flex',
     flexFlow: 'row wrap',
     maxHeight: theme.spacing.unit * 12,
-    '&:hover': {
-      overflow: 'overlay'
-    },
-    overflow: 'hidden',
+    overflow: 'overlay'
   },
   chipText: {
     width: 'inherit',
@@ -92,7 +85,7 @@ const createChatDialogStyles = theme => ({
   },
   progressWrapper: {
     textAlign: 'center',
-    marginTop: theme.spacing.unit * 2
+    margin: theme.spacing.unit * 8
   },
   secondaryDividerText: {
     textAlign: 'center',

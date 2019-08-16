@@ -6,12 +6,14 @@ import MUDialog from '@material-ui/core/Dialog';
 import CircularProgress from "@material-ui/core/CircularProgress";
 import dialogStyles from "./dialogStyles";
 
-function Dialog({children, onClose, loading, classes, ...otherProps}) {
+function Dialog({children, onClose, loading, classes, maxWidth, ...otherProps}) {
   return (
     <MUDialog
       {...otherProps}
       onClose={onClose}
       classes={{paper: classes.muDialog}}
+      maxWidth={maxWidth}
+      fullWidth={maxWidth}
     >
       <IconButton
         className={classes.closeButton}

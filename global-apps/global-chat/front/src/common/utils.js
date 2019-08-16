@@ -118,6 +118,9 @@ export function getRoomName(participants, names, myPublicKey, myName) {
 }
 
 export function getAppStoreContactName(contact) {
+  if (contact === undefined) {
+    return;
+  }
   return contact.firstName !== '' && contact.lastName !== '' ?
     contact.firstName + ' ' + contact.lastName :
     contact.username

@@ -35,8 +35,7 @@ class CreateChatDialog extends React.Component {
 
   state = {
     participants: new Set(),
-    name: '',
-    activeStep: 1,
+    searchContacts: new Map(),
     loading: false,
     search: ''
   };
@@ -66,12 +65,6 @@ class CreateChatDialog extends React.Component {
         }))
   }
 
-  onNameChange = event => {
-    this.setState({
-      name: event.target.value
-    });
-  };
-
   onSearchChange = event => {
     this.setState({
       search: event.target.value
@@ -82,22 +75,18 @@ class CreateChatDialog extends React.Component {
     });
   };
 
-  gotoStep = nextStep => {
-    this.setState({
-      activeStep: nextStep
-    });
-  };
-
-  // changeScroll() {
-  //   if (this.chipContainer.current !== null) {
-  //     this.chipContainer.current.scrollTop = this.chipContainer.current.scrollHeight -
-  //       this.chipContainer.current.clientHeight;
-  //   }
-  // }
-
   onContactCheck(roomParticipants) {
     const pubKey = roomParticipants.find(publicKey => publicKey !== this.props.publicKey);
-    let participants = this.state.participants;
+    let searchContacts = this.state.searchContacts;
+    let participants = new Map(this.state.participants);
+
+    if (this.props.searchContacts. size !== 0) {
+      searchContacts.set(pubKey, this.props.searchContacts.get(pubKey));
+      this.setState({
+        searchContacts
+      });
+    }
+
     if (participants.has(pubKey)) {
       participants.delete(pubKey)
     } else {
@@ -111,8 +100,8 @@ class CreateChatDialog extends React.Component {
   onClose = () => {
     this.setState({
       participants: new Set(),
-      search: '',
-      name: ''
+      searchContacts: new Map(),
+      search: ''
     });
     this.props.onClose();
   };
@@ -120,27 +109,20 @@ class CreateChatDialog extends React.Component {
   onSubmit = event => {
     event.preventDefault();
 
-    if (this.state.activeStep === 0) {
-      this.setState({
-        participants: new Set(),
-        search: ''
-      });
-      this.gotoStep(this.state.activeStep + 1);
+    if (this.state.participants.size === 0) {
       return;
-    } else {
-      if (this.state.participants.size === 0) {
-        return;
-      }
     }
 
     this.setState({
       loading: true
     });
+
     [...this.state.participants].map((publicKey => {
       if (!this.props.contacts.has(publicKey)) {
         this.props.onAddContact(publicKey);
       }
     }));
+
     this.props.onCreateRoom([...this.state.participants]);
     this.props.onClose();
     this.setState({
@@ -158,162 +140,139 @@ class CreateChatDialog extends React.Component {
         open={this.props.open}
         onClose={this.onClose}
         loading={this.state.loading}
+        maxWidth='sm'
       >
         <form onSubmit={this.onSubmit} className={classes.form}>
           <DialogTitle onClose={this.props.onClose}>
-            {this.state.activeStep === 0 ? 'Create Group Chat' : 'Add Members'}
+            Add Members
           </DialogTitle>
           <DialogContent className={classes.dialogContent}>
-            {this.state.activeStep === 0 && (
-              <>
-                <DialogContentText>
-                  Chat name
-                </DialogContentText>
-                <TextField
-                  required={true}
-                  autoFocus
-                  value={this.state.name}
-                  disabled={this.state.loading}
-                  margin="normal"
-                  label="Enter"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  onChange={this.onNameChange}
+            <div className={classes.chipsContainer}>
+              {[...this.state.participants].map((pubKey) => (
+                <Chip
+                  color="primary"
+                  label={names.get(pubKey) || getAppStoreContactName(this.state.searchContacts.get(pubKey))}
+                  avatar={
+                    <Avatar>
+                      {getAvatarLetters(names.get(pubKey)) ||
+                      getAvatarLetters(getAppStoreContactName(this.state.searchContacts.get(pubKey)))}
+                    </Avatar>
+                  }
+                  onDelete={!this.state.loading && this.onContactCheck.bind(this, [pubKey])}
+                  className={classes.chip}
+                  classes={{
+                    label: classes.chipText
+                  }}
                 />
-              </>
-            )}
-            {this.state.activeStep > 0 && (
-              <div className={classes.wrapper}>
-                <div className={classes.chipsContainer} ref={this.chipContainer}>
-                  {[...this.state.participants].map((pubKey) => (
-                    <Chip
-                      color="primary"
-                      label={names.get(pubKey) || getAppStoreContactName(this.props.searchContacts.get(pubKey))}
-                      avatar={
-                        <Avatar>
-                          {getAvatarLetters(names.get(pubKey)) ||
-                          getAvatarLetters(getAppStoreContactName(this.props.searchContacts.get(pubKey)))
-                          }
-                        </Avatar>
-                      }
-                      onDelete={!this.state.loading && this.onContactCheck.bind(this, [pubKey])}
-                      className={classes.chip}
-                      classes={{
-                        label: classes.chipText
-                      }}
-                    />
-                  ))}
-                </div>
-                <Paper className={classes.search}>
-                  <IconButton
-                    className={classes.iconButton}
-                    disabled={true}
-                  >
-                    <SearchIcon/>
-                  </IconButton>
-                  <InputBase
-                    className={classes.inputDiv}
-                    placeholder="Search people..."
-                    autoFocus
-                    value={this.state.search}
-                    onChange={this.onSearchChange}
-                    classes={{input: classes.input}}
-                  />
-                </Paper>
-                <div className={classes.chatsList}>
-                  {[...this.getFilteredRooms(this.sortContacts())].length === 0 &&
-                  this.props.searchContacts.size === 0 && this.state.search !== '' && (
-                    <Typography
-                      className={classes.secondaryDividerText}
-                      color="textSecondary"
-                      variant="body1"
-                    >
-                      Nothing found
-                    </Typography>
+              ))}
+            </div>
+            <Paper className={classes.search}>
+              <IconButton
+                className={classes.iconButton}
+                disabled={true}
+              >
+                <SearchIcon/>
+              </IconButton>
+              <InputBase
+                className={classes.inputDiv}
+                placeholder="Search people..."
+                autoFocus
+                value={this.state.search}
+                onChange={this.onSearchChange}
+                classes={{input: classes.input}}
+              />
+            </Paper>
+            <div className={classes.chatsList}>
+              {[...this.getFilteredRooms(this.sortContacts())].length === 0 &&
+              this.props.searchContacts.size === 0 && this.state.search !== '' && (
+                <Typography
+                  className={classes.secondaryDividerText}
+                  color="textSecondary"
+                  variant="body1"
+                >
+                  Nothing found
+                </Typography>
+              )}
+              {([...this.getFilteredRooms(this.sortContacts())].length !== 0 ||
+                this.props.searchContacts.size !== 0) && (
+                <List subheader={<li/>}>
+                  {[...this.getFilteredRooms(this.sortContacts())].length !== 0 && (
+                    <li>
+                      <List className={classes.innerUl}>
+                        <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
+                        {[...this.getFilteredRooms(this.sortContacts())].map(([roomId, room]) =>
+                          <RoomItem
+                            roomId={roomId}
+                            room={room}
+                            selected={this.state.participants
+                              .has(room.participants.find(pubKey => pubKey !== this.props.publicKey))}
+                            roomSelected={false}
+                            onClick={!this.state.loading && this.onContactCheck.bind(this, room.participants)}
+                            contacts={this.props.names}
+                            publicKey={this.props.publicKey}
+                            linkDisabled={true}
+                          />
+                        )}
+                      </List>
+                    </li>
                   )}
-                  {([...this.getFilteredRooms(this.sortContacts())].length !== 0 ||
-                    this.props.searchContacts.size !== 0) && (
-                    <List subheader={<li/>}>
-                      {this.getFilteredRooms(this.sortContacts()) !== 0 && (
-                        <li>
-                          <ul className={classes.innerUl}>
-                            <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
-                            {[...this.getFilteredRooms(this.sortContacts())].map(([roomId, room]) =>
-                              <RoomItem
-                                roomId={roomId}
-                                room={room}
-                                selected={this.state.participants
-                                  .has(room.participants.find(pubKey => pubKey !== this.props.publicKey))}
-                                roomSelected={false}
-                                onClick={!this.state.loading && this.onContactCheck.bind(this, room.participants)}
-                                contacts={this.props.names}
-                                publicKey={this.props.publicKey}
-                                linkDisabled={true}
-                              />
+                  {this.state.search !== '' && (
+                    <li>
+                      <List className={classes.innerUl}>
+                        <ListSubheader className={classes.listSubheader}>People</ListSubheader>
+                        {!this.props.searchReady && this.props.error === undefined && (
+                          <Grow in={!this.props.searchReady}>
+                            <div className={this.props.classes.progressWrapper}>
+                              <CircularProgress/>
+                            </div>
+                          </Grow>
+                        )}
+                        {this.props.error !== undefined && (
+                          <Paper square className={classes.paperError}>
+                            <Typography className={classes.dividerText}>
+                              {this.props.error}
+                            </Typography>
+                          </Paper>
+                        )}
+                        {this.props.searchReady && (
+                          <>
+                            {this.props.searchContacts.size !== 0 && (
+                              <List>
+                                {[...this.props.searchContacts]
+                                  .filter(([publicKey,]) => publicKey !== this.props.publicKey)
+                                  .map(([publicKey, contact]) => (
+                                    <>
+                                      {!this.props.contacts.has(publicKey) && (
+                                        <ContactItem
+                                          contactId={publicKey}
+                                          contact={contact}
+                                          publicKey={this.props.publicKey}
+                                          onClick={!this.state.loading && this.onContactCheck
+                                            .bind(this, [publicKey, this.props.publicKey])}
+                                          selected={this.state.participants.has(publicKey)}
+                                        />
+                                      )}
+                                    </>
+                                  ))}
+                              </List>
                             )}
-                          </ul>
-                        </li>
-                      )}
-                      {this.state.search !== '' && (
-                        <li>
-                          <ul className={classes.innerUl}>
-                            <ListSubheader className={classes.listSubheader}>People</ListSubheader>
-                            {!this.props.searchReady && this.props.error === undefined && (
-                              <Grow in={!this.props.searchReady}>
-                                <div className={this.props.classes.progressWrapper}>
-                                  <CircularProgress/>
-                                </div>
-                              </Grow>
+                            {this.props.searchContacts.size === 0 && (
+                              <Typography
+                                className={classes.secondaryDividerText}
+                                color="textSecondary"
+                                variant="body1"
+                              >
+                                Nothing found
+                              </Typography>
                             )}
-                            {this.props.error !== undefined && (
-                              <Paper square className={classes.paperError}>
-                                <Typography className={classes.dividerText}>
-                                  {this.props.error}
-                                </Typography>
-                              </Paper>
-                            )}
-                            {this.props.searchReady && (
-                              <>
-                                {this.props.searchContacts.size !== 0 && (
-                                  <List>
-                                    {[...this.props.searchContacts]
-                                      .filter(([publicKey,]) => publicKey !== this.props.publicKey)
-                                      .map(([publicKey, contact]) => (
-                                        <>
-                                          {!this.props.contacts.has(publicKey) && (
-                                            <ContactItem
-                                              contactId={publicKey}
-                                              contact={contact}
-                                              publicKey={this.props.publicKey}
-                                              onClick={!this.state.loading && this.onContactCheck
-                                                .bind(this, [publicKey, this.props.publicKey])}
-                                              selected={this.state.participants.has(publicKey)}
-                                            />
-                                          )}
-                                        </>
-                                      ))}
-                                  </List>
-                                )}
-                                {this.props.searchContacts.size === 0 && (
-                                  <Typography
-                                    className={classes.secondaryDividerText}
-                                    color="textSecondary"
-                                    variant="body1"
-                                  >
-                                    Nothing found
-                                  </Typography>
-                                )}
-                              </>
-                            )}
-                          </ul>
-                        </li>
-                      )}
-                    </List>
+                          </>
+                        )}
+                      </List>
+                    </li>
                   )}
-                </div>
-              </div>
-            )}
+                </List>
+              )}
+            </div>
           </DialogContent>
           <DialogActions>
             <Button
@@ -322,28 +281,15 @@ class CreateChatDialog extends React.Component {
             >
               Close
             </Button>
-            {this.state.activeStep === 0 && (
-              <Button
-                className={this.props.classes.actionButton}
-                type="submit"
-                disabled={this.state.loading}
-                color="primary"
-                variant="contained"
-              >
-                Next
-              </Button>
-            )}
-            {this.state.activeStep !== 0 && (
-              <Button
-                className={this.props.classes.actionButton}
-                loading={this.state.loading}
-                type={"submit"}
-                color={"primary"}
-                variant={"contained"}
-              >
-                Create
-              </Button>
-            )}
+            <Button
+              className={this.props.classes.actionButton}
+              loading={this.state.loading}
+              type="submit"
+              color="primary"
+              variant="contained"
+            >
+              Create
+            </Button>
           </DialogActions>
         </form>
       </Dialog>
@@ -374,8 +320,8 @@ export default withRouter(
           RoomsContext,
           ({rooms}, roomsService, props) => ({
             rooms,
-            onCreateRoom(name, participants) {
-              roomsService.createRoom(name, participants)
+            onCreateRoom(participants) {
+              roomsService.createRoom(participants)
                 .then(roomId => {
                   props.history.push(path.join('/room', roomId || ''));
                 })
