@@ -24,9 +24,4 @@
             </includes>
         </fileSet>
     </fileSets>
-    <requiredProperties>
-        <requiredProperty key="mainClassName">
-            <defaultValue>MyDkRPCApp</defaultValue>
-        </requiredProperty>
-    </requiredProperties>
 </archetype-descriptor>
