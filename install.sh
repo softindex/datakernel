@@ -1,3 +1,3 @@
 #!/bin/bash
 
-mvn clean install -P-examples -DskipTests=true
+mvn clean install -P-examples -DskipTests

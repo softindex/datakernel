@@ -6,16 +6,18 @@
 
 ## Introduction
 
-DataKernel is a full-featured alternative Java framework, created from ground up for **efficient** and **scalable** solutions. Was inspired by Node.js.
+DataKernel is a full-featured alternative Java framework, created from ground up for **efficient** and **scalable** solutions.
 
 ## Features
 
-- 🌞 Fully **asynchronous** modular framework; **exceptionally fast and simple** Dependency Injection.
-- 🚀 Magnificently **fast build** and **start-up times** of your applications with **extremely small** JAR sizes.
-- 📗 A wide selection of application launchers with **embedded servers**.
-- 🔥 Contains full set of **elegant** data structures and components with outstanding **performance**.
-- 🏎 Supports **HTTP, TCP, UDP** protocols; **microservice** architecture with **15M requests per second** per CPU core. 
-- 💥 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**.
+- 💕 Fully **asynchronous** modular framework
+- 🧩 **Exceptionally fast, powerful and simple** Dependency Injection
+- ⏱ Magnificently **fast build** and **start-up times** of your applications with **extremely small** JAR sizes
+- 🚀 A wide selection of application launchers and **embedded servers**
+- ⚙️ **Elegant** data structures and components with outstanding **performance**
+- 🌍 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
+- 🏎 Scalable and fault-tolerant **microservice** architecture with ultra-fast binary messaging 
+- 📖 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**
 
 ## Getting started
 
@@ -25,7 +27,7 @@ Just insert this snippet to your terminal...
 mvn archetype:generate \
         -DarchetypeGroupId=io.datakernel                  \
         -DarchetypeArtifactId=datakernel-http-archetype   \
-        -DarchetypeVersion=3.0.0-SNAPSHOT                 \
+        -DarchetypeVersion=3.0.0-beta1                    \
         -DgroupId=org.example                             \
         -DartifactId=dkapp                                \
         -DmainClassName=MyFirstDkApp 
