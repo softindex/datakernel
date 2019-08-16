@@ -12,7 +12,7 @@
     </parent>
 
     <name>Simple HTTP DataKernel App Archetype</name>
-    <artifactId>datakernel-http-archetype</artifactId>
+    <artifactId>http-archetype</artifactId>
     <packaging>maven-archetype</packaging>
 
     <build>
