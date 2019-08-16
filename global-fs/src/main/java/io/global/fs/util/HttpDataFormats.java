@@ -25,6 +25,7 @@ import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.http.*;
+import io.datakernel.http.MultipartParser.MultipartDataHandler;
 import io.datakernel.util.Tuple1;
 
 import java.util.function.BiFunction;
@@ -58,14 +59,14 @@ public final class HttpDataFormats {
 			long offset = parseOffset(request);
 			long revision = parseRevision(request);
 
-			return request.getFiles(name ->
+			return request.handleMultipart(MultipartDataHandler.file(name ->
 					uploader.upload(name, offset, revision)
 							.then(consumer -> {
 								if (!(consumer instanceof RecyclingChannelConsumer)) {
 									return Promise.of(consumer);
 								}
 								return Promise.ofException(REVISION_NOT_HIGH_ENOUGH);
-							}))
+							})))
 					.mapEx(errorHandler());
 		} catch (ParseException e) {
 			return Promise.ofException(HttpException.ofCode(400, e));

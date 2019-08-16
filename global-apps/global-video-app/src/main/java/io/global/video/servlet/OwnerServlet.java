@@ -3,7 +3,9 @@ package io.global.video.servlet;
 import com.github.mustachejava.Mustache;
 import com.github.mustachejava.MustacheFactory;
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.http.*;
 import io.global.common.PrivKey;
 import io.global.ot.service.ContainerHolder;
@@ -11,11 +13,15 @@ import io.global.video.container.VideoUserContainer;
 import io.global.video.dao.VideoDao;
 import io.global.video.pojo.VideoMetadata;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.http.MultipartParser.MultipartDataHandler.fieldsToMap;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.map;
-import static io.global.video.Utils.templated;
+import static io.global.video.Utils.*;
+import static io.global.video.dao.VideoDao.VIDEO_ID_LENGTH;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
@@ -69,7 +75,7 @@ public final class OwnerServlet {
 				// endregion
 
 				// region API
-				.map(HttpMethod.GET, "/watch/:videoId", request -> {
+				.map(HttpMethod.GET, "/:videoId/watch", request -> {
 					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
 					String videoId = request.getPathParameter("videoId");
 
@@ -93,7 +99,7 @@ public final class OwnerServlet {
 					return videoDao.loadThumbnail(videoId)
 							.mapEx((thumbnailStream, e) -> {
 								if (e == FILE_NOT_FOUND) {
-									return HttpResponse.redirect302("https://via.placeholder.com/150C");
+									return HttpResponse.redirect302("/no-thumbnail");
 								}
 								return HttpResponse.ok200()
 										.withBodyStream(thumbnailStream);
@@ -101,34 +107,49 @@ public final class OwnerServlet {
 				})
 				.map(HttpMethod.POST, "/upload", request -> {
 					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+					String videoId = generateBase62(VIDEO_ID_LENGTH);
+					Map<String, String> fields = new HashMap<>();
 					return request
-							.getFiles(videoDao.uploadVideo())
+							.handleMultipart(fieldsToMap(fields, (fieldName, fileName) -> {
+								switch (fieldName) {
+									case "video":
+										if (fileName.isEmpty()) {
+											return Promise.ofException(new StacklessException(OwnerServlet.class, "Video file is required"));
+										}
+										return videoDao.uploadVideo(videoId, getFileExtension(fileName));
+									case "thumbnail":
+										if (fileName.isEmpty()) {
+											return Promise.of(ChannelConsumers.recycling());
+										}
+										return videoDao.uploadThumbnail(videoId, getFileExtension(fileName));
+									default:
+										return Promise.ofException(new StacklessException(OwnerServlet.class, "Unsupported file field"));
+								}
+							}))
+							.then($ -> {
+								if (fields.isEmpty()) {
+									return Promise.complete();
+								}
+								return extractMetadata(fields)
+										.then(metadata -> videoDao.setMetadata(videoId, metadata));
+							})
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, "/update/:videoId", request -> {
+				.map(HttpMethod.POST, "/:videoId/update", request -> {
 					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
 					String videoId = request.getPathParameter("videoId");
-					String title = request.getPostParameter("title");
-					String description = request.getPostParameter("description");
-					if (title == null || description == null) {
-						return Promise.ofException(HttpException.ofCode(400, "'title' and 'description' parameters are required"));
-					}
 
-					if (title.isEmpty()) {
-						return Promise.ofException(HttpException.ofCode(400, "Title cannot be empty"));
-					}
-
-					return videoDao.getFileMetadata(videoId)
-							.then(metadata -> videoDao.setMetadata(videoId, new VideoMetadata(title, description)))
+					return extractMetadata(request.getPostParameters())
+							.then(metadata -> videoDao.setMetadata(videoId, metadata))
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, "/deleteMetadata/:videoId", request -> {
+				.map(HttpMethod.POST, "/:videoId/deleteMetadata/", request -> {
 					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
 					String videoId = request.getPathParameter("videoId");
 					return videoDao.removeMetadata(videoId)
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, "/delete/:videoId", request -> {
+				.map(HttpMethod.POST, ":videoId/delete", request -> {
 					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
 					String videoId = request.getPathParameter("videoId");
 					return videoDao.removeVideo(videoId)
@@ -159,6 +180,21 @@ public final class OwnerServlet {
 				})
 				// endregion
 				.then(ensureContainerDecorator(containerHolder));
+	}
+
+	private static Promise<VideoMetadata> extractMetadata(Map<String, String> params) {
+		String title = params.get("title");
+		String description = params.get("description");
+
+		if (title == null || description == null) {
+			return Promise.ofException(HttpException.ofCode(400, "'title' and 'description' parameters are required"));
+		}
+
+		if (title.isEmpty()) {
+			return Promise.ofException(HttpException.ofCode(400, "Title cannot be empty"));
+		}
+
+		return Promise.of(new VideoMetadata(title, description));
 	}
 
 	private static AsyncServletDecorator ensureContainerDecorator(ContainerHolder<VideoUserContainer> containerHolder) {

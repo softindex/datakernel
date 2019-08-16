@@ -106,7 +106,8 @@ public final class GlobalVideoModule extends AbstractModule {
 
 	@Provides
 	StaticLoader staticLoader(Executor executor) {
-		return StaticLoader.ofPath(executor, Paths.get("static/files"));
+		return StaticLoader.ofPath(executor, Paths.get("static/files"))
+				.map(resource -> "no-thumbnail".equals(resource) ? "no_thumbnail.png" : resource);
 	}
 
 	@Provides

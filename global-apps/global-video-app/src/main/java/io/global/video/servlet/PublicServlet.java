@@ -13,8 +13,10 @@ import io.global.video.pojo.UserId;
 
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.Utils.nullToEmpty;
+import static io.global.video.Utils.redirect;
 import static io.global.video.Utils.templated;
 import static io.global.video.pojo.AuthService.DK_APP_STORE;
 
@@ -87,8 +89,13 @@ public final class PublicServlet {
 									return Promise.<HttpResponse>ofException(HttpException.notFound404());
 								}
 								return videoDao.loadThumbnail(videoId)
-										.map(thumbnailStream -> HttpResponse.ok200()
-												.withBodyStream(thumbnailStream));
+										.mapEx((thumbnailStream, e) -> {
+											if (e == FILE_NOT_FOUND) {
+												return HttpResponse.redirect302("/no-thumbnail");
+											}
+											return HttpResponse.ok200()
+													.withBodyStream(thumbnailStream);
+										});
 							});
 				})
 				.map(POST, "/:videoId/addComment", request -> {
@@ -109,7 +116,7 @@ public final class PublicServlet {
 							})
 							.map($ -> {
 								String pubKey = request.getPathParameter("pubKey");
-								return HttpResponse.redirect302("/" + pubKey + "/" + videoId + "/");
+								return redirect(request, "/user/" + pubKey + "/" + videoId + "/");
 							});
 				})
 				// endregion

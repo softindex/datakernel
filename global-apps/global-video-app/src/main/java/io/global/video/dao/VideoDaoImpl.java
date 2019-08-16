@@ -4,15 +4,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.ref.RefByte;
 import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOperation;
 import io.global.video.ot.VideosState;
@@ -22,14 +19,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.global.ot.map.SetValue.set;
-import static io.global.video.Utils.generateBase62;
 
 public final class VideoDaoImpl implements VideoDao {
-	private static final int VIDEO_ID_LENGTH = ApplicationSettings.getInt(VideoDaoImpl.class, "videoIdLength", 10);
 	private static final Set<String> ACCEPTED_VIDEO_EXTENSIONS = CollectionUtils.set("mp4");
 	private static final Set<String> ACCEPTED_THUMBNAIL_EXTENSIONS = CollectionUtils.set("png", "jpg", "jpeg");
 	private static final StacklessException UNSUPPORTED_VIDEO_EXTENSION = new StacklessException(VideoDaoImpl.class, "Unsupported video extension");
@@ -72,26 +66,11 @@ public final class VideoDaoImpl implements VideoDao {
 	}
 
 	@Override
-	public Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploadVideo() {
-		RefByte refByte = new RefByte((byte) 0);
-		String videoId = generateBase62(VIDEO_ID_LENGTH);
-		return filename -> {
-			if (filename.isEmpty()) {
-				return Promise.of(ChannelConsumers.recycling());
-			}
-			switch (refByte.value++) {
-				case 0:
-					String extension = getFileExtension(filename);
-					if (!ACCEPTED_VIDEO_EXTENSIONS.contains(extension)) {
-						return Promise.ofException(UNSUPPORTED_VIDEO_EXTENSION);
-					}
-					return fsClient.upload(videoId + "/video." + extension);
-				case 1:
-					return uploadThumbnail(videoId, filename);
-				default:
-					return Promise.ofException(new StacklessException("Unexpected file: " + filename));
-			}
-		};
+	public Promise<ChannelConsumer<ByteBuf>> uploadVideo(String videoId, @Nullable String extension) {
+		if (!ACCEPTED_VIDEO_EXTENSIONS.contains(extension)) {
+			return Promise.ofException(UNSUPPORTED_VIDEO_EXTENSION);
+		}
+		return fsClient.upload(videoId + "/video." + extension);
 	}
 
 	@Override
@@ -107,8 +86,7 @@ public final class VideoDaoImpl implements VideoDao {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> uploadThumbnail(String videoId, String filename) {
-		String extension = getFileExtension(filename);
+	public Promise<ChannelConsumer<ByteBuf>> uploadThumbnail(String videoId, @Nullable String extension) {
 		if (!ACCEPTED_THUMBNAIL_EXTENSIONS.contains(extension)) {
 			return Promise.ofException(UNSUPPORTED_THUMBNAIL_EXTENSION);
 		}
@@ -150,11 +128,4 @@ public final class VideoDaoImpl implements VideoDao {
 						}));
 	}
 
-	@Nullable
-	private static String getFileExtension(String filename) {
-		if (filename.lastIndexOf(".") != -1 && filename.lastIndexOf(".") != 0) {
-			return filename.substring(filename.lastIndexOf(".") + 1);
-		}
-		return null;
-	}
 }

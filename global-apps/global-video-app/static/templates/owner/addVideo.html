@@ -24,6 +24,8 @@
       background-color: #dddddd;
     }
 
+
+
   </style>
 </head>
 
@@ -32,8 +34,14 @@
 
 <div>
   <form action="upload" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" id="file">
-    <input type="file" name="thumbnail" id="thumbnail">
+    <label for="title">Title: </label>
+    <input type="text" name="title" id="title" required><br>
+    <label for="description">Description: </label>
+    <textarea name="description" id="description">Enter description</textarea><br>
+    <label for="video">Select video to upload</label>
+    <input type="file" name="video" id="video" required><br>
+    <label for="thumbnail">Select thumbnail (optional)</label>
+    <input type="file" name="thumbnail" id="thumbnail"><br>
     <input type="submit" value="Submit">
   </form>
 </div>

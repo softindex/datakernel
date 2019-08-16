@@ -2,6 +2,7 @@ package io.global.video;
 
 import com.github.mustachejava.Mustache;
 import io.datakernel.http.ContentType;
+import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MediaTypes;
 import io.datakernel.ot.OTSystem;
@@ -10,6 +11,7 @@ import io.global.ot.map.MapOTSystem;
 import io.global.ot.map.MapOperation;
 import io.global.video.pojo.Comment;
 import io.global.video.pojo.VideoMetadata;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -17,6 +19,7 @@ import java.util.Random;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
+import static io.datakernel.http.HttpHeaders.REFERER;
 
 public final class Utils {
 	private Utils() {
@@ -71,4 +74,18 @@ public final class Utils {
 	public static HttpResponse templated(Mustache mustache) {
 		return templated(mustache, null);
 	}
+
+	@Nullable
+	public static String getFileExtension(String filename) {
+		if (filename.lastIndexOf(".") != -1 && filename.lastIndexOf(".") != 0) {
+			return filename.substring(filename.lastIndexOf(".") + 1);
+		}
+		return null;
+	}
+
+	public static HttpResponse redirect(HttpRequest request, @NotNull String to) {
+		String referer = request.getHeader(REFERER);
+		return HttpResponse.redirect302(referer == null ? to : referer);
+	}
+
 }

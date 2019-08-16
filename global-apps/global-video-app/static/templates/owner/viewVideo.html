@@ -11,7 +11,7 @@
 
 <div>
   <video width="640" height="480" controls>
-    <source src="/myChannel/watch/{{videoId}}">
+    <source src="/myChannel/{{videoId}}/watch/">
   </video>
   {{#metadata}}
   <h3>Edit metadata</h3>
@@ -21,7 +21,7 @@
   <h3>Add title to make video public</h3>
   {{/metadata}}
 
-  <form method="post" action="update/{{videoId}}">
+  <form method="post" action="/myChannel/{{videoId}}/update">
     <label for="title">Title:</label>
     <input id="title" type="text" name="title" value="{{metadata.title}}" required><br>
     <label for="description">Description:</label>
@@ -40,7 +40,7 @@
     <h4>Content: {{content}}</h4>
     <h5>Commented on: {{timestamp}}</h5>
     {{/value}}
-    <form action="deleteComment" method="post">
+    <form action="/myChannel/{{videoId}}/deleteComment" method="post">
       <button type="submit" name="commentId" value="{{key}}">Delete comment</button>
     </form>
   </div>

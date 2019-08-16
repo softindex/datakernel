@@ -30,11 +30,11 @@
     {{#public}}
     <img width="128" height="72" src="/myChannel/{{key}}/thumbnail">
     <h3>Title: {{value.title}}</h3>
-    <a href="/myChannel/{{key}}/">Go to video</a>
-    <form action="myChannel/deleteMetadata/{{key}}" method="post">
+    <a href="/myChannel/{{key}}">Go to video</a>
+    <form action="myChannel/{{key}}/deleteMetadata" method="post">
       <button type="submit">Delete Metadata</button>
     </form>
-    <form action="myChannel/delete/{{key}}" method="post">
+    <form action="myChannel/{{key}}/delete" method="post">
       <button type="submit">Delete video</button>
     </form>
     {{/public}}
@@ -51,7 +51,7 @@
       <img width="128" height="72" src="/myChannel/{{.}}/thumbnail">
       <h3>Video Id: {{.}}</h3>
       <a href="/myChannel/{{.}}">Go to video</a>
-      <form action="myChannel/delete/{{.}}" method="post">
+      <form action="myChannel/{{.}}/delete" method="post">
         <button type="submit">Delete video</button>
       </form>
     </div>

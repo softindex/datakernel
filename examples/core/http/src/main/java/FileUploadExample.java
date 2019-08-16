@@ -3,6 +3,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.http.MultipartParser.MultipartDataHandler;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
@@ -36,7 +37,7 @@ public final class FileUploadExample extends HttpServerLauncher {
 				.map(GET, "/*", StaticServlet.ofClassPath(executor, "static/multipart/")
 						.withIndexHtml())
 				.map(POST, "/test", request ->
-						request.getFiles(name -> ChannelFileWriter.open(executor, path.resolve(name)))
+						request.handleMultipart(MultipartDataHandler.file((fileName) -> ChannelFileWriter.open(executor, path.resolve(fileName))))
 								.map($ -> HttpResponse.ok200().withPlainText("Upload successful")));
 	}
 	//[END EXAMPLE]
