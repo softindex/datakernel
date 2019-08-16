@@ -3,7 +3,7 @@ const commitsGraphStyles = theme => ({
     height: '100vh',
     overflowY: 'hidden',
     '&:hover': {
-      overflowY: 'auto'
+      overflowY: 'overlay'
     },
     background: theme.palette.common.white,
     display: 'flex',

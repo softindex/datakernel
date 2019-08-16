@@ -3,7 +3,7 @@ const notesListStyles = theme => ({
     height: '100vh',
     overflowY: 'hidden',
     '&:hover': {
-      overflowY: 'auto'
+      overflowY: 'overlay'
     },
     '&::-webkit-scrollbar-track': {
       background: 'border-box'

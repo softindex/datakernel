@@ -11,7 +11,7 @@ const noteEditorStyles = theme => ({
     borderStyle: 'none',
     overflowY: 'hidden',
     '&:hover': {
-      overflowY: 'auto'
+      overflowY: 'overlay'
     }
   },
   paper: {
