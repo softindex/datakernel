@@ -34,6 +34,7 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
+import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
@@ -46,6 +47,7 @@ import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.GlobalKvNodeImpl;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvStorage;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
@@ -64,6 +66,7 @@ import io.global.pm.http.GlobalPmNodeServlet;
 import io.global.pm.http.HttpGlobalPmNode;
 
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -106,13 +109,15 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
-		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
+	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService,
+			Function<RawServerId, GlobalKvNode> nodeFactory, BiFunction<PubKey, String, KvStorage> storageFactory) {
+		return GlobalKvNodeImpl.create(serverId, discoveryService, nodeFactory, storageFactory)
 				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
 	}
 
 	@Provides
-	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
+	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory,
+			MessageStorage storage) {
 		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
 				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
@@ -238,6 +243,11 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
+	}
+
+	@Provides
+	BiFunction<PubKey, String, KvStorage> kvStorageFactory() {
+		return (pubKey, s) -> new RuntimeKvStorageStub();
 	}
 
 	@Provides

@@ -243,7 +243,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (buf != null) {
 			writeBuf(buf);
 		} else {
-			writeHttpMessageAsChunkedStream(request);
+			writeHttpMessageAsStream(request);
 		}
 		request.recycle();
 		if (!isClosed()) {

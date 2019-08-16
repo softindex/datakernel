@@ -15,7 +15,6 @@ import java.util.List;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static io.datakernel.http.HttpHeaders.RANGE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MediaTypes.JSON;
@@ -64,12 +63,14 @@ public final class GlobalFsDriverServlet {
 								.then(meta -> {
 									if (meta != null) {
 										try {
-											return Promise.of((request.getHeader(RANGE) == null ? HttpResponse.ok200() : HttpResponse.ok206())
-													.withFile(request, (offset, limit) ->
-															driver.download(space, name, offset, limit)
-																	.map(supplier -> supplier
-																			.transformWith(CipherTransformer.create(simKey,
-																					CryptoUtils.nonceFromString(name), offset))), name, meta.getPosition()));
+											return Promise.of(HttpResponse.file(
+													(offset, limit) -> driver.download(space, name, offset, limit)
+															.map(supplier -> supplier
+																	.transformWith(CipherTransformer.create(simKey,
+																			CryptoUtils.nonceFromString(name), offset))),
+													name,
+													meta.getPosition(),
+													request.getHeader(HttpHeaders.RANGE)));
 										} catch (HttpException e) {
 											return Promise.<HttpResponse>ofException(e);
 										}

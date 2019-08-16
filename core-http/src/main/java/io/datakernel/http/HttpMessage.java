@@ -50,10 +50,11 @@ public abstract class HttpMessage {
 	 */
 	static final byte MUST_LOAD_BODY = 1 << 0;
 	/**
-	 * This flag means that the DEFLATE complession algorithm will be used
+	 * This flag means that the DEFLATE compression algorithm will be used
 	 * to compress/decompress the body of this message.
 	 */
 	static final byte USE_GZIP = 1 << 1;
+
 	/**
 	 * This flag means that the body was already recycled and is not accessible.
 	 * It is mostly used in assertions.
@@ -99,7 +100,7 @@ public abstract class HttpMessage {
 
 	public void addHeader(@NotNull HttpHeader header, @NotNull byte[] array, int off, int len) {
 		assert !isRecycled();
-		headers.add(header, HttpHeaderValue.ofBytes(array, off, len));
+		addHeader(header, HttpHeaderValue.ofBytes(array, off, len));
 	}
 
 	public void addHeader(@NotNull HttpHeader header, @NotNull HttpHeaderValue value) {

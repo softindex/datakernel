@@ -108,6 +108,65 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	public static HttpResponse notFound404() {
 		return new HttpResponse(404);
 	}
+
+	@NotNull
+	public static HttpResponse file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader) throws HttpException {
+		HttpResponse response = rangeHeader == null ? HttpResponse.ok200() : HttpResponse.ok206();
+
+		String localName = name.substring(name.lastIndexOf('/') + 1);
+		MediaType mediaType = MediaTypes.getByExtension(localName.substring(localName.lastIndexOf('.') + 1));
+		if (mediaType == null) {
+			mediaType = OCTET_STREAM;
+		}
+
+		response.addHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(mediaType)));
+		response.addHeader(ACCEPT_RANGES, "bytes");
+		response.addHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"");
+
+		long contentLength, offset;
+		if (rangeHeader != null) {
+			if (!rangeHeader.startsWith("bytes=")) {
+				throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
+			}
+			rangeHeader = rangeHeader.substring(6);
+			if (!rangeHeader.matches("(\\d+)?-(\\d+)?")) {
+				throw HttpException.ofCode(416, "Only single part ranges are allowed");
+			}
+			String[] parts = rangeHeader.split("-", 2);
+			long endOffset;
+			if (!parts[0].isEmpty()) {
+				if (parts[1].isEmpty()) {
+					offset = Long.parseLong(parts[0]);
+					endOffset = size - 1;
+				} else {
+					offset = Long.parseLong(parts[0]);
+					endOffset = Long.parseLong(parts[1]);
+				}
+			} else {
+				if (parts[1].isEmpty()) {
+					throw HttpException.ofCode(416, "Invalid range");
+				}
+				offset = size - Long.parseLong(parts[1]);
+				endOffset = size;
+			}
+			if (endOffset != -1 && offset > endOffset) {
+				throw HttpException.ofCode(416, "Invalid range");
+			}
+			contentLength = endOffset - offset + 1;
+			response.addHeader(CONTENT_RANGE, "bytes " + offset + "-" + endOffset + "/" + size);
+		} else {
+			contentLength = size;
+			offset = 0;
+		}
+		response.addHeader(CONTENT_LENGTH, Long.toString(contentLength));
+		response.setBodyStream(ChannelSupplier.ofPromise(downloader.getFileSlice(offset, contentLength)));
+		return response;
+	}
+
+	@NotNull
+	public static HttpResponse file(FileSliceSupplier downloader, String name, long size) throws HttpException {
+		return file(downloader, name, size, null);
+	}
 	// endregion
 
 	// region common builder methods
@@ -138,7 +197,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@Override
 	public void addCookie(@NotNull HttpCookie cookie) {
-		headers.add(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookie));
+		addHeader(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookie));
 	}
 
 	@NotNull
@@ -202,61 +261,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	@FunctionalInterface
-	public interface HttpDownloader {
+	public interface FileSliceSupplier {
 
-		Promise<? extends ChannelSupplier<ByteBuf>> download(long offset, long limit);
-	}
-
-	public HttpResponse withFile(HttpRequest request, HttpDownloader downloader, String name, long size) throws HttpException {
-		String localName = name.substring(name.lastIndexOf('/') + 1);
-		String headerRange = request.getHeader(RANGE);
-		MediaType mediaType = MediaTypes.getByExtension(localName.substring(localName.lastIndexOf('.') + 1));
-		if (mediaType == null) {
-			mediaType = OCTET_STREAM;
-		}
-		HttpHeaderValue contentType = HttpHeaderValue.ofContentType(ContentType.of(mediaType));
-		if (headerRange == null) {
-			return withHeader(CONTENT_TYPE, contentType)
-					.withHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"")
-					.withHeader(ACCEPT_RANGES, "bytes")
-					.withHeader(CONTENT_LENGTH, Long.toString(size))
-					.withBodyStream(ChannelSupplier.ofPromise(downloader.download(0, -1)));
-		}
-		if (!headerRange.startsWith("bytes=")) {
-			throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
-		}
-		headerRange = headerRange.substring(6);
-		if (!headerRange.matches("(\\d+)?-(\\d+)?")) {
-			throw HttpException.ofCode(416, "Only single part ranges are allowed");
-		}
-		String[] parts = headerRange.split("-", 2);
-		long offset, endOffset;
-		if (!parts[0].isEmpty()) {
-			if (parts[1].isEmpty()) {
-				offset = Long.parseLong(parts[0]);
-				endOffset = size;
-			} else {
-				offset = Long.parseLong(parts[0]);
-				endOffset = Long.parseLong(parts[1]);
-			}
-		} else {
-			if (parts[1].isEmpty()) {
-				throw HttpException.ofCode(416, "Invalid range");
-			}
-			offset = size - Long.parseLong(parts[1]);
-			endOffset = size;
-		}
-		if (endOffset != -1 && offset > endOffset) {
-			throw HttpException.ofCode(416, "Invalid range");
-		}
-		long length = endOffset - offset + 1;
-
-		return withHeader(CONTENT_TYPE, contentType)
-				.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + localName + "\""))
-				.withHeader(ACCEPT_RANGES, "bytes")
-				.withHeader(CONTENT_RANGE, offset + "-" + endOffset + "/" + size)
-				.withHeader(CONTENT_LENGTH, "" + length)
-				.withBodyStream(ChannelSupplier.ofPromise(downloader.download(offset, length)));
+		Promise<? extends ChannelSupplier<ByteBuf>> getFileSlice(long offset, long limit);
 	}
 
 	// endregion

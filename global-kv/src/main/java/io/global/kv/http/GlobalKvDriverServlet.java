@@ -18,6 +18,7 @@ package io.global.kv.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
@@ -44,7 +45,8 @@ public final class GlobalKvDriverServlet {
 
 	public static <K, V> RoutingServlet create(GlobalKvDriver<K, V> driver) {
 		StructuredCodec<K> keyCodec = driver.getKeyCodec();
-		StructuredCodec<KvItem<K, V>> codec = object(KvItem::new,
+		//noinspection RedundantTypeArguments
+		StructuredCodec<KvItem<K, V>> codec = StructuredCodecs.<KvItem<K, V>, Long, K, V>object(KvItem::new,
 				"timestamp", KvItem::getTimestamp, LONG_CODEC,
 				"key", KvItem::getKey, keyCodec,
 				"value", KvItem::getValue, driver.getValueCodec())

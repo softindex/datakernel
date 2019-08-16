@@ -76,9 +76,12 @@ public final class RemoteFsServlet implements AsyncServlet {
 							.then(meta -> {
 								if (meta != null) {
 									try {
-										return Promise.of(HttpResponse.ok200()
-												.withFile(request, (offset, limit) ->
-														client.download(name, offset, limit), name, meta.getSize()));
+										return Promise.of(HttpResponse.file(
+												(offset, limit) -> client.download(name, offset, limit),
+												name,
+												meta.getSize(),
+												request.getHeader(HttpHeaders.RANGE))
+										);
 									} catch (HttpException e) {
 										return Promise.<HttpResponse>ofException(e);
 									}
