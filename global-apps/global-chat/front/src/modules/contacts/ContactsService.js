@@ -2,12 +2,13 @@ import Service from '../../common/Service';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
 import {wait, retry, createDialogRoomId, toEmoji} from '../../common/utils';
 import GlobalAppStoreAPI from "../../common/GlobalAppStoreAPI";
-import ProfilesService from "../profiles/ProfilesService";
+import ProfileService from "../profiles/ProfileService";
 
 const RETRY_TIMEOUT = 1000;
 
 class ContactsService extends Service {
-  constructor(contactsOTStateManager, roomsOTStateManager, roomsService, globalAppStoreAPI, publicKey) {
+  constructor(contactsOTStateManager, roomsOTStateManager, roomsService,
+              globalAppStoreAPI, publicKey, profileServiceCreate) {
     super({
       contacts: new Map(),
       names: new Map(),
@@ -18,13 +19,15 @@ class ContactsService extends Service {
     this._roomsOTStateManager = roomsOTStateManager;
     this._roomsService = roomsService;
     this._globalAppStoreAPI = globalAppStoreAPI;
+    this._profileServiceCreate = profileServiceCreate;
     this._contactsCheckoutPromise = null;
     this._roomsCheckoutPromise = null;
   }
 
   static createFrom(contactsOTStateManager, roomsOTStateManager, roomsService, publicKey) {
     return new ContactsService(contactsOTStateManager, roomsOTStateManager, roomsService,
-      GlobalAppStoreAPI.create(process.env.REACT_APP_GLOBAL_OAUTH_LINK), publicKey);
+      GlobalAppStoreAPI.create(process.env.REACT_APP_GLOBAL_OAUTH_LINK), publicKey,
+      contactPublicKey => {return ProfileService.create(contactPublicKey)});
   }
 
   async init() {
@@ -50,11 +53,9 @@ class ContactsService extends Service {
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async addContact(publicKey, alias = null) {
-    if (alias) {
-      const operation = new ContactsOTOperation(publicKey, alias, false);
-      this._contactsOTStateManager.add([operation]);
-    }
+  async addContact(publicKey, alias = '') {
+    const operation = new ContactsOTOperation(publicKey, alias, false);
+    this._contactsOTStateManager.add([operation]);
 
     await this._roomsService.createDialog(publicKey);
     await this._sync();
@@ -70,11 +71,7 @@ class ContactsService extends Service {
   }
 
   async _getChatProfileName(publicKey) {
-    const profilesService = ProfilesService.create(publicKey);
-    profilesService.init()
-      .catch(error => {
-        console.error(error);
-      });
+    const profilesService = this._profileServiceCreate(publicKey);
     return profilesService.getProfile();
   }
 
@@ -119,8 +116,10 @@ class ContactsService extends Service {
 
     for (const publicKey of publicKeys) {
       if (this.state.contacts.has(publicKey)) {
-        names.set(publicKey, this.state.contacts.get(publicKey).name);
-        continue;
+        if (this.state.contacts.get(publicKey).name !== '') {
+          names.set(publicKey, this.state.contacts.get(publicKey).name);
+          continue;
+        }
       }
 
       const userProfile = await this._getChatProfileName(publicKey);
@@ -131,12 +130,13 @@ class ContactsService extends Service {
 
       const user = await this._getUserByPublicKey(publicKey);
       if (user !== null) {
-        const appStoreName = user.firstName !== null && user.lastName !== null ?
+        const appStoreName = user.firstName !== '' && user.lastName !== '' ?
           user.firstName + ' ' + user.lastName : user.username;
         names.set(publicKey, appStoreName);
       } else {
         names.set(publicKey, toEmoji(publicKey, 3));
       }
+
     }
 
     return names;

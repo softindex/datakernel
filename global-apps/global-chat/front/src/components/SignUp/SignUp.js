@@ -1,7 +1,7 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
 import connectService from "../../common/connectService";
-import AccountContext from "../../modules/account/AccountContext";
+import AuthContext from "../../modules/auth/AuthContext";
 import StoreIcon from '@material-ui/icons/Store';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
 import Typography from "@material-ui/core/Typography";
@@ -120,7 +120,7 @@ class SignUp extends React.Component {
 }
 
 export default connectService(
-  AccountContext, ({authorized, loading}, accountService) => (
+  AuthContext, ({authorized, loading}, accountService) => (
     {authorized, loading, accountService})
 )(
   withSnackbar(withStyles(signUpStyles)(SignUp))

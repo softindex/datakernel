@@ -1,13 +1,13 @@
-import ProfilesOTOperation from './ProfilesOTOperation';
+import ProfileOTOperation from './ProfileOTOperation';
 
-const profilesSerializer = {
+const profileSerializer = {
   serialize(value) {
     return value.toJSON();
   },
 
   deserialize(value) {
-    return ProfilesOTOperation.createFromJson(value);
+    return ProfileOTOperation.createFromJson(value);
   }
 };
 
-export default profilesSerializer;
+export default profileSerializer;

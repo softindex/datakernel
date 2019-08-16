@@ -12,9 +12,9 @@ import {withSnackbar} from "notistack";
 import StartChat from "../EmptyChatRoom/EmptyChatRoom";
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
-import AccountContext from "../../modules/account/AccountContext";
-import ProfileService from "../../modules/profile/ProfileService";
-import ProfileContext from "../../modules/profile/ProfileContext";
+import AuthContext from "../../modules/auth/AuthContext";
+import MyProfileService from "../../modules/myProfile/MyProfileService";
+import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
 import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
@@ -39,7 +39,7 @@ class MainScreen extends React.Component {
     this.roomsService = RoomsService.createFrom(this.roomsOTStateManager, props.publicKey);
     this.contactsService = ContactsService.createFrom(this.contactsOTStateManager, this.roomsOTStateManager,
       this.roomsService, props.publicKey);
-    this.profileService = ProfileService.create();
+    this.profileService = MyProfileService.create();
     this.searchContactsService = SearchContactsService.create();
   }
 
@@ -65,7 +65,7 @@ class MainScreen extends React.Component {
     const {roomId} = this.props.match.params;
     return (
       <SearchContactsContext.Provider value={this.searchContactsService}>
-        <ProfileContext.Provider value={this.profileService}>
+        <MyProfileContext.Provider value={this.profileService}>
             <RoomsContext.Provider value={this.roomsService}>
               <ContactsContext.Provider value={this.contactsService}>
                 <Header roomId={roomId} publicKey={this.props.publicKey}/>
@@ -80,14 +80,14 @@ class MainScreen extends React.Component {
                 </div>
               </ContactsContext.Provider>
             </RoomsContext.Provider>
-        </ProfileContext.Provider>
+        </MyProfileContext.Provider>
       </SearchContactsContext.Provider>
     );
   }
 }
 
 export default connectService(
-  AccountContext, ({publicKey}, accountService) => ({
+  AuthContext, ({publicKey}, accountService) => ({
     publicKey, accountService
   })
 )(checkAuth(

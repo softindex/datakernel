@@ -6,7 +6,7 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import Grow from '@material-ui/core/Grow';
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 import connectService from '../../common/connectService';
-import AccountContext from "../../modules/account/AccountContext";
+import AuthContext from "../../modules/auth/AuthContext";
 import RoomsContext from "../../modules/rooms/RoomsContext";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import {toEmoji} from "../../common/utils";
@@ -77,7 +77,7 @@ export default withStyles(messagesStyles)(
         {messages, chatReady}) => (
         {messages, chatReady})
       )(
-        connectService(AccountContext, (
+        connectService(AuthContext, (
           {publicKey}) => ({publicKey})
         )(
           Messages

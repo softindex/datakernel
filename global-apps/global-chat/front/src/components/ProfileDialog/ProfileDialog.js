@@ -10,7 +10,7 @@ import DialogActions from "@material-ui/core/DialogActions";
 import Button from "@material-ui/core/Button";
 import Tooltip from "@material-ui/core/Tooltip";
 import IconButton from "@material-ui/core/IconButton";
-import ProfileContext from "../../modules/profile/ProfileContext";
+import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 import {withSnackbar} from "notistack";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
@@ -146,7 +146,7 @@ class ProfileDialog extends React.Component {
 }
 
 export default connectService(
-  ProfileContext,
+  MyProfileContext,
   ({profile, profileReady}, profileService) => ({
     profile, profileReady,
     setProfileField(fieldName, value) {

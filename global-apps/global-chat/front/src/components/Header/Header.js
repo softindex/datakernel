@@ -11,7 +11,7 @@ import MenuIcon from "@material-ui/icons/Menu";
 import Drawer from "../Drawer/Drawer";
 import {getRoomName} from "../../common/utils";
 import ContactsContext from "../../modules/contacts/ContactsContext";
-import ProfileContext from "../../modules/profile/ProfileContext";
+import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 
 function Header({classes, rooms, roomId, names, publicKey, profile}) {
   const [openDrawer, setOpenDrawer] = useState(false);
@@ -68,7 +68,7 @@ export default connectService(RoomsContext, (
   connectService(ContactsContext, (
     {names}, contactsService) => ({names, contactsService})
   )(
-    connectService(ProfileContext, ({profile, profileReady},) => ({
+    connectService(MyProfileContext, ({profile, profileReady},) => ({
         profile, profileReady
       })
     )(withStyles(headerStyles)(Header)

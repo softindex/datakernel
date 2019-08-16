@@ -2,8 +2,8 @@ import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
 import mapValues from 'lodash/mapValues';
 
-class ProfileOTOperation {
-  static EMPTY = new ProfileOTOperation({});
+class MyProfileOTOperation {
+  static EMPTY = new MyProfileOTOperation({});
 
   constructor(values) {
     this._values = mapValues(values, (value) => ({
@@ -13,7 +13,7 @@ class ProfileOTOperation {
   }
 
   static createFromJson(json) {
-    return new ProfileOTOperation(json);
+    return new MyProfileOTOperation(json);
   }
 
   apply(state) {
@@ -37,7 +37,7 @@ class ProfileOTOperation {
       };
     }
 
-    return new ProfileOTOperation(nextValues);
+    return new MyProfileOTOperation(nextValues);
   }
 
   isEqual(profileOTOperation) {
@@ -49,4 +49,4 @@ class ProfileOTOperation {
   }
 }
 
-export default ProfileOTOperation;
+export default MyProfileOTOperation;

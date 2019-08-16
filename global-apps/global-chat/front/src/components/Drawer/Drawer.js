@@ -9,7 +9,7 @@ import drawerStyles from './drawerStyles'
 import MUIDrawer from "@material-ui/core/Drawer";
 import ProfileDialog from "../ProfileDialog/ProfileDialog";
 import connectService from "../../common/connectService";
-import AccountContext from "../../modules/account/AccountContext";
+import AuthContext from "../../modules/auth/AuthContext";
 import CreateChatDialog from "../CreateChatDialog/CreateChatDialog";
 
 function Drawer({classes, open, onClose, logout, publicKey}) {
@@ -83,7 +83,7 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
 }
 
 export default connectService(
-  AccountContext,
+  AuthContext,
   ({publicKey}, contactsService) => ({
     publicKey,
     logout() {

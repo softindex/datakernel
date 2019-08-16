@@ -7,7 +7,7 @@ import MessageForm from '../MessageForm/MessageForm';
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 import connectService from '../../common/connectService';
-import AccountContext from '../../modules/account/AccountContext';
+import AuthContext from '../../modules/auth/AuthContext';
 
 class ChatRoom extends React.Component {
   static propTypes = {
@@ -51,6 +51,6 @@ class ChatRoom extends React.Component {
   }
 }
 
-export default connectService(AccountContext, ({publicKey}) => ({publicKey}))(
+export default connectService(AuthContext, ({publicKey}) => ({publicKey}))(
   withStyles(chatStyles)(ChatRoom)
 );

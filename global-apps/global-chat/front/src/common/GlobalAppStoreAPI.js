@@ -22,7 +22,7 @@ class GlobalAppStoreAPI {
   }
 
   getProfile() {
-    return this._request(url.resolve(this._url, 'api/users/profile'))
+    return this._request(url.resolve(this._url, 'api/users/myProfile'))
       .then(response => response.json());
   }
 }

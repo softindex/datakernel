@@ -2,7 +2,7 @@ import Service from '../../common/Service';
 
 let EC = require('elliptic').ec;
 
-class AccountService extends Service {
+class AuthService extends Service {
   constructor(appStoreUrl, cookies) {
     super({
       error: null,
@@ -71,4 +71,4 @@ class AccountService extends Service {
   };
 }
 
-export default AccountService;
+export default AuthService;

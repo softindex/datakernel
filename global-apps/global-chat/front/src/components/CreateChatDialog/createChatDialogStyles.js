@@ -1,19 +1,38 @@
 const createChatDialogStyles = theme => ({
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 0,
+    flexShrink: 0,
+    width: theme.spacing.unit * 58
+  },
+  dialogContent: {
+    paddingBottom: theme.spacing.unit,
+    overflow: 'hidden',
+  },
+  form: {
+   display: 'contents'
+  },
   chip: {
     margin: theme.spacing.unit,
+    marginBottom: theme.spacing.unit * 2,
     marginTop: 0,
-    width: theme.spacing.unit * 18.5,
+    width: theme.spacing.unit * 17,
     overflow: 'hidden'
   },
   actionButton: {
     margin: theme.spacing,
     position: 'relative',
-    right: theme.spacing.unit*2
+    right: theme.spacing.unit * 2
   },
   chipsContainer: {
     display: 'flex',
     flexFlow: 'row wrap',
-    maxWidth: 350
+    maxHeight: theme.spacing.unit * 12,
+    '&:hover': {
+      overflow: 'overlay'
+    },
+    overflow: 'hidden',
   },
   chipText: {
     width: 'inherit',
@@ -21,23 +40,70 @@ const createChatDialogStyles = theme => ({
     display: 'inline-block',
     textOverflow: 'ellipsis'
   },
+  chatsList: {
+    flexGrow: 1,
+    '&:hover': {
+      overflow: 'overlay'
+    },
+    overflow: 'hidden',
+    maxHeight: theme.spacing.unit * 37,
+    marginTop: theme.spacing.unit
+  },
   search: {
-    padding: `${theme.spacing.unit *0.25 }px ${theme.spacing.unit *0.5 }px`,
+    padding: `${theme.spacing.unit}px 0px`,
     display: 'flex',
     alignItems: 'center',
-    width: 'auto',
-    boxShadow: 'none',
-    border: '1px solid',
-    borderColor: theme.palette.secondary.lightGrey,
-    marginTop: theme.spacing.unit,
+    boxShadow: '0px 2px 8px 0px rgba(0,0,0,0.1)',
+    background: theme.palette.primary.background,
+    border: 'none',
+    flexGrow: 0,
     marginBottom: theme.spacing.unit
   },
-  input: {
-    marginLeft: 8,
-    flex: 1,
+  inputDiv: {
+    marginLeft: theme.spacing.unit,
+    marginRight: theme.spacing.unit * 3,
+    flex: 1
   },
-  searchIcon: {
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit * 2}px`
+  input: {
+    textOverflow: 'ellipsis',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap'
+  },
+  iconButton: {
+    padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`
+  },
+  paperDivider: {
+    background: theme.palette.primary.background,
+    padding: theme.spacing.unit * 2,
+    marginTop: theme.spacing.unit,
+    marginBottom: theme.spacing.unit,
+    borderRadius: theme.spacing.unit,
+    boxShadow: 'none'
+  },
+  paperError: {
+    background: theme.palette.secondary.main,
+    padding: theme.spacing.unit * 2,
+    margin: theme.spacing.unit,
+    borderRadius: theme.spacing.unit,
+    boxShadow: 'none'
+  },
+  dividerText: {
+    fontSize: '0.9rem'
+  },
+  progressWrapper: {
+    textAlign: 'center',
+    marginTop: theme.spacing.unit * 2
+  },
+  secondaryDividerText: {
+    textAlign: 'center',
+    margin: `${theme.spacing.unit * 2.5}px 0px`
+  },
+  innerUl: {
+    padding: 0
+  },
+  listSubheader: {
+    background: theme.palette.primary.contrastText,
+    zIndex: 2
   }
 });
 

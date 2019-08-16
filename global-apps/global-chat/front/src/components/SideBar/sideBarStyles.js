@@ -8,8 +8,7 @@ const sideBarStyles = theme => {
       display: 'flex',
       flexDirection: 'column',
       flexGrow: 0,
-      flexShrink: 0,
-      position: 'static'
+      flexShrink: 0
     },
     paper: {
       boxShadow: `0px 6px  9px -5px rgba(0,0,0,0.2)`,
@@ -17,9 +16,9 @@ const sideBarStyles = theme => {
     },
     chatsList: {
       flexGrow: 1,
-      overflowY: 'hidden',
+      overflow: 'hidden',
       '&:hover': {
-        overflowY: 'auto'
+        overflow: 'overlay'
       },
       background: theme.palette.primary.contrastText,
       marginTop: theme.spacing.unit,
@@ -72,7 +71,7 @@ const sideBarStyles = theme => {
       fontSize: '0.9rem'
     },
     progressWrapper: {
-      marginLeft: theme.spacing.unit * 18,
+      textAlign: 'center',
       marginTop: theme.spacing.unit * 2
     },
     secondaryDividerText: {

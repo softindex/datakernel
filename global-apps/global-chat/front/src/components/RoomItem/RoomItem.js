@@ -79,7 +79,6 @@ class RoomItem extends React.Component {
           >
             <ListItemAvatar className={classes.avatar}>
               <Badge
-                className={classes.badge}
                 invisible={!this.props.selected}
                 color="primary"
                 variant="dot"

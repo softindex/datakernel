@@ -22,8 +22,17 @@ import Paper from "@material-ui/core/Paper";
 import RoomItem from "../RoomItem/RoomItem";
 import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
+import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
+import Typography from "@material-ui/core/Typography";
+import Grow from "@material-ui/core/Grow";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import ContactItem from "../ContactItem/ContactItem";
+import ListSubheader from "@material-ui/core/ListSubheader";
+import {createDialogRoomId, getAppStoreContactName, getAvatarLetters} from "../../common/utils";
 
 class CreateChatDialog extends React.Component {
+  chipContainer = React.createRef();
+
   state = {
     participants: new Set(),
     name: '',
@@ -36,8 +45,8 @@ class CreateChatDialog extends React.Component {
     return [...this.props.rooms].sort(((array1, array2) => {
       const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
       const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
-      if (this.props.contacts.has(contactId1) && this.props.contacts.has(contactId2)) {
-        return this.props.contacts.get(contactId1).name.localeCompare(this.props.contacts.get(contactId2).name)
+      if (this.props.names.has(contactId1) && this.props.names.has(contactId2)) {
+        return this.props.names.get(contactId1).localeCompare(this.props.names.get(contactId2))
       }
     }));
   }
@@ -50,13 +59,10 @@ class CreateChatDialog extends React.Component {
             publicKey !== this.props.publicKey)))) {
             return false;
           }
-
           const publicKey = participants.find(participantPublicKey => participantPublicKey !== this.props.publicKey);
-          if (!this.props.contacts.get(publicKey).name.toLowerCase().includes(this.state.search.toLowerCase())) {
-            return false
+          if (this.props.names.get(publicKey) !== undefined) {
+            return this.props.names.get(publicKey).toLowerCase().includes(this.state.search.toLowerCase());
           }
-
-          return true;
         }))
   }
 
@@ -69,6 +75,10 @@ class CreateChatDialog extends React.Component {
   onSearchChange = event => {
     this.setState({
       search: event.target.value
+    }, () => {
+      if (this.state.search !== '') {
+        this.props.search(this.state.search)
+      }
     });
   };
 
@@ -77,6 +87,13 @@ class CreateChatDialog extends React.Component {
       activeStep: nextStep
     });
   };
+
+  // changeScroll() {
+  //   if (this.chipContainer.current !== null) {
+  //     this.chipContainer.current.scrollTop = this.chipContainer.current.scrollHeight -
+  //       this.chipContainer.current.clientHeight;
+  //   }
+  // }
 
   onContactCheck(roomParticipants) {
     const pubKey = roomParticipants.find(publicKey => publicKey !== this.props.publicKey);
@@ -119,7 +136,11 @@ class CreateChatDialog extends React.Component {
     this.setState({
       loading: true
     });
-
+    [...this.state.participants].map((publicKey => {
+      if (!this.props.contacts.has(publicKey)) {
+        this.props.onAddContact(publicKey);
+      }
+    }));
     this.props.onCreateRoom([...this.state.participants]);
     this.props.onClose();
     this.setState({
@@ -130,7 +151,7 @@ class CreateChatDialog extends React.Component {
   };
 
   render() {
-    const {classes, contacts} = this.props;
+    const {classes, names} = this.props;
 
     return (
       <Dialog
@@ -138,11 +159,11 @@ class CreateChatDialog extends React.Component {
         onClose={this.onClose}
         loading={this.state.loading}
       >
-        <form onSubmit={this.onSubmit}>
+        <form onSubmit={this.onSubmit} className={classes.form}>
           <DialogTitle onClose={this.props.onClose}>
             {this.state.activeStep === 0 ? 'Create Group Chat' : 'Add Members'}
           </DialogTitle>
-          <DialogContent>
+          <DialogContent className={classes.dialogContent}>
             {this.state.activeStep === 0 && (
               <>
                 <DialogContentText>
@@ -163,20 +184,16 @@ class CreateChatDialog extends React.Component {
               </>
             )}
             {this.state.activeStep > 0 && (
-              <>
-                <div className={classes.chipsContainer}>
+              <div className={classes.wrapper}>
+                <div className={classes.chipsContainer} ref={this.chipContainer}>
                   {[...this.state.participants].map((pubKey) => (
                     <Chip
                       color="primary"
-                      label={contacts.get(pubKey).name}
+                      label={names.get(pubKey) || getAppStoreContactName(this.props.searchContacts.get(pubKey))}
                       avatar={
                         <Avatar>
-                          {contacts.get(pubKey).name.indexOf(" ") > -1 ?
-                            (contacts.get(pubKey).name.charAt(0) +
-                              contacts.get(pubKey).name.charAt(contacts.get(pubKey).name.indexOf(" ") + 1))
-                              .toUpperCase() :
-                            (contacts.get(pubKey).name.charAt(0) +
-                              contacts.get(pubKey).name.charAt(1)).toUpperCase()
+                          {getAvatarLetters(names.get(pubKey)) ||
+                          getAvatarLetters(getAppStoreContactName(this.props.searchContacts.get(pubKey)))
                           }
                         </Avatar>
                       }
@@ -190,34 +207,112 @@ class CreateChatDialog extends React.Component {
                 </div>
                 <Paper className={classes.search}>
                   <IconButton
-                    className={classes.searchIcon}
+                    className={classes.iconButton}
                     disabled={true}
                   >
                     <SearchIcon/>
                   </IconButton>
                   <InputBase
-                    className={classes.input}
-                    placeholder="Search..."
+                    className={classes.inputDiv}
+                    placeholder="Search people..."
                     autoFocus
+                    value={this.state.search}
                     onChange={this.onSearchChange}
+                    classes={{input: classes.input}}
                   />
                 </Paper>
-                <List>
-                  {[...this.getFilteredRooms(this.sortContacts())].map(([roomId, room]) =>
-                    <RoomItem
-                      roomId={roomId}
-                      room={room}
-                      selected={this.state.participants
-                        .has(room.participants.find(pubKey => pubKey !== this.props.publicKey))}
-                      roomSelected={false}
-                      onClick={!this.state.loading && this.onContactCheck.bind(this, room.participants)}
-                      contacts={this.props.contacts}
-                      publicKey={this.props.publicKey}
-                      linkDisabled={true}
-                    />
+                <div className={classes.chatsList}>
+                  {[...this.getFilteredRooms(this.sortContacts())].length === 0 &&
+                  this.props.searchContacts.size === 0 && this.state.search !== '' && (
+                    <Typography
+                      className={classes.secondaryDividerText}
+                      color="textSecondary"
+                      variant="body1"
+                    >
+                      Nothing found
+                    </Typography>
                   )}
-                </List>
-              </>
+                  {([...this.getFilteredRooms(this.sortContacts())].length !== 0 ||
+                    this.props.searchContacts.size !== 0) && (
+                    <List subheader={<li/>}>
+                      {this.getFilteredRooms(this.sortContacts()) !== 0 && (
+                        <li>
+                          <ul className={classes.innerUl}>
+                            <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
+                            {[...this.getFilteredRooms(this.sortContacts())].map(([roomId, room]) =>
+                              <RoomItem
+                                roomId={roomId}
+                                room={room}
+                                selected={this.state.participants
+                                  .has(room.participants.find(pubKey => pubKey !== this.props.publicKey))}
+                                roomSelected={false}
+                                onClick={!this.state.loading && this.onContactCheck.bind(this, room.participants)}
+                                contacts={this.props.names}
+                                publicKey={this.props.publicKey}
+                                linkDisabled={true}
+                              />
+                            )}
+                          </ul>
+                        </li>
+                      )}
+                      {this.state.search !== '' && (
+                        <li>
+                          <ul className={classes.innerUl}>
+                            <ListSubheader className={classes.listSubheader}>People</ListSubheader>
+                            {!this.props.searchReady && this.props.error === undefined && (
+                              <Grow in={!this.props.searchReady}>
+                                <div className={this.props.classes.progressWrapper}>
+                                  <CircularProgress/>
+                                </div>
+                              </Grow>
+                            )}
+                            {this.props.error !== undefined && (
+                              <Paper square className={classes.paperError}>
+                                <Typography className={classes.dividerText}>
+                                  {this.props.error}
+                                </Typography>
+                              </Paper>
+                            )}
+                            {this.props.searchReady && (
+                              <>
+                                {this.props.searchContacts.size !== 0 && (
+                                  <List>
+                                    {[...this.props.searchContacts]
+                                      .filter(([publicKey,]) => publicKey !== this.props.publicKey)
+                                      .map(([publicKey, contact]) => (
+                                        <>
+                                          {!this.props.contacts.has(publicKey) && (
+                                            <ContactItem
+                                              contactId={publicKey}
+                                              contact={contact}
+                                              publicKey={this.props.publicKey}
+                                              onClick={!this.state.loading && this.onContactCheck
+                                                .bind(this, [publicKey, this.props.publicKey])}
+                                              selected={this.state.participants.has(publicKey)}
+                                            />
+                                          )}
+                                        </>
+                                      ))}
+                                  </List>
+                                )}
+                                {this.props.searchContacts.size === 0 && (
+                                  <Typography
+                                    className={classes.secondaryDividerText}
+                                    color="textSecondary"
+                                    variant="body1"
+                                  >
+                                    Nothing found
+                                  </Typography>
+                                )}
+                              </>
+                            )}
+                          </ul>
+                        </li>
+                      )}
+                    </List>
+                  )}
+                </div>
+              </div>
             )}
           </DialogContent>
           <DialogActions>
@@ -260,28 +355,40 @@ export default withRouter(
   withSnackbar(
     connectService(
       ContactsContext,
-      ({contacts}, contactsService) => ({
-        contactsService, contacts
+      ({contacts, names}, contactsService) => ({
+        contactsService, contacts, names,
+        onAddContact(contactPublicKey) {
+          contactsService.addContact(contactPublicKey)
+        }
       })
     )(
       connectService(
-        RoomsContext,
-        ({rooms}, roomsService, props) => ({
-          rooms,
-          onCreateRoom(name, participants) {
-            roomsService.createRoom(name, participants)
-              .then(roomId => {
-                props.history.push(path.join('/room', roomId || ''));
-              })
-              .catch((err) => {
-                props.enqueueSnackbar(err.message, {
-                  variant: 'error'
-                });
-              })
+        SearchContactsContext, ({searchContacts, searchReady, error}, searchContactsService) => ({
+          searchContacts, searchReady, searchContactsService,
+          search(searchField) {
+            return searchContactsService.search(searchField);
           }
         })
       )(
-        withStyles(createChatDialogStyles)(CreateChatDialog)
+        connectService(
+          RoomsContext,
+          ({rooms}, roomsService, props) => ({
+            rooms,
+            onCreateRoom(name, participants) {
+              roomsService.createRoom(name, participants)
+                .then(roomId => {
+                  props.history.push(path.join('/room', roomId || ''));
+                })
+                .catch((err) => {
+                  props.enqueueSnackbar(err.message, {
+                    variant: 'error'
+                  });
+                })
+            }
+          })
+        )(
+          withStyles(createChatDialogStyles)(CreateChatDialog)
+        )
       )
     )
   )

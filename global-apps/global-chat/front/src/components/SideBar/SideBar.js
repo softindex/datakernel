@@ -21,7 +21,7 @@ import ContactItem from "../ContactItem/ContactItem";
 import {createDialogRoomId, toEmoji} from "../../common/utils";
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
-import ProfileContext from "../../modules/profile/ProfileContext";
+import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
@@ -51,8 +51,8 @@ class SideBar extends React.Component {
     return [...this.props.rooms].sort(((array1, array2) => {
       const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
       const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
-      if (this.props.contacts.has(contactId1) && this.props.contacts.has(contactId2)) {
-        return this.props.contacts.get(contactId1).name.localeCompare(this.props.contacts.get(contactId2).name)
+      if (this.props.names.has(contactId1) && this.props.names.has(contactId2)) {
+        return this.props.names.get(contactId1).localeCompare(this.props.names.get(contactId2))
       }
     }));
   }
@@ -75,8 +75,8 @@ class SideBar extends React.Component {
           if (!(participants
             .filter(participantPublicKey => participantPublicKey !== this.props.publicKey)
             .map(publicKey => {
-              if (this.props.contacts.has(publicKey)) {
-                return this.props.contacts.get(publicKey).name
+              if (this.props.names.has(publicKey)) {
+                return this.props.names.get(publicKey)
               }
             })
             .join(', ')).toLowerCase().includes(this.state.search.toLowerCase())) {
@@ -271,7 +271,7 @@ export default withRouter(
               }
             })
           )(
-            connectService(ProfileContext, ({profile, profileReady},) => ({
+            connectService(MyProfileContext, ({profile, profileReady},) => ({
                 profile, profileReady
               })
             )(SideBar)

@@ -1,7 +1,7 @@
 import React from 'react';
 import {Redirect} from 'react-router-dom';
 import connectService from './connectService';
-import AccountContext from '../modules/account/AccountContext';
+import AuthContext from '../modules/auth/AuthContext';
 
 function checkAuth(Component) {
   function CheckAuth(props) {
@@ -15,7 +15,7 @@ function checkAuth(Component) {
     );
   }
 
-  return connectService(AccountContext, ({authorized}) => ({authorized}))(CheckAuth);
+  return connectService(AuthContext, ({authorized}) => ({authorized}))(CheckAuth);
 }
 
 export default checkAuth;

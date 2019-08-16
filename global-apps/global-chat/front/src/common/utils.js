@@ -103,7 +103,7 @@ export function retry(fn, delay) {
 
 export function getRoomName(participants, names, myPublicKey, myName) {
   if (participants.length === 1) {
-    return myName === '' ? 'Me' : myName;
+    return (myName === '' || myName === undefined) ? 'Me' : myName;
   }
 
   return participants
@@ -115,4 +115,10 @@ export function getRoomName(participants, names, myPublicKey, myName) {
       return names.get(publicKey)
     })
     .join(', ');
+}
+
+export function getAppStoreContactName(contact) {
+  return contact.firstName !== '' && contact.lastName !== '' ?
+    contact.firstName + ' ' + contact.lastName :
+    contact.username
 }

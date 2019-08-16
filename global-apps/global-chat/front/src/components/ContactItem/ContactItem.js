@@ -6,8 +6,9 @@ import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
 import contactItemStyles from "./contactItemStyles";
 import {withRouter} from "react-router-dom";
-import {getAvatarLetters, createDialogRoomId} from "../../common/utils";
+import {getAvatarLetters, createDialogRoomId, getAppStoreContactName} from "../../common/utils";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
+import Badge from "@material-ui/core/Badge";
 
 class ContactItem extends React.Component {
   state = {
@@ -28,7 +29,7 @@ class ContactItem extends React.Component {
   }
 
   onClickAddContact = () => {
-    this.props.onAddContact(this.props.contactId, this.getContactName());
+    this.props.onAddContact(this.props.contactId);
     this.onCloseAddContactDialog();
   };
 
@@ -38,30 +39,29 @@ class ContactItem extends React.Component {
     });
   };
 
-  getContactName() {
-    return this.props.contact.firstName !== '' && this.props.contact.lastName !== '' ?
-      this.props.contact.firstName + ' ' + this.props.contact.lastName :
-      this.props.contact.username
-  };
-
   render() {
     const {classes, contactId, contact} = this.props;
     return (
       <>
         <ListItem
-          onClick={this.onContactClick.bind(this)}
+          onClick={this.props.onClick || this.onContactClick.bind(this)}
           className={classes.listItem}
           button
           selected={createDialogRoomId(this.props.publicKey, contactId) === this.props.match.params.roomId}
         >
           <ListItemAvatar className={classes.avatar}>
-            <Avatar className={classes.avatarContent}>
-              {this.getAvatarLetters(contact)}
-            </Avatar>
+            <Badge
+              invisible={!this.props.selected}
+              color="primary"
+              variant="dot"
+            >
+              <Avatar className={classes.avatarContent}>
+                {this.getAvatarLetters(contact)}
+              </Avatar>
+            </Badge>
           </ListItemAvatar>
-
           <ListItemText
-            primary={this.getContactName()}
+            primary={getAppStoreContactName(contact)}
             className={classes.itemText}
             classes={{
               primary: classes.itemTextPrimary

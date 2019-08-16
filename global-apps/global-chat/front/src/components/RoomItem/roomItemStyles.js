@@ -7,7 +7,7 @@ const roomItemStyles = theme => ({
       visibility: 'hidden'
     },
     '&:hover > button': {
-      display: 'flex' // should use display instead of visibility because of show/hide button when room name is too long
+      display: 'flex'
     },
     '&:hover > div': {
       visibility: 'visible'
