@@ -11,11 +11,11 @@ DataKernel is a full-featured alternative Java framework, created from ground up
 ## Features
 
 - 💕 Fully **asynchronous** modular framework
-- 🧩 **Exceptionally fast, powerful and simple** Dependency Injection
+- 🧩 Exceptionally fast, powerful and simple **Dependency Injection**
 - ⏱ Magnificently **fast build** and **start-up times** of your applications with **extremely small** JAR sizes
 - 🚀 A wide selection of application launchers and **embedded servers**
 - ⚙️ **Elegant** data structures and components with outstanding **performance**
-- 🌍 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
+- 🌎 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
 - 🏎 Scalable and fault-tolerant **microservice** architecture with ultra-fast binary messaging 
 - 📖 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**
 
