@@ -20,7 +20,7 @@ import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.map;
 import static java.util.Collections.emptyMap;
 
-//[START EXAMPLE]
+//[START REGION_1]
 public final class ApplicationLauncher extends HttpServerLauncher {
 
 	private static ByteBuf applyTemplate(Mustache mustache, Map<String, Object> scopes) {
@@ -33,7 +33,8 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 	PollDao pollRepo() {
 		return new PollDaoImpl();
 	}
-
+	//[END REGION_1]
+	//[START REGION_2]
 	@Provides
 	AsyncServlet servlet(PollDao pollDao) {
 		Mustache singlePollView = new DefaultMustacheFactory().compile("templates/singlePollView.html");
@@ -41,19 +42,19 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 		Mustache listPolls = new DefaultMustacheFactory().compile("templates/listPolls.html");
 
 		return RoutingServlet.create()
-				//[START REGION_1]
 				.map(GET, "/", request -> Promise.of(
 						HttpResponse.ok200()
 								.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
-				//[END REGION_1]
-				//[START REGION_2]
+				//[END REGION_2]
+				//[START REGION_3]
 				.map(GET, "/poll/:id", request -> {
 					int id = Integer.parseInt(request.getPathParameter("id"));
 					return Promise.of(
 							HttpResponse.ok200()
 									.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
 				})
-				//[END REGION_2]
+				//[END REGION_3]
+				//[START REGION_4]
 				.map(GET, "/create", request -> Promise.of(
 						HttpResponse.ok200()
 								.withBody(applyTemplate(singlePollCreate, emptyMap()))))
@@ -97,11 +98,13 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 
 							return Promise.of(HttpResponse.redirect302("/"));
 						}));
+		//[END REGION_4]
 	}
 
+	//[START REGION_5]
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new ApplicationLauncher();
 		launcher.launch(args);
 	}
+	//[END REGION_5]
 }
-//[END EXAMPLE]
