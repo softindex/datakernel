@@ -8,7 +8,7 @@ import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.ot.service.ContainerHolder;
 import io.global.video.container.VideoUserContainer;
-import io.global.video.dao.VideoDao;
+import io.global.video.dao.ChannelDao;
 import io.global.video.pojo.UserId;
 
 import static io.datakernel.http.HttpMethod.GET;
@@ -29,21 +29,23 @@ public final class PublicServlet {
 		return RoutingServlet.create()
 				// region views
 				.map(GET, "/", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
-					return videoDao.listPublic()
-							.map(publicVideos -> templated(videoListView, publicVideos.entrySet()));
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
+					return channelDao.getChannelState()
+							.map(channelState -> templated(videoListView, map("name", channelState.getName(),
+									"description", channelState.getDescription(),
+									"videos", channelState.getMetadata().entrySet())));
 				})
 				.map(GET, "/:videoId", request -> {
 					VideoUserContainer container = request.getAttachment(VideoUserContainer.class);
-					VideoDao videoDao = container.getVideoDao();
+					ChannelDao channelDao = container.createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
-					return videoDao.getVideoMetadata(videoId)
+					return channelDao.getVideoMetadata(videoId)
 							.then(metadata -> {
 								if (metadata == null) {
 									return Promise.<HttpResponse>ofException(HttpException.notFound404());
 								}
-								return container.getCommentDao(videoId)
+								return container.createCommentDao(videoId)
 										.then(commentDao -> commentDao == null ?
 												Promise.ofException(HttpException.notFound404()) :
 												commentDao.listComments())
@@ -57,20 +59,20 @@ public final class PublicServlet {
 
 				// region API
 				.map(GET, "/:videoId/watch", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
-					return videoDao.getVideoMetadata(videoId)
+					return channelDao.getVideoMetadata(videoId)
 							.then(metadata -> {
 								if (metadata == null) {
 									return Promise.<HttpResponse>ofException(HttpException.notFound404());
 								}
-								return videoDao.getFileMetadata(videoId)
+								return channelDao.getFileMetadata(videoId)
 										.then(fileMetadata -> {
 											String filename = fileMetadata.getName();
 											try {
 												return Promise.of(HttpResponse.file((offset, limit) ->
-																videoDao.watchVideo(filename, offset, limit),
+																channelDao.watchVideo(filename, offset, limit),
 														filename,
 														fileMetadata.getSize()));
 											} catch (HttpException e) {
@@ -80,15 +82,15 @@ public final class PublicServlet {
 							});
 				})
 				.map(GET, "/:videoId/thumbnail", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
-					return videoDao.getVideoMetadata(videoId)
+					return channelDao.getVideoMetadata(videoId)
 							.then(metadata -> {
 								if (metadata == null) {
 									return Promise.<HttpResponse>ofException(HttpException.notFound404());
 								}
-								return videoDao.loadThumbnail(videoId)
+								return channelDao.loadThumbnail(videoId)
 										.mapEx((thumbnailStream, e) -> {
 											if (e == FILE_NOT_FOUND) {
 												return HttpResponse.redirect302("/no-thumbnail");
@@ -106,7 +108,7 @@ public final class PublicServlet {
 					if (author.isEmpty() || content.isEmpty()) {
 						return Promise.ofException(HttpException.ofCode(400));
 					}
-					return container.getCommentDao(videoId)
+					return container.createCommentDao(videoId)
 							.then(commentDao -> {
 								if (commentDao == null) {
 									return Promise.ofException(HttpException.notFound404());

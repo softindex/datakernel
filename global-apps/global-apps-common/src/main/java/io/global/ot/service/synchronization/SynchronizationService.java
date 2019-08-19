@@ -10,7 +10,7 @@ import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.RepoSynchronizer;
-import io.global.ot.service.UserContainer;
+import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
@@ -25,20 +25,20 @@ import static io.datakernel.util.CollectionUtils.first;
 
 public final class SynchronizationService<D> implements EventloopService {
 	private final Eventloop eventloop;
-	private final UserContainer<D> userContainer;
+	private final CommonUserContainer<D> commonUserContainer;
 	private final OTDriver driver;
 	private final OTSystem<D> system;
 	private final Map<String, RepoSynchronizer<D>> synchronizers = new HashMap<>();
 
-	private SynchronizationService(Eventloop eventloop, UserContainer<D> userContainer, OTDriver driver, OTSystem<D> system) {
+	private SynchronizationService(Eventloop eventloop, CommonUserContainer<D> commonUserContainer, OTDriver driver, OTSystem<D> system) {
 		this.eventloop = eventloop;
-		this.userContainer = userContainer;
+		this.commonUserContainer = commonUserContainer;
 		this.driver = driver;
 		this.system = system;
 	}
 
-	public static <D> SynchronizationService<D> create(Eventloop eventloop, OTDriver driver, UserContainer<D> userContainer, OTSystem<D> system) {
-		return new SynchronizationService<>(eventloop, userContainer, driver, system);
+	public static <D> SynchronizationService<D> create(Eventloop eventloop, OTDriver driver, CommonUserContainer<D> commonUserContainer, OTSystem<D> system) {
+		return new SynchronizationService<>(eventloop, commonUserContainer, driver, system);
 	}
 
 	@NotNull
@@ -50,13 +50,12 @@ public final class SynchronizationService<D> implements EventloopService {
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		SharedReposOTState resourceListState = userContainer.getResourceListState();
+		SharedReposOTState resourceListState = commonUserContainer.getResourceListState();
 		Set<SharedRepo> sharedRepos = resourceListState.getSharedRepos();
 		sharedRepos.forEach(resource -> {
-					ensureSynchronizer(resource.getId()).sync(resource.getParticipants());
-					sendMessageToParticipants(resource);
-				}
-		);
+			ensureSynchronizer(resource.getId()).sync(resource.getParticipants());
+			sendMessageToParticipants(resource);
+		});
 
 		resourceListState.setListener(sharedReposOperation -> {
 			SharedRepo sharedRepo = sharedReposOperation.getSharedRepo();
@@ -83,15 +82,15 @@ public final class SynchronizationService<D> implements EventloopService {
 	}
 
 	private MyRepositoryId<D> getMyRepositoryId(String id) {
-		MyRepositoryId<D> myRepositoryId = userContainer.getMyRepositoryId();
+		MyRepositoryId<D> myRepositoryId = commonUserContainer.getMyRepositoryId();
 		String name = myRepositoryId.getRepositoryId().getName() + '/' + id;
 		RepoID repoId = RepoID.of(myRepositoryId.getPrivKey(), name);
 		return new MyRepositoryId<>(repoId, myRepositoryId.getPrivKey(), myRepositoryId.getDiffCodec());
 	}
 
 	public void sendMessageToParticipants(SharedRepo sharedRepo) {
-		RepoID repoId = userContainer.getMyRepositoryId().getRepositoryId();
-		MessagingService messagingService = userContainer.getMessagingService();
+		RepoID repoId = commonUserContainer.getMyRepositoryId().getRepositoryId();
+		MessagingService messagingService = commonUserContainer.getMessagingService();
 		Set<PubKey> participants = sharedRepo.getParticipants();
 		String id = sharedRepo.getId();
 		Promises.all(participants.stream()

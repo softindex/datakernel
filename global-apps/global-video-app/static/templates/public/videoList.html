@@ -9,6 +9,7 @@
     .container {
       text-align: center;
     }
+
   </style>
 </head>
 
@@ -17,20 +18,22 @@
 <a href="/myChannel">My channel</a>
 
 <div class="container">
-  <div>
-    <h1>Videos</h1>
-    {{#.}}
+  <h1>{{name}}</h1>
+  <h3>{{description}}</h3>
+  <div class="videos">
+    <h2>Videos</h2>
+    {{#videos}}
     <div>
       <a href=./{{key}}/>
         <img width="128" height="72" src="./{{key}}/thumbnail">
         <p>{{value.title}}</p>
       </a>
     </div>
-    {{/.}}
+    {{/videos}}
     <div>
-      {{^.}}
+      {{^videos}}
       <h3>No videos</h3>
-      {{/.}}
+      {{/videos}}
     </div>
   </div>
 </div>

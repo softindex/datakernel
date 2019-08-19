@@ -6,20 +6,20 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ApplicationSettings;
+import io.global.video.ot.channel.ChannelState;
 import io.global.video.pojo.VideoMetadata;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Map;
 
-public interface VideoDao {
-	int VIDEO_ID_LENGTH = ApplicationSettings.getInt(VideoDao.class, "videoIdLength", 10);
+public interface ChannelDao {
+	int VIDEO_ID_LENGTH = ApplicationSettings.getInt(ChannelDao.class, "videoIdLength", 10);
 
 	Promise<List<FileMetadata>> listAllVideos();
 
 	Promise<FileMetadata> getFileMetadata(String videoId);
 
-	Promise<Map<String, VideoMetadata>> listPublic();
+	Promise<ChannelState> getChannelState();
 
 	Promise<@Nullable VideoMetadata> getVideoMetadata(String videoId);
 
@@ -36,4 +36,6 @@ public interface VideoDao {
 	Promise<Void> removeMetadata(String videoId);
 
 	Promise<Void> removeVideo(String videoId);
+
+	Promise<Void> updateChannelInfo(String name, String description);
 }

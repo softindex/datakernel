@@ -25,8 +25,8 @@ import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsModule;
+import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.ContainerModule;
-import io.global.ot.service.UserContainer;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.set.SetOperation;
 import io.global.ot.shared.IndexRepoModule;
@@ -83,14 +83,14 @@ public final class GlobalChatApp extends Launcher {
 				new ContactsModule(),
 				new MapModule<String, String>(PROFILE_REPO_NAME) {},
 				new IndexRepoModule(CHAT_INDEX_REPO),
-				new ContainerModule<UserContainer<SetOperation<Message>>>() {
+				new ContainerModule<CommonUserContainer<SetOperation<Message>>>() {
 					@Provides
-					BiFunction<Eventloop, PrivKey, UserContainer<SetOperation<Message>>> factory(OTDriver driver,
+					BiFunction<Eventloop, PrivKey, CommonUserContainer<SetOperation<Message>>> factory(OTDriver driver,
 							GlobalPmDriver<CreateSharedRepo> pmDriver) {
 						return (eventloop, privKey) -> {
 							RepoID repoID = RepoID.of(privKey, CHAT_REPO_PREFIX);
 							MyRepositoryId<SetOperation<Message>> myRepositoryId = new MyRepositoryId<>(repoID, privKey, MESSAGE_OPERATION_CODEC);
-							return UserContainer.create(eventloop, driver, MESSAGE_OT_SYSTEM, myRepositoryId, pmDriver, CHAT_INDEX_REPO);
+							return CommonUserContainer.create(eventloop, driver, MESSAGE_OT_SYSTEM, myRepositoryId, pmDriver, CHAT_INDEX_REPO);
 						};
 					}
 				},

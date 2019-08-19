@@ -8,12 +8,19 @@ import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public final class ContainerHolder<T extends EventloopService> implements EventloopService {
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
+
+public final class ContainerHolder<T extends UserContainer> implements EventloopService {
+	private static final Logger logger = LoggerFactory.getLogger(ContainerHolder.class);
+
 	private final Eventloop eventloop;
 	private final BiFunction<Eventloop, PrivKey, T> containerFactory;
 	private final Map<PubKey, Promise<T>> containers = new HashMap<>();
@@ -25,17 +32,14 @@ public final class ContainerHolder<T extends EventloopService> implements Eventl
 
 	public Promise<T> ensureUserContainer(PrivKey privKey) {
 		PubKey pubKey = privKey.computePubKey();
-		if (!containers.containsKey(pubKey)) {
-			T container = containerFactory.apply(eventloop, privKey);
-			Promise<T> containerPromise = container.start()
-					.map($ -> container);
-			containers.put(pubKey, containerPromise);
-			containerPromise
-					.whenException(e -> containers.remove(pubKey));
-			return containerPromise;
-		} else {
-			return containers.get(pubKey);
-		}
+		return containers.computeIfAbsent(pubKey,
+				$1 -> {
+					T container = containerFactory.apply(eventloop, privKey);
+					return container.start()
+							.map($2 -> container);
+				})
+				.whenException(e -> containers.remove(pubKey))
+				.whenComplete(toLogger(logger, thisMethod(), pubKey));
 	}
 
 	public Promise<@Nullable T> getUserContainer(PubKey pubKey) {

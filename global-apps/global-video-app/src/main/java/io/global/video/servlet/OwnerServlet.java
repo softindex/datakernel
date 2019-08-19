@@ -9,19 +9,21 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.http.*;
 import io.global.common.PrivKey;
 import io.global.ot.service.ContainerHolder;
+import io.global.video.Utils;
 import io.global.video.container.VideoUserContainer;
-import io.global.video.dao.VideoDao;
+import io.global.video.dao.ChannelDao;
 import io.global.video.pojo.VideoMetadata;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.MultipartParser.MultipartDataHandler.fieldsToMap;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.video.Utils.*;
-import static io.global.video.dao.VideoDao.VIDEO_ID_LENGTH;
+import static io.global.video.dao.ChannelDao.VIDEO_ID_LENGTH;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
@@ -37,11 +39,11 @@ public final class OwnerServlet {
 				// region views
 				.map(HttpMethod.GET, "/", request -> {
 					VideoUserContainer container = request.getAttachment(VideoUserContainer.class);
-					VideoDao videoDao = container.getVideoDao();
-					return videoDao.listAllVideos()
-							.then(allVideos -> videoDao.listPublic()
-									.map(publicVideos -> {
-										Set<String> videoIds = publicVideos.keySet();
+					ChannelDao channelDao = container.createChannelDao();
+					return channelDao.listAllVideos()
+							.then(allVideos -> channelDao.getChannelState()
+									.map(state -> {
+										Set<String> videoIds = state.getMetadata().keySet();
 										Set<String> untagged = allVideos.stream()
 												.map(fileMetadata -> {
 													String fileName = fileMetadata.getName();
@@ -51,18 +53,20 @@ public final class OwnerServlet {
 												.collect(toSet());
 										return templated(videoListView, map(
 												"public key", container.getKeys().getPubKey().asString(),
-												"public", publicVideos.entrySet(),
+												"name", state.getName(),
+												"description", state.getDescription(),
+												"metadata", state.getMetadata().entrySet(),
 												"untagged", untagged));
 									}));
 				})
 				.map(HttpMethod.GET, "/:videoId/", request -> {
 					VideoUserContainer container = request.getAttachment(VideoUserContainer.class);
-					VideoDao videoDao = container.getVideoDao();
+					ChannelDao channelDao = container.createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
 					//noinspection ConstantConditions
-					return videoDao.getVideoMetadata(videoId)
-							.then(metadata -> container.getCommentDao(videoId)
+					return channelDao.getVideoMetadata(videoId)
+							.then(metadata -> container.createCommentDao(videoId)
 									.then(commentDao -> commentDao == null ?
 											Promise.of(emptyMap()) :
 											commentDao.listComments())
@@ -76,15 +80,15 @@ public final class OwnerServlet {
 
 				// region API
 				.map(HttpMethod.GET, "/:videoId/watch", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
-					return videoDao.getFileMetadata(videoId)
+					return channelDao.getFileMetadata(videoId)
 							.then(fileMetadata -> {
 								String fileName = fileMetadata.getName();
 								try {
 									return Promise.of(HttpResponse.file((offset, limit) ->
-													videoDao.watchVideo(fileName, offset, limit),
+													channelDao.watchVideo(fileName, offset, limit),
 											fileName,
 											fileMetadata.getSize()));
 								} catch (HttpException e) {
@@ -93,10 +97,10 @@ public final class OwnerServlet {
 							});
 				})
 				.map(HttpMethod.GET, "/:videoId/thumbnail", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
-					return videoDao.loadThumbnail(videoId)
+					return channelDao.loadThumbnail(videoId)
 							.mapEx((thumbnailStream, e) -> {
 								if (e == FILE_NOT_FOUND) {
 									return HttpResponse.redirect302("/no-thumbnail");
@@ -105,8 +109,8 @@ public final class OwnerServlet {
 										.withBodyStream(thumbnailStream);
 							});
 				})
-				.map(HttpMethod.POST, "/upload", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+				.map(POST, "/upload", request -> {
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = generateBase62(VIDEO_ID_LENGTH);
 					Map<String, String> fields = new HashMap<>();
 					return request
@@ -116,12 +120,12 @@ public final class OwnerServlet {
 										if (fileName.isEmpty()) {
 											return Promise.ofException(new StacklessException(OwnerServlet.class, "Video file is required"));
 										}
-										return videoDao.uploadVideo(videoId, getFileExtension(fileName));
+										return channelDao.uploadVideo(videoId, getFileExtension(fileName));
 									case "thumbnail":
 										if (fileName.isEmpty()) {
 											return Promise.of(ChannelConsumers.recycling());
 										}
-										return videoDao.uploadThumbnail(videoId, getFileExtension(fileName));
+										return channelDao.uploadThumbnail(videoId, getFileExtension(fileName));
 									default:
 										return Promise.ofException(new StacklessException(OwnerServlet.class, "Unsupported file field"));
 								}
@@ -131,31 +135,31 @@ public final class OwnerServlet {
 									return Promise.complete();
 								}
 								return extractMetadata(fields)
-										.then(metadata -> videoDao.setMetadata(videoId, metadata));
+										.then(metadata -> channelDao.setMetadata(videoId, metadata));
 							})
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, "/:videoId/update", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+				.map(POST, "/:videoId/update", request -> {
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
 
 					return extractMetadata(request.getPostParameters())
-							.then(metadata -> videoDao.setMetadata(videoId, metadata))
+							.then(metadata -> channelDao.setMetadata(videoId, metadata))
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, "/:videoId/deleteMetadata/", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+				.map(POST, "/:videoId/deleteMetadata/", request -> {
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
-					return videoDao.removeMetadata(videoId)
+					return channelDao.removeMetadata(videoId)
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, ":videoId/delete", request -> {
-					VideoDao videoDao = request.getAttachment(VideoUserContainer.class).getVideoDao();
+				.map(POST, "/:videoId/delete", request -> {
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
 					String videoId = request.getPathParameter("videoId");
-					return videoDao.removeVideo(videoId)
+					return channelDao.removeVideo(videoId)
 							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
-				.map(HttpMethod.POST, "/:videoId/deleteComment", request -> {
+				.map(POST, "/:videoId/deleteComment", request -> {
 					VideoUserContainer container = request.getAttachment(VideoUserContainer.class);
 					String videoId = request.getPathParameter("videoId");
 					String commentIdString = request.getPostParameter("commentId");
@@ -166,17 +170,27 @@ public final class OwnerServlet {
 
 					try {
 						Long commentId = Long.valueOf(commentIdString);
-						return container.getCommentDao(videoId)
+						return container.createCommentDao(videoId)
 								.then(commentDao -> {
 									if (commentDao == null) {
 										return Promise.<HttpResponse>ofException(HttpException.notFound404());
 									}
 									return commentDao.removeComments(singleton(commentId))
-											.map($ -> HttpResponse.redirect302("./"));
+											.map($ -> Utils.redirect(request, "./"));
 								});
 					} catch (NumberFormatException e) {
 						return Promise.ofException(HttpException.ofCode(400, "Invalid `commentId`"));
 					}
+				})
+				.map(POST, "/updateInfo", request -> {
+					ChannelDao channelDao = request.getAttachment(VideoUserContainer.class).createChannelDao();
+					String name = request.getPostParameter("name");
+					String description = request.getPostParameter("description");
+					if (name == null || description == null) {
+						return Promise.ofException(HttpException.ofCode(400, "'name' and 'description' are required"));
+					}
+					return channelDao.updateChannelInfo(name, description)
+							.map($ -> HttpResponse.redirect302("/myChannel"));
 				})
 				// endregion
 				.then(ensureContainerDecorator(containerHolder));

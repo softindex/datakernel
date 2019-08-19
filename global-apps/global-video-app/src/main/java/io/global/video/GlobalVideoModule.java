@@ -20,10 +20,8 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerHolder;
 import io.global.video.container.VideoUserContainer;
-import io.global.video.pojo.AuthService;
+import io.global.video.ot.channel.ChannelOTOperation;
 import io.global.video.pojo.Comment;
-import io.global.video.pojo.UserId;
-import io.global.video.pojo.VideoMetadata;
 import io.global.video.servlet.OwnerServlet;
 import io.global.video.servlet.PublicServlet;
 
@@ -32,11 +30,11 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
-import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
-import static io.global.ot.OTUtils.getMapOperationCodec;
+import static io.global.video.Utils.CHANNEL_OP_CODEC;
+import static io.global.video.Utils.COMMENT_OP_CODEC;
 
 public final class GlobalVideoModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
@@ -67,26 +65,13 @@ public final class GlobalVideoModule extends AbstractModule {
 	}
 
 	@Provides
-	StructuredCodec<MapOperation<String, VideoMetadata>> metadataOpCodec() {
-		StructuredCodec<VideoMetadata> metadataCodec = object(VideoMetadata::new,
-				"title", VideoMetadata::getTitle, STRING_CODEC,
-				"description", VideoMetadata::getDescription, STRING_CODEC);
-
-		return getMapOperationCodec(STRING_CODEC, metadataCodec);
+	StructuredCodec<ChannelOTOperation> channelOpCodec() {
+		return CHANNEL_OP_CODEC;
 	}
 
 	@Provides
 	StructuredCodec<MapOperation<Long, Comment>> commentOpCodec() {
-		StructuredCodec<UserId> userIdCodec = object(UserId::new,
-				"authService", UserId::getAuthService, ofEnum(AuthService.class),
-				"authString", UserId::getAuthString, STRING_CODEC);
-
-		StructuredCodec<Comment> commentCodec = object(Comment::new,
-				"author", Comment::getAuthor, userIdCodec,
-				"content", Comment::getContent, STRING_CODEC,
-				"timestamp", Comment::getTimestamp, LONG_CODEC);
-
-		return getMapOperationCodec(LONG_CODEC, commentCodec);
+		return COMMENT_OP_CODEC;
 	}
 
 	@Provides
@@ -124,9 +109,9 @@ public final class GlobalVideoModule extends AbstractModule {
 
 	@Provides
 	BiFunction<Eventloop, PrivKey, VideoUserContainer> factory(Config config, OTDriver otDriver, GlobalFsDriver fsDriver,
-			StructuredCodec<MapOperation<String, VideoMetadata>> videoOpCodec, StructuredCodec<MapOperation<Long, Comment>> commentOpCodec) {
+			StructuredCodec<ChannelOTOperation> channelOpCodec, StructuredCodec<MapOperation<Long, Comment>> commentOpCodec) {
 		return (eventloop, privKey) -> VideoUserContainer.create(eventloop, privKey, otDriver, fsDriver, videosFolder,
-				videosRepoName, commentsRepoPrefix, videoOpCodec, commentOpCodec);
+				videosRepoName, commentsRepoPrefix, channelOpCodec, commentOpCodec);
 	}
 
 }

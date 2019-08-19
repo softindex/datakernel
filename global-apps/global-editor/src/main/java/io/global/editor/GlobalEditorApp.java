@@ -22,8 +22,8 @@ import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsModule;
+import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.ContainerModule;
-import io.global.ot.service.UserContainer;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.pm.GlobalPmDriver;
@@ -67,14 +67,14 @@ public final class GlobalEditorApp extends Launcher {
 				new ContactsModule(),
 				new IndexRepoModule(EDITOR_INDEX_REPO),
 				new SharedRepoModule<DocumentMultiOperation>(DOCUMENT_REPO_PREFIX) {},
-				new ContainerModule<UserContainer<DocumentMultiOperation>>() {
+				new ContainerModule<CommonUserContainer<DocumentMultiOperation>>() {
 					@Provides
-					BiFunction<Eventloop, PrivKey, UserContainer<DocumentMultiOperation>> factory(OTDriver driver,
+					BiFunction<Eventloop, PrivKey, CommonUserContainer<DocumentMultiOperation>> factory(OTDriver driver,
 							GlobalPmDriver<CreateSharedRepo> pmDriver) {
 						return (eventloop, privKey) -> {
 							RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
 							MyRepositoryId<DocumentMultiOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, DOCUMENT_MULTI_OPERATION_CODEC);
-							return UserContainer.create(eventloop, driver, createMergedOTSystem(), myRepositoryId, pmDriver, EDITOR_INDEX_REPO);
+							return CommonUserContainer.create(eventloop, driver, createMergedOTSystem(), myRepositoryId, pmDriver, EDITOR_INDEX_REPO);
 						};
 					}
 				},

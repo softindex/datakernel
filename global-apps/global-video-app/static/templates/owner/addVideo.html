@@ -5,7 +5,7 @@
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
   <meta charset="UTF-8">
   <title>Global Videos | Add video</title>
-
+  <script src="/js/addVideo.js"></script>
   <style>
     table {
       font-family: arial, sans-serif;
@@ -24,8 +24,6 @@
       background-color: #dddddd;
     }
 
-
-
   </style>
 </head>
 
@@ -33,16 +31,17 @@
 <a href="/myChannel">My channel</a>
 
 <div>
-  <form action="upload" method="post" enctype="multipart/form-data">
-    <label for="title">Title: </label>
-    <input type="text" name="title" id="title" required><br>
-    <label for="description">Description: </label>
-    <textarea name="description" id="description">Enter description</textarea><br>
+  <form id="form" action="upload" method="post" enctype="multipart/form-data">
     <label for="video">Select video to upload</label>
     <input type="file" name="video" id="video" required><br>
     <label for="thumbnail">Select thumbnail (optional)</label>
     <input type="file" name="thumbnail" id="thumbnail"><br>
-    <input type="submit" value="Submit">
+
+    <input type="checkbox" id="withMetadata"/>
+    <label for="withMetadata">With metadata (public video)</label><br>
+
+    <input type="submit" id='submit' value="Submit">
+
   </form>
 </div>
 </body>

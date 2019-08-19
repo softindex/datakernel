@@ -9,34 +9,38 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.CollectionUtils;
 import io.global.ot.api.CommitId;
-import io.global.ot.map.MapOperation;
-import io.global.video.ot.VideosState;
+import io.global.ot.name.ChangeName;
+import io.global.video.ot.channel.ChannelOTOperation;
+import io.global.video.ot.channel.ChannelState;
 import io.global.video.pojo.VideoMetadata;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.global.ot.map.SetValue.set;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
-public final class VideoDaoImpl implements VideoDao {
+public final class ChannelDaoImpl implements ChannelDao {
 	private static final Set<String> ACCEPTED_VIDEO_EXTENSIONS = CollectionUtils.set("mp4");
 	private static final Set<String> ACCEPTED_THUMBNAIL_EXTENSIONS = CollectionUtils.set("png", "jpg", "jpeg");
-	private static final StacklessException UNSUPPORTED_VIDEO_EXTENSION = new StacklessException(VideoDaoImpl.class, "Unsupported video extension");
-	private static final StacklessException UNSUPPORTED_THUMBNAIL_EXTENSION = new StacklessException(VideoDaoImpl.class, "Unsupported thumbnail extension");
+	private static final StacklessException UNSUPPORTED_VIDEO_EXTENSION = new StacklessException(ChannelDaoImpl.class, "Unsupported video extension");
+	private static final StacklessException UNSUPPORTED_THUMBNAIL_EXTENSION = new StacklessException(ChannelDaoImpl.class, "Unsupported thumbnail extension");
 
 	private final FsClient fsClient;
-	private final OTStateManager<CommitId, MapOperation<String, VideoMetadata>> stateManager;
-	private final Map<String, VideoMetadata> stateView;
+	private final OTStateManager<CommitId, ChannelOTOperation> stateManager;
+	private final ChannelState state;
 
-	public VideoDaoImpl(FsClient fsClient, OTStateManager<CommitId, MapOperation<String, VideoMetadata>> stateManager) {
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+
+	public ChannelDaoImpl(FsClient fsClient, OTStateManager<CommitId, ChannelOTOperation> stateManager) {
 		this.fsClient = fsClient;
 		this.stateManager = stateManager;
-		this.stateView = ((VideosState) stateManager.getState()).getVideos();
+		this.state = ((ChannelState) stateManager.getState());
 	}
 
 	@Override
@@ -56,13 +60,13 @@ public final class VideoDaoImpl implements VideoDao {
 	}
 
 	@Override
-	public Promise<Map<String, VideoMetadata>> listPublic() {
-		return Promise.of(stateView);
+	public Promise<ChannelState> getChannelState() {
+		return Promise.of(state);
 	}
 
 	@Override
 	public Promise<@Nullable VideoMetadata> getVideoMetadata(String videoId) {
-		return Promise.of(stateView.get(videoId));
+		return Promise.of(state.getMetadata().get(videoId));
 	}
 
 	@Override
@@ -100,19 +104,17 @@ public final class VideoDaoImpl implements VideoDao {
 
 	@Override
 	public Promise<Void> setMetadata(String videoId, VideoMetadata metadata) {
-		VideoMetadata prevMetadata = stateView.get(videoId);
-		stateManager.add(MapOperation.forKey(videoId, set(prevMetadata, metadata)));
-		return stateManager.sync();
+		VideoMetadata prevMetadata = state.getMetadata().get(videoId);
+		return applyAndSync(ChannelOTOperation.setMetadata(videoId, prevMetadata, metadata));
 	}
 
 	@Override
 	public Promise<Void> removeMetadata(String videoId) {
-		VideoMetadata prevMetadata = stateView.get(videoId);
+		VideoMetadata prevMetadata = state.getMetadata().get(videoId);
 		if (prevMetadata == null) {
 			return Promise.complete();
 		}
-		stateManager.add(MapOperation.forKey(videoId, set(prevMetadata, null)));
-		return stateManager.sync();
+		return applyAndSync(ChannelOTOperation.setMetadata(videoId, prevMetadata, null));
 	}
 
 	@Override
@@ -126,6 +128,23 @@ public final class VideoDaoImpl implements VideoDao {
 							return Promises.all(list.stream()
 									.map(fileMetadata -> fsClient.delete(fileMetadata.getName())));
 						}));
+	}
+
+	@Override
+	public Promise<Void> updateChannelInfo(String name, String description) {
+		String previousName = state.getName();
+		String previousDescription = state.getDescription();
+		long timestamp = now.currentTimeMillis();
+		return applyAndSync(new ChannelOTOperation(
+				singletonList(new ChangeName(previousName, name, timestamp)),
+				singletonList(new ChangeName(previousDescription, description, timestamp)),
+				emptyList()
+		));
+	}
+
+	private Promise<Void> applyAndSync(ChannelOTOperation channelOperation) {
+		stateManager.add(channelOperation);
+		return stateManager.sync();
 	}
 
 }

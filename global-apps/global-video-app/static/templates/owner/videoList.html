@@ -13,6 +13,9 @@
       flex: 50%;
       text-align: center;
     }
+    .info {
+      text-align: center;
+    }
 
   </style>
 </head>
@@ -24,10 +27,21 @@
 </a>
 <a href="/user/{{public key}}/"><h4>Link to channel</h4></a>
 
+<div class="info">
+  <form method="post" action="/myChannel/updateInfo">
+    <label for="name">Channel name</label>
+    <input type="text" value="{{name}}" name="name" id="name"><br>
+    <label for="description">Channel description</label>
+    <textarea id="description" name="description">{{description}}</textarea>
+    <input type="submit" value="Update info">
+  </form>
+</div>
+
 <div class="container">
+
   <div class="column">
     <h1>Public videos</h1>
-    {{#public}}
+    {{#metadata}}
     <img width="128" height="72" src="/myChannel/{{key}}/thumbnail">
     <h3>Title: {{value.title}}</h3>
     <a href="/myChannel/{{key}}">Go to video</a>
@@ -37,11 +51,11 @@
     <form action="myChannel/{{key}}/delete" method="post">
       <button type="submit">Delete video</button>
     </form>
-    {{/public}}
+    {{/metadata}}
 
-    {{^public}}
+    {{^metadata}}
     <h3>No public videos</h3>
-    {{/public}}
+    {{/metadata}}
   </div>
 
   <div class="column">
