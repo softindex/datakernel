@@ -9,13 +9,6 @@ const createChatDialogStyles = theme => ({
   form: {
     display: 'contents'
   },
-  chip: {
-    margin: theme.spacing.unit,
-    marginBottom: theme.spacing.unit * 2,
-    marginTop: 0,
-    width: theme.spacing.unit * 14,
-    overflow: 'hidden'
-  },
   actionButton: {
     margin: theme.spacing,
     position: 'relative',
@@ -27,19 +20,13 @@ const createChatDialogStyles = theme => ({
     maxHeight: theme.spacing.unit * 12,
     overflow: 'overlay'
   },
-  chipText: {
-    width: 'inherit',
-    overflow: 'hidden',
-    display: 'inline-block',
-    textOverflow: 'ellipsis'
-  },
   chatsList: {
     flexGrow: 1,
     '&:hover': {
       overflow: 'overlay'
     },
     overflow: 'hidden',
-    maxHeight: theme.spacing.unit * 37,
+    height: theme.spacing.unit * 37,
     marginTop: theme.spacing.unit
   },
   search: {
@@ -62,9 +49,6 @@ const createChatDialogStyles = theme => ({
     overflow: 'hidden',
     whiteSpace: 'nowrap'
   },
-  iconButton: {
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`
-  },
   paperDivider: {
     background: theme.palette.primary.background,
     padding: theme.spacing.unit * 2,
@@ -83,13 +67,9 @@ const createChatDialogStyles = theme => ({
   dividerText: {
     fontSize: '0.9rem'
   },
-  progressWrapper: {
-    textAlign: 'center',
-    margin: theme.spacing.unit * 8
-  },
   secondaryDividerText: {
     textAlign: 'center',
-    margin: `${theme.spacing.unit * 2.5}px 0px`
+    margin: `${theme.spacing.unit * 2}px 0px`
   },
   innerUl: {
     padding: 0

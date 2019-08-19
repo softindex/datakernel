@@ -5,34 +5,24 @@ import Button from '@material-ui/core/Button';
 import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import TextField from '@material-ui/core/TextField';
 import connectService from "../../common/connectService";
 import RoomsContext from "../../modules/rooms/RoomsContext";
-import Chip from "@material-ui/core/Chip";
+import Chip from '../Chip/Chip';
 import {withSnackbar} from "notistack";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import List from "@material-ui/core/List";
-import Avatar from "@material-ui/core/Avatar";
-import InputBase from "@material-ui/core/InputBase";
-import SearchIcon from '@material-ui/icons/Search';
-import IconButton from "@material-ui/core/IconButton";
 import Paper from "@material-ui/core/Paper";
 import RoomItem from "../RoomItem/RoomItem";
 import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
 import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
 import Typography from "@material-ui/core/Typography";
-import Grow from "@material-ui/core/Grow";
-import CircularProgress from "@material-ui/core/CircularProgress";
 import ContactItem from "../ContactItem/ContactItem";
 import ListSubheader from "@material-ui/core/ListSubheader";
-import {createDialogRoomId, getAppStoreContactName, getAvatarLetters} from "../../common/utils";
+import Search from "../Search/Search";
 
 class CreateChatDialog extends React.Component {
-  chipContainer = React.createRef();
-
   state = {
     participants: new Set(),
     searchContacts: new Map(),
@@ -75,12 +65,22 @@ class CreateChatDialog extends React.Component {
     });
   };
 
+  isSearchInContacts() {
+    let isSearchInContacts = true;
+    [...this.props.searchContacts].map(([publicKey,]) => {
+      if (!this.props.contacts.has(publicKey)) {
+        isSearchInContacts = false;
+      }
+    });
+    return isSearchInContacts;
+  }
+
   onContactCheck(roomParticipants) {
     const pubKey = roomParticipants.find(publicKey => publicKey !== this.props.publicKey);
     let searchContacts = this.state.searchContacts;
-    let participants = new Map(this.state.participants);
+    let participants = new Set(this.state.participants);
 
-    if (this.props.searchContacts. size !== 0) {
+    if (this.props.searchContacts.size !== 0) {
       searchContacts.set(pubKey, this.props.searchContacts.get(pubKey));
       this.setState({
         searchContacts
@@ -148,40 +148,24 @@ class CreateChatDialog extends React.Component {
           </DialogTitle>
           <DialogContent className={classes.dialogContent}>
             <div className={classes.chipsContainer}>
-              {[...this.state.participants].map((pubKey) => (
+              {[...this.state.participants].map(pubKey => (
                 <Chip
                   color="primary"
-                  label={names.get(pubKey) || getAppStoreContactName(this.state.searchContacts.get(pubKey))}
-                  avatar={
-                    <Avatar>
-                      {getAvatarLetters(names.get(pubKey)) ||
-                      getAvatarLetters(getAppStoreContactName(this.state.searchContacts.get(pubKey)))}
-                    </Avatar>
-                  }
-                  onDelete={!this.state.loading && this.onContactCheck.bind(this, [pubKey])}
-                  className={classes.chip}
-                  classes={{
-                    label: classes.chipText
-                  }}
+                  names={names}
+                  loading={this.state.loading}
+                  searchContacts={this.state.searchContacts}
+                  pubKey={pubKey}
+                  onContactCheck={this.onContactCheck.bind(this, [pubKey])}
                 />
               ))}
             </div>
-            <Paper className={classes.search}>
-              <IconButton
-                className={classes.iconButton}
-                disabled={true}
-              >
-                <SearchIcon/>
-              </IconButton>
-              <InputBase
-                className={classes.inputDiv}
-                placeholder="Search people..."
-                autoFocus
-                value={this.state.search}
-                onChange={this.onSearchChange}
-                classes={{input: classes.input}}
-              />
-            </Paper>
+            <Search
+              classes={{search: classes.search}}
+              placeholder="Search people..."
+              searchValue={this.state.search}
+              onChange={this.onSearchChange}
+              searchReady={this.props.searchReady}
+            />
             <div className={classes.chatsList}>
               {[...this.getFilteredRooms(this.sortContacts())].length === 0 &&
               this.props.searchContacts.size === 0 && this.state.search !== '' && (
@@ -216,17 +200,10 @@ class CreateChatDialog extends React.Component {
                       </List>
                     </li>
                   )}
-                  {this.state.search !== '' && (
+                  {this.state.search !== '' && !this.isSearchInContacts() && (
                     <li>
                       <List className={classes.innerUl}>
                         <ListSubheader className={classes.listSubheader}>People</ListSubheader>
-                        {!this.props.searchReady && this.props.error === undefined && (
-                          <Grow in={!this.props.searchReady}>
-                            <div className={this.props.classes.progressWrapper}>
-                              <CircularProgress/>
-                            </div>
-                          </Grow>
-                        )}
                         {this.props.error !== undefined && (
                           <Paper square className={classes.paperError}>
                             <Typography className={classes.dividerText}>

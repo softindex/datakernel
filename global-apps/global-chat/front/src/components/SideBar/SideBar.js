@@ -8,9 +8,6 @@ import Paper from "@material-ui/core/Paper";
 import RoomsList from "../RoomsList/RoomsList";
 import connectService from "../../common/connectService";
 import ContactsContext from "../../modules/contacts/ContactsContext";
-import IconButton from "@material-ui/core/IconButton";
-import SearchIcon from "@material-ui/icons/Search";
-import InputBase from "@material-ui/core/InputBase";
 import RoomsContext from "../../modules/rooms/RoomsContext";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
@@ -18,10 +15,11 @@ import Typography from "@material-ui/core/Typography";
 import Grow from "@material-ui/core/Grow";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import ContactItem from "../ContactItem/ContactItem";
-import {createDialogRoomId, toEmoji} from "../../common/utils";
+import {createDialogRoomId} from "../../common/utils";
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
 import MyProfileContext from "../../modules/myProfile/MyProfileContext";
+import Search from "../Search/Search";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
@@ -46,6 +44,16 @@ class SideBar extends React.Component {
       }
     });
   };
+
+  isSearchInContacts() {
+    let isSearchInContacts = true;
+    [...this.props.searchContacts].map(([publicKey,]) => {
+      if (!this.props.contacts.has(publicKey)) {
+        isSearchInContacts = false;
+      }
+    });
+    return isSearchInContacts;
+  }
 
   sortContacts() {
     return [...this.props.rooms].sort(((array1, array2) => {
@@ -111,22 +119,12 @@ class SideBar extends React.Component {
 
     return (
       <div className={classes.wrapper}>
-        <Paper className={classes.search}>
-          <IconButton
-            className={classes.iconButton}
-            disabled={true}
-          >
-            <SearchIcon/>
-          </IconButton>
-          <InputBase
-            className={classes.inputDiv}
-            placeholder="People, groups, public keys..."
-            autoFocus
-            value={this.state.search}
-            onChange={this.onSearchChange}
-            classes={{input: classes.input}}
-          />
-        </Paper>
+        <Search
+          classes={{search: classes.search}}
+          placeholder="People, groups, public keys..."
+          searchValue={this.state.search}
+          onChange={this.onSearchChange}
+        />
         <Paper square className={classes.paper}>
           <Tabs
             value={this.state.tabId}
@@ -154,11 +152,13 @@ class SideBar extends React.Component {
 
           {this.state.search !== '' && (
             <>
-              <Paper square className={classes.paperDivider}>
-                <Typography className={classes.dividerText}>
-                  People
-                </Typography>
-              </Paper>
+              {!this.isSearchInContacts() && (
+                <Paper square className={classes.paperDivider}>
+                  <Typography className={classes.dividerText}>
+                    People
+                  </Typography>
+                </Paper>
+              )}
               {!this.props.searchReady && this.props.error === undefined && (
                 <Grow in={!this.props.searchReady}>
                   <div className={this.props.classes.progressWrapper}>
@@ -193,7 +193,7 @@ class SideBar extends React.Component {
                         ))}
                     </List>
                   )}
-                  {this.props.searchContacts.size === 0 && (
+                  {this.getFilteredRooms(this.sortContacts()).size === 0 && (
                     <Typography
                       className={classes.secondaryDividerText}
                       color="textSecondary"
@@ -207,7 +207,6 @@ class SideBar extends React.Component {
             </>
           )}
         </div>
-
         <AddContactDialog
           open={this.state.showAddDialog}
           onClose={this.closeAddDialog}

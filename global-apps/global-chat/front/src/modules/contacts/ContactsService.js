@@ -2,7 +2,7 @@ import Service from '../../common/Service';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
 import {wait, retry, createDialogRoomId, toEmoji} from '../../common/utils';
 import GlobalAppStoreAPI from "../../common/GlobalAppStoreAPI";
-import ProfileService from "../profiles/ProfileService";
+import ProfileService from "../profile/ProfileService";
 
 const RETRY_TIMEOUT = 1000;
 

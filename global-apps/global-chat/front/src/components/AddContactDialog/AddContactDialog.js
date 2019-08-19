@@ -22,11 +22,9 @@ class AddContactDialog extends React.Component {
 
   onSubmit = event => {
     event.preventDefault();
-
     this.setState({
       loading: true
     });
-
     this.props.onAddContact(this.props.contactPublicKey, this.state.name);
     this.props.onClose();
     this.setState({

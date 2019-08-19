@@ -26,7 +26,7 @@ function ContactMenu({onAddContact, classes}) {
     onAddContact();
     handleClose();
   }
-  //can't delete div because of incorrect handling click menu}
+
   return (
     <div onClick={handleClick} className={classes.wrapperButton}>
       <IconButton>
