@@ -245,27 +245,14 @@ public abstract class AbstractModule implements Module {
 		builder.scan(cls);
 	}
 
-	protected final void deepScan(Class<?> cls, Object object) {
-		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
-		builder.deepScan(cls, object);
-	}
-
-	protected final void deepScan(Object object) {
-		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
-		builder.deepScan(object);
-	}
-
-	protected final void deepScan(Class<?> cls) {
-		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
-		builder.deepScan(cls);
-	}
-
 	private void finish() {
 		if (!configured.compareAndSet(false, true)) {
 			return;
 		}
 
-		ModuleBuilder b = Module.create().scan(this).deepScan(getClass().getSuperclass(), this);
+		ModuleBuilder b = Module.create().scan(getClass().getSuperclass(), this);
+		ReflectionUtils.scanClassInto(getClass(), this, b); // so that provider methods and dsl bindings are in one 'export area'
+
 		builder = b;
 		configure();
 		builder = null;

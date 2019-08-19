@@ -270,7 +270,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				.bind(completionStageKey.named(OnRun.class)).toInstance(onRunFuture)
 				.bind(completionStageKey.named(OnComplete.class)).toInstance(onCompleteFuture)
 
-				.deepScan(Launcher.this);
+				.scan(Launcher.this);
 	}
 
 	/**

@@ -561,7 +561,7 @@ public final class TestDI {
 			}
 		}
 
-		Injector injector = Injector.of(Module.create().deepScan(new ObjectWithProviders2()));
+		Injector injector = Injector.of(Module.create().scan(new ObjectWithProviders2()));
 		String string = injector.getInstance(String.class);
 
 		assertEquals("123", string);
@@ -1183,7 +1183,7 @@ public final class TestDI {
 	//[START REGION_1]
 	@Test
 	public void consumerTransformerHookupWithNameTest() {
-		int [] calls = {0};
+		int[] calls = {0};
 		AbstractModule module = new AbstractModule() {
 			@Named("consumer1")
 			@ProvidesIntoSet
@@ -1366,7 +1366,6 @@ public final class TestDI {
 	public void keySetExports() {
 		Injector injector = Injector.of(
 				Module.create()
-						.bind(new Key<Set<Key<?>>>(EagerSingleton.class) {}).export()
 						.bind(Integer.class).toInstance(3000).export()
 						.bind(String.class).toInstance("hello").as(EagerSingleton.class));
 
@@ -1375,5 +1374,33 @@ public final class TestDI {
 		Name name = keySet.iterator().next().getName();
 		assertNotNull(name);
 		assertTrue(name.isUnique());
+	}
+
+	@Test
+	public void installedKeySetExport() {
+		Injector injector = Injector.of(
+				Module.create()
+						.bind(Integer.class).toInstance(3000).export()
+						.install(Module.create()
+								.bind(String.class).toInstance("hello").as(EagerSingleton.class)));
+
+		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
+		assertEquals(1, keySet.size());
+		Name name = keySet.iterator().next().getName();
+		assertNotNull(name);
+		assertTrue(name.isUnique());
+	}
+
+	@Test
+	public void moduleInstallReexport() {
+		Injector injector = Injector.of(
+				Module.create()
+						.bind(String.class).toInstance("hello").export()
+						.bind(Integer.class).export()
+						.install(Module.create()
+								.bind(Integer.class).toInstance(123)));
+
+		assertEquals("hello", injector.getInstance(String.class));
+		assertEquals(123, injector.getInstance(Integer.class).intValue());
 	}
 }

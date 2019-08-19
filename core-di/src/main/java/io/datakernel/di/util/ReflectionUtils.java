@@ -8,6 +8,8 @@ import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.module.BindingDesc;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
+import io.datakernel.di.module.ModuleBuilderBinder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,7 +20,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Name.uniqueName;
-import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -347,17 +348,11 @@ public final class ReflectionUtils {
 		}
 	}
 
-	private static void addToKeySet(List<BindingDesc> bindingDescs, Map<Key<?>, Multibinder<?>> multibinders, Key<?> key, Name keySet) {
-		Key<Set<Key<?>>> keySetKey = new Key<Set<Key<?>>>(keySet) {};
-		bindingDescs.add(new BindingDesc(keySetKey, Binding.toInstance(key).mapInstance(Collections::singleton), UNSCOPED, false));
-		multibinders.put(keySetKey, Multibinder.toSet());
+	public static Module scanClass(@NotNull Class<?> moduleClass, @Nullable Object module) {
+		return scanClassInto(moduleClass, module, Module.create());
 	}
 
-	public static ProviderScanResults scanClassForProviders(@NotNull Class<?> moduleClass, @Nullable Object module) {
-		List<BindingDesc> bindingDescs = new ArrayList<>();
-		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
-		Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
-
+	public static Module scanClassInto(@NotNull Class<?> moduleClass, @Nullable Object module, ModuleBuilder builder) {
 		for (Method method : moduleClass.getDeclaredMethods()) {
 			if (method.isAnnotationPresent(Provides.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
@@ -374,8 +369,12 @@ public final class ReflectionUtils {
 
 				if (typeVars.length == 0) {
 					Key<Object> key = Key.ofType(returnType, name);
-					bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, exported));
-					keySets.forEach(keySet -> addToKeySet(bindingDescs, multibinders, key, keySet));
+
+					ModuleBuilderBinder<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
+					keySets.forEach(binder::as);
+					if (exported) {
+						binder.export();
+					}
 					continue;
 				}
 				Set<TypeVariable<?>> unused = Arrays.stream(typeVars)
@@ -391,9 +390,8 @@ public final class ReflectionUtils {
 					throw new IllegalStateException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported");
 				}
 
-				bindingGenerators
-						.computeIfAbsent(method.getReturnType(), $ -> new HashSet<>())
-						.add(new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
+				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
+
 			} else if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
 					throw new IllegalStateException("Found non-static provider method while scanning for statics");
@@ -404,32 +402,36 @@ public final class ReflectionUtils {
 
 				Type type = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass);
 				Scope[] methodScope = getScope(method);
+				Set<Name> keySets = keySetsOf(method);
 				boolean exported = method.isAnnotationPresent(Export.class);
 
 				Key<Object> key = Key.ofType(type, uniqueName());
-				bindingDescs.add(new BindingDesc(key, bindingFromMethod(module, method), methodScope, false));
+				ModuleBuilderBinder<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
+				keySets.forEach(binder::as);
 
 				Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
-
 				Binding<Set<Object>> binding = Binding.to(Collections::singleton, key);
-				bindingDescs.add(new BindingDesc(setKey, module != null ? binding.at(LocationInfo.from(module, method)) : binding, methodScope, exported));
+				if (module != null) {
+					binding.at(LocationInfo.from(module, method));
+				}
 
-				multibinders.put(setKey, Multibinder.toSet());
-
-				keySetsOf(method).forEach(keySet -> {
-					addToKeySet(bindingDescs, multibinders, key, keySet);
-					addToKeySet(bindingDescs, multibinders, setKey, keySet);
-				});
+				ModuleBuilderBinder<Set<Object>> setBinder = builder.bind(setKey).to(binding).in(methodScope);
+				keySets.forEach(setBinder::as);
+				if (exported) {
+					setBinder.export();
+				}
+				builder.multibind(setKey, Multibinder.toSet());
 			}
 		}
-		return new ProviderScanResults(bindingDescs, bindingGenerators, multibinders);
+
+		return builder;
 	}
 
-	public static List<Module> scanProvidersHierarchy(@NotNull Class<?> moduleClass, @Nullable Object module) {
-		List<Module> result = new ArrayList<>();
+	public static Map<Class<?>, Module> scanClassHierarchy(@NotNull Class<?> moduleClass, @Nullable Object module) {
+		Map<Class<?>, Module> result = new HashMap<>();
 		Class<?> cls = moduleClass;
 		while (cls != Object.class && cls != null) {
-			result.add(Module.create().scan(cls, module));
+			result.put(cls, scanClass(cls, module));
 			cls = cls.getSuperclass();
 		}
 		return result;

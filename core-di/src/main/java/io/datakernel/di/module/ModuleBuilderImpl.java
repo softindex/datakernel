@@ -5,6 +5,7 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,7 +16,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
-import static io.datakernel.di.util.ReflectionUtils.*;
+import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -144,18 +145,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	@Override
 	public ModuleBuilder scan(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
-		completeCurrent();
-		ProviderScanResults results = scanClassForProviders(moduleClass, module);
-		bindingDescs.addAll(results.getBindingDescs());
-		multibinders.putAll(results.getMultibinders());
-		combineMultimap(bindingGenerators, results.getBindingGenerators());
-		return this;
-	}
-
-	@Override
-	public ModuleBuilder deepScan(@NotNull Class<?> moduleClass, @Nullable Object module) {
-		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
-		return install(scanProvidersHierarchy(moduleClass, module));
+		return install(scanClassHierarchy(moduleClass, module).values());
 	}
 
 	@Override
@@ -234,6 +224,10 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 				.collect(toSet());
 
 		if (!exportedKeys.isEmpty()) {
+
+			// key sets are always exported
+			bindings.dfs(bindings -> bindings.keySet().stream().filter(Utils::isKeySet).forEach(exportedKeys::add));
+
 			Module exported = Modules.export(this, exportedKeys);
 			// it would not recurse because we have the `finished` flag
 			// and it's ok to reassign all of that below in the last moment
