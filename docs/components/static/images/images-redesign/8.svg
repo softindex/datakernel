@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="381" height="324" viewBox="0 0 381 324">
+    <defs>
+        <path id="b" d="M46.277 148.477L0 121.61l46.277-26.868L92.53 121.61z"/>
+        <filter id="a" width="168.1%" height="217.2%" x="-34%" y="-58.6%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10.5"/>
+        </filter>
+        <filter id="c" width="176.7%" height="232.1%" x="-38.4%" y="-66.1%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceAlpha" result="shadowBlurInner1" stdDeviation="3"/>
+            <feOffset dy="2" in="shadowBlurInner1" result="shadowOffsetInner1"/>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" k2="-1" k3="1" operator="arithmetic" result="shadowInnerInner1"/>
+            <feColorMatrix in="shadowInnerInner1" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0"/>
+        </filter>
+        <linearGradient id="d" x1="50%" x2="50%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="#EDF8FA"/>
+            <stop offset="100%" stop-color="#CDEAF2"/>
+        </linearGradient>
+        <linearGradient id="e" x1="50%" x2="50%" y1="0%" y2="99.873%">
+            <stop offset="0%" stop-color="#E2F1F6"/>
+            <stop offset="99.377%" stop-color="#98CCDA"/>
+        </linearGradient>
+        <path id="g" d="M46.277 148.477L0 121.61l46.277-26.868L92.53 121.61z"/>
+        <filter id="f" width="168.1%" height="217.2%" x="-34%" y="-58.6%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10.5"/>
+        </filter>
+        <filter id="h" width="176.7%" height="232.1%" x="-38.4%" y="-66.1%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceAlpha" result="shadowBlurInner1" stdDeviation="3"/>
+            <feOffset dy="2" in="shadowBlurInner1" result="shadowOffsetInner1"/>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" k2="-1" k3="1" operator="arithmetic" result="shadowInnerInner1"/>
+            <feColorMatrix in="shadowInnerInner1" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0"/>
+        </filter>
+        <path id="j" d="M46.277 148.477L0 121.61l46.277-26.868L92.53 121.61z"/>
+        <filter id="i" width="168.1%" height="217.2%" x="-34%" y="-58.6%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10.5"/>
+        </filter>
+        <filter id="k" width="176.7%" height="232.1%" x="-38.4%" y="-66.1%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceAlpha" result="shadowBlurInner1" stdDeviation="3"/>
+            <feOffset dy="2" in="shadowBlurInner1" result="shadowOffsetInner1"/>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" k2="-1" k3="1" operator="arithmetic" result="shadowInnerInner1"/>
+            <feColorMatrix in="shadowInnerInner1" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0"/>
+        </filter>
+        <linearGradient id="l" x1="50%" x2="50%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="#3ED5F2"/>
+            <stop offset="100%" stop-color="#1DAAE0"/>
+        </linearGradient>
+        <linearGradient id="m" x1="50%" x2="50%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="#3ED5F2"/>
+            <stop offset="100%" stop-color="#1DAAE0"/>
+        </linearGradient>
+        <linearGradient id="n" x1="50%" x2="50%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="#3ED5F2"/>
+            <stop offset="100%" stop-color="#1DAAE0"/>
+        </linearGradient>
+        <linearGradient id="o" x1="50%" x2="50%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="#3ED5F2"/>
+            <stop offset="100%" stop-color="#1DAAE0"/>
+        </linearGradient>
+    </defs>
+    <g fill="none" fill-rule="evenodd">
+        <g fill-rule="nonzero" filter="url(#a)" opacity=".04" transform="translate(68 152)">
+            <use fill="#03002D" xlink:href="#b"/>
+            <use fill="#000" filter="url(#c)" xlink:href="#b"/>
+        </g>
+        <path fill="#42E8E0" fill-rule="nonzero" d="M114.277 205.736L68 178.868v53.736l46.277 26.868 46.276-26.868v-53.736z"/>
+        <path fill="url(#d)" d="M46.277 107.472L0 80.604V26.868l46.277 26.868z" transform="translate(68 152)"/>
+        <path fill="url(#e)" d="M92.553 80.604l-46.276 26.868V53.736l46.276-26.868z" transform="translate(68 152)"/>
+        <path fill="#F7FCFC" fill-rule="nonzero" d="M114.277 205.736L68 178.868 114.277 152l46.253 26.868z"/>
+        <path fill="#FFF" fill-rule="nonzero" d="M114.277 205.736l-44.281-25.688L68 181.205l46.277 26.868 46.253-26.868-1.996-1.157z"/>
+        <g fill-rule="nonzero" filter="url(#f)" opacity=".04" transform="translate(267 37)">
+            <use fill="#03002D" xlink:href="#g"/>
+            <use fill="#000" filter="url(#h)" xlink:href="#g"/>
+        </g>
+        <path fill="#42E8E0" fill-rule="nonzero" d="M313.277 90.736L267 63.868v53.736l46.277 26.868 46.276-26.868V63.868z"/>
+        <path fill="url(#d)" d="M46.277 107.472L0 80.604V26.868l46.277 26.868z" transform="translate(267 37)"/>
+        <path fill="url(#e)" d="M92.553 80.604l-46.276 26.868V53.736l46.276-26.868z" transform="translate(267 37)"/>
+        <path fill="#F7FCFC" fill-rule="nonzero" d="M313.277 90.736L267 63.868 313.277 37l46.253 26.868z"/>
+        <path fill="#FFF" fill-rule="nonzero" d="M313.277 90.736l-44.281-25.688L267 66.205l46.277 26.868 46.253-26.868-1.996-1.157z"/>
+        <g>
+            <g fill-rule="nonzero" filter="url(#i)" opacity=".04" transform="translate(61 16)">
+                <use fill="#03002D" xlink:href="#j"/>
+                <use fill="#000" filter="url(#k)" xlink:href="#j"/>
+            </g>
+            <path fill="#42E8E0" fill-rule="nonzero" d="M107.277 69.736L61 42.868v53.736l46.277 26.868 46.276-26.868V42.868z"/>
+            <path fill="url(#d)" d="M46.277 107.472L0 80.604V26.868l46.277 26.868z" transform="translate(61 16)"/>
+            <path fill="url(#e)" d="M92.553 80.604l-46.276 26.868V53.736l46.276-26.868z" transform="translate(61 16)"/>
+            <path fill="#F7FCFC" fill-rule="nonzero" d="M107.277 69.736L61 42.868 107.277 16l46.253 26.868z"/>
+            <path fill="#FFF" fill-rule="nonzero" d="M107.277 69.736L62.996 44.048 61 45.205l46.277 26.868 46.253-26.868-1.996-1.157z"/>
+        </g>
+        <path fill="url(#l)" fill-rule="nonzero" d="M255.386 32.077l-8.605-14.193a2.2 2.2 0 0 1 3.762-2.281l15.096 24.896-29.112-.482a2.2 2.2 0 0 1 .073-4.399l16.596.275L196.18 3.162l-46.236 27.04a2.2 2.2 0 1 1-2.221-3.8l48.436-28.326 59.227 34z" transform="translate(4 2)"/>
+        <path fill="url(#m)" fill-rule="nonzero" d="M11.05 147.821l7.938-14.577a2.2 2.2 0 0 1 3.865 2.104l-13.925 25.57-14.227-25.402a2.2 2.2 0 0 1 3.84-2.15l8.11 14.481-.309-51.877 68.445 40.523a2.2 2.2 0 1 1-2.242 3.786L10.79 103.716l.262 44.105z" transform="translate(4 2)"/>
+        <path fill="url(#n)" fill-rule="nonzero" d="M166.647 107.824l-9.096-13.883a2.2 2.2 0 0 1 3.68-2.412l15.956 24.355-29.11.534a2.2 2.2 0 1 1-.081-4.399l16.595-.305-30.375-16.054.306 68.478a2.2 2.2 0 1 1-4.4.02l-.338-75.818 36.863 19.484z" transform="translate(4 2)"/>
+        <path fill="url(#o)" fill-rule="nonzero" d="M182.893 127.265l7.96-14.565a2.2 2.2 0 1 1 3.86 2.11l-13.961 25.55-14.19-25.424a2.2 2.2 0 1 1 3.842-2.145l8.09 14.494-.297-66.308 37.101-20.028a2.2 2.2 0 1 1 2.09 3.872l-34.78 18.775.285 63.67z" transform="translate(4 2)"/>
+    </g>
+</svg>

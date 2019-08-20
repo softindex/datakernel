@@ -1,0 +1,21 @@
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">HelloWorldExample</span> <span class="kd">extends</span> <span class="n">Launcher</span> <span class="o">{</span>
+
+	<span class="nd">@Inject</span>
+	<span class="n">String</span> <span class="n">message</span><span class="o">;</span>
+
+	<span class="nd">@Provides</span>
+	<span class="n">String</span> <span class="nf">message</span><span class="o">()</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="s">"Hello, world!"</span><span class="o">;</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Override</span>
+	<span class="kd">protected</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+		<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">message</span><span class="o">);</span>
+	<span class="o">}</span>
+
+	<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+		<span class="n">Launcher</span> <span class="n">launcher</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HelloWorldExample</span><span class="o">();</span>
+		<span class="n">launcher</span><span class="o">.</span><span class="na">launch</span><span class="o">(</span><span class="n">args</span><span class="o">);</span>
+
+	<span class="o">}</span>
+<span class="o">}</span></code></pre></figure>

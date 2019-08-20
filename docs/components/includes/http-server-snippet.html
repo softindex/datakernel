@@ -1,0 +1,12 @@
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">HttpHelloWorldExample</span> <span class="kd">extends</span> <span class="n">HttpServerLauncher</span> <span class="o">{</span>
+	<span class="nd">@Provides</span>
+	<span class="n">AsyncServlet</span> <span class="nf">servlet</span><span class="o">()</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="n">request</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">ok200</span><span class="o">()</span>
+		    <span class="o">.</span><span class="na">withPlainText</span><span class="o">(</span><span class="s">"Hello World"</span><span class="o">));</span>
+	<span class="o">}</span>
+
+	<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+		<span class="n">Launcher</span> <span class="n">launcher</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HttpHelloWorldExample</span><span class="o">();</span>
+		<span class="n">launcher</span><span class="o">.</span><span class="na">launch</span><span class="o">(</span><span class="n">args</span><span class="o">);</span>
+	<span class="o">}</span>
+<span class="o">}</span></code></pre></figure>

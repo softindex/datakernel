@@ -57,6 +57,7 @@
     <module>uikernel</module>
     <module>launchers</module>
     <module>test</module>
+    <module>docs</module>
   </modules>
 
   <scm>

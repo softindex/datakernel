@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel='stylesheet' href='/static/css/pygment_trac.css'/>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"/>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="shortcut icon" type="image/png" href="/static/favicon.png">
+    <title>{{ page.properties.title }} | DataKernel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="
+    {{#page.properties.description}}
+      {{.}}
+    {{/page.properties.description}}
+    {{^page.properties.description}}
+      Java components for building extremely fast and scalable applications with asynchronous I/O
+    {{/page.properties.description}}">
+    <meta name="keywords" content="
+    {{#page.properties.keywords}}
+    {{.}}
+    {{/page.properties.keywords}}
+    {{^page.properties.keywords}}
+    java,java for beginners,spring alternative,netty alternative,jetty alternative,nodejs alternative,guice alternative,asynchronous,eventloop,java nio,embedded http,java http server,java http client,java dns client,high load,streams,serializers,http,olap
+    {{/page.properties.keywords}}">
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+
+    {{>google-analytics.html}}
+</head>
+<body>
+    {{>navbar.html}}
+    {{#page.home}}
+         {{>indexContent.html}}
+    {{/page.home}}
+    {{^page.home}}
+        <div  class="container-fluid container-radius">
+            <div class="row">
+                {{>mainContent.html}}
+            </div>
+        </div>
+    {{/page.home}}
+
+<div class="row justify-content-between footer">
+    <div class="col-md-4 col-lg-3 footer-item"> &copy; 2019 SoftIndex LLC. All Rights Reserved</div>
+    <div class="col-md-8 col-lg-9 footer-menu">
+        <a href="http://uikernel.io">Uikernel</a>
+        <a href="http://adkernel.com">Adkernel</a>
+        <a href="{{site.github_url}}">Github</a>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+_site
+.idea
+Gemfile.lock
+npm-debug.log
+*.iml
+*.js
+/*.properties
+!docker-conf/*.properties

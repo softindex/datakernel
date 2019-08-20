@@ -12,6 +12,7 @@ import java.nio.file.Path;
 /**
  * This example demonstrates configuring and launching RemoteFsServer.
  */
+//[START EXAMPLE]
 public class ServerSetupExample extends RemoteFsServerLauncher {
 	private Path storage;
 
@@ -42,3 +43,4 @@ public class ServerSetupExample extends RemoteFsServerLauncher {
 		launcher.launch(args);
 	}
 }
+//[END EXAMPLE]

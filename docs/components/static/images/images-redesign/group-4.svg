@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="63" height="95" viewBox="0 0 63 95">
+    <defs>
+        <path id="b" d="M22.154 83.75L0 70.927l22.154-12.823 22.142 12.823z"/>
+        <filter id="a" width="167.7%" height="217%" x="-33.9%" y="-58.5%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5"/>
+        </filter>
+        <filter id="c" width="176.8%" height="232.6%" x="-38.4%" y="-66.3%" filterUnits="objectBoundingBox">
+            <feGaussianBlur in="SourceAlpha" result="shadowBlurInner1" stdDeviation="1.5"/>
+            <feOffset dy="1" in="shadowBlurInner1" result="shadowOffsetInner1"/>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" k2="-1" k3="1" operator="arithmetic" result="shadowInnerInner1"/>
+            <feColorMatrix in="shadowInnerInner1" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0"/>
+        </filter>
+        <linearGradient id="d" x1="50%" x2="50%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="#EDF8FA"/>
+            <stop offset="100%" stop-color="#CDEAF2"/>
+        </linearGradient>
+        <linearGradient id="e" x1="50%" x2="50%" y1="0%" y2="99.873%">
+            <stop offset="0%" stop-color="#E2F1F6"/>
+            <stop offset="99.377%" stop-color="#98CCDA"/>
+        </linearGradient>
+    </defs>
+    <g fill="none" fill-rule="evenodd">
+        <g fill-rule="nonzero" filter="url(#a)" opacity=".1" transform="translate(9)">
+            <use fill="#03002D" xlink:href="#b"/>
+            <use fill="#000" filter="url(#c)" xlink:href="#b"/>
+        </g>
+        <path fill="#42E8E0" fill-rule="nonzero" d="M31.154 25.647L9 12.823V38.47l22.154 12.823L53.307 38.47V12.823z"/>
+        <path fill="url(#d)" d="M22.154 51.293L0 38.47V12.823l22.154 12.824z" transform="translate(9)"/>
+        <path fill="url(#e)" d="M44.307 38.47L22.154 51.293V25.647l22.153-12.824z" transform="translate(9)"/>
+        <path fill="#FFF" fill-rule="nonzero" d="M31.154 25.647L9 12.823 31.154 0l22.142 12.823z"/>
+        <path fill="#FFF" fill-rule="nonzero" d="M31.154 25.647L9.955 13.387 9 13.939l22.154 12.823L53.296 13.94l-.955-.552z"/>
+    </g>
+</svg>

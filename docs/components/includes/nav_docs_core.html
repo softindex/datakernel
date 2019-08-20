@@ -1,0 +1,19 @@
+{{#navBars.core.destinationsSet}}
+<h3>{{key}}</h3>
+<ul>
+  {{#value}}
+  {{#isSelected}}
+  <li class="sidebar-item-selected-wrapper">
+    <div class="sidebar-item-selected">
+      <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
+    </div>
+  </li>
+  {{/isSelected}}
+  {{^isSelected}}
+  <li>
+    <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
+  </li>
+  {{/isSelected}}
+  {{/value}}
+</ul>
+{{/navBars.core.destinationsSet}}

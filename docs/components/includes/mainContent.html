@@ -1,0 +1,44 @@
+<div class="col-md-4 col-lg-3 px-0 mb-3 sidebar">
+  {{#active.core}}
+    {{>nav_docs_core.html}}
+  {{/active.core}}
+
+  {{#active.cloud}}
+    {{>nav_docs_cloud.html}}
+  {{/active.cloud}}
+
+  {{#active.global-cloud}}
+    {{>nav_docs_global-cloud.html}}
+  {{/active.global-cloud}}
+</div>
+
+<div class="col-md-8 col-lg-9 px-0 col-xl-7 markdown-content docs-content">
+  <div class="status-wrapper">
+    <h1>{{page.properties.title}} </h1>
+    {{#page.properties.status-STABLE}}
+      {{>stability-2.html}}
+    {{/page.properties.status-STABLE}}
+    {{#page.properties.status-WIP}}
+      {{>stability-0.html}}
+    {{/page.properties.status-WIP}}
+    <!-- <a class="edit-page-link" href="https://github.com/{{ page.path }}" target="_blank">Edit on GitHub</a> -->
+  </div>
+  <div class="subHeader">{{page.description}}</div>
+
+  {{{renderedContent}}}
+
+  <div class="row docs-prevnext">
+    {{#page.properties.prev}}
+    <div class="col-sm-6">
+      <a class="docs-prevnext-button pull-left" href="/docs/{{ page.properties.prev }}">Prev</a>
+    </div>
+    {{/page.properties.prev}}
+    {{#page.properties.next}}
+    <div class="col-sm-6">
+      <a class="docs-prevnext-button pull-right" href="/docs/{{ page.properties.next }}">Next</a>
+    </div>
+    {{/page.properties.next}}
+  </div>
+
+</div>
+
