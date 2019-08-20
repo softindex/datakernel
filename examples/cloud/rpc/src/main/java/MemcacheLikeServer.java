@@ -15,6 +15,7 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.di.module.Modules.combine;
 
+//[START REGION_1]
 public class MemcacheLikeServer extends Launcher {
 
 	@Provides
@@ -55,3 +56,4 @@ public class MemcacheLikeServer extends Launcher {
 		server.launch(args);
 	}
 }
+//[END REGION_1]

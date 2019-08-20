@@ -18,6 +18,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.di.module.Modules.combine;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+//[START REGION_1]
 public class MemcacheLikeClient extends Launcher {
 	@Provides
 	Eventloop eventloop() {
@@ -86,3 +87,4 @@ public class MemcacheLikeClient extends Launcher {
 		client.launch(args);
 	}
 }
+//[END REGION_1]
