@@ -1,9 +1,9 @@
-import Service from '../../common/Service';
+import {Service} from 'global-apps-common';
 import ChatRoomOTOperation from './ot/ChatRoomOTOperation';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import chatRoomSerializer from "./ot/serializer";
 import chatRoomOTSystem from "./ot/ChatRoomOTSystem";
-import {ROOT_COMMIT_ID} from "../../common/utils";
+import {ROOT_COMMIT_ID} from "global-apps-common";
 
 const RETRY_TIMEOUT = 1000;
 

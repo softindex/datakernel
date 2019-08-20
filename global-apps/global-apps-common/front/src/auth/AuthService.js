@@ -1,4 +1,4 @@
-import Service from '../../common/Service';
+import Service from '../connectService/Service';
 
 let EC = require('elliptic').ec;
 

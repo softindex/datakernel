@@ -1,7 +1,8 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import {connectService} from "global-apps-common";
-import {AuthContext} from "global-apps-common";
+import {withRouter} from "react-router-dom";
+import connectService from "../../connectService/connectService";
+import AuthContext from "../../auth/AuthContext";
 import StoreIcon from '@material-ui/icons/Store';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
 import Typography from "@material-ui/core/Typography";
@@ -56,14 +57,14 @@ class SignUp extends React.Component {
               color="textPrimary"
               className={this.props.classes.title}
             >
-              {this.props.title}
+                {this.props.title}
             </Typography>
             <Typography
               className={this.props.classes.description}
               variant="h6"
               color="textSecondary"
             >
-              {this.props.description}
+                {this.props.description}
             </Typography>
             <Grid container spacing={32}>
               <Grid item xs={12} lg={6} md={6}>
@@ -122,6 +123,6 @@ export default connectService(
   AuthContext, ({authorized, loading}, accountService) => (
     {authorized, loading, accountService})
 )(
-  withSnackbar(withStyles(signUpStyles)(SignUp))
+  withRouter(withSnackbar(withStyles(signUpStyles)(SignUp)))
 );
 

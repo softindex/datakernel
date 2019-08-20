@@ -6,7 +6,7 @@ import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
 import contactItemStyles from "./contactItemStyles";
 import {withRouter} from "react-router-dom";
-import {getAvatarLetters, createDialogRoomId, getAppStoreContactName} from "../../common/utils";
+import {getAvatarLetters, createDialogRoomId, getAppStoreContactName} from "global-apps-common";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import Badge from "@material-ui/core/Badge";
 

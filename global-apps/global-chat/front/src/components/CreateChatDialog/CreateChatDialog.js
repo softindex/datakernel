@@ -6,7 +6,7 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import connectService from "../../common/connectService";
+import {connectService} from "global-apps-common";
 import RoomsContext from "../../modules/rooms/RoomsContext";
 import Chip from '../Chip/Chip';
 import {withSnackbar} from "notistack";

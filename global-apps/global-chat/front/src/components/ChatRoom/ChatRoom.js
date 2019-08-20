@@ -6,8 +6,8 @@ import Messages from '../Messages/Messages';
 import MessageForm from '../MessageForm/MessageForm';
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
-import connectService from '../../common/connectService';
-import AuthContext from '../../modules/auth/AuthContext';
+import {connectService} from 'global-apps-common';
+import {AuthContext} from 'global-apps-common';
 
 class ChatRoom extends React.Component {
   static propTypes = {

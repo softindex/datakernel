@@ -12,7 +12,7 @@ import {Link, withRouter} from "react-router-dom";
 import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from "@material-ui/icons/Delete";
-import {getAvatarLetters, getRoomName} from "../../common/utils";
+import {getAvatarLetters, getRoomName} from "global-apps-common";
 
 class RoomItem extends React.Component {
   state = {

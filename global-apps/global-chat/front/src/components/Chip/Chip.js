@@ -1,7 +1,7 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
 import chipStyles from './chipStyles'
-import {getAppStoreContactName, getAvatarLetters} from "../../common/utils";
+import {getAppStoreContactName, getAvatarLetters} from "global-apps-common";
 import Avatar from "@material-ui/core/Avatar";
 import MuiChip from "@material-ui/core/Chip";
 

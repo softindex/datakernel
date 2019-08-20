@@ -5,11 +5,10 @@ import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Grow from '@material-ui/core/Grow';
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
-import connectService from '../../common/connectService';
-import AuthContext from "../../modules/auth/AuthContext";
+import {connectService} from 'global-apps-common';
+import {AuthContext} from "global-apps-common";
 import RoomsContext from "../../modules/rooms/RoomsContext";
 import ContactsContext from "../../modules/contacts/ContactsContext";
-import {toEmoji} from "../../common/utils";
 
 class Messages extends React.Component {
   wrapper = React.createRef();

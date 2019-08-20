@@ -8,8 +8,8 @@ import ChatIcon from "@material-ui/icons/Chat";
 import drawerStyles from './drawerStyles'
 import MUIDrawer from "@material-ui/core/Drawer";
 import ProfileDialog from "../ProfileDialog/ProfileDialog";
-import connectService from "../../common/connectService";
-import AuthContext from "../../modules/auth/AuthContext";
+import {connectService} from "global-apps-common";
+import {AuthContext} from "global-apps-common";
 import CreateChatDialog from "../CreateChatDialog/CreateChatDialog";
 
 function Drawer({classes, open, onClose, logout, publicKey}) {

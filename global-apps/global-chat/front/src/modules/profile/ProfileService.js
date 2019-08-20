@@ -1,8 +1,8 @@
-import Service from '../../common/Service';
+import {Service} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import profileOTSystem from "./ot/ProfileOTSystem";
 import profileSerializer from "./ot/serializer";
-import {wait} from '../../common/utils';
+import {wait} from 'global-apps-common';
 
 const RETRY_TIMEOUT = 1000;
 

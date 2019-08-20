@@ -1,5 +1,5 @@
 import React from 'react';
-import connectService from '../../common/connectService';
+import {connectService} from 'global-apps-common';
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 import Paper from '@material-ui/core/Paper';
 import SendIcon from '@material-ui/icons/Send';

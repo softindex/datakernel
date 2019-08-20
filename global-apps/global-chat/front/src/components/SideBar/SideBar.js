@@ -6,7 +6,7 @@ import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import Paper from "@material-ui/core/Paper";
 import RoomsList from "../RoomsList/RoomsList";
-import connectService from "../../common/connectService";
+import {connectService} from "global-apps-common";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import RoomsContext from "../../modules/rooms/RoomsContext";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
@@ -15,7 +15,7 @@ import Typography from "@material-ui/core/Typography";
 import Grow from "@material-ui/core/Grow";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import ContactItem from "../ContactItem/ContactItem";
-import {createDialogRoomId} from "../../common/utils";
+import {createDialogRoomId} from "global-apps-common";
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
 import MyProfileContext from "../../modules/myProfile/MyProfileContext";
@@ -193,7 +193,7 @@ class SideBar extends React.Component {
                         ))}
                     </List>
                   )}
-                  {this.getFilteredRooms(this.sortContacts()).size === 0 && (
+                  {this.getFilteredRooms(this.sortContacts()).size === 0 && this.props.searchContacts.size === 0 && (
                     <Typography
                       className={classes.secondaryDividerText}
                       color="textSecondary"
