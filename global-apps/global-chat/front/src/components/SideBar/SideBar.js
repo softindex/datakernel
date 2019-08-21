@@ -20,6 +20,7 @@ import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
 import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 import Search from "../Search/Search";
+import InviteButton from "../InviteButton/InviteButton";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
@@ -152,13 +153,13 @@ class SideBar extends React.Component {
 
           {this.state.search !== '' && (
             <>
-              {!this.isSearchInContacts() && (
+              {/*{!this.isSearchInContacts() && (*/}
                 <Paper square className={classes.paperDivider}>
                   <Typography className={classes.dividerText}>
                     People
                   </Typography>
                 </Paper>
-              )}
+              {/*)}*/}
               {!this.props.searchReady && this.props.error === undefined && (
                 <Grow in={!this.props.searchReady}>
                   <div className={this.props.classes.progressWrapper}>
@@ -193,14 +194,8 @@ class SideBar extends React.Component {
                         ))}
                     </List>
                   )}
-                  {this.getFilteredRooms(this.sortContacts()).size === 0 && this.props.searchContacts.size === 0 && (
-                    <Typography
-                      className={classes.secondaryDividerText}
-                      color="textSecondary"
-                      variant="body1"
-                    >
-                      Nothing found
-                    </Typography>
+                  {this.props.searchContacts.size === 0 && (
+                   <InviteButton />
                   )}
                 </>
               )}
