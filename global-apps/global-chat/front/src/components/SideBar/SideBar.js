@@ -14,7 +14,7 @@ import SearchContactsContext from "../../modules/searchContacts/SearchContactsCo
 import Typography from "@material-ui/core/Typography";
 import Grow from "@material-ui/core/Grow";
 import CircularProgress from "@material-ui/core/CircularProgress";
-import ContactItem from "../ContactItem/ContactItem";
+import SearchContactItem from "../SearchContactItem/SearchContactItem";
 import {createDialogRoomId} from "global-apps-common";
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
@@ -122,7 +122,7 @@ class SideBar extends React.Component {
         <Search
           classes={{search: classes.search}}
           placeholder="People, groups, public keys..."
-          searchValue={this.state.search}
+          value={this.state.search}
           onChange={this.onSearchChange}
         />
         <Paper square className={classes.paper}>
@@ -182,7 +182,7 @@ class SideBar extends React.Component {
                         .map(([publicKey, contact]) => (
                           <>
                             {!this.props.contacts.has(publicKey) && (
-                              <ContactItem
+                              <SearchContactItem
                                 contactId={publicKey}
                                 contact={contact}
                                 publicKey={this.props.publicKey}
@@ -226,7 +226,7 @@ export default withRouter(
         ContactsContext, ({contacts, names}, contactsService, props) => ({
           contacts, contactsService, names,
           addContact(contactPublicKey, name) {
-            contactsService.addContact(contactPublicKey, name)
+            return contactsService.addContact(contactPublicKey, name)
               .then(() => {
                 const roomId = createDialogRoomId(props.publicKey, contactPublicKey);
                 props.history.push(path.join('/room', roomId || ''));
@@ -235,7 +235,7 @@ export default withRouter(
                 props.enqueueSnackbar(err.message, {
                   variant: 'error'
                 });
-              })
+              });
           },
           removeContact(contactPublicKey, name) {
             contactsService.removeContact(contactPublicKey, name)
@@ -255,11 +255,8 @@ export default withRouter(
         })
       )(
         connectService(
-          RoomsContext, ({roomsReady, rooms}, roomsService) => ({
-            roomsService, roomsReady, rooms,
-            createDialog(participantId) {
-              return roomsService.createDialog(participantId);
-            }
+          RoomsContext, ({roomsReady, rooms}, ) => ({
+            roomsReady, rooms
           })
         )(
           connectService(

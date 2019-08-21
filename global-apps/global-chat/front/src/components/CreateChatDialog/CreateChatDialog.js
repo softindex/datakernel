@@ -6,9 +6,9 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {connectService} from "global-apps-common";
+import {connectService, getAppStoreContactName} from "global-apps-common";
 import RoomsContext from "../../modules/rooms/RoomsContext";
-import Chip from '../Chip/Chip';
+import ContactChip from '../ContactChip/ContactChip';
 import {withSnackbar} from "notistack";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import List from "@material-ui/core/List";
@@ -18,7 +18,7 @@ import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
 import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
 import Typography from "@material-ui/core/Typography";
-import ContactItem from "../ContactItem/ContactItem";
+import SearchContactItem from "../SearchContactItem/SearchContactItem";
 import ListSubheader from "@material-ui/core/ListSubheader";
 import Search from "../Search/Search";
 
@@ -76,6 +76,9 @@ class CreateChatDialog extends React.Component {
   }
 
   onContactCheck(roomParticipants) {
+    if (this.state.loading) {
+      return;
+    }
     const pubKey = roomParticipants.find(publicKey => publicKey !== this.props.publicKey);
     let searchContacts = this.state.searchContacts;
     let participants = new Set(this.state.participants);
@@ -109,7 +112,7 @@ class CreateChatDialog extends React.Component {
   onSubmit = event => {
     event.preventDefault();
 
-    if (this.state.participants.size === 0) {
+    if (this.state.participants.size === 0 || this.state.loading) {
       return;
     }
 
@@ -123,13 +126,22 @@ class CreateChatDialog extends React.Component {
       }
     }));
 
-    this.props.onCreateRoom([...this.state.participants]);
-    this.props.onClose();
-    this.setState({
-      participants: new Set(),
-      search: '',
-      loading: false
-    });
+    this.props.onCreateRoom([...this.state.participants])
+      .then(() => {
+        this.props.onClose();
+      })
+      .catch(err => {
+        this.props.enqueueSnackbar(err.message, {
+          variant: 'error'
+        });
+      })
+      .finally(() => {
+        this.setState({
+          participants: new Set(),
+          search: '',
+          loading: false
+        });
+      });
   };
 
   render() {
@@ -149,20 +161,17 @@ class CreateChatDialog extends React.Component {
           <DialogContent className={classes.dialogContent}>
             <div className={classes.chipsContainer}>
               {[...this.state.participants].map(pubKey => (
-                <Chip
+                <ContactChip
                   color="primary"
-                  names={names}
-                  loading={this.state.loading}
-                  searchContacts={this.state.searchContacts}
-                  pubKey={pubKey}
-                  onContactCheck={this.onContactCheck.bind(this, [pubKey])}
+                  label={names.get(pubKey) || getAppStoreContactName(this.state.searchContacts.get(pubKey))}
+                  onDelete={this.onContactCheck.bind(this, [pubKey])}
                 />
               ))}
             </div>
             <Search
               classes={{search: classes.search}}
               placeholder="Search people..."
-              searchValue={this.state.search}
+              value={this.state.search}
               onChange={this.onSearchChange}
               searchReady={this.props.searchReady}
             />
@@ -220,7 +229,7 @@ class CreateChatDialog extends React.Component {
                                   .map(([publicKey, contact]) => (
                                     <>
                                       {!this.props.contacts.has(publicKey) && (
-                                        <ContactItem
+                                        <SearchContactItem
                                           contactId={publicKey}
                                           contact={contact}
                                           publicKey={this.props.publicKey}
@@ -260,7 +269,6 @@ class CreateChatDialog extends React.Component {
             </Button>
             <Button
               className={this.props.classes.actionButton}
-              loading={this.state.loading}
               type="submit"
               color="primary"
               variant="contained"
@@ -298,7 +306,7 @@ export default withRouter(
           ({rooms}, roomsService, props) => ({
             rooms,
             onCreateRoom(participants) {
-              roomsService.createRoom(participants)
+              return roomsService.createRoom(participants)
                 .then(roomId => {
                   props.history.push(path.join('/room', roomId || ''));
                 })

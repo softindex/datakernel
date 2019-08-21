@@ -1,4 +1,4 @@
-const chipStyles = theme => ({
+const contactChipStyles = theme => ({
   chip: {
     margin: theme.spacing.unit,
     marginBottom: theme.spacing.unit * 2,
@@ -14,4 +14,4 @@ const chipStyles = theme => ({
   }
 });
 
-export default chipStyles;
+export default contactChipStyles;

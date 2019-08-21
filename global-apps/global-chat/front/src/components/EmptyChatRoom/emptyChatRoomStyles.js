@@ -15,9 +15,7 @@ const emptyChatRoomStyles = theme => {
     paper: {
       display: 'flex',
       backgroundColor: theme.palette.secondary.darkGrey,
-      padding: theme.spacing.unit * 0.75,
-      paddingLeft: theme.spacing.unit * 2,
-      paddingRight: theme.spacing.unit * 2,
+      padding: `${theme.spacing.unit * 0.75}px ${theme.spacing.unit * 2}px`,
       borderRadius: 30,
       boxShadow: 'none'
     },

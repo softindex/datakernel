@@ -1,4 +1,4 @@
-const contactItemStyles = theme => ({
+const searchContactItemStyles = theme => ({
   listItem: {
     borderRadius: 4,
     paddingTop: theme.spacing.unit * 2,
@@ -22,4 +22,4 @@ const contactItemStyles = theme => ({
   }
 });
 
-export default contactItemStyles;
+export default searchContactItemStyles;

@@ -4,22 +4,22 @@ import ListItemAvatar from "@material-ui/core/ListItemAvatar";
 import Avatar from "@material-ui/core/Avatar";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
-import contactItemStyles from "./contactItemStyles";
+import searchContactItemStyles from "./searchContactItemStyles";
 import {withRouter} from "react-router-dom";
-import {getAvatarLetters, createDialogRoomId, getAppStoreContactName} from "global-apps-common";
+import {getAvatarLetters, createDialogRoomId} from "global-apps-common";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import Badge from "@material-ui/core/Badge";
 
-class ContactItem extends React.Component {
+class SearchContactItem extends React.Component {
   state = {
     showAddContactDialog: false
   };
 
   getAvatarLetters(contact) {
     if (contact.firstName !== '' && contact.lastName !== '') {
-      return getAvatarLetters(contact.firstName + ' ' + contact.lastName).toUpperCase();
+      return getAvatarLetters(contact.firstName + ' ' + contact.lastName);
     }
-    return getAvatarLetters(contact.username).toUpperCase();
+    return getAvatarLetters(contact.username);
   }
 
   onContactClick() {
@@ -56,12 +56,13 @@ class ContactItem extends React.Component {
               variant="dot"
             >
               <Avatar className={classes.avatarContent}>
-                {this.getAvatarLetters(contact)}
+                {this.getAvatarLetters(contact).toUpperCase()}
               </Avatar>
             </Badge>
           </ListItemAvatar>
           <ListItemText
-            primary={getAppStoreContactName(contact)}
+            primary={contact.username}
+            secondary={contact.firstName + ' ' + contact.lastName}
             className={classes.itemText}
             classes={{
               primary: classes.itemTextPrimary
@@ -80,6 +81,6 @@ class ContactItem extends React.Component {
   }
 }
 
-export default withRouter(withStyles(contactItemStyles)(ContactItem));
+export default withRouter(withStyles(searchContactItemStyles)(SearchContactItem));
 
 

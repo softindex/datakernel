@@ -25,7 +25,7 @@ const sideBarStyles = theme => {
       marginBottom: theme.spacing.unit
     },
     button: {
-      width: theme.spacing.unit*41,
+      width: theme.spacing.unit * 41,
       borderRadius: 70,
       marginBottom: theme.spacing.unit,
       marginTop: theme.spacing.unit

@@ -13,7 +13,7 @@ import addContactDialogStyles from "./addContactDialogStyles";
 class AddContactDialog extends React.Component {
   state = {
     name: '',
-    loading: false,
+    loading: false
   };
 
   handleNameChange = event => {
@@ -25,11 +25,21 @@ class AddContactDialog extends React.Component {
     this.setState({
       loading: true
     });
-    this.props.onAddContact(this.props.contactPublicKey, this.state.name);
-    this.props.onClose();
-    this.setState({
-      loading: false
-    });
+
+    this.props.onAddContact(this.props.contactPublicKey, this.state.name)
+      .then(() => {
+        this.props.onClose();
+      })
+      .catch(err => {
+        this.props.enqueueSnackbar(err.message, {
+          variant: 'error'
+        });
+      })
+      .finally(() => {
+        this.setState({
+          loading: false
+        });
+      });
   };
 
   render() {
@@ -82,4 +92,6 @@ class AddContactDialog extends React.Component {
   }
 }
 
-export default withSnackbar(withStyles(addContactDialogStyles)(AddContactDialog));
+export default withSnackbar(
+  withStyles(addContactDialogStyles)(AddContactDialog)
+);

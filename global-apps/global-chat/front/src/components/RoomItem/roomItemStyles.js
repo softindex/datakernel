@@ -25,7 +25,7 @@ const roomItemStyles = theme => ({
   link: {
     display: 'flex',
     flexGrow: 1,
-    minWidth: theme.spacing.unit * 33.75,
+    minWidth: theme.spacing.unit * 34,
     textDecoration: 'none',
     height: theme.spacing.unit * 8,
     alignItems: 'center'

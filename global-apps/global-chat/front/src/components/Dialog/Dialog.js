@@ -10,9 +10,7 @@ function Dialog({children, onClose, loading, classes, maxWidth, ...otherProps}) 
   return (
     <MUDialog
       {...otherProps}
-      onClose={onClose}
       classes={{paper: classes.muDialog}}
-      maxWidth={maxWidth}
       fullWidth={maxWidth}
     >
       <IconButton

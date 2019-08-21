@@ -138,7 +138,6 @@ class ContactsService extends Service {
       }
 
     }
-
     return names;
   }
 

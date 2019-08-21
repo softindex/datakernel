@@ -17,16 +17,6 @@ class SearchContactsService extends Service {
     return new SearchContactsService(GlobalAppStoreAPI.create(process.env.REACT_APP_GLOBAL_OAUTH_LINK));
   }
 
-  getAppStoreContactName(publicKey) {
-    if (this.state.searchContacts.get(publicKey)){
-      const contact = this.state.searchContacts.get(publicKey);
-      if (contact.firstName !== '' && contact.lastName !== '') {
-        return contact.firstName + ' ' + contact.lastName;
-      }
-      return contact.username;
-    }
-  }
-
   search(searchField) {
     this.setState({search: searchField, searchReady: false});
 

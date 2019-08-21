@@ -6,46 +6,43 @@ import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
 
-class RoomsList extends React.Component {
-
-  onRemoveContact(room) {
-    const publicKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
-    const name = this.props.contacts.get(publicKey).name;
-    return this.props.onRemoveContact(publicKey, name);
+function RoomsList(props) {
+  function onRemoveContact(room) {
+    const publicKey = room.participants.find(publicKey => publicKey !== props.publicKey);
+    const name = props.contacts.get(publicKey).name;
+    return props.onRemoveContact(publicKey, name);
   }
 
-  render() {
-    return (
-      <>
-        {!this.props.roomsReady && (
-          <Grow in={!this.props.ready}>
-            <div className={this.props.classes.progressWrapper}>
-              <CircularProgress/>
-            </div>
-          </Grow>
-        )}
-        {this.props.roomsReady && (
-          <List>
-            {[...this.props.rooms].map(([roomId, room]) =>
-              (
-                <RoomItem
-                  roomId={roomId}
-                  room={room}
-                  isContactsTab={this.props.isContactsTab}
-                  contacts={this.props.contacts}
-                  names={this.props.names}
-                  publicKey={this.props.publicKey}
-                  onAddContact={this.props.onAddContact}
-                  onRemoveContact={this.onRemoveContact.bind(this, room)}
-                  myName={this.props.myName}
-                />
-              )
-            )}
-          </List>
-        )}
-      </>
-    );
-  }
+  return (
+    <>
+      {!props.roomsReady && (
+        <Grow in={!props.ready}>
+          <div className={props.classes.progressWrapper}>
+            <CircularProgress/>
+          </div>
+        </Grow>
+      )}
+      {props.roomsReady && (
+        <List>
+          {[...props.rooms].map(([roomId, room]) =>
+            (
+              <RoomItem
+                roomId={roomId}
+                room={room}
+                isContactsTab={props.isContactsTab}
+                contacts={props.contacts}
+                names={props.names}
+                publicKey={props.publicKey}
+                onAddContact={props.onAddContact}
+                onRemoveContact={onRemoveContact.bind(this, room)}
+                myName={props.myName}
+              />
+            )
+          )}
+        </List>
+      )}
+    </>
+  );
 }
 
 export default withStyles(roomsListStyles)(RoomsList);

@@ -9,7 +9,7 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import searchStyles from "./searchStyles";
 
 
-function Search({classes, placeholder, onChange, searchValue, searchReady}) {
+function Search({classes, searchReady, ...otherProps}) {
   return (
     <Paper className={classes.search}>
       <IconButton
@@ -19,14 +19,12 @@ function Search({classes, placeholder, onChange, searchValue, searchReady}) {
         <SearchIcon/>
       </IconButton>
       <InputBase
+        {...otherProps}
         className={classes.inputDiv}
-        placeholder={placeholder}
-        autoFocus
-        value={searchValue}
-        onChange={onChange}
         classes={{input: classes.input}}
+        autoFocus
         endAdornment={
-          <Grow in={searchReady === false && searchValue !== ''}>
+          <Grow in={searchReady === false && otherProps.value !== ''}>
             <div className={classes.progressWrapper}>
               <CircularProgress size={24}/>
             </div>

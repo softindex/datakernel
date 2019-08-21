@@ -47,7 +47,7 @@ class ProfileDialog extends React.Component {
     });
 
     return this.props.setProfileField('name', this.state.name)
-      .catch((err) => {
+      .catch(err => {
         this.props.enqueueSnackbar(err.message, {
           variant: 'error'
         });
