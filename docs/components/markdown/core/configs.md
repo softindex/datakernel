@@ -6,7 +6,7 @@ prev: core/workerpool.html
 next: core/http.html
 nav-menu: core
 layout: core
-description: Efficiently manage your application configurations and properties values with DK Configs
+description: Efficiently manage your application configurations and properties values with DataKernel Configs
 keywords: configs,application configs,save configs,application configuration,java,java framework,java for beginners
 ---
 ## Features

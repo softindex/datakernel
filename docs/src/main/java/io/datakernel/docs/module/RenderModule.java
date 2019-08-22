@@ -43,11 +43,11 @@ public final class RenderModule extends AbstractModule {
 		install(new NavbarPropertiesPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("propertiesPlugin"), Config.class)));
 		install(new WebContextPropertiesPluginModule());
 
+		install(new GithubIncludeClassComponentsTextPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("plugin"), Config.class)));
 		install(new ProjectStructureTextPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("plugin"), Config.class)));
 		install(new HtmlIncludeTextPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("plugin"), Config.class)));
-		install(new GithubIncludePluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("plugin"), Config.class)));
 		install(new MermaidTextPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("mermaid"), Config.class)));
-		install(new GraphVizPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("graphViz"), Config.class)));
+		install(new LinkTextPluginModule().rebindImport(Key.of(Config.class), Binding.to(conf -> conf.getChild("plugin"), Config.class)));
 
 		install(new PropertiesTextPluginModule());
 		install(new MarkdownTextPluginModule());

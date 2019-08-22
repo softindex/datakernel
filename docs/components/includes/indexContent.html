@@ -22,31 +22,32 @@
 <div class="container-radius pb-4">
   <div class="container">
 
-    <div class="row mx-0 mt-2 mb-2 description-block">
+    <h3 class="mt-2 description-title">Alternative to conventional frameworks</h3>
+    <div class="row mx-0 mb-2 description-block">
       <div class="col-lg-6 col-md-12">
-        <h3>Alternative to conventional frameworks</h3>
-        <div class="description-text mb-2">DataKernel is a full-featured alternative web and big data Java framework. It does <b>not</b>
-          use Netty, Jetty, Spring/Guice DI, RxJava etc. Instead, it features complete application
+        <div class="description-text mb-2"><p>DataKernel is a full-featured alternative web and big data Java framework. It does <b>not</b>
+          use Netty, Jetty, Spring/Guice DI, RxJava etc. Instead, it features full application
           stack: Event Loop, Promises, HTTP, DI and others, including decentralized
-          big-data technologies and map-reduce algorithms.
-          <br>
-          <br>
-          DataKernel main goal is to free projects from the frameworks which restrict developers with
-          redundant standards and boilerplates. Get yourself a true freedom to express
-          yourself as a developer - create projects and concentrate on their business logic instead
-          of learning framework specifications.
+          big-data technologies and map-reduce algorithms.</p>
+
+          <p>The main DataKernel goal is to free projects from the frameworks which restrict developers with
+            redundant standards and boilerplates. Get the true ability to express
+            yourself as a developer - create projects and concentrate on their business logic instead of learning framework specifications.</p>
         </div>
 
       </div>
-      <div class="col-lg-6 col-md-12 mb-2">
-        <ul>
-          <li><a href="https://github.com/softindex/datakernel/blob/master/examples/core/http/src/main/java/HttpServerWorkloadBenchmark.java">~165K</a> HTTP requests per second on single core</li>
-          <li><a href="/docs/cloud/rpc.html#benchmarks">Up to 15M</a> RPC requests per second on single core</li>
-          <li>DK <b>Promise</b> is <a href="/docs/core/promise.html#benchmarks">7 times faster</a> then Java <b>CompletableFuture</b></li>
-          <li>DK <b>DI</b> is <a href="/docs/core/di.html#benchmarks">4 times</a> faster then <b>Guice</b> and up to <a href="/docs/core/di.html#benchmarks">100s times</a> faster then <b>Spring</b></li>
-          <li><a href="https://github.com/eishay/jvm-serializers/wiki">One of the fastest</a> Serializers available</li>
-          <li>The full size of DK web application with embedded HTTP server and integrated React.js is only 2MB (including 1MB of React.js itself)</li>
-        </ul>
+      <div class="col-lg-6 col-md-12">
+        <div class="description-text">
+          <ul>
+            <li><a href="https://github.com/softindex/datakernel/blob/master/examples/core/http/src/main/java/HttpServerWorkloadBenchmark.java">~165K</a> HTTP requests per second on single core</li>
+            <li><a href="/docs/cloud/rpc.html#benchmarks">Up to 15M</a> RPC requests per second on single core</li>
+            <li>DataKernel <b>Promise</b> is <a href="/docs/core/promise.html#benchmarks">7 times faster</a> than Java <b>CompletableFuture</b></li>
+            <li>DataKernel <b>DI</b> is <a href="/docs/core/di.html#benchmarks">2.5 times</a> faster than <b>Guice</b> and up to <a href="/docs/core/di.html#benchmarks">100s times</a> faster than <b>Spring</b></li>
+            <li><a href="https://github.com/eishay/jvm-serializers/wiki">One of the fastest</a> Serializers available</li>
+            <li>The full size of DataKernel <a href="/docs/core/tutorials/using-react.html">web application</a>
+              with embedded HTTP server and integrated React.js is only 2MB </li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
@@ -56,7 +57,7 @@
       <div class="structure-wrapper">
         <div class="structure-text-block">
           <h2 class="mb-2">DataKernel structure</h2>
-          <div class="landing-text"> DataKernel consists of stack of loosely coupled components which perfectly complement
+          <div class="landing-text"> DataKernel incorporates a stack of loosely coupled components which perfectly complement
             and empower each other. It’s much more than the sum of the parts.
           </div>
         </div>
@@ -158,14 +159,14 @@
       <div class="col-xl-6 col-md-12 mb-2">
         <h3>Flexibility</h3>
         <div class="features-text"> DataKernel has everything you need to create applications of different scales - from
-          standalone high-performance async network solutions and HTTP web applications
-          up to big-data cloud solutions and decentralized internet-wide applications.
+          stand-alone high-performance async network solutions and HTTP web applications
+          to big-data cloud solutions and decentralized internet-wide applications.
         </div>
       </div>
       <div class="col-xl-6 col-md-12">
         <h3>Modern approach</h3>
-        <div class="features-text"> DataKernel has simple yet powerful set of abstractions with clean OOP design favoring Java 8+
-          functional programming style. It also radically downplays Dependency Injection role, giving
+        <div class="features-text"> DataKernel has a simple yet powerful set of abstractions with clean OOP design favoring Java 8+
+          functional programming style. It also radically downplays the Dependency Injection role, giving
           way to your business logic instead.
         </div>
       </div>
@@ -373,16 +374,18 @@
 
     <div class="row mx-0 mt-2 mb-2 justify-content-between samples-block">
       <div class="col-lg-5 col-md-12 pr-5">
-        <h3>Dependency Injection: <br>
-          Redefined</h3>
+        <h3>Dependency Injection: Redefined</h3>
         <div class="samples-text mb-2">
-          <p>DataKernel has an extremely lightweight DI with ground-breaking design principles.
-            Besides lightning-fast launch, it is even more powerful: support of nested scopes, singletons, object factories,
-            modules and plugins which allow to transform graph of dependencies at startup time, abstracting out all reflection.</p>
-          <p>These plugins extensively use Java 8+ functional-style programming: for binding definitions,
-            user-defined binding transformations and binding generators. The entire runtime code of Injector
-            consists of ~50 lines of code, with all binding definitions performed in startup time.
-            DataKernel DI has no dependencies on its own, so it can be used as a standalone component.</p>
+          <p>DataKernel DI is lightning-fast: four times faster than Guice and up to 100s times faster than Spring. This result
+            is achieved because of dependency graph being compiled at start-up time into efficient runtime internal representation. Thus,
+            there are no overheads during runtime.
+          </p>
+          <p>Besides being extremely fast, DataKernel DI is even more powerful: supports nested scopes,
+            singletons, multithreaded and single-threaded modes, object factories, modules and plugins for
+            transforming dependencies graph at startup time, abstracting out all reflection. These plugins
+            extensively use Java 8+ functional-style programming: for binding definitions, user-defined
+            binding transformations and binding generators.
+          </p>
         </div>
 
       </div>
@@ -414,14 +417,16 @@
     <div class="row mx-0 pb-4 justify-content-between samples-block">
       <div class="col-12">
         <h3>Get Started</h3>
-        <div class="samples-text">DataKernel is a production-ready framework which constantly evolves and gets new updates.
-          The essential DataKernel modules form the basis of diverse high-load applications processing
-          billions of requests daily: ad-serving solutions, online analytics and web crawlers.<br>
-          Try DataKernel right now by passing <a href="/docs/core/tutorials/getting-started.html">Getting-Started tutorial</a>.
-          You can also explore <a href="/docs/core/index.html">docs</a> to  find out more about DataKernel modules.
-          <br>
-          It is also worth to note that due to the usage of Node.js-inspired features, DataKernel is a perfect
-          framework to get started with Java if you are a JavaScript developer.
+        <div class="samples-text">
+          <p>DataKernel is a production-ready framework which constantly evolves and gets new updates.
+            The essential DataKernel modules form the basis of diverse high-load applications processing
+            billions of requests daily: ad-serving solutions, online analytics and web crawlers.
+          </p>
+          <p>Try DataKernel right now by completing the <a href="/docs/core/tutorials/getting-started.html">Getting-Started tutorial</a>.
+            You can also explore <a href="/docs/core/index.html">docs</a> to  find out more about DataKernel modules.
+            It is also worth to note that due to the usage of Node.js-inspired features, DataKernel is a perfect
+            framework to get started with Java if you are a JavaScript developer.
+          </p>
         </div>
       </div>
     </div>

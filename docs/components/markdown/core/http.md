@@ -3,7 +3,7 @@ id: http
 filename: http
 title: HTTP Module
 prev: core/datastream.html
-next: core/codec.html
+next: core/eventloop.html
 nav-menu: core
 layout: core
 description: Create legacy-free asynchronous HTTP server and client applications with DataKernel.
@@ -87,7 +87,7 @@ You can add HTTP module to your project by inserting dependency in `pom.xml`:
  * [Static Servlet Example](#static-servlet-example) - example of **StaticServlet** utilizing. 
  * [Servlet Decorator Example](#servlet-decorator-example) - example of using **AsyncServletDecorator**, a wrapper over **AsyncServlet**. 
  * [Routing Servlet Example](#routing-servlet-example) - example of **RoutingServlet** usage for creating servlet tree. 
- * [Blocking Servlet Example](#blocking-servlet-example) - example of handling complex operations on server in new thread. 
+ * [Blocking Servlet Example](#blocking-servlet-example) - example of handling complex operations on server in a new thread. 
  * [File Upload Example](#file-upload-example) - example of uploading a file from client local storage to server. 
  * [Client Example](#client-example) - creating an HTTP client utilizing **Launcher**.  
 
@@ -103,16 +103,15 @@ You can add HTTP module to your project by inserting dependency in `pom.xml`:
 {% github_sample softindex/datakernel/blob/master/examples/core/http/src/main/java/HelloWorldExample.java tag:REGION_1 %}
 {% endhighlight %}
 
-So, this server runs in the provided eventloop and waits for connections on port `8080`. When server receives a request, 
+So, this server runs in the provided eventloop and waits for connections on port `8080`. When a server receives a request, 
 it sends back a Promise of greeting response. 
 
 To check how the example works, open your favorite browser and go to [localhost:8080](http://localhost:8080). 
 
 ##### [See full example on GitHub](https://github.com/softindex/datakernel/blob/master/examples/core/http/src/main/java/HelloWorldExample.java)
 
-
 #### "Hello World" Server with pre-defined Launcher
-Launchers manage application lifecycle and allow to create applications simply and minimalistically:
+Launchers manage application lifecycle and allow to create applications in a simple manner:
 {% highlight java %}
 {% github_sample /softindex/datakernel/blob/master/examples/tutorials/getting-started/src/main/java/HttpHelloWorldExample.java tag:EXAMPLE%}
 {% endhighlight %}
@@ -131,7 +130,7 @@ a greeting:
 First, we provide an eventloop, servlet and an async server itself. Then, we override **getModule** to provide our server with 
 configs and **ServiceGraphModule** for building dependency graph.
 
-Finally, we override Launcher main method *run()* and then define *main* method of the example. 
+Finally, we override Launcher the main method *run()* and then define *main* method of the example. 
 
 To check how the example works, open your favorite browser and go to [localhost:8080](http://localhost:8080). 
 
@@ -140,8 +139,8 @@ To check how the example works, open your favorite browser and go to [localhost:
 
 #### Multithreaded Server Example
 In this example we are using pre-defined **MultithreadedHttpServerLauncher** to create a multithreaded HTTP server. By 
-default, there will be 4 worker servlets with **workerId**s, each of them sends back a greeting and the number of worker 
-which served the connection:
+default, there will be 4 worker servlets with **workerId**s. Each of them sends back a greeting and number of the worker 
+that served the connection:
 
 {% highlight java %}
 {% github_sample softindex/datakernel/blob/master/examples/core/http/src/main/java/MultithreadedHttpServerExample.java tag:EXAMPLE %}
@@ -156,7 +155,7 @@ To check how the example works, open your favorite browser and go to [localhost:
 
 
 #### Request Parameters Example
-Represents requests with parameters which are received with methods *getPostParameters* and *getQueryParameter* 
+This example represents requests with parameters which are received with methods *getPostParameters* and *getQueryParameter* 
 
 {% highlight java %}
 {% github_sample softindex/datakernel/blob/master/examples/core/http/src/main/java/HttpRequestParametersExample.java tag:REGION_1 %}
@@ -196,7 +195,7 @@ To check how the example works, open your favorite browser and go to [localhost:
 
 
 #### Routing Servlet Example
-Represents how to set up servlet routing tree. This process resembles Express approach. To add a rout to 
+Represents how to set up servlet routing tree. This process resembles Express approach. To add a route to 
 **RoutingServlet**, you should use method *map*:
 
 {% highlight java %}
@@ -226,7 +225,7 @@ To check how the example works, open your favorite browser and go to [localhost:
 ##### [See full example on GitHub](https://github.com/softindex/datakernel/blob/master/examples/core/http/src/main/java/RoutingServletExample.java).
 
 #### Blocking Servlet Example
-Shows how to create new thread for processing some complex operations on servlet.
+Shows how to create a new thread for processing some complex operations on servlet.
 
 {% highlight java %}
 {% github_sample softindex/datakernel/blob/master/examples/core/http/src/main/java/BlockingServletExample.java tag:EXAMPLE %}

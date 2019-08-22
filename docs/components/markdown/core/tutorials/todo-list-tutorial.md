@@ -5,6 +5,8 @@ title: To-Do list app using React
 prev: core/tutorials/using-react.html
 nav-menu: core
 layout: core
+keywords: java,java for beginners,java framework,guide,tutorial,web application,server,servlet,spring,spring alternative,netty alternative,jetty alternative,async,todo app,todo list,react,reactjs,react js
+description: Integrate React.js in your Java web application. In the tutorial you will create a To-Do app using DataKernel Java framework and React.js.
 ---
 ## Introduction
 This is a To-Do List app extended example which was created with DataKernel and React. It shows how to integrate React 
@@ -21,15 +23,10 @@ launching, running and stopping the application, you'll only need to provide lau
 most of the corresponding logic. We will use DataKernel **HttpServerLauncher** and extend it:
 {% highlight java %}
 {% github_sample /softindex/datakernel/blob/master/examples/tutorials/advanced-react-integration/src/main/java/ApplicationLauncher.java tag:REGION_1 %}
+}
 {% endhighlight %}
 
-Let's take a closer look at the launcher. It can add a new record, get all available records, delete record by its id and 
-also mark plans of particular record as completed or not.
-
-So, first, we've defined codecs for our two entities: **Plan** and **Record**:
-{% highlight java %}
-{% github_sample /softindex/datakernel/blob/master/examples/tutorials/advanced-react-integration/src/main/java/ApplicationLauncher.java tag:REGION_1 %}
-{% endhighlight %}
+So, first, we've defined codecs for our two entities: **Plan** and **Record**.
 These codecs will help us to encode/decode **Plan** and **Record** from/to JSONs to communicate with **TodoService.js**.
 
 Method *object* returns a new **StructuredCodec** and, in case of **Plan** and **Record** entities, requires the 
@@ -43,8 +40,12 @@ following parameters:
  * **Function** *getter2* - getter of *field2*
  * **StructuredCodec** *codec1* - codec for *field2*
 
-Next, provide **RecordDAO** 
-and **AsyncServlet** for loading static content from `/build` directory and taking care of routing.
+Next, we provided **RecordDAO** with application business logic and **Executor** which is needed for our **AsyncServlet**. 
+**AsyncServlet** loads static content from `/build` directory and takes care of routing:
+{% highlight java %}
+{% github_sample /softindex/datakernel/blob/master/examples/tutorials/advanced-react-integration/src/main/java/ApplicationLauncher.java tag:REGION_2 %}
+}
+{% endhighlight %}
 
 Routing in DataKernel HTTP module resembles Express approach. Method *map(@Nullable HttpMethod method, String path, AsyncServlet servlet)* 
 adds routes to the **RoutingServlet**: 
@@ -53,23 +54,26 @@ adds routes to the **RoutingServlet**:
  * *servlet* defines the logic of request processing. If you need to get some data from the *request* while processing you can use:
     * *request.getPathParameter(String key)*/*request.getQueryParameter(String key)* ([see example of query parameter usage](https://github.com/softindex/datakernel/blob/master/examples/core/http/src/main/java/HttpRequestParametersExample.java)) 
      to provide the key of the needed parameter and receive back a corresponding String
-    * *request.getPostParameters()* to get a [Promise](http://datakernel.io/docs/core/promise.html) of Map of all request parameters
+    * *request.getPostParameters()* to get a Map of all request parameters
 
-Pay attention to the requests with `:`, for example:
+Pay attention to the `*` in the provided request. It states that whichever path until the next `/` is received, it 
+will be processed by our static servlet, which uploads static content from `/build` directory.
+
+Servlet should be able to add a new record, get all available records, delete record by its id and 
+also mark plans of particular record as completed or not, so we provide corresponding routing:
 {% highlight java %}
 {% github_sample /softindex/datakernel/blob/master/examples/tutorials/advanced-react-integration/src/main/java/ApplicationLauncher.java tag:REGION_3 %}
 {% endhighlight %}
-`:` states that the following characters until the next `/` is a variable whose keyword, in this case, is *recordId*. 
 
-Also, take a look at the first request:
+Pay attention to the requests with `:`, for example:
 {% highlight java %}
-{% github_sample /softindex/datakernel/blob/master/examples/tutorials/advanced-react-integration/src/main/java/ApplicationLauncher.java tag:REGION_2 %}
+{% github_sample /softindex/datakernel/blob/master/examples/tutorials/advanced-react-integration/src/main/java/ApplicationLauncher.java tag:REGION_4 %}
 {% endhighlight %}
-`*` states, that whichever path until the next `/` is received, it will be processed by our static servlet, which uploads 
-static content from `/build` directory.
+`:` states that the following characters until the next `/` is a variable whose keyword, in this case, is `recordId`. 
+
 
 ## Running the application
-If you want to run the example, [Clone DataKernel](https://github.com/softindex/datakernel.git) and import it 
+If you want to run the example, [clone DataKernel](https://github.com/softindex/datakernel.git) and import it 
 as a Maven project. Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then, run the following command in example's folder in terminal:

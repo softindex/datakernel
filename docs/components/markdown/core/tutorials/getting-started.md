@@ -5,7 +5,8 @@ nav-menu: core
 layout: core
 title: Getting Started
 next: core/tutorials/getting-started-advanced.html
-redirect_from: "docs/index.html"
+keywords: java,java for beginners,java framework,guide,tutorial,web application,async,spring,spring alternative,netty alternative,jetty alternative,authorization,server,client,servlet
+description: Create a Java web application with authorization and session management in about 100 lines of code using DataKernel framework.
 ---
 ## Purpose
 In this tutorial we will create a simple HTTP server which sends a “Hello World!” greeting. Using DataKernel
@@ -16,18 +17,17 @@ write a full-functioning server in around 10 lines of code.
 
 * About 5-10 minutes
 * Your favourite IDE
-* JDK 1.8+
-* Maven 3.0+
+* [JDK 1.8+](https://www.oracle.com/technetwork/java/javase/downloads/index.html)
+* [Maven 3.0+](https://maven.apache.org/download.cgi)
 
-## To proceed with this guide you have 2 options:
+## To proceed with this guide you have three options:
 
-* Download and run [working example](#1-working-example)
-* Follow [step-by-step guide](#2-step-by-step-guide)
+* Use [archetypes](#use-archetypes)
+* Download and run [working example](#working-example)
+* Follow [step-by-step guide](#step-by-step-guide)
 
-## 1. Working Example
-There are two ways to run working example:
-
-1.**Use archetype**. Simply enter the following command in terminal:
+## Use Archetypes
+Simply enter the following command in the terminal:
 {% highlight bash %}
 mvn archetype:generate \
         -DarchetypeGroupId=io.datakernel                  \
@@ -41,14 +41,15 @@ mvn archetype:generate \
 The project will be automatically generated on your machine. Open **MyFirstDkClass** and run its `main` method. Then 
 open your favourite browser and go to [localhost:8080](http://localhost:8080).
 
-2.**Clone DK**. [Clone DataKernel](https://github.com/softindex/datakernel.git) locally and 
+## Working Example
+[Clone DataKernel](https://github.com/softindex/datakernel.git) locally and 
 import it as a Maven project. Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Then open **HttpHelloWorldExample** class, which is located at **datakernel -> examples -> tutorials -> getting-started** 
 and run its *main()* method. Open your favourite browser and go to [localhost:8080](http://localhost:8080).
 
-## 2. Step-by-step guide
-### 1. Configure the project
+## Step-by-step guide
+#### 1. Configure the project
 First, create a folder for application and build an appropriate project structure:
 
 {% highlight bash %}
@@ -60,11 +61,11 @@ getting-started
             └── HttpHelloWorldExample.java
 {% endhighlight %}
 
-There are two ways to integrate DataKernel into your application:
-#### 1.Add Maven dependency to your project. 
-To do so, configure your `pom.xml` file in the following way:
-{% highlight bash %}
+Next, you need to integrate DataKernel in your project. There are **two** ways to do it:
 
+##### **1. Add Maven dependency to your project.** 
+Configure your `pom.xml` file in the following way:
+{% highlight bash %}
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
@@ -96,8 +97,8 @@ To do so, configure your `pom.xml` file in the following way:
 </project>
 {% endhighlight %}
 
-#### 2.Clone DataKernel locally and install it:
-[Clone DataKernel](https://github.com/softindex/datakernel.git) locally and import it as a Maven project. Next, run the 
+##### **2. Clone DataKernel and install it.**
+Another way to integrate DataKernel is to [clone DK](https://github.com/softindex/datakernel.git), import it as a Maven project and run the 
 following script in project directory:
 {% highlight bash %}
 ./install.sh
@@ -105,24 +106,25 @@ following script in project directory:
 
 Next, configure your `pom.xml` file in the [following way](https://github.com/softindex/datakernel/blob/master/examples/tutorials/getting-started/pom.xml).
 
+Make sure that your project SDK is set 1.8+.
 
-### 2. Write **HttpHelloWorldExample** class
-Then, write down the following code to `HttpHelloWorldExample.java`:
+#### 2. Write `HttpHelloWorldExample` class
+After you integrate DataKernel in your project in one of the suggested ways, write down the following code to 
+`HttpHelloWorldExample.java`:
 {% highlight java %}
 {% github_sample /softindex/datakernel/blob/master/examples/tutorials/getting-started/src/main/java/HttpHelloWorldExample.java tag:EXAMPLE%}
 {% endhighlight %}
 
 First, we extend **HttpHelloWorldExample** from **HttpServerLauncher**, which will help to manage application lifecycle. 
-It means that we don't need to know a lot about application launch logic.
-The only thing which we ought to know is that this entity implements *launch()* method which starts our server.
+The only thing we should know about this launcher is that it implements *launch()* method which starts our server.
 
-Next, we provide an **AsyncServlet**, which receives **HttpRequest** from clients, creates **HttpResponse** and sends it. 
+Next, provide an **AsyncServlet** which receives **HttpRequest** from clients, creates **HttpResponse** and sends it. 
 `@Provides` annotation means that this method is available for binding as root HTTP endpoint listener (it must happen 
 when dependency injection process is active).
     
-Override *AsyncServer.serve* using lambda. This method defines processing of received requests. As you can 
+Override *AsyncServlet.serve* using lambda. This method defines processing of received requests. As you can 
 see, we are using [Promise](/docs/core/promise.html) here, creating a promise of **HttpResponse** with code 
-200 and "Hello World!" body. DataKernel is fully asynchronous, so our HTTP Servlets are asynchronous too. 
+`200` and "Hello World!" body. DataKernel is fully asynchronous, so our HTTP Servlets are asynchronous too. 
 
 Finally, define *main* method to launch our server with *launch* method. This method launches server in the following 
 steps: injects dependencies, starts application, runs it and finally stops it.
@@ -130,5 +132,10 @@ steps: injects dependencies, starts application, runs it and finally stops it.
 ### 3. Run the app
 Let's now test the application. Run *HttpHelloWorldExample.main()*, then open your favourite browser and go to 
 [localhost:8080](http://localhost:8080).
-You will receive a `Hello World!` message proceeded by the server. Congratulations, you've just created your first 
+You will receive a `Hello World!` message processed by the server. Congratulations, you've just created your first 
 DataKernel application!
+
+## What's next?
+To make DataKernel more developer-friendly, we've created dozens of tutorials and examples of different scales, 
+representing most of the framework's capabilities. Click "Next" to get to the next tutorial. You can also explore our 
+[docs](/docs/core/index.html) first.

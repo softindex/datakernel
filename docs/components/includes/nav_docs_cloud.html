@@ -1,7 +1,6 @@
-{{#navBars.cloud.destinationsSet}}
-<h3>{{key}}</h3>
+<h3>Tutorials</h3>
 <ul>
-  {{#value}}
+{{#navBars.cloud.destinations.Tutorials}}
   {{#isSelected}}
   <li class="sidebar-item-selected-wrapper">
     <div class="sidebar-item-selected">
@@ -14,6 +13,23 @@
     <a href="/docs/cloud/{{filename}}.html">{{docTitle}}</a>
   </li>
   {{/isSelected}}
-  {{/value}}
+{{/navBars.cloud.destinations.Tutorials}}
 </ul>
-{{/navBars.cloud.destinationsSet}}
+
+<h3>Docs</h3>
+<ul>
+{{#navBars.cloud.destinations.Docs}}
+  {{#isSelected}}
+  <li class="sidebar-item-selected-wrapper">
+    <div class="sidebar-item-selected">
+      <a href="/docs/cloud/{{filename}}.html">{{docTitle}}</a>
+    </div>
+  </li>
+  {{/isSelected}}
+  {{^isSelected}}
+  <li>
+    <a href="/docs/cloud/{{filename}}.html">{{docTitle}}</a>
+  </li>
+  {{/isSelected}}
+{{/navBars.cloud.destinations.Docs}}
+</ul>

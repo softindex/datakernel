@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 region=$1
 url=$2
 imageName=$3
@@ -13,6 +15,6 @@ IMAGES_TO_DELETE=$( aws ecr list-images --region ${region} --repository-name ${i
 aws ecr batch-delete-image --region ${region} --repository-name ${imageName} --image-ids "$IMAGES_TO_DELETE" || true
 
 # Push to ECR
-docker tag docs:latest ${url}/${imageName}:latest
+docker tag ${imageName}:latest ${url}/${imageName}:latest
 docker push ${url}/${imageName}:latest
 

@@ -6,6 +6,8 @@ nav-menu: core
 layout: core
 prev: core/tutorials/authorization-tutorial.html
 next: core/tutorials/todo-list-tutorial.html
+keywords: java,java for beginners,java framework,guide,tutorial,web application,server,servlet,spring,spring alternative,netty alternative,jetty alternative,async,react,reactjs,react js
+description: Integrate React.js in your Java web application. In the tutorial you will create a basic app using DataKernel Java framework and React.js.
 ---
 ## Introduction
 In this example you can explore how to integrate React in DataKernel projects. **You can find full example sources on 
@@ -28,7 +30,7 @@ Then write down *main* method, which will launch **SimpleApplicationLauncher**.
 And that's it, no additional configurations are required.
 
 ## Running the application
-If you want to run the example, [Clone DataKernel](https://github.com/softindex/datakernel.git) and import it 
+If you want to run the example, [clone DataKernel](https://github.com/softindex/datakernel.git) and import it 
 as a Maven project. Before running the example, build the project (**Ctrl + F9** for IntelliJ IDEA).
 
 Run the following command in example's folder in terminal:

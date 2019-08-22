@@ -16,11 +16,10 @@ proceed with more advanced and complicated DataKernel DI use cases.
 ## Rebinding
 Consider module as a black box that has something to import and to export. In cases when you need to change import/export
 parameters the `rebindImport()` and `rebindExport()` methods are used.
+Using this scheme, modules can be developed independently of each other,
+without naming clashes of the dependencies.
  
-* In this example we need two async servers - `server1` and `server2`, marked with the corresponding `@Named` annotation.
-* Since our servers are asynchronous, for its creation we need evenloop, that will take **Promise** with response,
-and config that will store the message and port data.
-* We can supply these servers with the required dependencies quite briefly in the **Module**.
+* In this example we will supply two async servers with the required dependencies using the **Module**.
 
 {% highlight java %}
 {% github_sample /softindex/datakernel/blob/master/examples/core/advanced-di/src/main/java/ModuleRebindExample.java tag:EXAMPLE %}
@@ -28,12 +27,11 @@ and config that will store the message and port data.
 
 * *install()* establishes the module by adding all bindings, transformers, generators and multibinders from given 
 modules to this one.
-* Using *rebindImport()* we explicitly change binding name of config parameters by adding corresponding prefix - `modules.1`
-or `modules.2`.
-* *rebindExport()* allows us to specify to which instance we should add previous changes, by changing module export parameter 
-(*AsyncHttpServer* name) either to `server1` or `server2`.
-* Then we just *bind* **Eventloop** and **Config** recipes that are needed for the server creation.
-* From this example you can learn how to make a personal module config, which will bind exactly at the place where
+* In the *import* of first module, **Config.class** is an alias that points to the `rootConfig.getChild("config1")` instance.
+* The name that the module exports (**AsyncHttpServer.class**) we bind to the
+`Key.of (AsyncHttpServer.class, "server1")` - an alias of **AsyncHttpServer.class** from the first module. 
+Similarly for the second module.
+* From this example you can learn how to make a personal config for a module, which will bind exactly at the place where
 this module is connected - like subconfig of some global application config.
 
 ## DI Multibinder

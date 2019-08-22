@@ -13,6 +13,7 @@ public final class HighlightTextPlugin implements TextPlugin {
 	private static final String DEFAULT_LANGUAGE = "text";
 	private static final Map<String, String> SUPPORT_LANGUAGES = map(
 			"text", "TextLexer",
+			"js", "JavascriptLexer",
 			"java", "JavaLexer",
 			"xml", "XmlLexer",
 			"bash", "BashLexer");

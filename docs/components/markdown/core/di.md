@@ -13,9 +13,9 @@ keywords: di,dependency injection,guice alternative,spring di,spring alternative
 ## Features
 
 Dependency Injection re-designed: simpler, yet more powerful new principles
- * Extremely lightweight with lightning-fast runtime, no third-party dependencies
+ * Extremely lightweight with lightning-fast runtime and no third-party dependencies
  * Entire runtime code of Injector consists of ~50 lines of code, and all dependencies graph preprocessing is performed at start-up time
- * Extensive use of Java8+ functional-style programming: for binding definitions, user-defined binding transformations and binding generators
+ * Extensive use of Java8+ functional-style programming: for binding definitions, user-defined binding transformations, and binding generators
  * Even more powerful: support of nested scopes, singletons and instance factories, modules, optimized multi-threaded and single-threaded injectors
  * All reflection is completely abstracted out in a separate module and is entirely optional
  * Completely transparent for introspection of its dependency graph and instances
@@ -123,22 +123,22 @@ In DataKernel DI scopes are a bit different from other DI frameworks:
 Dependency graph is hard to create directly, so we provide automatic graph transformation, generation and validation 
 mechanisms with a simple yet powerful DSL.
 
-All of those preprocessing steps are performed in start-up time by compiling modules:
+All of these preprocessing steps are performed in start-up time by compiling modules:
 
- * each Module exports bindings which are combined with each other. If there are two or more bindings for any single key, 
+ * Each module exports bindings which are combined with each other. If there are two or more bindings for any single key, 
  they are reduced into one binding with user-provided **Multibinder** reduce function:
-     * this simple solution makes it trivial to [implement multibinder](/docs/core/di-advanced.html#di-multibinder) sets/maps or any app-specific multibinder
-     * if no **Multibinder** is defined for particular key, exception is thrown
+     * This simple solution makes it trivial to [implement multibinder](/docs/core/di-advanced.html#di-multibinder) sets/maps or any app-specific multibinder
+     * If no **Multibinder** is defined for particular key, exception is thrown
 
- * if dependency graph has missing dependencies, they are automatically generated with **BindingGenerator**s:
+ * If dependency graph has missing dependencies, they are automatically generated with **BindingGenerator**s:
      * **BindingGenerator**s are user-defined and exported by Modules
-     * there is an implicit **DefaultModule** with default **BindingGenerator**, which automatically provides required dependencies by scanning *@Inject* annotations of required classes
-     * user-specified Modules can also export custom binding generators for special classes
-     * you can opt-out of using **DefaultModule** and its default **BindingGenerators**
+     * There is an implicit **DefaultModule** with default **BindingGenerator**, which automatically provides required dependencies by scanning *@Inject* annotations of required classes
+     * User-specified modules can also export custom binding generators for special classes
+     * You can opt-out of using **DefaultModule** and its default **BindingGenerators**
 
- * all bindings are transformed with user-provided **BindingTransofmer**s:
-     * to intercept/modify/wrap provided instances
-     * to intercept/modify/wrap the dependencies of provided instances
+ * All bindings are transformed with user-provided **BindingTransformer**s:
+     * To intercept/modify/wrap provided instances
+     * To intercept/modify/wrap the dependencies of provided instances
 
  * **Multibinder**s, **BindingGenerator**s and **BindingTransformer**s can be made with clean and extremely simple Java8+ functional DSL
  * resulting dependency graph is validated - checked for cyclic and missing dependencies, then compiled into a final scope tree and passed to Injector
@@ -156,18 +156,13 @@ It’s trivial to manually implement the Module interface, but it’s even easie
 supports *@Provides* method scanning and the DSL for creating/transforming/generating bindings.
 
 ## Benchmarks 
-We've compared **DataKernel DI** to **Guice** and **Spring** in different scenarios:
-1. DataKernel DI With threadsafe flag set `true`
-2. DataKernel DI With threadsafe flag set `false`
-3. Guice *scoped* (all instances are singletons)
-4. Guice *unscoped* (broken semantics)
-
-We used JMH as the benchmark tool, run benchmarks in *AverageTime* mode and made 20 measurements.
+We've compared **DataKernel DI** to **Guice** and **Spring** in the same scenario, using JMH as the benchmark tool.
+We run benchmarks in *AverageTime* mode and made 20 measurements.
 All measurement results are represented in nanoseconds.
 
 {% highlight plaintext %}
-DkDirectScopebindBenchmark.measure  
-Score: 140.301; Error: ± 6.286; Units: ns/op;
+DkDiScopesBenchmark.measure  
+Score: 286.301; Error: ± 6.286; Units: ns/op;
 
 GuiceDiScopesBenchmark.measure         
 Score: 733.046; Error: ± 27.344: Units: ns/op;
@@ -179,6 +174,8 @@ Score: 77191; Error: ± 322.6; Units: ns/op;
 Benchmarks were launched on a machine with the following parameters: Ubuntu 18.04 bionic, 
 Kernel: x86_64 Linux 4.15.0-55-generic,
 CPU: Intel Core i5-8400 @ 6x 4GHz [27.8°C].
+
+**You can find benchmark sources on [GitHub](https://github.com/softindex/datakernel/tree/master/examples/benchmarks/src/main/java/io/datakernel/di).**
 
 ## Example
 To represent the main concepts and features of DataKernel DI, we've created an example, which starts 
@@ -254,8 +251,8 @@ cookies we need - a normal one or sugar-free.
 {% endhighlight %}
 
 #### Cooking Non-singleton Cookies Using Scopes
-Our cookies turned out to be so amazingly tasty, that now there a lot of people who want to try them. But there is a 
-small problem, DataKernel DI makes instances singleton by default. And we can't sell the same one cookie to all our 
+Our cookies turned out to be so amazingly tasty, that now there are a lot of people who want to try them. But there is a 
+small problem, DataKernel DI makes instances singleton by default. And we can't sell the same cookie to all our 
 customers. 
 
 Luckily, there is a solution: we can use a custom **ScopeAnnotation** `@Order` to create `ORDER_SCOPES` scope:

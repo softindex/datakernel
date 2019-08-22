@@ -45,10 +45,12 @@ Time: 6724ms; Average time: 672.4ms; Best time: 657ms; Worst time: 694ms; Reques
 And MemcacheRPC performance: 
 {% highlight plaintext %}
 Put
-Time: 7019ms; Average time: 1002.714285714285ms; Best time: 954ms; Worst time: 1180ms; Requests per second: 7479697
+Time: 7019ms; Average time: 1002.714285714285ms; Best time: 954ms; Worst time: 1180ms; Requests per second: 9479697
 Get
-Time: 6805ms; Average time: 972.1428571428571ms; Best time: 931ms; Worst time: 1064ms; Requests per second: 7714915
+Time: 6805ms; Average time: 972.1428571428571ms; Best time: 931ms; Worst time: 1064ms; Requests per second: 9714915
 {% endhighlight %}
+
+**You can find benchmark sources on [GitHub](https://github.com/softindex/datakernel/tree/master/examples/cloud/rpc/src/main/java).**
 
 ## Examples
 ### Simple RPC Example

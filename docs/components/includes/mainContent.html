@@ -33,6 +33,9 @@
       <a class="docs-prevnext-button pull-left" href="/docs/{{ page.properties.prev }}">Prev</a>
     </div>
     {{/page.properties.prev}}
+    {{^page.properties.prev}}
+    <div class="col-sm-6"></div>
+    {{/page.properties.prev}}
     {{#page.properties.next}}
     <div class="col-sm-6">
       <a class="docs-prevnext-button pull-right" href="/docs/{{ page.properties.next }}">Next</a>

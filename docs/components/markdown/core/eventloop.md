@@ -3,7 +3,7 @@ id: eventloop
 filename: eventloop
 title: Eventloop Module
 prev: core/http.html
-next: core/eventloop.html
+next: core/promise.html
 nav-menu: core
 layout: core
 description: Node.js-inspired single-threaded Eventloop for developing asynchronous Java applications
@@ -87,7 +87,7 @@ Eventloop.delay(1000) is finished, time: 2008
 Eventloop.delay(3000) is finished, time: 3001
 {% endhighlight %}
 
-So, the the tasks willl be executed in the following order:
+So, the tasks will be executed in the following order:
 1. `Not in eventloop...`, it will be executed even before the eventloop is started.
 2. `Thread.sleep(2000)...` as we posted it to the beginning of eventloop's *localTasks*.
 3. Immediately after that - `Eventloop.delay(100)...` and `Eventloop.delay(1000)...` as they are already expired.

@@ -30,7 +30,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static java.lang.System.getProperties;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-@Ignore
 public final class ValidationTest {
 	private static final String MAIN_PAGE = "main.html";
 	private static final Logger logger = LoggerFactory.getLogger(ValidationTest.class);

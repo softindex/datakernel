@@ -6,8 +6,11 @@ layout: cloud
 filename: cloud/
 title: Cloud components of DataKernel Framework
 status: STABLE
-description: Technologies for building fully decentralized private cloud solutions and applications. Suitable for working with trusted servers only. 
+description: Technologies for building fully decentralized private cloud solutions and applications. 
+keywords: cloud,storage,private cloud,decentralized,distributed,rpc,java,java framework,spring,netty,jetty,spring alternative,netty alternative,jetty alternative,olap,high load,big data,csp,operational transformation,lsm tree
 ---
+DataKernel Cloud components provide tools to create solutions of different scales: from small private file storage to high-loaded 
+OLAP Cube systems. It also includes Operational Transformations, CRDT and RPC implementations.
 
 | Components | Description | 
 | --- | --- | 

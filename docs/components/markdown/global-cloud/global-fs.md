@@ -11,4 +11,4 @@ status: WIP
 
 ## Coming soon. [GitHub repository](https://github.com/softindex/datakernel/tree/master/global-fs)
 
-This module enables creating worldwide storage clouds with implementation of digital signatures and caching technologies.
+This module enables you to create worldwide storage clouds with implementation of digital signatures and caching technologies.

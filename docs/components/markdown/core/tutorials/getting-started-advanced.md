@@ -6,13 +6,13 @@ prev: core/tutorials/getting-started.html
 next: core/tutorials/template-engine-integration.html
 nav-menu: core
 layout: core
+keywords: java,java for beginners,java framework,guide,tutorial,web application,async,server,spring,spring alternative,netty alternative,jetty alternative,aws,amazon web services,docker,docker image,deploy
+description: Step-by-step guide of deploying an HTTP server written in Java to AWS using Docker.
 ---
 
 ## Purpose
 In this tutorial we will deploy the HTTP Server created in the 
 [previous tutorial](/docs/core/tutorials/getting-started.html) to AWS. For this purpose we will use Docker.
-
-{% include note.html content=" Archetypes will come soon." %}
 
 #### 1. Assemble JAR-file.
 Open your [server's](/docs/core/tutorials/getting-started.html) `pom.xml` file and insert this config:
@@ -118,13 +118,8 @@ Here is a guide how to deploy your Docker image:
     - `docker load -i dkapp.tar` to unzip archived image.
     - `docker run -p 8080:8080 dkapp` to launch your application in Docker container.
 
-Hurray! You are running your Docker image with DK app on AWS instance.
+Hurray! You are running your Docker image with DataKernel app on AWS instance.
 Check it out on your IP address.
-
-## What's next?
-To make DataKernel more developer-friendly, we've created dozens of tutorials and examples of different scales, 
-representing most of the framework's capabilities. Click "Next" to get to the next tutorial. You can also explore our 
-[docs](/docs/core/index.html) first.
 
 
 

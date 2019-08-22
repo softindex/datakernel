@@ -3,6 +3,5 @@ _site
 Gemfile.lock
 npm-debug.log
 *.iml
-*.js
 /*.properties
 !docker-conf/*.properties

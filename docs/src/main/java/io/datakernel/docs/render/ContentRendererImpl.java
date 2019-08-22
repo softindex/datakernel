@@ -18,9 +18,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static io.datakernel.util.CollectionUtils.map;
+import static java.util.Collections.emptyMap;
 
 public class ContentRendererImpl implements ContentRenderer {
-	private static final String SECTOR_PATTERN = ".*?/([\\w-]+)(/tutorials)?(/[\\w-]+\\.\\w+)?$";
+	private static final String SECTOR_PATTERN = "markdown\\/([\\w-]+)\\/";
 	private final List<PropertiesPlugin<?>> propertiesPluginList = new ArrayList<>();
 	private final Pattern sectorPattern = Pattern.compile(SECTOR_PATTERN);
 	private final String pathToIncludeFileMustache;
@@ -68,11 +69,7 @@ public class ContentRendererImpl implements ContentRenderer {
 		}
 		String renderedContent = textRenderer.render(markdownContent.getContent());
 		if (relativePath.contains(indexRelativePathPath)) properties.put("page.home", true);
-		Matcher matcher = sectorPattern.matcher(relativePath);
-		if (matcher.find()) {
-			String sector = matcher.group(1);
-			properties.put("active", map(sector, sectors.contains(sector)));
-		}
+		properties.put("active", activeSector(relativePath));
 		properties.put("renderedContent", renderedContent);
 		properties.put("page", markdownContent);
 
@@ -80,5 +77,14 @@ public class ContentRendererImpl implements ContentRenderer {
 		ByteBufWriter writer = new ByteBufWriter();
 		mustache.compile(templateReader, pathToIncludeFileMustache).execute(writer, properties);
 		return writer.getBuf();
+	}
+
+	private Map<String, Boolean> activeSector(String relativePath) {
+		Matcher matcher = sectorPattern.matcher(relativePath);
+		if (matcher.find()) {
+			String sector = matcher.group(1);
+			return map(sector, sectors.contains(sector));
+		}
+		return emptyMap();
 	}
 }

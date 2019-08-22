@@ -21,7 +21,18 @@ Each Eventloop thread is essentially a single-threaded mini-application (similar
 of I/O tasks and executes Runnables submitted from other threads. Primary Eventloop threads distribute and balance 
 I/O tasks between Worker threads.
 
-{% include image.html file="/static/images/http-helloworld-architecture.png" max-width="800px" %}
+{% mermaid %}
+graph TD
+PrimaryServer --> PrimaryEventLoop
+PrimaryServer --> WorkerServer1
+PrimaryServer --> WorkerServer2
+PrimaryServer --> WorkerServer3
+PrimaryServer --> WorkerServer4
+WorkerServer1 --> WorkerEventloop1
+WorkerServer2 --> WorkerEventloop2
+WorkerServer3 --> WorkerEventloop3
+WorkerServer4 --> WorkerEventloop4
+{% endmermaid %}
 
 The benefits of DataKernel threading model:
 * each primary/worker Eventloop thread works as a single-threaded application, which is simple to program and to reason about

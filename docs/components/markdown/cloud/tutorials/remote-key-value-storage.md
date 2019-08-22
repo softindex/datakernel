@@ -4,6 +4,8 @@ filename: tutorials/remote-key-value-storage
 title: Remote Key-Value Storage
 nav-menu: cloud
 layout: cloud
+keywords: java,java framework,tutorial,guide,rpc,client-server,web application,key-value storage
+description: Create a key-value storage with RPC communication protocol.
 ---
 ## Purpose
 In this guide we will create a remote key-value storage using [RPC module](/docs/cloud/rpc.html). 

@@ -11,10 +11,9 @@ keywords: dependency injection,di,launcher,eventloop,promise,node js,java,java f
 ---
 
 These components form the basis of DataKernel framework. They include fast asynchronous technologies, Node.js-inspired Promises 
-and Eventloops, launchers for common use cases, tools for smart and efficient application booting. Also, there is UIKernel 
-integration component, which allows to integrate UIKernel JS front-end into your application.
+and Eventloops, launchers for common use cases, tools for smart and efficient application booting.
 
-If you want to create Java **web application** using DataKernel, we suggest you to learn docs in the following order:
+*If you want to create Java **web application** using DataKernel, we suggest you to learn docs in the following order:*
 
 
 | Component | Description |
@@ -40,4 +39,4 @@ useful in more specific use cases:
 | **[Serializer](serializer.html)** | Extremely fast and space-efficient serializers created with bytecode engineering. Introduces schema-less approach for best performance. |
 | **[Codegen](codegen.html)** | Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the complexity of direct bytecode manipulation, so you can use it to create custom classes on the fly. |
 | **[Codec](codec.html)** | Contains tools for encoding/decoding primitives and objects with built-in support of conversion to/from JSON and ByteBuf. The process resembles serialization and can be used to convert objects to a custom representation. |
-| **[UIKernel](uikernel.html)**| Integration with UIKernel JS frontend library: JSON serializers, grid model, basic servlets. With this module you can build a server application that will be compatible with UIKernel.|
+| **[UIKernel](uikernel.html)**| Integration with [UIKernel JS frontend library](http://uikernel.io/): JSON serializers, grid model, basic servlets. With this module you can build a server application that will be compatible with UIKernel.|

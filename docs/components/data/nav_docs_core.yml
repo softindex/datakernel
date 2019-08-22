@@ -21,6 +21,11 @@
     - id: todo-list-tutorial
       filename: tutorials/todo-list-tutorial
       title: DataKernel + React Advanced
+- title: Articles
+  items:
+    - id: welcome-article
+      filename: articles/welcome-article
+      title: Introduction to Java DataKernel for Node.js developers
 - title: Docs
   items:
     - title: DI

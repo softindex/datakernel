@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 imageName=$1
 
 # Go to main project folder from anywhere

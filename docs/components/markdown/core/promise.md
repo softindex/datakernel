@@ -85,18 +85,16 @@ bare minimum of fields inside
 
 In order to optimise **Promise**s, there are several implementations of **Promise** interface:
 
-{% highlight bash %}
-                                             Promise
-                                             
-                              |                 |                |       
-                              |                 |                |
-             AbstractPromise _|   CompleteExceptionallyPromise   |_  CompletePromise
-             
-                  | |                                                      | |
-                  | |                                                      | |  
-     NextPromise _| |_ SettablePromise              CompleteResultPromise _| |_ CompleteNullPromise
-
-{% endhighlight %}
+{% mermaid %}
+graph TD
+Promise --> AbstractPromise
+Promise --> CompleteExceptionallyPromise
+Promise --> CompletePromise
+AbstractPromise --> NextPromise
+AbstractPromise --> SettablePromise
+CompletePromise --> CompleteResultPromise
+CompletePromise --> CompleteNullPromise
+{% endmermaid %}
 
 * `Promise` - root interface which represents *promises* behaviour.
 * `SettablePromise` - a class which can be used as a root for chain of **Promise**s. Allows to wrap operations in **Promise**s, 
@@ -137,6 +135,8 @@ Cnt: 10; Score: 85.151; Error: ± 1.781; Units: ns/op;
 Java CompletableFuture combineMeasure
 Cnt: 10; Score: 153.645; Error: ± 4.491; Units: ns/op;
 {% endhighlight %}
+
+**You can find benchmark sources on [GitHub](https://github.com/softindex/datakernel/tree/master/examples/benchmarks/src/main/java/io/datakernel/promise).**
 
 ## Examples 
 

@@ -14,7 +14,28 @@
         <li><a class="nav-link" href="/">Home</a></li>
         <li class="dropdown">
           <a class="nav-link nav-expanded" href="/docs/core/">Core</a>
+
           <ul class="dropdown-content">
+            <h6 class="dropdown-nav-title">Tutorials</h6>
+            <div class="dropdown-wrapper">
+              {{#navBars.core.destinations.Tutorials}}
+              <li>
+                <a href="/docs/core/{{filename}}.html">{{ docTitle }}</a>
+              </li>
+              {{/navBars.core.destinations.Tutorials}}
+            </div>
+
+            <h6 class="dropdown-nav-title">Articles</h6>
+            <div class="dropdown-wrapper">
+              {{#navBars.core.destinations.Articles}}
+              <li>
+                <a href="/docs/core/{{filename}}.html">{{ docTitle }}</a>
+              </li>
+              {{/navBars.core.destinations.Articles}}
+            </div>
+
+
+            <h6 class="dropdown-nav-title">Docs</h6>
             <div class="dropdown-wrapper">
               {{#navBars.core.destinations.Docs}}
               <li>
@@ -27,7 +48,17 @@
         <li class="dropdown">
           <a class="nav-link nav-expanded" href="/docs/cloud/">Cloud</a>
           <ul class="dropdown-content">
-            <div class="dropdown-wrapper">
+            <h6 class="dropdown-nav-title">Tutorials</h6>
+            <div class="dropdown-wrapper-2">
+              {{#navBars.cloud.destinations.Tutorials}}
+              <li>
+                <a href="/docs/cloud/{{filename}}.html">{{ docTitle }}</a>
+              </li>
+              {{/navBars.cloud.destinations.Tutorials}}
+            </div>
+
+            <h6 class="dropdown-nav-title">Docs</h6>
+            <div class="dropdown-wrapper-2">
               {{#navBars.cloud.destinations.Docs}}
               <li>
                 <a href="/docs/cloud/{{filename}}.html">{{ docTitle }}</a>
@@ -39,23 +70,26 @@
         <li class="dropdown">
           <a class="nav-link nav-expanded" href="/docs/global-cloud/">Global Cloud</a>
           <ul class="dropdown-content">
-            <div class="dropdown-wrapper dropdown-wrapper-6">
-              {{#navBars.global-cloud.destinations.Docs}}
+
+            {{#navBars.global-cloud.destinationsSet}}
+            <h6 class="dropdown-nav-title">{{ key }} </h6>
+            <div class="dropdown-wrapper-2">
+              {{#value}}
               <li>
                 <a href="/docs/global-cloud/{{filename}}.html">{{ docTitle }}</a>
               </li>
-              {{/navBars.global-cloud.destinations.Docs}}
+              {{/value}}
             </div>
-
+            {{/navBars.global-cloud.destinationsSet}}
           </ul>
         </li>
       </ul>
     </div>
     <span>
       <ul class="navbar-nav mr-auto mt-1 mt-lg-0">
-        <li><a class="nav-link" href="http://uikernel.io">Uikernel</a></li>
-        <li><a class="nav-link" href="http://adkernel.com">Adkernel</a></li>
-        <li><a class="nav-link" href="{{context.site_github_url}}">Github</a></li>
+        <li><a class="nav-link" href="http://uikernel.io">UIKernel</a></li>
+        <li><a class="nav-link" href="http://adkernel.com">AdKernel</a></li>
+        <li><a class="nav-link" href="{{site.github_url}}">GitHub</a></li>
       </ul>
     </span>
   </div>

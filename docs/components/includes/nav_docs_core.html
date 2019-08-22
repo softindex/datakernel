@@ -1,7 +1,6 @@
-{{#navBars.core.destinationsSet}}
-<h3>{{key}}</h3>
+<h3>Tutorials</h3>
 <ul>
-  {{#value}}
+{{#navBars.core.destinations.Tutorials}}
   {{#isSelected}}
   <li class="sidebar-item-selected-wrapper">
     <div class="sidebar-item-selected">
@@ -14,6 +13,41 @@
     <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
   </li>
   {{/isSelected}}
-  {{/value}}
+{{/navBars.core.destinations.Tutorials}}
 </ul>
-{{/navBars.core.destinationsSet}}
+
+<h3>Articles</h3>
+<ul>
+{{#navBars.core.destinations.Articles}}
+  {{#isSelected}}
+  <li class="sidebar-item-selected-wrapper">
+    <div class="sidebar-item-selected">
+      <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
+    </div>
+  </li>
+  {{/isSelected}}
+  {{^isSelected}}
+  <li>
+    <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
+  </li>
+  {{/isSelected}}
+{{/navBars.core.destinations.Articles}}
+</ul>
+
+<h3>Docs</h3>
+<ul>
+{{#navBars.core.destinations.Docs}}
+  {{#isSelected}}
+  <li class="sidebar-item-selected-wrapper">
+    <div class="sidebar-item-selected">
+      <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
+    </div>
+  </li>
+  {{/isSelected}}
+  {{^isSelected}}
+  <li>
+    <a href="/docs/core/{{filename}}.html">{{docTitle}}</a>
+  </li>
+  {{/isSelected}}
+{{/navBars.core.destinations.Docs}}
+</ul>

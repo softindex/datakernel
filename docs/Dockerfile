@@ -14,8 +14,6 @@ RUN git clone -n https://github.com/softindex/datakernel \
 
 COPY /docs/scripts/start.sh start.sh
 
-EXPOSE 8080
-
-HEALTHCHECK CMD curl -f http://localhost:8080/ || exit 1
+EXPOSE 80
 
 ENTRYPOINT sh start.sh
