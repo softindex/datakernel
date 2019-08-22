@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://datakernel.io" target="_blank">
-    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.png" width="409">
+    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="409">
   </a>
 </p>
 
@@ -33,7 +33,7 @@ mvn archetype:generate \
         -DmainClassName=MyFirstDkApp 
 ```
 
-... and open project in your favourite IDE. Then, you can build and run the application and open browser on [localhost:8080](http://localhost:8080). 
+... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 
 
 To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
 
