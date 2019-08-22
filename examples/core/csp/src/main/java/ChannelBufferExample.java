@@ -7,10 +7,6 @@ import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 
-/**
- * @author Alex Syrotenko (@pantokrator)
- * Created on 18.07.19.
- */
 public final class ChannelBufferExample {
 	//[START REGION_1]
 	static final class ChannelBufferStream {

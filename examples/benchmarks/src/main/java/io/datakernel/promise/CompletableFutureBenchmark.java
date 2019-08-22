@@ -15,8 +15,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 30.07.19.
  * @since 3.0.0
  */
 @State(Scope.Benchmark)

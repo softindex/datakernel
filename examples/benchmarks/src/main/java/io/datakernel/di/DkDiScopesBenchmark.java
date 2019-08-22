@@ -16,8 +16,6 @@ import org.openjdk.jmh.runner.options.TimeValue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 24.07.19.
  * @since 3.0.0
  */
 @State(Scope.Benchmark)
@@ -42,7 +40,7 @@ public class DkDiScopesBenchmark {
 
         @Inject
         public Sugar() {
-            this.name = "Sugarella";
+            this.name = "WhiteSugar";
             this.weight = 10.f;
         }
         //[END REGION_8]
@@ -266,13 +264,13 @@ public class DkDiScopesBenchmark {
             Kitchen kitchen() { return new Kitchen(); }
 
             @OrderScope
-            Sugar sugar() { return new Sugar("Sugarello", 10.f); }
+            Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
 
             @OrderScope
-            Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
+            Butter butter() { return new Butter("PerfectButter", 20.0f); }
 
             @OrderScope
-            Flour flour() { return new Flour("Kyivska", 100.0f); }
+            Flour flour() { return new Flour("GoodFlour", 100.0f); }
 
             @OrderScope
             Pastry pastry(Sugar sugar, Butter butter, Flour flour) {

@@ -25,9 +25,6 @@ import static junit.framework.TestCase.*;
  * In this example we have a kitchen, where you can
  * automatically create tasty cookies in different ways
  * with our wonderful DI.
- *
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 11.07.19.
  */
 public class DIFollowUpTest {
 	//[START REGION_9]
@@ -54,7 +51,7 @@ public class DIFollowUpTest {
 
 		@Inject
 		public Sugar() {
-			this.name = "Sugarella";
+			this.name = "WhiteSugar";
 			this.weight = 10.f;
 		}
 		//[END REGION_8]
@@ -160,9 +157,9 @@ public class DIFollowUpTest {
 	//[START REGION_1]
 	public void manualBindSnippet() {
 		Map<Key<?>, Binding<?>> bindings = new LinkedHashMap<>();
-		bindings.put(Key.of(Sugar.class), Binding.to(() -> new Sugar("Sugarello", 10.0f)));
-		bindings.put(Key.of(Butter.class), Binding.to(() -> new Butter("Kyivmlyn", 20.0f)));
-		bindings.put(Key.of(Flour.class), Binding.to(() -> new Flour("Kyivska", 100.0f)));
+		bindings.put(Key.of(Sugar.class), Binding.to(() -> new Sugar("WhiteSugar", 10.0f)));
+		bindings.put(Key.of(Butter.class), Binding.to(() -> new Butter("PerfectButter", 20.0f)));
+		bindings.put(Key.of(Flour.class), Binding.to(() -> new Flour("GoodFlour", 100.0f)));
 		bindings.put(Key.of(Pastry.class), Binding.to(Pastry::new, Sugar.class, Butter.class, Flour.class));
 		bindings.put(Key.of(Cookie.class), Binding.to(Cookie::new, Pastry.class));
 
@@ -177,14 +174,14 @@ public class DIFollowUpTest {
 	//[START REGION_2]
 	public void moduleBindSnippet() {
 		Module module = Module.create()
-				.bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.0f))
-				.bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f))
-				.bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f))
+				.bind(Sugar.class).to(() -> new Sugar("WhiteSugar", 10.0f))
+				.bind(Butter.class).to(() -> new Butter("PerfectButter", 20.0f))
+				.bind(Flour.class).to(() -> new Flour("GoodFlour", 100.0f))
 				.bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class)
 				.bind(Cookie.class).to(Cookie::new, Pastry.class);
 
 		Injector injector = Injector.of(module);
-		assertEquals("Kyivmlyn", injector.getInstance(Cookie.class).getPastry().getButter().getName());
+		assertEquals("PerfectButter", injector.getInstance(Cookie.class).getPastry().getButter().getName());
 	}
 	//[END REGION_2]
 
@@ -193,13 +190,13 @@ public class DIFollowUpTest {
 	public void provideAnnotationSnippet() {
 		Module cookbook = new AbstractModule() {
 			@Provides
-			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
+			Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
 
 			@Provides
-			Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
+			Butter butter() { return new Butter("PerfectButter", 20.0f); }
 
 			@Provides
-			Flour flour() { return new Flour("Kyivska", 100.0f); }
+			Flour flour() { return new Flour("GoodFlour", 100.0f); }
 
 			@Provides
 			Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
@@ -213,7 +210,7 @@ public class DIFollowUpTest {
 		};
 
 		Injector injector = Injector.of(cookbook);
-		assertEquals("Kyivmlyn", injector.getInstance(Cookie.class).getPastry().getButter().getName());
+		assertEquals("PerfectButter", injector.getInstance(Cookie.class).getPastry().getButter().getName());
 	}
 	//[END REGION_3]
 
@@ -223,7 +220,7 @@ public class DIFollowUpTest {
 		Module cookbook = Module.create().bind(Cookie.class);
 
 		Injector injector = Injector.of(cookbook);
-		assertEquals("Sugarella", injector.getInstance(Cookie.class).getPastry().getSugar().getName());
+		assertEquals("WhiteSugar", injector.getInstance(Cookie.class).getPastry().getSugar().getName());
 	}
 	//[END REGION_4]
 
@@ -237,13 +234,13 @@ public class DIFollowUpTest {
 
 			@Provides
 			@Named("normal")
-			Sugar sugar2() { return new Sugar("Sugarello", 10.f); }
+			Sugar sugar2() { return new Sugar("WhiteSugar", 10.f); }
 
 			@Provides
-			Butter butter() { return new Butter("Kyivmlyn", 20.f); }
+			Butter butter() { return new Butter("PerfectButter", 20.f); }
 
 			@Provides
-			Flour flour() { return new Flour("Kyivska", 100.f); }
+			Flour flour() { return new Flour("GoodFlour", 100.f); }
 
 			@Provides
 			@Named("normal")
@@ -314,14 +311,14 @@ public class DIFollowUpTest {
 		Module cookbook = Module.create()
 				.bind(Sugar.class).to(Sugar::new)
 				.bind(Butter.class).to(Butter::new)
-				.bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f))
+				.bind(Flour.class).to(() -> new Flour("GoodFlour", 100.0f))
 				.bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class)
 				.bind(Cookie.class).to(Cookie::new, Pastry.class)
 				.transform(0, (bindings, scope, key, binding) ->
 						binding.onInstance(x -> System.out.println(Instant.now() + " -> " + key)));
 
 		Injector injector = Injector.of(cookbook);
-		assertEquals("Kyivska", injector.getInstance(Cookie.class).getPastry().getFlour().getName());
+		assertEquals("GoodFlour", injector.getInstance(Cookie.class).getPastry().getFlour().getName());
 	}
 	//[END REGION_7]
 }

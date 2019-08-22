@@ -12,7 +12,7 @@ public class DiDependencyGraphExplore {
 
 		@Inject
 		public Sugar() {
-			this.name = "Sugarella";
+			this.name = "WhiteSugar";
 			this.weight = 10.f;
 		}
 
@@ -127,15 +127,15 @@ public class DiDependencyGraphExplore {
 
 			@Provides
 			@OrderScope
-			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
+			Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
 
 			@Provides
 			@OrderScope
-			Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
+			Butter butter() { return new Butter("PerfectButter", 20.0f); }
 
 			@Provides
 			@OrderScope
-			Flour flour() { return new Flour("Kyivska", 100.0f); }
+			Flour flour() { return new Flour("GoodFlour", 100.0f); }
 
 			@Provides
 			@OrderScope

@@ -13,8 +13,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author is Alex Syrotenko (@pantokrator)
- * Created on 24.07.19.
+ * @since 3.0.0
  */
 @State(Scope.Benchmark)
 public class GuiceDiScopesBenchmark {
@@ -38,7 +37,7 @@ public class GuiceDiScopesBenchmark {
 
         @Inject
         public Sugar() {
-            this.name = "Sugarella";
+            this.name = "WhiteSugar";
             this.weight = 10.f;
         }
         //[END REGION_8]
@@ -255,13 +254,13 @@ public class GuiceDiScopesBenchmark {
             Kitchen kitchen() { return new Kitchen(); }
 
             @Provides
-            Sugar sugar() { return new Sugar("Sugarello", 10.f); }
+            Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
 
             @Provides
-            Butter butter() { return new Butter("Kyivmlyn", 20.0f); }
+            Butter butter() { return new Butter("PerfectButter", 20.0f); }
 
             @Provides
-            Flour flour() { return new Flour("Kyivska", 100.0f); }
+            Flour flour() { return new Flour("GoodFlour", 100.0f); }
 
             @Provides
             Pastry pastry(Sugar sugar, Butter butter, Flour flour) {

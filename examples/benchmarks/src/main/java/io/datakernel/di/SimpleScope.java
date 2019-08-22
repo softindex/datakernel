@@ -7,10 +7,6 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
 
-/**
- * @Author is Alex Syrotenko (@pantokrator)
- * Created on 24.07.19.
- */
 public class SimpleScope implements Scope {
     private static final Provider<Object> SEEDED_KEY_PROVIDER =
             new Provider<Object>() {

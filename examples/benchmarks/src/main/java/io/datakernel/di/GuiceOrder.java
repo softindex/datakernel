@@ -9,10 +9,6 @@ import java.lang.annotation.Target;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-/**
- * @Author is Alex Syrotenko (@pantokrator)
- * Created on 24.07.19.
- */
 @ScopeAnnotation
 @BindingAnnotation
 @Target({ElementType.FIELD, ElementType.METHOD})

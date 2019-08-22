@@ -14,7 +14,7 @@ public class BindingGeneratorExample {
 
 		@Inject
 		public Sugar() {
-			this.name = "Sugarella";
+			this.name = "WhiteSugar";
 			this.weight = 10.f;
 		}
 
@@ -136,13 +136,13 @@ public class BindingGeneratorExample {
 			//[END REGION_2]
 
 			@Provides
-			Sugar sugar() { return new Sugar("Sugarello", 10.f); }
+			Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
 
 			@Provides
-			Flour flour() { return new Flour("Kyivmlyn", 20.0f); }
+			Flour flour() { return new Flour("PerfectButter", 20.0f); }
 
 			@Provides
-			Butter butter() { return new Butter("Kyivbutter", 10.0f); }
+			Butter butter() { return new Butter("PerfectButter", 10.0f); }
 
 			@Provides
 			Pastry pastry(Sugar sugar, Butter butter, Flour flour) {

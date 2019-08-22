@@ -18,10 +18,6 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-/**
- * @author Alex Syrotenko (@pantokrator)
- * Created on 18.07.19.
- */
 public class ChannelBifurcatorTest {
 
 	@Rule

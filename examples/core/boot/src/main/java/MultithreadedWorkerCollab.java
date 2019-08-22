@@ -10,11 +10,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/**
- * @author Alex Syrotenko (@pantokrator)
- * Created on 17.07.19.
- */
-
 //[START EXAMPLE]
 public final class MultithreadedWorkerCollab extends AbstractModule {
 

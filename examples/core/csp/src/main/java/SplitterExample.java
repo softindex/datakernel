@@ -10,10 +10,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * @author Alex Syrotenko (@pantokrator)
- * Created on 18.07.19.
- */
 //[START EXAMPLE]
 public class SplitterExample {
 	public static void main(String[] args) {

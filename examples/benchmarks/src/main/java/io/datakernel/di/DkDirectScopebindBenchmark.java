@@ -39,7 +39,7 @@ public class DkDirectScopebindBenchmark {
 		private final float weight;
 
 		public Sugar() {
-			this.name = "Sugarella";
+			this.name = "WhiteSugar";
 			this.weight = 10.f;
 		}
 		//[END REGION_8]
@@ -230,9 +230,9 @@ public class DkDirectScopebindBenchmark {
 			@Override
 			protected void configure() {
 				bind(Kitchen.class).to(Kitchen::new);
-				bind(Sugar.class).to(() -> new Sugar("Sugarello", 10.f)).in(OrderScope.class);
-				bind(Butter.class).to(() -> new Butter("Kyivmlyn", 20.0f)).in(OrderScope.class);
-				bind(Flour.class).to(() -> new Flour("Kyivska", 100.0f)).in(OrderScope.class);
+				bind(Sugar.class).to(() -> new Sugar("WhiteSugar", 10.f)).in(OrderScope.class);
+				bind(Butter.class).to(() -> new Butter("PerfectButter", 20.0f)).in(OrderScope.class);
+				bind(Flour.class).to(() -> new Flour("GoodFlour", 100.0f)).in(OrderScope.class);
 				bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class).in(OrderScope.class);
 				bind(Cookie1.class).to(Cookie1::new, Pastry.class).in(OrderScope.class);
 				bind(Cookie2.class).to(Cookie2::new, Pastry.class).in(OrderScope.class);

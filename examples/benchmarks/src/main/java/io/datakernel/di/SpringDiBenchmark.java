@@ -39,7 +39,7 @@ public class SpringDiBenchmark {
 
 		@Autowired
 		public Sugar() {
-			this.name = "Sugarella";
+			this.name = "WhiteSugar";
 			this.weight = 10.f;
 		}
 		//[END REGION_8]
@@ -78,7 +78,7 @@ public class SpringDiBenchmark {
 
 		@Autowired
 		public Flour() {
-			this.name = "Kyivska";
+			this.name = "GoodFlour";
 			this.weight =  100.0f;
 		}
 

@@ -15,7 +15,6 @@ import static io.datakernel.util.Sliceable.trySlice;
  * Communicating process which distributes
  * an input item to two output channels.
  *
- * @author Alex Syrotenko (@pantokrator)
  * @since 3.0.0
  */
 //[START REGION_1]
