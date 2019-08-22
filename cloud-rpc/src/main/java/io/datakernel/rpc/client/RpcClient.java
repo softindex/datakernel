@@ -472,7 +472,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 									}
 								});
 					} else {
-						cb.accept(null, RPC_TIMEOUT_EXCEPTION);
+						anotherEventloop.execute(() -> cb.accept(null, RPC_TIMEOUT_EXCEPTION));
 					}
 				});
 			}
