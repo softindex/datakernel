@@ -1,33 +1,33 @@
 package io.global.forum;
 
 import com.github.mustachejava.Mustache;
-import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.*;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MediaTypes;
-import io.datakernel.ot.OTSystem;
 import io.datakernel.writer.ByteBufWriter;
-import io.global.forum.ot.forum.ForumOTOperation;
-import io.global.forum.ot.forum.ForumOTSystem;
-import io.global.forum.pojo.AuthService;
+import io.global.forum.ot.post.ThreadOTState;
+import io.global.forum.ot.post.operation.AddPost;
+import io.global.forum.ot.post.operation.PostChangesOperation;
+import io.global.forum.ot.post.operation.PostOperation;
+import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
-import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserId;
-import io.global.ot.map.MapOTSystem;
-import io.global.ot.map.MapOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
+import java.util.Map;
 import java.util.Random;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.StructuredEncoder.ofList;
+import static io.datakernel.codec.StructuredEncoder.ofObject;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.REFERER;
-import static io.global.ot.OTUtils.CHANGE_NAME_CODEC;
-import static io.global.ot.OTUtils.getMapOperationCodec;
+import static java.util.stream.Collectors.toMap;
 
 public final class Utils {
 	private Utils() {
@@ -43,21 +43,6 @@ public final class Utils {
 	};
 	private static final Random RANDOM = new Random();
 
-	private static final Comparator<ThreadMetadata> THREAD_METADATA_COMPARATOR = Comparator
-			.comparing(ThreadMetadata::getThreadId)
-			.thenComparing(ThreadMetadata::getTitle);
-
-	private static final Comparator<Post> POST_COMPARATOR = Comparator
-			.comparing(Post::getTimestamp)
-			.thenComparing(Post::getContent)
-			.thenComparing(comment -> comment.getAuthor().getAuthService().ordinal())
-			.thenComparing(comment -> comment.getAuthor().getAuthString());
-
-	public static final OTSystem<ForumOTOperation> CHANNEL_OT_SYSTEM = ForumOTSystem.create(THREAD_METADATA_COMPARATOR);
-
-	public static final OTSystem<MapOperation<Long, Post>> COMMENTS_OT_SYSTEM =
-			MapOTSystem.createOTSystem(POST_COMPARATOR);
-
 	public static String generateBase62(int size) {
 		StringBuilder sb = new StringBuilder(size);
 		for (int i = 0; i < size; i++) {
@@ -66,7 +51,7 @@ public final class Utils {
 		return sb.toString();
 	}
 
-	public static Long generateCommentId() {
+	public static Long generateId() {
 		return RANDOM.nextLong();
 	}
 
@@ -95,28 +80,55 @@ public final class Utils {
 		return HttpResponse.redirect302(referer == null ? to : referer);
 	}
 
-	// region codecs
-	public static final StructuredCodec<UserId> USER_ID_CODEC = tuple(UserId::new,
-			UserId::getAuthService, ofEnum(AuthService.class),
-			UserId::getAuthString, STRING_CODEC);
+	public static class LazyCodec<T> implements StructuredCodec<T> {
 
-	public static final StructuredCodec<Post> COMMENT_CODEC = tuple(Post::new,
-			Post::getAuthor, USER_ID_CODEC,
-			Post::getContent, STRING_CODEC,
-			Post::getTimestamp, LONG_CODEC);
+		private StructuredCodec<T> peer = null;
 
-	public static final StructuredCodec<ThreadMetadata> THREAD_METADATA_CODEC = tuple(ThreadMetadata::new,
-			ThreadMetadata::getTitle, STRING_CODEC,
-			ThreadMetadata::getThreadId, LONG_CODEC);
+		public void realize(StructuredCodec<T> peer) {
+			this.peer = peer;
+		}
 
-	public static final StructuredCodec<MapOperation<String, ThreadMetadata>> METADATA_OP_CODEC = getMapOperationCodec(STRING_CODEC, THREAD_METADATA_CODEC);
+		@Override
+		public T decode(StructuredInput in) throws ParseException {
+			return peer.decode(in);
+		}
 
-	public static final StructuredCodec<MapOperation<Long, Post>> POST_OP_CODEC = getMapOperationCodec(LONG_CODEC, COMMENT_CODEC);
+		@Override
+		public void encode(StructuredOutput out, T item) {
+			peer.encode(out, item);
+		}
+	}
 
-	public static final StructuredCodec<ForumOTOperation> FORUM_OP_CODEC = tuple(ForumOTOperation::new,
-			ForumOTOperation::getNameOps, ofList(CHANGE_NAME_CODEC),
-			ForumOTOperation::getNameOps, ofList(CHANGE_NAME_CODEC),
-			ForumOTOperation::getMetadataOps, ofList(METADATA_OP_CODEC));
+	public static final StructuredCodec<PostOperation> POST_OPERATION_CODEC = CodecSubtype.<PostOperation>create()
+			.with(AddPost.class, AddPost.CODEC)
+			.with(PostChangesOperation.class, PostChangesOperation.CODEC);
 
-	// endregion
+	public static final StructuredEncoder<ThreadOTState> STATE_ENCODER = (out, state) -> {
+		Map<Long, Post> posts = state.getPostsView();
+		if (posts.isEmpty()) {
+			StructuredEncoder.ofObject().encode(out, posts);
+			return;
+		}
+		// TODO eduard: find something better
+		Map<Post, Long> inverted = posts.entrySet().stream()
+				.collect(toMap(Map.Entry::getValue, Map.Entry::getKey));
+		Post root = posts.get(0L);
+		LazyCodec<Post> lazyPostCodec = new LazyCodec<>();
+
+		StructuredEncoder<Post> postEncoder = ofObject((postOut, post) -> {
+			postOut.writeKey("id", LONG_CODEC, inverted.get(post));
+			postOut.writeKey("author", UserId.CODEC, post.getAuthor());
+			postOut.writeKey("created", LONG_CODEC, post.getInitialTimestamp());
+			postOut.writeKey("content", STRING_CODEC, post.getContent());
+			postOut.writeKey("attachments", ofMap(STRING_CODEC, Attachment.CODEC), post.getAttachments());
+			postOut.writeKey("deletedBy", UserId.CODEC.nullable(), post.getDeletedBy());
+			postOut.writeKey("edited", LONG_CODEC, post.getLastEditTimestamp());
+			postOut.writeKey("likes", ofSet(UserId.CODEC), post.getLikes());
+			postOut.writeKey("dislikes", ofSet(UserId.CODEC), post.getDislikes());
+			postOut.writeKey("children", ofList(lazyPostCodec), post.getChildren());
+		});
+		lazyPostCodec.realize(StructuredCodec.of($ -> null, postEncoder));
+		lazyPostCodec.encode(out, root);
+	};
+
 }

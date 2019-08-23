@@ -56,4 +56,12 @@ public final class SetValue<T> {
 		result = 31 * result + (next != null ? next.hashCode() : 0);
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		return "SetValue{" +
+				"prev=" + prev +
+				", next=" + next +
+				'}';
+	}
 }

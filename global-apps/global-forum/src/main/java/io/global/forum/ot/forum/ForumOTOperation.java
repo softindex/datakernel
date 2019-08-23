@@ -1,6 +1,6 @@
 package io.global.forum.ot.forum;
 
-import io.global.forum.pojo.ThreadMetadata;
+import io.global.forum.pojo.Thread;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
 import io.global.ot.name.ChangeName;
@@ -14,11 +14,11 @@ import static java.util.Collections.singletonList;
 public final class ForumOTOperation {
 	private final List<ChangeName> nameOps;
 	private final List<ChangeName> descriptionOps;
-	private final List<MapOperation<String, ThreadMetadata>> metadataOps;
+	private final List<MapOperation<String, Thread>> metadataOps;
 
 	public ForumOTOperation(List<ChangeName> nameOps,
 			List<ChangeName> descriptionOps,
-			List<MapOperation<String, ThreadMetadata>> metadataOps) {
+			List<MapOperation<String, Thread>> metadataOps) {
 		this.nameOps = nameOps;
 		this.descriptionOps = descriptionOps;
 		this.metadataOps = metadataOps;
@@ -32,8 +32,8 @@ public final class ForumOTOperation {
 		return new ForumOTOperation(emptyList(), singletonList(new ChangeName(previous, next, timestamp)), emptyList());
 	}
 
-	public static ForumOTOperation setMetadata(String id, @Nullable ThreadMetadata previous, @Nullable ThreadMetadata next) {
-		MapOperation<String, ThreadMetadata> mapOperation = MapOperation.forKey(id, SetValue.set(previous, next));
+	public static ForumOTOperation setMetadata(String id, @Nullable Thread previous, @Nullable Thread next) {
+		MapOperation<String, Thread> mapOperation = MapOperation.forKey(id, SetValue.set(previous, next));
 		return new ForumOTOperation(emptyList(), emptyList(), singletonList(mapOperation));
 	}
 
@@ -45,7 +45,7 @@ public final class ForumOTOperation {
 		return descriptionOps;
 	}
 
-	public List<MapOperation<String, ThreadMetadata>> getMetadataOps() {
+	public List<MapOperation<String, Thread>> getMetadataOps() {
 		return metadataOps;
 	}
 }

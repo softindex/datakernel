@@ -1,7 +1,7 @@
 package io.global.forum.ot.forum;
 
 import io.datakernel.ot.OTState;
-import io.global.forum.pojo.ThreadMetadata;
+import io.global.forum.pojo.Thread;
 import io.global.ot.map.MapOTState;
 import io.global.ot.name.ChangeName;
 
@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 public final class ForumState implements OTState<ForumOTOperation> {
 	private String name;
 	private String description;
-	private final MapOTState<String, ThreadMetadata> metadata = new MapOTState<>(new LinkedHashMap<>());
+	private final MapOTState<String, Thread> metadata = new MapOTState<>(new LinkedHashMap<>());
 	private Consumer<ForumOTOperation> listener;
 
 	public void setListener(Consumer<ForumOTOperation> listener) {
@@ -53,7 +53,7 @@ public final class ForumState implements OTState<ForumOTOperation> {
 		return description;
 	}
 
-	public Map<String, ThreadMetadata> getMetadata() {
+	public Map<String, Thread> getMetadata() {
 		return metadata.getMap();
 	}
 }

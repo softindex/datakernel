@@ -36,14 +36,16 @@ public final class OTUtils {
 	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = SHARED_REPO_CODEC
 			.transform(CreateSharedRepo::new, CreateSharedRepo::getSharedRepo);
 
+	public static <V> StructuredCodec<SetValue<V>> getSetValueCodec(StructuredCodec<V> valueCodec) {
+		return StructuredCodecs.object(SetValue::set,
+				"prev", SetValue::getPrev, valueCodec.nullable(),
+				"next", SetValue::getNext, valueCodec.nullable());
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(
 			StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
-		StructuredCodec<SetValue<V>> setValueCodec = StructuredCodecs.object(SetValue::set,
-				"prev", SetValue::getPrev, valueCodec.nullable(),
-				"next", SetValue::getNext, valueCodec.nullable()
-		);
-		return ofMap(keyCodec, setValueCodec)
+		return ofMap(keyCodec, getSetValueCodec(valueCodec))
 				.transform(MapOperation::of, MapOperation::getOperations);
 	}
 }

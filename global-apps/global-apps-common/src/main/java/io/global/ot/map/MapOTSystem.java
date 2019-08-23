@@ -4,6 +4,7 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.util.CollectorsEx;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -22,7 +23,8 @@ public final class MapOTSystem {
 		throw new AssertionError();
 	}
 
-	public static <K, V> OTSystem<MapOperation<K, V>> createOTSystem(Comparator<V> comparator) {
+	public static <K, V> OTSystem<MapOperation<K, V>> create(@Nullable Comparator<V> comparator) {
+		OTSystem<SetValue<V>> setValueOTSystem = SetValueOTSystem.create(comparator);
 		return OTSystemImpl.<MapOperation<K, V>>create()
 				.withInvertFunction(MapOperation.class, op ->
 						singletonList(MapOperation.of(
@@ -30,7 +32,7 @@ public final class MapOTSystem {
 				)
 				.withEmptyPredicate(MapOperation.class, op ->
 						op.getOperations().values().stream()
-								.allMatch(SetValue::isEmpty)
+								.allMatch(setValueOTSystem::isEmpty)
 				)
 				.withTransformFunction(MapOperation.class, MapOperation.class, (left, right) -> {
 					Map<K, SetValue<V>> leftOps = filterEmpty(left.getOperations());
@@ -49,28 +51,10 @@ public final class MapOTSystem {
 							.collect(toMap(Entry::getKey, Entry::getValue));
 
 					for (K key : intersection) {
-						SetValue<V> leftSetOp = leftOps.get(key);
-						SetValue<V> rightSetOp = rightOps.get(key);
+						TransformResult<SetValue<V>> subResult = setValueOTSystem.transform(leftOps.get(key), rightOps.get(key));
 
-						if (leftSetOp.equals(rightSetOp)) continue;
-
-						V leftNextValue = leftSetOp.getNext();
-						V rightNextValue = rightSetOp.getNext();
-
-						if (leftNextValue == null) {
-							leftTransformed.put(key, set(null, rightNextValue));
-							continue;
-						}
-						if (rightNextValue == null) {
-							rightTransformed.put(key, set(null, leftNextValue));
-							continue;
-						}
-						int compare = comparator.compare(leftNextValue, rightNextValue);
-						if (compare > 0) {
-							rightTransformed.put(key, set(rightNextValue, leftNextValue));
-						} else if (compare < 0) {
-							leftTransformed.put(key, set(leftNextValue, rightNextValue));
-						}
+						subResult.left.forEach(setValue -> leftTransformed.put(key, setValue));
+						subResult.right.forEach(setValue -> rightTransformed.put(key, setValue));
 					}
 					return TransformResult.of(MapOperation.of(leftTransformed), MapOperation.of(rightTransformed));
 				})

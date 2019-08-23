@@ -1,20 +1,20 @@
 package io.global.forum.pojo;
 
-public final class ThreadMetadata {
+public final class Thread {
 	private final String title;
-	private final long threadId;
+	private final String threadRepoId;
 
-	public ThreadMetadata(String title, long threadId) {
+	public Thread(String title, String threadRepoId) {
 		this.title = title;
-		this.threadId = threadId;
+		this.threadRepoId = threadRepoId;
 	}
 
 	public String getTitle() {
 		return title;
 	}
 
-	public long getThreadId() {
-		return threadId;
+	public String getRootPostId() {
+		return threadRepoId;
 	}
 
 	@Override
@@ -22,10 +22,10 @@ public final class ThreadMetadata {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		ThreadMetadata that = (ThreadMetadata) o;
+		Thread that = (Thread) o;
 
-		if (threadId != that.threadId) return false;
 		if (!title.equals(that.title)) return false;
+		if (!threadRepoId.equals(that.threadRepoId)) return false;
 
 		return true;
 	}
@@ -33,7 +33,7 @@ public final class ThreadMetadata {
 	@Override
 	public int hashCode() {
 		int result = title.hashCode();
-		result = 31 * result + (int) (threadId ^ (threadId >>> 32));
+		result = 31 * result + threadRepoId.hashCode();
 		return result;
 	}
 }

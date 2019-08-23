@@ -2,7 +2,6 @@ package io.global.forum;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
@@ -11,26 +10,16 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
-import io.global.common.PrivKey;
 import io.global.common.SimKey;
-import io.global.forum.container.ForumUserContainer;
-import io.global.forum.ot.forum.ForumOTOperation;
-import io.global.forum.pojo.Post;
-import io.global.fs.local.GlobalFsDriver;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
-import io.global.ot.map.MapOperation;
-import io.global.ot.service.ContainerHolder;
 
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.forum.Utils.FORUM_OP_CODEC;
-import static io.global.forum.Utils.POST_OP_CODEC;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
 public final class GlobalForumModule extends AbstractModule {
@@ -56,20 +45,20 @@ public final class GlobalForumModule extends AbstractModule {
 		return new DefaultMustacheFactory(new File("static/templates"));
 	}
 
-	@Provides
-	ContainerHolder<ForumUserContainer> containerHolder(Eventloop eventloop, BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory) {
-		return new ContainerHolder<>(eventloop, containerFactory);
-	}
-
-	@Provides
-	StructuredCodec<ForumOTOperation> channelOpCodec() {
-		return FORUM_OP_CODEC;
-	}
-
-	@Provides
-	StructuredCodec<MapOperation<Long, Post>> commentOpCodec() {
-		return POST_OP_CODEC;
-	}
+	// @Provides
+	// ContainerHolder<ForumUserContainer> containerHolder(Eventloop eventloop, BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory) {
+	// 	return new ContainerHolder<>(eventloop, containerFactory);
+	// }
+	//
+	// @Provides
+	// StructuredCodec<ForumOTOperation> channelOpCodec() {
+	// 	return FORUM_OP_CODEC;
+	// }
+	//
+	// @Provides
+	// StructuredCodec<MapOperation<Long, Post>> commentOpCodec() {
+	// 	return POST_OP_CODEC;
+	// }
 
 	// TODO: provide servlet
 	// @Provides
@@ -105,11 +94,11 @@ public final class GlobalForumModule extends AbstractModule {
 		return new OTDriver(node, simKey);
 	}
 
-	@Provides
-	BiFunction<Eventloop, PrivKey, ForumUserContainer> factory(Config config, OTDriver otDriver, GlobalFsDriver fsDriver,
-			StructuredCodec<ForumOTOperation> channelOpCodec, StructuredCodec<MapOperation<Long, Post>> commentOpCodec) {
-		return (eventloop, privKey) -> ForumUserContainer.create(eventloop, privKey, otDriver, fsDriver, forumFolder,
-				forumRepoName, postsRepoPrefix, channelOpCodec, commentOpCodec);
-	}
+	// @Provides
+	// BiFunction<Eventloop, PrivKey, ForumUserContainer> factory(Config config, OTDriver otDriver, GlobalFsDriver fsDriver,
+	// 		StructuredCodec<ForumOTOperation> channelOpCodec, StructuredCodec<MapOperation<Long, Post>> commentOpCodec) {
+	// 	return (eventloop, privKey) -> ForumUserContainer.create(eventloop, privKey, otDriver, fsDriver, forumFolder,
+	// 			forumRepoName, postsRepoPrefix, channelOpCodec, commentOpCodec);
+	// }
 
 }
