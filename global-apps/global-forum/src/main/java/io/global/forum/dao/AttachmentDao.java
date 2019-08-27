@@ -14,9 +14,7 @@ public interface AttachmentDao {
 	int GLOBAL_FS_ID_LENGTH = ApplicationSettings.getInt(AttachmentDao.class, "globalFsIdLength", 10);
 	StacklessException ATTACHMENT_NOT_FOUND = new StacklessException(AttachmentDao.class, "Attachment not found");
 
-	Promise<String> generateGlobalFsId();
-
-	Promise<ChannelConsumer<ByteBuf>> uploadAttachment(String globalFsId);
+	Promise<AttachmentUploader> uploadAttachment();
 
 	default Promise<Void> deleteAttachments(Set<String> globalFsIds) {
 		return Promises.all(globalFsIds.stream().map(this::deleteAttachment));
@@ -30,5 +28,23 @@ public interface AttachmentDao {
 
 	default Promise<ChannelSupplier<ByteBuf>> loadAttachment(String globalFsId) {
 		return loadAttachment(globalFsId, 0, -1);
+	}
+
+	class AttachmentUploader {
+		private final String globalFsId;
+		private final ChannelConsumer<ByteBuf> uploader;
+
+		public AttachmentUploader(String globalFsId, ChannelConsumer<ByteBuf> uploader) {
+			this.globalFsId = globalFsId;
+			this.uploader = uploader;
+		}
+
+		public String getGlobalFsId() {
+			return globalFsId;
+		}
+
+		public ChannelConsumer<ByteBuf> getUploader() {
+			return uploader;
+		}
 	}
 }

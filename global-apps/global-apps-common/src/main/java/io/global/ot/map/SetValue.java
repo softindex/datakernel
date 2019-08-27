@@ -44,10 +44,7 @@ public final class SetValue<T> {
 
 		SetValue that = (SetValue) o;
 
-		if (prev != null ? !prev.equals(that.prev) : that.prev != null) return false;
-		if (next != null ? !next.equals(that.next) : that.next != null) return false;
-
-		return true;
+		return Objects.equals(prev, that.prev) && Objects.equals(next, that.next);
 	}
 
 	@Override

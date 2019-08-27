@@ -2,29 +2,30 @@ package io.global.forum.pojo;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.ofEnum;
 
-public final class UserId {
+public final class UserId implements Comparable<UserId> {
 	public static final StructuredCodec<UserId> CODEC = StructuredCodecs.tuple(UserId::new,
 			UserId::getAuthService, ofEnum(AuthService.class),
-			UserId::getAuthString, STRING_CODEC);
+			UserId::getId, STRING_CODEC);
 
 	private final AuthService authService;
-	private final String authString;
+	private final String id;
 
-	public UserId(AuthService authService, String authString) {
+	public UserId(AuthService authService, String id) {
 		this.authService = authService;
-		this.authString = authString;
+		this.id = id;
 	}
 
 	public AuthService getAuthService() {
 		return authService;
 	}
 
-	public String getAuthString() {
-		return authString;
+	public String getId() {
+		return id;
 	}
 
 	@Override
@@ -34,25 +35,19 @@ public final class UserId {
 
 		UserId userId = (UserId) o;
 
-		if (authService != userId.authService) return false;
-		if (!authString.equals(userId.authString)) return false;
-
-		return true;
+		return authService == userId.authService && id.equals(userId.id);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = authService.hashCode();
-		result = 31 * result + authString.hashCode();
-		return result;
+		return 31 * authService.hashCode() + id.hashCode();
 	}
 
 	@Override
-	public String toString() {
-		return "UserId{" +
-				"authService=" + authService +
-				", authString='" + authString + '\'' +
-				'}';
+	public int compareTo(@NotNull UserId o) {
+		int result = authService.compareTo(o.authService);
+		if (result != 0) return result;
+		return id.compareTo(o.id);
 	}
 }
 

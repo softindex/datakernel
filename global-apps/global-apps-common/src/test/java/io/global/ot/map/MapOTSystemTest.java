@@ -16,7 +16,7 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
 public final class MapOTSystemTest {
-	private final OTSystem<MapOperation<String, String>> SYSTEM = MapOTSystem.create(String::compareTo);
+	private final OTSystem<MapOperation<String, String>> SYSTEM = MapOTSystem.create();
 
 	@Test
 	public void testIsEmpty() {

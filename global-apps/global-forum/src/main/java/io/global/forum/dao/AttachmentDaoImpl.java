@@ -3,7 +3,6 @@ package io.global.forum.dao;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.remotefs.FsClient;
 
@@ -19,15 +18,13 @@ public final class AttachmentDaoImpl implements AttachmentDao {
 	}
 
 	@Override
-	public Promise<String> generateGlobalFsId() {
+	public Promise<AttachmentUploader> uploadAttachment() {
 		return Promises.until(() -> Promise.of(generateBase62(GLOBAL_FS_ID_LENGTH)),
 				globalFsId -> fsClient.getMetadata(globalFsId)
-						.map(Objects::isNull));
-	}
-
-	@Override
-	public Promise<ChannelConsumer<ByteBuf>> uploadAttachment(String globalFsId) {
-		return fsClient.upload(globalFsId);
+						.map(Objects::isNull))
+				.then(globalFsId ->
+						fsClient.upload(globalFsId)
+								.map(uploader -> new AttachmentUploader(globalFsId, uploader)));
 	}
 
 	@Override

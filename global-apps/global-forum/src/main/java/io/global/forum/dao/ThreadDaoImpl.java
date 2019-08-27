@@ -167,5 +167,4 @@ public final class ThreadDaoImpl implements ThreadDao {
 	public Promise<Map<Long, Post>> listPosts() {
 		return Promise.of(postsView);
 	}
-
 }

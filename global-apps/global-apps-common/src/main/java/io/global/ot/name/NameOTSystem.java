@@ -19,16 +19,21 @@ public final class NameOTSystem {
 				.withInvertFunction(ChangeName.class, op -> singletonList(changeName(op.getNext(), op.getPrev(), op.getTimestamp())))
 
 				.withSquashFunction(ChangeName.class, ChangeName.class, (first, second) -> changeName(first.getPrev(), second.getNext(), second.getTimestamp()))
+
 				.withTransformFunction(ChangeName.class, ChangeName.class, (left, right) -> {
-					checkState(left.getPrev().equals(right.getPrev()), "Previous values of left and right operation should be equal");
-					if (left.getTimestamp() > right.getTimestamp())
+					checkState(left.getPrev().equals(right.getPrev()), "Previous values of left and right operations should be equal");
+					if (left.getTimestamp() > right.getTimestamp()) {
 						return right(changeName(right.getNext(), left.getNext(), left.getTimestamp()));
-					if (left.getTimestamp() < right.getTimestamp())
+					}
+					if (left.getTimestamp() < right.getTimestamp()) {
 						return left(changeName(left.getNext(), right.getNext(), right.getTimestamp()));
-					if (left.getNext().compareTo(right.getNext()) > 0)
+					}
+					if (left.getNext().compareTo(right.getNext()) > 0) {
 						return right(changeName(right.getNext(), left.getNext(), left.getTimestamp()));
-					if (left.getNext().compareTo(right.getNext()) < 0)
+					}
+					if (left.getNext().compareTo(right.getNext()) < 0) {
 						return left(changeName(left.getNext(), right.getNext(), right.getTimestamp()));
+					}
 					return empty();
 				});
 	}

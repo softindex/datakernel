@@ -36,6 +36,10 @@ public class MyRepositoryId<D> {
 		this.diffsCodec = StructuredCodecs.ofList(diffCodec);
 	}
 
+	public static <D> MyRepositoryId<D> of(PrivKey pk, String repoName, StructuredCodec<D> diffCodec) {
+		return new MyRepositoryId<>(RepoID.of(pk, repoName), pk, diffCodec);
+	}
+
 	public RepoID getRepositoryId() {
 		return repositoryId;
 	}

@@ -9,6 +9,7 @@ import io.global.ot.name.ChangeName;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOperation;
+import io.global.ot.value.ChangeValue;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.Utils.PUB_KEY_HEX_CODEC;
@@ -42,10 +43,16 @@ public final class OTUtils {
 				"next", SetValue::getNext, valueCodec.nullable());
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(
 			StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
 		return ofMap(keyCodec, getSetValueCodec(valueCodec))
 				.transform(MapOperation::of, MapOperation::getOperations);
+	}
+
+	public static <T> StructuredCodec<ChangeValue<T>> ofChangeTimestampValue(StructuredCodec<T> underlying) {
+		return object(ChangeValue::of,
+				"prev", ChangeValue::getPrev, underlying,
+				"next", ChangeValue::getNext, underlying,
+				"timestamp", ChangeValue::getTimestamp, LONG_CODEC);
 	}
 }

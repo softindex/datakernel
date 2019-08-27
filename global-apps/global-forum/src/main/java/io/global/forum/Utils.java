@@ -14,9 +14,8 @@ import io.datakernel.writer.ByteBufWriter;
 import io.global.forum.ot.post.operation.AddPost;
 import io.global.forum.ot.post.operation.PostChangesOperation;
 import io.global.forum.ot.post.operation.PostOperation;
-import io.global.forum.pojo.Attachment;
-import io.global.forum.pojo.Post;
-import io.global.forum.pojo.UserId;
+import io.global.forum.pojo.*;
+import io.global.ot.map.MapOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,6 +29,7 @@ import static io.datakernel.codec.StructuredEncoder.ofObject;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.REFERER;
+import static io.global.ot.OTUtils.getMapOperationCodec;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
 
@@ -76,6 +76,8 @@ public final class Utils {
 		return HttpResponse.redirect302(referer == null ? to : referer);
 	}
 
+	// region codecs
+
 	public static class LazyEncoder<T> implements StructuredEncoder<T> {
 
 		private StructuredEncoder<T> peer = null;
@@ -89,6 +91,17 @@ public final class Utils {
 			peer.encode(out, item);
 		}
 	}
+
+	public static final StructuredCodec<UserId> USER_ID_CODEC = tuple(UserId::new,
+			UserId::getAuthService, ofEnum(AuthService.class),
+			UserId::getId, STRING_CODEC);
+
+	public static final StructuredCodec<UserData> USER_DATA_CODEC = tuple(UserData::new,
+			UserData::getEmail, STRING_CODEC.nullable(),
+			UserData::getName, STRING_CODEC.nullable(),
+			UserData::getRole, ofEnum(UserRole.class));
+
+	public static final StructuredCodec<MapOperation<UserId, UserData>> USER_DATA_OP_CODEC = getMapOperationCodec(USER_ID_CODEC, USER_DATA_CODEC);
 
 	public static final StructuredCodec<PostOperation> POST_OPERATION_CODEC = CodecSubtype.<PostOperation>create()
 			.with(AddPost.class, AddPost.CODEC)

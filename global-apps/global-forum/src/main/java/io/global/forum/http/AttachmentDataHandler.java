@@ -26,9 +26,11 @@ public final class AttachmentDataHandler {
 			if (type == null) {
 				return Promise.ofException(HttpException.ofCode(400, "Unknown parameter"));
 			}
-			return attachmentDao.generateGlobalFsId()
-					.then(globalFsId -> attachmentDao.uploadAttachment(globalFsId)
-							.whenComplete(() -> attachmentMap.put(globalFsId, new Attachment(type, fileName))));
+			return attachmentDao.uploadAttachment()
+					.map(uploader -> {
+						attachmentMap.put(uploader.getGlobalFsId(), new Attachment(type, fileName));
+						return uploader.getUploader();
+					});
 		});
 	}
 

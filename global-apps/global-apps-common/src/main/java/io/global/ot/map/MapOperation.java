@@ -31,14 +31,11 @@ public final class MapOperation<K, V> {
 
 		MapOperation that = (MapOperation) o;
 
-		if (!operations.equals(that.operations)) return false;
-
-		return true;
+		return operations.equals(that.operations);
 	}
 
 	@Override
 	public int hashCode() {
 		return operations.hashCode();
 	}
-
 }

@@ -131,7 +131,6 @@ public final class Post {
 	// endregion
 
 	@Override
-	@SuppressWarnings("ConstantConditions")
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
@@ -144,12 +143,10 @@ public final class Post {
 		if (!author.equals(post.author)) return false;
 		if (!likes.equals(post.likes)) return false;
 		if (!dislikes.equals(post.dislikes)) return false;
-		if (parent != null ? !parent.equals(post.parent) : post.parent != null) return false;
+		if (!Objects.equals(parent, post.parent)) return false;
 		if (!content.equals(post.content)) return false;
 		if (!attachments.equals(post.attachments)) return false;
-		if (deletedBy != null ? !deletedBy.equals(post.deletedBy) : post.deletedBy != null) return false;
-
-		return true;
+		return Objects.equals(deletedBy, post.deletedBy);
 	}
 
 	@Override
