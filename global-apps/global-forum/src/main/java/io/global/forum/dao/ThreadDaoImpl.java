@@ -5,21 +5,24 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.forum.Utils;
 import io.global.forum.ot.post.ThreadOTState;
-import io.global.forum.ot.post.operation.AddPost;
-import io.global.forum.ot.post.operation.PostChangesOperation;
-import io.global.forum.ot.post.operation.PostOperation;
+import io.global.forum.ot.post.operation.*;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
 import io.global.forum.pojo.UserId;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static io.global.forum.ot.post.operation.PostChangesOperation.*;
+import static io.global.forum.ot.post.operation.PostChangesOperation.attachmentsToOps;
+import static io.global.forum.ot.post.operation.PostChangesOperation.rating;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 public final class ThreadDaoImpl implements ThreadDao {
 	private final OTStateManager<CommitId, PostOperation> stateManager;
@@ -57,12 +60,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	@Override
 	public Promise<Post> getPost(Long postId) {
 		Post post = postsView.get(postId);
-		return post == null ? Promise.ofException(POST_NOT_FOUND_EXCEPTION) : Promise.of(post);
-	}
-
-	@Override
-	public Promise<Post> getRootPost() {
-		return getPost(0L);
+		return post == null ? Promise.ofException(POST_NOT_FOUND) : Promise.of(post);
 	}
 
 	@Override
@@ -77,44 +75,37 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> changeContent(Long postId, String newContent) {
+	public Promise<Void> updatePost(Long postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved) {
 		long lastEditTimestamp = now.currentTimeMillis();
 		return getPost(postId)
 				.then(post -> {
+					long prevLastEditTimestamp = post.getLastEditTimestamp();
+					List<ChangeContent> changeContent = new ArrayList<>();
+					List<ChangeAttachments> changeAttachments = new ArrayList<>();
 					String prevContent = post.getContent();
-					long prevLastEditTimestamp = post.getLastEditTimestamp();
-					stateManager.add(content(postId, prevContent, newContent, prevLastEditTimestamp, lastEditTimestamp));
-					return stateManager.sync();
-				});
-	}
-
-	@Override
-	public Promise<Void> addAttachments(Long postId, Map<String, Attachment> newAttachments) {
-		long lastEditTimestamp = now.currentTimeMillis();
-		return getPost(postId)
-				.then(post -> {
-					long prevLastEditTimestamp = post.getLastEditTimestamp();
-					stateManager.add(changeAttachments(postId, newAttachments, prevLastEditTimestamp, lastEditTimestamp, false));
-					return stateManager.sync();
-				});
-	}
-
-	@Override
-	public Promise<Void> removeAttachments(Long postId, Set<String> globalFsIds) {
-		long lastEditTimestamp = now.currentTimeMillis();
-		return getPost(postId)
-				.then(post -> {
-					long prevLastEditTimestamp = post.getLastEditTimestamp();
-					Map<String, Attachment> existingAttachments = post.getAttachments();
-					Map<String, Attachment> toBeRemoved = globalFsIds.stream()
-							.filter(existingAttachments::containsKey)
-							.collect(Collectors.toMap(Function.identity(), existingAttachments::get));
-					if (toBeRemoved.isEmpty()) {
+					if (newContent != null && !newContent.equals(prevContent)) {
+						changeContent.add(new ChangeContent(postId, prevContent, newContent, lastEditTimestamp));
+					}
+					if (!newAttachments.isEmpty()) {
+						changeAttachments.addAll(attachmentsToOps(postId, newAttachments, lastEditTimestamp, false));
+					}
+					if (!toBeRemoved.isEmpty()) {
+						Map<String, Attachment> existingAttachments = post.getAttachments();
+						Map<String, Attachment> toBeRemovedMap = toBeRemoved.stream()
+								.filter(existingAttachments::containsKey)
+								.collect(Collectors.toMap(Function.identity(), existingAttachments::get));
+						changeAttachments.addAll(attachmentsToOps(postId, toBeRemovedMap, lastEditTimestamp, true));
+					}
+					if (changeContent.isEmpty() && changeAttachments.isEmpty()) {
 						return Promise.complete();
 					}
-					stateManager.add(changeAttachments(postId, toBeRemoved, prevLastEditTimestamp, lastEditTimestamp, true));
+
+					ChangeLastEditTimestamp changeTimestamp = new ChangeLastEditTimestamp(postId, prevLastEditTimestamp, lastEditTimestamp);
+					List<ChangeLastEditTimestamp> changeTimestamps = singletonList(changeTimestamp);
+					stateManager.add(new PostChangesOperation(changeContent, changeAttachments, emptyList(), emptyList(), changeTimestamps));
 					return stateManager.sync();
 				});
+
 	}
 
 	@Override
@@ -123,7 +114,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 				.then(post -> {
 					Attachment attachment = post.getAttachments().get(globalFsId);
 					if (attachment == null) {
-						return Promise.ofException(ATTACHMENT_NOT_FOUND_EXCEPTION);
+						return Promise.ofException(ATTACHMENT_NOT_FOUND);
 					}
 					return Promise.of(attachment);
 				});

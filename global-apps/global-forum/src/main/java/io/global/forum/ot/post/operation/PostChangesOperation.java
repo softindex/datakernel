@@ -45,35 +45,15 @@ public final class PostChangesOperation implements PostOperation {
 		return new PostChangesOperation(singletonList(changeContent), attachmentsOps, emptyList(), emptyList(), emptyList());
 	}
 
-	public static PostChangesOperation content(long postId, String prev, String next, long prevTimestamp, long nextTimestamp) {
-		ChangeContent changeContent = new ChangeContent(postId, prev, next, nextTimestamp);
-		ChangeLastEditTimestamp changeLastEditTimestamp = new ChangeLastEditTimestamp(postId, prevTimestamp, nextTimestamp);
-		return new PostChangesOperation(singletonList(changeContent), emptyList(), emptyList(), emptyList(), singletonList(changeLastEditTimestamp));
-	}
-
-	public static PostChangesOperation changeAttachments(long postId, Map<String, Attachment> attachments, long prevTimestamp, long nextTimestamp, boolean remove) {
-		List<ChangeAttachments> attachmentsOps = attachmentsToOps(postId, attachments, nextTimestamp, remove);
-		ChangeLastEditTimestamp changeLastEditTimestamp = new ChangeLastEditTimestamp(postId, prevTimestamp, nextTimestamp);
-		return new PostChangesOperation(emptyList(), attachmentsOps, emptyList(), emptyList(), singletonList(changeLastEditTimestamp));
-	}
-
 	public static PostChangesOperation rating(long postId, UserId userId, @Nullable Boolean prev, @Nullable Boolean next) {
 		ChangeRating changeRating = new ChangeRating(postId, userId, set(prev, next));
 		return new PostChangesOperation(emptyList(), emptyList(), singletonList(changeRating), emptyList(), emptyList());
-	}
-
-	public static PostChangesOperation delete(DeletePost deleteOp, ChangeLastEditTimestamp timestampOp) {
-		return new PostChangesOperation(emptyList(), emptyList(), emptyList(), singletonList(deleteOp), singletonList(timestampOp));
 	}
 
 	public static PostChangesOperation delete(long postId, UserId deletedBy, long prevTimestamp, long nextTimestamp) {
 		DeletePost deletePost = DeletePost.delete(postId, deletedBy, nextTimestamp);
 		ChangeLastEditTimestamp changeLastEditTimestamp = new ChangeLastEditTimestamp(postId, prevTimestamp, nextTimestamp);
 		return new PostChangesOperation(emptyList(), emptyList(), emptyList(), singletonList(deletePost), singletonList(changeLastEditTimestamp));
-	}
-
-	public static PostChangesOperation lastEdit(ChangeLastEditTimestamp op) {
-		return new PostChangesOperation(emptyList(), emptyList(), emptyList(), emptyList(), singletonList(op));
 	}
 
 	@Override
@@ -111,7 +91,7 @@ public final class PostChangesOperation implements PostOperation {
 				changeLastEditTimestamps.isEmpty();
 	}
 
-	private static List<ChangeAttachments> attachmentsToOps(long postId, Map<String, Attachment> attachments, long timestamp, boolean remove) {
+	public static List<ChangeAttachments> attachmentsToOps(long postId, Map<String, Attachment> attachments, long timestamp, boolean remove) {
 		return attachments.entrySet().stream()
 				.map(entry -> new ChangeAttachments(postId, entry.getKey(), entry.getValue(), timestamp, remove))
 				.collect(Collectors.toList());

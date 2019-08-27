@@ -86,15 +86,15 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 		if (header == null) {
 			return Promise.ofException(new StacklessException(MultipartParser.class, "Headers had no Content-Disposition"));
 		}
-		String[] headerParts = header.split("\\s?;\\s?");
-		if (!"form-data".equals(headerParts[0])) {
+		String[] headerParts = header.split(";");
+		if (headerParts.length == 0 || !"form-data".equals(headerParts[0].trim())) {
 			return Promise.ofException(new StacklessException(MultipartParser.class, "Content-Disposition type is not 'form-data'"));
 		}
 		return Promise.of(Arrays.stream(headerParts)
 				.skip(1)
-				.map(part -> part.split("=", 2))
+				.map(part -> part.trim().split("=", 2))
 				.collect(toMap(s -> s[0], s -> {
-					String value = s[1];
+					String value = s.length == 1 ? "" : s[1];
 					// stripping double quotation
 					return value.substring(1, value.length() - 1);
 				})));
@@ -135,10 +135,14 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 	public Promise<Void> split(ChannelSupplier<ByteBuf> source, MultipartDataHandler dataHandler) {
 		ChannelSupplier<MultipartFrame> frames = BinaryChannelSupplier.of(source).parseStream(this);
 		return frames.get()
-				.then(frame ->
-						frame.isHeaders() ?
-								doSplit(frame, frames, dataHandler) :
-								Promise.ofException(new StacklessException(MultipartParser.class, "First frame had no headers")));
+				.then(frame -> {
+					if (frame.isHeaders()) {
+						return doSplit(frame, frames, dataHandler);
+					}
+					StacklessException e = new StacklessException(MultipartParser.class, "First frame had no headers");
+					frames.close(e);
+					return Promise.ofException(e);
+				});
 	}
 
 	private boolean sawCrlf = true;

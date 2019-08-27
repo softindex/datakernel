@@ -1,14 +1,16 @@
 package io.global.forum;
 
 import com.github.mustachejava.Mustache;
-import io.datakernel.codec.*;
-import io.datakernel.exception.ParseException;
+import io.datakernel.codec.CodecSubtype;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredEncoder;
+import io.datakernel.codec.StructuredOutput;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MediaTypes;
+import io.datakernel.util.Tuple2;
 import io.datakernel.writer.ByteBufWriter;
-import io.global.forum.ot.post.ThreadOTState;
 import io.global.forum.ot.post.operation.AddPost;
 import io.global.forum.ot.post.operation.PostChangesOperation;
 import io.global.forum.ot.post.operation.PostOperation;
@@ -18,6 +20,7 @@ import io.global.forum.pojo.UserId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -27,7 +30,8 @@ import static io.datakernel.codec.StructuredEncoder.ofObject;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.REFERER;
-import static java.util.stream.Collectors.toMap;
+import static java.util.Collections.emptyMap;
+import static java.util.stream.Collectors.toList;
 
 public final class Utils {
 	private Utils() {
@@ -67,30 +71,17 @@ public final class Utils {
 		return templated(mustache, null);
 	}
 
-	@Nullable
-	public static String getFileExtension(String filename) {
-		if (filename.lastIndexOf(".") != -1 && filename.lastIndexOf(".") != 0) {
-			return filename.substring(filename.lastIndexOf(".") + 1);
-		}
-		return null;
-	}
-
 	public static HttpResponse redirect(HttpRequest request, @NotNull String to) {
 		String referer = request.getHeader(REFERER);
 		return HttpResponse.redirect302(referer == null ? to : referer);
 	}
 
-	public static class LazyCodec<T> implements StructuredCodec<T> {
+	public static class LazyEncoder<T> implements StructuredEncoder<T> {
 
-		private StructuredCodec<T> peer = null;
+		private StructuredEncoder<T> peer = null;
 
-		public void realize(StructuredCodec<T> peer) {
+		public void realize(StructuredEncoder<T> peer) {
 			this.peer = peer;
-		}
-
-		@Override
-		public T decode(StructuredInput in) throws ParseException {
-			return peer.decode(in);
 		}
 
 		@Override
@@ -103,32 +94,55 @@ public final class Utils {
 			.with(AddPost.class, AddPost.CODEC)
 			.with(PostChangesOperation.class, PostChangesOperation.CODEC);
 
-	public static final StructuredEncoder<ThreadOTState> STATE_ENCODER = (out, state) -> {
-		Map<Long, Post> posts = state.getPostsView();
-		if (posts.isEmpty()) {
-			StructuredEncoder.ofObject().encode(out, posts);
-			return;
-		}
-		// TODO eduard: find something better
-		Map<Post, Long> inverted = posts.entrySet().stream()
-				.collect(toMap(Map.Entry::getValue, Map.Entry::getKey));
-		Post root = posts.get(0L);
-		LazyCodec<Post> lazyPostCodec = new LazyCodec<>();
 
-		StructuredEncoder<Post> postEncoder = ofObject((postOut, post) -> {
-			postOut.writeKey("id", LONG_CODEC, inverted.get(post));
-			postOut.writeKey("author", UserId.CODEC, post.getAuthor());
-			postOut.writeKey("created", LONG_CODEC, post.getInitialTimestamp());
-			postOut.writeKey("content", STRING_CODEC, post.getContent());
-			postOut.writeKey("attachments", ofMap(STRING_CODEC, Attachment.CODEC), post.getAttachments());
-			postOut.writeKey("deletedBy", UserId.CODEC.nullable(), post.getDeletedBy());
-			postOut.writeKey("edited", LONG_CODEC, post.getLastEditTimestamp());
-			postOut.writeKey("likes", ofSet(UserId.CODEC), post.getLikes());
-			postOut.writeKey("dislikes", ofSet(UserId.CODEC), post.getDislikes());
-			postOut.writeKey("children", ofList(lazyPostCodec), post.getChildren());
-		});
-		lazyPostCodec.realize(StructuredCodec.of($ -> null, postEncoder));
-		lazyPostCodec.encode(out, root);
+	public static final StructuredEncoder<Tuple2<Map<Long, Post>, Long>> RECURSIVE_POST_ENCODER;
+
+	public static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
+		out.writeKey("author", UserId.CODEC, post.getAuthor());
+		out.writeKey("created", LONG_CODEC, post.getInitialTimestamp());
+		out.writeKey("content", STRING_CODEC, post.getContent());
+		out.writeKey("attachments", ofMap(STRING_CODEC, Attachment.CODEC), post.getAttachments());
+		out.writeKey("deletedBy", UserId.CODEC.nullable(), post.getDeletedBy());
+		out.writeKey("edited", LONG_CODEC, post.getLastEditTimestamp());
+		out.writeKey("likes", ofSet(UserId.CODEC), post.getLikes());
+		out.writeKey("dislikes", ofSet(UserId.CODEC), post.getDislikes());
 	};
+
+	static {
+		LazyEncoder<Tuple2<Map<Long, Post>, Long>> lazyPostEncoder = new LazyEncoder<>();
+		RECURSIVE_POST_ENCODER = ofObject((out, data) -> {
+			Map<Long, Post> posts = data.getValue1();
+			Long ourRootId = data.getValue2();
+			Post post = posts.get(ourRootId);
+			List<Post> children = post.getChildren();
+
+			List<Tuple2<Map<Long, Post>, Long>> childrenEntries = posts.entrySet().stream()
+					.filter(postEntry -> children.contains(postEntry.getValue()))
+					.map(postEntry -> new Tuple2<>(posts, postEntry.getKey()))
+					.collect(toList());
+
+			out.writeKey("id", LONG_CODEC, ourRootId);
+			POST_SIMPLE_ENCODER.encode(out, post);
+			out.writeKey("children", ofList(lazyPostEncoder), childrenEntries);
+		});
+		lazyPostEncoder.realize(RECURSIVE_POST_ENCODER);
+	}
+
+	public static final StructuredEncoder<Object> EMPTY_OBJECT_ENCODER = StructuredEncoder.ofObject();
+
+	public static final StructuredEncoder<Map<Long, Post>> POSTS_ENCODER_ROOT = postsEncoder(0L);
+
+	public static final StructuredEncoder<Post> POST_ENCODER = StructuredEncoder.ofObject(POST_SIMPLE_ENCODER);
+
+	public static StructuredEncoder<Map<Long, Post>> postsEncoder(long startingId) {
+		return (out, posts) -> {
+			Post root = posts.get(startingId);
+			if (root == null) {
+				EMPTY_OBJECT_ENCODER.encode(out, emptyMap());
+			} else {
+				RECURSIVE_POST_ENCODER.encode(out, new Tuple2<>(posts, startingId));
+			}
+		};
+	}
 
 }

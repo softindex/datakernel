@@ -9,7 +9,7 @@ import static io.datakernel.codec.StructuredCodecs.ofEnum;
 public final class Attachment {
 	public static final StructuredCodec<Attachment> CODEC = StructuredCodecs.tuple(Attachment::new,
 			Attachment::getAttachmentType, ofEnum(AttachmentType.class),
-			Attachment::getName, STRING_CODEC);
+			Attachment::getFileName, STRING_CODEC);
 
 	private final AttachmentType attachmentType;
 	private final String fileName;
@@ -23,7 +23,7 @@ public final class Attachment {
 		return attachmentType;
 	}
 
-	public String getName() {
+	public String getFileName() {
 		return fileName;
 	}
 
