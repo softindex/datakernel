@@ -1,14 +1,19 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.async.IndexedCollector.toList;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class CompletionStageTest {
 
@@ -80,4 +85,83 @@ public class CompletionStageTest {
 		}
 	}
 
+	@Test
+	public void testTheSameStage() {
+		Eventloop eventloop = Eventloop.create().withCurrentThread();
+		Stage<Integer> stage = Stage.of(10);
+		Stage<List<Integer>> listStage = Stages.collect(asList(stage, stage, stage.thenApply(num -> num + 1)), toList());
+		listStage.whenResult(res -> assertEquals(asList(10, 10, 11), res));
+		eventloop.run();
+	}
+
+	@Test
+	public void testSingleChain() {
+		Stage<Integer> stage = Stage.of(10);
+		for (int i = 0; i < 10; i++) {
+			stage.thenApply(num -> num + 1);
+		}
+		stage.whenResult(res -> assertEquals(res.intValue(), 10));
+		eventloop.run();
+	}
+
+	@Test
+	public void testMultiChain() {
+		Stage<Integer> stage = Stage.of(10).whenResult(res -> assertEquals(10, res.intValue()));
+		for (int i = 0; i < 10; i++) {
+			stage = stage.thenApply(num -> num + 1);
+		}
+		stage.whenResult(res -> assertEquals(20, res.intValue()));
+		eventloop.run();
+	}
+
+	@Test
+	public void testThenCompose() {
+		Stage.of(100)
+				.thenCompose(res ->
+						Stage.of(10)
+								.whenResult(Assert::assertNotNull)
+								.whenComplete(($, e) -> assertNotNull(res)));
+		eventloop.run();
+	}
+
+	@Test
+	public void testWhenResultChain() {
+		Stage<Integer> mainStage = Stage.of(10);
+		for (int i = 0; i < 10; i++) {
+			mainStage.thenCompose(res ->
+					Stage.of(10)
+							.whenResult(System.out::println)
+							.whenComplete(($, e) -> assertNotNull(res)));
+		}
+		mainStage.whenComplete((res, e) -> assertNotNull(res));
+		eventloop.run();
+	}
+
+	@Test
+	public void testSubscribeCompletedStage() {
+		Stage.of(10).thenCompose(res ->
+				Stage.of(10)
+						.whenResult(Assert::assertNotNull)
+						.whenComplete(($, e) -> assertNotNull(res)));
+		eventloop.run();
+	}
+
+	@Test
+	public void testWhenCompletedMethods() {
+		Stage<Integer> stage = Stage.of(10);
+		stage.whenResult(Assert::assertNotNull);
+		stage.whenComplete((res, e) -> assertNotNull(res));
+		stage.whenException(Assert::assertNull);
+		eventloop.run();
+	}
+
+	@Test
+	public void testSubscribeSelf() {
+		Stage<Integer> stage = Stage.of(10);
+		for (int i = 0; i < 10; i++) {
+			stage.thenCompose(res -> stage);
+		}
+		stage.whenResult(Assert::assertNotNull);
+		eventloop.run();
+	}
 }
