@@ -35,24 +35,22 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void complete(@Nullable T value) {
 		assert !isComplete();
+		BiConsumer<? super T, Throwable> next = this.next;
+		this.next = COMPLETED_STAGE;
 		if (next != null) {
 			next.accept(value, null);
-			next = COMPLETED_STAGE;
 		}
-		assert (next = COMPLETED_STAGE) != null;
 	}
 
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void completeExceptionally(@Nullable Throwable error) {
 		assert !isComplete();
+		BiConsumer<? super T, Throwable> next = this.next;
+		this.next = COMPLETED_STAGE;
 		if (next != null) {
 			next.accept(null, error);
-			next = COMPLETED_STAGE;
 		}
-		assert (next = COMPLETED_STAGE) != null;
 	}
 
 	protected void tryComplete(@Nullable T value, @Nullable Throwable error) {
@@ -79,7 +77,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 		return stage;
 	}
 
-	@SuppressWarnings("unchecked")
 	protected void subscribe(BiConsumer<? super T, Throwable> consumer) {
 		if (next == null) {
 			next = consumer;

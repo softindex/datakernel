@@ -327,13 +327,13 @@ public final class Stages {
 		final IndexedCollector<T, A, R> collector;
 		final CollectListener<T, A, R> listener;
 		A accumulator;
-		int stages;
+		int countdown;
 
-		private StageCollectorEx(IndexedCollector<T, A, R> collector, CollectListener<T, A, R> listener, A accumulator, int stages) {
+		private StageCollectorEx(IndexedCollector<T, A, R> collector, CollectListener<T, A, R> listener, A accumulator, int countdown) {
 			this.collector = collector;
 			this.listener = listener;
 			this.accumulator = accumulator;
-			this.stages = stages;
+			this.countdown = countdown;
 		}
 
 		@Override
@@ -342,27 +342,23 @@ public final class Stages {
 		}
 
 		void processComplete(T stageResult, int index) {
-			if (isComplete()) {
-				return;
-			}
+			if (countdown <= 0) return;
 			collector.accumulate(accumulator, index, stageResult);
 			listener.onResult(stageResult, index);
-			if (--stages == 0) {
+			if (countdown == 1) {
 				finish();
+			} else {
+				countdown--;
 			}
 		}
 
 		@Override
 		public void finish() {
-			if (isComplete()) {
-				return;
-			}
+			if (countdown <= 0) return;
+			countdown = 0;
 			R finished = collector.finish(accumulator);
 			accumulator = null;
 			listener.onCollectResult(finished);
-			if (isComplete()) {
-				return;
-			}
 			complete(finished);
 		}
 
@@ -372,22 +368,17 @@ public final class Stages {
 		}
 
 		void processException(Throwable throwable, int index) {
-			if (isComplete()) {
-				return;
-			}
+			if (countdown <= 0) return;
 			listener.onException(throwable, index);
 			finishExceptionally(throwable);
 		}
 
 		@Override
 		public void finishExceptionally(Throwable throwable) {
-			if (isComplete()) {
-				return;
-			}
+			if (countdown <= 0) return;
+			countdown = 0;
+			accumulator = null;
 			listener.onCollectException(throwable);
-			if (isComplete()) {
-				return;
-			}
 			completeExceptionally(throwable);
 		}
 	}
