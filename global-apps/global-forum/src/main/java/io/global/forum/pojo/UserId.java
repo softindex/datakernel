@@ -1,17 +1,8 @@
 package io.global.forum.pojo;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import org.jetbrains.annotations.NotNull;
 
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.codec.StructuredCodecs.ofEnum;
-
 public final class UserId implements Comparable<UserId> {
-	public static final StructuredCodec<UserId> CODEC = StructuredCodecs.tuple(UserId::new,
-			UserId::getAuthService, ofEnum(AuthService.class),
-			UserId::getId, STRING_CODEC);
-
 	private final AuthService authService;
 	private final String id;
 

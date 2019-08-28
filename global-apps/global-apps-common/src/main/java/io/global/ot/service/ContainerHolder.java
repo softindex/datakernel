@@ -13,28 +13,29 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
-public final class ContainerHolder<T extends UserContainer> implements EventloopService {
+public final class ContainerHolder<C extends UserContainer> implements EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(ContainerHolder.class);
 
 	private final Eventloop eventloop;
-	private final BiFunction<Eventloop, PrivKey, T> containerFactory;
-	private final Map<PubKey, Promise<T>> containers = new HashMap<>();
+	private final BiFunction<Eventloop, PrivKey, C> containerFactory;
+	private final Map<PubKey, Promise<C>> containers = new HashMap<>();
 
-	public ContainerHolder(Eventloop eventloop, BiFunction<Eventloop, PrivKey, T> containerFactory) {
+	public ContainerHolder(Eventloop eventloop, BiFunction<Eventloop, PrivKey, C> containerFactory) {
 		this.eventloop = eventloop;
 		this.containerFactory = containerFactory;
 	}
 
-	public Promise<T> ensureUserContainer(PrivKey privKey) {
+	public Promise<C> ensureUserContainer(PrivKey privKey) {
 		PubKey pubKey = privKey.computePubKey();
 		return containers.computeIfAbsent(pubKey,
 				$1 -> {
-					T container = containerFactory.apply(eventloop, privKey);
+					C container = containerFactory.apply(eventloop, privKey);
 					return container.start()
 							.map($2 -> container);
 				})
@@ -42,8 +43,13 @@ public final class ContainerHolder<T extends UserContainer> implements Eventloop
 				.whenComplete(toLogger(logger, thisMethod(), pubKey));
 	}
 
-	public Promise<@Nullable T> getUserContainer(PubKey pubKey) {
-		Promise<T> containerPromise = containers.get(pubKey);
+	public Promise<?> removeUserContainer(PubKey pubKey) {
+		Promise<C> promise = containers.remove(pubKey);
+		return promise == null ? Promise.complete() : promise.then(EventloopService::stop);
+	}
+
+	public Promise<@Nullable C> getUserContainer(PubKey pubKey) {
+		Promise<C> containerPromise = containers.get(pubKey);
 		return containerPromise == null ? Promise.of(null) : containerPromise;
 	}
 
@@ -63,6 +69,11 @@ public final class ContainerHolder<T extends UserContainer> implements Eventloop
 	@Override
 	public Promise<Void> stop() {
 		return Promises.all(containers.values().stream()
-				.map(containerPromise -> containerPromise.getResult().stop()));
+				.map(containerPromise -> containerPromise.getResult().stop()))
+				.whenResult($ -> containers.clear());
+	}
+
+	public Set<PubKey> getContainerKeys() {
+		return containers.keySet();
 	}
 }

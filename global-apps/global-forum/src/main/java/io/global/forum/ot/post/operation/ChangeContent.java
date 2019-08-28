@@ -1,21 +1,13 @@
 package io.global.forum.ot.post.operation;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.global.forum.pojo.Post;
 import io.global.ot.name.ChangeName;
 
 import java.util.Map;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.util.StringFormatUtils.limit;
-import static io.global.ot.OTUtils.CHANGE_NAME_CODEC;
 
-public final class ChangeContent implements PostOperation {
-	public static final StructuredCodec<ChangeContent> CODEC = StructuredCodecs.tuple(ChangeContent::new,
-			ChangeContent::getPostId, LONG_CODEC,
-			ChangeContent::getChangeContent, CHANGE_NAME_CODEC);
-
+public final class ChangeContent implements ThreadOperation {
 	private final long postId;
 	private final ChangeName changeContent;
 

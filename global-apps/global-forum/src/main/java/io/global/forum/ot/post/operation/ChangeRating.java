@@ -1,7 +1,5 @@
 package io.global.forum.ot.post.operation;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.global.forum.pojo.Post;
 import io.global.forum.pojo.UserId;
 import io.global.ot.map.SetValue;
@@ -9,16 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
-import static io.datakernel.codec.StructuredCodecs.BOOLEAN_CODEC;
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
-import static io.global.ot.OTUtils.getSetValueCodec;
-
-public final class ChangeRating implements PostOperation {
-	public static final StructuredCodec<ChangeRating> CODEC = StructuredCodecs.tuple(ChangeRating::new,
-			ChangeRating::getPostId, LONG_CODEC,
-			ChangeRating::getUserId, UserId.CODEC,
-			ChangeRating::getSetRating, getSetValueCodec(BOOLEAN_CODEC));
-
+public final class ChangeRating implements ThreadOperation {
 	private final long postId;
 	private final UserId userId;
 	private final SetValue<Boolean> setRating;

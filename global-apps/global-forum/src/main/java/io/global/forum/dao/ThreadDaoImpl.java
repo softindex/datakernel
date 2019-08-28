@@ -25,12 +25,12 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public final class ThreadDaoImpl implements ThreadDao {
-	private final OTStateManager<CommitId, PostOperation> stateManager;
+	private final OTStateManager<CommitId, ThreadOperation> stateManager;
 	private final Map<Long, Post> postsView;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public ThreadDaoImpl(OTStateManager<CommitId, PostOperation> stateManager) {
+	public ThreadDaoImpl(OTStateManager<CommitId, ThreadOperation> stateManager) {
 		this.stateManager = stateManager;
 		this.postsView = ((ThreadOTState) stateManager.getState()).getPostsView();
 	}

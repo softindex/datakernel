@@ -22,17 +22,17 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-public final class PostOTSystem {
+public final class ThreadOTSystem {
 
-	private PostOTSystem() {
+	private ThreadOTSystem() {
 		throw new AssertionError();
 	}
 
-	public static final OTSystem<PostOperation> SYSTEM = create();
+	public static final OTSystem<ThreadOperation> SYSTEM = create();
 
-	private static OTSystem<PostOperation> create() {
+	private static OTSystem<ThreadOperation> create() {
 		OTSystem<PostChangesOperation> postChangesOTSystem = postChangesOTSystem();
-		return OTSystemImpl.<PostOperation>create()
+		return OTSystemImpl.<ThreadOperation>create()
 				.withEmptyPredicate(AddPost.class, op -> op.getInitialTimestamp() == -1)
 				.withEmptyPredicate(PostChangesOperation.class, postChangesOTSystem::isEmpty)
 
@@ -70,7 +70,7 @@ public final class PostOTSystem {
 						throw new OTTransformException("ID collision");
 					}
 					// remove wins
-					List<PostOperation> rightTransformed = new ArrayList<>(postChangesOTSystem.invert(singletonList(changesById)));
+					List<ThreadOperation> rightTransformed = new ArrayList<>(postChangesOTSystem.invert(singletonList(changesById)));
 					rightTransformed.add(left);
 					return TransformResult.right(rightTransformed);
 				});

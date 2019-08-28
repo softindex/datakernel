@@ -5,31 +5,31 @@ import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.StructuredOutput;
+import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MediaTypes;
 import io.datakernel.util.Tuple2;
 import io.datakernel.writer.ByteBufWriter;
-import io.global.forum.ot.post.operation.AddPost;
-import io.global.forum.ot.post.operation.PostChangesOperation;
-import io.global.forum.ot.post.operation.PostOperation;
+import io.global.forum.ot.ForumMetadata;
+import io.global.forum.ot.post.operation.*;
 import io.global.forum.pojo.*;
-import io.global.ot.map.MapOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.codec.StructuredEncoder.ofList;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.REFERER;
-import static io.global.ot.OTUtils.getMapOperationCodec;
+import static io.global.ot.OTUtils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
 
@@ -37,6 +37,71 @@ public final class Utils {
 	private Utils() {
 		throw new AssertionError();
 	}
+
+	public static final CodecRegistry REGISTRY = createOTRegistry()
+			.with(Instant.class, LONG_CODEC.transform(Instant::ofEpochMilli, Instant::toEpochMilli))
+			.with(ThreadMetadata.class, tuple(ThreadMetadata::new,
+					ThreadMetadata::getTitle, STRING_CODEC))
+			.with(UserId.class, registry -> tuple(UserId::new,
+					UserId::getAuthService, ofEnum(AuthService.class),
+					UserId::getId, STRING_CODEC))
+			.with(UserData.class, registry -> tuple(UserData::new,
+					UserData::getEmail, STRING_CODEC.nullable(),
+					UserData::getName, STRING_CODEC.nullable(),
+					UserData::getRole, ofEnum(UserRole.class)))
+			.with(IpRange.class, registry -> tuple(IpRange::new,
+					IpRange::getLowerBound, LONG_CODEC,
+					IpRange::getUpperBound, LONG_CODEC))
+			.with(BanState.class, registry -> tuple(BanState::new,
+					BanState::getBanner, registry.get(UserId.class),
+					BanState::getUntil, registry.get(Instant.class),
+					BanState::getReason, STRING_CODEC))
+			.with(IpBanState.class, registry -> tuple(IpBanState::new,
+					IpBanState::getBanState, registry.get(BanState.class),
+					IpBanState::getIpRange, registry.get(IpRange.class)))
+			.with(Attachment.class, registry -> tuple(Attachment::new,
+					Attachment::getAttachmentType, ofEnum(AttachmentType.class),
+					Attachment::getFileName, STRING_CODEC))
+			.with(ForumMetadata.class, registry -> tuple(ForumMetadata::new,
+					ForumMetadata::getName, STRING_CODEC,
+					ForumMetadata::getDescription, STRING_CODEC))
+			.with(AddPost.class, registry -> tuple(AddPost::new,
+					AddPost::getPostId, registry.get(Long.class),
+					AddPost::getParentId, LONG_CODEC.nullable(),
+					AddPost::getAuthor, registry.get(UserId.class),
+					AddPost::getInitialTimestamp, LONG_CODEC,
+					AddPost::isRemove, BOOLEAN_CODEC))
+			.with(ChangeAttachments.class, registry -> tuple(ChangeAttachments::new,
+					ChangeAttachments::getPostId, LONG_CODEC,
+					ChangeAttachments::getGlobalFsId, STRING_CODEC,
+					ChangeAttachments::getAttachment, registry.get(Attachment.class),
+					ChangeAttachments::getTimestamp, LONG_CODEC,
+					ChangeAttachments::isRemove, BOOLEAN_CODEC))
+			.with(ChangeContent.class, registry -> tuple(ChangeContent::new,
+					ChangeContent::getPostId, LONG_CODEC,
+					ChangeContent::getChangeContent, CHANGE_NAME_CODEC))
+			.with(ChangeLastEditTimestamp.class, registry -> tuple(ChangeLastEditTimestamp::new,
+					ChangeLastEditTimestamp::getPostId, LONG_CODEC,
+					ChangeLastEditTimestamp::getPrevTimestamp, LONG_CODEC,
+					ChangeLastEditTimestamp::getNextTimestamp, LONG_CODEC))
+			.with(ChangeRating.class, registry -> tuple(ChangeRating::new,
+					ChangeRating::getPostId, LONG_CODEC,
+					ChangeRating::getUserId, registry.get(UserId.class),
+					ChangeRating::getSetRating, getSetValueCodec(BOOLEAN_CODEC)))
+			.with(DeletePost.class, registry -> tuple(DeletePost::new,
+					DeletePost::getPostId, LONG_CODEC,
+					DeletePost::getDeletedBy, registry.get(UserId.class),
+					DeletePost::getTimestamp, LONG_CODEC,
+					DeletePost::isDelete, BOOLEAN_CODEC))
+			.with(PostChangesOperation.class, registry -> tuple(PostChangesOperation::new,
+					PostChangesOperation::getChangeContentOps, ofList(registry.get(ChangeContent.class)),
+					PostChangesOperation::getChangeAttachmentsOps, ofList(registry.get(ChangeAttachments.class)),
+					PostChangesOperation::getChangeRatingOps, ofList(registry.get(ChangeRating.class)),
+					PostChangesOperation::getDeletePostOps, ofList(registry.get(DeletePost.class)),
+					PostChangesOperation::getChangeLastEditTimestamps, ofList(registry.get(ChangeLastEditTimestamp.class))))
+			.with(ThreadOperation.class, registry -> CodecSubtype.<ThreadOperation>create()
+					.with(AddPost.class, registry.get(AddPost.class))
+					.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)));
 
 	private static final char[] CHAR_POOL = {
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
@@ -92,33 +157,19 @@ public final class Utils {
 		}
 	}
 
-	public static final StructuredCodec<UserId> USER_ID_CODEC = tuple(UserId::new,
-			UserId::getAuthService, ofEnum(AuthService.class),
-			UserId::getId, STRING_CODEC);
-
-	public static final StructuredCodec<UserData> USER_DATA_CODEC = tuple(UserData::new,
-			UserData::getEmail, STRING_CODEC.nullable(),
-			UserData::getName, STRING_CODEC.nullable(),
-			UserData::getRole, ofEnum(UserRole.class));
-
-	public static final StructuredCodec<MapOperation<UserId, UserData>> USER_DATA_OP_CODEC = getMapOperationCodec(USER_ID_CODEC, USER_DATA_CODEC);
-
-	public static final StructuredCodec<PostOperation> POST_OPERATION_CODEC = CodecSubtype.<PostOperation>create()
-			.with(AddPost.class, AddPost.CODEC)
-			.with(PostChangesOperation.class, PostChangesOperation.CODEC);
-
-
 	public static final StructuredEncoder<Tuple2<Map<Long, Post>, Long>> RECURSIVE_POST_ENCODER;
 
 	public static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
-		out.writeKey("author", UserId.CODEC, post.getAuthor());
+		StructuredCodec<UserId> userIdCodec = REGISTRY.get(UserId.class);
+		StructuredCodec<Set<UserId>> userIdCodecSet = ofSet(userIdCodec);
+		out.writeKey("author", userIdCodec, post.getAuthor());
 		out.writeKey("created", LONG_CODEC, post.getInitialTimestamp());
 		out.writeKey("content", STRING_CODEC, post.getContent());
-		out.writeKey("attachments", ofMap(STRING_CODEC, Attachment.CODEC), post.getAttachments());
-		out.writeKey("deletedBy", UserId.CODEC.nullable(), post.getDeletedBy());
+		out.writeKey("attachments", ofMap(STRING_CODEC, REGISTRY.get(Attachment.class)), post.getAttachments());
+		out.writeKey("deletedBy", userIdCodec.nullable(), post.getDeletedBy());
 		out.writeKey("edited", LONG_CODEC, post.getLastEditTimestamp());
-		out.writeKey("likes", ofSet(UserId.CODEC), post.getLikes());
-		out.writeKey("dislikes", ofSet(UserId.CODEC), post.getDislikes());
+		out.writeKey("likes", userIdCodecSet, post.getLikes());
+		out.writeKey("dislikes", userIdCodecSet, post.getDislikes());
 	};
 
 	static {
@@ -136,7 +187,7 @@ public final class Utils {
 
 			out.writeKey("id", LONG_CODEC, ourRootId);
 			POST_SIMPLE_ENCODER.encode(out, post);
-			out.writeKey("children", ofList(lazyPostEncoder), childrenEntries);
+			out.writeKey("children", StructuredEncoder.ofList(lazyPostEncoder), childrenEntries);
 		});
 		lazyPostEncoder.realize(RECURSIVE_POST_ENCODER);
 	}

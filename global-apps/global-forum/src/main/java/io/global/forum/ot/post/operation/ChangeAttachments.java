@@ -1,22 +1,14 @@
 package io.global.forum.ot.post.operation;
 
-import io.datakernel.codec.StructuredCodec;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
 
 import java.util.Map;
 
-import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.forum.pojo.AttachmentType.DOCUMENT;
 
-public final class ChangeAttachments implements PostOperation {
+public final class ChangeAttachments implements ThreadOperation {
 	public static final ChangeAttachments EMPTY = new ChangeAttachments(0, "", new Attachment(DOCUMENT, ""), 0, true);
-	public static final StructuredCodec<ChangeAttachments> CODEC = tuple(ChangeAttachments::new,
-			ChangeAttachments::getPostId, LONG_CODEC,
-			ChangeAttachments::getGlobalFsId, STRING_CODEC,
-			ChangeAttachments::getAttachment, Attachment.CODEC,
-			ChangeAttachments::getTimestamp, LONG_CODEC,
-			ChangeAttachments::isRemove, BOOLEAN_CODEC);
 
 	private final long postId;
 	private final String globalFsId;

@@ -6,6 +6,7 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.global.forum.Utils;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.ot.ForumMetadata;
+import io.global.forum.ot.MapOTStateListenerProxy;
 import io.global.forum.ot.post.operation.AddPost;
 import io.global.forum.pojo.*;
 import io.global.ot.api.CommitId;
@@ -47,7 +48,7 @@ public final class ForumDaoImpl implements ForumDao {
 		metadataView = (ChangeValueContainer<ForumMetadata>) metadataStateManager.getState();
 		usersView = ((MapOTState<UserId, UserData>) usersStateManager.getState()).getMap();
 		ipBanView = ((MapOTState<Long, IpBanState>) bansStateManager.getState()).getMap();
-		threadsView = ((MapOTState<Long, ThreadMetadata>) threadsStateManager.getState()).getMap();
+		threadsView = ((MapOTStateListenerProxy<Long, ThreadMetadata>) threadsStateManager.getState()).getMap();
 	}
 
 	@Override

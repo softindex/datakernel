@@ -24,7 +24,7 @@ public final class MapOTSystem {
 	}
 
 	public static <K, V> OTSystem<MapOperation<K, V>> create() {
-		return MapOTSystem.<K, V>create(null);
+		return MapOTSystem.create(null);
 	}
 
 	public static <K, V> OTSystem<MapOperation<K, V>> create(@Nullable Comparator<V> comparator) {

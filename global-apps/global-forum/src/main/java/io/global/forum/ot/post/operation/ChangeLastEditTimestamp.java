@@ -1,19 +1,10 @@
 package io.global.forum.ot.post.operation;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.global.forum.pojo.Post;
 
 import java.util.Map;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
-
-public final class ChangeLastEditTimestamp implements PostOperation {
-	public static final StructuredCodec<ChangeLastEditTimestamp> CODEC = StructuredCodecs.tuple(ChangeLastEditTimestamp::new,
-			ChangeLastEditTimestamp::getPostId, LONG_CODEC,
-			ChangeLastEditTimestamp::getPrevTimestamp, LONG_CODEC,
-			ChangeLastEditTimestamp::getNextTimestamp, LONG_CODEC);
-
+public final class ChangeLastEditTimestamp implements ThreadOperation {
 	private final long postId;
 	private final long prevTimestamp;
 	private final long nextTimestamp;

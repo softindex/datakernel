@@ -4,6 +4,6 @@ import io.global.forum.pojo.Post;
 
 import java.util.Map;
 
-public interface PostOperation {
+public interface ThreadOperation {
 	void apply(Map<Long, Post> posts);
 }

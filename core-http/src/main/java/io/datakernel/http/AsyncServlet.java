@@ -26,7 +26,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
- * An interface for a servlet function that asyncronously receives a {@link HttpRequest},
+ * An interface for a servlet function that asynchronously receives a {@link HttpRequest},
  * processes it and then returns a {@link HttpResponse}.
  */
 @FunctionalInterface

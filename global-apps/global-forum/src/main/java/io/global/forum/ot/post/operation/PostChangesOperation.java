@@ -1,7 +1,5 @@
 package io.global.forum.ot.post.operation;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
 import io.global.forum.pojo.UserId;
@@ -11,19 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.global.ot.map.SetValue.set;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
-public final class PostChangesOperation implements PostOperation {
+public final class PostChangesOperation implements ThreadOperation {
 	public static final PostChangesOperation EMPTY = new PostChangesOperation(emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-	public static final StructuredCodec<PostChangesOperation> CODEC = StructuredCodecs.tuple(PostChangesOperation::new,
-			PostChangesOperation::getChangeContentOps, ofList(ChangeContent.CODEC),
-			PostChangesOperation::getChangeAttachmentsOps, ofList(ChangeAttachments.CODEC),
-			PostChangesOperation::getChangeRatingOps, ofList(ChangeRating.CODEC),
-			PostChangesOperation::getDeletePostOps, ofList(DeletePost.CODEC),
-			PostChangesOperation::getChangeLastEditTimestamps, ofList(ChangeLastEditTimestamp.CODEC));
 
 	private final List<ChangeContent> changeContentOps;
 	private final List<ChangeAttachments> changeAttachmentsOps;

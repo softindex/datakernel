@@ -1,16 +1,6 @@
 package io.global.forum.pojo;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
-
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.codec.StructuredCodecs.ofEnum;
-
 public final class Attachment {
-	public static final StructuredCodec<Attachment> CODEC = StructuredCodecs.tuple(Attachment::new,
-			Attachment::getAttachmentType, ofEnum(AttachmentType.class),
-			Attachment::getFileName, STRING_CODEC);
-
 	private final AttachmentType attachmentType;
 	private final String fileName;
 

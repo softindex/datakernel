@@ -1,18 +1,10 @@
 package io.global.forum.pojo;
 
-import io.datakernel.codec.StructuredCodec;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
-import static io.datakernel.codec.StructuredCodecs.tuple;
-
 public final class IpRange implements Comparable<IpRange> {
-	public static final StructuredCodec<IpRange> CODEC = tuple(IpRange::new,
-			IpRange::getLowerBound, LONG_CODEC,
-			IpRange::getUpperBound, LONG_CODEC);
-
 	private long lowerBound;
 	private long upperBound;
 

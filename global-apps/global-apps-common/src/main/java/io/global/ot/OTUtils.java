@@ -3,6 +3,7 @@ package io.global.ot;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.registry.CodecRegistry;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
 import io.global.ot.name.ChangeName;
@@ -54,5 +55,12 @@ public final class OTUtils {
 				"prev", ChangeValue::getPrev, underlying,
 				"next", ChangeValue::getNext, underlying,
 				"timestamp", ChangeValue::getTimestamp, LONG_CODEC);
+	}
+
+	public static CodecRegistry createOTRegistry() {
+		return CodecRegistry.createDefault()
+				.withGeneric(MapOperation.class, (registry, subCodecs) -> getMapOperationCodec(subCodecs[0], subCodecs[1]))
+				.withGeneric(SetValue.class, (registry, subCodecs) -> getSetValueCodec(subCodecs[0]))
+				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeTimestampValue(subCodecs[0]));
 	}
 }

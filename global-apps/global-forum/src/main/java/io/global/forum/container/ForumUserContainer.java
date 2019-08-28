@@ -6,20 +6,19 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.util.TypeT;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
-import io.global.forum.dao.ForumDao;
-import io.global.forum.dao.ForumDaoImpl;
+import io.global.forum.dao.*;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.ot.MapOTStateListenerProxy;
-import io.global.forum.ot.post.PostOTSystem;
 import io.global.forum.ot.post.ThreadOTState;
-import io.global.forum.ot.post.operation.PostOperation;
+import io.global.forum.ot.post.ThreadOTSystem;
+import io.global.forum.ot.post.operation.ThreadOperation;
 import io.global.forum.pojo.IpBanState;
 import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserData;
 import io.global.forum.pojo.UserId;
-import io.global.fs.local.GlobalFsDriver;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
@@ -41,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.util.LogUtils.toLogger;
+import static io.global.forum.Utils.REGISTRY;
 import static java.util.Collections.emptySet;
 
 public final class ForumUserContainer implements UserContainer {
@@ -52,14 +52,14 @@ public final class ForumUserContainer implements UserContainer {
 	private final KeyPair keys;
 
 	private final String threadRepoPrefix;
-	private final StructuredCodec<PostOperation> postOpCodec;
+	private final StructuredCodec<ThreadOperation> postOpCodec;
 	private final OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
 	private final OTStateManager<CommitId, MapOperation<Long, IpBanState>> bansStateManager;
 
 	private final OTStateManager<CommitId, MapOperation<Long, ThreadMetadata>> threadsStateManager;
 
-	private final Map<Long, Promise<OTStateManager<CommitId, PostOperation>>> threadStateManagers = new HashMap<>();
+	private final Map<Long, Promise<OTStateManager<CommitId, ThreadOperation>>> threadStateManagers = new HashMap<>();
 	private final MapOTStateListenerProxy<Long, ThreadMetadata> threadsState;
 
 	private final ForumDao forumDao;
@@ -69,26 +69,21 @@ public final class ForumUserContainer implements UserContainer {
 			OTDriver otDriver,
 			FsClient fsClient,
 			KeyPair keys,
-			ForumRepoNames names,
-			StructuredCodec<PostOperation> postOpCodec,
-			StructuredCodec<ChangeValue<ForumMetadata>> metaOpCodec,
-			StructuredCodec<MapOperation<UserId, UserData>> userOpCodec,
-			StructuredCodec<MapOperation<Long, IpBanState>> banOpCodec,
-			StructuredCodec<MapOperation<Long, ThreadMetadata>> threadOpCodec) {
+			ForumRepoNames names) {
 		this.eventloop = eventloop;
 		this.otDriver = otDriver;
 		this.fsClient = fsClient;
 		this.keys = keys;
 
 		this.threadRepoPrefix = names.getThreadRepoPrefix();
-		this.postOpCodec = postOpCodec;
+		this.postOpCodec = REGISTRY.get(ThreadOperation.class);
 
-		this.metadataStateManager = createStateManager(names.getMetadata(), metaOpCodec, ChangeValueOTSystem.get(), ChangeValueContainer.empty());
-		this.usersStateManager = createStateManager(names.getUsers(), userOpCodec, MapOTSystem.create(), new MapOTState<>());
-		this.bansStateManager = createStateManager(names.getBans(), banOpCodec, MapOTSystem.create(), new MapOTState<>());
+		this.metadataStateManager = createStateManager(names.getMetadata(), REGISTRY.get(new TypeT<ChangeValue<ForumMetadata>>() {}), ChangeValueOTSystem.get(), ChangeValueContainer.empty());
+		this.usersStateManager = createStateManager(names.getUsers(), REGISTRY.get(new TypeT<MapOperation<UserId, UserData>>() {}), MapOTSystem.create(), new MapOTState<>());
+		this.bansStateManager = createStateManager(names.getBans(), REGISTRY.get(new TypeT<MapOperation<Long, IpBanState>>() {}), MapOTSystem.create(), new MapOTState<>());
 
-		threadsState = new MapOTStateListenerProxy<>();
-		this.threadsStateManager = createStateManager(names.getThreads(), threadOpCodec, MapOTSystem.create(), threadsState);
+		this.threadsState = new MapOTStateListenerProxy<>();
+		this.threadsStateManager = createStateManager(names.getThreads(), REGISTRY.get(new TypeT<MapOperation<Long, ThreadMetadata>>() {}), MapOTSystem.create(), threadsState);
 
 		forumDao = new ForumDaoImpl(this);
 	}
@@ -97,14 +92,9 @@ public final class ForumUserContainer implements UserContainer {
 			Eventloop eventloop,
 			PrivKey privKey,
 			OTDriver otDriver,
-			GlobalFsDriver fsDriver,
-			ForumRepoNames names,
-			StructuredCodec<ChangeValue<ForumMetadata>> forumMetadataOpCodec,
-			StructuredCodec<MapOperation<UserId, UserData>> userOpCodec,
-			StructuredCodec<MapOperation<Long, IpBanState>> ipBanOpCodec,
-			StructuredCodec<MapOperation<Long, ThreadMetadata>> threadOpCodec,
-			StructuredCodec<PostOperation> postOpCodec) {
-		return new ForumUserContainer(eventloop, otDriver, fsDriver.adapt(privKey), privKey.computeKeys(), names, postOpCodec, forumMetadataOpCodec, userOpCodec, ipBanOpCodec, threadOpCodec);
+			FsClient fsClient,
+			ForumRepoNames names) {
+		return new ForumUserContainer(eventloop, otDriver, fsClient, privKey.computeKeys(), names);
 	}
 
 	@Override
@@ -117,6 +107,18 @@ public final class ForumUserContainer implements UserContainer {
 		return forumDao;
 	}
 
+	public AttachmentDao createAttachmentDao(Long threadId) {
+		return new AttachmentDaoImpl(fsClient.subfolder(Long.toUnsignedString(threadId, 36)));
+	}
+
+	public Promise<@Nullable ThreadDao> createThreadDao(Long threadId) {
+		Promise<OTStateManager<CommitId, ThreadOperation>> threadStateManager = threadStateManagers.get(threadId);
+		return threadStateManager == null ?
+				Promise.of(null) :
+				threadStateManager
+						.map(ThreadDaoImpl::new);
+	}
+
 	@NotNull
 	@Override
 	public Promise<?> start() {
@@ -125,16 +127,16 @@ public final class ForumUserContainer implements UserContainer {
 						.getMap()
 						.keySet()
 						.stream()
-						.map(this::ensurePostStateManager)))
+						.map(this::ensureThreadStateManager)))
 				.whenResult($ -> threadsState.onOperationReceived(op -> {
 					Map<Long, SetValue<ThreadMetadata>> operations = op.getOperations();
 					operations.forEach((id, setValue) -> {
 						if (setValue.getNext() == null) {
 							logger.info("Removing thread {} and post state manager", setValue.getPrev());
-							removePostStateManager(id);
+							removeThreadStateManager(id);
 						} else if (setValue.getPrev() == null) {
 							logger.info("Adding thread {} and post state manager", setValue.getNext());
-							ensurePostStateManager(id);
+							ensureThreadStateManager(id);
 						}
 					});
 				}));
@@ -177,16 +179,16 @@ public final class ForumUserContainer implements UserContainer {
 		return keys;
 	}
 
-	public Promise<@Nullable OTStateManager<CommitId, PostOperation>> getPostStateManager(Long threadId) {
-		Promise<OTStateManager<CommitId, PostOperation>> stateManagerPromise = threadStateManagers.get(threadId);
+	public Promise<@Nullable OTStateManager<CommitId, ThreadOperation>> getPostStateManager(Long threadId) {
+		Promise<OTStateManager<CommitId, ThreadOperation>> stateManagerPromise = threadStateManagers.get(threadId);
 		return stateManagerPromise != null ? stateManagerPromise : Promise.of(null);
 	}
 
-	private Promise<OTStateManager<CommitId, PostOperation>> ensurePostStateManager(Long threadId) {
+	private Promise<OTStateManager<CommitId, ThreadOperation>> ensureThreadStateManager(Long threadId) {
 		return threadStateManagers.computeIfAbsent(threadId,
 				tid -> {
 					String repoName = threadRepoPrefix + "/" + Long.toUnsignedString(tid, 16);
-					OTStateManager<CommitId, PostOperation> stateManager = createStateManager(repoName, postOpCodec, PostOTSystem.SYSTEM, new ThreadOTState());
+					OTStateManager<CommitId, ThreadOperation> stateManager = createStateManager(repoName, postOpCodec, ThreadOTSystem.SYSTEM, new ThreadOTState());
 					return stateManager.start()
 							.map($2 -> stateManager)
 							.whenException($2 -> threadStateManagers.remove(tid));
@@ -194,8 +196,8 @@ public final class ForumUserContainer implements UserContainer {
 				.whenComplete(toLogger(logger, "ensurePostStateManager", threadId));
 	}
 
-	private Promise<Void> removePostStateManager(Long threadId) {
-		Promise<OTStateManager<CommitId, PostOperation>> stateManager = threadStateManagers.remove(threadId);
+	private Promise<Void> removeThreadStateManager(Long threadId) {
+		Promise<OTStateManager<CommitId, ThreadOperation>> stateManager = threadStateManagers.remove(threadId);
 		return (stateManager != null ? stateManager.then(OTStateManager::stop) : Promise.complete())
 				.whenComplete(toLogger(logger, "removePostStateManager", threadId));
 	}

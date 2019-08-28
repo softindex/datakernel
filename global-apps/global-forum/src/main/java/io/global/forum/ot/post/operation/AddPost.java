@@ -1,7 +1,5 @@
 package io.global.forum.ot.post.operation;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.global.forum.pojo.Post;
 import io.global.forum.pojo.UserId;
 import org.jetbrains.annotations.Nullable;
@@ -9,19 +7,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.datakernel.codec.StructuredCodecs.BOOLEAN_CODEC;
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.global.forum.pojo.AuthService.DK_APP_STORE;
 
-public final class AddPost implements PostOperation {
+public final class AddPost implements ThreadOperation {
 	public static final AddPost EMPTY = new AddPost(0L, null, new UserId(DK_APP_STORE, ""), -1, false);
-	public static final StructuredCodec<AddPost> CODEC = StructuredCodecs.tuple(AddPost::new,
-			AddPost::getPostId, LONG_CODEC,
-			AddPost::getParentId, LONG_CODEC.nullable(),
-			AddPost::getAuthor, UserId.CODEC,
-			AddPost::getInitialTimestamp, LONG_CODEC,
-			AddPost::isRemove, BOOLEAN_CODEC);
 
 	private final Long postId;
 	@Nullable
@@ -30,7 +20,7 @@ public final class AddPost implements PostOperation {
 	private final long initialTimestamp;
 	private final boolean remove;
 
-	private AddPost(Long postId, @Nullable Long parentId, UserId author, long initialTimestamp, boolean remove) {
+	public AddPost(Long postId, @Nullable Long parentId, UserId author, long initialTimestamp, boolean remove) {
 		this.postId = postId;
 		this.parentId = parentId;
 		this.author = author;
