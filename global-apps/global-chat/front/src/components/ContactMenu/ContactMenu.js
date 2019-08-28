@@ -5,12 +5,13 @@ import MenuItem from '@material-ui/core/MenuItem';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import contactMenuStyles from "./contactMenuStyles";
 import {withStyles} from '@material-ui/core';
+import {withSnackbar} from "notistack";
 
-function ContactMenu({onAddContact, classes}) {
+function ContactMenu({onAddContact, classes, enqueueSnackbar}) {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
 
-  function handleClick(event) {
+  function onClick(event) {
     if (open) {
       setAnchorEl(null);
     } else {
@@ -18,17 +19,20 @@ function ContactMenu({onAddContact, classes}) {
     }
   }
 
-  function handleClose() {
+  function onClose() {
     setAnchorEl(null);
   }
 
-  function handleAdd() {
+  function onAdd() {
+    if(!window.navigator.onLine) {
+      enqueueSnackbar('Adding...');
+    }
     onAddContact();
-    handleClose();
+    onClose();
   }
 
   return (
-    <div onClick={handleClick} className={classes.wrapperButton}>
+    <div onClick={onClick} className={classes.wrapperButton}>
       <IconButton>
         <MoreVertIcon/>
       </IconButton>
@@ -36,12 +40,12 @@ function ContactMenu({onAddContact, classes}) {
         anchorEl={anchorEl}
         keepMounted
         open={open}
-        onClose={handleClose}
+        onClose={onClose}
         classes={{paper: classes.menuPaper}}
       >
         <MenuItem
           key="Add Contact"
-          onClick={handleAdd}
+          onClick={onAdd}
         >
           Add Contact
         </MenuItem>
@@ -50,4 +54,4 @@ function ContactMenu({onAddContact, classes}) {
   );
 }
 
-export default withStyles(contactMenuStyles)(ContactMenu);
+export default withSnackbar(withStyles(contactMenuStyles)(ContactMenu));

@@ -7,7 +7,6 @@ import Grow from '@material-ui/core/Grow';
 import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 import {connectService} from 'global-apps-common';
 import {AuthContext} from "global-apps-common";
-import RoomsContext from "../../modules/rooms/RoomsContext";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 
 class Messages extends React.Component {
@@ -64,23 +63,19 @@ class Messages extends React.Component {
 }
 
 export default withStyles(messagesStyles)(
-  connectService(ContactsContext, (
-    {names}, contactsService) => (
-    {contactsService, names})
+  connectService(
+    ContactsContext,
+    ({names}) => ({names})
   )(
-    connectService(RoomsContext, (
-      {rooms}, roomsService) => (
-      {rooms, roomsService})
+    connectService(
+      ChatRoomContext,
+      ({messages, chatReady}) => ({messages, chatReady})
     )(
-      connectService(ChatRoomContext, (
-        {messages, chatReady}) => (
-        {messages, chatReady})
+      connectService(
+        AuthContext,
+        ({publicKey}) => ({publicKey})
       )(
-        connectService(AuthContext, (
-          {publicKey}) => ({publicKey})
-        )(
-          Messages
-        )
+        Messages
       )
     )
   )

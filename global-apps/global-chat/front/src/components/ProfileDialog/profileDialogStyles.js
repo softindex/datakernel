@@ -12,6 +12,11 @@ const profileDialogStyles = theme => ({
   progressWrapper: {
     margin: 'auto',
     marginTop: 0
+  },
+  dialogContent: {
+    '&:first-child': {
+      paddingTop: 0
+    }
   }
 });
 

@@ -16,7 +16,7 @@ class AddContactDialog extends React.Component {
     loading: false
   };
 
-  handleNameChange = event => {
+  onNameChange = event => {
     this.setState({name: event.target.value});
   };
 
@@ -65,7 +65,7 @@ class AddContactDialog extends React.Component {
               type="text"
               fullWidth
               variant="outlined"
-              onChange={this.handleNameChange}
+              onChange={this.onNameChange}
             />
           </DialogContent>
           <DialogActions>

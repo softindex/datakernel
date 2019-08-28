@@ -12,7 +12,7 @@ import {connectService} from "global-apps-common";
 import {AuthContext} from "global-apps-common";
 import CreateChatDialog from "../CreateChatDialog/CreateChatDialog";
 
-function Drawer({classes, open, onClose, logout, publicKey}) {
+function Drawer({classes, open, onClose, onLogout, publicKey}) {
   const [openProfile, setOpenProfile] = useState(false);
   const [showChatDialog, setShowChatDialog] = useState(false);
 
@@ -59,7 +59,7 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
               </ListItemIcon>
               <ListItemText primary="New Chat"/>
             </ListItem>
-            <ListItem button onClick={logout}>
+            <ListItem button onClick={onLogout}>
               <ListItemIcon>
                 <Icon className={classes.accountIcon}>logout</Icon>
               </ListItemIcon>
@@ -84,12 +84,44 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
 
 export default connectService(
   AuthContext,
-  ({publicKey}, contactsService) => ({
+  ({publicKey}, authService) => ({
     publicKey,
-    logout() {
-      contactsService.logout();
+    onLogout() {
+      authService.onLogout();
     }
   })
 )(
   withStyles(drawerStyles)(Drawer)
 );
+
+// function Drawer(props) {
+//   const authService = getInstance(AuthService);
+//   const {publicKey} = useService(authService);
+//   const [openProfile, setOpenProfile] = useState(false);
+//   const [showChatDialog, setShowChatDialog] = useState(false);
+//
+//   props = {
+//     ...props,
+//     publicKey,
+//     openProfile,
+//     showChatDialog,
+//     onLogout() {
+//       authService.onLogout();
+//     },
+//     onProfileOpen() {
+//       setOpenProfile(true);
+//     },
+//     onProfileClose() {
+//       setOpenProfile(false);
+//     },
+//     onChatDialogShow() {
+//       setShowChatDialog(true);
+//       props.onClose();
+//     },
+//     onChatDialogClose() {
+//       setShowChatDialog(false)
+//     }
+//   };
+//
+//   return <DrawerView {...props}/>;
+// }

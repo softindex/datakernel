@@ -5,15 +5,10 @@ import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import ArrowIcon from '@material-ui/icons/KeyboardArrowRight'
 import headerStyles from './headerStyles';
-import {connectService} from "global-apps-common";
-import RoomsContext from "../../modules/rooms/RoomsContext";
 import MenuIcon from "@material-ui/icons/Menu";
 import Drawer from "../Drawer/Drawer";
-import {getRoomName} from "global-apps-common";
-import ContactsContext from "../../modules/contacts/ContactsContext";
-import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 
-function Header({classes, rooms, roomId, names, publicKey, profile}) {
+function Header({classes, title}) {
   const [openDrawer, setOpenDrawer] = useState(false);
 
   function onDrawerOpen() {
@@ -43,17 +38,15 @@ function Header({classes, rooms, roomId, names, publicKey, profile}) {
             Global Chat
           </Typography>
           <div className={classes.chatTitleContainer}>
-            {rooms.has(roomId) && (
-              <Typography
-                className={classes.chatTitle}
-                color="inherit"
-              >
-                <ListItemIcon className={classes.listItemIcon}>
-                  <ArrowIcon className={classes.arrowIcon}/>
-                </ListItemIcon>
-                {getRoomName(rooms.get(roomId).participants, names, publicKey, profile.name)}
-              </Typography>
-            )}
+            <Typography
+              className={classes.chatTitle}
+              color="inherit"
+            >
+              <ListItemIcon className={classes.listItemIcon}>
+                <ArrowIcon className={classes.arrowIcon}/>
+              </ListItemIcon>
+              {title}
+            </Typography>
           </div>
         </Toolbar>
       </AppBar>
@@ -62,16 +55,4 @@ function Header({classes, rooms, roomId, names, publicKey, profile}) {
   );
 }
 
-export default connectService(RoomsContext, (
-  {rooms}, roomsService) => ({rooms, roomsService})
-)(
-  connectService(ContactsContext, (
-    {names}, contactsService) => ({names, contactsService})
-  )(
-    connectService(MyProfileContext, ({profile, profileReady},) => ({
-        profile, profileReady
-      })
-    )(withStyles(headerStyles)(Header)
-    )
-  )
-);
+export default withStyles(headerStyles)(Header);

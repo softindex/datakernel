@@ -9,9 +9,16 @@ function App() {
   return (
     <Router>
       <Switch>
-        <Route exact={true} path="/sign-up" component={() =>
-          <SignUp title="Global Chat" description="An application that allows you to chats with your friends.
-              It is easy to manage, and synchronize on all devices."/> }
+        <Route
+          exact={true}
+          path="/sign-up"
+          component={() => (
+            <SignUp
+              title="Global Chat"
+              description="An application that allows you to chats with your friends.
+              It is easy to manage, and synchronize on all devices."
+            />
+          )}
         />
         <Route path="/sign-up/auth" component={OAuthCallback}/>
         <Route path="/room/:roomId" component={MainScreen}/>

@@ -1,279 +1,197 @@
-import React from 'react';
+import React, {useMemo, useState} from 'react';
 import path from "path";
-import {List, withStyles} from '@material-ui/core';
+import {withStyles} from '@material-ui/core';
 import sideBarStyles from "./sideBarStyles";
 import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import Paper from "@material-ui/core/Paper";
 import RoomsList from "../RoomsList/RoomsList";
-import {connectService} from "global-apps-common";
-import ContactsContext from "../../modules/contacts/ContactsContext";
-import RoomsContext from "../../modules/rooms/RoomsContext";
+import {useService, getInstance} from "global-apps-common";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
-import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
 import Typography from "@material-ui/core/Typography";
-import Grow from "@material-ui/core/Grow";
-import CircularProgress from "@material-ui/core/CircularProgress";
-import SearchContactItem from "../SearchContactItem/SearchContactItem";
-import {createDialogRoomId} from "global-apps-common";
+import {createDialogRoomId, getRoomName} from '../../common/utils';
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
-import MyProfileContext from "../../modules/myProfile/MyProfileContext";
 import Search from "../Search/Search";
+import ContactsList from "../ContactsList/ContactsList";
+import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
+import ContactsService from "../../modules/contacts/ContactsService";
+import RoomsService from "../../modules/rooms/RoomsService";
+import NamesService from "../../modules/names/NamesService";
 
 const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
 
-class SideBar extends React.Component {
-  state = {
-    tabId: ROOMS_TAB,
-    showAddDialog: false,
-    search: ''
-  };
-
-  onTabChange = (event, nextTabId) => {
-    this.setState({tabId: nextTabId});
-  };
-
-  onSearchChange = event => {
-    this.setState({
-      search: event.target.value
-    }, () => {
-      if (this.state.search !== '') {
-        this.props.search(this.state.search)
-      }
-    });
-  };
-
-  isSearchInContacts() {
-    let isSearchInContacts = true;
-    [...this.props.searchContacts].map(([publicKey,]) => {
-      if (!this.props.contacts.has(publicKey)) {
-        isSearchInContacts = false;
-      }
-    });
-    return isSearchInContacts;
+function SideBarView(props) {
+  if (!props.showAddDialog) {
+    props.checkSearch();
   }
 
-  sortContacts() {
-    return [...this.props.rooms].sort(((array1, array2) => {
-      const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
-      const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
-      if (this.props.names.has(contactId1) && this.props.names.has(contactId2)) {
-        return this.props.names.get(contactId1).localeCompare(this.props.names.get(contactId2))
-      }
-    }));
-  }
+  return (
+    <div className={props.classes.wrapper}>
+      <Search
+        classes={{search: props.classes.search}}
+        placeholder="People, groups, public keys..."
+        value={props.search}
+        onChange={props.onChange}
+      />
+      <Paper square className={props.classes.paper}>
+        <Tabs
+          value={props.tabId}
+          centered={true}
+          indicatorColor="primary"
+          textColor="primary"
+          onChange={props.onTabChange}
+        >
+          <Tab value={ROOMS_TAB} label="Chats"/>
+          <Tab value={CONTACTS_TAB} label="Contacts"/>
+        </Tabs>
+      </Paper>
+      <div className={props.classes.chatsList}>
+        <RoomsList
+          rooms={props.sortContacts()}
+          contacts={props.contacts}
+          names={props.names}
+          roomsReady={props.roomsReady}
+          onAddContact={props.addContact}
+          onRemoveContact={props.onRemoveContact}
+          publicKey={props.publicKey}
+          showDeleteButton={props.tabId === "contacts"}
+        />
 
-  getFilteredRooms(rooms) {
-    return new Map(
-      [...rooms]
+        {props.search !== '' && (
+          <>
+            <Paper square className={props.classes.paperDivider}>
+              <Typography className={props.classes.dividerText}>
+                People
+              </Typography>
+            </Paper>
+            <ContactsList
+              searchReady={props.searchReady}
+              error={props.error}
+              searchContacts={props.searchContacts}
+              publicKey={props.publicKey}
+              onAddContact={props.onAddContact}
+            />
+            {props.searchContacts.size === 0 && props.searchReady && (
+              <Typography
+                className={props.classes.secondaryDividerText}
+                color="textSecondary"
+                variant="body1"
+              >
+                Nothing found
+              </Typography>
+            )}
+          </>
+        )}
+      </div>
+      <AddContactDialog
+        open={props.showAddDialog}
+        onClose={props.closeAddDialog}
+        contactPublicKey={props.search}
+        publicKey={props.publicKey}
+        onAddContact={props.onAddContact}
+      />
+    </div>
+  );
+}
+
+function SideBar(props) {
+  const [tabId, setTabId] = useState(ROOMS_TAB);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const contactsOTStateManager = getInstance('contactsOTStateManager');
+  const searchContactsService = useMemo(
+    () => SearchContactsService.createFrom(contactsOTStateManager),
+    [contactsOTStateManager]
+  );
+  const {search, searchContacts, searchReady} = useService(searchContactsService);
+  const contactsService = getInstance(ContactsService);
+  const {contacts} = useService(contactsService);
+  const roomsService = getInstance(RoomsService);
+  const {roomsReady, rooms} = useService(roomsService);
+  const namesService = getInstance(NamesService);
+  const {names} = useService(namesService);
+
+  const onAddContact = (contactPublicKey, name) => {
+    return contactsService.addContact(contactPublicKey, name)
+      .then(() => {
+        const roomId = createDialogRoomId(props.publicKey, contactPublicKey);
+        props.history.push(path.join('/room', roomId || ''));
+      });
+  };
+
+  const onRemoveContact = (contactPublicKey, name) => {
+    return contactsService.removeContact(contactPublicKey, name)
+      .then(() => {
+        const {roomId} = props.match.params;
+        const dialogRoomId = createDialogRoomId(props.publicKey, contactPublicKey);
+        if (roomId === dialogRoomId) {
+          props.history.push(path.join('/room', ''));
+        }
+      });
+  };
+
+  const closeAddDialog = () => {
+    setShowAddDialog(false);
+  };
+
+  props = {
+    ...props,
+    search,
+    searchContacts,
+    searchReady,
+    contacts,
+    roomsReady,
+    rooms,
+    names,
+    tabId,
+    showAddDialog,
+    closeAddDialog,
+    onAddContact,
+    onRemoveContact,
+    onSearchChange(searchField) {
+      return searchContactsService.search(searchField);
+    },
+
+    onTabChange(event, nextTabId) {
+      setTabId(nextTabId);
+    },
+
+    onChange(event) {
+      props.onSearchChange(event.target.value);
+    },
+
+    sortContacts() {
+      return new Map([...props.rooms]
         .filter(([, {dialog, participants}]) => {
-          let contactExists = false;
-          if (participants.length === 2 &&
-            this.props.contacts.has(participants.find((publicKey) =>
-              publicKey !== this.props.publicKey))) {
-            contactExists = true;
-          }
-
-          if (this.state.tabId === "contacts" && (!dialog || !contactExists)) {
+          const contactExists = dialog && props.contacts
+            .has(participants.filter(publicKey => publicKey !== props.publicKey)[0]);
+          if (tabId === "contacts" && !contactExists) {
             return false;
           }
-          // get room name (filtering by search)
-          if (!(participants
-            .filter(participantPublicKey => participantPublicKey !== this.props.publicKey)
-            .map(publicKey => {
-              if (this.props.names.has(publicKey)) {
-                return this.props.names.get(publicKey)
-              }
-            })
-            .join(', ')).toLowerCase().includes(this.state.search.toLowerCase())) {
-            return false
+          if (getRoomName(participants, props.names, props.publicKey)
+            .toLowerCase().includes(props.search.toLowerCase())) {
+            return true;
           }
-          return true;
         })
-    );
-  }
+        .sort(([, leftRoom], [, rightRoom]) => {
+          return getRoomName(leftRoom.participants, props.names, props.publicKey)
+            .localeCompare(getRoomName(rightRoom.participants, props.names, props.publicKey))
+        }))
+    },
 
-  checkSearch() {
-    if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(this.state.search)) {
-      this.setState({
-        showAddDialog: true
-      });
+    checkSearch() {
+      if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(props.search)) {
+        setShowAddDialog(true);
+      }
     }
-  }
-
-  closeAddDialog = () => {
-    this.setState({
-      showAddDialog: false,
-      search: ''
-    });
   };
 
-  render() {
-    const {classes} = this.props;
-
-    if (!this.state.showAddDialog) {
-      this.checkSearch();
-    }
-
-    return (
-      <div className={classes.wrapper}>
-        <Search
-          classes={{search: classes.search}}
-          placeholder="People, groups, public keys..."
-          value={this.state.search}
-          onChange={this.onSearchChange}
-        />
-        <Paper square className={classes.paper}>
-          <Tabs
-            value={this.state.tabId}
-            centered={true}
-            indicatorColor="primary"
-            textColor="primary"
-            onChange={this.onTabChange}
-          >
-            <Tab value={ROOMS_TAB} label="Chats"/>
-            <Tab value={CONTACTS_TAB} label="Contacts"/>
-          </Tabs>
-        </Paper>
-        <div className={classes.chatsList}>
-          <RoomsList
-            rooms={this.getFilteredRooms(this.sortContacts())}
-            contacts={this.props.contacts}
-            names={this.props.names}
-            roomsReady={this.props.roomsReady}
-            onAddContact={this.props.addContact}
-            onRemoveContact={this.props.removeContact}
-            publicKey={this.props.publicKey}
-            isContactsTab={this.state.tabId === "contacts"}
-            myName={this.props.profile.name}
-          />
-
-          {this.state.search !== '' && (
-            <>
-              {!this.isSearchInContacts() && (
-                <Paper square className={classes.paperDivider}>
-                  <Typography className={classes.dividerText}>
-                    People
-                  </Typography>
-                </Paper>
-              )}
-              {!this.props.searchReady && this.props.error === undefined && (
-                <Grow in={!this.props.searchReady}>
-                  <div className={this.props.classes.progressWrapper}>
-                    <CircularProgress/>
-                  </div>
-                </Grow>
-              )}
-              {this.props.error !== undefined && (
-                <Paper square className={classes.paperError}>
-                  <Typography className={classes.dividerText}>
-                    {this.props.error}
-                  </Typography>
-                </Paper>
-              )}
-              {this.props.searchReady && (
-                <>
-                  {this.props.searchContacts.size !== 0 && (
-                    <List>
-                      {[...this.props.searchContacts]
-                        .filter(([publicKey,]) => publicKey !== this.props.publicKey)
-                        .map(([publicKey, contact]) => (
-                          <>
-                            {!this.props.contacts.has(publicKey) && (
-                              <SearchContactItem
-                                contactId={publicKey}
-                                contact={contact}
-                                publicKey={this.props.publicKey}
-                                onAddContact={this.props.addContact}
-                              />
-                            )}
-                          </>
-                        ))}
-                    </List>
-                  )}
-                  {this.getFilteredRooms(this.sortContacts()).size === 0 && this.props.searchContacts.size === 0 && (
-                    <Typography
-                      className={classes.secondaryDividerText}
-                      color="textSecondary"
-                      variant="body1"
-                    >
-                      Nothing found
-                    </Typography>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </div>
-        <AddContactDialog
-          open={this.state.showAddDialog}
-          onClose={this.closeAddDialog}
-          contactPublicKey={this.state.search}
-          publicKey={this.props.publicKey}
-          onAddContact={this.props.addContact}
-        />
-      </div>
-    );
-  }
+  return <SideBarView {...props}/>;
 }
 
 export default withRouter(
   withSnackbar(
-    withStyles(sideBarStyles)(
-      connectService(
-        ContactsContext, ({contacts, names}, contactsService, props) => ({
-          contacts, contactsService, names,
-          addContact(contactPublicKey, name) {
-            return contactsService.addContact(contactPublicKey, name)
-              .then(() => {
-                const roomId = createDialogRoomId(props.publicKey, contactPublicKey);
-                props.history.push(path.join('/room', roomId || ''));
-              })
-              .catch((err) => {
-                props.enqueueSnackbar(err.message, {
-                  variant: 'error'
-                });
-              });
-          },
-          removeContact(contactPublicKey, name) {
-            contactsService.removeContact(contactPublicKey, name)
-              .then(() => {
-                const {roomId} = props.match.params;
-                const dialogRoomId = createDialogRoomId(props.publicKey, contactPublicKey);
-                if (roomId === dialogRoomId) {
-                  props.history.push(path.join('/room', ''));
-                }
-              })
-              .catch((err) => {
-                props.enqueueSnackbar(err.message, {
-                  variant: 'error'
-                });
-              })
-          }
-        })
-      )(
-        connectService(
-          RoomsContext, ({roomsReady, rooms}, ) => ({
-            roomsReady, rooms
-          })
-        )(
-          connectService(
-            SearchContactsContext, ({searchContacts, searchReady, error}, searchContactsService) => ({
-              searchContacts, searchReady, searchContactsService,
-              search(searchField) {
-                return searchContactsService.search(searchField);
-              }
-            })
-          )(
-            connectService(MyProfileContext, ({profile, profileReady},) => ({
-                profile, profileReady
-              })
-            )(SideBar)
-          )
-        )
-      )
-    )
+    withStyles(sideBarStyles)(SideBar)
   )
 );

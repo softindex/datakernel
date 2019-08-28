@@ -93,6 +93,9 @@ const signUpStyles = theme => {
     },
     input: {
       display: 'none'
+    },
+    gridItem: {
+      padding: theme.spacing.unit * 2
     }
   }
 };

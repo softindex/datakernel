@@ -3,7 +3,12 @@ const confirmDialogStyles = theme => ({
     margin: theme.spacing,
     position: 'relative',
     right: theme.spacing.unit*2
-  }
+  },
+  circularProgress: {
+    position: 'absolute',
+    top: 'calc(50% - 12px)',
+    left: 'calc(50% - 12px)'
+  },
 });
 
 export default confirmDialogStyles;

@@ -7,12 +7,6 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
 
 function RoomsList(props) {
-  function onRemoveContact(room) {
-    const publicKey = room.participants.find(publicKey => publicKey !== props.publicKey);
-    const name = props.contacts.get(publicKey).name;
-    return props.onRemoveContact(publicKey, name);
-  }
-
   return (
     <>
       {!props.roomsReady && (
@@ -29,12 +23,12 @@ function RoomsList(props) {
               <RoomItem
                 roomId={roomId}
                 room={room}
-                isContactsTab={props.isContactsTab}
+                showDeleteButton={props.showDeleteButton}
                 contacts={props.contacts}
                 names={props.names}
                 publicKey={props.publicKey}
                 onAddContact={props.onAddContact}
-                onRemoveContact={onRemoveContact.bind(this, room)}
+                onRemoveContact={props.onRemoveContact}
                 myName={props.myName}
               />
             )

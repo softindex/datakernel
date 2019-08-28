@@ -35,6 +35,7 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
           {text}
         </Typography>
         <Typography
+          color="textSecondary"
           variant="caption">
           {time}
         </Typography>

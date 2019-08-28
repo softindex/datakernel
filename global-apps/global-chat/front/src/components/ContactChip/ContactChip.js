@@ -13,7 +13,7 @@ function ContactChip({classes, ...otherProps}) {
       color="primary"
       avatar={
         <Avatar>
-          {getAvatarLetters(otherProps.label).toUpperCase()}
+          {getAvatarLetters(otherProps.label)}
         </Avatar>
       }
       classes={{
