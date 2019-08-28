@@ -58,6 +58,7 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	}
 
 	@Override
+	@SuppressWarnings({"unchecked", "RedundantSuppression"})
 	public StreamReducerSimple<K, I, O, A> withBufferSize(int bufferSize) {
 		return (StreamReducerSimple<K, I, O, A>) super.withBufferSize(bufferSize);
 	}

@@ -43,10 +43,10 @@ public final class BindingInitializer<T> {
 		return combine(asList(bindingInitializers));
 	}
 
+	@SuppressWarnings("unchecked")
 	public static <T> BindingInitializer<T> combine(Collection<BindingInitializer<T>> bindingInitializers) {
 		return new BindingInitializer<>(bindingInitializers.stream().map(BindingInitializer::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
 				compiledBindings -> {
-					//noinspection unchecked
 					CompiledBindingInitializer<T>[] initializers = bindingInitializers.stream()
 							.filter(bindingInitializer -> bindingInitializer != NOOP)
 							.map(bindingInitializer -> bindingInitializer.compiler.compile(compiledBindings))

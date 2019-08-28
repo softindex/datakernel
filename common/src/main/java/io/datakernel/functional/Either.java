@@ -135,40 +135,39 @@ public final class Either<L, R> {
 		return new Either<>(right, left, !isRight);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	public <T> Either<T, R> mapLeft(@NotNull Function<? super L, ? extends T> fn) {
-		//noinspection unchecked
 		return isLeft() ?
 				new Either<>(fn.apply(left), null, false) :
 				(Either<T, R>) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	public <T> Either<L, T> mapRight(@NotNull Function<? super R, ? extends T> fn) {
-		//noinspection unchecked
 		return isRight() ?
 				new Either<>(null, fn.apply(right), true) :
 				(Either<L, T>) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	public <T> Either<T, R> flatMapLeft(@NotNull Function<? super L, Either<T, R>> fn) {
-		//noinspection unchecked
 		return isLeft() ?
 				fn.apply(left) :
 				(Either<T, R>) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	public <T> Either<L, T> flatMapRight(@NotNull Function<? super R, Either<L, T>> fn) {
-		//noinspection unchecked
 		return isRight() ?
 				fn.apply(right) :
 				(Either<L, T>) this;
 	}
-
 }

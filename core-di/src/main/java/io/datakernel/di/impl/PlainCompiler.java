@@ -20,6 +20,7 @@ public final class PlainCompiler<R> implements BindingCompiler<R> {
 		return new CompiledBinding<R>() {
 			final CompiledBinding<? extends R> compiledBinding = compiledBindings.get(to);
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public R getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 				R instance = compiledBinding.getInstance(scopedInstances, synchronizedScope);

@@ -229,9 +229,9 @@ public final class Injector {
 		compiledIndexes.put(key, index);
 		CompiledBinding<?> compiledBinding = binding.getCompiler().compile(
 				new CompiledBindingLocator() {
+					@SuppressWarnings("unchecked")
 					@Override
 					public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
-						//noinspection unchecked
 						return (CompiledBinding<Q>) compileBinding(scope, threadsafe, key, bindings,
 								compiledBindingsOfParent, compiledBindings, compiledIndexes);
 					}
@@ -407,11 +407,11 @@ public final class Injector {
 		putInstance(Key.of(key), instance);
 	}
 
+	@SuppressWarnings("unchecked")
 	public <T> void putInstance(Key<T> key, T instance) {
 		Integer index = compiledIndexes.get(key);
 		if (index == null)
 			throw new IllegalArgumentException("Key " + key + " is not found in scope " + Arrays.toString(getScope()));
-		//noinspection unchecked
 		scopedInstances[scopedInstances.length - 1].set(index, instance);
 	}
 

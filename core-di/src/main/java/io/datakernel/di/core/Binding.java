@@ -51,9 +51,9 @@ public final class Binding<T> {
 		return new Binding<>(emptySet(),
 				(compiledBindings, threadsafe, scope, index) ->
 						new CompiledBinding<T>() {
+							@SuppressWarnings("unchecked")
 							@Override
 							public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-								//noinspection unchecked
 								scopedInstances[scope].lazySet(index, instance);
 								return instance;
 							}
@@ -668,9 +668,9 @@ public final class Binding<T> {
 				(compiledBindings, threadsafe, scope, index) ->
 						compiler.compile(
 								new CompiledBindingLocator() {
+									@SuppressWarnings("unchecked")
 									@Override
 									public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
-										//noinspection unchecked
 										BindingCompiler<Q> compiler = (BindingCompiler<Q>) fn.apply(key);
 										return compiler.compile(compiledBindings, threadsafe, scope, index);
 									}

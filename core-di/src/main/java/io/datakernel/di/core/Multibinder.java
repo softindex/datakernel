@@ -48,9 +48,9 @@ public interface Multibinder<T> {
 											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings, true, scope, index))
 											.toArray(CompiledBinding[]::new);
 
+									@SuppressWarnings("unchecked")
 									@Override
 									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-										//noinspection unchecked
 										return reducerFunction.apply(key, Arrays.stream(conflictedBindings)
 												.map(binding -> (T) binding.createInstance(scopedInstances, synchronizedScope)));
 									}

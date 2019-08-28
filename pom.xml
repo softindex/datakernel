@@ -353,21 +353,5 @@
         <module>examples</module>
       </modules>
     </profile>
-    <profile>
-      <id>global</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <modules>
-        <module>global-common</module>
-        <module>global-ot</module>
-        <module>global-fs</module>
-        <module>global-kv</module>
-        <module>global-pm</module>
-        <module>global-launchers</module>
-        <module>global-apps</module>
-      </modules>
-    </profile>
   </profiles>
-
 </project>

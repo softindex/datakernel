@@ -7,8 +7,8 @@ public interface CompiledBinding<R> {
 
 	R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
 
+	@SuppressWarnings("unchecked")
 	static <R> CompiledBinding<R> missingOptionalBinding() {
-		//noinspection unchecked
 		return (CompiledBinding<R>) MISSING_OPTIONAL_BINDING;
 	}
 

@@ -38,6 +38,7 @@ public class InstanceConsumerModule extends AbstractModule {
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void configure() {
 		BindingTransformer<?> transformer = (bindings, scope, key, binding) -> {

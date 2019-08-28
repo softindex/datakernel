@@ -91,7 +91,6 @@ public final class Try<T> {
 	}
 
 	public static <T> Collector<Try<T>, ?, Try<T>> reducer(@Nullable T identity, @NotNull BinaryOperator<T> combiner) {
-		@SuppressWarnings("WeakerAccess")
 		class Accumulator {
 			T result = identity;
 			final List<Throwable> throwables = new ArrayList<>();
@@ -208,11 +207,11 @@ public final class Try<T> {
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Contract(pure = true)
 	@NotNull
 	private <U> Try<U> mold() {
 		assert throwable != null;
-		//noinspection unchecked
 		return (Try<U>) this;
 	}
 
