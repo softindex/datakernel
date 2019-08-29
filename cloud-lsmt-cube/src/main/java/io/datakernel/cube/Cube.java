@@ -917,29 +917,35 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		RecordFunction createRecordFunction() {
-			ExpressionSequence copyAttributes = ExpressionSequence.create();
-			ExpressionSequence copyMeasures = ExpressionSequence.create();
-
-			for (String field : recordScheme.getFields()) {
-				int fieldIndex = recordScheme.getFieldIndex(field);
-				if (dimensionTypes.containsKey(field)) {
-					copyAttributes.add(call(arg(1), "put", value(fieldIndex),
-							cast(dimensionTypes.get(field).toValue(
-									property(cast(arg(0), resultClass), field)), Object.class)));
-				} else if (measures.containsKey(field)) {
-					Property fieldValue = property(cast(arg(0), resultClass), field);
-					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
-							cast(measures.get(field).getFieldType().toValue(
-									measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
-				} else {
-					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
-							cast(property(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
-				}
-			}
-
 			return ClassBuilder.create(queryClassLoader, RecordFunction.class)
-					.withMethod("copyAttributes", copyAttributes)
-					.withMethod("copyMeasures", copyMeasures)
+					.withMethod("copyAttributes",
+							sequenceOf(expressions -> {
+								for (String field : recordScheme.getFields()) {
+									int fieldIndex = recordScheme.getFieldIndex(field);
+									if (dimensionTypes.containsKey(field)) {
+										expressions.add(call(arg(1), "put", value(fieldIndex),
+												cast(dimensionTypes.get(field).toValue(
+														property(cast(arg(0), resultClass), field)), Object.class)));
+									}
+								}
+							}))
+					.withMethod("copyMeasures",
+							sequenceOf(expressions -> {
+								for (String field : recordScheme.getFields()) {
+									int fieldIndex = recordScheme.getFieldIndex(field);
+									if (!dimensionTypes.containsKey(field)) {
+										if (measures.containsKey(field)) {
+											Property fieldValue = property(cast(arg(0), resultClass), field);
+											expressions.add(call(arg(1), "put", value(fieldIndex),
+													cast(measures.get(field).getFieldType().toValue(
+															measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
+										} else {
+											expressions.add(call(arg(1), "put", value(fieldIndex),
+													cast(property(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
+										}
+									}
+								}
+							}))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -1135,32 +1141,41 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		TotalsFunction<R, R> createTotalsFunction() {
-			ExpressionSequence zeroSequence = ExpressionSequence.create();
-			ExpressionSequence initSequence = ExpressionSequence.create();
-			ExpressionSequence accumulateSequence = ExpressionSequence.create();
-			for (String field : resultStoredMeasures) {
-				Measure measure = measures.get(field);
-				zeroSequence.add(measure.zeroAccumulator(
-						property(cast(arg(0), resultClass), field)));
-				initSequence.add(measure.initAccumulatorWithAccumulator(
-						property(cast(arg(0), resultClass), field),
-						property(cast(arg(1), resultClass), field)));
-				accumulateSequence.add(measure.reduce(
-						property(cast(arg(0), resultClass), field),
-						property(cast(arg(1), resultClass), field)));
-			}
-
-			ExpressionSequence computeSequence = ExpressionSequence.create();
-			for (String computedMeasure : resultComputedMeasures) {
-				Expression result = cast(arg(0), resultClass);
-				computeSequence.add(set(property(result, computedMeasure),
-						computedMeasures.get(computedMeasure).getExpression(result, measures)));
-			}
 			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)
-					.withMethod("zero", zeroSequence)
-					.withMethod("init", initSequence)
-					.withMethod("accumulate", accumulateSequence)
-					.withMethod("computeMeasures", computeSequence)
+					.withMethod("zero",
+							sequenceOf(expressions -> {
+								for (String field : resultStoredMeasures) {
+									Measure measure = measures.get(field);
+									expressions.add(measure.zeroAccumulator(
+											property(cast(arg(0), resultClass), field)));
+								}
+							}))
+					.withMethod("init",
+							sequenceOf(expressions -> {
+								for (String field : resultStoredMeasures) {
+									Measure measure = measures.get(field);
+									expressions.add(measure.initAccumulatorWithAccumulator(
+											property(cast(arg(0), resultClass), field),
+											property(cast(arg(1), resultClass), field)));
+								}
+							}))
+					.withMethod("accumulate",
+							sequenceOf(expressions -> {
+								for (String field : resultStoredMeasures) {
+									Measure measure = measures.get(field);
+									expressions.add(measure.reduce(
+											property(cast(arg(0), resultClass), field),
+											property(cast(arg(1), resultClass), field)));
+								}
+							}))
+					.withMethod("computeMeasures",
+							sequenceOf(expressions -> {
+								for (String computedMeasure : resultComputedMeasures) {
+									Expression result = cast(arg(0), resultClass);
+									expressions.add(set(property(result, computedMeasure),
+											computedMeasures.get(computedMeasure).getExpression(result, measures)));
+								}
+							}))
 					.buildClassAndCreateNewInstance();
 		}
 

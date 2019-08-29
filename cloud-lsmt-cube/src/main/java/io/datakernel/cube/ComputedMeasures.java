@@ -161,10 +161,12 @@ public final class ComputedMeasures {
 
 			@Override
 			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
-				Expression value = let(cast(measure.getExpression(record, storedMeasures), double.class));
-				return ifThenElse(cmpLe(value, Expressions.value(0.0d)),
-						Expressions.value(0.0d),
-						callStatic(Math.class, "sqrt", value));
+				return let(
+						cast(measure.getExpression(record, storedMeasures), double.class),
+						value ->
+								ifThenElse(cmpLe(value, Expressions.value(0.0d)),
+										Expressions.value(0.0d),
+										callStatic(Math.class, "sqrt", value)));
 			}
 		};
 	}

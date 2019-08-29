@@ -104,7 +104,7 @@ public final class ExpressionSwitchForKey implements Expression {
 		if (defaultExp != null) {
 			defaultExp.load(ctx);
 		} else {
-			Variable sb = let(constructor(StringBuilder.class));
+			Variable sb = new ExpressionLet(constructor(StringBuilder.class));
 			call(sb, "append", value("Key '")).load(ctx);
 			call(sb, "append", keyPrimitiveType ? varKey : call(key, "toString")).load(ctx);
 			call(sb, "append", value("' not in keyList: [")).load(ctx);

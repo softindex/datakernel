@@ -52,7 +52,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	protected abstract Expression mapForEach(Expression collection, Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value);
 
 	protected Expression createConstructor(Expression length) {
-		return let(constructor(mapImplType, (!nullable ? length : dec(length))));
+		return let(constructor(mapImplType, !nullable ? length : dec(length)));
 	}
 
 	@Override
@@ -96,22 +96,25 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	@Override
 	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		check(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
-		Expression length = let(call(arg(0), "readVarInt"));
-		Expression container = createConstructor(length);
-		Expression forEach = expressionFor(value(0), (!nullable ? length : dec(length)),
-				it -> sequence(
-						call(container, "put",
-								cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), keyType),
-								cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), valueType)
-						),
-						voidExp()));
-		if (!nullable) {
-			return sequence(container, forEach, container);
-		} else {
-			return ifThenElse(cmpEq(length, value(0)),
-					nullRef(mapImplType),
-					sequence(container, forEach, container));
-		}
+		return let(
+				call(arg(0), "readVarInt"),
+				length -> {
+					Expression container = createConstructor(length);
+					Expression forEach = expressionFor(value(0), (!nullable ? length : dec(length)),
+							it -> sequence(
+									call(container, "put",
+											cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), keyType),
+											cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), valueType)
+									),
+									voidExp()));
+					if (!nullable) {
+						return sequence(container, forEach, container);
+					} else {
+						return ifThenElse(cmpEq(length, value(0)),
+								nullRef(mapImplType),
+								sequence(container, forEach, container));
+					}
+				});
 	}
 
 	@Override

@@ -219,10 +219,6 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		return this;
 	}
 
-	public ClassBuilder<T> withMethod(String methodName, Supplier<? extends Expression> expression) {
-		return withMethod(methodName, expression.get());
-	}
-
 	/**
 	 * CCreates a new method for a dynamic class
 	 *

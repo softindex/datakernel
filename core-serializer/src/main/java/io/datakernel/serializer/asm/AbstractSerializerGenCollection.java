@@ -50,7 +50,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	protected Expression createConstructor(Expression length) {
-		return let(constructor(collectionImplType, (!nullable ? length : dec(length))));
+		return let(constructor(collectionImplType, !nullable ? length : dec(length)));
 	}
 
 	@Override
@@ -90,19 +90,21 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	@Override
 	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		check(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
-		Expression length = let(call(arg(0), "readVarInt"));
-		Expression container = createConstructor(length);
-
-		Expression deserializeEach = expressionFor(value(0), !nullable ? length : dec(length),
-				it -> sequence(
-						call(container, "add", cast(valueSerializer.deserialize(elementType, version, staticMethods, compatibilityLevel), elementType)),
-						voidExp()));
-		if (!nullable) {
-			return sequence(container, deserializeEach, container);
-		}
-		return ifThenElse(cmpEq(length, value(0)),
-				nullRef(collectionImplType),
-				sequence(container, deserializeEach, container));
+		return let(
+				call(arg(0), "readVarInt"),
+				length -> {
+					Expression container = createConstructor(length);
+					Expression deserializeEach = expressionFor(value(0), !nullable ? length : dec(length),
+							it -> sequence(
+									call(container, "add", cast(valueSerializer.deserialize(elementType, version, staticMethods, compatibilityLevel), elementType)),
+									voidExp()));
+					if (!nullable) {
+						return sequence(container, deserializeEach, container);
+					}
+					return ifThenElse(cmpEq(length, value(0)),
+							nullRef(collectionImplType),
+							sequence(container, deserializeEach, container));
+				});
 	}
 
 	@Override

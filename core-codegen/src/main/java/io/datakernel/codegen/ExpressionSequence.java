@@ -29,17 +29,13 @@ import static org.objectweb.asm.Type.VOID_TYPE;
  * Defines methods which allow to use several methods one after the other
  */
 public final class ExpressionSequence implements Expression {
-	private final List<Expression> expressions = new ArrayList<>();
+	final List<Expression> expressions = new ArrayList<>();
 
-	private ExpressionSequence() {
+	public ExpressionSequence() {
 	}
 
-	ExpressionSequence(List<Expression> expressions) {
+	public ExpressionSequence(List<Expression> expressions) {
 		this.expressions.addAll(expressions);
-	}
-
-	public static ExpressionSequence create() {
-		return new ExpressionSequence();
 	}
 
 	public ExpressionSequence add(Expression expression) {

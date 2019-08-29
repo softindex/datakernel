@@ -17,7 +17,6 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -119,27 +118,32 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		Expression len = let(call(arg(0), "readVarInt"));
-		Expression array = let(Expressions.newArray(type, !nullable ? len : dec(len)));
-		Expression expressionFor = expressionFor(value(0), !nullable ? len : dec(len),
-				it -> setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType())));
-		if (!nullable) {
-			if (type.getComponentType() == Byte.TYPE) {
-				return sequence(call(arg(0), "read", array), array);
-			} else {
-				return sequence(array, expressionFor, array);
-			}
-		} else {
-			if (type.getComponentType() == Byte.TYPE) {
-				return ifThenElse(cmpEq(len, value(0)),
-						nullRef(type),
-						sequence(call(arg(0), "read", array), array));
-			} else {
-				return ifThenElse(cmpEq(len, value(0)),
-						nullRef(type),
-						sequence(array, expressionFor, array));
-			}
-		}
+		return !nullable ?
+				let(call(arg(0), "readVarInt"), len ->
+						let(newArray(type, len), array ->
+								type.getComponentType() == Byte.TYPE ?
+										sequence(
+												call(arg(0), "read", array),
+												array) :
+										sequence(
+												expressionFor(value(0), len,
+														i -> setArrayItem(array, i,
+																cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
+												array))) :
+				let(call(arg(0), "readVarInt"), len ->
+						ifThenElse(cmpEq(len, value(0)),
+								nullRef(type),
+								let(newArray(type, dec(len)), array ->
+										type.getComponentType() == Byte.TYPE ?
+												sequence(
+														call(arg(0), "read", array),
+														array) :
+												sequence(
+														expressionFor(value(0), dec(len),
+																i -> setArrayItem(array, i,
+																		cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
+														array)
+								)));
 	}
 
 	@Override
@@ -153,7 +157,8 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 		if (nullable != that.nullable) return false;
 		if (!Objects.equals(valueSerializer, that.valueSerializer))
 			return false;
-		return !(!Objects.equals(type, that.type));
+		if (!Objects.equals(type, that.type)) return false;
+		return true;
 
 	}
 

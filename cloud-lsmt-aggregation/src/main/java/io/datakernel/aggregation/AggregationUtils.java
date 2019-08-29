@@ -23,7 +23,9 @@ import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codegen.*;
+import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
@@ -77,16 +79,16 @@ public class AggregationUtils {
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withMethod("apply", () -> {
-					Expression result1 = let(constructor(resultClass));
-					ExpressionSequence sequence = ExpressionSequence.create();
-					for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
-						sequence.add(set(
-								property(result1, fieldName),
-								property(cast(arg(0), recordClass), fieldName)));
-					}
-					return sequence.add(result1);
-				})
+				.withMethod("apply",
+						let(constructor(resultClass), result ->
+								sequenceOf(expressions -> {
+									for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
+										expressions.add(set(
+												property(result, fieldName),
+												property(cast(arg(0), recordClass), fieldName)));
+									}
+									expressions.add(result);
+								})))
 				.buildClassAndCreateNewInstance();
 	}
 
@@ -94,16 +96,17 @@ public class AggregationUtils {
 			List<String> keys,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withMethod("apply", () -> {
-					Expression key = let(constructor(keyClass));
-					ExpressionSequence sequence = ExpressionSequence.create();
-					for (String keyString : keys) {
-						sequence.add(set(
-								property(key, keyString),
-								property(cast(arg(0), recordClass), keyString)));
-					}
-					return sequence.add(key);
-				})
+				.withMethod("apply",
+						let(constructor(keyClass), key ->
+								sequenceOf(expressions -> {
+									for (String keyString : keys) {
+										expressions.add(
+												set(
+														property(key, keyString),
+														property(cast(arg(0), recordClass), keyString)));
+									}
+									expressions.add(key);
+								})))
 				.buildClassAndCreateNewInstance();
 	}
 
@@ -166,34 +169,39 @@ public class AggregationUtils {
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 
-		Expression accumulator = let(constructor(outputClass));
-		ExpressionSequence onFirstItem = ExpressionSequence.create();
-		ExpressionSequence onNextItem = ExpressionSequence.create();
-
-		for (String key : keys) {
-			onFirstItem.add(set(
-					property(accumulator, key),
-					property(cast(arg(2), inputClass), key)));
-		}
-
-		for (String field : fields) {
-			Measure aggregateFunction = aggregation.getMeasure(field);
-			onFirstItem.add(aggregateFunction.initAccumulatorWithAccumulator(
-					property(accumulator, field),
-					property(cast(arg(2), inputClass), field)
-			));
-			onNextItem.add(aggregateFunction.reduce(
-					property(cast(arg(3), outputClass), field),
-					property(cast(arg(2), inputClass), field)
-			));
-		}
-
-		onFirstItem.add(accumulator);
-		onNextItem.add(arg(3));
-
 		return ClassBuilder.create(classLoader, Reducer.class)
-				.withMethod("onFirstItem", onFirstItem)
-				.withMethod("onNextItem", onNextItem)
+				.withMethod("onFirstItem",
+						let(constructor(outputClass), accumulator ->
+								sequenceOf(expressions -> {
+									for (String key : keys) {
+										expressions.add(
+												set(
+														property(accumulator, key),
+														property(cast(arg(2), inputClass), key)
+												));
+									}
+									for (String field : fields) {
+										expressions.add(
+												aggregation.getMeasure(field)
+														.initAccumulatorWithAccumulator(
+																property(accumulator, field),
+																property(cast(arg(2), inputClass), field)
+														));
+									}
+									expressions.add(accumulator);
+								})))
+				.withMethod("onNextItem",
+						sequenceOf(expressions -> {
+							for (String field : fields) {
+								expressions.add(
+										aggregation.getMeasure(field)
+												.reduce(
+														property(cast(arg(3), outputClass), field),
+														property(cast(arg(2), inputClass), field)
+												));
+							}
+							expressions.add(arg(3));
+						}))
 				.withMethod("onComplete", call(arg(0), "accept", arg(2)))
 				.buildClassAndCreateNewInstance();
 	}
@@ -202,34 +210,37 @@ public class AggregationUtils {
 			Map<String, String> keyFields, Map<String, String> measureFields,
 			DefiningClassLoader classLoader) {
 
-		Expression accumulator = let(constructor(outputClass));
-		ExpressionSequence createAccumulator = ExpressionSequence.create();
-		ExpressionSequence accumulate = ExpressionSequence.create();
-
-		for (String key : keyFields.keySet()) {
-			String inputField = keyFields.get(key);
-			createAccumulator.add(set(
-					property(accumulator, key),
-					property(cast(arg(0), inputClass), inputField)));
-		}
-
-		for (String measure : measureFields.keySet()) {
-			String inputFields = measureFields.get(measure);
-			Measure aggregateFunction = aggregation.getMeasure(measure);
-
-			createAccumulator.add(aggregateFunction.initAccumulatorWithValue(
-					property(accumulator, measure),
-					inputFields == null ? null : property(cast(arg(0), inputClass), inputFields)));
-			accumulate.add(aggregateFunction.accumulate(
-					property(cast(arg(0), outputClass), measure),
-					inputFields == null ? null : property(cast(arg(1), inputClass), inputFields)));
-		}
-
-		createAccumulator.add(accumulator);
-
 		return ClassBuilder.create(classLoader, Aggregate.class)
-				.withMethod("createAccumulator", createAccumulator)
-				.withMethod("accumulate", accumulate)
+				.withMethod("createAccumulator",
+						let(constructor(outputClass), accumulator ->
+								sequenceOf(expressions -> {
+									for (String key : keyFields.keySet()) {
+										String inputField = keyFields.get(key);
+										expressions.add(set(
+												property(accumulator, key),
+												property(cast(arg(0), inputClass), inputField)));
+									}
+									for (String measure : measureFields.keySet()) {
+										String inputFields = measureFields.get(measure);
+										Measure aggregateFunction = aggregation.getMeasure(measure);
+
+										expressions.add(aggregateFunction.initAccumulatorWithValue(
+												property(accumulator, measure),
+												inputFields == null ? null : property(cast(arg(0), inputClass), inputFields)));
+									}
+									expressions.add(accumulator);
+								})))
+				.withMethod("accumulate",
+						sequenceOf(expressions -> {
+							for (String measure : measureFields.keySet()) {
+								String inputFields = measureFields.get(measure);
+								Measure aggregateFunction = aggregation.getMeasure(measure);
+
+								expressions.add(aggregateFunction.accumulate(
+										property(cast(arg(0), outputClass), measure),
+										inputFields == null ? null : property(cast(arg(1), inputClass), inputFields)));
+							}
+						}))
 				.buildClassAndCreateNewInstance();
 	}
 

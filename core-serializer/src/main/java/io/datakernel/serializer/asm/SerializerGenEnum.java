@@ -85,20 +85,19 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	@Override
 	public Expression deserialize(Class<?> targetType, int version,
 			StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		if (isSmallEnum()) {
-			Variable value = let(call(arg(0), "readByte"));
-			return !nullable ?
-					getArrayItem(callStatic(enumType, "values"), value) :
-					ifThenElse(cmpEq(value, value((byte) 0)),
-							nullRef(enumType),
-							getArrayItem(callStatic(enumType, "values"), dec(value)));
-		}
-		Variable value = let(call(arg(0), "readVarInt"));
-		return !nullable ?
-				getArrayItem(callStatic(enumType, "values"), value) :
-				ifThenElse(cmpEq(value, value(0)),
-						nullRef(enumType),
-						getArrayItem(callStatic(enumType, "values"), dec(value)));
+		return isSmallEnum() ?
+				let(call(arg(0), "readByte"), value ->
+						!nullable ?
+								getArrayItem(callStatic(enumType, "values"), value) :
+								ifThenElse(cmpEq(value, value((byte) 0)),
+										nullRef(enumType),
+										getArrayItem(callStatic(enumType, "values"), dec(value)))) :
+				let(call(arg(0), "readVarInt"), value ->
+						!nullable ?
+								getArrayItem(callStatic(enumType, "values"), value) :
+								ifThenElse(cmpEq(value, value(0)),
+										nullRef(enumType),
+										getArrayItem(callStatic(enumType, "values"), dec(value))));
 	}
 
 	private boolean isSmallEnum() {

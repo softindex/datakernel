@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.ExpressionComparator.*;
@@ -60,7 +61,8 @@ public final class Expressions {
 	}
 
 	public static Expression let(Expression expression, Function<Variable, Expression> fn) {
-		return fn.apply(new ExpressionLet(expression));
+		ExpressionLet let = new ExpressionLet(expression);
+		return sequence(let, fn.apply(let));
 	}
 
 	public static Expression let(Expression expression1, Expression expression2, BiFunction<Variable, Variable, Expression> fn) {
@@ -103,7 +105,7 @@ public final class Expressions {
 	/**
 	 * Returns the property from {@code owner}
 	 *
-	 * @param owner owner of the property
+	 * @param owner    owner of the property
 	 * @param property name of the property which will be returned
 	 * @return new instance of the Property
 	 */
@@ -125,9 +127,9 @@ public final class Expressions {
 	/**
 	 * Sets value to the property in {@code owner}
 	 *
-	 * @param owner owner of the property
+	 * @param owner    owner of the property
 	 * @param property name of property which will be changed
-	 * @param value new value for the property
+	 * @param value    new value for the property
 	 * @return new instance of the ExpressionSet
 	 */
 	public static Expression set(Expression owner, String property, Expression value) {
@@ -305,7 +307,7 @@ public final class Expressions {
 	/**
 	 * Compares the properties
 	 *
-	 * @param type type of the properties
+	 * @param type       type of the properties
 	 * @param properties properties which will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
@@ -320,7 +322,7 @@ public final class Expressions {
 	/**
 	 * Compares the properties
 	 *
-	 * @param type   type of the properties
+	 * @param type       type of the properties
 	 * @param properties properties which will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
@@ -613,4 +615,9 @@ public final class Expressions {
 		return call(list, "add", value);
 	}
 
+	public static ExpressionSequence sequenceOf(Consumer<List<Expression>> consumer) {
+		ExpressionSequence sequence = new ExpressionSequence();
+		consumer.accept(sequence.expressions);
+		return sequence;
+	}
 }
