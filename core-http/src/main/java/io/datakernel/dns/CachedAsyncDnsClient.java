@@ -83,8 +83,8 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		return cache;
 	}
 
-	public AsyncDnsClient adaptToOtherEventloop(Eventloop other) {
-		if (other == eventloop) {
+	public AsyncDnsClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
+		if (anotherEventloop == eventloop) {
 			return this;
 		}
 		return new AsyncDnsClient() {
@@ -104,13 +104,13 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 					return cacheResult.getResponseAsPromise();
 				}
 
-				other.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
+				anotherEventloop.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
 				return Promise.ofCallback(cb ->
 								eventloop.execute(() ->
 										CachedAsyncDnsClient.this.resolve(query)
 												.whenComplete((result, e) -> {
-													other.execute(() -> cb.accept(result, e));
-													other.completeExternalTask();
+													anotherEventloop.execute(() -> cb.accept(result, e));
+													anotherEventloop.completeExternalTask();
 												})));
 			}
 

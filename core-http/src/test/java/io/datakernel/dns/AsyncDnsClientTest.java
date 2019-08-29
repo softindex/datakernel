@@ -143,7 +143,7 @@ public final class AsyncDnsClientTest {
 					eventloop.startExternalTask();
 					Eventloop subloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-					AsyncDnsClient cachedClient = primaryCachedDnsClient.adaptToOtherEventloop(subloop);
+					AsyncDnsClient cachedClient = primaryCachedDnsClient.adaptToAnotherEventloop(subloop);
 
 					Promises.toList(
 							Stream.generate(() -> null)

@@ -53,6 +53,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.async.Callback.toAnotherEventloop;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.util.Preconditions.*;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -461,20 +462,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-				eventloop.execute(() -> {
-					if (timeout > 0) {
-						requestSender.sendRequest(request, timeout,
-								(Callback<O>) (result, e) -> {
-									if (e == null) {
-										anotherEventloop.execute(() -> cb.accept(result, null));
-									} else {
-										anotherEventloop.execute(() -> cb.accept(null, e));
-									}
-								});
-					} else {
-						anotherEventloop.execute(() -> cb.accept(null, RPC_TIMEOUT_EXCEPTION));
-					}
-				});
+				if (timeout > 0) {
+					eventloop.execute(() ->
+							requestSender.sendRequest(request, timeout, toAnotherEventloop(anotherEventloop, cb)));
+				} else {
+					cb.accept(null, RPC_TIMEOUT_EXCEPTION);
+				}
 			}
 
 		};
