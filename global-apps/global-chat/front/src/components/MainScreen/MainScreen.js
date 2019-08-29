@@ -4,7 +4,7 @@ import ChatRoom from "../ChatRoom/ChatRoom"
 import SideBar from "../SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
-import {checkAuth, AuthContext, connectService, RegisterDependency} from 'global-apps-common';
+import {checkAuth, AuthContext, connectService, RegisterDependency, useService} from 'global-apps-common';
 import {withSnackbar} from "notistack";
 import EmptyChat from "../EmptyChatRoom/EmptyChatRoom";
 import ContactsService from "../../modules/contacts/ContactsService";
@@ -63,6 +63,9 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
     };
   }, [publicKey]);
 
+  const {rooms} = useService(roomsService);
+  const {names} = useService(namesService);
+
   useEffect(() => {
     Promise.all([
       contactsService.init(),
@@ -95,10 +98,10 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
             <RegisterDependency name={MyProfileService} value={profileService}>
                 <Header
                   roomId={roomId}
-                  title={roomsService.state.rooms.has(roomId) ?
+                  title={rooms.has(roomId) ?
                     getRoomName(
-                      roomsService.state.rooms.get(roomId).participants,
-                      namesService.state.names, publicKey
+                      rooms.get(roomId).participants,
+                      names, publicKey
                     ) : ''
                   }
                 />

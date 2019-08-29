@@ -11,7 +11,8 @@ class MyProfileService extends Service {
   constructor(profileOTStateManager) {
     super({
       profile: {},
-      profileReady: false
+      profileReady: false,
+      profileError: ''
     });
     this._profileOTStateManager = profileOTStateManager;
     this._reconnectTimeout = null;

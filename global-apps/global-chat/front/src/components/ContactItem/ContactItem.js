@@ -8,55 +8,28 @@ import {withRouter} from "react-router-dom";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import {getAppStoreContactName} from "global-apps-common";
 
-function ContactItem(props) {
-  const [showAddContactDialog, setAddDialog] = useState(false);
-  const onContactClick = () => {
-    setAddDialog(true);
-  };
-
-  const closeAddDialog = () => {
-    setAddDialog(false);
-  };
-
-  function onConfirmAddContact(contactId) {
-    return props.onAddContact(contactId)
-      .catch((err) => {
-        props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      });
-  }
-
+function ContactItem({contact, onClick, classes, selected, contactName}) {
   return (
-    <>
-      <ListItem
-        onClick={props.onClick || onContactClick}
-        className={props.classes.listItem}
-        button
-      >
-        <Avatar
-          selected={!props.selected}
-          name={props.contactName || getAppStoreContactName(props.contact)}
-        />
-        <ListItemText
-          primary={props.contact.username || props.contactName}
-          secondary={props.contact.firstName !== '' && props.contact.lastName !== '' &&
-          Object.keys(props.contact).length !== 0 ?
-            props.contact.firstName + ' ' + props.contact.lastName : null}
-          className={props.classes.itemText}
-          classes={{
-            primary: props.classes.itemTextPrimary
-          }}
-        />
-      </ListItem>
-      <ConfirmDialog
-        open={showAddContactDialog}
-        onClose={closeAddDialog}
-        title="Add Contact"
-        subtitle="Do you want to add this contact?"
-        onConfirm={() => {return onConfirmAddContact(props.contactId)}}
+    <ListItem
+      onClick={onClick}
+      className={classes.listItem}
+      button
+    >
+      <Avatar
+        selected={!selected}
+        name={contactName || getAppStoreContactName(contact)}
       />
-    </>
+      <ListItemText
+        primary={contact.username || contactName}
+        secondary={contact.firstName !== '' && contact.lastName !== '' &&
+        Object.keys(contact).length !== 0 ?
+          contact.firstName + ' ' + contact.lastName : null}
+        className={classes.itemText}
+        classes={{
+          primary: classes.itemTextPrimary
+        }}
+      />
+    </ListItem>
   )
 }
 

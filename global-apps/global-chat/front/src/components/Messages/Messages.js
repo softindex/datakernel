@@ -4,12 +4,13 @@ import messagesStyles from './messagesStyles';
 import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Grow from '@material-ui/core/Grow';
-import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 import {connectService} from 'global-apps-common';
 import {AuthContext} from "global-apps-common";
-import ContactsContext from "../../modules/contacts/ContactsContext";
+import {getInstance, useService} from "global-apps-common/lib";
+import NamesService from "../../modules/names/NamesService";
+import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 
-class Messages extends React.Component {
+class MessagesView extends React.Component {
   wrapper = React.createRef();
 
   componentDidUpdate(prevProps) {
@@ -62,21 +63,27 @@ class Messages extends React.Component {
   }
 }
 
+function Messages(props) {
+  const namesService = getInstance(NamesService);
+  const {names} = useService(namesService);
+  const chatRoomService = getInstance(ChatRoomService);
+  const {messages, chatReady} = useService(chatRoomService);
+
+  props = {
+    ...props,
+    names,
+    messages,
+    chatReady
+  };
+
+  return <MessagesView {...props} />
+}
+
 export default withStyles(messagesStyles)(
   connectService(
-    ContactsContext,
-    ({names}) => ({names})
+    AuthContext,
+    ({publicKey}) => ({publicKey})
   )(
-    connectService(
-      ChatRoomContext,
-      ({messages, chatReady}) => ({messages, chatReady})
-    )(
-      connectService(
-        AuthContext,
-        ({publicKey}) => ({publicKey})
-      )(
-        Messages
-      )
-    )
+    Messages
   )
 );

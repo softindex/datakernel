@@ -10,7 +10,7 @@ import confirmDialogStyles from "./confirmDialogStyles";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import {withSnackbar} from "notistack";
 
-function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes}) {
+function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes, enqueueSnackbar}) {
   const [loading, setLoading] = useState(false);
 
   const onAgree = () => {
@@ -20,7 +20,7 @@ function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes}) {
         onClose();
       })
       .catch(err => {
-        this.props.enqueueSnackbar(err.message, {
+        enqueueSnackbar(err.message, {
           variant: 'error'
         });
       })

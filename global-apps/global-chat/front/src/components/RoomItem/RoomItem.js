@@ -31,11 +31,10 @@ class RoomItem extends React.Component {
 
   onRemoveContact(room) {
     const publicKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
-    const name = this.props.contacts.get(publicKey).name;
     if (!window.navigator.onLine) {
-      this.props.enqueueSnackbar('Deleting...');
+      this.props.enqueueSnackbar('Deleting...'); // TODO
     }
-    this.props.onRemoveContact(publicKey, name)
+    this.props.onRemoveContact(publicKey)
       .catch((err) => {
         this.props.enqueueSnackbar(err.message, {
           variant: 'error'
@@ -48,16 +47,6 @@ class RoomItem extends React.Component {
       showAddContactDialog: false
     });
   };
-
-  checkContactExists(room) {
-    if (!room.dialog) {
-      return false;
-    }
-    const participantPublicKey = room.participants.find(participantPublicKey => {
-      return participantPublicKey !== this.props.publicKey;
-    });
-    return !this.props.contacts.has(participantPublicKey);
-  }
 
   getContactId(room) {
     return room.participants
@@ -72,10 +61,9 @@ class RoomItem extends React.Component {
     return (
       <>
         <ListItem
-          onClick={this.props.onClick}
           className={classes.listItem}
           button
-          selected={roomId === this.props.match.params.roomId && this.props.active}
+          selected={roomId === this.props.match.params.roomId}
         >
           <Link
             to={roomURL}
@@ -91,7 +79,7 @@ class RoomItem extends React.Component {
               classes={{primary: classes.itemTextPrimary}}
             />
           </Link>
-          {this.checkContactExists(room) && !this.props.showDeleteButton && (
+          {this.props.showAddContactButton && !this.props.showDeleteButton && (
             <ContactMenu onAddContact={this.onClickAddContact.bind(this)}/>
           )}
           {this.props.showDeleteButton && (
@@ -107,7 +95,6 @@ class RoomItem extends React.Component {
           open={this.state.showAddContactDialog}
           onClose={this.closeAddDialog}
           contactPublicKey={this.getContactId(room)}
-          publicKey={this.props.publicKey}
           onAddContact={this.props.onAddContact}
         />
       </>

@@ -87,7 +87,7 @@ export default connectService(
   ({publicKey}, authService) => ({
     publicKey,
     onLogout() {
-      authService.onLogout();
+      authService.logout();
     }
   })
 )(

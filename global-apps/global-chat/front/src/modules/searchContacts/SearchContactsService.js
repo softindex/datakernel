@@ -9,7 +9,7 @@ class SearchContactsService extends Service {
       searchContacts: new Map(),
       searchReady: false,
       search: '',
-      error: ''
+      searchError: ''
     });
 
     this._globalAppStoreAPI = globalAppStoreAPI;
@@ -39,18 +39,21 @@ class SearchContactsService extends Service {
   search(searchField) {
     this.setState({search: searchField, searchReady: false});
     const contacts = this._contactsOTStateManager.getState();
+
     this._globalAppStoreAPI.search(this.state.search)
       .then(appStoreContacts => {
-        const searchContacts = new Map([...appStoreContacts]
-          .map(({profile, pubKey}) => ([pubKey, profile]))
-          .filter(([publicKey,]) => !contacts.has(publicKey)));
+        const searchContacts = new Map(
+          [...appStoreContacts]
+            .map(({profile, pubKey}) => ([pubKey, profile]))
+            .filter(([publicKey,]) => !contacts.has(publicKey))
+        );
         this.setState({
           searchContacts,
           searchReady: true
         });
       }).catch((error) => {
       console.error(error);
-      this.setState({error: error.toString()})
+      this.setState({searchError: error.toString()})
     });
   }
 }

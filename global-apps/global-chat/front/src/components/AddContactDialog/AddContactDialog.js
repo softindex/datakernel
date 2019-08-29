@@ -80,6 +80,7 @@ class AddContactDialog extends React.Component {
               className={this.props.classes.actionButton}
               loading={this.state.loading}
               type="submit"
+              disabled={this.state.loading}
               color="primary"
               variant="contained"
             >

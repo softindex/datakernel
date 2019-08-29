@@ -4,10 +4,10 @@ import chatStyles from './chatRoomStyles';
 import Messages from '../Messages/Messages';
 import MessageForm from '../MessageForm/MessageForm';
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
-import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
 import {connectService} from 'global-apps-common';
 import {AuthContext} from 'global-apps-common';
 import {withSnackbar} from "notistack";
+import {RegisterDependency} from "global-apps-common/lib";
 
 class ChatRoom extends React.Component {
   state = {
@@ -42,12 +42,12 @@ class ChatRoom extends React.Component {
 
   render() {
     return (
-      <ChatRoomContext.Provider value={this.state.chatRoomService}>
+      <RegisterDependency name={ChatRoomService} value={this.state.chatRoomService}>
         <div className={this.props.classes.root}>
           <Messages/>
           <MessageForm/>
         </div>
-      </ChatRoomContext.Provider>
+      </RegisterDependency>
     );
   }
 }

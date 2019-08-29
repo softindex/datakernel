@@ -10,7 +10,8 @@ class ContactsService extends Service {
     super({
       contacts: new Map(),
       names: new Map(),
-      contactsReady: false
+      contactsReady: false,
+      contactsError: ''
     });
     this._myPublicKey = publicKey;
     this._contactsOTStateManager = contactsOTStateManager;
@@ -43,17 +44,26 @@ class ContactsService extends Service {
     const operation = new ContactsOTOperation(publicKey, alias, false);
     this._contactsOTStateManager.add([operation]);
 
-    await this._roomsService.createDialog(publicKey);
+    const dialogRoomId = await this._roomsService.createDialog(publicKey);
     await this._sync();
+
+    return {
+      dialogRoomId
+    };
   }
 
-  async removeContact(publicKey, alias) {
+  async removeContact(publicKey) {
+    const alias = this.state.contacts.get(publicKey).name;
     let operation = new ContactsOTOperation(publicKey, alias, true);
     this._contactsOTStateManager.add([operation]);
 
-    const roomId = createDialogRoomId(this._myPublicKey, publicKey);
-    await this._roomsService.quitRoom(roomId);
+    const dialogRoomId = createDialogRoomId(this._myPublicKey, publicKey);
+    await this._roomsService.quitRoom(dialogRoomId);
     await this._sync();
+
+    return {
+      dialogRoomId
+    }
   }
 
   _onStateChange = () => {

@@ -12,6 +12,7 @@ class ChatRoomService extends Service {
     super({
       messages: [],
       chatReady: false,
+      chatRoomError: ''
     });
     this._chatOTStateManager = chatOTStateManager;
     this._reconnectTimeout = null;

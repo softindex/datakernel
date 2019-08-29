@@ -5,8 +5,19 @@ import roomsListStyles from "./roomsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
+import {withRouter} from "react-router-dom";
 
 function RoomsList(props) {
+  function checkContactExists(room) {
+    if (!room.dialog) {
+      return false;
+    }
+    const participantPublicKey = room.participants.find(participantPublicKey => {
+      return participantPublicKey !== props.publicKey;
+    });
+    return !props.contacts.has(participantPublicKey);
+  }
+
   return (
     <>
       {!props.roomsReady && (
@@ -24,7 +35,7 @@ function RoomsList(props) {
                 roomId={roomId}
                 room={room}
                 showDeleteButton={props.showDeleteButton}
-                contacts={props.contacts}
+                showAddContactButton={checkContactExists(room)}
                 names={props.names}
                 publicKey={props.publicKey}
                 onAddContact={props.onAddContact}
@@ -39,4 +50,6 @@ function RoomsList(props) {
   );
 }
 
-export default withStyles(roomsListStyles)(RoomsList);
+export default withStyles(roomsListStyles)(
+  withRouter(RoomsList)
+);

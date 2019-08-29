@@ -27,6 +27,9 @@ export {
   Avatar
 }
 
+export * from './utils/utils';
+export * from './useService';
+export * from './DI';
 // export * from './auth/AuthService';
 // export * from './auth/AuthContext';
 // export * from './auth/checkAuth';
@@ -38,6 +41,3 @@ export {
 // export * from './signUp/SignUp/SignUp';
 // export * from './signUp/SignUpAbstractionImage/SignUpAbstractionImage';
 // export * from './avatar/Avatar';
-export * from './utils/utils';
-export * from './useService';
-export * from './DI';

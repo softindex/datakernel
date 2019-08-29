@@ -7,8 +7,30 @@ import Paper from "@material-ui/core/Paper";
 import Typography from "@material-ui/core/Typography";
 import ContactItem from "../ContactItem/ContactItem";
 import {withSnackbar} from "notistack";
+import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 
 function ContactsList(props) {
+  const [showAddContactDialog, setAddDialog] = useState(false);
+  const [contactId, setContactId] = useState('');
+
+  function onContactClick(publicKey) {
+    setAddDialog(true);
+    setContactId(publicKey);
+  }
+
+  const closeAddDialog = () => {
+    setAddDialog(false);
+  };
+
+  function onConfirmAddContact(contactId) {
+    return props.onAddContact(contactId)
+      .catch((err) => {
+        props.enqueueSnackbar(err.message, {
+          variant: 'error'
+        });
+      });
+  }
+
   return (
     <>
       {!props.searchReady && props.error === undefined && (
@@ -26,18 +48,29 @@ function ContactsList(props) {
         </Paper>
       )}
       {props.searchReady && props.searchContacts.size !== 0 && (
-        <List>
-          {[...props.searchContacts]
-            .filter(([publicKey]) => publicKey !== props.publicKey)
-            .map(([publicKey, contact]) => (
-              <ContactItem
-                contact={contact}
-                contactId={publicKey}
-                publicKey={props.publicKey}
-                onAddContact={props.onAddContact}
-              />
-            ))}
-        </List>
+        <>
+          <List>
+            {[...props.searchContacts]
+              .filter(([publicKey]) => publicKey !== props.publicKey)
+              .map(([publicKey, contact]) => (
+                <ContactItem
+                  contact={contact}
+                  onClick={onContactClick.bind(this, publicKey)}
+                  publicKey={props.publicKey}
+                  onAddContact={props.onAddContact}
+                />
+              ))}
+          </List>
+          <ConfirmDialog
+            open={showAddContactDialog}
+            onClose={closeAddDialog}
+            title="Add Contact"
+            subtitle="Do you want to add this contact?"
+            onConfirm={() => {
+              return onConfirmAddContact(contactId)
+            }}
+          />
+        </>
       )}
     </>
   );
