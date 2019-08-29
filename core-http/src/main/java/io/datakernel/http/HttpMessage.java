@@ -37,6 +37,7 @@ import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.csp.ChannelConsumers.recycling;
+import static java.util.Collections.emptySet;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
@@ -353,7 +354,7 @@ public abstract class HttpMessage {
 	 * Retrieves a set of all attachment keys for this HttpMessage
 	 */
 	public Set<Object> getAttachmentKeys() {
-		return attachments.keySet();
+		return attachments != null ? attachments.keySet() : emptySet();
 	}
 
 	/**
