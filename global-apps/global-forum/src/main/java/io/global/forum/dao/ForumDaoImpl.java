@@ -7,7 +7,6 @@ import io.global.forum.Utils;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.ot.MapOTStateListenerProxy;
-import io.global.forum.ot.post.operation.AddPost;
 import io.global.forum.pojo.*;
 import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOTState;
@@ -104,13 +103,11 @@ public final class ForumDaoImpl implements ForumDao {
 		return Promise.of(threadsView);
 	}
 
+	// invariant: just after creating the thread you should do `getThreadDao(id).addRootPost(...)`
 	@Override
 	public Promise<Long> createThread(ThreadMetadata threadMetadata, UserId author) {
 		long id = Utils.generateId();
-
 		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(null, threadMetadata)))
-				.then($ -> container.getPostStateManager(id))
-				.then(stateManager -> applyAndSync(stateManager, AddPost.addPost(0L, null, author, now.currentTimeMillis())))
 				.map($ -> id);
 	}
 
@@ -121,8 +118,9 @@ public final class ForumDaoImpl implements ForumDao {
 	}
 
 	@Override
-	public Promise<@Nullable ThreadDao> getThreadDao(long id) {
-		return container.getPostStateManager(id).map(sm -> sm != null ? new ThreadDaoImpl(sm) : null);
+	@Nullable
+	public ThreadDao getThreadDao(long id) {
+		return container.getThreadDao(id);
 	}
 
 	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {

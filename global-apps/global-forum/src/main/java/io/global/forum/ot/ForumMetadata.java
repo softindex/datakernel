@@ -1,6 +1,8 @@
 package io.global.forum.ot;
 
 public final class ForumMetadata {
+	public static final ForumMetadata EMPTY = new ForumMetadata("", "");
+
 	private final String name;
 	private final String description;
 

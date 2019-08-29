@@ -32,7 +32,7 @@ public final class OTUtils {
 			"participants", SharedRepo::getParticipants, ofSet(PUB_KEY_HEX_CODEC));
 
 	public static final StructuredCodec<SharedReposOperation> SHARED_REPO_OPERATION_CODEC = object(SharedReposOperation::new,
-			"shared repo", SharedReposOperation::getSharedRepo, SHARED_REPO_CODEC,
+			"shared_repo", SharedReposOperation::getSharedRepo, SHARED_REPO_CODEC,
 			"remove", SharedReposOperation::isRemove, BOOLEAN_CODEC);
 
 	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = SHARED_REPO_CODEC
@@ -44,13 +44,12 @@ public final class OTUtils {
 				"next", SetValue::getNext, valueCodec.nullable());
 	}
 
-	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(
-			StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
+	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
 		return ofMap(keyCodec, getSetValueCodec(valueCodec))
 				.transform(MapOperation::of, MapOperation::getOperations);
 	}
 
-	public static <T> StructuredCodec<ChangeValue<T>> ofChangeTimestampValue(StructuredCodec<T> underlying) {
+	public static <T> StructuredCodec<ChangeValue<T>> ofChangeValue(StructuredCodec<T> underlying) {
 		return object(ChangeValue::of,
 				"prev", ChangeValue::getPrev, underlying,
 				"next", ChangeValue::getNext, underlying,
@@ -61,6 +60,6 @@ public final class OTUtils {
 		return CodecRegistry.createDefault()
 				.withGeneric(MapOperation.class, (registry, subCodecs) -> getMapOperationCodec(subCodecs[0], subCodecs[1]))
 				.withGeneric(SetValue.class, (registry, subCodecs) -> getSetValueCodec(subCodecs[0]))
-				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeTimestampValue(subCodecs[0]));
+				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeValue(subCodecs[0]));
 	}
 }

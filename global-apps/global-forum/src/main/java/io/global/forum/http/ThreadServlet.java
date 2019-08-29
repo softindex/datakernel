@@ -7,7 +7,6 @@ import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
 import io.datakernel.http.RoutingServlet;
-import io.global.forum.dao.AttachmentDao;
 import io.global.forum.dao.ThreadDao;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
@@ -37,7 +36,6 @@ public final class ThreadServlet {
 				})
 				.map(POST, "/", request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-					AttachmentDao attachmentDao = request.getAttachment(AttachmentDao.class);
 					UserId author = request.getAttachment(UserId.class);
 
 					Long parentId;
@@ -54,7 +52,7 @@ public final class ThreadServlet {
 					Map<String, Attachment> attachmentMap = new HashMap<>();
 					Map<String, String> paramsMap = new HashMap<>();
 
-					MultipartDataHandler handler = AttachmentDataHandler.create(attachmentDao, paramsMap, attachmentMap);
+					MultipartDataHandler handler = AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap);
 					return request.handleMultipart(handler)
 							.then($ -> {
 								String content = paramsMap.get("content");
@@ -63,7 +61,7 @@ public final class ThreadServlet {
 								}
 								return threadDao.addPost(author, parentId, content, attachmentMap);
 							})
-							.thenEx(revertIfException(attachmentDao, attachmentMap))
+							.thenEx(revertIfException(threadDao, attachmentMap))
 							.map($ -> HttpResponse.ok201());
 				})
 				.map("/:postId/*", RoutingServlet.create()
@@ -95,13 +93,12 @@ public final class ThreadServlet {
 						})
 						.map(PUT, "/", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-							AttachmentDao attachmentDao = request.getAttachment(AttachmentDao.class);
 							Long postId = request.getAttachment("postId");
 
 							Map<String, Attachment> attachmentMap = new HashMap<>();
 							Map<String, String> paramsMap = new HashMap<>();
 
-							MultipartDataHandler handler = AttachmentDataHandler.create(attachmentDao, paramsMap, attachmentMap);
+							MultipartDataHandler handler = AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap);
 							return request.handleMultipart(handler)
 									.then($ -> {
 										String content = paramsMap.get("content");
@@ -112,7 +109,7 @@ public final class ThreadServlet {
 
 										return threadDao.updatePost(postId, content, attachmentMap, toBeRemoved);
 									})
-									.thenEx(revertIfException(attachmentDao, attachmentMap))
+									.thenEx(revertIfException(threadDao, attachmentMap))
 									.map($ -> HttpResponse.ok201());
 						})
 						.map(DELETE, "/", request -> {
@@ -149,7 +146,6 @@ public final class ThreadServlet {
 						})
 						.map(GET, "/:globalFsId", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-							AttachmentDao attachmentDao = request.getAttachment(AttachmentDao.class);
 							Long postId = request.getAttachment("postId");
 							String globalFsId = request.getPathParameter("globalFsId");
 							if (globalFsId.isEmpty()) {
@@ -157,12 +153,12 @@ public final class ThreadServlet {
 							}
 
 							return threadDao.getAttachment(postId, globalFsId)
-									.then(attachment -> attachmentDao.attachmentSize(globalFsId)
+									.then(attachment -> threadDao.attachmentSize(globalFsId)
 											.then(size -> {
 												try {
 													return Promise.of(HttpResponse.file(
 															(offset, limit) ->
-																	attachmentDao.loadAttachment(globalFsId, offset, limit),
+																	threadDao.loadAttachment(globalFsId, offset, limit),
 															attachment.getFileName(),
 															size,
 															request.getHeader(HttpHeaders.RANGE)
@@ -181,7 +177,6 @@ public final class ThreadServlet {
 											if (e == null) {
 												return Promise.of(response);
 											} else if (e == POST_NOT_FOUND ||
-													e == AttachmentDao.ATTACHMENT_NOT_FOUND ||
 													e == ThreadDao.ATTACHMENT_NOT_FOUND) {
 												return Promise.of(HttpResponse.notFound404());
 											} else {
@@ -196,13 +191,12 @@ public final class ThreadServlet {
 				);
 	}
 
-
-	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(AttachmentDao attachmentDao, Map<String, Attachment> attachments) {
+	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(ThreadDao threadDao, Map<String, Attachment> attachments) {
 		return ($, e) -> {
 			if (e == null) {
 				return Promise.complete();
 			}
-			return attachmentDao.deleteAttachments(attachments.keySet())
+			return threadDao.deleteAttachments(attachments.keySet())
 					.thenEx(($2, e2) -> {
 						if (e2 != null) {
 							e.addSuppressed(e2);
@@ -211,6 +205,5 @@ public final class ThreadServlet {
 					});
 		};
 	}
-
 }
 

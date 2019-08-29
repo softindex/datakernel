@@ -1,7 +1,11 @@
 package io.global.forum.dao;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.forum.Utils;
 import io.global.forum.ot.post.ThreadOTState;
@@ -12,13 +16,11 @@ import io.global.forum.pojo.UserId;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static io.global.forum.Utils.generateBase62;
 import static io.global.forum.ot.post.operation.PostChangesOperation.attachmentsToOps;
 import static io.global.forum.ot.post.operation.PostChangesOperation.rating;
 import static java.util.Collections.emptyList;
@@ -28,10 +30,13 @@ public final class ThreadDaoImpl implements ThreadDao {
 	private final OTStateManager<CommitId, ThreadOperation> stateManager;
 	private final Map<Long, Post> postsView;
 
+	private final FsClient attachmentFs;
+
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public ThreadDaoImpl(OTStateManager<CommitId, ThreadOperation> stateManager) {
+	public ThreadDaoImpl(OTStateManager<CommitId, ThreadOperation> stateManager, FsClient attachmentFs) {
 		this.stateManager = stateManager;
+		this.attachmentFs = attachmentFs;
 		this.postsView = ((ThreadOTState) stateManager.getState()).getPostsView();
 	}
 
@@ -166,5 +171,42 @@ public final class ThreadDaoImpl implements ThreadDao {
 	@Override
 	public Promise<Map<Long, Post>> listPosts() {
 		return Promise.of(postsView);
+	}
+
+	@Override
+	public Promise<AttachmentUploader> uploadAttachment() {
+		return Promises.until(() -> Promise.of(generateBase62(GLOBAL_FS_ID_LENGTH)),
+				globalFsId -> attachmentFs.getMetadata(globalFsId)
+						.map(Objects::isNull))
+				.then(globalFsId ->
+						attachmentFs.upload(globalFsId)
+								.map(uploader -> new AttachmentUploader(globalFsId, uploader)));
+	}
+
+	@Override
+	public Promise<Void> deleteAttachment(String globalFsId) {
+		return attachmentFs.delete(globalFsId);
+	}
+
+	@Override
+	public Promise<Long> attachmentSize(String globalFsId) {
+		return attachmentFs.getMetadata(globalFsId)
+				.then(metadata -> {
+					if (metadata == null) {
+						return Promise.ofException(ATTACHMENT_NOT_FOUND);
+					}
+					return Promise.of(metadata.getSize());
+				});
+	}
+
+	@Override
+	public Promise<ChannelSupplier<ByteBuf>> loadAttachment(String globalFsId, long offset, long limit) {
+		return attachmentFs.download(globalFsId, offset, limit)
+				.thenEx((value, e) -> {
+					if (e == FsClient.FILE_NOT_FOUND) {
+						return Promise.ofException(ATTACHMENT_NOT_FOUND);
+					}
+					return Promise.of(value, e);
+				});
 	}
 }

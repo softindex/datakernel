@@ -35,5 +35,6 @@ public interface ForumDao {
 
 	Promise<Void> removeThread(long id);
 
-	Promise<@Nullable ThreadDao> getThreadDao(long id);
+	@Nullable
+	ThreadDao getThreadDao(long id);
 }

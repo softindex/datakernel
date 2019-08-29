@@ -4,7 +4,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
-import io.global.forum.dao.AttachmentDao;
+import io.global.forum.dao.ThreadDao;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.AttachmentType;
 
@@ -17,7 +17,7 @@ public final class AttachmentDataHandler {
 	private static final Map<String, AttachmentType> ATTACHMENT_FIELD_NAMES = Arrays.stream(AttachmentType.values())
 			.collect(Collectors.toMap(type -> type.toString().toLowerCase() + "Attachment", Function.identity()));
 
-	public static MultipartDataHandler create(AttachmentDao attachmentDao, Map<String, String> paramMap, Map<String, Attachment> attachmentMap) {
+	public static MultipartDataHandler create(ThreadDao threadDao, Map<String, String> paramMap, Map<String, Attachment> attachmentMap) {
 		return MultipartDataHandler.fieldsToMap(paramMap, (fieldName, fileName) -> {
 			if (fileName.isEmpty()) {
 				return Promise.of(ChannelConsumers.recycling());
@@ -26,12 +26,11 @@ public final class AttachmentDataHandler {
 			if (type == null) {
 				return Promise.ofException(HttpException.ofCode(400, "Unknown parameter"));
 			}
-			return attachmentDao.uploadAttachment()
+			return threadDao.uploadAttachment()
 					.map(uploader -> {
 						attachmentMap.put(uploader.getGlobalFsId(), new Attachment(type, fileName));
 						return uploader.getUploader();
 					});
 		});
 	}
-
 }

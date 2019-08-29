@@ -12,6 +12,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MediaTypes;
 import io.datakernel.util.Tuple2;
 import io.datakernel.writer.ByteBufWriter;
+import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.ot.post.operation.*;
 import io.global.forum.pojo.*;
@@ -101,7 +102,11 @@ public final class Utils {
 					PostChangesOperation::getChangeLastEditTimestamps, ofList(registry.get(ChangeLastEditTimestamp.class))))
 			.with(ThreadOperation.class, registry -> CodecSubtype.<ThreadOperation>create()
 					.with(AddPost.class, registry.get(AddPost.class))
-					.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)));
+					.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)))
+			.with(IpBanRequest.class, registry -> object(IpBanRequest::new,
+					"range", IpBanRequest::getRange, registry.get(IpRange.class),
+					"until", IpBanRequest::getUntil, registry.get(Instant.class),
+					"description", IpBanRequest::getDescription, STRING_CODEC));
 
 	private static final char[] CHAR_POOL = {
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',

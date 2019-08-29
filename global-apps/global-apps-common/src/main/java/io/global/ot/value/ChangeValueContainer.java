@@ -13,6 +13,10 @@ public final class ChangeValueContainer<T> implements OTState<ChangeValue<T>> {
 		return new ChangeValueContainer<>(null);
 	}
 
+	public static <T> ChangeValueContainer<T> of(T initial) {
+		return new ChangeValueContainer<>(initial);
+	}
+
 	public T getValue() {
 		return value;
 	}
