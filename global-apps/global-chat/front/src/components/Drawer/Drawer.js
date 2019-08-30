@@ -93,35 +93,3 @@ export default connectService(
 )(
   withStyles(drawerStyles)(Drawer)
 );
-
-// function Drawer(props) {
-//   const authService = getInstance(AuthService);
-//   const {publicKey} = useService(authService);
-//   const [openProfile, setOpenProfile] = useState(false);
-//   const [showChatDialog, setShowChatDialog] = useState(false);
-//
-//   props = {
-//     ...props,
-//     publicKey,
-//     openProfile,
-//     showChatDialog,
-//     onLogout() {
-//       authService.onLogout();
-//     },
-//     onProfileOpen() {
-//       setOpenProfile(true);
-//     },
-//     onProfileClose() {
-//       setOpenProfile(false);
-//     },
-//     onChatDialogShow() {
-//       setShowChatDialog(true);
-//       props.onClose();
-//     },
-//     onChatDialogClose() {
-//       setShowChatDialog(false)
-//     }
-//   };
-//
-//   return <DrawerView {...props}/>;
-// }

@@ -42,6 +42,10 @@ class RoomsService extends Service {
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
+  /**
+   * @param {Iterable<string>} participants
+   * @returns {Promise<string>}
+   */
   async createRoom(participants) {
     const roomId = randomString(ROOM_ID_LENGTH);
     await this._createRoom(roomId, [...participants, this._myPublicKey]);

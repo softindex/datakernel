@@ -24,9 +24,6 @@ function ContactMenu({onAddContact, classes, enqueueSnackbar}) {
   }
 
   function onAdd() {
-    if(!window.navigator.onLine) {
-      enqueueSnackbar('Adding...');
-    }
     onAddContact();
     onClose();
   }

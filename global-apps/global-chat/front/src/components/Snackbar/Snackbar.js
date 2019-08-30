@@ -30,7 +30,7 @@ class Snackbar extends React.Component {
           vertical: 'top',
           horizontal: 'right',
         }}
-        autoHideDuration={5000}
+        autoHideDuration={4000}
         open={this.state.isOpen}
         message={this.props.error}
         onClose={this.onClose}

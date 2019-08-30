@@ -9,9 +9,7 @@ class ContactsService extends Service {
   constructor(contactsOTStateManager, roomsService, publicKey) {
     super({
       contacts: new Map(),
-      names: new Map(),
-      contactsReady: false,
-      contactsError: ''
+      ready: false
     });
     this._myPublicKey = publicKey;
     this._contactsOTStateManager = contactsOTStateManager;

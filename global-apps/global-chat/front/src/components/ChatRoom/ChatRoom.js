@@ -4,8 +4,6 @@ import chatStyles from './chatRoomStyles';
 import Messages from '../Messages/Messages';
 import MessageForm from '../MessageForm/MessageForm';
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
-import {connectService} from 'global-apps-common';
-import {AuthContext} from 'global-apps-common';
 import {withSnackbar} from "notistack";
 import {RegisterDependency} from "global-apps-common/lib";
 
@@ -44,7 +42,7 @@ class ChatRoom extends React.Component {
     return (
       <RegisterDependency name={ChatRoomService} value={this.state.chatRoomService}>
         <div className={this.props.classes.root}>
-          <Messages/>
+          <Messages publicKey={this.props.publicKey}/>
           <MessageForm/>
         </div>
       </RegisterDependency>
@@ -52,6 +50,4 @@ class ChatRoom extends React.Component {
   }
 }
 
-export default connectService(AuthContext, ({publicKey}) => ({publicKey}))(
-  withSnackbar(withStyles(chatStyles)(ChatRoom))
-);
+export default withSnackbar(withStyles(chatStyles)(ChatRoom));

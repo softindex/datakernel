@@ -10,7 +10,7 @@ import SignUpAbstractionImage from './signUp/SignUpAbstractionImage/SignUpAbstra
 import SignUp from './signUp/SignUp/SignUp';
 import OAuthCallback from './auth/OAuthCallback/OAuthCallback';
 import Avatar from './avatar/Avatar';
-import useService from './useService';
+import useService from './serviceHooks';
 import * as utils from './utils/utils';
 
 export {
@@ -28,7 +28,7 @@ export {
 }
 
 export * from './utils/utils';
-export * from './useService';
+export * from './serviceHooks';
 export * from './DI';
 // export * from './auth/AuthService';
 // export * from './auth/AuthContext';

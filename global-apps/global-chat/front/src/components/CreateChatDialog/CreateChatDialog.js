@@ -6,108 +6,79 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {getAppStoreContactName, getInstance, useService} from "global-apps-common";
+import {getInstance, useService} from "global-apps-common";
 import ContactChip from '../ContactChip/ContactChip';
-import {withSnackbar} from "notistack";
-import List from "@material-ui/core/List";
 import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
-import Typography from "@material-ui/core/Typography";
-import ContactItem from "../ContactItem/ContactItem";
-import ListSubheader from "@material-ui/core/ListSubheader";
 import Search from "../Search/Search";
 import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
-import NamesService from "../../modules/names/NamesService";
+import SelectContactsList from "../SelectContactsList/SelectContactsList";
+import {withSnackbar} from "notistack";
 
-function CreateChatDialogView(props) {
+function CreateChatDialogView({
+                                classes,
+                                open,
+                                onClose,
+                                loading,
+                                onSubmit,
+                                onContactToggle,
+                                contacts,
+                                search,
+                                searchReady,
+                                searchContacts,
+                                onSearchChange,
+                                participants,
+                                publicKey
+                              }) {
   return (
     <Dialog
-      open={props.open}
-      onClose={props.onCloseDialog}
-      loading={props.loading}
+      open={open}
+      onClose={onClose}
+      loading={loading}
       maxWidth='sm'
     >
-      <form onSubmit={props.onSubmit} className={props.classes.form}>
-        <DialogTitle onClose={props.onCloseDialog}>
+      <form onSubmit={onSubmit} className={classes.form}>
+        <DialogTitle>
           Add Members
         </DialogTitle>
-        <DialogContent className={props.classes.dialogContent}>
-          <div className={props.classes.chipsContainer}>
-            {[...props.participants].map(([pubKey, name]) => (
+        <DialogContent className={classes.dialogContent}>
+          <div className={classes.chipsContainer}>
+            {[...participants].map(([publicKey, name]) => (
               <ContactChip
                 color="primary"
                 label={name}
-                onDelete={props.onContactCheck.bind(this, pubKey, name)}
+                onDelete={onContactToggle.bind(this, publicKey, name)}
               />
             ))}
           </div>
           <Search
-            classes={{root: props.classes.search}}
+            classes={{root: classes.search}}
             placeholder="Search people..."
-            value={props.search}
-            onChange={props.onChange}
-            searchReady={props.searchReady}
+            value={search}
+            onChange={onSearchChange}
+            searchReady={searchReady}
           />
-          <div className={props.classes.chatsList}>
-            <List subheader={<li/>}>
-              {props.sortContacts().length > 0 && (
-                <li>
-                  <List className={props.classes.innerUl}>
-                    <ListSubheader className={props.classes.listSubheader}>Friends</ListSubheader>
-                    {props.sortContacts().map(([publicKey]) =>
-                      <ContactItem
-                        contactId={publicKey}
-                        contact={{}}
-                        selected={props.participants.has(publicKey)}
-                        onClick={props.onContactCheck.bind(this, publicKey, props.names.get(publicKey))}
-                        publicKey={props.publicKey}
-                        contactName={props.names.get(publicKey)}
-                      />
-                    )}
-                  </List>
-                </li>
-              )}
-              {props.search !== '' && (
-                <li>
-                  <List className={props.classes.innerUl}>
-                    <ListSubheader className={props.classes.listSubheader}>People</ListSubheader>
-                    {[...props.searchContacts]
-                      .filter(([publicKey,]) => publicKey !== props.publicKey)
-                      .map(([publicKey, contact]) => (
-                        <ContactItem
-                          contactId={publicKey}
-                          contact={contact}
-                          selected={props.participants.has(publicKey)}
-                          onClick={props.onContactCheck.bind(this, publicKey, getAppStoreContactName(contact))}
-                          publicKey={props.publicKey}
-                        />
-                      ))}
-                  </List>
-                </li>
-              )}
-            </List>
-            {(props.searchContacts.size === 0 && props.search !== '') && (
-              <Typography
-                className={props.classes.secondaryDividerText}
-                color="textSecondary"
-                variant="body1"
-              >
-                Nothing found
-              </Typography>
-            )}
-          </div>
+          <SelectContactsList
+            search={search}
+            searchContacts={searchContacts}
+            participants={participants}
+            contacts={contacts}
+            loading={loading}
+            publicKey={publicKey}
+            onContactCheck={onContactToggle}
+          />
         </DialogContent>
         <DialogActions>
           <Button
-            className={props.classes.actionButton}
-            onClick={props.onCloseDialog}
+            className={classes.actionButton}
+            onClick={onClose}
           >
             Close
           </Button>
           <Button
-            className={props.classes.actionButton}
+            className={classes.actionButton}
             type="submit"
             color="primary"
             variant="contained"
@@ -120,118 +91,83 @@ function CreateChatDialogView(props) {
   );
 }
 
-function CreateChatDialog(props) {
-  const [participants, setParticipants] = useState(new Map());
-  const [loading, setLoading] = useState(false);
+function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSnackbar}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager),
     [contactsOTStateManager]
   );
-  const {search, searchContacts, searchReady} = useService(searchContactsService);
   const contactsService = getInstance(ContactsService);
-  const {contacts} = useService(contactsService);
   const roomsService = getInstance(RoomsService);
-  const {roomsReady, rooms} = useService(roomsService);
-  const namesService = getInstance(NamesService);
-  const {names} = useService(namesService);
 
-  const onChange = event => {
-    props.onSearchChange(event.target.value)
-  };
+  const [loading, setLoading] = useState(false);
+  const [participants, setParticipants] = useState(new Map());
+  const {search, searchContacts, searchReady} = useService(searchContactsService);
+  const {contacts} = useService(contactsService);
 
-  const onCloseDialog = () => {
-    props.onSearchChange('');
-    props.onClose();
-  };
+  function onSearchChange(value) {
+    return searchContactsService.search(value);
+  }
 
-  const onSubmit = event => {
-    event.preventDefault();
-    if (participants.size === 0 || loading) {
-      return;
-    }
-    setLoading(true);
-    [...participants].map(([publicKey,]) => {
-      if (!props.contacts.has(publicKey)) {
-        props.onAddContact(publicKey)
-          .catch((err) => {
-            props.enqueueSnackbar(err.message, {
-              variant: 'error'
-            });
-          });
-      }
-    });
-
-    props.onCreateRoom([...participants.keys()])
-      .then(() => {
-        props.onCloseDialog();
-      })
-      .catch(err => {
-        props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
-      .finally(() => {
-        setParticipants(new Map());
-        setLoading(false);
-      });
-  };
-
-  props = {
-    ...props,
+  const props = {
+    classes,
     participants,
     loading,
     search,
     searchContacts,
     searchReady,
     contacts,
-    roomsReady,
-    rooms,
-    names,
-    onChange,
-    onCloseDialog,
-    onSubmit,
+    publicKey,
+    open,
+    onClose,
 
-    onAddContact(contactPublicKey) {
-      return contactsService.addContact(contactPublicKey)
-    },
+    onSubmit(event) {
+      event.preventDefault();
+      setLoading(true);
 
-    onSearchChange(searchField) {
-      return searchContactsService.search(searchField);
-    },
+      (async () => {
+        if (participants.size === 0) {
+          return;
+        }
 
-    onCreateRoom(participants) {
-      return roomsService.createRoom(participants)
-        .then(roomId => {
-          props.history.push(path.join('/room', roomId || ''));
-        })
-    },
+        const participantsKeys = participants.keys();
 
-    sortContacts() {
-      return [...props.contacts]
-        .filter(([publicKey]) => {
-          const name = props.names.get(publicKey);
-          return (
-            publicKey !== props.publicKey
-            && name
-            && name.toLowerCase().includes(props.search.toLowerCase())
-          );
-        })
-        .sort(([leftPublicKey], [rightPublicKey]) => {
-          return props.names.get(leftPublicKey).localeCompare(props.names.get(rightPublicKey));
+        for (const participantKey of participantsKeys) {
+          if (!contacts.has(participantKey)) {
+            await contactsService.addContact(participantKey);
+          }
+        }
+
+        const roomId = await roomsService.createRoom(participantsKeys);
+
+        history.push(path.join('/room', roomId || ''));
+        setParticipants(new Map());
+        onClose();
+      })()
+        .catch(error => enqueueSnackbar(error.message, {
+          variant: 'error'
+        }))
+        .finally(() => {
+          setLoading(false);
         });
     },
 
-    onContactCheck(participantPublicKey, name) {
+    onSearchChange(event) {
+      return onSearchChange(event.target.value);
+    },
+
+    onContactToggle(participantPublicKey, name) { // TODO Remove name
       if (loading) {
         return;
       }
-      let participants = new Map(props.participants);
+
+      const participants = new Map(props.participants);
       if (participants.has(participantPublicKey)) {
         participants.delete(participantPublicKey);
       } else {
         participants.set(participantPublicKey, name);
       }
+
       setParticipants(participants);
     }
   };
@@ -239,4 +175,8 @@ function CreateChatDialog(props) {
   return <CreateChatDialogView {...props}/>;
 }
 
-export default withRouter(withSnackbar(withStyles(createChatDialogStyles)(CreateChatDialog)));
+export default withRouter(
+  withSnackbar(
+    withStyles(createChatDialogStyles)(CreateChatDialog)
+  )
+);

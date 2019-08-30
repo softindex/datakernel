@@ -31,10 +31,9 @@ class RoomItem extends React.Component {
 
   onRemoveContact(room) {
     const publicKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
-    if (!window.navigator.onLine) {
-      this.props.enqueueSnackbar('Deleting...'); // TODO
-    }
+    this.props.enqueueSnackbar('Deleting...');
     this.props.onRemoveContact(publicKey)
+      .then(() => {setTimeout(() => this.props.closeSnackbar(), 1000) })
       .catch((err) => {
         this.props.enqueueSnackbar(err.message, {
           variant: 'error'

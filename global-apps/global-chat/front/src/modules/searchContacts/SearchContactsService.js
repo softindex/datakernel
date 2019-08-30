@@ -4,7 +4,7 @@ import {GlobalAppStoreAPI} from 'global-apps-common';
 const RETRY_TIMEOUT = 1000;
 
 class SearchContactsService extends Service {
-  constructor(contactsOTStateManager, globalAppStoreAPI) {
+  constructor(contactsOTStateManager, publicKey, globalAppStoreAPI) {
     super({
       searchContacts: new Map(),
       searchReady: false,
@@ -12,14 +12,16 @@ class SearchContactsService extends Service {
       searchError: ''
     });
 
+    this._myPublicKey = publicKey;
     this._globalAppStoreAPI = globalAppStoreAPI;
     this._contactsOTStateManager = contactsOTStateManager;
     this._contactsCheckoutPromise = null;
   }
 
-  static createFrom(contactsOTStateManager) {
+  static createFrom(contactsOTStateManager, publicKey) {
     return new SearchContactsService(
       contactsOTStateManager,
+      publicKey,
       GlobalAppStoreAPI.create(process.env.REACT_APP_GLOBAL_OAUTH_LINK)
     );
   }
@@ -28,7 +30,10 @@ class SearchContactsService extends Service {
     this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
     await Promise.resolve(this._contactsCheckoutPromise);
     this.search(this.state.search);
-    this._contactsOTStateManager.addChangeListener(() => this.search(this.state.search));
+    this._contactsOTStateManager.addChangeListener(() => {
+      console.log('>>', this.state.search);
+      this.search(this.state.search);
+    });
   }
 
   stop() {
@@ -45,7 +50,7 @@ class SearchContactsService extends Service {
         const searchContacts = new Map(
           [...appStoreContacts]
             .map(({profile, pubKey}) => ([pubKey, profile]))
-            .filter(([publicKey,]) => !contacts.has(publicKey))
+            .filter(([publicKey,]) => !contacts.has(publicKey) && publicKey !== this._myPublicKey)
         );
         this.setState({
           searchContacts,

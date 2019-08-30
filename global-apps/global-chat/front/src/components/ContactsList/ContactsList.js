@@ -51,13 +51,10 @@ function ContactsList(props) {
         <>
           <List>
             {[...props.searchContacts]
-              .filter(([publicKey]) => publicKey !== props.publicKey)
               .map(([publicKey, contact]) => (
                 <ContactItem
                   contact={contact}
                   onClick={onContactClick.bind(this, publicKey)}
-                  publicKey={props.publicKey}
-                  onAddContact={props.onAddContact}
                 />
               ))}
           </List>

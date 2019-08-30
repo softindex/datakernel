@@ -2,7 +2,7 @@ import React, {useMemo, useState} from 'react';
 import path from "path";
 import {withStyles} from '@material-ui/core';
 import sideBarStyles from "./sideBarStyles";
-import {useService, getInstance} from "global-apps-common";
+import {useService, getInstance, initService} from "global-apps-common";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import {withRouter} from "react-router-dom";
 import Search from "../Search/Search";
@@ -10,6 +10,7 @@ import SearchContactsService from "../../modules/searchContacts/SearchContactsSe
 import ContactsService from "../../modules/contacts/ContactsService";
 import SideBarTabs from '../SideBarTabs/SideBarTabs';
 import Snackbar from "../Snackbar/Snackbar";
+import {withSnackbar} from "notistack";
 
 function SideBarView({
                        classes,
@@ -20,7 +21,7 @@ function SideBarView({
                        searchReady,
                        searchContacts,
                        onSearchChange,
-                       searchError,
+                       error,
                        publicKey
                      }) {
   return (
@@ -44,29 +45,31 @@ function SideBarView({
         contactPublicKey={search}
         onAddContact={onAddContact}
       />
-      {searchError && (
-        <Snackbar error={searchError.message} />
+      {error && (
+        <Snackbar error={error.message} />
       )}
     </div>
   );
 }
 
-function SideBar({publicKey, classes, history}) {
+function SideBar({publicKey, classes, history, enqueueSnackbar}) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager),
     [contactsOTStateManager]
   );
+  initService(searchContactsService, err => enqueueSnackbar(err.message, {
+    variant: 'error'
+  }));
+
   const {search, searchContacts, searchReady, searchError} = useService(searchContactsService);
   const contactsService = getInstance(ContactsService);
-
+  const {contactsError} = useService(contactsService);
   function onSearchChange(value) {
     if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(value)) {
       setShowAddDialog(true);
-      return;
     }
-
     return searchContactsService.search(value);
   }
 
@@ -78,6 +81,7 @@ function SideBar({publicKey, classes, history}) {
     searchReady,
     searchError,
     showAddDialog,
+    error: searchError || contactsError,
 
     onCloseAddDialog() {
       onSearchChange('');
@@ -100,5 +104,7 @@ function SideBar({publicKey, classes, history}) {
 }
 
 export default withRouter(
-  withStyles(sideBarStyles)(SideBar)
+  withStyles(sideBarStyles)(
+    withSnackbar(SideBar)
+  )
 );

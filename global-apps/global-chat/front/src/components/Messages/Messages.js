@@ -4,8 +4,6 @@ import messagesStyles from './messagesStyles';
 import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Grow from '@material-ui/core/Grow';
-import {connectService} from 'global-apps-common';
-import {AuthContext} from "global-apps-common";
 import {getInstance, useService} from "global-apps-common/lib";
 import NamesService from "../../modules/names/NamesService";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
@@ -63,14 +61,15 @@ class MessagesView extends React.Component {
   }
 }
 
-function Messages(props) {
+function Messages({classes, publicKey}) {
   const namesService = getInstance(NamesService);
   const {names} = useService(namesService);
   const chatRoomService = getInstance(ChatRoomService);
   const {messages, chatReady} = useService(chatRoomService);
 
-  props = {
-    ...props,
+  const props = {
+    classes,
+    publicKey,
     names,
     messages,
     chatReady
@@ -79,11 +78,4 @@ function Messages(props) {
   return <MessagesView {...props} />
 }
 
-export default withStyles(messagesStyles)(
-  connectService(
-    AuthContext,
-    ({publicKey}) => ({publicKey})
-  )(
-    Messages
-  )
-);
+export default withStyles(messagesStyles)(Messages);

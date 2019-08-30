@@ -10,7 +10,6 @@ import EmptyChat from "../EmptyChatRoom/EmptyChatRoom";
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
 import MyProfileService from "../../modules/myProfile/MyProfileService";
-import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import roomsOTSystem from "../../modules/rooms/ot/RoomsOTSystem";
 import roomsSerializer from "../../modules/rooms/ot/serializer";
@@ -21,7 +20,6 @@ import {getRoomName} from "../../common/utils";
 
 function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
   const {
-    searchContactsService,
     contactsOTStateManager,
     profileService,
     roomsService,
@@ -40,7 +38,6 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
     const contactsOTStateManager = new OTStateManager(() => new Map(), contactsOTNode, contactsOTSystem);
     const roomsOTStateManager = new OTStateManager(() => new Map(), roomsOTNode, roomsOTSystem);
     const roomsService = RoomsService.createFrom(roomsOTStateManager, publicKey);
-    const searchContactsService = SearchContactsService.createFrom(contactsOTStateManager);
     const profileService = MyProfileService.create();
     const contactsService = ContactsService.createFrom(
       contactsOTStateManager,
@@ -54,7 +51,6 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
     );
 
     return {
-      searchContactsService,
       contactsOTStateManager,
       profileService,
       roomsService,
@@ -71,8 +67,7 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
       contactsService.init(),
       roomsService.init(),
       profileService.init(),
-      namesService.init(),
-      searchContactsService.init()
+      namesService.init()
     ]).catch((err) => {
       enqueueSnackbar(err.message, {
         variant: 'error'
@@ -84,7 +79,6 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
       contactsService.stop();
       profileService.stop();
       namesService.stop();
-      searchContactsService.stop();
     };
   }, []);
 
@@ -111,7 +105,7 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
                     <EmptyChat/>
                   )}
                   {roomId && (
-                    <ChatRoom roomId={roomId}/>
+                    <ChatRoom roomId={roomId} publicKey={publicKey}/>
                   )}
                 </div>
             </RegisterDependency>
