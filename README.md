@@ -4,6 +4,10 @@
   </a>
 </p>
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
+[![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
+[![Download](https://img.shields.io/badge/download-3.0.0--SNAPSHOT-blue)](https://github.com/softindex/datakernel/archive/master.zip)
+
 ## Introduction
 
 DataKernel is a full-featured alternative Java framework, created from ground up for **efficient** and **scalable** solutions.
@@ -37,32 +41,90 @@ mvn archetype:generate \
 
 To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
 
-## Why DataKernel?
+## Examples
 
-**Best technologies**  
-DataKernel is legacy-free. Build application-specific embedded databases and high-performance HTTP/RPC servers using high-level abstractions, LSM-Tree, Operational Transformations, CRDT, Go-inspired CSP and other modern algorithms and technologies.
+* **Basic HTTP server in less than 15 lines of code:**
+```java
+public final class HelloWorldExample { 
+    private static final byte[] HELLO_WORLD = "Hello world!".getBytes(UTF_8);
+    
+    public static void main(String[] args) throws IOException {
+    	Eventloop eventloop = Eventloop.create();
+    	AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+                request -> Promise.of(
+                        HttpResponse.ok200()
+                        .withBody(HELLO_WORLD)))
+                .withListenPort(8080);
 
-**Explicit design**  
-There are no under-the-hood magic, endless XML configurations and dependency hell of third-party components glued together via layers of abstractions. DataKernel gives a full control over your applications.
+    	server.listen();
 
-**Born to be async**  
-DataKernel allows you to create async web applications in a Node.js manner while preserving all of the Java advantages. We also use Node.js-inspired features, such as single-threaded async Promises and pool of event loops as the building blocks of our framework.
+        System.out.println("Server is running");
+        System.out.println("You can connect from browser by visiting 'http://localhost:8080/'");
 
-**No overweight**  
-To achieve the lowest GC footprint possible, we’ve designed thoroughly optimized core modules - improved Java ByteBuffer ByteBuf, minimalistic Datastreams, stateless single-threaded Promises and also one of the fastest Serializers available nowadays.
+        eventloop.run();
+    }
+}
+```
+`AsyncHttpServer` is a built-in implementation of an HTTP server which asynchronously runs in a Node.js-inspired Event Loop.
 
-**Easy-to-use and flexible**  
-DataKernel has everything you need to create applications of different scales - from standalone high-performance async network solutions and HTTP web applications up to big-data cloud solutions and decentralized internet-wide applications.
+📌 *The JAR file size of this example is only 1MB*
 
-**Modern approach**  
-DataKernel has simple yet powerful set of abstractions with clean OOP design favoring Java 8+ functional programming style. It also radically downplays Dependency Injection role, giving way to your business logic instead.
+📌 *`AsyncHttpServer` handles ~165K requests per second on single core*
 
-## DataKernel structure
+<br>
 
-DataKernel consists of three modules:
- * [Core](https://datakernel.io/docs/core/) - building blocks of the framework and everything you need to create **asynchronous web applications**.
- * [Cloud](https://datakernel.io/docs/cloud/) - components for **decentralized cloud solutions** of different complexity.
- * [Global Cloud](https://datakernel.io/docs/global-cloud/) (coming soon) - components for **ultimately scalable**, decentralized, yet practical and high-performance **cloud solutions**.
+* **Even simpler asynchronous HTTP server:**
+```java
+public final class HttpHelloWorldExample extends HttpServerLauncher { 
+    @Provides
+    AsyncServlet servlet() { 
+        return request -> Promise.of(ok200().withPlainText("Hello World"));
+    }
 
-## License
-Apache License 2.0
+    public static void main(String[] args) throws Exception {
+        Launcher launcher = new HttpHelloWorldExample();
+        launcher.launch(args); 
+    }
+}
+```
+`HttpServerLauncher` - a predefined DataKernel [Launcher](https://datakernel.io/docs/core/launcher.html), which takes care of application lifecycle and provides needed components for our server
+
+`@Provides` - one of the [DataKernel DI](https://datakernel.io/docs/core/di.html) annotations
+
+`AsyncServlet` - asynchronous servlet interface
+
+`Promise` - Node.js-inspired async single-threaded Promises, an alternative to `CompletableFuture`
+
+📌 *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
+
+📌 *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 2.5 times faster than Guice and 100s times faster than Spring.*
+
+📌 *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
+
+<br>
+
+* **Lightning-fast RPC server:**
+```java
+...
+public RpcServer rpcServer(Eventloop eventloop, Config config) {
+    return RpcServer.create(eventloop)
+            .withStreamProtocol(
+                    config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),
+                    ChannelSerializer.MAX_SIZE_1,
+                    config.get(ofBoolean(), "rpc.compression", false))
+            .withListenPort(config.get(ofInteger(), "rpc.server.port"))
+            .withMessageTypes(Integer.class)
+            .withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
+}
+...
+```
+📌 *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on single core*.
+
+## Documentation
+See the docs, examples and tutorials on [our website](https://datakernel.io).
+
+## Need help or found a bug?
+Feel free to open a [GitHub issue](https://github.com/softindex/datakernel/issues).
+
+## Communication
+* Twitter: [@datakernel_io](https://twitter.com/datakernel_io)
