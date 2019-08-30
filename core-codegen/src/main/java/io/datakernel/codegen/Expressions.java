@@ -109,7 +109,7 @@ public final class Expressions {
 	 * @param property name of the property which will be returned
 	 * @return new instance of the Property
 	 */
-	public static Property property(Expression owner, String property) {
+	public static Variable property(Expression owner, String property) {
 		return new Property(owner, property);
 	}
 
@@ -120,20 +120,8 @@ public final class Expressions {
 	 * @param field name of the static field which will be returned
 	 * @return new instance of the ExpressionStaticField
 	 */
-	public static ExpressionStaticField staticField(Class<?> owner, String field) {
+	public static Variable staticField(Class<?> owner, String field) {
 		return new ExpressionStaticField(owner, field);
-	}
-
-	/**
-	 * Sets value to the property in {@code owner}
-	 *
-	 * @param owner    owner of the property
-	 * @param property name of property which will be changed
-	 * @param value    new value for the property
-	 * @return new instance of the ExpressionSet
-	 */
-	public static Expression set(Expression owner, String property, Expression value) {
-		return set(property(owner, property), value);
 	}
 
 	/**
@@ -151,7 +139,7 @@ public final class Expressions {
 	 * @param argument ordinal number in list of arguments
 	 * @return new instance of the VarArg
 	 */
-	public static VarArg arg(int argument) {
+	public static Variable arg(int argument) {
 		return new VarArg(argument);
 	}
 

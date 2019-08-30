@@ -22,7 +22,7 @@ import org.objectweb.asm.Type;
 /**
  * Defines method which allow to take argument according to their ordinal number
  */
-public final class VarArg implements Variable {
+final class VarArg implements Variable {
 	private final int argument;
 
 	VarArg(int argument) {

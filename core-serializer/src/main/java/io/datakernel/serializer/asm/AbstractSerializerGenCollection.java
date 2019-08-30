@@ -76,15 +76,16 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	@Override
 	public final Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
-				it -> set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
+				it -> set(off,
+						valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
 
-		if (nullable) {
-			return ifThenElse(isNull(value),
-					sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0))), off),
-					sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))), forEach, off));
+		if (!nullable) {
+			return sequence(
+					set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, call(value, "size"))), forEach, off);
 		}
-		return sequence(
-				set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, call(value, "size"))), forEach, off);
+		return ifThenElse(isNull(value),
+				sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+				sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))), forEach, off));
 	}
 
 	@Override

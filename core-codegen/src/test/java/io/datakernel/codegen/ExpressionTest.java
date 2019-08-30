@@ -187,8 +187,8 @@ public class ExpressionTest {
 				.withMethod("equals",
 						asEquals("x"))
 				.withMethod("setXY", sequence(
-						set(self(), "x", arg(0)),
-						set(self(), "y", arg(1))))
+						set(property(self(), "x"), arg(0)),
+						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
@@ -196,12 +196,12 @@ public class ExpressionTest {
 				.withMethod("property1",
 						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
-						set(arg(0), "property1", value(10)),
-						set(arg(0), "property2", value(20)),
+						set(property(arg(0), "property1"), value(10)),
+						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						set(local, "property2", value(2)),
+						set(property(local, "property2"), value(2)),
 						local))
 				.withMethod("getX",
 						property(self(), "x"))
@@ -269,9 +269,15 @@ public class ExpressionTest {
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test2.class)
 				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2"), property(arg(0), "property3"),
-								property(arg(0), "property4"), property(arg(0), "property5"), property(arg(0), "property6"),
-								property(arg(0), "property7"))).build();
+						hashCodeOfArgs(
+								property(arg(0), "property1"),
+								property(arg(0), "property2"),
+								property(arg(0), "property3"),
+								property(arg(0), "property4"),
+								property(arg(0), "property5"),
+								property(arg(0), "property6"),
+								property(arg(0), "property7")))
+				.build();
 
 		Test2 test = testClass.newInstance();
 		TestPojo2 testPojo2 = new TestPojo2("randomString", 42, 666666, 43258.42342f, 54359878, 43252353278423.423468, "fhsduighrwqruqsd");
@@ -661,7 +667,9 @@ public class ExpressionTest {
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+						hashCodeOfArgs(
+								property(arg(0), "property1"),
+								property(arg(0), "property2")))
 				.withMethod("property1",
 						property(arg(0), "property1"))
 				.withMethod("setter", sequence(

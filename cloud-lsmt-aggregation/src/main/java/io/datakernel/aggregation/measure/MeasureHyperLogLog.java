@@ -19,7 +19,7 @@ package io.datakernel.aggregation.measure;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Property;
+import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
@@ -69,33 +69,33 @@ public final class MeasureHyperLogLog extends Measure {
 	}
 
 	@Override
-	public Expression zeroAccumulator(Property accumulator) {
+	public Expression zeroAccumulator(Variable accumulator) {
 		return set(accumulator, constructor(HyperLogLog.class, value(registers)));
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Property accumulator, Expression firstAccumulator) {
+	public Expression initAccumulatorWithAccumulator(Variable accumulator, Expression firstAccumulator) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
 				call(accumulator, "union", firstAccumulator));
 	}
 
 	@Override
-	public Expression reduce(Property accumulator,
-			Property nextAccumulator) {
+	public Expression reduce(Variable accumulator,
+			Variable nextAccumulator) {
 		return call(accumulator, "union", nextAccumulator);
 	}
 
 	@Override
-	public Expression initAccumulatorWithValue(Property accumulator,
-			Property firstValue) {
+	public Expression initAccumulatorWithValue(Variable accumulator,
+			Variable firstValue) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
 				add(accumulator, firstValue));
 	}
 
 	@Override
-	public Expression accumulate(Property accumulator, Property nextValue) {
+	public Expression accumulate(Variable accumulator, Variable nextValue) {
 		return add(accumulator, nextValue);
 	}
 

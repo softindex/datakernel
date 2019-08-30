@@ -37,7 +37,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods which allow to take property according to the name
  */
-public final class Property implements Variable {
+final class Property implements Variable {
 	private final Expression owner;
 	private final String property;
 

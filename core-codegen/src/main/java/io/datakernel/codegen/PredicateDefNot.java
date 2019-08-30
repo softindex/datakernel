@@ -22,7 +22,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-class PredicateDefNot implements PredicateDef {
+final class PredicateDefNot implements PredicateDef {
 	private final PredicateDef predicateDef;
 
 	public PredicateDefNot(PredicateDef predicateDef) {

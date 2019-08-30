@@ -121,28 +121,24 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 		return !nullable ?
 				let(call(arg(0), "readVarInt"), len ->
 						let(newArray(type, len), array ->
-								type.getComponentType() == Byte.TYPE ?
-										sequence(
-												call(arg(0), "read", array),
-												array) :
-										sequence(
+								sequence(
+										type.getComponentType() == Byte.TYPE ?
+												call(arg(0), "read", array) :
 												expressionFor(value(0), len,
 														i -> setArrayItem(array, i,
 																cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
-												array))) :
+										array))) :
 				let(call(arg(0), "readVarInt"), len ->
 						ifThenElse(cmpEq(len, value(0)),
 								nullRef(type),
 								let(newArray(type, dec(len)), array ->
-										type.getComponentType() == Byte.TYPE ?
-												sequence(
-														call(arg(0), "read", array),
-														array) :
-												sequence(
+										sequence(
+												type.getComponentType() == Byte.TYPE ?
+														call(arg(0), "read", array) :
 														expressionFor(value(0), dec(len),
 																i -> setArrayItem(array, i,
 																		cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
-														array)
+												array)
 								)));
 	}
 

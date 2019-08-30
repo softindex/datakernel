@@ -18,7 +18,7 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Property;
+import io.datakernel.codegen.Variable;
 
 import java.util.*;
 
@@ -36,12 +36,12 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression zeroAccumulator(Property accumulator) {
+	public Expression zeroAccumulator(Variable accumulator) {
 		return sequence(getInitializeExpression(accumulator));
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Property accumulator,
+	public Expression initAccumulatorWithAccumulator(Variable accumulator,
 	                                                 Expression firstAccumulator) {
 		return sequence(
 				getInitializeExpression(accumulator),
@@ -49,14 +49,14 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression reduce(Property accumulator,
-			Property nextAccumulator) {
+	public Expression reduce(Variable accumulator,
+			Variable nextAccumulator) {
 		return call(accumulator, "addAll", cast(nextAccumulator, Collection.class));
 	}
 
 	@Override
-	public Expression initAccumulatorWithValue(Property accumulator,
-			Property firstValue) {
+	public Expression initAccumulatorWithValue(Variable accumulator,
+			Variable firstValue) {
 		List<Expression> expressions = new ArrayList<>();
 		expressions.add(getInitializeExpression(accumulator));
 		expressions.add(call(accumulator, "add", cast(firstValue, Object.class)));
@@ -64,12 +64,12 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression accumulate(Property accumulator,
-			Property nextValue) {
+	public Expression accumulate(Variable accumulator,
+			Variable nextValue) {
 		return call(accumulator, "add", cast(nextValue, Object.class));
 	}
 
-	private Expression getInitializeExpression(Property accumulator) {
+	private Expression getInitializeExpression(Variable accumulator) {
 		Class<?> accumulatorClass = fieldType.getInternalDataType();
 		if (accumulatorClass.isAssignableFrom(List.class))
 			return set(accumulator, constructor(ArrayList.class));

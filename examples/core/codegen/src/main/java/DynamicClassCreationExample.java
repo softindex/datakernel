@@ -19,8 +19,8 @@ public class DynamicClassCreationExample {
 				.withField("name", String.class)
 				// setter for both fields - a sequence of actions
 				.withMethod("setIdAndName", sequence(
-						set(self(), "id", arg(0)),
-						set(self(), "name", arg(1))))
+						set(property(self(), "id"), arg(0)),
+						set(property(self(), "name"), arg(1))))
 				.withMethod("getId", property(self(), "id"))
 				.withMethod("getName", property(self(), "name"))
 				// compareTo, equals, hashCode and toString methods implementations follow the standard convention

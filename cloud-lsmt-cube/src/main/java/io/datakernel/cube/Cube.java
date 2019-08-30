@@ -935,7 +935,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 									int fieldIndex = recordScheme.getFieldIndex(field);
 									if (!dimensionTypes.containsKey(field)) {
 										if (measures.containsKey(field)) {
-											Property fieldValue = property(cast(arg(0), resultClass), field);
+											Variable fieldValue = property(cast(arg(0), resultClass), field);
 											expressions.add(call(arg(1), "put", value(fieldIndex),
 													cast(measures.get(field).getFieldType().toValue(
 															measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
