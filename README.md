@@ -1,13 +1,12 @@
 <p align="center">
   <a href="https://datakernel.io" target="_blank">
-    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="409">
+    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="340">
   </a>
 </p>
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
 [![Download](https://img.shields.io/badge/download-3.0.0--SNAPSHOT-blue.svg)](https://github.com/softindex/datakernel/archive/master.zip)
 [![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
-
 [![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
 
 ## Introduction
@@ -106,10 +105,7 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 ...
 public RpcServer rpcServer(Eventloop eventloop, Config config) {
     return RpcServer.create(eventloop)
-            .withStreamProtocol(
-                    config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),
-                    ChannelSerializer.MAX_SIZE_1,
-                    config.get(ofBoolean(), "rpc.compression", false))
+            .withStreamProtocol(...)
             .withListenPort(config.get(ofInteger(), "rpc.server.port"))
             .withMessageTypes(Integer.class)
             .withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
