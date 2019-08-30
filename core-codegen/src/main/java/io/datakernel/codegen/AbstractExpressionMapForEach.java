@@ -21,23 +21,23 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
+import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 public abstract class AbstractExpressionMapForEach implements Expression {
 	protected final Expression collection;
-	protected final Expression forKey;
-	protected final Expression forValue;
+	protected final Function<Expression, Expression> forKey;
+	protected final Function<Expression, Expression> forValue;
 	protected final Class<?> entryType;
 
-	protected AbstractExpressionMapForEach(Expression collection, Expression forKey, Expression forValue, Class<?> entryType) {
-		this.collection = checkNotNull(collection);
-		this.forKey = checkNotNull(forKey);
-		this.forValue = checkNotNull(forValue);
-		this.entryType = checkNotNull(entryType);
+	protected AbstractExpressionMapForEach(Expression collection, Function<Expression, Expression> forKey, Function<Expression, Expression> forValue, Class<?> entryType) {
+		this.collection = collection;
+		this.forKey = forKey;
+		this.forValue = forValue;
+		this.entryType = entryType;
 	}
 
 	protected abstract Expression getEntries();
@@ -66,13 +66,11 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		Expression varEntry = cast(call(iterator, "next"), entryType);
 		Type varEntryType = varEntry.load(ctx);
 
-		VarLocal local = newLocal(ctx, varEntryType);
-		local.store(ctx);
+		VarLocal entry = newLocal(ctx, varEntryType);
+		entry.store(ctx);
 
-		ctx.addParameter("key", getKey(local));
-		forKey.load(ctx);
-		ctx.addParameter("value", getValue(local));
-		forValue.load(ctx);
+		forKey.apply(getKey(entry)).load(ctx);
+		forValue.apply(getValue(entry)).load(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);

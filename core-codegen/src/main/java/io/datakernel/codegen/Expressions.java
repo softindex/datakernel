@@ -559,24 +559,20 @@ public final class Expressions {
 		return new ExpressionArraySet(array, position, newElement);
 	}
 
-	public static Expression forEach(Expression collection, Function<ExpressionParameter, Expression> it) {
+	public static Expression forEach(Expression collection, Function<Expression, Expression> it) {
 		return forEach(collection, Object.class, it);
 	}
 
-	public static Expression forEach(Expression collection, Class<?> type, Function<ExpressionParameter, Expression> it) {
-		return new ExpressionIteratorForEach(collection, type,
-				ExpressionParameter.bind("it", it));
+	public static Expression forEach(Expression collection, Class<?> type, Function<Expression, Expression> it) {
+		return new ExpressionIteratorForEach(collection, type, it);
 	}
 
-	public static Expression expressionFor(Expression from, Expression to, Function<ExpressionParameter, Expression> it) {
-		return new ExpressionFor(from, to,
-				ExpressionParameter.bind("it", it));
+	public static Expression expressionFor(Expression from, Expression to, Function<Expression, Expression> it) {
+		return new ExpressionFor(from, to, it);
 	}
 
-	public static Expression mapForEach(Expression collection,
-			Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value) {
-		return new ExpressionMapForEach(collection,
-				ExpressionParameter.bind("key", key), ExpressionParameter.bind("value", value));
+	public static Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
+		return new ExpressionMapForEach(collection, forEachKey, forEachValue);
 	}
 
 	public static Expression neg(Expression arg) {

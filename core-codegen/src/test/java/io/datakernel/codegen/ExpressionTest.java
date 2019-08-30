@@ -525,10 +525,12 @@ public class ExpressionTest {
 		List<Integer> listTo2 = new ArrayList<>();
 
 		WriteAllListElement testClass = ClassBuilder.create(DefiningClassLoader.create(), WriteAllListElement.class)
-				.withMethod("write", forEach(arg(0),
-						it -> sequence(addListItem(arg(1), it), voidExp())))
-				.withMethod("writeIter", forEach(arg(0),
-						it -> sequence(addListItem(arg(1), it), voidExp())))
+				.withMethod("write",
+						forEach(arg(0),
+								it -> sequence(addListItem(arg(1), it), voidExp())))
+				.withMethod("writeIter",
+						forEach(arg(0),
+								it -> sequence(addListItem(arg(1), it), voidExp())))
 				.buildClassAndCreateNewInstance();
 
 		testClass.write(listFrom, listTo1);

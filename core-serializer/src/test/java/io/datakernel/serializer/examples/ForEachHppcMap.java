@@ -20,12 +20,14 @@ import io.datakernel.codegen.AbstractExpressionMapForEach;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarLocal;
 
+import java.util.function.Function;
+
 import static io.datakernel.codegen.Expressions.property;
 
 public final class ForEachHppcMap extends AbstractExpressionMapForEach {
 
-	public ForEachHppcMap(Expression collection, Expression forValue, Expression forKey, Class<?> entryType) {
-		super(collection, forKey, forValue, entryType);
+	public ForEachHppcMap(Expression collection, Function<Expression, Expression> forEachValue, Function<Expression, Expression> forEachKey, Class<?> entryType) {
+		super(collection, forEachKey, forEachValue, entryType);
 	}
 
 	@Override

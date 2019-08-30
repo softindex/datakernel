@@ -17,7 +17,6 @@
 package io.datakernel.serializer.examples;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionParameter;
 import io.datakernel.serializer.asm.AbstractSerializerGenCollection;
 import io.datakernel.serializer.asm.SerializerGen;
 
@@ -38,11 +37,11 @@ public final class SerializerGenHppc7Collection extends AbstractSerializerGenCol
 
 
 	@Override
-	protected Expression collectionForEach(Expression collection, Class<?> valueType, Function<ExpressionParameter, Expression> value) {
+	protected Expression collectionForEach(Expression collection, Class<?> valueType, Function<Expression, Expression> value) {
 		try {
 			String prefix = capitalize(elementType.getSimpleName());
 			Class<?> iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + prefix + "Cursor");
-			return new ForEachHppcCollection(collection, iteratorType, ExpressionParameter.bind("it", value));
+			return new ForEachHppcCollection(collection, iteratorType, value);
 		} catch (ClassNotFoundException e) {
 			throw new IllegalStateException("There is no hppc cursor for " + elementType.getSimpleName(), e);
 		}

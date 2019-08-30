@@ -20,18 +20,19 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.function.Function;
+
 import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionFor implements Expression {
 	private final Expression from;
 	private final Expression to;
-	private final Expression forVar;
+	private final Function<Expression, Expression> forVar;
 
-	ExpressionFor(Expression from, Expression to, Expression forVar) {
-		this.from = checkNotNull(from);
-		this.to = checkNotNull(to);
-		this.forVar = checkNotNull(forVar);
+	ExpressionFor(Expression from, Expression to, Function<Expression, Expression> forVar) {
+		this.from = from;
+		this.to = to;
+		this.forVar = forVar;
 	}
 
 	@Override
@@ -45,23 +46,22 @@ final class ExpressionFor implements Expression {
 		to.store(ctx);
 
 		from.load(ctx);
-		VarLocal varIt = newLocal(ctx, Type.INT_TYPE);
-		varIt.store(ctx);
+		VarLocal it = newLocal(ctx, Type.INT_TYPE);
+		it.store(ctx);
 
 		g.mark(labelLoop);
 
-		varIt.load(ctx);
+		it.load(ctx);
 		to.load(ctx);
 
 		g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
 
-		ctx.addParameter("it", varIt);
-		forVar.load(ctx);
+		forVar.apply(it).load(ctx);
 
-		varIt.load(ctx);
+		it.load(ctx);
 		g.push(1);
 		g.math(GeneratorAdapter.ADD, Type.INT_TYPE);
-		varIt.store(ctx);
+		it.store(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);

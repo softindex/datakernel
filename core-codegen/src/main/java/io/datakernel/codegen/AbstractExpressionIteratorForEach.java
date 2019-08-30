@@ -21,22 +21,22 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
+import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 public abstract class AbstractExpressionIteratorForEach implements Expression {
 	protected final Expression collection;
 	protected final Class<?> type;
-	protected final Expression forEach;
+	protected final Function<Expression, Expression> forEach;
 
-	protected AbstractExpressionIteratorForEach(Expression collection, Class<?> type, Expression forEach) {
-		this.collection = checkNotNull(collection);
-		this.type = checkNotNull(type);
-		this.forEach = checkNotNull(forEach);
+	protected AbstractExpressionIteratorForEach(Expression collection, Class<?> type, Function<Expression, Expression> forEach) {
+		this.collection = collection;
+		this.type = type;
+		this.forEach = forEach;
 	}
 
 	protected abstract Expression getValue(VarLocal varIt);
@@ -70,11 +70,10 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 		g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
 		cast(call(varIter, "next"), type).load(ctx);
-		VarLocal varIt = newLocal(ctx, getType(type));
-		varIt.store(ctx);
+		VarLocal it = newLocal(ctx, getType(type));
+		it.store(ctx);
 
-		ctx.addParameter("it", getValue(varIt));
-		forEach.load(ctx);
+		forEach.apply(getValue(it)).load(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
@@ -102,11 +101,10 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 		varPosition.load(ctx);
 		g.arrayLoad(getType(type));
 
-		VarLocal varIt = newLocal(ctx, getType(type));
-		varIt.store(ctx);
+		VarLocal it = newLocal(ctx, getType(type));
+		it.store(ctx);
 
-		ctx.addParameter("it", varIt);
-		forEach.load(ctx);
+		forEach.apply(getValue(it)).load(ctx);
 
 		varPosition.load(ctx);
 		g.push(1);

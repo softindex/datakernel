@@ -17,7 +17,6 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionParameter;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -49,7 +48,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 		this.nullable = nullable;
 	}
 
-	protected abstract Expression mapForEach(Expression collection, Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value);
+	protected abstract Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue);
 
 	protected Expression createConstructor(Expression length) {
 		return let(constructor(mapImplType, !nullable ? length : dec(length)));
