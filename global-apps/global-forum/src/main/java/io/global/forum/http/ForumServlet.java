@@ -110,7 +110,7 @@ public final class ForumServlet {
 					try {
 						ThreadMetadata metadata = JsonUtils.fromJson(REGISTRY.get(ThreadMetadata.class), request.getBody().asString(UTF_8));
 						UserId userId = request.getAttachment(UserId.class);
-						return forumDao.createThread(metadata, userId)
+						return forumDao.createThread(metadata)
 								.then(id -> {
 									ThreadDao threadDao = forumDao.getThreadDao(id);
 									assert threadDao != null : "just created thread has no dao";

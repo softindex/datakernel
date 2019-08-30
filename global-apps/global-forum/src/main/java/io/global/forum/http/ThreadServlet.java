@@ -59,7 +59,7 @@ public final class ThreadServlet {
 								if (content == null) {
 									return Promise.ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
 								}
-								return threadDao.addPost(author, parentId, content, attachmentMap);
+								return threadDao.addPost(author, parentId, content, attachmentMap).toVoid();
 							})
 							.thenEx(revertIfException(threadDao, attachmentMap))
 							.map($ -> HttpResponse.ok201());

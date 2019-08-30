@@ -1,0 +1,20 @@
+<div class="card">
+    <div class="card-body">
+        <div class="row rounded">
+            <span class="badge badge-secondary badge-light">
+                {{author.id}} {{#context.format_date}}{{initialTimestamp}}{{/context.format_date}}
+            </span>
+        </div>
+        <div class="row p-2">
+            {{content}}
+        </div>
+        <div class="row">
+            <a href="#" class="badge badge-secondary badge-info mx-1">
+                reply
+            </a>
+            <a href="#" class="badge badge-secondary badge-info mx-1">
+                delete
+            </a>
+        </div>
+    </div>
+</div>

@@ -108,7 +108,7 @@ public final class ForumDaoImpl implements ForumDao {
 
 	// invariant: just after creating the thread you should do `getThreadDao(id).addRootPost(...)`
 	@Override
-	public Promise<Long> createThread(ThreadMetadata threadMetadata, UserId author) {
+	public Promise<Long> createThread(ThreadMetadata threadMetadata) {
 		long id = Utils.generateId();
 		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(null, threadMetadata)))
 				.map($ -> id);

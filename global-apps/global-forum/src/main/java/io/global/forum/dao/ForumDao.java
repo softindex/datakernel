@@ -30,7 +30,7 @@ public interface ForumDao {
 
 	Promise<Void> unbanIpRange(long id);
 
-	Promise<Long> createThread(ThreadMetadata threadMetadata, UserId author);
+	Promise<Long> createThread(ThreadMetadata threadMetadata);
 
 	Promise<Map<Long, ThreadMetadata>> getThreads();
 

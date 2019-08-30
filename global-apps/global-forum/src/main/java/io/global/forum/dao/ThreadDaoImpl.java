@@ -12,6 +12,7 @@ import io.global.forum.ot.post.ThreadOTState;
 import io.global.forum.ot.post.operation.*;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
+import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserId;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public final class ThreadDaoImpl implements ThreadDao {
+	private final ForumDao parent;
+	private final Long threadId;
 	private final OTStateManager<CommitId, ThreadOperation> stateManager;
 	private final Map<Long, Post> postsView;
 
@@ -34,14 +37,21 @@ public final class ThreadDaoImpl implements ThreadDao {
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public ThreadDaoImpl(OTStateManager<CommitId, ThreadOperation> stateManager, FsClient attachmentFs) {
+	public ThreadDaoImpl(ForumDao parent, Long threadId, OTStateManager<CommitId, ThreadOperation> stateManager, FsClient attachmentFs) {
+		this.parent = parent;
+		this.threadId = threadId;
 		this.stateManager = stateManager;
 		this.attachmentFs = attachmentFs;
 		this.postsView = ((ThreadOTState) stateManager.getState()).getPostsView();
 	}
 
 	@Override
-	public Promise<Void> addPost(UserId author, @Nullable Long parentId, String content, Map<String, Attachment> attachments) {
+	public Promise<ThreadMetadata> getThreadMetadata() {
+		return parent.getThreads().map(threads -> threads.get(threadId));
+	}
+
+	@Override
+	public Promise<Long> addPost(UserId author, @Nullable Long parentId, String content, Map<String, Attachment> attachments) {
 		long initialTimestamp = now.currentTimeMillis();
 		return Promise.complete()
 				.then($ -> {
@@ -54,11 +64,12 @@ public final class ThreadDaoImpl implements ThreadDao {
 					} else {
 						do {
 							postId = Utils.generateId();
-						} while (!postsView.containsKey(postId));
+						} while (postsView.containsKey(postId));
 					}
 					stateManager.add(AddPost.addPost(postId, parentId, author, initialTimestamp));
 					stateManager.add(PostChangesOperation.forNewPost(postId, content, attachments, initialTimestamp));
-					return stateManager.sync();
+					Long finalPostId = postId;
+					return stateManager.sync().map($2 -> finalPostId);
 				});
 	}
 

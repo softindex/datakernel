@@ -1,0 +1,13 @@
+{{<base}}
+    {{$content}}
+        <div class="container list-group">
+            {{#threads}}
+                <a href="{{context.pubKey}}/thread/{{id}}" class="list-group-item list-group-item-action">
+                    {{meta.title}}
+                    <span class="badge badge-secondary badge-light float-right">{{root.author.id}}
+                        , {{#context.format_date}}{{root.initialTimestamp}}{{/context.format_date}}</span>
+                </a>
+            {{/threads}}
+        </div>
+    {{/content}}
+{{/base}}

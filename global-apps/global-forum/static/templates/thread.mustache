@@ -1,0 +1,29 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active" aria-current="page">{{thread.meta.title}}</li>
+                    <li class="breadcrumb-item active" aria-current="page">root</li>
+                </ol>
+            </nav>
+            {{#thread.root}}
+                <div class="border-left border-dark">
+                    {{>render_post_body}}
+                    {{#children}}
+                        {{>render_post}}
+                    {{/children}}
+                </div>
+            {{/thread.root}}
+            <form class="m-2">
+                <div class="form-group">
+                    <label for="inputText">Post text:</label>
+                    <textarea class="form-control" id="inputText"></textarea>
+                </div>
+                <div class="row float-right">
+                    <button type="submit" class="btn btn-primary">Post</button>
+                </div>
+            </form>
+        </div>
+    {{/content}}
+{{/base}}

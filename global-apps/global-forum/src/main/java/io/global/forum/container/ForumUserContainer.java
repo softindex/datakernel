@@ -203,7 +203,7 @@ public final class ForumUserContainer implements UserContainer {
 					return stateManager.start()
 							.whenResult($ -> {
 								threadStateManagers.put(tid, stateManager);
-								threadDaos.put(tid, new ThreadDaoImpl(stateManager, fsClient));
+								threadDaos.put(tid, new ThreadDaoImpl(forumDao, tid, stateManager, fsClient));
 							})
 							.whenComplete(() -> pendingThreadStateManagers.remove(tid))
 							.map($2 -> stateManager);

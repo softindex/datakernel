@@ -6,10 +6,8 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codec.registry.CodecRegistry;
-import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MediaTypes;
 import io.datakernel.util.Tuple2;
 import io.datakernel.writer.ByteBufWriter;
 import io.global.forum.http.IpBanRequest;
@@ -30,6 +28,7 @@ import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
+import static io.datakernel.http.ContentTypes.HTML_UTF_8;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.REFERER;
@@ -147,16 +146,30 @@ public final class Utils {
 		return RANDOM.nextLong();
 	}
 
-	public static HttpResponse templated(Mustache mustache, @Nullable Object scope) {
-		ByteBufWriter writer = new ByteBufWriter();
-		mustache.execute(writer, scope);
-		return HttpResponse.ok200()
-				.withBody(writer.getBuf())
-				.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.HTML)));
+	@FunctionalInterface
+	public interface MustacheSupplier {
+
+		Mustache getMustache(String filename);
 	}
 
-	public static HttpResponse templated(Mustache mustache) {
-		return templated(mustache, null);
+	public static HttpResponse templated(int code, MustacheSupplier mustacheSupplier, String templateName, @Nullable Object scope) {
+		ByteBufWriter writer = new ByteBufWriter();
+		mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, scope);
+		return HttpResponse.ofCode(code)
+				.withBody(writer.getBuf())
+				.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
+	}
+
+	public static HttpResponse templated(int code, MustacheSupplier mustacheSupplier, String templateName) {
+		return templated(code, mustacheSupplier, templateName, null);
+	}
+
+	public static HttpResponse templated(MustacheSupplier mustacheSupplier, String templateName, @Nullable Object scope) {
+		return templated(200, mustacheSupplier, templateName, scope);
+	}
+
+	public static HttpResponse templated(MustacheSupplier mustacheSupplier, String templateName) {
+		return templated(mustacheSupplier, templateName, null);
 	}
 
 	public static HttpResponse redirect(HttpRequest request, @NotNull String to) {
@@ -229,5 +242,4 @@ public final class Utils {
 			}
 		};
 	}
-
 }

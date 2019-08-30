@@ -9,6 +9,7 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.util.ApplicationSettings;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
+import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserId;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,11 +23,13 @@ public interface ThreadDao {
 	StacklessException ATTACHMENT_NOT_FOUND = new StacklessException(ThreadDao.class, "Attachment not found");
 	StacklessException ROOT_ALREADY_PRESENT_EXCEPTION = new StacklessException(ThreadDao.class, "Root post has already been added");
 
+	Promise<ThreadMetadata> getThreadMetadata();
+
 	default Promise<Void> addRootPost(UserId author, String content, Map<String, Attachment> attachments) {
-		return addPost(author, null, content, attachments);
+		return addPost(author, null, content, attachments).toVoid();
 	}
 
-	Promise<Void> addPost(UserId author, @Nullable Long parentId, @Nullable String content, Map<String, Attachment> attachments);
+	Promise<Long> addPost(UserId author, @Nullable Long parentId, @Nullable String content, Map<String, Attachment> attachments);
 
 	Promise<Post> getPost(Long postId);
 
