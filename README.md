@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://datakernel.io" target="_blank">
-    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="340">
+    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="350">
   </a>
 </p>
 
@@ -48,8 +48,8 @@ To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io)
 ```java
 public final class HelloWorldExample { 
     public static void main(String[] args) throws IOException {
-    	  Eventloop eventloop = Eventloop.create();
-    	  AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+        Eventloop eventloop = Eventloop.create();
+        AsyncHttpServer server = AsyncHttpServer.create(eventloop,
                 request -> Promise.of(
                         HttpResponse.ok200()
                                 .withPlainText("Hello world!")))
